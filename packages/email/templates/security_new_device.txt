@@ -1,0 +1,21 @@
+Folevi
+
+New sign-in to your account
+
+Your Folevi account was just signed in to from a device we have not seen
+before.
+
+Device: {DATA_VARIABLE:deviceLabel}
+Approximate location: {DATA_VARIABLE:approximateLocation}
+Time: {DATA_VARIABLE:signedInAt}
+
+If this was you, there is nothing else to do. If it was not, sign that
+device out and change your password.
+
+Review account security:
+{DATA_VARIABLE:securityUrl}
+
+--
+This is a required email about the security of your Folevi account, so
+it is sent even if you have turned off notifications.
+Folevi · The Living Folio

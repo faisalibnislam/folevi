@@ -1,0 +1,15 @@
+Folevi
+
+Your account has been deleted
+
+Your Folevi account and its data were permanently deleted on
+{DATA_VARIABLE:completedOn}. This is the last email you will receive
+about this account.
+
+Limited records may be retained where the law requires it, as described
+in the Folevi privacy policy. Thank you for writing with Folevi.
+
+--
+This is a required email about the security of your Folevi account, so
+it is sent even if you have turned off notifications.
+Folevi · The Living Folio

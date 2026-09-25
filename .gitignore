@@ -1,0 +1,38 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# env
+.env
+.env.*
+!.env.example
+.convex/
+
+# macOS / Xcode
+.DS_Store
+apps/macos/build/
+apps/macos/DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+apps/macos/Folevi.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration/
+
+# misc
+*.log
+.vercel
+.idea/
+.vscode/*
+!.vscode/extensions.json
+artifacts/

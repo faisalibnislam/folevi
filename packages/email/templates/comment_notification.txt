@@ -1,0 +1,16 @@
+Folevi
+
+New comment on a document
+
+{DATA_VARIABLE:actorName} commented on {DATA_VARIABLE:documentTitle}.
+
+> {DATA_VARIABLE:excerpt}
+
+View the comment:
+{DATA_VARIABLE:documentUrl}
+
+--
+You received this because comment emails are turned on for your Folevi
+account.
+Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
+Folevi · The Living Folio

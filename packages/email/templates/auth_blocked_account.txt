@@ -1,0 +1,20 @@
+Folevi
+
+We paused sign-in to your account
+
+There were several unsuccessful attempts to sign in to your Folevi
+account, so we paused sign-in from the device that made them.
+
+If those attempts were yours, you can unblock sign-in now. If they were
+not, unblock and then change your password.
+
+Unblock sign-in:
+{DATA_VARIABLE:actionUrl}
+
+This link expires in {DATA_VARIABLE:expiresInHours} hour(s). Nothing in
+your notes has changed.
+
+--
+This is a required email about the security of your Folevi account, so
+it is sent even if you have turned off notifications.
+Folevi · The Living Folio

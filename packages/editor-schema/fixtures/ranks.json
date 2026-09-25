@@ -1,0 +1,92 @@
+{
+  "$description": "rankBetween golden cases, shared with Swift RankTests.",
+  "cases": [
+    {
+      "before": null,
+      "after": null,
+      "result": "V"
+    },
+    {
+      "before": null,
+      "after": "V",
+      "result": "G"
+    },
+    {
+      "before": "V",
+      "after": null,
+      "result": "l"
+    },
+    {
+      "before": "V",
+      "after": "l",
+      "result": "d"
+    },
+    {
+      "before": "V",
+      "after": "W",
+      "result": "VV"
+    },
+    {
+      "before": "0V",
+      "after": "1",
+      "result": "0l"
+    },
+    {
+      "before": null,
+      "after": "1",
+      "result": "0V"
+    },
+    {
+      "before": null,
+      "after": "01",
+      "result": "00V"
+    },
+    {
+      "before": "z",
+      "after": null,
+      "result": "zV"
+    },
+    {
+      "before": "zz",
+      "after": null,
+      "result": "zzV"
+    },
+    {
+      "before": "a",
+      "after": "a1",
+      "result": "a0V"
+    },
+    {
+      "before": "a0V",
+      "after": "a1",
+      "result": "a0l"
+    },
+    {
+      "before": "Az",
+      "after": "B",
+      "result": "AzV"
+    },
+    {
+      "before": "abc",
+      "after": "abd",
+      "result": "abcV"
+    },
+    {
+      "before": "y",
+      "after": "z",
+      "result": "yV"
+    }
+  ],
+  "sequence10": [
+    "8",
+    "G",
+    "O",
+    "S",
+    "V",
+    "d",
+    "h",
+    "l",
+    "t",
+    "x"
+  ]
+}

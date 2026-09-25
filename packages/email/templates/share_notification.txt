@@ -1,0 +1,16 @@
+Folevi
+
+A document was shared with you
+
+{DATA_VARIABLE:actorName} shared {DATA_VARIABLE:documentTitle} with you.
+
+Your access: {DATA_VARIABLE:role}
+
+Open the document:
+{DATA_VARIABLE:documentUrl}
+
+--
+You received this because share emails are turned on for your Folevi
+account.
+Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
+Folevi · The Living Folio

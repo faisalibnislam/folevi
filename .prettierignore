@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+convex/_generated
+apps/macos
+**/.next
+**/dist
+**/generated
+packages/email/templates/**/*.mjml

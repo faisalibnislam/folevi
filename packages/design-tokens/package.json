@@ -1,0 +1,17 @@
+{
+  "name": "@folevi/design-tokens",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tokens.json": "./src/tokens.json",
+    "./tokens.css": "./generated/tokens.css",
+    ".": "./generated/tokens.ts"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs --check && node scripts/contrast.mjs",
+    "typecheck": "node scripts/build.mjs --check",
+    "lint": "node scripts/contrast.mjs"
+  }
+}

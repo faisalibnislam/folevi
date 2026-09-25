@@ -1,0 +1,909 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://folevi.com/schema/blocks/v1.json",
+  "title": "Folevi wire block",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "parentId",
+    "rank",
+    "schemaVersion",
+    "text",
+    "props"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "type": {
+      "type": "string"
+    },
+    "parentId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rank": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "text": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InlineNode"
+      }
+    },
+    "props": {
+      "type": "object"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "paragraph"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/ParagraphProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "heading"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/HeadingProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "bulleted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/BulletedProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "numbered"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/NumberedProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "todo"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/TodoProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "toggle"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/ToggleProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "quote"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/QuoteProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "callout"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/CalloutProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "divider"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/DividerProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "code"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/CodeProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "image"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/ImageProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/FileProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "table"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/TableProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "page"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/PageProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "bookmark"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/BookmarkProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "collection"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/CollectionProps"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "HeadingLevel": {
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "CalloutTone": {
+      "enum": [
+        "note",
+        "info",
+        "success",
+        "warning",
+        "danger"
+      ]
+    },
+    "TextColor": {
+      "enum": [
+        "muted",
+        "accent",
+        "moss",
+        "marigold",
+        "plum",
+        "coral"
+      ]
+    },
+    "HighlightColor": {
+      "enum": [
+        "yellow",
+        "green",
+        "blue",
+        "pink"
+      ]
+    },
+    "TaskPriority": {
+      "enum": [
+        "none",
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "PageDisplay": {
+      "enum": [
+        "link",
+        "card"
+      ]
+    },
+    "DocumentFont": {
+      "enum": [
+        "sans",
+        "serif",
+        "mono"
+      ]
+    },
+    "DocumentWidth": {
+      "enum": [
+        "narrow",
+        "default",
+        "wide"
+      ]
+    },
+    "DocumentBackground": {
+      "enum": [
+        "paper",
+        "plain",
+        "tinted",
+        "grid"
+      ]
+    },
+    "DocumentAccent": {
+      "enum": [
+        "accent",
+        "moss",
+        "marigold",
+        "plum",
+        "coral"
+      ]
+    },
+    "CardStyle": {
+      "enum": [
+        "folio",
+        "plain",
+        "tinted",
+        "outline"
+      ]
+    },
+    "CoverKind": {
+      "enum": [
+        "none",
+        "color",
+        "gradient",
+        "image"
+      ]
+    },
+    "DocumentKind": {
+      "enum": [
+        "document",
+        "daily",
+        "template",
+        "collectionRow"
+      ]
+    },
+    "Mark": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "bold"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "italic"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "underline"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "strike"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "code"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "link"
+            },
+            "href": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "href"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "color"
+            },
+            "value": {
+              "$ref": "#/$defs/TextColor"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "highlight"
+            },
+            "value": {
+              "$ref": "#/$defs/HighlightColor"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "InlineNode": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "text": {
+              "type": "string"
+            },
+            "marks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Mark"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "mention"
+            },
+            "userId": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "userId",
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "date"
+            },
+            "date": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "date"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pageLink"
+            },
+            "documentId": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "documentId",
+            "label"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DocumentStyle": {
+      "type": "object",
+      "properties": {
+        "font": {
+          "$ref": "#/$defs/DocumentFont"
+        },
+        "width": {
+          "$ref": "#/$defs/DocumentWidth"
+        },
+        "background": {
+          "$ref": "#/$defs/DocumentBackground"
+        },
+        "accent": {
+          "$ref": "#/$defs/DocumentAccent"
+        },
+        "card": {
+          "$ref": "#/$defs/CardStyle"
+        }
+      },
+      "required": [
+        "font",
+        "width",
+        "background",
+        "accent",
+        "card"
+      ],
+      "additionalProperties": false
+    },
+    "DocumentCover": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CoverKind"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "ParagraphProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "HeadingProps": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/HeadingLevel"
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "additionalProperties": false
+    },
+    "BulletedProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "NumberedProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "TodoProps": {
+      "type": "object",
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        },
+        "canceled": {
+          "type": "boolean"
+        },
+        "dueDate": {
+          "type": "string"
+        },
+        "dueTime": {
+          "type": "string"
+        },
+        "priority": {
+          "$ref": "#/$defs/TaskPriority"
+        },
+        "assigneeId": {
+          "type": "string"
+        },
+        "reminderAt": {
+          "type": "number"
+        },
+        "completedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "checked"
+      ],
+      "additionalProperties": false
+    },
+    "ToggleProps": {
+      "type": "object",
+      "properties": {
+        "collapsed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "collapsed"
+      ],
+      "additionalProperties": false
+    },
+    "QuoteProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "CalloutProps": {
+      "type": "object",
+      "properties": {
+        "tone": {
+          "$ref": "#/$defs/CalloutTone"
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tone"
+      ],
+      "additionalProperties": false
+    },
+    "DividerProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "CodeProps": {
+      "type": "object",
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "language",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "ImageProps": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number"
+        },
+        "naturalWidth": {
+          "type": "number"
+        },
+        "naturalHeight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alt",
+        "caption"
+      ],
+      "additionalProperties": false
+    },
+    "FileProps": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number"
+        },
+        "mimeType": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fileId",
+        "name",
+        "size",
+        "mimeType"
+      ],
+      "additionalProperties": false
+    },
+    "TableProps": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/InlineNode"
+              }
+            }
+          }
+        },
+        "headerRow": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "rows",
+        "headerRow"
+      ],
+      "additionalProperties": false
+    },
+    "PageProps": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "display": {
+          "$ref": "#/$defs/PageDisplay"
+        },
+        "titleCache": {
+          "type": "string"
+        },
+        "iconCache": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "display"
+      ],
+      "additionalProperties": false
+    },
+    "BookmarkProps": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "siteName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "CollectionProps": {
+      "type": "object",
+      "properties": {
+        "collectionId": {
+          "type": "string"
+        },
+        "viewId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "collectionId"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

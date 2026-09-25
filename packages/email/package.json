@@ -1,0 +1,19 @@
+{
+  "name": "@folevi/email",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "templates": "node scripts/build-templates.ts",
+    "typecheck": "node scripts/build-templates.ts --check && tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "lint": "eslint src test scripts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vitest": "5.0.1"
+  }
+}

@@ -1,0 +1,16 @@
+Folevi
+
+Recent comments
+
+There are {DATA_VARIABLE:count} new comment(s) on documents you follow.
+
+{DATA_VARIABLE:summary}
+
+Open your inbox:
+{DATA_VARIABLE:inboxUrl}
+
+--
+You received this because the comment digest is turned on for your
+Folevi account.
+Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
+Folevi · The Living Folio

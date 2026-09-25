@@ -1,0 +1,1064 @@
+{
+  "$description": "Golden offline/sync scenarios executed by the TypeScript and Swift reducers. See docs/SYNC_PROTOCOL.md.",
+  "scenarios": [
+    {
+      "name": "create_offline",
+      "steps": [
+        {
+          "action": "setConnection",
+          "input": "offline"
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Written on a train"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content",
+              "position"
+            ]
+          }
+        },
+        {
+          "action": "expect",
+          "status": "offline",
+          "pending": 1
+        },
+        {
+          "action": "setConnection",
+          "input": "online"
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "expect",
+          "status": "syncing",
+          "inflight": 1
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "applied",
+              "revision": 1,
+              "block": {
+                "id": "01J9ZBLK000000000000000001",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Written on a train"
+                  }
+                ],
+                "props": {},
+                "revision": 1
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "pending": 0,
+          "revisions": {
+            "01J9ZBLK000000000000000001": 1
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000001\":{\"block\":{\"id\":\"01J9ZBLK000000000000000001\",\"parentId\":null,\"props\":{},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[{\"text\":\"Written on a train\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":1}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    },
+    {
+      "name": "edit_offline",
+      "steps": [
+        {
+          "action": "remoteUpdate",
+          "input": {
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Draft"
+                }
+              ],
+              "props": {},
+              "revision": 3
+            },
+            "deleted": false
+          }
+        },
+        {
+          "action": "setConnection",
+          "input": "offline"
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Draft one"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content"
+            ]
+          }
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op2",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Draft one, revised"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content"
+            ]
+          }
+        },
+        {
+          "action": "expect",
+          "status": "offline",
+          "pending": 1,
+          "baseRevisions": [
+            3
+          ]
+        },
+        {
+          "action": "setConnection",
+          "input": "online"
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "applied",
+              "revision": 4,
+              "block": {
+                "id": "01J9ZBLK000000000000000001",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Draft one, revised"
+                  }
+                ],
+                "props": {},
+                "revision": 4
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "revisions": {
+            "01J9ZBLK000000000000000001": 4
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000001\":{\"block\":{\"id\":\"01J9ZBLK000000000000000001\",\"parentId\":null,\"props\":{},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[{\"text\":\"Draft one, revised\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":4}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    },
+    {
+      "name": "reorder_offline",
+      "steps": [
+        {
+          "action": "remoteUpdate",
+          "input": {
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "First"
+                }
+              ],
+              "props": {},
+              "revision": 1
+            },
+            "deleted": false
+          }
+        },
+        {
+          "action": "remoteUpdate",
+          "input": {
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000002",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "l",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Second"
+                }
+              ],
+              "props": {},
+              "revision": 1
+            },
+            "deleted": false
+          }
+        },
+        {
+          "action": "setConnection",
+          "input": "offline"
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000002",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "G",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Second"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "position"
+            ]
+          }
+        },
+        {
+          "action": "expect",
+          "status": "offline",
+          "pending": 1
+        },
+        {
+          "action": "setConnection",
+          "input": "online"
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "applied",
+              "revision": 2,
+              "block": {
+                "id": "01J9ZBLK000000000000000002",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "G",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Second"
+                  }
+                ],
+                "props": {},
+                "revision": 2
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "revisions": {
+            "01J9ZBLK000000000000000002": 2
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000001\":{\"block\":{\"id\":\"01J9ZBLK000000000000000001\",\"parentId\":null,\"props\":{},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[{\"text\":\"First\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":1},\"01J9ZBLK000000000000000002\":{\"block\":{\"id\":\"01J9ZBLK000000000000000002\",\"parentId\":null,\"props\":{},\"rank\":\"G\",\"schemaVersion\":1,\"text\":[{\"text\":\"Second\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":2}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    },
+    {
+      "name": "delete_restore_offline",
+      "steps": [
+        {
+          "action": "remoteUpdate",
+          "input": {
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Keep me"
+                }
+              ],
+              "props": {},
+              "revision": 2
+            },
+            "deleted": false
+          }
+        },
+        {
+          "action": "setConnection",
+          "input": "offline"
+        },
+        {
+          "action": "localDelete",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "blockId": "01J9ZBLK000000000000000001"
+          }
+        },
+        {
+          "action": "localRestore",
+          "input": {
+            "opId": "op2",
+            "documentId": "01J9ZDOC000000000000000001",
+            "blockId": "01J9ZBLK000000000000000001"
+          }
+        },
+        {
+          "action": "expect",
+          "status": "offline",
+          "pending": 0
+        },
+        {
+          "action": "localDelete",
+          "input": {
+            "opId": "op3",
+            "documentId": "01J9ZDOC000000000000000001",
+            "blockId": "01J9ZBLK000000000000000001"
+          }
+        },
+        {
+          "action": "setConnection",
+          "input": "online"
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op3",
+              "status": "applied",
+              "revision": 3,
+              "block": {
+                "id": "01J9ZBLK000000000000000001",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Keep me"
+                  }
+                ],
+                "props": {},
+                "revision": 3
+              },
+              "deleted": true
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "deleted": [
+            "01J9ZBLK000000000000000001"
+          ]
+        },
+        {
+          "action": "localRestore",
+          "input": {
+            "opId": "op4",
+            "documentId": "01J9ZDOC000000000000000001",
+            "blockId": "01J9ZBLK000000000000000001"
+          }
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op4",
+              "status": "applied",
+              "revision": 4,
+              "block": {
+                "id": "01J9ZBLK000000000000000001",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Keep me"
+                  }
+                ],
+                "props": {},
+                "revision": 4
+              },
+              "deleted": false
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "deleted": [],
+          "revisions": {
+            "01J9ZBLK000000000000000001": 4
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000001\":{\"block\":{\"id\":\"01J9ZBLK000000000000000001\",\"parentId\":null,\"props\":{},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[{\"text\":\"Keep me\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":4}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    },
+    {
+      "name": "duplicate_delivery",
+      "steps": [
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Once"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content",
+              "position"
+            ]
+          }
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "batchFailed",
+          "input": "network"
+        },
+        {
+          "action": "expect",
+          "status": "offline",
+          "pending": 1
+        },
+        {
+          "action": "setConnection",
+          "input": "online"
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "duplicate",
+              "revision": 1,
+              "block": {
+                "id": "01J9ZBLK000000000000000001",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Once"
+                  }
+                ],
+                "props": {},
+                "revision": 1
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "revisions": {
+            "01J9ZBLK000000000000000001": 1
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000001\":{\"block\":{\"id\":\"01J9ZBLK000000000000000001\",\"parentId\":null,\"props\":{},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[{\"text\":\"Once\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":1}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    },
+    {
+      "name": "reconnect_after_token_expiry",
+      "steps": [
+        {
+          "action": "remoteUpdate",
+          "input": {
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Before"
+                }
+              ],
+              "props": {},
+              "revision": 5
+            },
+            "deleted": false
+          }
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "After"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content"
+            ]
+          }
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "batchFailed",
+          "input": "unauthenticated"
+        },
+        {
+          "action": "expect",
+          "status": "error",
+          "pending": 1
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "expect",
+          "inflight": 0,
+          "pending": 1
+        },
+        {
+          "action": "authRefreshed"
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "applied",
+              "revision": 6,
+              "block": {
+                "id": "01J9ZBLK000000000000000001",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "After"
+                  }
+                ],
+                "props": {},
+                "revision": 6
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "revisions": {
+            "01J9ZBLK000000000000000001": 6
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000001\":{\"block\":{\"id\":\"01J9ZBLK000000000000000001\",\"parentId\":null,\"props\":{},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[{\"text\":\"After\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":6}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    },
+    {
+      "name": "server_rejection",
+      "steps": [
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Too long for the server"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content",
+              "position"
+            ]
+          }
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "rejected",
+              "error": {
+                "code": "invalid_block",
+                "message": "text too long"
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "error",
+          "pending": 0,
+          "absent": [
+            "01J9ZBLK000000000000000001"
+          ]
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{},\"conflicts\":[],\"connection\":\"online\",\"errors\":[{\"code\":\"invalid_block\",\"opId\":\"op1\"}],\"inflight\":[],\"pending\":[],\"status\":\"error\",\"uploads\":[]}"
+    },
+    {
+      "name": "same_block_conflict",
+      "steps": [
+        {
+          "action": "remoteUpdate",
+          "input": {
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Hello"
+                }
+              ],
+              "props": {},
+              "revision": 1
+            },
+            "deleted": false
+          }
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000001",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Hello from the Mac"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content"
+            ]
+          }
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "conflict",
+              "revision": 2,
+              "block": {
+                "id": "01J9ZBLK000000000000000001",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Hello from the web"
+                  }
+                ],
+                "props": {},
+                "revision": 2
+              },
+              "conflict": {
+                "reason": "content",
+                "server": {
+                  "id": "01J9ZBLK000000000000000001",
+                  "type": "paragraph",
+                  "parentId": null,
+                  "rank": "V",
+                  "schemaVersion": 1,
+                  "text": [
+                    {
+                      "type": "text",
+                      "text": "Hello from the web"
+                    }
+                  ],
+                  "props": {},
+                  "revision": 2
+                },
+                "client": {
+                  "id": "01J9ZBLK000000000000000001",
+                  "type": "paragraph",
+                  "parentId": null,
+                  "rank": "V",
+                  "schemaVersion": 1,
+                  "text": [
+                    {
+                      "type": "text",
+                      "text": "Hello from the Mac"
+                    }
+                  ],
+                  "props": {}
+                }
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "conflict",
+          "conflicts": 1,
+          "revisions": {
+            "01J9ZBLK000000000000000001": 2
+          }
+        },
+        {
+          "action": "resolveConflict",
+          "input": {
+            "conflictId": "op1",
+            "choice": "both",
+            "opId": "op2",
+            "newBlockId": "01J9ZBLK000000000000000004",
+            "newRank": "k"
+          }
+        },
+        {
+          "action": "expect",
+          "status": "saving",
+          "conflicts": 0,
+          "pending": 1
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op2",
+              "status": "applied",
+              "revision": 1,
+              "block": {
+                "id": "01J9ZBLK000000000000000004",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "k",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Hello from the Mac"
+                  }
+                ],
+                "props": {},
+                "revision": 1
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "revisions": {
+            "01J9ZBLK000000000000000001": 2,
+            "01J9ZBLK000000000000000004": 1
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000001\":{\"block\":{\"id\":\"01J9ZBLK000000000000000001\",\"parentId\":null,\"props\":{},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[{\"text\":\"Hello from the web\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":2},\"01J9ZBLK000000000000000004\":{\"block\":{\"id\":\"01J9ZBLK000000000000000004\",\"parentId\":null,\"props\":{},\"rank\":\"k\",\"schemaVersion\":1,\"text\":[{\"text\":\"Hello from the Mac\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":1}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    },
+    {
+      "name": "attachment_upload_interruption",
+      "steps": [
+        {
+          "action": "queueUpload",
+          "input": {
+            "uploadId": "up1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "blockId": "01J9ZBLK000000000000000003"
+          }
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op1",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000003",
+              "type": "image",
+              "parentId": null,
+              "rank": "V",
+              "schemaVersion": 1,
+              "text": [],
+              "props": {
+                "alt": "Harbor at dawn",
+                "caption": ""
+              }
+            },
+            "fields": [
+              "content",
+              "position"
+            ],
+            "blockedBy": "up1"
+          }
+        },
+        {
+          "action": "localUpsert",
+          "input": {
+            "opId": "op2",
+            "documentId": "01J9ZDOC000000000000000001",
+            "block": {
+              "id": "01J9ZBLK000000000000000002",
+              "type": "paragraph",
+              "parentId": null,
+              "rank": "l",
+              "schemaVersion": 1,
+              "text": [
+                {
+                  "type": "text",
+                  "text": "Caption notes"
+                }
+              ],
+              "props": {}
+            },
+            "fields": [
+              "content",
+              "position"
+            ]
+          }
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "expect",
+          "inflight": 1,
+          "pending": 1
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op2",
+              "status": "applied",
+              "revision": 1,
+              "block": {
+                "id": "01J9ZBLK000000000000000002",
+                "type": "paragraph",
+                "parentId": null,
+                "rank": "l",
+                "schemaVersion": 1,
+                "text": [
+                  {
+                    "type": "text",
+                    "text": "Caption notes"
+                  }
+                ],
+                "props": {},
+                "revision": 1
+              }
+            }
+          ]
+        },
+        {
+          "action": "uploadFailed",
+          "input": "up1"
+        },
+        {
+          "action": "expect",
+          "status": "saving",
+          "pending": 1
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "expect",
+          "inflight": 0,
+          "pending": 1
+        },
+        {
+          "action": "uploadCompleted",
+          "input": {
+            "uploadId": "up1",
+            "fileId": "file_harbor"
+          }
+        },
+        {
+          "action": "takeBatch"
+        },
+        {
+          "action": "expect",
+          "inflight": 1,
+          "pending": 0
+        },
+        {
+          "action": "applyResults",
+          "input": [
+            {
+              "opId": "op1",
+              "status": "applied",
+              "revision": 1,
+              "block": {
+                "id": "01J9ZBLK000000000000000003",
+                "type": "image",
+                "parentId": null,
+                "rank": "V",
+                "schemaVersion": 1,
+                "text": [],
+                "props": {
+                  "alt": "Harbor at dawn",
+                  "caption": "",
+                  "fileId": "file_harbor"
+                },
+                "revision": 1
+              }
+            }
+          ]
+        },
+        {
+          "action": "expect",
+          "status": "saved",
+          "revisions": {
+            "01J9ZBLK000000000000000003": 1,
+            "01J9ZBLK000000000000000002": 1
+          }
+        }
+      ],
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{\"01J9ZBLK000000000000000002\":{\"block\":{\"id\":\"01J9ZBLK000000000000000002\",\"parentId\":null,\"props\":{},\"rank\":\"l\",\"schemaVersion\":1,\"text\":[{\"text\":\"Caption notes\",\"type\":\"text\"}],\"type\":\"paragraph\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":1},\"01J9ZBLK000000000000000003\":{\"block\":{\"id\":\"01J9ZBLK000000000000000003\",\"parentId\":null,\"props\":{\"alt\":\"Harbor at dawn\",\"caption\":\"\",\"fileId\":\"file_harbor\"},\"rank\":\"V\",\"schemaVersion\":1,\"text\":[],\"type\":\"image\"},\"deleted\":false,\"documentId\":\"01J9ZDOC000000000000000001\",\"serverRevision\":1}},\"conflicts\":[],\"connection\":\"online\",\"errors\":[],\"inflight\":[],\"pending\":[],\"status\":\"saved\",\"uploads\":[]}"
+    }
+  ]
+}

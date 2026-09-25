@@ -1,0 +1,16 @@
+Folevi
+
+Your verification code
+
+Enter this code in Folevi to continue:
+
+    {DATA_VARIABLE:code}
+
+The code expires in {DATA_VARIABLE:expiresInMinutes} minute(s) and works
+once. Folevi will never ask you to read this code out or send it to
+anyone. If you did not request it, you can ignore this email.
+
+--
+This is a required email about the security of your Folevi account, so
+it is sent even if you have turned off notifications.
+Folevi · The Living Folio

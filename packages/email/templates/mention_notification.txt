@@ -1,0 +1,17 @@
+Folevi
+
+You were mentioned
+
+{DATA_VARIABLE:actorName} mentioned you in
+{DATA_VARIABLE:documentTitle}.
+
+> {DATA_VARIABLE:excerpt}
+
+View the mention:
+{DATA_VARIABLE:documentUrl}
+
+--
+You received this because mention emails are turned on for your Folevi
+account.
+Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
+Folevi · The Living Folio

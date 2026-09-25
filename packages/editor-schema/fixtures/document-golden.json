@@ -1,0 +1,37 @@
+{
+  "$description": "Golden wire blocks covering every v1 block type plus an unknown future type. Both clients must decode and re-encode these to identical canonical JSON.",
+  "blocks": [
+    { "id": "01JAGOLD000000000000000001", "type": "heading", "parentId": null, "rank": "1", "schemaVersion": 1, "text": [{ "type": "text", "text": "Field Notes" }], "props": { "level": 1 } },
+    { "id": "01JAGOLD000000000000000002", "type": "paragraph", "parentId": null, "rank": "2", "schemaVersion": 1, "text": [
+      { "type": "text", "text": "The harbor was " },
+      { "type": "text", "text": "quiet", "marks": [{ "type": "bold" }, { "type": "italic" }] },
+      { "type": "text", "text": " before " },
+      { "type": "date", "date": "2026-09-25" },
+      { "type": "text", "text": " — see " },
+      { "type": "pageLink", "documentId": "01JAGOLDDOC000000000000002", "label": "Project Atlas Brief" },
+      { "type": "text", "text": " and ask " },
+      { "type": "mention", "userId": "user_ines", "label": "Inès Moreau" },
+      { "type": "text", "text": ". Map", "marks": [{ "type": "link", "href": "https://example.com/map" }, { "type": "color", "value": "moss" }, { "type": "highlight", "value": "yellow" }] }
+    ], "props": {} },
+    { "id": "01JAGOLD000000000000000003", "type": "bulleted", "parentId": null, "rank": "3", "schemaVersion": 1, "text": [{ "type": "text", "text": "Tide tables" }], "props": {} },
+    { "id": "01JAGOLD000000000000000004", "type": "numbered", "parentId": "01JAGOLD000000000000000003", "rank": "V", "schemaVersion": 1, "text": [{ "type": "text", "text": "Low tide 06:12", "marks": [{ "type": "code" }] }], "props": {} },
+    { "id": "01JAGOLD000000000000000005", "type": "todo", "parentId": null, "rank": "4", "schemaVersion": 1, "text": [{ "type": "text", "text": "Book the ferry" }], "props": { "checked": false, "dueDate": "2026-10-02", "dueTime": "09:30", "priority": "high", "reminderAt": 1790000000000 } },
+    { "id": "01JAGOLD000000000000000006", "type": "todo", "parentId": null, "rank": "5", "schemaVersion": 1, "text": [{ "type": "text", "text": "Pack the tide book", "marks": [{ "type": "strike" }] }], "props": { "checked": true, "completedAt": 1789000000000 } },
+    { "id": "01JAGOLD000000000000000007", "type": "toggle", "parentId": null, "rank": "6", "schemaVersion": 1, "text": [{ "type": "text", "text": "Packing list" }], "props": { "collapsed": true } },
+    { "id": "01JAGOLD000000000000000008", "type": "paragraph", "parentId": "01JAGOLD000000000000000007", "rank": "V", "schemaVersion": 1, "text": [{ "type": "text", "text": "Wool, notebook, thermos", "marks": [{ "type": "underline" }] }], "props": {} },
+    { "id": "01JAGOLD000000000000000009", "type": "quote", "parentId": null, "rank": "7", "schemaVersion": 1, "text": [{ "type": "text", "text": "Slow is smooth." }], "props": {} },
+    { "id": "01JAGOLD00000000000000000A", "type": "callout", "parentId": null, "rank": "8", "schemaVersion": 1, "text": [{ "type": "text", "text": "Ferries run hourly after nine." }], "props": { "tone": "info", "icon": "⛴" } },
+    { "id": "01JAGOLD00000000000000000B", "type": "divider", "parentId": null, "rank": "9", "schemaVersion": 1, "text": [], "props": {} },
+    { "id": "01JAGOLD00000000000000000C", "type": "code", "parentId": null, "rank": "A", "schemaVersion": 1, "text": [], "props": { "language": "swift", "code": "let tide = Tide(height: 1.2)\nprint(tide)" } },
+    { "id": "01JAGOLD00000000000000000D", "type": "image", "parentId": null, "rank": "B", "schemaVersion": 1, "text": [], "props": { "fileId": "file_harbor", "alt": "Harbor at dawn", "caption": "Before the first ferry", "width": 0.75, "naturalWidth": 2400, "naturalHeight": 1600 } },
+    { "id": "01JAGOLD00000000000000000E", "type": "file", "parentId": null, "rank": "C", "schemaVersion": 1, "text": [], "props": { "fileId": "file_timetable", "name": "timetable.pdf", "size": 184320, "mimeType": "application/pdf" } },
+    { "id": "01JAGOLD00000000000000000F", "type": "table", "parentId": null, "rank": "D", "schemaVersion": 1, "text": [], "props": { "headerRow": true, "rows": [
+      [[{ "type": "text", "text": "Day" }], [{ "type": "text", "text": "Plan" }]],
+      [[{ "type": "text", "text": "Sat" }], [{ "type": "text", "text": "Lighthouse walk", "marks": [{ "type": "italic" }] }]]
+    ] } },
+    { "id": "01JAGOLD00000000000000000G", "type": "page", "parentId": null, "rank": "E", "schemaVersion": 1, "text": [], "props": { "documentId": "01JAGOLDDOC000000000000003", "display": "card", "titleCache": "Trip Sketch", "iconCache": "🧭" } },
+    { "id": "01JAGOLD00000000000000000H", "type": "bookmark", "parentId": null, "rank": "F", "schemaVersion": 1, "text": [], "props": { "url": "https://example.com/tides", "title": "Tide almanac", "siteName": "Example" } },
+    { "id": "01JAGOLD00000000000000000J", "type": "collection", "parentId": null, "rank": "G", "schemaVersion": 1, "text": [], "props": { "collectionId": "01JAGOLDCOL000000000000001", "viewId": "01JAGOLDVIEW00000000000001" } },
+    { "id": "01JAGOLD00000000000000000K", "type": "timeline", "parentId": null, "rank": "H", "schemaVersion": 2, "text": [], "props": { "events": [{ "at": "2026-10-01", "label": "Depart" }], "zoom": 2 } }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "folevi",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:backend": "convex dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint && eslint convex",
+    "typecheck": "turbo run typecheck && tsc -p convex/tsconfig.json --noEmit",
+    "test": "turbo run test && vitest run --project convex",
+    "test:convex": "vitest run --project convex",
+    "tokens": "pnpm --filter @folevi/design-tokens build",
+    "schema:gen": "pnpm --filter @folevi/editor-schema generate",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@folevi/editor-schema": "workspace:*",
+    "@folevi/email": "workspace:*",
+    "convex": "1.46.0",
+    "fflate": "0.8.3",
+    "loops": "7.3.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.6",
+    "convex-test": "0.0.60",
+    "eslint": "10.11.0",
+    "fast-check": "4.10.2",
+    "prettier": "3.9.9",
+    "turbo": "2.11.4",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1",
+    "vitest": "5.0.1"
+  }
+}

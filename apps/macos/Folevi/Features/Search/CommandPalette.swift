@@ -10,7 +10,8 @@ struct CommandPaletteHost: View {
     var body: some View {
         if app.showCommandPalette {
             ZStack(alignment: .top) {
-                FoleviColor.scrim.opacity(0.4)
+                FoleviColor.scrim.opacity(0.6)
+                    .background(.ultraThinMaterial.opacity(0.5))
                     .ignoresSafeArea()
                     .onTapGesture { app.showCommandPalette = false }
                     .accessibilityHidden(true)
@@ -50,10 +51,10 @@ struct CommandPalette: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass").foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
+                Image(systemName: "magnifyingglass").font(.system(size: 16, weight: .medium)).foregroundStyle(FoleviColor.ember).accessibilityHidden(true)
                 TextField("Search documents or type a command", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 17))
+                    .font(.ui(17))
                     .focused($fieldFocused)
                     .onSubmit { activate(selected) }
                     .onKeyPress(.downArrow) {
@@ -71,15 +72,16 @@ struct CommandPalette: View {
                     .accessibilityIdentifier("palette.field")
                 if searching { ProgressView().controlSize(.small) }
             }
-            .padding(14)
-            Divider()
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            FoleviColor.line.frame(height: 1)
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(results.enumerated()), id: \.element.id) { idx, item in
                             if idx == 0 || results[idx - 1].section != item.section {
-                                Text(item.section).font(.caption.weight(.semibold)).foregroundStyle(FoleviColor.inkMuted)
-                                    .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 4)
+                                Text(item.section).foleviCapsLabel()
+                                    .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 4)
                             }
                             row(item, selected: idx == selected)
                                 .id(idx)
@@ -97,10 +99,9 @@ struct CommandPalette: View {
             }
             .frame(height: 380)
         }
-        .frame(width: 620)
-        .background(RoundedRectangle(cornerRadius: FoleviRadius.sheet, style: .continuous).fill(FoleviColor.surfaceRaised))
-        .overlay(RoundedRectangle(cornerRadius: FoleviRadius.sheet, style: .continuous).strokeBorder(FoleviColor.line))
-        .shadow(color: .black.opacity(0.2), radius: 30, y: 12)
+        .frame(width: 640)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .foleviPop(radius: 18)
         .onAppear {
             fieldFocused = true
             refresh()
@@ -114,27 +115,29 @@ struct CommandPalette: View {
     private func row(_ item: PaletteItem, selected: Bool) -> some View {
         HStack(spacing: 10) {
             Group {
-                if let icon = item.icon { Text(icon) } else { Image(systemName: item.systemImage ?? "doc.text") }
+                if let icon = item.icon { Text(icon).font(.system(size: 14)) } else { Image(systemName: item.systemImage ?? "doc.text").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(FoleviColor.emberInk) }
             }
-            .frame(width: 22)
+            .frame(width: 28, height: 28)
+            .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(8), shadow: FoleviShadow.control)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(highlight(item.title))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.ui(13.5, .semibold))
+                    .foregroundStyle(selected ? FoleviColor.heading : FoleviColor.ink)
                     .lineLimit(1)
                 if let subtitle = item.subtitle, !subtitle.isEmpty {
                     Text(highlight(subtitle))
-                        .font(.system(size: 12))
+                        .font(.ui(12))
                         .foregroundStyle(FoleviColor.inkMuted)
                         .lineLimit(2)
                 }
             }
             Spacer()
-            if selected { Image(systemName: "return").font(.caption).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true) }
+            if selected { Keycap(text: "↩") }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.vertical, 7)
-        .background(RoundedRectangle(cornerRadius: 8).fill(selected ? FoleviColor.accentSoft : Color.clear).padding(.horizontal, 6))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(selected ? FoleviColor.accentSoft : Color.clear).padding(.horizontal, 6))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
@@ -161,7 +164,7 @@ struct CommandPalette: View {
     private var actions: [PaletteItem] {
         [
             PaletteItem(id: "a.new", kind: .action("new"), title: String(localized: "New Document"), systemImage: "square.and.pencil", section: String(localized: "Actions")),
-            PaletteItem(id: "a.today", kind: .action("today"), title: String(localized: "Open Today's Daily Note"), systemImage: "sun.max", section: String(localized: "Actions")),
+            PaletteItem(id: "a.home", kind: .action("home"), title: String(localized: "Go to Home"), systemImage: "house", section: String(localized: "Actions")),
             PaletteItem(id: "a.tasks", kind: .action("tasks"), title: String(localized: "Go to Tasks"), systemImage: "checklist", section: String(localized: "Actions")),
             PaletteItem(id: "a.calendar", kind: .action("calendar"), title: String(localized: "Go to Calendar"), systemImage: "calendar", section: String(localized: "Actions")),
             PaletteItem(id: "a.quickadd", kind: .action("quickadd"), title: String(localized: "Quick Add Task"), systemImage: "plus.circle", section: String(localized: "Actions")),
@@ -229,7 +232,8 @@ struct CommandPalette: View {
         case .action(let a):
             switch a {
             case "new": Task { if let id = await app.createDocument() { nav.open(id) } }
-            case "today": Task { if let id = await app.dailyNoteId(for: TaskLogic.localDate()) { nav.open(id) } }
+            case "home":
+                if nav.selection == .all { nav.closeDocument() } else { nav.selection = .all }
             case "tasks": nav.selection = .tasks
             case "calendar": nav.selection = .calendar
             case "quickadd": NotificationCenter.default.post(name: .foleviQuickAdd, object: nil)

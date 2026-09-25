@@ -21,9 +21,12 @@ struct BlockTextStyle: Equatable {
     var paragraphSpacing: CGFloat = 0
     var placeholder: String = ""
     var strikethrough = false
+    /// Letter spacing in points (`FoleviTracking` × size).
+    var kern: CGFloat = 0
 
     static func == (a: BlockTextStyle, b: BlockTextStyle) -> Bool {
-        a.font == b.font && a.color == b.color && a.lineSpacing == b.lineSpacing && a.placeholder == b.placeholder && a.strikethrough == b.strikethrough
+        a.font == b.font && a.color == b.color && a.lineSpacing == b.lineSpacing && a.placeholder == b.placeholder
+            && a.strikethrough == b.strikethrough && a.kern == b.kern
     }
 }
 
@@ -75,31 +78,36 @@ enum InlineAttributedString {
         text.enumerateAttributes(in: range, options: []) { attrs, r, _ in
             var visual: [NSAttributedString.Key: Any] = [.paragraphStyle: paragraph]
             var font = style.font
-            let manager = NSFontManager.shared
             if attrs[.foleviCode] != nil {
-                font = NSFont.monospacedSystemFont(ofSize: style.font.pointSize * 0.9, weight: .regular)
+                font = FoleviFont.nsFont(.mono, size: style.font.pointSize * 0.88)
                 visual[.backgroundColor] = NSColor.foleviCodeBg
+                visual[.foregroundColor] = NSColor(FoleviColor.emberInk)
             }
-            if attrs[.foleviBold] != nil { font = manager.convert(font, toHaveTrait: .boldFontMask) }
-            if attrs[.foleviItalic] != nil { font = manager.convert(font, toHaveTrait: .italicFontMask) }
+            let bold = attrs[.foleviBold] != nil, italic = attrs[.foleviItalic] != nil
+            if bold || italic { font = FoleviFont.applying(bold: bold, italic: italic, to: font) }
             visual[.font] = font
+            if style.kern != 0, attrs[.foleviCode] == nil { visual[.kern] = style.kern }
             var color = style.color
             if let c = attrs[.foleviColor] as? String, let tc = TextColor(rawValue: c) { color = NSColor.folevi(text: tc) }
             if let h = attrs[.foleviHighlight] as? String, let hc = HighlightColor(rawValue: h) { visual[.backgroundColor] = NSColor.folevi(highlight: hc) }
             if attrs[.foleviUnderline] != nil { visual[.underlineStyle] = NSUnderlineStyle.single.rawValue }
-            if attrs[.foleviStrike] != nil || style.strikethrough { visual[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
+            if attrs[.foleviStrike] != nil || style.strikethrough {
+                visual[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+                visual[.strikethroughColor] = NSColor.foleviInkMuted.withAlphaComponent(0.6)
+            }
             if let href = attrs[.foleviLink] as? String {
                 color = NSColor.foleviAccent
                 visual[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                visual[.underlineColor] = NSColor.foleviAccent.withAlphaComponent(0.35)
                 visual[.toolTip] = href
             }
             if attrs[.foleviInline] != nil {
                 color = NSColor.foleviAccent
                 visual[.backgroundColor] = NSColor.foleviSelection.withAlphaComponent(0.35)
             }
-            visual[.foregroundColor] = color
+            if visual[.foregroundColor] == nil { visual[.foregroundColor] = color }
             // Remove stale visual attributes, keep Folevi marks.
-            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .strikethroughStyle, .toolTip, .paragraphStyle] {
+            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern] {
                 text.removeAttribute(key, range: r)
             }
             text.addAttributes(visual, range: r)
@@ -151,7 +159,7 @@ enum InlineAttributedString {
     }
 
     static func length(_ nodes: [InlineNode]) -> Int {
-        make(nodes, style: BlockTextStyle(font: .systemFont(ofSize: 13), color: .textColor)).length
+        make(nodes, style: BlockTextStyle(font: FoleviFont.nsFont(.sans, size: 13), color: .textColor)).length
     }
 
     /// Mark keys that toggle.

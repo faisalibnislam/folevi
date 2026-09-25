@@ -31,6 +31,31 @@ struct SlashItem: Identifiable, Equatable {
 
     static func == (a: SlashItem, b: SlashItem) -> Bool { a.id == b.id }
 
+    /// The title as a plain string (drag chips, announcements).
+    var plainTitle: String {
+        switch id {
+        case "paragraph": return String(localized: "Text")
+        case "heading1": return String(localized: "Heading 1")
+        case "heading2": return String(localized: "Heading 2")
+        case "heading3": return String(localized: "Heading 3")
+        case "todo": return String(localized: "To-do")
+        case "bulleted": return String(localized: "Bulleted List")
+        case "numbered": return String(localized: "Numbered List")
+        case "toggle": return String(localized: "Toggle")
+        case "quote": return String(localized: "Quote")
+        case "callout": return String(localized: "Callout")
+        case "divider": return String(localized: "Divider")
+        case "code": return String(localized: "Code")
+        case "table": return String(localized: "Table")
+        case "image": return String(localized: "Image")
+        case "file": return String(localized: "File")
+        case "page": return String(localized: "New Page")
+        case "pagelink": return String(localized: "Link to Page")
+        case "bookmark": return String(localized: "Bookmark")
+        default: return String(localized: "Today's Date")
+        }
+    }
+
     static var all: [SlashItem] { [
         SlashItem(id: "paragraph", title: "Text", searchText: "text paragraph plain", systemImage: "text.alignleft", shortcut: "⌥⌘0"),
         SlashItem(id: "heading1", title: "Heading 1", searchText: "heading 1 h1 title", systemImage: "textformat.size.larger", shortcut: "#"),
@@ -99,11 +124,11 @@ final class EditorModel {
     var showLinkPrompt = false
     var linkDraft = ""
     var containerFocusToken = UUID()
-    var draggingIds: [String] = []
     /// True once the editor holds the document's real content. No edit (and no diff) is ever sent
     /// before this — an unhydrated editor must never be mistaken for an empty document.
     private(set) var isHydrated = false
-    var dropTarget: (id: String, above: Bool)?
+    /// Pointer-driven block drag and drop (and Insert-tile drags) for this document.
+    @ObservationIgnored let drag = BlockDragController()
 
     @ObservationIgnored var undoManager: UndoManager?
     @ObservationIgnored var openDocumentHandler: ((String, Bool) -> Void)?
@@ -117,6 +142,8 @@ final class EditorModel {
     /// computing ranks, so diffs (changed fields) and Undo snapshots are taken against this instead.
     @ObservationIgnored private var committed: [String: Block] = [:]
     @ObservationIgnored private var titleTask: Task<Void, Never>?
+    /// A local title not yet reflected in the document list; stale list updates must not revert it.
+    @ObservationIgnored private var pendingTitle: String?
     @ObservationIgnored private var snapshotTask: Task<Void, Never>?
     @ObservationIgnored private var ackObserver: NSObjectProtocol?
     @ObservationIgnored private var hadAckedEdits = false
@@ -233,6 +260,12 @@ final class EditorModel {
     func documentChanged() {
         if let d = app.document(documentId) {
             document = d
+            // Our own rename is authoritative until the document list reflects it.
+            if let pending = pendingTitle {
+                if d.title == pending { pendingTitle = nil }
+                document?.title = pending
+                return
+            }
             if titleTask == nil && focusedBlockId != "__title__" { titleDraft = d.title }
         }
     }
@@ -363,11 +396,7 @@ final class EditorModel {
     // MARK: Commit (with structural undo)
 
     static func fields(old: Block?, new: Block) -> [ChangedField] {
-        guard let old else { return [.content, .position] }
-        var f: [ChangedField] = []
-        if old.text != new.text || old.content != new.content { f.append(.content) }
-        if old.parentId != new.parentId || old.rank != new.rank { f.append(.position) }
-        return f.isEmpty ? [.content] : f
+        BlockDrop.changedFields(old: old, new: new)
     }
 
     /// Applies a structural change locally, queues it for sync and registers the inverse with Undo.
@@ -448,13 +477,14 @@ final class EditorModel {
         guard isHydrated, title != titleDraft || title != document?.title else { return }
         titleDraft = title
         guard !isReadOnly else { return }
+        pendingTitle = title
         titleTask?.cancel()
         titleTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled, let self else { return }
-            self.titleTask = nil
             await self.app.updateDocument(self.documentId, patch: WireDocumentPatch(title: title))
             self.document?.title = title
+            if !Task.isCancelled { self.titleTask = nil }
         }
     }
 
@@ -839,39 +869,69 @@ final class EditorModel {
         place(ordered, parentId: targetParent, after: afterId, actionName: up ? String(localized: "Move Up") : String(localized: "Move Down"))
     }
 
-    /// Moves blocks (keeping their subtrees) under `parentId` after `afterId`.
-    func place(_ ids: [String], parentId: String?, after afterId: String?, actionName: String) {
-        // Refuse to move a block into its own subtree.
-        if let parentId {
-            for id in ids where id == parentId || Tree.descendantIds(allNodes(), rootId: id).contains(parentId) {
-                NSSound.beep()
-                return
-            }
+    /// Moves blocks (keeping their subtrees) under `parentId` after `afterId`, as one undo step. The
+    /// moved blocks change parent/rank only, so they sync as position changes.
+    @discardableResult
+    func place(_ ids: [String], parentId: String?, after afterId: String?, actionName: String) -> Bool {
+        guard let positions = BlockDrop.positions(allNodes(), moving: ids, to: BlockDrop.Placement(parentId: parentId, afterId: afterId)) else {
+            // Refuse to move a block into its own subtree.
+            NSSound.beep()
+            return false
         }
         var upserts: [Block] = []
-        var after = afterId
         for id in ids {
-            guard var b = blocks[id] else { continue }
-            b.parentId = parentId
-            b.rank = rank(parentId: parentId, after: after, moving: id)
-            blocks[id] = b
+            guard var b = blocks[id], let pos = positions[id] else { continue }
+            b.parentId = pos.parentId
+            b.rank = pos.rank
             upserts.append(b)
-            after = id
         }
-        guard !upserts.isEmpty else { return }
+        // A collapsed toggle that receives blocks opens, so the moved blocks stay visible.
+        if let parentId, var parent = blocks[parentId], case .toggle(var p) = parent.content, p.collapsed {
+            p.collapsed = false
+            parent.content = .toggle(p)
+            upserts.append(parent)
+        }
+        guard !upserts.isEmpty else { return false }
         commit(upserts: upserts, actionName: actionName)
         restoreCaretAfterStructure()
+        return true
     }
 
-    /// Drag and drop: move dragged blocks above/below a target row (same parent as the target).
-    func drop(_ ids: [String], onto targetId: String, above: Bool) {
-        guard let target = blocks[targetId], !ids.contains(targetId) else { return }
-        let sibs = siblings(of: target).filter { !ids.contains($0.id) }
-        let idx = sibs.firstIndex { $0.id == targetId } ?? 0
-        let afterId: String? = above ? (idx > 0 ? sibs[idx - 1].id : nil) : targetId
-        place(orderedByRows(ids), parentId: target.parentId, after: afterId, actionName: String(localized: "Move Blocks"))
-        dropTarget = nil
-        draggingIds = []
+    /// Drag and drop: move the dragged root blocks (with their children) to a drop placement.
+    @discardableResult
+    func dropBlocks(_ roots: [String], at placement: BlockDrop.Placement) -> Bool {
+        let ordered = orderedByRows(roots)
+        guard !ordered.isEmpty, !isReadOnly else { return false }
+        return place(ordered, parentId: placement.parentId, after: placement.afterId, actionName: String(localized: "Move Blocks"))
+    }
+
+    /// Insert tile dropped into the page: a new block of `type` at the drop placement.
+    func insertBlock(type: String, at placement: BlockDrop.Placement) -> String? {
+        guard !isReadOnly else { return nil }
+        switch type {
+        case "image", "file", "page", "pagelink", "bookmark", "date":
+            // These need a picker or a text caret: anchor on the block before the drop line.
+            let anchor = placement.afterId ?? placement.parentId ?? rows.first?.id
+            if let anchor { performSlashOrInsert(type, anchor: anchor) } else { insertBlock(type: type) }
+            return nil
+        default:
+            var b = Block(id: ULID.make(), parentId: placement.parentId, rank: "V", content: BlockContent.defaultContent(for: type))
+            b.rank = rank(parentId: placement.parentId, after: placement.afterId)
+            var upserts = [b]
+            if let parentId = placement.parentId, var parent = blocks[parentId], case .toggle(var p) = parent.content, p.collapsed {
+                p.collapsed = false
+                parent.content = .toggle(p)
+                upserts.append(parent)
+            }
+            let focus = b.content.carriesText || b.typeName == "code" ? FocusRequest(blockId: b.id, caret: .start) : nil
+            commit(upserts: upserts, focus: focus, actionName: String(localized: "Insert Block"))
+            return b.id
+        }
+    }
+
+    /// Visible rows for the drag planner.
+    var dropRows: [BlockDrop.Row] {
+        rows.map { BlockDrop.Row(id: $0.id, depth: $0.depth, parentId: $0.block.parentId) }
     }
 
     func orderedByRows(_ ids: [String]) -> [String] {
@@ -1481,3 +1541,4 @@ enum UTTypeHelper {
         return ["png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "bmp"].contains(ext)
     }
 }
+

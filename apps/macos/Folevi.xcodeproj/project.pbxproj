@@ -7,8 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		07776219DE53B36CEE9EF4D8 /* BlockDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */; };
 		083E6CBC635BDDA358344BE3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B8821EC08FD811EE1FE1A6 /* SettingsView.swift */; };
 		091A1564F7B1B2F351BF533C /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79F8DBDD8CC37789B62517B /* ExportService.swift */; };
+		0DDC7B49D4B86550B1C7CDFA /* Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 934BBAF4E5C10A62E553FE7B /* Toolbar.swift */; };
 		0F42CEA902572E751C8832F7 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B826C727C7B595B97B6567 /* Typography.swift */; };
 		1293EB55B903080AF59D4478 /* BlockSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF52F09620D4DD7D2837804 /* BlockSchema.swift */; };
 		14DA214364C4CC1A61AF5561 /* SyncScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8687F771CF0B4E201557BA19 /* SyncScenarioTests.swift */; };
@@ -23,6 +25,7 @@
 		27C73C46226485D7FF534E50 /* TestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA53900F854C513CC2D7695A /* TestSupport.swift */; };
 		295F507045C94685D6069391 /* DocumentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B8AA8B4080456A1D47FD51 /* DocumentModels.swift */; };
 		2969D5F8CC85DC26A3599DAB /* DocumentGoldenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3CCE0AD3FA1C1D0EA350752 /* DocumentGoldenTests.swift */; };
+		2C173DBC2EC7E452FDDD59B4 /* BlockDrag.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABD610F62BCADDED90106F87 /* BlockDrag.swift */; };
 		2C99E4D36C99EDF95983A7EC /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3CD96AA81DFC63886DC50E /* JSONValue.swift */; };
 		3124A906509978C2678F9BAA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FD1BA79570FBBDE419AEABBD /* Assets.xcassets */; };
 		35B82347CCE496556BB3290D /* SyncReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A38FBF55BB93FA47B5E0FB2 /* SyncReducer.swift */; };
@@ -38,9 +41,11 @@
 		5F2232FDD4BF7B113532480D /* AuthProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36792CB853DBCAC3A0E5E49B /* AuthProviders.swift */; };
 		62E372AAE10CBD27824373E8 /* TasksAndSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */; };
 		63DD871E5BD5E8A2FACDB63B /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B1E829D3BC461A2BFA76C2 /* Components.swift */; };
+		670557090FE34E4F72D02DEF /* CoverArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42122FC37C2F0057901A6606 /* CoverArt.swift */; };
 		67B84DBCA2A23DE3F9827248 /* Auth0 in Frameworks */ = {isa = PBXBuildFile; productRef = A49ABCDAD17A5C013FA8579F /* Auth0 */; };
 		70DB7DB4170ED10813FE68EF /* SQLiteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376035683CC3F41336F41070 /* SQLiteStore.swift */; };
 		713250803A20F82A4D87A671 /* Tree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E4AF08906F26C6AFA1053E /* Tree.swift */; };
+		7319025DADA60D6658EAA0AB /* BlockDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */; };
 		74DA55791FDC4668604AA950 /* NonTextBlocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */; };
 		81F10BAE45F5D5A42AF1BAD2 /* FlexibleDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1537182453B34751A655E02B /* FlexibleDecoding.swift */; };
 		825F18E7F6950D849E43F10B /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CE807CA5595FD32F69BC7F /* Logging.swift */; };
@@ -48,6 +53,7 @@
 		8A1308644B77A49A783E3B72 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79138D6A4BD52836E1242F43 /* TasksView.swift */; };
 		8A900B0B8A5A3CE6473F3221 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61BCF01EE647069EAA3AE52C /* Keychain.swift */; };
 		8AEDA846489C9B6BB1DCF422 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3CD96AA81DFC63886DC50E /* JSONValue.swift */; };
+		8BE6A43FDAED72B50615E7C3 /* WindowChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3910E7BCAD0DCAB13EDFE343 /* WindowChrome.swift */; };
 		8C7EAB8C3EF512C48C4EFD9E /* AuthCallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D5C2CDE8D60DA93116A294 /* AuthCallback.swift */; };
 		8E9CFD203A2D756BF6E85C9A /* Markdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09123928534E4B78174DD3E7 /* Markdown.swift */; };
 		8E9E7251154AF98B5ECB2103 /* Repositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA42032AE7EBC7195F8F165 /* Repositories.swift */; };
@@ -56,19 +62,23 @@
 		96FD231E741DBDF2A4954467 /* Automation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFDF0C6E1756ADAF3EC4466F /* Automation.swift */; };
 		9AD4F5FB98F13921D83B5D71 /* KeychainAndAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */; };
 		9BBE1FABAFFAE0EFE0996408 /* reference-outputs.json in Resources */ = {isa = PBXBuildFile; fileRef = 9D17CE53B422079DD74B262C /* reference-outputs.json */; };
+		9DFC7AB2E11A3388FAD057E8 /* FoleviFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56CB70FC209619CF7304013 /* FoleviFont.swift */; };
 		A0C7C542CD512F5859F91465 /* ConvexService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A37155882F35C796979FCD2 /* ConvexService.swift */; };
 		A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */; };
+		ACDE0FA46D66C1FACF416B5D /* Covers in Resources */ = {isa = PBXBuildFile; fileRef = 267FDB9FA33CE6745D1F8769 /* Covers */; };
 		B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04542070393D918E567E845 /* NavigationModel.swift */; };
 		B2CBA3AC45F70E9BC05916A4 /* WireBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338F3C4CB476BCF3E8688E51 /* WireBlock.swift */; };
 		B93D1674ED59DBFB4A9CEDDF /* AuthCallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D5C2CDE8D60DA93116A294 /* AuthCallback.swift */; };
 		BEB519463607420EB13AAE3C /* FoleviUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C97E8048E4772C8AF3F8B /* FoleviUITests.swift */; };
 		C0EF162736B8446447D583EE /* BlockSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF52F09620D4DD7D2837804 /* BlockSchema.swift */; };
+		C316C21BF9FE4B1FD35FBCAD /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = B0D3EF72620701C4F4CEDCD7 /* Fonts */; };
 		C4A2FD3F79FB3784B5E11BB1 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */; };
 		C547921978A24E6E5D5EC2F0 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D521EF350EAE4076E43AE4EB /* CalendarView.swift */; };
 		CB6486089B509F21969C1439 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C50EB105B51116C77B54865 /* InspectorView.swift */; };
 		CD19AECFC8FC263DE65F9CB0 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F59E49485426A3BD1B95BBA2 /* Localizable.xcstrings */; };
 		CE7AC193968D91C617574153 /* ConvexMobile in Frameworks */ = {isa = PBXBuildFile; productRef = F044F3544B6292154DF27C05 /* ConvexMobile */; };
 		CF4980E09A02B11003D3322C /* HTMLExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8944B20D5C21961BDA9306 /* HTMLExport.swift */; };
+		D71AC08E27E4ACE8790C1554 /* Surfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A90A0994B97E70A8FE249 /* Surfaces.swift */; };
 		D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 928BED4D96939AEFA7D64C3E /* Rank.swift */; };
 		D9A1F77CA7E8AA32318A35BF /* FoleviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 190C86CC285A3AF163AA972F /* FoleviApp.swift */; };
 		DDACF93CC9ABE9C9CF856351 /* DocumentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B8AA8B4080456A1D47FD51 /* DocumentModels.swift */; };
@@ -78,6 +88,7 @@
 		EB201F67A1CD86F52CD64FB2 /* BlockRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604CAFE235326740449F3E17 /* BlockRowView.swift */; };
 		EC4D4080B6E42A3125CF13E9 /* BlockTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1630F5696B3AD13E03D2D1 /* BlockTextView.swift */; };
 		ED87701E0C1C9DE98963A9B0 /* WireBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338F3C4CB476BCF3E8688E51 /* WireBlock.swift */; };
+		EE3FEE9F66CEA14595C95B9E /* BlockDropTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 232119F7184516D1E495B084 /* BlockDropTests.swift */; };
 		EE9EF0B72AEA3430B9B61776 /* RichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1453B0B437427892BFA595 /* RichText.swift */; };
 		EEC9E4C411F152437FE6B4AC /* FoleviMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA763499A687D1E479FDAEC4 /* FoleviMark.swift */; };
 		EF930C5D23D821C387904129 /* SyncReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A38FBF55BB93FA47B5E0FB2 /* SyncReducer.swift */; };
@@ -99,12 +110,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		002A90A0994B97E70A8FE249 /* Surfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Surfaces.swift; sourceTree = "<group>"; };
 		05445DDCFDEC1AEDBBD52FF2 /* InlineAttributedString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineAttributedString.swift; sourceTree = "<group>"; };
 		09123928534E4B78174DD3E7 /* Markdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Markdown.swift; sourceTree = "<group>"; };
 		0F3CD96AA81DFC63886DC50E /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		1537182453B34751A655E02B /* FlexibleDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlexibleDecoding.swift; sourceTree = "<group>"; };
 		190C86CC285A3AF163AA972F /* FoleviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviApp.swift; sourceTree = "<group>"; };
 		22AEE9F0D974540815E971F6 /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
+		232119F7184516D1E495B084 /* BlockDropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDropTests.swift; sourceTree = "<group>"; };
+		267FDB9FA33CE6745D1F8769 /* Covers */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Covers; path = Folevi/Resources/Covers; sourceTree = SOURCE_ROOT; };
 		27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonTextBlocks.swift; sourceTree = "<group>"; };
 		29B1E829D3BC461A2BFA76C2 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		2ACBAB1371653FF027D7F2FD /* MarkdownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTests.swift; sourceTree = "<group>"; };
@@ -115,7 +129,9 @@
 		3489657AE3324D753E15ED23 /* FoleviCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviCommands.swift; sourceTree = "<group>"; };
 		36792CB853DBCAC3A0E5E49B /* AuthProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthProviders.swift; sourceTree = "<group>"; };
 		376035683CC3F41336F41070 /* SQLiteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteStore.swift; sourceTree = "<group>"; };
+		3910E7BCAD0DCAB13EDFE343 /* WindowChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChrome.swift; sourceTree = "<group>"; };
 		3A37155882F35C796979FCD2 /* ConvexService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexService.swift; sourceTree = "<group>"; };
+		42122FC37C2F0057901A6606 /* CoverArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverArt.swift; sourceTree = "<group>"; };
 		441C2FFE29369E8B2BB86075 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		47B8AA8B4080456A1D47FD51 /* DocumentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentModels.swift; sourceTree = "<group>"; };
 		4BF52F09620D4DD7D2837804 /* BlockSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockSchema.swift; sourceTree = "<group>"; };
@@ -139,13 +155,18 @@
 		9031950FCE20E863893F5A49 /* ConnectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionMonitor.swift; sourceTree = "<group>"; };
 		9111917D43A42FC24062DDDA /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		928BED4D96939AEFA7D64C3E /* Rank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rank.swift; sourceTree = "<group>"; };
+		934BBAF4E5C10A62E553FE7B /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
+		9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDrop.swift; sourceTree = "<group>"; };
 		9764CABA30C2B0015130D53B /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
 		9D17CE53B422079DD74B262C /* reference-outputs.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "reference-outputs.json"; sourceTree = "<group>"; };
 		AA1630F5696B3AD13E03D2D1 /* BlockTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockTextView.swift; sourceTree = "<group>"; };
+		ABD610F62BCADDED90106F87 /* BlockDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDrag.swift; sourceTree = "<group>"; };
+		B0D3EF72620701C4F4CEDCD7 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = Folevi/Resources/Fonts; sourceTree = SOURCE_ROOT; };
 		B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorModel.swift; sourceTree = "<group>"; };
 		BFDF0C6E1756ADAF3EC4466F /* Automation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Automation.swift; sourceTree = "<group>"; };
 		C1D5C2CDE8D60DA93116A294 /* AuthCallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthCallback.swift; sourceTree = "<group>"; };
 		C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
+		C56CB70FC209619CF7304013 /* FoleviFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviFont.swift; sourceTree = "<group>"; };
 		C6BF1B7B39DD24E84C6B8C6B /* Folevi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Folevi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C79F8DBDD8CC37789B62517B /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		CACD826A2F5AD954969F8FF4 /* FoleviTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -184,6 +205,7 @@
 			isa = PBXGroup;
 			children = (
 				FA3C601DBEC298ED00DE3496 /* Generated */,
+				9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */,
 				47B8AA8B4080456A1D47FD51 /* DocumentModels.swift */,
 				1537182453B34751A655E02B /* FlexibleDecoding.swift */,
 				EB8944B20D5C21961BDA9306 /* HTMLExport.swift */,
@@ -235,6 +257,8 @@
 			isa = PBXGroup;
 			children = (
 				FD1BA79570FBBDE419AEABBD /* Assets.xcassets */,
+				267FDB9FA33CE6745D1F8769 /* Covers */,
+				B0D3EF72620701C4F4CEDCD7 /* Fonts */,
 				F59E49485426A3BD1B95BBA2 /* Localizable.xcstrings */,
 			);
 			path = Resources;
@@ -263,8 +287,12 @@
 			children = (
 				C4A94F05749D769691AF6608 /* Components */,
 				E4DB8C5E4E3285A93715A3E1 /* Generated */,
+				42122FC37C2F0057901A6606 /* CoverArt.swift */,
+				C56CB70FC209619CF7304013 /* FoleviFont.swift */,
 				DA763499A687D1E479FDAEC4 /* FoleviMark.swift */,
+				002A90A0994B97E70A8FE249 /* Surfaces.swift */,
 				73B826C727C7B595B97B6567 /* Typography.swift */,
+				3910E7BCAD0DCAB13EDFE343 /* WindowChrome.swift */,
 			);
 			path = DesignSystem;
 			sourceTree = "<group>";
@@ -280,6 +308,7 @@
 		5E9C3A27228FFC72B81F627D /* Editor */ = {
 			isa = PBXGroup;
 			children = (
+				ABD610F62BCADDED90106F87 /* BlockDrag.swift */,
 				604CAFE235326740449F3E17 /* BlockRowView.swift */,
 				AA1630F5696B3AD13E03D2D1 /* BlockTextView.swift */,
 				B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */,
@@ -320,6 +349,7 @@
 				C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */,
 				EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */,
 				305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */,
+				934BBAF4E5C10A62E553FE7B /* Toolbar.swift */,
 			);
 			path = Documents;
 			sourceTree = "<group>";
@@ -437,6 +467,7 @@
 			isa = PBXGroup;
 			children = (
 				1F9DE9CE2E9DB6BF76E252BB /* Fixtures */,
+				232119F7184516D1E495B084 /* BlockDropTests.swift */,
 				F3CCE0AD3FA1C1D0EA350752 /* DocumentGoldenTests.swift */,
 				869B7AC67359552ABB0C4A41 /* JSONValueTests.swift */,
 				66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */,
@@ -583,6 +614,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				3124A906509978C2678F9BAA /* Assets.xcassets in Resources */,
+				ACDE0FA46D66C1FACF416B5D /* Covers in Resources */,
+				C316C21BF9FE4B1FD35FBCAD /* Fonts in Resources */,
 				CD19AECFC8FC263DE65F9CB0 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -595,6 +628,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				B93D1674ED59DBFB4A9CEDDF /* AuthCallback.swift in Sources */,
+				07776219DE53B36CEE9EF4D8 /* BlockDrop.swift in Sources */,
+				EE3FEE9F66CEA14595C95B9E /* BlockDropTests.swift in Sources */,
 				C0EF162736B8446447D583EE /* BlockSchema.swift in Sources */,
 				2969D5F8CC85DC26A3599DAB /* DocumentGoldenTests.swift in Sources */,
 				295F507045C94685D6069391 /* DocumentModels.swift in Sources */,
@@ -632,6 +667,8 @@
 				5F2232FDD4BF7B113532480D /* AuthProviders.swift in Sources */,
 				20E9C6620C2AE774B5BF851B /* AuthViews.swift in Sources */,
 				96FD231E741DBDF2A4954467 /* Automation.swift in Sources */,
+				2C173DBC2EC7E452FDDD59B4 /* BlockDrag.swift in Sources */,
+				7319025DADA60D6658EAA0AB /* BlockDrop.swift in Sources */,
 				EB201F67A1CD86F52CD64FB2 /* BlockRowView.swift in Sources */,
 				1293EB55B903080AF59D4478 /* BlockSchema.swift in Sources */,
 				EC4D4080B6E42A3125CF13E9 /* BlockTextView.swift in Sources */,
@@ -641,6 +678,7 @@
 				63DD871E5BD5E8A2FACDB63B /* Components.swift in Sources */,
 				21928D0B007196FEBBEBEFC3 /* ConnectionMonitor.swift in Sources */,
 				A0C7C542CD512F5859F91465 /* ConvexService.swift in Sources */,
+				670557090FE34E4F72D02DEF /* CoverArt.swift in Sources */,
 				DDACF93CC9ABE9C9CF856351 /* DocumentModels.swift in Sources */,
 				A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */,
 				453D038092E66A995B4F3544 /* EditorView.swift in Sources */,
@@ -648,6 +686,7 @@
 				81F10BAE45F5D5A42AF1BAD2 /* FlexibleDecoding.swift in Sources */,
 				D9A1F77CA7E8AA32318A35BF /* FoleviApp.swift in Sources */,
 				550DC0E1F11D91328AAB15AE /* FoleviCommands.swift in Sources */,
+				9DFC7AB2E11A3388FAD057E8 /* FoleviFont.swift in Sources */,
 				EEC9E4C411F152437FE6B4AC /* FoleviMark.swift in Sources */,
 				E2D2598A0526702F42EA5124 /* FoleviTokens.swift in Sources */,
 				E222C01E7C0582A11A181418 /* HTMLExport.swift in Sources */,
@@ -666,13 +705,16 @@
 				70DB7DB4170ED10813FE68EF /* SQLiteStore.swift in Sources */,
 				083E6CBC635BDDA358344BE3 /* SettingsView.swift in Sources */,
 				F2F3CC2B3BDB6B92261BFB14 /* SidebarView.swift in Sources */,
+				D71AC08E27E4ACE8790C1554 /* Surfaces.swift in Sources */,
 				41203E06365B91E1168CFCFB /* SyncEngine.swift in Sources */,
 				35B82347CCE496556BB3290D /* SyncReducer.swift in Sources */,
 				F720C829FD78D2FBC5B738D1 /* TasksAndSearch.swift in Sources */,
 				8A1308644B77A49A783E3B72 /* TasksView.swift in Sources */,
+				0DDC7B49D4B86550B1C7CDFA /* Toolbar.swift in Sources */,
 				713250803A20F82A4D87A671 /* Tree.swift in Sources */,
 				0F42CEA902572E751C8832F7 /* Typography.swift in Sources */,
 				DF677EA35638172E5F904D20 /* ULID.swift in Sources */,
+				8BE6A43FDAED72B50615E7C3 /* WindowChrome.swift in Sources */,
 				ED87701E0C1C9DE98963A9B0 /* WireBlock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

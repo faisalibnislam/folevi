@@ -49,11 +49,11 @@ struct AccountSettings: View {
                             VStack(alignment: .leading) {
                                 Text(s.current ? String(localized: "\(s.label) (this Mac)") : s.label)
                                 Text("Last active \(Date(timeIntervalSince1970: s.lastSeenAt / 1000).formatted(.relative(presentation: .named)))")
-                                    .font(.caption).foregroundStyle(FoleviColor.inkMuted)
+                                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
                             }
                             Spacer()
                             if s.revokedAt != nil {
-                                Text("Signed out").font(.caption).foregroundStyle(FoleviColor.inkFaint)
+                                Text("Signed out").font(.ui(11.5)).foregroundStyle(FoleviColor.inkFaint)
                             } else if !s.current {
                                 Button("Sign Out") { revoke(s.id) }
                             }
@@ -68,6 +68,8 @@ struct AccountSettings: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(CanvasBackground())
         .onAppear { name = app.profile?.displayName ?? "" }
         .task { await loadSessions() }
         .confirmationDialog("Sign out of Folevi?", isPresented: $confirmSignOut) {
@@ -132,6 +134,8 @@ struct AppearanceSettings: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(CanvasBackground())
     }
 }
 
@@ -168,11 +172,13 @@ struct NotificationSettings: View {
                 Section("Email") {
                     LabeledContent("Mentions", value: prefs.mentions ? String(localized: "On") : String(localized: "Off"))
                     LabeledContent("Comments", value: prefs.comments ? String(localized: "On") : String(localized: "Off"))
-                    Text("Email preferences are managed on folevi.com.").font(.caption).foregroundStyle(FoleviColor.inkMuted)
+                    Text("Email preferences are managed on folevi.com.").font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
                 }
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(CanvasBackground())
         .task { await refresh() }
     }
 
@@ -205,7 +211,7 @@ struct SyncSettings: View {
                     .onChange(of: forcedOffline) { _, v in Task { await app.setForcedOffline(v) } }
                     .accessibilityIdentifier("settings.workOffline")
                 Text("Keeps all edits on this Mac without contacting Folevi. Turn it off to sync.")
-                    .font(.caption).foregroundStyle(FoleviColor.inkMuted)
+                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
             }
             Section("Local Cache") {
                 Text("Folevi keeps a copy of your workspace on this Mac so you can keep writing offline.")
@@ -214,6 +220,8 @@ struct SyncSettings: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(CanvasBackground())
         .onAppear { forcedOffline = app.sync.forcedOffline }
         .confirmationDialog("Reset the local cache?", isPresented: $confirmReset) {
             Button("Reset", role: .destructive) {
@@ -234,13 +242,14 @@ struct AboutSettings: View {
     var body: some View {
         VStack(spacing: 12) {
             FoleviMark(size: 56).foregroundStyle(FoleviColor.accent)
-            Text("Folevi").font(FoleviType.display(28))
+            Text("Folevi").font(.ui(28, .semibold)).tracking(FoleviTracking.tight * 28).foregroundStyle(FoleviColor.heading)
             Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
                 .foregroundStyle(FoleviColor.inkMuted)
             Text("A calm place for notes, plans and everything in between.").foregroundStyle(FoleviColor.inkMuted)
             Link("folevi.com", destination: URL(string: "https://folevi.com") ?? URL(fileURLWithPath: "/"))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(CanvasBackground())
     }
 }
 

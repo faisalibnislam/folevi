@@ -84,6 +84,12 @@ final class DailyNoteTests: XCTestCase {
         XCTAssertEqual(DailyNote.documentId(profileId: "ü✓", workspaceId: "w", date: "2026-12-31"), "daily-2026-12-31-4421f1d765e718a3")
     }
 
+    func testInboxDocumentIdMatchesTypeScript() {
+        // packages/editor-schema inboxDocumentId("k57abc", "01M3BEZPKC").
+        XCTAssertEqual(InboxPage.documentId(profileId: "k57abc", workspaceId: "01M3BEZPKC"), "inbox-85fc6e917711f0a6")
+        XCTAssertTrue(ULID.isValidId(InboxPage.documentId(profileId: "p", workspaceId: "w")))
+    }
+
     func testDailyIdIsValidAndTitled() {
         let id = DailyNote.documentId(profileId: "p", workspaceId: "w", date: "2026-09-25")
         XCTAssertTrue(ULID.isValidId(id))

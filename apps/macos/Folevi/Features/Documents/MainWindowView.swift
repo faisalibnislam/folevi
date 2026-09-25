@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The main window: sidebar / content (browser, tasks, calendar or editor) / inspector.
+/// The main window: sidebar / toolbar + content (browser, tasks, calendar or editor) / floating inspector,
+/// all over the Warm Folio canvas.
 struct MainWindowView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.openWindow) private var openWindow
@@ -8,25 +9,42 @@ struct MainWindowView: View {
     @State private var editor: EditorModel?
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $nav.columnVisibility) {
-            SidebarView(nav: nav)
-        } detail: {
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .top, spacing: 0) { StatusBanners() }
-                .navigationTitle(windowTitle)
-        }
-        .inspector(isPresented: $nav.showInspector) {
-            Group {
-                if let editor {
-                    InspectorView(model: editor, nav: nav, openDocument: open)
-                } else {
-                    EmptyStateView(systemImage: "sidebar.right", title: "No document", message: "Open a document to see its details.")
+        HStack(spacing: 0) {
+            if nav.sidebarVisible {
+                SidebarView(nav: nav)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+            VStack(spacing: 0) {
+                MainToolbar(nav: nav, editor: editorIfOpen, crumbs: crumbs, primary: primaryAction)
+                StatusBanners()
+                HStack(spacing: 0) {
+                    detail
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                    if nav.showInspector {
+                        InspectorCard {
+                            if let editor = editorIfOpen {
+                                InspectorView(model: editor, nav: nav, openDocument: open)
+                            } else {
+                                EmptyStateView(systemImage: "sidebar.right", title: "No document", message: "Open a document to see its details.")
+                            }
+                        }
+                        .padding(.trailing, 12)
+                        .padding(.bottom, 12)
+                        .padding(.top, 4)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
                 }
             }
-            .inspectorColumnWidth(min: FoleviLayout.inspectorMin, ideal: FoleviLayout.inspectorDefault, max: FoleviLayout.inspectorMax)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .toolbar { toolbar }
+        .ignoresSafeArea(.container, edges: .top)
+        .background(CanvasBackground())
+        .background(WindowChrome())
+        .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .overlay { BlockDragOverlay(controller: editorIfOpen?.drag) }
+        .navigationTitle(windowTitle)
         .focusedSceneValue(\.navigation, nav)
         .focusedSceneValue(\.editor, editor)
         .onChange(of: nav.openDocumentId) { _, id in switchEditor(to: id) }
@@ -45,6 +63,47 @@ struct MainWindowView: View {
         }
         .overlay { CommandPaletteHost(nav: nav, openDocument: open) }
         .overlay(alignment: .bottom) { ToastView() }
+    }
+
+    private var editorIfOpen: EditorModel? {
+        guard let editor, nav.openDocumentId == editor.documentId else { return nil }
+        return editor
+    }
+
+    private var primaryAction: (title: LocalizedStringKey, systemImage: String, action: () -> Void)? {
+        switch nav.selection {
+        case .tasks:
+            return ("Add Task", "plus", { NotificationCenter.default.post(name: .foleviFocusQuickTask, object: nil) })
+        case .calendar, .shared, .trash, .archive, .starred, .tag:
+            return nil
+        default:
+            return ("New", "plus", {
+                Task {
+                    var folderId: String?
+                    if case .folder(let fid) = nav.selection { folderId = fid }
+                    if let id = await app.createDocument(folderId: folderId) { nav.open(id) }
+                }
+            })
+        }
+    }
+
+    private var crumbs: [Crumb] {
+        if let editor = editorIfOpen {
+            let c = Crumbs.forDocument(editor.documentId, app: app, nav: nav) { id in nav.open(id) }
+            if !c.isEmpty { return c }
+            return [Crumb(id: editor.documentId, title: editor.document?.displayTitle ?? String(localized: "Untitled"), icon: .emoji(editor.document?.icon ?? "📄"))]
+        }
+        let item = nav.selection
+        switch item {
+        case .folder(let id):
+            let folder = app.sidebar.folders.first { $0.id == id }
+            return [Crumb(id: "folder", title: folder?.name ?? String(localized: "Folder"),
+                          icon: folder?.icon.flatMap { $0.isEmpty ? nil : .emoji($0) } ?? .symbol("folder"))]
+        case .tag(let id):
+            return [Crumb(id: "tag", title: app.sidebar.tags.first { $0.id == id }.map { "#" + $0.name } ?? String(localized: "Tag"), icon: .symbol("tag"))]
+        default:
+            return [Crumb(id: "view", title: item.titleString, icon: .symbol(item.systemImage))]
+        }
     }
 
     private var windowTitle: String {
@@ -72,11 +131,14 @@ struct MainWindowView: View {
     private func openFromLaunchArgument() {
         #if DEBUG
         guard !launchArgumentHandled else { return }
+        if let tab = LaunchOptions.value(after: "-FoleviInspector"), let t = InspectorTab(rawValue: tab) {
+            nav.inspectorTab = t
+            nav.showInspector = true
+        }
         if let item = LaunchOptions.value(after: "-FoleviSidebar") {
             switch item {
             case "tasks": nav.selection = .tasks
             case "calendar": nav.selection = .calendar
-            case "daily": nav.selection = .daily
             case "trash": nav.selection = .trash
             default: break
             }
@@ -117,48 +179,6 @@ struct MainWindowView: View {
             #endif
         }
     }
-
-    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) {
-            Button { nav.goBack() } label: { Label("Back", systemImage: "chevron.left") }
-                .disabled(!nav.canGoBack)
-                .help(Text("Back"))
-                .accessibilityIdentifier("toolbar.back")
-            Button { nav.goForward() } label: { Label("Forward", systemImage: "chevron.right") }
-                .disabled(!nav.canGoForward)
-                .help(Text("Forward"))
-        }
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                app.showCommandPalette = true
-            } label: {
-                Label("Search", systemImage: "magnifyingglass")
-            }
-            .help(Text("Search or jump to… (⌘K)"))
-            .accessibilityIdentifier("toolbar.search")
-            Button {
-                Task {
-                    var folderId: String?
-                    if case .folder(let fid) = nav.selection { folderId = fid }
-                    if let id = await app.createDocument(folderId: folderId) { nav.open(id) }
-                }
-            } label: { Label("New Document", systemImage: "square.and.pencil") }
-                .help(Text("New Document (⌘N)"))
-                .accessibilityIdentifier("toolbar.newDocument")
-            if let editor {
-                ShareLink(item: MarkdownShareItem(title: editor.document?.displayTitle ?? "Untitled",
-                                                  markdown: MarkdownCodec.blocksToMarkdown(editor.exportBlocks(), .init(title: editor.document?.displayTitle))),
-                          preview: SharePreview(editor.document?.displayTitle ?? "Untitled")) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .help(Text("Share as Markdown"))
-            }
-            SyncStatusPill(snapshot: app.sync)
-            Button { nav.showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.right") }
-                .help(Text("Toggle Inspector (⌥⌘I)"))
-                .accessibilityIdentifier("toolbar.inspector")
-        }
-    }
 }
 
 /// A single document in its own window (⌥-click, File ▸ Open in New Window).
@@ -170,27 +190,39 @@ struct DocumentWindowView: View {
     @State private var editor: EditorModel?
 
     var body: some View {
-        Group {
-            if app.phase != .ready {
-                EmptyStateView(systemImage: "lock", title: "Sign in to open this document", message: "Your documents appear here after you sign in.")
-            } else if let editor {
-                EditorView(model: editor, openDocument: { id, _ in openWindow(id: "document", value: id) }, showFind: $nav.showFind)
-                    .inspector(isPresented: $nav.showInspector) {
-                        InspectorView(model: editor, nav: nav, openDocument: { id, _ in openWindow(id: "document", value: id) })
-                            .inspectorColumnWidth(min: FoleviLayout.inspectorMin, ideal: FoleviLayout.inspectorDefault, max: FoleviLayout.inspectorMax)
+        VStack(spacing: 0) {
+            MainToolbar(nav: nav, editor: editor, crumbs: crumbs, showsHistory: false, hasSidebar: false)
+            StatusBanners()
+            HStack(spacing: 0) {
+                Group {
+                    if app.phase != .ready {
+                        EmptyStateView(systemImage: "lock", title: "Sign in to open this document", message: "Your documents appear here after you sign in.")
+                    } else if let editor {
+                        EditorView(model: editor, openDocument: { id, _ in openWindow(id: "document", value: id) }, showFind: $nav.showFind)
+                    } else {
+                        ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-            } else {
-                ProgressView()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                if nav.showInspector, let editor {
+                    InspectorCard {
+                        InspectorView(model: editor, nav: nav, openDocument: { id, _ in openWindow(id: "document", value: id) })
+                    }
+                    .padding([.trailing, .bottom], 12)
+                    .padding(.top, 4)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
-        .safeAreaInset(edge: .top, spacing: 0) { StatusBanners() }
+        .ignoresSafeArea(.container, edges: .top)
+        .background(CanvasBackground())
+        .background(WindowChrome())
+        .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .overlay { BlockDragOverlay(controller: editor?.drag) }
+        .onAppear { nav.columnVisibility = .all }
         .navigationTitle(editor?.document?.displayTitle ?? String(localized: "Untitled"))
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                SyncStatusPill(snapshot: app.sync)
-                Button { nav.showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.right") }
-            }
-        }
         .focusedSceneValue(\.editor, editor)
         .focusedSceneValue(\.navigation, nav)
         .sheet(isPresented: $nav.showHistory) { VersionHistorySheet(documentId: documentId).environment(app) }
@@ -203,6 +235,15 @@ struct DocumentWindowView: View {
             await model.load()
         }
         .onDisappear { editor?.close() }
+    }
+
+    private var crumbs: [Crumb] {
+        Crumbs.forDocument(documentId, app: app, nav: nil) { id in openWindow(id: "document", value: id) }
+            .map { c in
+                var c = c
+                if c.id == "root" || c.id.hasPrefix("folder.") { c.action = nil }
+                return c
+            }
     }
 }
 
@@ -233,10 +274,10 @@ struct StatusBanners: View {
         HStack(spacing: 8) {
             Image(systemName: icon).accessibilityHidden(true)
             // No fixedSize here: the window's minimum size is measured at zero width.
-            Text(text).font(.system(size: 12)).lineLimit(2).truncationMode(.tail)
+            Text(text).font(.ui(12)).lineLimit(2).truncationMode(.tail)
             Spacer()
             if app.sync.pendingCount > 0 && !app.sync.isOnline {
-                Text("\(app.sync.pendingCount) waiting").font(.caption.monospacedDigit())
+                Text("\(app.sync.pendingCount) waiting").font(.ui(11.5).monospacedDigit())
             }
         }
         .foregroundStyle(tint)
@@ -254,7 +295,7 @@ struct ToastView: View {
     var body: some View {
         if let toast = app.toast {
             Text(toast)
-                .font(.system(size: 12, weight: .medium))
+                .font(.ui(12, .medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .foleviChrome()
@@ -272,36 +313,51 @@ struct SharedWithMeView: View {
     @State private var docs: [SharedDocument]?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Shared with Me").font(FoleviType.display(28)).padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 8)
-                .accessibilityAddTraits(.isHeader)
-            if let docs, !docs.isEmpty {
-                List(docs) { d in
-                    Button {
-                        openDocument(d.id, NSEvent.modifierFlags.contains(.option))
-                    } label: {
-                        HStack {
-                            Text(d.icon ?? "📄")
-                            VStack(alignment: .leading) {
-                                Text(d.title.isEmpty ? String(localized: "Untitled") : d.title).font(.system(size: 13, weight: .medium))
-                                Text("\(d.sharedBy) · \(d.workspaceName)").font(.caption).foregroundStyle(FoleviColor.inkMuted)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Shared with Me").foleviViewTitle(size: 34)
+                Text("Documents other people have shared with you.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 6)
+                if let docs, !docs.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(Array(docs.enumerated()), id: \.element.id) { idx, d in
+                            Button {
+                                openDocument(d.id, NSEvent.modifierFlags.contains(.option))
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Text(d.icon ?? "📄")
+                                        .frame(width: 30, height: 30)
+                                        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(d.title.isEmpty ? String(localized: "Untitled") : d.title).font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading)
+                                        Text("\(d.sharedBy) · \(d.workspaceName)").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
+                                    }
+                                    Spacer()
+                                    Chip(text: d.role.capitalized, tint: FoleviColor.accentSoftInk, fill: FoleviColor.accentSoft)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
                             }
-                            Spacer()
-                            Chip(text: d.role.capitalized)
+                            .buttonStyle(.plain)
+                            if idx < docs.count - 1 { FoleviColor.line.frame(height: 1).padding(.leading, 56) }
                         }
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .padding(.vertical, 6)
+                    .foleviCard(radius: 18)
+                    .padding(.top, 22)
+                } else if docs == nil && app.sync.isOnline {
+                    ProgressView().frame(maxWidth: .infinity, minHeight: 300)
+                } else {
+                    EmptyStateView(systemImage: "person.2", title: "Nothing shared yet",
+                                   message: app.sync.isOnline ? "Documents others share with you appear here." : "Shared documents appear here when you're online.")
+                        .frame(minHeight: 360)
                 }
-                .scrollContentBackground(.hidden)
-            } else if docs == nil && app.sync.isOnline {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                EmptyStateView(systemImage: "person.2", title: "Nothing shared yet",
-                               message: app.sync.isOnline ? "Documents others share with you appear here." : "Shared documents appear here when you're online.")
             }
+            .padding(.horizontal, 32)
+            .padding(.top, 30)
+            .padding(.bottom, 40)
         }
-        .background(FoleviColor.canvas)
+        .scrollContentBackground(.hidden)
         .task {
             guard let session = app.session, app.sync.isOnline else {
                 docs = []

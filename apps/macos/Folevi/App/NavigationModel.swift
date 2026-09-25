@@ -5,7 +5,6 @@ enum SidebarItem: Hashable, Codable, Sendable {
     case all
     case tasks
     case calendar
-    case daily
     case shared
     case templates
     case starred
@@ -16,10 +15,9 @@ enum SidebarItem: Hashable, Codable, Sendable {
 
     var title: LocalizedStringKey {
         switch self {
-        case .all: return "All Documents"
+        case .all: return "Home"
         case .tasks: return "Tasks"
         case .calendar: return "Calendar"
-        case .daily: return "Daily Notes"
         case .shared: return "Shared with Me"
         case .templates: return "Templates"
         case .starred: return "Starred"
@@ -30,12 +28,26 @@ enum SidebarItem: Hashable, Codable, Sendable {
         }
     }
 
+    var titleString: String {
+        switch self {
+        case .all: return String(localized: "Home")
+        case .tasks: return String(localized: "Tasks")
+        case .calendar: return String(localized: "Calendar")
+        case .shared: return String(localized: "Shared with Me")
+        case .templates: return String(localized: "Templates")
+        case .starred: return String(localized: "Starred")
+        case .archive: return String(localized: "Archive")
+        case .trash: return String(localized: "Trash")
+        case .folder: return String(localized: "Folder")
+        case .tag: return String(localized: "Tag")
+        }
+    }
+
     var systemImage: String {
         switch self {
-        case .all: return "doc.on.doc"
+        case .all: return "house"
         case .tasks: return "checklist"
         case .calendar: return "calendar"
-        case .daily: return "sun.max"
         case .shared: return "person.2"
         case .templates: return "square.on.square.dashed"
         case .starred: return "star"
@@ -51,7 +63,6 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .all: return "sidebar.all"
         case .tasks: return "sidebar.tasks"
         case .calendar: return "sidebar.calendar"
-        case .daily: return "sidebar.daily"
         case .shared: return "sidebar.shared"
         case .templates: return "sidebar.templates"
         case .starred: return "sidebar.starred"
@@ -113,7 +124,7 @@ final class NavigationModel {
     }
     var openDocumentId: String?
     var showInspector = false
-    var inspectorTab: InspectorTab = .format
+    var inspectorTab: InspectorTab = .insert
     var columnVisibility: NavigationSplitViewVisibility = .all
     var showFind = false
     var layout: BrowserLayout = BrowserLayout(rawValue: UserDefaults.standard.string(forKey: "browserLayout") ?? "") ?? .grid {
@@ -171,30 +182,34 @@ final class NavigationModel {
         isRestoring = false
     }
 
+    var sidebarVisible: Bool { columnVisibility != .detailOnly }
+
     func toggleSidebar() {
         columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
     }
 }
 
 enum InspectorTab: String, CaseIterable, Identifiable {
-    case insert, format, style, info, comments
+    case insert, format, style, outline, info, comments
     var id: String { rawValue }
     var title: LocalizedStringKey {
         switch self {
         case .insert: return "Insert"
         case .format: return "Format"
         case .style: return "Style"
+        case .outline: return "Outline"
         case .info: return "Info"
         case .comments: return "Comments"
         }
     }
     var systemImage: String {
         switch self {
-        case .insert: return "plus.square"
+        case .insert: return "plus"
         case .format: return "textformat"
         case .style: return "paintpalette"
+        case .outline: return "list.bullet.indent"
         case .info: return "info.circle"
-        case .comments: return "text.bubble"
+        case .comments: return "bubble.left"
         }
     }
 }

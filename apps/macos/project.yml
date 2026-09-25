@@ -51,6 +51,19 @@ targets:
         excludes:
           - "Info.plist"
           - "Folevi.entitlements"
+          - "Resources/Fonts"
+          - "Resources/Fonts/**"
+          - "Resources/Covers"
+          - "Resources/Covers/**"
+      # Inter, Source Serif 4 and JetBrains Mono (+ OFL licenses), copied to Contents/Resources/Fonts
+      # and registered through ATSApplicationFontsPath (and FoleviFont.registerBundledFonts()).
+      - path: Folevi/Resources/Fonts
+        type: folder
+        buildPhase: resources
+      # The 20 abstract cover artworks (same SVG sources as the web) + covers.json → Contents/Resources/Covers.
+      - path: Folevi/Resources/Covers
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: ConvexMobile
       - package: Auth0

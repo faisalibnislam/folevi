@@ -65,6 +65,8 @@ final class BlockTextView: NSTextView {
         view.usesFontPanel = false
         view.focusRingType = .none
         view.linkTextAttributes = [.cursor: NSCursor.pointingHand]
+        view.selectedTextAttributes = [.backgroundColor: NSColor.foleviSelection]
+        view.insertionPointColor = NSColor.foleviInk
         return view
     }
 
@@ -95,7 +97,7 @@ final class BlockTextView: NSTextView {
         }
         layout.ensureLayout(for: container)
         var h = layout.usedRect(for: container).height
-        let font = (typingAttributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 15)
+        let font = (typingAttributes[.font] as? NSFont) ?? FoleviFont.nsFont(.sans, size: 16)
         let lineHeight = layout.defaultLineHeight(for: font)
         if string.isEmpty || h < lineHeight { h = max(h, lineHeight) }
         // Measuring must not change how the view currently wraps.
@@ -140,8 +142,9 @@ final class BlockTextView: NSTextView {
         guard string.isEmpty, !placeholder.isEmpty, !hasMarkedText() else { return }
         let focused = window?.firstResponder === self
         guard focused || showsPlaceholderWhenUnfocused else { return }
-        let font = (typingAttributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 15)
-        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.placeholderTextColor]
+        let font = (typingAttributes[.font] as? NSFont) ?? FoleviFont.nsFont(.sans, size: 16)
+        let kern = (typingAttributes[.kern] as? CGFloat) ?? 0
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.foleviInkFaint, .kern: kern]
         (placeholder as NSString).draw(at: NSPoint(x: textContainerInset.width, y: textContainerInset.height), withAttributes: attrs)
     }
 
@@ -343,21 +346,7 @@ struct BlockTextEditor: NSViewRepresentable {
         model.register(view, for: blockId)
         if let request = focusRequest, request.blockId == blockId, c.handledFocus != request.id {
             c.handledFocus = request.id
-            DispatchQueue.main.async {
-                guard let window = view.window else { return }
-                window.makeFirstResponder(view)
-                let length = (view.string as NSString).length
-                switch request.caret {
-                case .start: view.setSelectedRange(NSRange(location: 0, length: 0))
-                case .end: view.setSelectedRange(NSRange(location: length, length: 0))
-                case .offset(let o): view.setSelectedRange(NSRange(location: max(0, min(o, length)), length: 0))
-                case .range(let loc, let len):
-                    let l = max(0, min(loc, length))
-                    view.setSelectedRange(NSRange(location: l, length: max(0, min(len, length - l))))
-                case .selectAll: view.setSelectedRange(NSRange(location: 0, length: length))
-                }
-                model.consumeFocus(request.id)
-            }
+            c.applyFocus(request, attempt: 0)
         }
     }
 
@@ -414,6 +403,30 @@ struct BlockTextEditor: NSViewRepresentable {
         init(parent: BlockTextEditor) {
             self.parent = parent
             self.style = parent.style
+        }
+
+        /// Makes this view first responder for a focus request. A freshly created view may not be in a
+        /// window yet (or the window may be mid-transition), so keep trying briefly instead of dropping
+        /// the request — otherwise keystrokes typed right after ⌘N land nowhere.
+        func applyFocus(_ request: FocusRequest, attempt: Int) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + (attempt == 0 ? 0 : 0.03)) { [weak self] in
+                guard let self, let view = self.view else { return }
+                guard let window = view.window, window.makeFirstResponder(view) else {
+                    if attempt < 40 { self.applyFocus(request, attempt: attempt + 1) }
+                    return
+                }
+                let length = (view.string as NSString).length
+                switch request.caret {
+                case .start: view.setSelectedRange(NSRange(location: 0, length: 0))
+                case .end: view.setSelectedRange(NSRange(location: length, length: 0))
+                case .offset(let o): view.setSelectedRange(NSRange(location: max(0, min(o, length)), length: 0))
+                case .range(let loc, let len):
+                    let l = max(0, min(loc, length))
+                    view.setSelectedRange(NSRange(location: l, length: max(0, min(len, length - l))))
+                case .selectAll: view.setSelectedRange(NSRange(location: 0, length: length))
+                }
+                self.parent.model.consumeFocus(request.id)
+            }
         }
 
         func install(text: [InlineNode], style: BlockTextStyle, preserveSelection: Bool = false) {

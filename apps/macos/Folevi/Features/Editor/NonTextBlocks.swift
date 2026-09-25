@@ -29,7 +29,7 @@ struct CodeBlockView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .font(.caption)
+                .font(.ui(11.5))
                 .disabled(model.isReadOnly)
                 .accessibilityLabel(Text("Code language"))
                 Spacer()
@@ -43,8 +43,10 @@ struct CodeBlockView: View {
                             isEditable: !model.isReadOnly, accessibilityLabel: String(localized: "Code"), model: model,
                             focusRequest: focusRequest, isCode: true)
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(FoleviColor.codeBg))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .foleviSurface(.color(FoleviColor.codeBg), shape: .rounded(12),
+                       shadow: [FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: FoleviColor.line, inset: true)])
     }
 }
 
@@ -54,6 +56,8 @@ struct TodoMetaView: View {
     let blockId: String
     let props: TodoProps
     @Bindable var model: EditorModel
+    /// The "set a date" affordance only shows while the row is hovered.
+    var rowHovering = true
     @State private var showPicker = false
     @State private var date = Date()
 
@@ -72,6 +76,7 @@ struct TodoMetaView: View {
                          tint: TaskLogic.isOverdue(status: props.checked ? .done : .open, dueDate: due, today: TaskLogic.localDate()) ? FoleviColor.destructive : FoleviColor.accent)
                 } else {
                     Image(systemName: "calendar.badge.plus").foregroundStyle(FoleviColor.inkFaint).font(.system(size: 12))
+                        .opacity(rowHovering || showPicker ? 1 : 0)
                 }
             }
             .buttonStyle(.plain)
@@ -191,7 +196,7 @@ struct ImageBlockView: View {
                             ProgressView().controlSize(.mini)
                             Text(app.sync.isOnline ? "Uploading…" : "Waiting to upload")
                         }
-                        .font(.caption)
+                        .font(.ui(11.5))
                         .padding(6)
                         .background(Capsule().fill(.regularMaterial))
                         .padding(8)
@@ -213,7 +218,7 @@ struct ImageBlockView: View {
                 }
             }))
             .textFieldStyle(.plain)
-            .font(.system(size: 12))
+            .font(.ui(12))
             .foregroundStyle(FoleviColor.inkMuted)
             .disabled(model.isReadOnly)
         }
@@ -260,9 +265,9 @@ struct FileBlockView: View {
                 .frame(width: 32, height: 32)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(props.name).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                Text(props.name).font(.ui(13, .medium)).lineLimit(1)
                 Text(props.fileId.isEmpty ? String(localized: "Waiting to upload") : ByteCountFormatter.string(fromByteCount: Int64(props.size), countStyle: .file))
-                    .font(.caption).foregroundStyle(FoleviColor.inkMuted)
+                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
             }
             Spacer()
             if loading { ProgressView().controlSize(.small) }
@@ -338,7 +343,7 @@ struct TableBlockView: View {
                         .toggleStyle(.checkbox)
                 }
                 .buttonStyle(.link)
-                .font(.caption)
+                .font(.ui(11.5))
             }
         }
     }
@@ -376,7 +381,7 @@ struct TableCellField: View {
     var body: some View {
         TextField("", text: $text, axis: .vertical)
             .textFieldStyle(.plain)
-            .font(.system(size: 13, weight: isHeader ? .semibold : .regular))
+            .font(.ui(13, isHeader ? .semibold : .regular))
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .frame(minWidth: 90, maxWidth: .infinity, alignment: .leading)
@@ -404,11 +409,11 @@ struct PageBlockView: View {
         } label: {
             if props.display == .card {
                 HStack(spacing: 12) {
-                    Text(icon).font(.system(size: 22))
+                    Text(icon).font(.ui(22))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).font(FoleviType.cardTitle).foregroundStyle(FoleviColor.ink)
                         if let excerpt = doc?.excerpt, !excerpt.isEmpty {
-                            Text(excerpt).font(.caption).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
+                            Text(excerpt).font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
                         }
                     }
                     Spacer()
@@ -444,7 +449,7 @@ struct BookmarkBlockView: View {
             HStack {
                 Image(systemName: "bookmark").accessibilityHidden(true)
                 TextField("Paste a link and press Return", text: $draft)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.folevi)
                     .onSubmit { save() }
                 Button("Add") { save() }
             }
@@ -453,9 +458,9 @@ struct BookmarkBlockView: View {
             Link(destination: URL(string: RichText.sanitizeHref(props.url) ?? "https://folevi.com") ?? URL(fileURLWithPath: "/")) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(props.title ?? props.url).font(.system(size: 13, weight: .semibold)).foregroundStyle(FoleviColor.ink).lineLimit(1)
-                        if let d = props.description { Text(d).font(.caption).foregroundStyle(FoleviColor.inkMuted).lineLimit(2) }
-                        Text(props.siteName ?? URL(string: props.url)?.host() ?? props.url).font(.caption).foregroundStyle(FoleviColor.accent)
+                        Text(props.title ?? props.url).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                        if let d = props.description { Text(d).font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(2) }
+                        Text(props.siteName ?? URL(string: props.url)?.host() ?? props.url).font(.ui(11.5)).foregroundStyle(FoleviColor.accent)
                     }
                     Spacer()
                     Image(systemName: "safari").foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
@@ -488,10 +493,10 @@ struct CollectionBlockView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "tablecells").accessibilityHidden(true)
-                Text(data?.name ?? String(localized: "Collection")).font(.system(size: 14, weight: .semibold))
+                Text(data?.name ?? String(localized: "Collection")).font(.ui(14, .semibold))
                 Spacer()
                 Text("Editing the collection's properties is available on the web.")
-                    .font(.caption).foregroundStyle(FoleviColor.inkFaint)
+                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkFaint)
             }
             if let data {
                 ScrollView(.horizontal) {
@@ -517,11 +522,11 @@ struct CollectionBlockView: View {
                             }
                         }
                     }
-                    .font(.system(size: 12))
+                    .font(.ui(12))
                     .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(FoleviColor.line))
                 }
             } else if failed {
-                Text("Connect to the internet to load this collection.").font(.callout).foregroundStyle(FoleviColor.inkMuted)
+                Text("Connect to the internet to load this collection.").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
             } else {
                 ProgressView().controlSize(.small)
             }
@@ -532,7 +537,7 @@ struct CollectionBlockView: View {
     }
 
     private func header(_ text: String) -> some View {
-        Text(text).font(.system(size: 11, weight: .semibold)).foregroundStyle(FoleviColor.inkMuted)
+        Text(text).font(.ui(11, .semibold)).foregroundStyle(FoleviColor.inkMuted)
             .modifier(CellStyle()).background(FoleviColor.surfaceSunken)
     }
 
@@ -584,9 +589,9 @@ struct UnknownBlockView: View {
         HStack(spacing: 8) {
             Image(systemName: "puzzlepiece.extension").accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Needs a newer version of Folevi").font(.system(size: 13, weight: .medium))
+                Text("Needs a newer version of Folevi").font(.ui(13, .medium))
                 Text("This “\(type)” block was made with a newer version. It's kept exactly as it is.")
-                    .font(.caption)
+                    .font(.ui(11.5))
                     .foregroundStyle(FoleviColor.inkMuted)
             }
         }

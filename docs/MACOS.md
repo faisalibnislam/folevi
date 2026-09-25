@@ -97,12 +97,15 @@ Folevi/
                   NavigationModel (per window), FoleviCommands (menus), Automation (DEBUG only)
   Domain/         JSONValue (lossless JSON + JS-identical canonical output), flexible Int decoding, Rank,
                   Tree, RichText, WireBlock/Block, DocumentModels, Markdown (export + import), HTMLExport,
-                  Tasks/Search helpers, ULID + deterministic Daily Note ids, Generated/ (read-only)
+                  Tasks/Search helpers, ULID + deterministic Inbox/Daily ids, BlockDrop (drag-and-drop move math), Generated/ (read-only)
   Data/Local/     SQLiteStore (actor, system libsqlite3, WAL, versioned migrations)
   Data/Remote/    ConvexService (wraps the single client), API DTOs, repositories
   Sync/           SyncReducer (exact port of sync.ts), SyncEngine (actor), ConnectionMonitor
   Features/       Auth, Documents (sidebar, browser, windows), Editor, Tasks, Calendar, Search, Settings
-  DesignSystem/   Generated tokens, typography, components, the Folevi mark
+  DesignSystem/   Generated tokens, FoleviFont (bundled Inter / Source Serif 4 / JetBrains Mono), Surfaces
+                  (token shadow stacks as Core Animation shadow paths), components (pill buttons,
+                  segmented control, chips, keycaps, sync pill, cards), canvas glow, window chrome,
+                  cover art, the Folevi mark
   Support/        Logging, Keychain, ExportService (Markdown/HTML/PDF, Import Markdown)
 ```
 
@@ -138,15 +141,44 @@ Safety guards learned from the web client:
 
 Document-level ops (`document.create`, `document.update`) share the same queue. The reducer passes
 them through, and the engine records their results; coalesced patches fold into an unsent create.
-Daily Notes use the deterministic id `daily-<date>-<fnv1a64(profileId:workspaceId)>`, identical to
-`packages/editor-schema/src/ids.ts`, so offline devices converge on the same note.
+The Inbox page (Quick Add's target) uses the deterministic id `inbox-<fnv1a64(profileId:workspaceId)>`,
+identical to `packages/editor-schema`, so offline devices converge on the same page. (The older
+`daily-<date>-…` helper is kept in Domain with its tests; the app no longer creates daily notes.)
+
+### Look ("Warm Folio")
+
+The Mac follows the web app's design system (`docs/DESIGN_SYSTEM.md`): same fonts, colors, radii,
+shadows and layout vocabulary, drawn natively.
+
+- **Fonts**: Inter, Source Serif 4 and JetBrains Mono ship in `Resources/Fonts` (OFL licenses beside
+  them), are registered at launch (`ATSApplicationFontsPath` + `FoleviFont.registerBundledFonts()`),
+  and are used for every piece of product UI (`Font.ui/serif/mono`, `FoleviFont.nsFont` for the
+  editor). The document font (sans/serif/mono) picks the family; editor zoom scales it.
+- **Depth**: `foleviSurface(_:shape:shadow:)` / `foleviShadow(_:radius:)` render the layered
+  `FoleviShadow` tokens (outer drops with spread, 1pt rings, inset top highlights) with CALayer shadow
+  paths — CSS `box-shadow` semantics, cheap while scrolling. Increase Contrast adds a `lineStrong`
+  ring.
+- **Window**: full-size content under a transparent unified title bar (an empty `NSToolbar` gives the
+  52pt band so the traffic lights sit centred). The canvas has two soft radial glows (flat under
+  Reduce Transparency). Our own toolbar row: back/forward pill, breadcrumb (folder or Home › parents ›
+  page), sync pill, comments, Share (Markdown), "…" menu, inspector toggle; list views show their
+  primary action (New / Add Task). Drag the toolbar to move the window; double-click zooms.
+- **Sidebar**: 264pt, sidebar tint; 32pt rows, the active row a raised pill with an ember icon; search
+  pill with ⌘K; "New Document" pill; caps section labels; account/help/settings card. ↑/↓ move the
+  selection when the list has focus.
+- **Inspector**: a floating 320pt card (material unless Reduce Transparency) with six icon tabs —
+  Insert, Format, Style, Outline, Info, Comments — and a heading with a close button.
+- **Covers**: none, color, gradient (soft multi-glow in the page accent), or one of 20 abstract
+  artworks (`Resources/Covers`, `cover.kind == .art`, value `art-01`…`art-20`; dimmed 18% in dark;
+  unknown ids fall back to the gradient). The "Accent" page accent renders ember.
 
 ### Editor
 
-- `EditorView`: a centered folio page (narrow 640, default 760 or wide 960 pt; paper, plain, tinted
-  or grid background) in a `ScrollView` + `VStack` of block rows. It has a cover/icon/title header
-  (the title is a plain `BlockTextView`, New York serif), a conflict banner with a merge sheet, and a
-  find bar (⌘F).
+- `EditorView`: a centered page sheet (surface, radius 22, sheet shadow; text column narrow 640,
+  default 760 or wide 960 pt + 128pt padding; paper, plain, tinted or grid background) in a
+  `ScrollView` + `VStack` of block rows. The cover sits inside the sheet's top, the icon on a raised
+  rounded square overlaps it, and the title is a plain `BlockTextView` (40pt semibold, heading color).
+  It has a conflict banner with a merge sheet and a find bar (⌘F).
 - `BlockTextView` (an `NSTextView` on an explicit TextKit 1 stack) runs every text-bearing block:
   - Typing: IME/marked text, spelling, services, per-block typing undo that falls back to the
     editor's structural undo (window `UndoManager`).
@@ -162,27 +194,43 @@ Daily Notes use the deterministic id `daily-<date>-<fnv1a64(profileId:workspaceI
   (card or link; ⌥-click opens a new window), bookmark, collection (read-only table of rows that open
   their pages), callout, quote, toggle, to-do (checkbox, due date and priority chips), and unknown
   blocks ("Needs a newer version of Folevi", preserved byte-for-byte).
-- Block selection: Esc, ⇧-click, ⇧↑/↓, then Delete, ⌘D, ⌥⇧↑/↓, Tab and Return. Drag handles reorder
-  blocks with an insertion indicator. Dropping Finder files inserts image/file blocks whose ops are
+- Block selection: Esc, ⇧-click, ⇧↑/↓, then Delete, ⌘D, ⌥⇧↑/↓, Tab and Return.
+- **Drag and drop** (`BlockDrag.swift`, move math in `Domain/BlockDrop.swift`): hovering a block shows
+  a small raised pill with "+" (add below) and a 6-dot grip (click = native block-options menu).
+  Press the grip and move 4pt: the block and its children lift (a snapshot copy follows the pointer at
+  1.02 scale, −0.6°, lift shadow; the source fades to 35%). An ember drop line with a ring at its
+  leading edge glides (120ms) between rows; every 24pt of horizontal travel nests or un-nests (never
+  shallower than the row below, at most one deeper than the row above). Near the scroll view's
+  top/bottom 64pt the page auto-scrolls, faster closer to the edge. Release = one undoable move that
+  syncs as a `position` change, then the block glows ember-soft for 700ms; Escape cancels and the
+  copy glides back. Insert tiles drag into the page the same way (releasing outside cancels). A
+  SwiftUI gesture only starts the drag; local NSEvent monitors drive it at the display's rate. Reduce
+  Motion: no tilt/scale/glide, the line jumps, the glow is a static tint. Dropping Finder files inserts image/file blocks whose ops are
   held back (`blockedBy`) until the upload is finalized (`files:generateUploadUrl` → POST →
   `files:finalize`).
 - Idle snapshots: `documents:createSnapshot` runs 2 minutes after the last acknowledged edit and when
   the editor closes. Version history (list, preview, restore) lives in a sheet.
-- Inspector tabs: Insert, Format, Style (typeface, width, background, accent, card, cover), Info
-  (counts, dates, backlinks, activity) and Comments.
+- Inspector tabs: Insert (searchable tiles in Basics, Lists, Blocks, Media, Structure; click inserts
+  below the current block, drag drops it where you want), Format (turn into, marks, color, highlight,
+  callout tone, code language), Style (font, width, page background, card in lists, accent, cover
+  incl. the art grid), Outline (headings; click to jump; the current section has an ember bar), Info
+  (words, characters, reading time, blocks, dates, version history, backlinks, activity) and
+  Comments.
 
 ### Other features
 
-- **Sidebar**: New Document, All Documents, Tasks, Calendar, Daily Notes, Shared with Me, Templates,
+- **Sidebar**: New Document, Home, Tasks (today's count), Calendar, Shared with Me, Templates,
   Starred, Folders (drop documents on them to move; the move is a sync op, so it works offline), Tags,
   Archive, Trash, Settings and Help.
 - **Browser**: cards, compact or list layout; sort by last edited, created or title; context menu
   (open in a new window, star, move, duplicate, archive, trash/restore).
 - **Tasks**: Inbox, Today, Upcoming, All, Completed and My Tasks, derived locally from to-do blocks
   (so they work offline). Checking a task is a block edit.
-- **Quick Add**: a panel (⇧⌘A, ⌃⌥Space while Folevi is active) and a menu bar extra. It appends to
-  today's Daily Note, locally.
-- **Calendar**: a month grid and agenda with tasks by due date and Daily Notes. Dragging a task onto
+- **Quick Add**: a panel (⇧⌘A, ⌃⌥Space while Folevi is active), the Tasks view's field and a menu bar
+  extra. It appends a to-do to the person's **Inbox** page (`inbox-<fnv1a64(profileId:workspaceId)>`,
+  identical to the web), creating it locally when missing and restoring it from the Trash when online.
+  Daily Notes are no longer a feature; existing daily documents are ordinary pages in Home.
+- **Calendar**: a month grid (one card) and agenda with tasks by due date. Dragging a task onto
   a day calls `tasks:update` when online (a local edit otherwise), with Undo.
 - **Command palette** (⌘K): recent documents, instant local matches, then `search:documents`
   full-text with highlighted matches, plus actions. Fully keyboard-driven.
@@ -218,13 +266,15 @@ Daily Notes use the deterministic id `daily-<date>-<fnv1a64(profileId:workspaceI
 | `-FoleviUITestReset YES` | all | wipe local cache and saved credentials on launch (UI tests) |
 | `-FoleviForceOffline YES` | DEBUG | start with sync forced offline (also View ▸ Force Offline, ⌃⌥⌘O) |
 | `-FoleviAppearance light\|dark` | DEBUG | override appearance |
-| `-FoleviOpenDocument <id or title>`, `-FoleviSidebar tasks\|calendar\|daily\|trash` | DEBUG | open a view (screenshots) |
+| `-FoleviOpenDocument <id or title>`, `-FoleviSidebar tasks\|calendar\|trash`, `-FoleviInspector insert\|format\|style\|outline\|info\|comments` | DEBUG | open a view (screenshots) |
 | `-FoleviAutomation offline-edit\|offline-conflict\|resolve-both\|export-all` | DEBUG | scripted verification scenarios through the real editor model and sync engine |
+| `-FoleviAutomation drag\|drag-nest\|drag-cancel\|drag-tile [-FoleviDragHold s] [-FoleviDragDY pt]` | DEBUG | drives a block (or Insert tile) drag with posted mouse events through the drag controller, holds for screenshots, drops (or Escape-cancels), then undoes. Activates the app. |
+| `-FoleviAutomation cover-art [-FoleviCover art-07]`, `cover-set -FoleviCover gradient:moss` | DEBUG | shows an art cover for a while and restores the original; sets a cover |
 | `-FoleviLayoutProbe YES` | DEBUG | dump window/view geometry to the container's tmp dir |
 
 ## Tests
 
-- **Unit** (`FoleviTests`, 53 tests; compiled against the Domain, Sync reducer, SQLite, Keychain and
+- **Unit** (`FoleviTests`, 67 tests; compiled against the Domain, Sync reducer, SQLite, Keychain and
   auth-callback sources, with no host app):
   - Rank golden cases and `sequence10`.
   - Document golden round-trip, byte-identical canonical JSON including the unknown `timeline` block.
@@ -234,9 +284,13 @@ Daily Notes use the deterministic id `daily-<date>-<fnv1a64(profileId:workspaceI
   - Auth callback URL parsing and config placeholder detection.
   - Tree flatten, `rankForPosition` and `assignTreePositions` against TypeScript outputs.
   - Markdown/HTML export and Markdown import against TypeScript outputs.
-  - Flexible Int decoding, JS number formatting, Daily Note ids.
-- **UI** (`FoleviUITests`, 6 tests): sidebar navigation; creating a document and typing, with `# ` →
-  heading and `[] ` → to-do; reordering with ⌥⇧↑/↓; menus exist; appearance switch; offline banner.
+  - Flexible Int decoding, JS number formatting, Daily Note and Inbox page ids.
+  - Drag and drop: gap from pointer, allowed depths, 24pt nesting, placement (sibling / first child /
+    root), subtree moves, multi-block moves, refusing moves into a block's own subtree, no-op
+    detection, a move against the reference tree fixture, and "a move is a `position` change".
+- **UI** (`FoleviUITests`, 7 tests): sidebar navigation; creating a document and typing, with `# ` →
+  heading and `[] ` → to-do; reordering with ⌥⇧↑/↓; dragging a block by its grip (and ⌘Z); menus
+  exist; appearance switch; offline banner.
 
 ## Known limitations
 
@@ -263,7 +317,8 @@ Daily Notes use the deterministic id `daily-<date>-<fnv1a64(profileId:workspaceI
   - No `@mention` picker (mentions from other clients render and round-trip).
   - No image resize handles.
   - No syntax highlighting in code blocks.
-  - No sharing or permissions UI (web).
+  - No sharing or permissions UI (web); the toolbar's Share button shares the page as Markdown.
+  - No presence avatars in the toolbar (presence isn't synced to the Mac).
   - Permanent deletion stays on the web.
 - **Long documents**: the editor lays out all rows in a `VStack` (smooth for hundreds of blocks).
   Very large documents (thousands of blocks) would benefit from an `NSTableView`-backed list.

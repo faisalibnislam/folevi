@@ -1,37 +1,24 @@
 import AppKit
 import SwiftUI
 
-/// Typography: SF for UI, New York (system serif design) for editorial headings. No bundled fonts.
+/// Typography tokens: Inter for UI and headings, the document's family for editor text.
+/// See `FoleviFont` for the bundled faces.
 enum FoleviType {
-    static func display(_ size: CGFloat = 30) -> Font { .system(size: size, weight: .medium, design: .serif) }
-    static let pageTitle = Font.system(size: 34, weight: .semibold, design: .serif)
-    static let sectionTitle = Font.system(size: 22, weight: .semibold, design: .serif)
-    static let cardTitle = Font.system(size: 15, weight: .semibold, design: .serif)
-    static let body = Font.system(size: 13)
-    static let caption = Font.system(size: 11)
-    static let label = Font.system(size: 12, weight: .medium)
+    static func display(_ size: CGFloat = FoleviFontSize.title) -> Font { .ui(size, .semibold) }
+    static let pageTitle = Font.ui(FoleviFontSize.title, .semibold)
+    static let sectionTitle = Font.ui(FoleviFontSize.xl, .semibold)
+    static let cardTitle = Font.ui(15, .semibold)
+    static let body = Font.ui(FoleviFontSize.sm)
+    static let caption = Font.ui(11)
+    static let label = Font.ui(12, .medium)
 
-    /// Editor fonts (AppKit) for a block style at a given zoom.
+    /// Editor fonts (AppKit) for a block style at a given zoom, in the document's family.
     static func editorFont(size: CGFloat, weight: NSFont.Weight = .regular, design: DocumentFont, scale: CGFloat) -> NSFont {
-        let base = NSFont.systemFont(ofSize: size * scale, weight: weight)
-        let descriptorDesign: NSFontDescriptor.SystemDesign
-        switch design {
-        case .sans: descriptorDesign = .default
-        case .serif: descriptorDesign = .serif
-        case .mono: descriptorDesign = .monospaced
-        }
-        if let d = base.fontDescriptor.withDesign(descriptorDesign), let f = NSFont(descriptor: d, size: size * scale) {
-            return f
-        }
-        return base
-    }
-
-    static func serifHeading(size: CGFloat, weight: NSFont.Weight = .semibold, scale: CGFloat) -> NSFont {
-        editorFont(size: size, weight: weight, design: .serif, scale: scale)
+        FoleviFont.nsFont(FoleviFont.Family(design), size: size * scale, weight: weight)
     }
 
     static func mono(size: CGFloat, scale: CGFloat) -> NSFont {
-        NSFont.monospacedSystemFont(ofSize: size * scale, weight: .regular)
+        FoleviFont.nsFont(.mono, size: size * scale)
     }
 }
 
@@ -40,6 +27,8 @@ extension NSColor {
     static var foleviInkMuted: NSColor { NSColor(FoleviColor.inkMuted) }
     static var foleviInkFaint: NSColor { NSColor(FoleviColor.inkFaint) }
     static var foleviAccent: NSColor { NSColor(FoleviColor.accent) }
+    static var foleviHeading: NSColor { NSColor(FoleviColor.heading) }
+    static var foleviEmber: NSColor { NSColor(FoleviColor.ember) }
     static var foleviCodeBg: NSColor { NSColor(FoleviColor.codeBg) }
     static var foleviSelection: NSColor { NSColor(FoleviColor.selection) }
 
@@ -65,13 +54,25 @@ extension NSColor {
 }
 
 extension Color {
+    /// Page accents: "accent" renders ember; moss, marigold, plum and coral render their own token.
     static func folevi(accent: DocumentAccent) -> Color {
         switch accent {
-        case .accent: return FoleviColor.accent
+        case .accent: return FoleviColor.ember
         case .moss: return FoleviColor.moss
         case .marigold: return FoleviColor.marigold
         case .plum: return FoleviColor.plum
         case .coral: return FoleviColor.coral
+        }
+    }
+
+    /// Soft fill of a page accent (covers, tinted pages).
+    static func folevi(accentSoft: DocumentAccent) -> Color {
+        switch accentSoft {
+        case .accent: return FoleviColor.emberSoft
+        case .moss: return FoleviColor.mossSoft
+        case .marigold: return FoleviColor.marigoldSoft
+        case .plum: return FoleviColor.plumSoft
+        case .coral: return FoleviColor.coralSoft
         }
     }
 
@@ -93,7 +94,7 @@ extension Color {
 
     static func folevi(tone: CalloutTone) -> (bg: Color, ink: Color, icon: String) {
         switch tone {
-        case .note: return (FoleviColor.surfaceSunken, FoleviColor.ink, "note.text")
+        case .note: return (FoleviColor.accentSoft, FoleviColor.heading, "note.text")
         case .info: return (FoleviColor.accentSoft, FoleviColor.accentSoftInk, "info.circle")
         case .success: return (FoleviColor.successSoft, FoleviColor.success, "checkmark.circle")
         case .warning: return (FoleviColor.warningSoft, FoleviColor.warning, "exclamationmark.triangle")

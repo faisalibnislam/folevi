@@ -6,10 +6,16 @@ struct FoleviApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var app = AppModel()
 
+    init() {
+        // Inter, Source Serif 4 and JetBrains Mono before the first view renders.
+        FoleviFont.registerBundledFonts()
+    }
+
     var body: some Scene {
         WindowGroup("Folevi", id: "main") {
             RootView()
                 .environment(app)
+                .foleviTypography()
                 .frame(minWidth: 820, minHeight: 540)
                 .task {
                     appDelegate.app = app
@@ -27,6 +33,7 @@ struct FoleviApp: App {
             if let documentId {
                 DocumentWindowView(documentId: documentId)
                     .environment(app)
+                    .foleviTypography()
                     .frame(minWidth: 560, minHeight: 420)
             }
         }
@@ -35,6 +42,7 @@ struct FoleviApp: App {
         Window("Quick Add Task", id: "quickAdd") {
             QuickAddView()
                 .environment(app)
+                .foleviTypography()
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
@@ -42,6 +50,7 @@ struct FoleviApp: App {
         Settings {
             SettingsView()
                 .environment(app)
+                .foleviTypography()
         }
 
         MenuBarExtra {

@@ -96,8 +96,8 @@ final class FoleviUITests: XCTestCase {
         XCTAssertTrue(element("tasks.viewPicker").waitForExistence(timeout: 5))
         element("sidebar.calendar").click()
         XCTAssertTrue(app.buttons["Today"].waitForExistence(timeout: 5))
-        element("sidebar.daily").click()
-        XCTAssertTrue(element("browser.today").waitForExistence(timeout: 5))
+        element("sidebar.templates").click()
+        XCTAssertTrue(element("browser.title").waitForExistence(timeout: 5))
         element("sidebar.all").click()
         XCTAssertTrue(element("browser.title").waitForExistence(timeout: 5))
     }
@@ -134,6 +134,34 @@ final class FoleviUITests: XCTestCase {
         app.typeKey(.downArrow, modifierFlags: [.option, .shift])
         Thread.sleep(forTimeInterval: 0.8)
         XCTAssertLessThan(alpha.frame.minY, beta.frame.minY, "⌥⇧↓ moves it back")
+    }
+
+    func testDragBlockWithGrip() {
+        launchToLibrary()
+        newDocument(title: "Drag Test")
+        app.typeText("Alpha")
+        app.typeKey(.return, modifierFlags: [])
+        app.typeText("Beta")
+        app.typeKey(.return, modifierFlags: [])
+        app.typeText("Gamma")
+        let alpha = app.textViews.matching(NSPredicate(format: "value == 'Alpha'")).firstMatch
+        let gamma = app.textViews.matching(NSPredicate(format: "value == 'Gamma'")).firstMatch
+        XCTAssertTrue(gamma.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.6)
+        // Hover Alpha's row so its gutter shows, then drag its grip below Gamma.
+        alpha.hover()
+        let handle = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Block handle'")).element(boundBy: 0)
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        let start = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let end = gamma.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 1.2))
+        start.press(forDuration: 0.2, thenDragTo: end, withVelocity: 300, thenHoldForDuration: 0.4)
+        Thread.sleep(forTimeInterval: 1.0)
+        XCTAssertLessThan(gamma.frame.minY, alpha.frame.minY, "dragging the grip moves Alpha below Gamma")
+        // One undo step puts it back (Escape first, so ⌘Z isn't a typing undo in the focused block).
+        app.typeKey(.escape, modifierFlags: [])
+        app.typeKey("z", modifierFlags: .command)
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertLessThan(alpha.frame.minY, gamma.frame.minY, "⌘Z undoes the move in one step")
     }
 
     func testMenusExist() {

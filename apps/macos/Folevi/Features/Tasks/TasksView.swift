@@ -50,11 +50,11 @@ enum TaskStore {
         await engine.applyLocal(documentId: task.documentId, upserts: [(block, [.content])])
     }
 
-    /// Quick Add: appends a to-do to today's Daily Note (created locally with its deterministic id).
+    /// Quick Add: appends a to-do to the person's Inbox page (created locally with its deterministic id).
     static func quickAdd(title: String, dueDate: String?, app: AppModel) async -> Bool {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let engine = app.session?.engine else { return false }
-        guard let docId = await app.dailyNoteId(for: TaskLogic.localDate()) else { return false }
+        guard let docId = await app.inboxDocumentId() else { return false }
         let siblings = await engine.blocks(documentId: docId).filter { $0.parentId == nil }
         let rank = (try? Tree.rankForPosition(siblings, parentId: nil, afterId: Tree.flatten(siblings).last?.block.id)) ?? "V"
         let props = TodoProps(checked: false, dueDate: dueDate)
@@ -90,57 +90,115 @@ struct TasksView: View {
         }
     }
 
+    @FocusState private var quickFocused: Bool
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Tasks").font(FoleviType.display(28)).accessibilityAddTraits(.isHeader)
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            Picker("View", selection: $view) {
-                ForEach(TaskLogic.View.allCases) { v in
-                    Text(label(v) + countSuffix(v)).tag(v)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(label(view))
+                    .foleviViewTitle(size: 34)
+                    .accessibilityIdentifier("tasks.title")
+                Text("Every task lives in a document. Open its page to see the context it was written in.")
+                    .font(.ui(14))
+                    .foregroundStyle(FoleviColor.inkMuted)
+                    .padding(.top, 6)
+                tabs
+                    .padding(.top, 22)
+                HStack(spacing: 10) {
+                    Image(systemName: "plus").font(.system(size: 12, weight: .semibold)).foregroundStyle(FoleviColor.ember).accessibilityHidden(true)
+                    TextField("Add a task to your Inbox", text: $quickTitle)
+                        .textFieldStyle(.plain)
+                        .font(.ui(14))
+                        .focused($quickFocused)
+                        .onSubmit { Task { await add() } }
+                        .accessibilityIdentifier("tasks.quickAdd")
                 }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .accessibilityIdentifier("tasks.viewPicker")
-            HStack {
-                Image(systemName: "plus.circle").foregroundStyle(FoleviColor.accent).accessibilityHidden(true)
-                TextField("Add a task to today's note", text: $quickTitle)
-                    .textFieldStyle(.plain)
-                    .onSubmit { Task { await add() } }
-                    .accessibilityIdentifier("tasks.quickAdd")
-            }
-            .padding(10)
-            .background(RoundedRectangle(cornerRadius: 8).fill(FoleviColor.surfaceRaised))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(FoleviColor.line))
-            .padding(.horizontal, 24)
-            if visible.isEmpty {
-                EmptyStateView(systemImage: "checkmark.circle", title: "All clear", message: emptyMessage)
-            } else {
-                List {
-                    ForEach(visible) { task in
-                        TaskRow(task: task, today: today, openDocument: openDocument) { checked in
-                            Task {
-                                await TaskStore.setChecked(task, checked, app: app)
-                                await reload()
+                .padding(.horizontal, 16)
+                .frame(height: 38)
+                .foleviSurface(.color(FoleviColor.surface), shape: .capsule,
+                               shadow: quickFocused ? FoleviDepth.halo(FoleviColor.focus.opacity(0.35), width: 3) : FoleviDepth.well)
+                .padding(.top, 14)
+                if visible.isEmpty {
+                    EmptyStateView(systemImage: "checkmark.circle", title: "All clear", message: emptyMessage)
+                        .frame(minHeight: 320)
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(visible) { task in
+                            TaskRow(task: task, today: today, openDocument: openDocument) { checked in
+                                Task {
+                                    await TaskStore.setChecked(task, checked, app: app)
+                                    await reload()
+                                }
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .foleviCard(radius: 14)
+                            .draggable(TaskDragPayload(blockId: task.blockId))
                         }
-                        .draggable(TaskDragPayload(blockId: task.blockId))
                     }
+                    .padding(.top, 18)
                 }
-                .scrollContentBackground(.hidden)
             }
+            .frame(maxWidth: 700, alignment: .leading)
+            .padding(.horizontal, 32)
+            .padding(.top, 36)
+            .padding(.bottom, 40)
+            .frame(maxWidth: .infinity)
         }
-        .background(FoleviColor.canvas)
+        .scrollContentBackground(.hidden)
         .task { await reload() }
         .onChange(of: app.blockRevision) { _, _ in Task { await reload() } }
         .onChange(of: app.documentsRevision) { _, _ in Task { await reload() } }
+        .onReceive(NotificationCenter.default.publisher(for: .foleviFocusQuickTask)) { _ in quickFocused = true }
     }
+
+    /// Sunken segmented pill; the active tab is a raised thumb; counts in small badges.
+    private var tabs: some View {
+        HStack(spacing: 2) {
+            ForEach(TaskLogic.View.allCases) { v in
+                let active = v == view
+                let n = v == .completed ? 0 : tasks.filter { matches($0, v) }.count
+                Button {
+                    withAnimation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base)) { view = v }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(label(v)).lineLimit(1)
+                        if n > 0 {
+                            Text("\(n)")
+                                .font(.ui(11, .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(active ? FoleviColor.emberInk : FoleviColor.inkMuted)
+                                .padding(.horizontal, 6)
+                                .frame(minWidth: 20, minHeight: 18)
+                                .background(Capsule().fill(active ? FoleviColor.emberSoft : .clear))
+                        }
+                    }
+                    .font(.ui(13.5, active ? .semibold : .medium))
+                    .foregroundStyle(active ? FoleviColor.heading : FoleviColor.inkMuted)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background {
+                        if active {
+                            Color.clear
+                                .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .capsule, shadow: FoleviShadow.control)
+                                .matchedGeometryEffect(id: "taskThumb", in: tabSpace)
+                        }
+                    }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(label(v)))
+                .accessibilityValue(Text(n > 0 ? "\(n)" : ""))
+                .accessibilityAddTraits(active ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .foleviWell()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("View"))
+        .accessibilityIdentifier("tasks.viewPicker")
+    }
+
+    @Namespace private var tabSpace
 
     private var emptyMessage: LocalizedStringKey {
         switch view {
@@ -190,39 +248,40 @@ struct TaskRow: View {
     var onToggle: (Bool) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Button { onToggle(!task.checked) } label: {
-                Image(systemName: task.checked ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16))
-                    .foregroundStyle(task.checked ? FoleviColor.accent : FoleviColor.inkMuted)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(task.checked ? "Mark as not done" : "Mark as done"))
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(alignment: .top, spacing: 12) {
+            TodoCheck(checked: task.checked, scale: 1) { onToggle(!task.checked) }
+                .accessibilityLabel(Text(task.checked ? "Mark as not done" : "Mark as done"))
+                .padding(.top, -2)
+            VStack(alignment: .leading, spacing: 4) {
                 Text(task.title.isEmpty ? String(localized: "Untitled task") : task.title)
-                    .strikethrough(task.checked)
+                    .font(.ui(15))
+                    .strikethrough(task.checked, color: FoleviColor.inkMuted.opacity(0.6))
                     .foregroundStyle(task.checked ? FoleviColor.inkMuted : FoleviColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button {
                     openDocument(task.documentId, NSEvent.modifierFlags.contains(.option))
                 } label: {
-                    Text("\(task.documentIcon ?? "📄") \(task.documentTitle)").font(.caption).foregroundStyle(FoleviColor.inkMuted)
+                    Text("\(task.documentIcon ?? "📄") \(task.documentTitle)").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Open \(task.documentTitle)"))
             }
-            Spacer()
+            Spacer(minLength: 8)
             if task.priority != .none {
                 Image(systemName: "flag.fill")
+                    .font(.system(size: 11))
                     .foregroundStyle(task.priority == .high ? FoleviColor.coral : task.priority == .medium ? FoleviColor.marigold : FoleviColor.inkFaint)
+                    .padding(.top, 3)
                     .accessibilityLabel(Text("\(task.priority.rawValue) priority"))
             }
             if let due = task.dueDate {
-                Chip(text: due == today ? String(localized: "Today") : (TaskLogic.parseLocalDate(due)?.formatted(.dateTime.month(.abbreviated).day()) ?? due),
-                     systemImage: "calendar",
-                     tint: !task.checked && due < today ? FoleviColor.destructive : FoleviColor.accent)
+                let overdue = !task.checked && due < today
+                Text(due == today ? String(localized: "Today") : (TaskLogic.parseLocalDate(due)?.formatted(.dateTime.month(.abbreviated).day()) ?? due))
+                    .font(.ui(12.5, overdue ? .semibold : .regular))
+                    .foregroundStyle(overdue ? FoleviColor.destructive : FoleviColor.inkMuted)
+                    .padding(.top, 2)
             }
         }
-        .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
     }
 }
@@ -232,6 +291,10 @@ struct TaskDragPayload: Codable, Transferable {
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .foleviTask)
     }
+}
+
+extension Notification.Name {
+    static let foleviFocusQuickTask = Notification.Name("FoleviFocusQuickTask")
 }
 
 extension UTType {
@@ -256,40 +319,40 @@ struct QuickAddView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                FoleviMark(size: 16).foregroundStyle(FoleviColor.accent)
-                Text("Quick Add Task").font(.headline)
+                FoleviMark(size: 16).foregroundStyle(FoleviColor.ember)
+                Text("Quick Add Task").font(.ui(15, .semibold)).foregroundStyle(FoleviColor.heading)
             }
             if app.phase != .ready {
                 Text("Sign in to Folevi to add tasks.").foregroundStyle(FoleviColor.inkMuted)
             } else {
                 TextField("What needs doing?", text: $title)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.folevi)
                     .focused($focused)
                     .onSubmit { Task { await add() } }
                     .accessibilityIdentifier("quickAdd.title")
-                Picker("Due", selection: $due) {
-                    Text("No date").tag(DueChoice.none)
-                    Text("Today").tag(DueChoice.today)
-                    Text("Tomorrow").tag(DueChoice.tomorrow)
-                    Text("Pick a date").tag(DueChoice.custom)
-                }
-                .pickerStyle(.segmented)
+                FoleviSegmented(selection: $due, items: [
+                    .init(value: .none, title: "No date"), .init(value: .today, title: "Today"),
+                    .init(value: .tomorrow, title: "Tomorrow"), .init(value: .custom, title: "Pick a date"),
+                ], accessibilityLabel: "Due")
                 if due == .custom {
                     DatePicker("Date", selection: $customDate, displayedComponents: .date)
                 }
-                Text("Tasks are added to today's Daily Note and sync when you're online.")
-                    .font(.caption).foregroundStyle(FoleviColor.inkMuted)
+                Text("Tasks are added to your Inbox page and sync when you're online.")
+                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
                 HStack {
                     Spacer()
                     Button("Cancel") { dismissWindow(id: "quickAdd") }.keyboardShortcut(.cancelAction)
+                        .buttonStyle(.folevi(.quiet))
                     Button("Add Task") { Task { await add() } }
+                        .buttonStyle(.folevi(.primary))
                         .keyboardShortcut(.defaultAction)
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
-        .padding(18)
-        .frame(width: 380)
+        .padding(20)
+        .frame(width: 400)
+        .background(CanvasBackground())
         .onAppear { focused = true }
     }
 
@@ -304,7 +367,7 @@ struct QuickAddView: View {
         }()
         if await TaskStore.quickAdd(title: title, dueDate: date, app: app) {
             title = ""
-            app.showToast(String(localized: "Task added to today's note"))
+            app.showToast(String(localized: "Task added to your Inbox"))
             dismissWindow(id: "quickAdd")
         }
     }

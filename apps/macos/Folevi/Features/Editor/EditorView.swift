@@ -24,7 +24,6 @@ struct EditorView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            pageBackground.ignoresSafeArea()
             switch model.loadState {
             case .loading:
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -35,55 +34,36 @@ struct EditorView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if showFind.wrappedValue { findBar.padding(12) }
+            if showFind.wrappedValue { findBar.padding(.top, 10).padding(.trailing, 24) }
         }
         .onAppear {
             model.undoManager = undoManager
             model.openDocumentHandler = openDocument
+            model.drag.model = model
         }
         .onChange(of: undoManager) { _, new in model.undoManager = new }
         .onChange(of: app.remoteRevision[model.documentId]) { _, _ in model.scheduleReload() }
         .onChange(of: app.blockRevision[model.documentId]) { _, _ in model.scheduleReload() }
         .onChange(of: app.documentsRevision) { _, _ in model.documentChanged() }
         .onChange(of: model.containerFocusToken) { _, _ in containerFocused = true }
+        .onChange(of: app.editorScale, initial: true) { _, s in model.drag.indentStep = BlockMetrics.indent(CGFloat(s)) }
         .sheet(isPresented: $model.showLinkPrompt) {
             LinkPromptView(initial: model.linkDraft) { model.applyLink($0) } onCancel: { model.showLinkPrompt = false }
         }
     }
 
+    /// Sheet side padding (64 each side); the hover gutter lives inside the left padding.
+    private static let sheetPadding: CGFloat = 64
+
     private var content: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    DocumentHeaderView(model: model, openDocument: openDocument)
-                    if !model.conflicts.isEmpty {
-                        ConflictBanner(model: model)
-                            .padding(.bottom, 16)
-                    }
-                    if model.isReadOnly, model.document?.deletedAt == nil {
-                        Label("You can view this document but not edit it.", systemImage: "lock")
-                            .font(.callout)
-                            .foregroundStyle(FoleviColor.inkMuted)
-                            .padding(.bottom, 12)
-                    }
-                    ForEach(model.rows) { row in
-                        BlockRowView(row: row, model: model, openDocument: openDocument)
-                            .id(row.id)
-                            .zIndex(model.popup?.blockId == row.id ? 10 : 0)
-                    }
-                    // Clicking below the last block continues writing.
-                    Color.clear
-                        .frame(height: 160)
-                        .contentShape(Rectangle())
-                        .onTapGesture { continueWriting() }
-                        .accessibilityHidden(true)
-                }
-                .frame(maxWidth: pageWidth, alignment: .leading)
-                .padding(.horizontal, 56)
-                .padding(.top, 8)
-                .background(sheetBackground)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, model.style.background == .paper ? 24 : 0)
+                sheet
+                    .frame(maxWidth: pageWidth + Self.sheetPadding * 2)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 10)
+                    .padding(.bottom, 56)
+                    .frame(maxWidth: .infinity)
             }
             .scrollContentBackground(.hidden)
             .focusable()
@@ -110,6 +90,47 @@ struct EditorView: View {
                 return true
             }
         }
+    }
+
+    private var sheet: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            DocumentHeaderView(model: model, openDocument: openDocument, sidePadding: Self.sheetPadding)
+            VStack(alignment: .leading, spacing: 0) {
+                if !model.conflicts.isEmpty {
+                    ConflictBanner(model: model)
+                        .padding(.leading, BlockMetrics.gutter)
+                        .padding(.bottom, 16)
+                }
+                if model.isReadOnly, model.document?.deletedAt == nil {
+                    Label("You can view this document but not edit it.", systemImage: "lock")
+                        .font(.ui(12.5, .medium))
+                        .foregroundStyle(FoleviColor.inkMuted)
+                        .padding(.horizontal, 10)
+                        .frame(height: 26)
+                        .background(Capsule().fill(FoleviColor.surfaceSunken))
+                        .padding(.leading, BlockMetrics.gutter)
+                        .padding(.bottom, 12)
+                }
+                ForEach(model.rows) { row in
+                    BlockRowView(row: row, model: model, openDocument: openDocument)
+                        .id(row.id)
+                        .zIndex(model.popup?.blockId == row.id ? 10 : 0)
+                }
+                // Clicking below the last block continues writing.
+                Color.clear
+                    .frame(height: 120)
+                    .contentShape(Rectangle())
+                    .onTapGesture { continueWriting() }
+                    .accessibilityHidden(true)
+            }
+            .coordinateSpace(.named("blocks"))
+            .background(BlocksAnchor(controller: model.drag))
+            .padding(.leading, Self.sheetPadding - BlockMetrics.gutter)
+            .padding(.trailing, Self.sheetPadding)
+            .padding(.bottom, 40)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background { sheetBackground }
     }
 
     private func continueWriting() {
@@ -157,24 +178,24 @@ struct EditorView: View {
         }
     }
 
-    @ViewBuilder private var pageBackground: some View {
+    /// The page sheet: surface (per page background), radius 22, sheet shadow.
+    private var sheetBackground: some View {
+        let accentSoft = Color.folevi(accentSoft: model.style.accent)
+        let fill: SurfaceFill
         switch model.style.background {
-        case .tinted: Color.folevi(accent: model.style.accent).opacity(0.06).background(FoleviColor.canvas)
-        case .plain: FoleviColor.surface
-        default: FoleviColor.canvas
+        case .plain: fill = .color(FoleviColor.surfaceRaised)
+        case .tinted: fill = .color(accentSoft.mix(with: FoleviColor.surface, by: 0.55))
+        case .grid: fill = .color(FoleviColor.surface)
+        default: fill = .gradient([FoleviColor.surface, FoleviColor.surface.mix(with: FoleviColor.glowPeach, by: 0.04)])
         }
-    }
-
-    @ViewBuilder private var sheetBackground: some View {
-        if model.style.background == .paper {
-            RoundedRectangle(cornerRadius: FoleviRadius.sheet, style: .continuous)
-                .fill(FoleviColor.surface)
-                .shadow(color: .black.opacity(0.04), radius: 12, y: 2)
-                .overlay(RoundedRectangle(cornerRadius: FoleviRadius.sheet, style: .continuous).strokeBorder(FoleviColor.line.opacity(0.7)))
-                .padding(.horizontal, 16)
-        } else if model.style.background == .grid {
-            GridPaper().opacity(0.5)
-        }
+        return Color.clear
+            .foleviSurface(fill, shape: .rounded(FoleviRadius.sheet), shadow: FoleviShadow.sheet)
+            .overlay {
+                if model.style.background == .grid {
+                    GridPaper()
+                        .clipShape(RoundedRectangle(cornerRadius: FoleviRadius.sheet, style: .continuous))
+                }
+            }
     }
 
     private var findBar: some View {
@@ -188,7 +209,7 @@ struct EditorView: View {
                 .accessibilityIdentifier("findField")
             if !model.findQuery.isEmpty {
                 Text(model.findMatches.isEmpty ? String(localized: "No matches") : String(localized: "\(model.findIndex + 1) of \(model.findMatches.count)"))
-                    .font(.caption)
+                    .font(.ui(11.5))
                     .foregroundStyle(FoleviColor.inkMuted)
                     .monospacedDigit()
             }
@@ -215,17 +236,19 @@ struct GridPaper: View {
         Canvas { ctx, size in
             let step: CGFloat = 24
             var path = Path()
-            var x: CGFloat = 0
+            var x: CGFloat = step
             while x < size.width {
-                var y: CGFloat = 0
-                while y < size.height {
-                    path.addEllipse(in: CGRect(x: x, y: y, width: 1.5, height: 1.5))
-                    y += step
-                }
+                path.addRect(CGRect(x: x, y: 0, width: 1, height: size.height))
                 x += step
             }
-            ctx.fill(path, with: .color(FoleviColor.lineStrong))
+            var y: CGFloat = step
+            while y < size.height {
+                path.addRect(CGRect(x: 0, y: y, width: size.width, height: 1))
+                y += step
+            }
+            ctx.fill(path, with: .color(FoleviColor.line.opacity(0.45)))
         }
+        .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 }
@@ -235,69 +258,120 @@ struct GridPaper: View {
 struct DocumentHeaderView: View {
     @Bindable var model: EditorModel
     var openDocument: (String, Bool) -> Void
+    var sidePadding: CGFloat = 64
     @Environment(AppModel.self) private var app
     @State private var showIconPicker = false
+    @State private var hovering = false
+
+    private var hasCover: Bool {
+        let kind = model.document?.cover.kind
+        return kind == .color || kind == .gradient || kind == .art
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if let crumbs = model.detail?.breadcrumbs, !crumbs.isEmpty {
-                HStack(spacing: 4) {
-                    ForEach(crumbs) { c in
-                        Button {
-                            openDocument(c.id, NSEvent.modifierFlags.contains(.option))
-                        } label: {
-                            Text("\(c.icon ?? "") \(c.title.isEmpty ? String(localized: "Untitled") : c.title)")
-                        }
-                        .buttonStyle(.link)
-                        Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
-                    }
-                }
-                .font(.system(size: 12))
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(Text("Breadcrumbs"))
-                .padding(.top, 20)
-            }
-            if model.document?.cover.kind == .color || model.document?.cover.kind == .gradient {
-                LinearGradient(colors: [Color.folevi(cover: model.document?.cover, style: model.style).opacity(0.6),
-                                        Color.folevi(cover: model.document?.cover, style: model.style).opacity(0.2)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .frame(height: 120)
-                    .clipShape(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous))
-                    .padding(.top, 16)
+        VStack(alignment: .leading, spacing: 0) {
+            if hasCover {
+                CoverView(cover: model.document?.cover, style: model.style)
+                    .frame(height: 168)
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: FoleviRadius.sheet, topTrailingRadius: FoleviRadius.sheet, style: .continuous))
+                    .overlay(alignment: .bottom) { FoleviColor.line.opacity(0.6).frame(height: 1) }
                     .accessibilityHidden(true)
+            } else {
+                Color.clear.frame(height: 48)
             }
-            HStack(alignment: .top) {
-                Button {
-                    if !model.isReadOnly { showIconPicker = true }
-                } label: {
-                    if let icon = model.document?.icon, !icon.isEmpty {
-                        Text(icon).font(.system(size: 44 * CGFloat(app.editorScale)))
-                    } else if !model.isReadOnly {
-                        Label("Add Icon", systemImage: "face.smiling").font(.caption).foregroundStyle(FoleviColor.inkFaint)
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Document icon"))
-                .popover(isPresented: $showIconPicker) { IconPicker { icon in model.setIcon(icon); showIconPicker = false } }
-                Spacer()
+            VStack(alignment: .leading, spacing: 0) {
+                iconButton
+                    .padding(.top, hasCover ? -38 : 0)
+                BlockTextEditor(blockId: "__title__",
+                                text: model.titleDraft.isEmpty ? [] : [.text(text: model.titleDraft, marks: nil)],
+                                style: BlockStyles.title(style: model.style, scale: CGFloat(app.editorScale)),
+                                isEditable: !model.isReadOnly,
+                                accessibilityLabel: String(localized: "Title"),
+                                model: model,
+                                focusRequest: model.focus?.blockId == "__title__" ? model.focus : nil,
+                                isPlain: true,
+                                alwaysShowPlaceholder: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("documentTitle")
+                    .padding(.top, 18)
+                    .padding(.bottom, 18)
             }
-            .padding(.top, model.detail?.breadcrumbs.isEmpty == false ? 4 : 40)
-            BlockTextEditor(blockId: "__title__",
-                            text: model.titleDraft.isEmpty ? [] : [.text(text: model.titleDraft, marks: nil)],
-                            style: BlockStyles.title(style: model.style, scale: CGFloat(app.editorScale)),
-                            isEditable: !model.isReadOnly,
-                            accessibilityLabel: String(localized: "Title"),
-                            model: model,
-                            focusRequest: model.focus?.blockId == "__title__" ? model.focus : nil,
-                            isPlain: true,
-                            alwaysShowPlaceholder: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("documentTitle")
-                .padding(.bottom, 18)
+            .padding(.horizontal, sidePadding)
         }
-        // Align with block text, which sits after the 22pt drag-handle gutter.
-        .padding(.leading, 22)
+        .onHover { hovering = $0 }
+    }
+
+    @ViewBuilder private var iconButton: some View {
+        let icon = model.document?.icon.flatMap { $0.isEmpty ? nil : $0 }
+        if icon != nil || !model.isReadOnly {
+            Button {
+                if !model.isReadOnly { showIconPicker = true }
+            } label: {
+                if let icon {
+                    Text(icon)
+                        .font(.system(size: 42 * CGFloat(app.editorScale)))
+                        .frame(width: 76, height: 76)
+                        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(20), shadow: FoleviShadow.control)
+                } else {
+                    Label("Add Icon", systemImage: "face.smiling")
+                        .font(.ui(12.5, .semibold))
+                        .foregroundStyle(FoleviColor.inkMuted)
+                        .padding(.horizontal, 12)
+                        .frame(height: 28)
+                        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .capsule, shadow: FoleviShadow.control)
+                        .opacity(hovering || hasCover ? 1 : 0)
+                        .padding(.top, hasCover ? 48 : 0)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(icon.map { "Page icon \($0). Change icon" } ?? "Add page icon"))
+            .popover(isPresented: $showIconPicker) { IconPicker { icon in model.setIcon(icon); showIconPicker = false } }
+        }
+    }
+}
+
+/// The cover band inside the sheet top (a cover's own color wins; "accent" is ember).
+struct CoverView: View {
+    var cover: DocumentCover?
+    var style: DocumentStyle
+
+    var body: some View {
+        let key = cover?.value.flatMap(DocumentAccent.init(rawValue:)) ?? style.accent
+        if cover?.kind == .art, let image = CoverArt.image(cover?.value) {
+            ArtCoverImage(image: image)
+        } else {
+            // Unknown art ids fall back to the gradient cover.
+            CoverGlow(accent: Color.folevi(accent: key), soft: Color.folevi(accentSoft: key), intensity: cover?.kind == .color ? 0.7 : 1)
+        }
+    }
+}
+
+/// Soft multi-glow: the accent glowing in from the top right, rose from the bottom left, over
+/// accent-soft → surface.
+struct CoverGlow: View {
+    var accent: Color
+    var soft: Color
+    var intensity: Double = 1
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                LinearGradient(colors: [soft.opacity(0.35 + 0.65 * intensity), FoleviColor.surface], startPoint: .top, endPoint: .bottom)
+                EllipticalGradient(gradient: Gradient(stops: [.init(color: accent.opacity(0.5 * intensity), location: 0), .init(color: accent.opacity(0), location: 1)]),
+                                   center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5)
+                    .frame(width: max(w * 1.1, 320), height: h * 2.2)
+                    .position(x: w, y: 0)
+                EllipticalGradient(gradient: Gradient(stops: [.init(color: FoleviColor.glowRose.opacity(0.55 * intensity), location: 0), .init(color: FoleviColor.glowRose.opacity(0), location: 1)]),
+                                   center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5)
+                    .frame(width: max(w * 0.8, 240), height: h * 1.6)
+                    .position(x: 0, y: h)
+            }
+            .frame(width: w, height: h)
+            .clipped()
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -311,7 +385,7 @@ struct IconPicker: View {
                 ForEach(icons, id: \.self) { icon in
                     Button(icon) { onPick(icon) }
                         .buttonStyle(.plain)
-                        .font(.system(size: 22))
+                        .font(.ui(22))
                         .accessibilityLabel(Text(icon))
                 }
             }
@@ -328,9 +402,9 @@ struct LinkPromptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Link").font(.headline)
+            Text("Link").font(.ui(14, .semibold))
             TextField("https://", text: $initial)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.folevi)
                 .frame(width: 320)
                 .onSubmit { onSubmit(initial) }
             HStack {
@@ -357,9 +431,9 @@ struct ConflictBanner: View {
                     Image(systemName: "exclamationmark.2").foregroundStyle(FoleviColor.coralInk).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(conflict.reason == .deleted ? "A block you edited was deleted on another device." : "This block was changed on another device while you were editing.")
-                            .font(.callout.weight(.medium))
+                            .font(.ui(12.5, .medium))
                         Text(RichText.plainText(conflict.client.inlineText).prefix(120))
-                            .font(.caption)
+                            .font(.ui(11.5))
                             .foregroundStyle(FoleviColor.inkMuted)
                             .lineLimit(2)
                     }
@@ -391,7 +465,7 @@ struct ConflictMergeSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Resolve Conflict").font(FoleviType.sectionTitle)
+            Text("Resolve Conflict").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading)
             Text("Folevi kept both versions. Choose what this block should say.")
                 .foregroundStyle(FoleviColor.inkMuted)
             HStack(alignment: .top, spacing: 16) {
@@ -412,7 +486,7 @@ struct ConflictMergeSheet: View {
 
     private func version(title: LocalizedStringKey, text: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption.weight(.semibold)).foregroundStyle(FoleviColor.inkMuted)
+            Text(title).font(.ui(11.5, .semibold)).foregroundStyle(FoleviColor.inkMuted)
             ScrollView {
                 Text(text).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
             }

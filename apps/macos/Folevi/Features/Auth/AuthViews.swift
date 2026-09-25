@@ -28,11 +28,11 @@ struct RootView: View {
 struct LaunchView: View {
     var body: some View {
         VStack(spacing: 16) {
-            FoleviMark(size: 64).foregroundStyle(FoleviColor.accent)
+            BrandTile(size: 64)
             ProgressView().controlSize(.small)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(FoleviColor.canvas)
+        .background(CanvasBackground())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("Opening Folevi"))
     }
@@ -44,16 +44,29 @@ private struct AuthCard<Content: View>: View {
         VStack(spacing: 22) {
             content
         }
-        .padding(40)
-        .frame(width: 420)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(FoleviColor.surfaceRaised))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(FoleviColor.line))
-        .shadow(color: .black.opacity(0.06), radius: 24, y: 8)
+        .foregroundStyle(FoleviColor.ink)
+        .padding(44)
+        .frame(width: 440)
+        .foleviSurface(.color(FoleviColor.surface), shape: .rounded(FoleviRadius.sheet), shadow: FoleviShadow.sheet)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            LinearGradient(colors: [FoleviColor.canvas, FoleviColor.accentSoft.opacity(0.35)], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-        )
+        .background(CanvasBackground())
+        .background(WindowChrome())
+        .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .ignoresSafeArea()
+    }
+}
+
+/// The brand tile: the mark on a cocoa gradient rounded square (as in the sidebar).
+private struct BrandTile: View {
+    var size: CGFloat = 64
+    var body: some View {
+        ZStack {
+            Color.clear.foleviSurface(.gradient([FoleviColor.accent.mix(with: .white, by: 0.06), FoleviColor.accentStrong]),
+                                      shape: .rounded(size * 0.3), shadow: FoleviShadow.primary)
+            FoleviMark(size: size * 0.55).foregroundStyle(FoleviColor.accentInk)
+        }
+        .frame(width: size, height: size)
     }
 }
 
@@ -67,15 +80,15 @@ struct SignInView: View {
 
     var body: some View {
         AuthCard {
-            FoleviMark(size: 56).foregroundStyle(FoleviColor.accent)
+            BrandTile(size: 60)
             VStack(spacing: 8) {
-                Text("Welcome to Folevi").font(FoleviType.display(30)).accessibilityAddTraits(.isHeader)
+                Text("Welcome to Folevi").font(.ui(30, .semibold)).tracking(FoleviTracking.tight * 30).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Text("Your living folio of notes, plans and tasks.")
                     .foregroundStyle(FoleviColor.inkMuted)
             }
             if let message {
                 Text(message)
-                    .font(.callout)
+                    .font(.ui(12.5))
                     .foregroundStyle(FoleviColor.coralInk)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier("signIn.message")
@@ -87,20 +100,19 @@ struct SignInView: View {
                     Button {
                         Task { await app.signInWithAuth0() }
                     } label: {
-                        Text("Sign In or Create Account").frame(maxWidth: .infinity)
+                        Text("Sign In or Create Account")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .buttonStyle(.folevi(.primary, .large, fullWidth: true))
                     .disabled(!app.config.isAuth0Configured)
                     .accessibilityIdentifier("signIn.auth0")
                     if !app.config.isAuth0Configured {
                         Text("Folevi isn't configured for sign-in yet. Set AUTH0_DOMAIN and AUTH0_CLIENT_ID in the app configuration.")
-                            .font(.caption)
+                            .font(.ui(11.5))
                             .foregroundStyle(FoleviColor.inkMuted)
                             .multilineTextAlignment(.center)
                     }
                     if let error = app.signInError {
-                        Text(error).font(.caption).foregroundStyle(FoleviColor.destructive)
+                        Text(error).font(.ui(11.5)).foregroundStyle(FoleviColor.destructive)
                     }
                     #if DEBUG
                     if app.config.devAuthURL != nil {
@@ -113,7 +125,7 @@ struct SignInView: View {
                 }
             }
             Text("By continuing you agree to Folevi's Terms and Privacy Policy.")
-                .font(.caption2)
+                .font(.ui(10.5))
                 .foregroundStyle(FoleviColor.inkFaint)
         }
         #if DEBUG
@@ -132,11 +144,11 @@ struct DevSignInSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Developer Sign-In", systemImage: "hammer").font(.headline)
+            Label("Developer Sign-In", systemImage: "hammer").font(.ui(14, .semibold))
             Text("Signs in against the local development identity issuer. Not available in release builds.")
-                .font(.caption).foregroundStyle(FoleviColor.inkMuted)
-            TextField("Email", text: $email).textFieldStyle(.roundedBorder).accessibilityIdentifier("dev.email")
-            TextField("Name", text: $name).textFieldStyle(.roundedBorder).accessibilityIdentifier("dev.name")
+                .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
+            TextField("Email", text: $email).textFieldStyle(.folevi).accessibilityIdentifier("dev.email")
+            TextField("Name", text: $name).textFieldStyle(.folevi).accessibilityIdentifier("dev.name")
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
@@ -175,16 +187,16 @@ struct AccountStateView: View {
 
     var body: some View {
         AuthCard {
-            Image(systemName: content.icon).font(.system(size: 40, weight: .light)).foregroundStyle(FoleviColor.accent).accessibilityHidden(true)
-            Text(content.title).font(FoleviType.display(26)).accessibilityAddTraits(.isHeader)
+            Image(systemName: content.icon).font(.ui(40, .light)).foregroundStyle(FoleviColor.accent).accessibilityHidden(true)
+            Text(content.title).font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
             Text(content.message).multilineTextAlignment(.center).foregroundStyle(FoleviColor.inkMuted)
             HStack {
                 if phase == .emailUnverified || phase == .mfaRequired {
                     Button("Try Again") { Task { await app.signIn(interactive: false) } }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.folevi(.primary))
                 }
                 if phase == .sessionRevoked {
-                    Button("Sign In") { Task { await app.signOut() } }.buttonStyle(.borderedProminent)
+                    Button("Sign In") { Task { await app.signOut() } }.buttonStyle(.folevi(.primary))
                 }
                 Button("Sign Out") { Task { await app.signOut() } }
             }
@@ -195,8 +207,8 @@ struct AccountStateView: View {
 struct NotConfiguredView: View {
     var body: some View {
         AuthCard {
-            FoleviMark(size: 48).foregroundStyle(FoleviColor.inkMuted)
-            Text("Folevi isn't configured yet").font(FoleviType.display(24)).accessibilityAddTraits(.isHeader)
+            BrandTile(size: 52)
+            Text("Folevi isn't configured yet").font(.ui(24, .semibold)).tracking(FoleviTracking.tight * 24).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
             Text("This build doesn't have a Folevi server address. Set CONVEX_URL in Config/*.xcconfig and rebuild.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(FoleviColor.inkMuted)
@@ -221,36 +233,32 @@ struct OnboardingView: View {
         AuthCard {
             HStack(spacing: 6) {
                 ForEach(0..<3) { i in
-                    Capsule().fill(i <= step ? FoleviColor.accent : FoleviColor.line).frame(width: 28, height: 4)
+                    Capsule().fill(i <= step ? FoleviColor.ember : FoleviColor.line).frame(width: 28, height: 4)
                 }
             }
             .accessibilityElement()
             .accessibilityLabel(Text("Step \(step + 1) of 3"))
             switch step {
             case 0:
-                Text("Name your workspace").font(FoleviType.display(26)).accessibilityAddTraits(.isHeader)
+                Text("Name your workspace").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Text("This is where your documents live. You can change it later.").foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
                 TextField("Workspace name", text: $workspaceName)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.folevi)
                     .onSubmit { next() }
                     .accessibilityIdentifier("onboarding.workspace")
             case 1:
-                Text("Choose an appearance").font(FoleviType.display(26)).accessibilityAddTraits(.isHeader)
-                Picker("Appearance", selection: $appearance) {
-                    ForEach(AppearancePreference.allCases) { p in Text(p.title).tag(p) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                Text("Choose an appearance").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                FoleviSegmented(selection: $appearance, items: AppearancePreference.allCases.map { .init(value: $0, title: $0.title) },
+                                height: 32, fontSize: 13, accessibilityLabel: "Appearance")
                 .onChange(of: appearance) { _, v in app.appearance = v }
             default:
-                Text("You're all set").font(FoleviType.display(26)).accessibilityAddTraits(.isHeader)
+                Text("You're all set").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Text("Start with the Welcome document — it's a quick tour of blocks, tasks and shortcuts.")
                     .foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
             }
-            if let error { Text(error).font(.caption).foregroundStyle(FoleviColor.destructive) }
+            if let error { Text(error).font(.ui(11.5)).foregroundStyle(FoleviColor.destructive) }
             Button(step == 2 ? "Open Welcome" : "Continue") { next() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.folevi(.primary, .large))
                 .disabled(working || (step == 0 && workspaceName.trimmingCharacters(in: .whitespaces).isEmpty))
                 .accessibilityIdentifier("onboarding.continue")
         }
@@ -303,21 +311,21 @@ struct HelpView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                FoleviMark(size: 28).foregroundStyle(FoleviColor.accent)
-                Text("Folevi Help").font(FoleviType.display(26)).accessibilityAddTraits(.isHeader)
+            HStack(spacing: 12) {
+                BrandTile(size: 34)
+                Text("Folevi Help").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Spacer()
             }
             Text("Everything you write is saved on this Mac first and synced when you're online. The status pill in the toolbar always tells you where things stand.")
                 .foregroundStyle(FoleviColor.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Keyboard shortcuts").font(.headline)
+            Text("Keyboard shortcuts").font(.ui(14, .semibold))
             ScrollView {
                 Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 6) {
                     ForEach(shortcuts, id: \.0) { key, label in
                         GridRow {
-                            Text(key).font(.system(size: 12, design: .monospaced)).foregroundStyle(FoleviColor.accentSoftInk)
-                            Text(label).font(.system(size: 12))
+                            Keycap(text: key)
+                            Text(label).font(.ui(12))
                         }
                     }
                 }

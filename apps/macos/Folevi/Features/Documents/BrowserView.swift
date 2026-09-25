@@ -14,8 +14,7 @@ struct BrowserView: View {
         switch selection {
         case .folder(let id): return app.sidebar.folders.first { $0.id == id }?.name ?? String(localized: "Folder")
         case .tag(let id): return app.sidebar.tags.first { $0.id == id }.map { "#" + $0.name } ?? String(localized: "Tag")
-        case .all: return String(localized: "All Documents")
-        case .daily: return String(localized: "Daily Notes")
+        case .all: return String(localized: "Home")
         case .templates: return String(localized: "Templates")
         case .starred: return String(localized: "Starred")
         case .archive: return String(localized: "Archive")
@@ -41,9 +40,9 @@ struct BrowserView: View {
         } else {
             docs = app.documents.filter { d in
                 switch selection {
-                case .all: return d.kind == .document && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
-                case .folder(let id): return d.folderId == id && d.kind == .document && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
-                case .daily: return d.kind == .daily && d.deletedAt == nil
+                // Former Daily Notes are ordinary pages now.
+                case .all: return (d.kind == .document || d.kind == .daily) && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
+                case .folder(let id): return d.folderId == id && (d.kind == .document || d.kind == .daily) && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
                 case .templates: return d.kind == .template && d.deletedAt == nil
                 case .archive: return d.archivedAt != nil && d.deletedAt == nil
                 case .trash: return d.deletedAt != nil
@@ -56,72 +55,83 @@ struct BrowserView: View {
         case .created: docs.sort { $0.createdAt > $1.createdAt }
         case .title: docs.sort { $0.displayTitle.localizedStandardCompare($1.displayTitle) == .orderedAscending }
         }
-        if selection == .daily { docs.sort { ($0.dailyDate ?? "") > ($1.dailyDate ?? "") } }
         return docs
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            let docs = documents
-            if docs.isEmpty {
-                empty
-            } else {
-                ScrollView {
+        let docs = documents
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                header(count: docs.count)
+                if docs.isEmpty {
+                    empty.frame(minHeight: 420)
+                } else {
                     switch nav.layout {
                     case .grid, .compact:
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: nav.layout == .grid ? 220 : 170, maximum: 320), spacing: 18)], spacing: 18) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: nav.layout == .grid ? 236 : 188, maximum: 340), spacing: 20)], spacing: 20) {
                             ForEach(docs) { doc in card(doc) }
                         }
-                        .padding(24)
+                        .padding(.top, 22)
                     case .list:
                         LazyVStack(spacing: 0) {
-                            ForEach(docs) { doc in listRow(doc) }
+                            ForEach(Array(docs.enumerated()), id: \.element.id) { idx, doc in
+                                listRow(doc)
+                                if idx < docs.count - 1 { FoleviColor.line.frame(height: 1).padding(.leading, 52).opacity(0.8) }
+                            }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 6)
+                        .foleviCard(radius: 18)
+                        .padding(.top, 22)
                     }
                 }
             }
+            .padding(.horizontal, 32)
+            .padding(.top, 30)
+            .padding(.bottom, 40)
         }
-        .background(FoleviColor.canvas)
+        .scrollContentBackground(.hidden)
         .task(id: selection) { await loadRemote() }
     }
 
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(title).font(FoleviType.display(28)).foregroundStyle(FoleviColor.ink)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("browser.title")
-            Text("\(documents.count)").font(.system(size: 13).monospacedDigit()).foregroundStyle(FoleviColor.inkFaint)
-            if loadingRemote { ProgressView().controlSize(.small) }
-            Spacer()
-            if selection == .daily {
-                Button("Today") { Task { await openToday() } }
-                    .accessibilityIdentifier("browser.today")
-            }
-            Picker("Layout", selection: $nav.layout) {
-                ForEach(BrowserLayout.allCases) { l in
-                    Image(systemName: l.systemImage).help(Text(l.title)).accessibilityLabel(Text(l.title)).tag(l)
+    private func header(count: Int) -> some View {
+        HStack(alignment: .bottom, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .foleviViewTitle(size: 34)
+                    .accessibilityIdentifier("browser.title")
+                HStack(spacing: 8) {
+                    Text(count == 1 ? String(localized: "1 document") : String(localized: "\(count) documents"))
+                        .font(.ui(14))
+                        .foregroundStyle(FoleviColor.inkMuted)
+                    if loadingRemote { ProgressView().controlSize(.mini) }
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
+            Spacer(minLength: 12)
             Menu {
                 Picker("Sort By", selection: $nav.sort) {
                     ForEach(BrowserSort.allCases) { s in Text(s.title).tag(s) }
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("Sort", systemImage: "arrow.up.arrow.down")
+                HStack(spacing: 6) {
+                    Text("Sort").foregroundStyle(FoleviColor.inkMuted)
+                    Text(nav.sort.title).foregroundStyle(FoleviColor.ink)
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(FoleviColor.inkMuted)
+                }
+                .font(.ui(13, .medium))
+                .padding(.horizontal, 12)
+                .frame(height: 30)
+                .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .capsule, shadow: FoleviShadow.control)
             }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityLabel(Text("Sort documents"))
+            FoleviSegmented(selection: $nav.layout, items: BrowserLayout.allCases.map { .init(value: $0, title: $0.title, systemImage: $0.systemImage) },
+                            showTitles: false, height: 26, fontSize: 12.5, accessibilityLabel: "Layout")
+                .frame(width: 118)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 6)
     }
 
     @ViewBuilder private var empty: some View {
@@ -131,10 +141,6 @@ struct BrowserView: View {
         case .starred:
             EmptyStateView(systemImage: "star", title: "No starred documents",
                            message: app.sync.isOnline ? "Star documents to keep them close." : "Starred documents appear here when you're online.")
-        case .daily:
-            EmptyStateView(systemImage: "sun.max", title: "No daily notes yet", message: "Start today's note to collect thoughts and tasks.", actionTitle: "Open Today") {
-                Task { await openToday() }
-            }
         case .templates: EmptyStateView(systemImage: "square.on.square.dashed", title: "No templates", message: "Templates you save appear here.")
         default:
             EmptyStateView(systemImage: "doc.on.doc", title: "Nothing here yet", message: "Create a document to begin.", actionTitle: "New Document") {
@@ -151,7 +157,8 @@ struct BrowserView: View {
         FolioCard(document: doc, compact: nav.layout == .compact)
             .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
             .draggable(DocumentDragPayload(documentId: doc.id)) {
-                Text(doc.displayTitle).padding(8).background(RoundedRectangle(cornerRadius: 8).fill(FoleviColor.surfaceRaised))
+                Text(doc.displayTitle).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading)
+                    .padding(.horizontal, 16).frame(height: 36).foleviSurface(.color(FoleviColor.surface), shape: .capsule, shadow: FoleviShadow.lift)
             }
             .contextMenu { DocumentContextMenu(document: doc, openDocument: openDocument) }
             .accessibilityAddTraits(.isButton)
@@ -160,26 +167,14 @@ struct BrowserView: View {
     }
 
     private func listRow(_ doc: DocumentSummary) -> some View {
-        HStack(spacing: 12) {
-            Text(doc.icon ?? "📄").frame(width: 24).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(doc.displayTitle).font(.system(size: 13, weight: .medium)).foregroundStyle(FoleviColor.ink)
-                if !doc.excerpt.isEmpty { Text(doc.excerpt).font(.caption).foregroundStyle(FoleviColor.inkMuted).lineLimit(1) }
-            }
-            Spacer()
-            Text(Date(timeIntervalSince1970: doc.updatedAt / 1000), format: .dateTime.month(.abbreviated).day().hour().minute())
-                .font(.caption).foregroundStyle(FoleviColor.inkFaint)
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 8)
-        .contentShape(Rectangle())
-        .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
-        .draggable(DocumentDragPayload(documentId: doc.id))
-        .contextMenu { DocumentContextMenu(document: doc, openDocument: openDocument) }
-        .overlay(alignment: .bottom) { Divider() }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier("doc.\(doc.displayTitle)")
+        BrowserListRow(doc: doc)
+            .contentShape(Rectangle())
+            .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
+            .draggable(DocumentDragPayload(documentId: doc.id))
+            .contextMenu { DocumentContextMenu(document: doc, openDocument: openDocument) }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("doc.\(doc.displayTitle)")
     }
 
     private func loadRemote() async {
@@ -207,9 +202,6 @@ struct BrowserView: View {
         }
     }
 
-    private func openToday() async {
-        if let id = await app.dailyNoteId(for: TaskLogic.localDate()) { openDocument(id, false) }
-    }
 }
 
 /// Context menu shared by cards and list rows.
@@ -252,5 +244,31 @@ struct DocumentContextMenu: View {
                 app.perform(String(localized: "Restoring")) { try await $0.documents.restoreFromTrash(document.id) }
             }
         }
+    }
+}
+
+private struct BrowserListRow: View {
+    var doc: DocumentSummary
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(doc.icon ?? "📄")
+                .font(.system(size: 15))
+                .frame(width: 30, height: 30)
+                .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(doc.displayTitle).font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).lineLimit(1)
+                if !doc.excerpt.isEmpty { Text(doc.excerpt).font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1) }
+            }
+            Spacer()
+            Text(Date(timeIntervalSince1970: doc.updatedAt / 1000), format: .relative(presentation: .named))
+                .font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? FoleviColor.accentSoft.opacity(0.6) : .clear).padding(.horizontal, 6))
+        .onHover { hovering = $0 }
     }
 }

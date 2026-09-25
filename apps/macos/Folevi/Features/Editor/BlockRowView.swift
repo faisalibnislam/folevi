@@ -2,28 +2,55 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Editor geometry shared by rows, the header and drag and drop.
+enum BlockMetrics {
+    /// The hover gutter (+ and grip) left of the text column.
+    static let gutter: CGFloat = 52
+    /// One nesting level (the 24pt indent grid).
+    static func indent(_ scale: CGFloat) -> CGFloat { 24 * scale }
+}
+
 /// Text styles per block type, derived from the document style and editor zoom.
 enum BlockStyles {
-    static func paragraph(style: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
-        BlockTextStyle(font: FoleviType.editorFont(size: 16, design: style.font, scale: scale), color: .foleviInk, lineSpacing: 3,
-                       placeholder: String(localized: "Start writing, or type '/' for commands"))
+    /// Body size per document family (web: sans 16, serif 17.5, mono 15).
+    static func bodySize(_ font: DocumentFont) -> CGFloat {
+        switch font {
+        case .sans: return FoleviFontSize.body
+        case .serif: return 17.5
+        case .mono: return 15
+        }
     }
 
+    /// Line spacing that gives `lineHeight` × size lines.
+    static func spacing(for font: NSFont, lineHeight: CGFloat) -> CGFloat {
+        max(0, (font.pointSize * lineHeight - NSLayoutManager().defaultLineHeight(for: font)).rounded())
+    }
+
+    static func paragraph(style: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
+        let font = FoleviType.editorFont(size: bodySize(style.font), design: style.font, scale: scale)
+        return BlockTextStyle(font: font, color: .foleviInk, lineSpacing: spacing(for: font, lineHeight: 1.6),
+                              placeholder: String(localized: "Start writing, or type '/' for commands"),
+                              kern: style.font == .mono ? 0 : FoleviTracking.normal * font.pointSize)
+    }
+
+    /// Page title: 38pt semibold, heading color, tight tracking (mono 34).
     static func title(style: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
-        let design: DocumentFont = style.font == .mono ? .mono : .serif
-        return BlockTextStyle(font: FoleviType.editorFont(size: 36, weight: .semibold, design: design, scale: scale), color: .foleviInk,
-                              lineSpacing: 2, placeholder: String(localized: "Untitled"))
+        let size: CGFloat = style.font == .mono ? 34 : 40
+        let font = FoleviType.editorFont(size: size, weight: .semibold, design: style.font, scale: scale)
+        return BlockTextStyle(font: font, color: .foleviHeading, lineSpacing: spacing(for: font, lineHeight: 1.12),
+                              placeholder: String(localized: "Untitled"), kern: FoleviTracking.tight * font.pointSize * (style.font == .mono ? 0.5 : 1.2))
     }
 
     static func style(for block: Block, document: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
-        let headingDesign: DocumentFont = document.font == .mono ? .mono : .serif
         var s = paragraph(style: document, scale: scale)
         switch block.content {
         case .heading(let h):
-            let size: CGFloat = h.level == .level1 ? 28 : h.level == .level2 ? 22 : 18.5
-            s.font = FoleviType.editorFont(size: size, weight: .semibold, design: headingDesign, scale: scale)
+            let size: CGFloat = h.level == .level1 ? FoleviFontSize.h1 : h.level == .level2 ? FoleviFontSize.h2 : FoleviFontSize.h3
+            s.font = FoleviType.editorFont(size: size, weight: .semibold, design: document.font, scale: scale)
+            s.color = .foleviHeading
+            s.lineSpacing = spacing(for: s.font, lineHeight: 1.25)
+            s.kern = document.font == .mono ? 0 : FoleviTracking.tight * s.font.pointSize
             s.placeholder = String(localized: "Heading \(h.level.rawValue)")
-            s.lineSpacing = 1
         case .todo(let p):
             s.placeholder = String(localized: "To-do")
             if p.checked {
@@ -33,16 +60,19 @@ enum BlockStyles {
         case .bulleted, .numbered:
             s.placeholder = String(localized: "List")
         case .toggle:
+            s.font = FoleviFont.nsFont(FoleviFont.Family(document.font), size: s.font.pointSize, weight: FoleviFont.Face.medium)
             s.placeholder = String(localized: "Toggle")
         case .quote:
-            s.font = FoleviType.editorFont(size: 17, design: document.font == .sans ? .serif : document.font, scale: scale)
-            s.color = .foleviInkMuted
+            s.font = FoleviFont.nsFont(FoleviFont.Family(document.font), size: s.font.pointSize * (document.font == .serif ? 1.08 : 1), italic: true)
+            s.color = NSColor(FoleviColor.ink.mix(with: FoleviColor.inkMuted, by: 0.15))
             s.placeholder = String(localized: "Quote")
         case .callout:
             s.placeholder = String(localized: "Callout")
         case .code:
             s.font = FoleviType.mono(size: 13.5, scale: scale)
-            s.lineSpacing = 2
+            s.color = NSColor(FoleviColor.codeInk)
+            s.lineSpacing = spacing(for: s.font, lineHeight: 1.6)
+            s.kern = 0
             s.placeholder = String(localized: "Code")
         default:
             break
@@ -56,9 +86,10 @@ enum BlockStyles {
 
     static func verticalPadding(for block: Block) -> (top: CGFloat, bottom: CGFloat) {
         switch block.content {
-        case .heading(let h): return h.level == .level1 ? (22, 6) : h.level == .level2 ? (16, 4) : (12, 2)
-        case .divider: return (8, 8)
-        case .image, .table, .code, .callout, .page, .bookmark, .collection, .file: return (6, 6)
+        case .heading(let h): return h.level == .level1 ? (26, 6) : h.level == .level2 ? (20, 4) : (14, 2)
+        case .divider: return (4, 4)
+        case .image, .table, .code, .callout, .page, .bookmark, .collection, .file: return (7, 7)
+        case .quote: return (5, 5)
         default: return (3, 3)
         }
     }
@@ -79,15 +110,6 @@ enum BlockStyles {
     }
 }
 
-/// Payload for dragging blocks within the editor.
-struct BlockDragPayload: Codable, Transferable {
-    var documentId: String
-    var blockIds: [String]
-    static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: .foleviBlocks)
-    }
-}
-
 extension UTType {
     static let foleviBlocks = UTType(exportedAs: "com.folevi.mac.blocks")
     static let foleviDocument = UTType(exportedAs: "com.folevi.mac.document-ref")
@@ -98,57 +120,60 @@ struct BlockRowView: View {
     @Bindable var model: EditorModel
     var openDocument: (String, Bool) -> Void
     @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false
+    @State private var glowOpacity: Double = 0
+    /// The pointer is on the grip (its AppKit tracker reports hover; keeps the gutter visible).
+    @State private var gripHovering = false
 
     private var block: Block { row.block }
     private var scale: CGFloat { CGFloat(app.editorScale) }
     private var textStyle: BlockTextStyle { BlockStyles.style(for: block, document: model.style, scale: scale) }
     private var isSelected: Bool { model.selectedBlockIds.contains(block.id) }
     private var isMatch: Bool { model.findMatches.contains(block.id) }
+    private var isDragged: Bool { model.drag.draggedIds.contains(block.id) }
+    private var indent: CGFloat { CGFloat(row.depth) * BlockMetrics.indent(scale) }
+    private var docAccent: Color { Color.folevi(accent: model.style.accent) }
 
     var body: some View {
         let pad = BlockStyles.verticalPadding(for: block)
         HStack(alignment: .top, spacing: 0) {
-            handle
-                .frame(width: 22)
-            Color.clear.frame(width: CGFloat(row.depth) * 26 * scale)
-            gutter
+            Color.clear.frame(width: indent, height: 1)
+            hoverGutter
+                .frame(width: BlockMetrics.gutter, alignment: .trailing)
+            marker
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.top, pad.top)
         .padding(.bottom, pad.bottom)
-        .padding(.trailing, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isSelected ? FoleviColor.selection.opacity(0.55) : (isMatch && !model.findQuery.isEmpty ? FoleviColor.highlightYellow.opacity(0.5) : Color.clear))
-                .padding(.leading, 18)
-        )
-        .overlay(alignment: model.dropTarget?.above == true ? .top : .bottom) {
-            if model.dropTarget?.id == block.id {
-                Rectangle().fill(FoleviColor.accent).frame(height: 2).padding(.leading, 22 + CGFloat(row.depth) * 26 * scale)
-                    .accessibilityHidden(true)
-            }
-        }
+        .padding(.trailing, 2)
+        .background(alignment: .leading) { rowBackground }
         .overlay(alignment: .bottomLeading) {
             if let popup = model.popup, popup.blockId == block.id {
                 popupView(popup)
                     .alignmentGuide(.bottom) { d in d[.top] - 4 }
-                    .padding(.leading, 22 + CGFloat(row.depth) * 26 * scale)
+                    .padding(.leading, BlockMetrics.gutter + indent)
             }
         }
+        .opacity(isDragged ? 0.35 : 1)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .simultaneousGesture(TapGesture().modifiers(.shift).onEnded { model.select(block.id, extend: true) })
-        .dropDestination(for: BlockDragPayload.self) { items, location in
-            guard let payload = items.first, payload.documentId == model.documentId else { return false }
-            model.drop(payload.blockIds, onto: block.id, above: location.y < 12)
-            return true
-        } isTargeted: { targeted in
-            if targeted {
-                model.dropTarget = (block.id, false)
-            } else if model.dropTarget?.id == block.id {
-                model.dropTarget = nil
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("blocks")) } action: { frame in
+            model.drag.rowFrames[block.id] = frame
+        }
+        .onChange(of: model.drag.glow?.token) { _, _ in
+            guard let glow = model.drag.glow, glow.id == block.id else { return }
+            if reduceMotion {
+                glowOpacity = 1
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(700))
+                    glowOpacity = 0
+                }
+            } else {
+                glowOpacity = 1
+                withAnimation(.easeOut(duration: 0.7)) { glowOpacity = 0 }
             }
         }
         .contextMenu { contextMenu }
@@ -156,79 +181,158 @@ struct BlockRowView: View {
         .modifier(HeadingAccessibility(block: block))
     }
 
-    // MARK: Handle (drag + menu)
-
-    private var handle: some View {
-        Image(systemName: "line.3.horizontal")
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(FoleviColor.inkFaint)
-            .frame(width: 18, height: BlockStyles.lineHeight(textStyle))
-            .contentShape(Rectangle())
-            .opacity(hovering && !model.isReadOnly ? 1 : 0)
-            .onTapGesture { model.select(block.id, extend: NSEvent.modifierFlags.contains(.shift)) }
-            .draggable(BlockDragPayload(documentId: model.documentId, blockIds: model.selectedBlockIds.contains(block.id) ? model.orderedByRows(Array(model.selectedBlockIds)) : [block.id])) {
-                Text(RichText.plainText(block.text).isEmpty ? BlockStyles.accessibilityName(block) : String(RichText.plainText(block.text).prefix(60)))
-                    .padding(6)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(FoleviColor.surfaceRaised))
+    @ViewBuilder private var rowBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        ZStack {
+            if isSelected {
+                shape.fill(FoleviColor.selection.opacity(0.7))
+            } else if isMatch && !model.findQuery.isEmpty {
+                shape.fill(FoleviColor.highlightYellow.opacity(0.6))
             }
-            .help(Text("Drag to move. Click to select."))
+            shape.fill(FoleviColor.emberSoft).opacity(glowOpacity)
+        }
+        .padding(.leading, BlockMetrics.gutter + indent - 6)
+        .padding(.trailing, -4)
+    }
+
+    // MARK: Hover gutter (+ and grip in a small raised pill)
+
+    private var hoverGutter: some View {
+        let lh = BlockStyles.lineHeight(textStyle)
+        let visible = (hovering || gripHovering) && !model.isReadOnly && !model.drag.isActive
+        return HStack(spacing: 0) {
+            Button {
+                addBelow()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 20, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(GutterButtonStyle())
+            .help(Text("Add a block below"))
+            .accessibilityLabel(Text("Add block below"))
+            grip(visible: visible)
+        }
+        .padding(1)
+        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(8), shadow: FoleviShadow.control)
+        .padding(.trailing, 6)
+        .frame(height: max(24, lh), alignment: .center)
+        // Nearly invisible rather than 0, so the grip still takes the press that starts a drag.
+        .opacity(visible ? 1 : 0.001)
+        .animation(reduceMotion ? nil : .easeOut(duration: FoleviMotion.fast), value: visible)
+        .allowsHitTesting(!model.isReadOnly)
+    }
+
+    private func grip(visible: Bool) -> some View {
+        GripDots(highlighted: gripHovering)
+            .frame(width: 18, height: 22)
+            .overlay {
+                PointerDragSource(cursor: visible || gripHovering ? .openHand : .arrow, help: String(localized: "Drag to move · Click for options"),
+                                  onHover: { gripHovering = $0 }, onClick: { openOptions() }) { start, current in
+                    if !model.drag.isActive { model.drag.beginBlockDrag(blockId: block.id, start: start, current: current) }
+                }
+            }
+            .help(Text("Drag to move · Click for options"))
+            .accessibilityElement()
             .accessibilityLabel(Text("Block handle"))
+            .accessibilityHint(Text("Opens block options"))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { openOptions() }
             .accessibilityAction(named: Text("Move Up")) { model.move([block.id], up: true) }
             .accessibilityAction(named: Text("Move Down")) { model.move([block.id], up: false) }
             .accessibilityAction(named: Text("Delete Block")) { model.delete([block.id]) }
     }
 
-    // MARK: Gutter (bullets, numbers, checkboxes, disclosure)
+    private func addBelow() {
+        let b = Block(id: ULID.make(), parentId: block.parentId, rank: "V", content: .paragraph(ParagraphProps()))
+        model.insert(b, after: block.id, replacing: false)
+    }
 
-    @ViewBuilder private var gutter: some View {
+    /// Click on the grip: select the block and show its options as a native menu.
+    private func openOptions() {
+        if !isSelected { model.select(block.id, extend: NSEvent.modifierFlags.contains(.shift)) }
+        let targets = model.selectedBlockIds.contains(block.id) ? model.orderedByRows(Array(model.selectedBlockIds)) : [block.id]
+        let editable = !model.isReadOnly
+        let menu = NSMenu()
+        let turnInto = NSMenuItem(title: String(localized: "Turn Into"), action: nil, keyEquivalent: "")
+        let sub = NSMenu()
+        for option in TurnIntoOption.all {
+            sub.addItem(ClosureMenuItem(option.plainTitle, key: String(option.shortcut.character), modifiers: [.command, .option], enabled: editable) {
+                model.turnInto(option.id, ids: targets)
+            })
+        }
+        turnInto.submenu = sub
+        turnInto.isEnabled = editable
+        menu.addItem(turnInto)
+        menu.addItem(ClosureMenuItem(String(localized: "Duplicate"), key: "d", modifiers: [.command], enabled: editable) { model.duplicate(targets) })
+        menu.addItem(.separator())
+        menu.addItem(ClosureMenuItem(String(localized: "Move Up"), key: "\u{F700}", modifiers: [.option, .shift], enabled: editable) { model.move(targets, up: true) })
+        menu.addItem(ClosureMenuItem(String(localized: "Move Down"), key: "\u{F701}", modifiers: [.option, .shift], enabled: editable) { model.move(targets, up: false) })
+        menu.addItem(ClosureMenuItem(String(localized: "Indent"), key: "]", modifiers: [.command], enabled: editable) { model.indent(targets) })
+        menu.addItem(ClosureMenuItem(String(localized: "Outdent"), key: "[", modifiers: [.command], enabled: editable) { model.outdent(targets) })
+        menu.addItem(.separator())
+        menu.addItem(ClosureMenuItem(String(localized: "Copy as Markdown")) {
+            let wires = targets.compactMap { model.blocks[$0]?.wire }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(MarkdownCodec.blocksToMarkdown(wires), forType: .string)
+        })
+        menu.addItem(.separator())
+        menu.addItem(ClosureMenuItem(String(localized: "Delete"), key: "\u{8}", modifiers: [.command, .shift], enabled: editable) { model.delete(targets) })
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
+    // MARK: Markers (bullets, numbers, checkboxes, disclosure, quote bar)
+
+    @ViewBuilder private var marker: some View {
         let lh = BlockStyles.lineHeight(textStyle)
         switch block.content {
         case .bulleted:
-            Text(row.depth % 3 == 0 ? "•" : row.depth % 3 == 1 ? "◦" : "▪︎")
-                .font(.system(size: 16 * scale))
-                .foregroundStyle(FoleviColor.inkMuted)
-                .frame(width: 24 * scale, height: lh)
-                .accessibilityHidden(true)
+            let d = 6 * scale
+            Group {
+                switch row.depth % 3 {
+                case 0: Circle().fill(docAccent)
+                case 1: Circle().strokeBorder(docAccent, lineWidth: 1.3)
+                default: RoundedRectangle(cornerRadius: 1).fill(docAccent)
+                }
+            }
+            .frame(width: d, height: d)
+            .frame(width: 24 * scale, height: lh, alignment: .center)
+            .accessibilityHidden(true)
         case .numbered:
             Text("\(row.number ?? 1).")
-                .font(.system(size: 15 * scale).monospacedDigit())
+                .font(.document(model.style.font, BlockStyles.bodySize(model.style.font) * 0.94 * scale).monospacedDigit())
                 .foregroundStyle(FoleviColor.inkMuted)
-                .frame(minWidth: 24 * scale, alignment: .trailing)
+                .frame(minWidth: 22 * scale, alignment: .trailing)
                 .frame(height: lh)
-                .padding(.trailing, 4)
+                .padding(.trailing, 5)
                 .accessibilityHidden(true)
         case .todo(let p):
-            Button {
-                model.toggleTodo(block.id)
-            } label: {
-                Image(systemName: p.checked ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 15 * scale))
-                    .foregroundStyle(p.checked ? FoleviColor.accent : FoleviColor.inkMuted)
-            }
-            .buttonStyle(.plain)
-            .frame(width: 26 * scale, height: lh)
-            .disabled(model.isReadOnly)
-            .accessibilityLabel(Text(p.checked ? "Mark as not done" : "Mark as done"))
-            .accessibilityValue(Text(p.checked ? "Done" : "Not done"))
-            .accessibilityIdentifier("todo.checkbox.\(block.id)")
+            TodoCheck(checked: p.checked, scale: scale) { model.toggleTodo(block.id) }
+                .frame(width: 30 * scale, height: lh, alignment: .leading)
+                .disabled(model.isReadOnly)
+                .accessibilityLabel(Text(p.checked ? "Mark as not done" : "Mark as done"))
+                .accessibilityValue(Text(p.checked ? "Done" : "Not done"))
+                .accessibilityIdentifier("todo.checkbox.\(block.id)")
         case .toggle(let p):
             Button {
                 model.toggleCollapsed(block.id)
             } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11 * scale, weight: .semibold))
+                Image(systemName: "arrowtriangle.right.fill")
+                    .font(.system(size: 8.5 * scale))
                     .rotationEffect(.degrees(p.collapsed ? 0 : 90))
                     .foregroundStyle(FoleviColor.inkMuted)
+                    .frame(width: 22 * scale, height: 22 * scale)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .frame(width: 24 * scale, height: lh)
+            .buttonStyle(GutterButtonStyle())
+            .frame(width: 26 * scale, height: lh, alignment: .leading)
             .accessibilityLabel(Text(p.collapsed ? "Expand" : "Collapse"))
         case .quote:
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(FoleviColor.lineStrong)
+            Capsule()
+                .fill(docAccent)
                 .frame(width: 3)
                 .padding(.trailing, 14)
-                .padding(.leading, 2)
                 .accessibilityHidden(true)
         default:
             EmptyView()
@@ -246,15 +350,16 @@ struct BlockRowView: View {
                 textEditor
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .layoutPriority(1)
-                TodoMetaView(blockId: block.id, props: p, model: model)
+                TodoMetaView(blockId: block.id, props: p, model: model, rowHovering: hovering)
                     .fixedSize()
             }
         case .callout(let p):
             let tone = Color.folevi(tone: p.tone)
             HStack(alignment: .top, spacing: 10) {
-                Menu {
-                    ForEach(CalloutTone.allCases, id: \.self) { t in
-                        Button(t.rawValue.capitalized) {
+                Button {
+                    let menu = NSMenu()
+                    for t in CalloutTone.allCases {
+                        let item = ClosureMenuItem(t.rawValue.capitalized, enabled: !model.isReadOnly) {
                             model.update(block.id, actionName: String(localized: "Callout Style")) { b in
                                 if case .callout(var cp) = b.content {
                                     cp.tone = t
@@ -262,28 +367,37 @@ struct BlockRowView: View {
                                 }
                             }
                         }
+                        item.state = t == p.tone ? .on : .off
+                        menu.addItem(item)
                     }
+                    menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
                 } label: {
-                    if let icon = p.icon, !icon.isEmpty { Text(icon).font(.system(size: 17 * scale)) } else { Image(systemName: tone.icon).foregroundStyle(tone.ink) }
+                    Group {
+                        if let icon = p.icon, !icon.isEmpty {
+                            Text(icon).font(.system(size: 17 * scale))
+                        } else {
+                            Image(systemName: tone.icon).font(.system(size: 15 * scale, weight: .semibold)).foregroundStyle(tone.ink)
+                        }
+                    }
+                    .frame(height: BlockStyles.lineHeight(textStyle))
+                    .contentShape(Rectangle())
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
+                .buttonStyle(.plain)
                 .disabled(model.isReadOnly)
                 .accessibilityLabel(Text("Callout style"))
                 textEditor
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).fill(tone.bg))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .foleviSurface(.color(tone.bg), shape: .rounded(14), shadow: FoleviDepth.calloutRim)
         case .code(let p):
             CodeBlockView(block: block, props: p, model: model, focusRequest: focusRequest)
         case .divider:
             Rectangle()
                 .fill(FoleviColor.line)
                 .frame(height: 1)
-                .padding(.vertical, 10)
+                .padding(.vertical, 12)
                 .contentShape(Rectangle().inset(by: -8))
                 .onTapGesture { model.select(block.id, extend: false) }
                 .accessibilityLabel(Text("Divider"))
@@ -355,6 +469,74 @@ struct BlockRowView: View {
     }
 }
 
+/// The 6-dot grip.
+struct GripDots: View {
+    var highlighted = false
+    var body: some View {
+        let hovering = highlighted
+        Canvas { ctx, size in
+            let d: CGFloat = 2.6, gx: CGFloat = 4.2, gy: CGFloat = 4.4
+            let ox = (size.width - (d + gx)) / 2, oy = (size.height - (d + 2 * gy)) / 2
+            for c in 0..<2 {
+                for r in 0..<3 {
+                    ctx.fill(Path(ellipseIn: CGRect(x: ox + CGFloat(c) * gx, y: oy + CGFloat(r) * gy, width: d, height: d)),
+                             with: .color(hovering ? FoleviColor.heading : FoleviColor.inkMuted))
+                }
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hovering ? FoleviColor.accentSoft : .clear))
+        .accessibilityHidden(true)
+    }
+}
+
+/// 18pt rounded-square check that fills with moss and a check mark.
+struct TodoCheck: View {
+    var checked: Bool
+    var scale: CGFloat
+    var action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 5 * scale, style: .continuous)
+                    .fill(checked ? FoleviColor.moss : FoleviColor.surfaceRaised)
+                RoundedRectangle(cornerRadius: 5 * scale, style: .continuous)
+                    .strokeBorder(checked ? FoleviColor.moss : hovering ? FoleviColor.moss : FoleviColor.lineStrong, lineWidth: 1.5)
+                if checked {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10 * scale, weight: .heavy))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 18 * scale, height: 18 * scale)
+            .frame(width: 24 * scale, height: 24 * scale)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: FoleviMotion.fast), value: checked)
+    }
+}
+
+/// Quiet square hover for gutter controls.
+struct GutterButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        GutterButtonBody(configuration: configuration)
+    }
+
+    private struct GutterButtonBody: View {
+        let configuration: ButtonStyle.Configuration
+        @State private var hovering = false
+        var body: some View {
+            configuration.label
+                .foregroundStyle(hovering ? FoleviColor.heading : FoleviColor.inkMuted)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hovering || configuration.isPressed ? FoleviColor.accentSoft : .clear))
+                .onHover { hovering = $0 }
+        }
+    }
+}
+
 struct HeadingAccessibility: ViewModifier {
     let block: Block
     func body(content: Content) -> some View {
@@ -372,6 +554,22 @@ struct TurnIntoOption: Identifiable {
     var id: String
     var title: LocalizedStringKey
     var shortcut: KeyEquivalent
+
+    var plainTitle: String {
+        switch id {
+        case "paragraph": return String(localized: "Text")
+        case "heading1": return String(localized: "Heading 1")
+        case "heading2": return String(localized: "Heading 2")
+        case "heading3": return String(localized: "Heading 3")
+        case "todo": return String(localized: "To-do")
+        case "bulleted": return String(localized: "Bulleted List")
+        case "numbered": return String(localized: "Numbered List")
+        case "toggle": return String(localized: "Toggle")
+        case "code": return String(localized: "Code")
+        case "quote": return String(localized: "Quote")
+        default: return String(localized: "Callout")
+        }
+    }
 
     static var all: [TurnIntoOption] { [
         TurnIntoOption(id: "paragraph", title: "Text", shortcut: "0"),
@@ -400,22 +598,24 @@ struct SlashMenuView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 1) {
                     if items.isEmpty {
-                        Text("No matching blocks").font(.callout).foregroundStyle(FoleviColor.inkMuted).padding(10)
+                        Text("No matching blocks").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted).padding(10)
                     }
                     ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
                         Button { onChoose(idx) } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: item.systemImage)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(InsertTile.tint(for: item.id))
                                     .frame(width: 26, height: 26)
-                                    .background(RoundedRectangle(cornerRadius: 6).fill(FoleviColor.surfaceSunken))
+                                    .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(7), shadow: FoleviShadow.control)
                                     .accessibilityHidden(true)
-                                Text(item.title).font(.system(size: 13))
+                                Text(item.title).font(.ui(13.5)).foregroundStyle(idx == selected ? FoleviColor.heading : FoleviColor.ink)
                                 Spacer()
-                                if let s = item.shortcut { Text(s).font(.system(size: 11).monospaced()).foregroundStyle(FoleviColor.inkFaint) }
+                                if let s = item.shortcut { Text(s).font(.mono(11)).foregroundStyle(FoleviColor.inkFaint) }
                             }
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(idx == selected ? FoleviColor.accentSoft : Color.clear))
+                            .frame(height: 34)
+                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(idx == selected ? FoleviColor.accentSoft : Color.clear))
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -427,10 +627,9 @@ struct SlashMenuView: View {
             }
             .onChange(of: selected) { _, s in proxy.scrollTo(s) }
         }
-        .frame(width: 280, height: min(320, CGFloat(max(items.count, 1)) * 36 + 12))
-        .background(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).fill(FoleviColor.surfaceRaised))
-        .overlay(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).strokeBorder(FoleviColor.line))
-        .shadow(color: .black.opacity(0.14), radius: 16, y: 6)
+        .frame(width: 280, height: min(336, CGFloat(max(items.count, 1)) * 35 + 12))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .foleviPop()
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Insert block menu"))
         .accessibilityIdentifier("slashMenu")
@@ -444,9 +643,9 @@ struct PageLinkPickerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text("Link to page").font(.caption.weight(.semibold)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 8).padding(.top, 4)
+            Text("Link to page").foleviCapsLabel().padding(.horizontal, 8).padding(.top, 4).padding(.bottom, 2)
             if choices.isEmpty {
-                Text("Type a page title").font(.callout).foregroundStyle(FoleviColor.inkMuted).padding(8)
+                Text("Type a page title").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted).padding(8)
             }
             ForEach(Array(choices.enumerated()), id: \.element.id) { idx, choice in
                 Button { onChoose(idx) } label: {
@@ -460,10 +659,11 @@ struct PageLinkPickerView: View {
                         }
                         Spacer()
                     }
-                    .font(.system(size: 13))
+                    .font(.ui(13.5))
+                    .foregroundStyle(idx == selected ? FoleviColor.heading : FoleviColor.ink)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(idx == selected ? FoleviColor.accentSoft : Color.clear))
+                    .frame(height: 32)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(idx == selected ? FoleviColor.accentSoft : Color.clear))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -471,9 +671,7 @@ struct PageLinkPickerView: View {
         }
         .padding(6)
         .frame(width: 300)
-        .background(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).fill(FoleviColor.surfaceRaised))
-        .overlay(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).strokeBorder(FoleviColor.line))
-        .shadow(color: .black.opacity(0.14), radius: 16, y: 6)
+        .foleviPop()
         .accessibilityIdentifier("pageLinkPicker")
     }
 }

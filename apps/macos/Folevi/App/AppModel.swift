@@ -486,28 +486,35 @@ final class AppModel {
 
     /// Creates a document locally (works offline) with a first empty paragraph. Returns its id.
     @discardableResult
-    func createDocument(id explicitId: String? = nil, title: String = "", folderId: String? = nil, parentDocumentId: String? = nil,
+    func createDocument(id explicitId: String? = nil, title: String = "", icon: String? = nil, folderId: String? = nil, parentDocumentId: String? = nil,
                         kind: DocumentKind = .document, dailyDate: String? = nil, blocks: [WireBlock]? = nil) async -> String? {
         guard let session, let profile else { return nil }
         let id = explicitId ?? ULID.make()
         let now = Date().timeIntervalSince1970 * 1000
-        let create = WireDocumentCreate(id: id, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind, title: title, dailyDate: dailyDate)
+        let create = WireDocumentCreate(id: id, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind, title: title, icon: icon, dailyDate: dailyDate)
         let summary = DocumentSummary(id: id, workspaceId: session.workspaceId, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind,
-                                      title: title, dailyDate: dailyDate, createdAt: now, updatedAt: now, createdBy: profile.id)
+                                      title: title, icon: icon, dailyDate: dailyDate, createdAt: now, updatedAt: now, createdBy: profile.id)
         let initial = blocks ?? [WireBlock(id: ULID.make(), type: "paragraph", parentId: nil, rank: "V")]
         await session.engine.createDocument(create, summary: summary, blocks: initial)
         return id
     }
 
-    /// Opens (creating if needed) the Daily Note for a date. The id is deterministic, so every device
-    /// converges on the same document even when created offline.
-    func dailyNoteId(for date: String) async -> String? {
+    /// The person's Inbox page (Quick Add target). Its id is deterministic, so every device — even
+    /// offline — converges on the same page: created locally when missing, restored from the Trash
+    /// when it was deleted (the server does the same).
+    func inboxDocumentId() async -> String? {
         guard let profile, let workspace else { return nil }
-        let id = DailyNote.documentId(profileId: profile.id, workspaceId: workspace.id, date: date)
-        if document(id) != nil { return id }
-        if let existing = documents.first(where: { $0.kind == .daily && $0.dailyDate == date && $0.deletedAt == nil }) { return existing.id }
-        // No initial blocks: the note may already exist on the server with content.
-        return await createDocument(id: id, title: DailyNote.title(for: date), kind: .daily, dailyDate: date, blocks: [])
+        let id = InboxPage.documentId(profileId: profile.id, workspaceId: workspace.id)
+        var existing = document(id)
+        if existing == nil { existing = await session?.engine.document(id) }
+        if let existing {
+            if existing.deletedAt != nil, sync.isOnline, let session {
+                try? await session.documents.restoreFromTrash(id)
+            }
+            return id
+        }
+        // No initial blocks: the page may already exist on the server with content.
+        return await createDocument(id: id, title: InboxPage.title, icon: InboxPage.icon, blocks: [])
     }
 
     func updateDocument(_ id: String, patch: WireDocumentPatch) async {

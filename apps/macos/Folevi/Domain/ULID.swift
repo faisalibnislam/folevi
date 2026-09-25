@@ -66,3 +66,14 @@ public enum DailyNote {
         return f.string(from: d)
     }
 }
+
+/// The person's Inbox page (Quick Add target): `inbox-<fnv1a64("profileId:workspaceId")>`, identical to
+/// packages/editor-schema `inboxDocumentId`, so offline devices converge on one page.
+public enum InboxPage {
+    public static let title = "Inbox"
+    public static let icon = "📥"
+
+    public static func documentId(profileId: String, workspaceId: String) -> String {
+        "inbox-\(DailyNote.fnv1a64("\(profileId):\(workspaceId)"))"
+    }
+}

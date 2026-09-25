@@ -5,7 +5,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex/api";
 import { ReadOnlyBlocks } from "@/components/doc/ReadOnlyBlocks";
 import { FoleviMark } from "@/components/brand/FoleviMark";
-import { coverBackground } from "@/components/views/DocumentCard";
+import { coverBackground } from "@/lib/cover";
 import "@/components/editor/editor.css";
 
 export const dynamic = "force-dynamic";

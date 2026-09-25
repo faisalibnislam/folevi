@@ -35,7 +35,7 @@ import { ViewChrome, useShell } from "@/components/app/Shell";
 import { SyncStatus } from "@/components/app/SyncStatus";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
 import type { DecorationInputs } from "@/components/editor/plugins";
-import { coverBackground } from "@/components/views/DocumentCard";
+import { coverBackground } from "@/lib/cover";
 import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { ShareDialog } from "./ShareDialog";
@@ -69,10 +69,15 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const leave = useMutation(api.presence.leave);
   const sessionId = useMemo(() => Math.random().toString(36).slice(2), []);
 
-  const pendingCreate = useMemo(
+  const pendingCreateOp = useMemo(
     () => engineState.pending.concat(engineState.inflight).find((op) => op.kind === "document.create" && op.document.id === documentId),
     [engineState, documentId],
   );
+  // Remember a page created on this device until the server has it, so the view never flashes "unavailable".
+  const localCreate = useRef<typeof pendingCreateOp>(undefined);
+  if (pendingCreateOp) localCreate.current = pendingCreateOp;
+  if (meta) localCreate.current = undefined;
+  const pendingCreate = pendingCreateOp ?? localCreate.current;
 
   // Offline reload: seed the engine from the last-known copy of this document.
   useEffect(() => {
@@ -178,7 +183,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <div className="mx-auto max-w-lg px-6 py-24 text-center">
             <h1 className="font-display text-4xl">This page isn’t available</h1>
             <p className="mt-3 text-muted">It may have been deleted, or you don’t have access. If someone shared it with you, ask them to check the sharing settings.</p>
-            <AppLink href="/documents" className="mt-6 inline-block text-accent underline-offset-2 hover:underline">
+            <AppLink href="/documents" className="mt-6 inline-block text-accent underline underline-offset-2">
               Back to All Documents
             </AppLink>
           </div>
@@ -188,7 +193,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }
 
   // Mount the editor only once the engine holds this document's blocks (server, local cache, or a new page).
-  const ready = Boolean(engine) && (reconciled || (cacheLoaded && server === undefined) || (Boolean(pendingCreate) && server !== undefined) || (Boolean(pendingCreate) && !online));
+  // A page created on this device (not from a template) is known to be empty, so it can open immediately.
+  const freshLocalPage = Boolean(pendingCreate) && pendingCreate?.kind === "document.create" && !pendingCreate.document.templateId;
+  const ready = Boolean(engine) && (reconciled || (cacheLoaded && server === undefined) || freshLocalPage || (Boolean(pendingCreate) && !online));
 
   return (
     <ViewChrome
@@ -368,17 +375,22 @@ function DocumentHeader({
   onEnter: () => void;
 }) {
   const { engine } = useAppState();
-  const { search } = useAppRouter();
+  const { search, pathname } = useAppRouter();
   const [value, setValue] = useState(title);
   const [iconOpen, setIconOpen] = useState(false);
-  const focused = useRef(false);
+  // True only while the person has unsaved keystrokes in the title; otherwise the server value wins.
+  const typing = useRef(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    if (!focused.current) setValue(title);
+    if (!typing.current) setValue(title);
   }, [title]);
   useEffect(() => {
-    if (search.get("new") === "1") titleRef.current?.focus();
-  }, [search]);
+    if (search.get("new") === "1") {
+      titleRef.current?.focus();
+      // Drop the one-shot flag so a reload doesn't re-trigger it.
+      window.history.replaceState(null, "", pathname);
+    }
+  }, [search, pathname]);
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
@@ -388,7 +400,11 @@ function DocumentHeader({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const save = (next: string) => {
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => engine?.updateDocument(documentId, { title: next }, revision), 300);
+    typing.current = true;
+    timer.current = setTimeout(() => {
+      engine?.updateDocument(documentId, { title: next }, revision);
+      typing.current = false;
+    }, 300);
   };
   const bg = coverBackground(cover as never, style);
   return (
@@ -429,8 +445,6 @@ function DocumentHeader({
           value={value}
           readOnly={readOnly}
           placeholder="Untitled"
-          onFocus={() => (focused.current = true)}
-          onBlur={() => (focused.current = false)}
           onChange={(e) => {
             const next = e.target.value.replace(/\n/g, "");
             setValue(next);

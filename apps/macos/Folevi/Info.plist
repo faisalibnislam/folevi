@@ -41,6 +41,35 @@
 	<false/>
 	<key>NSSupportsSuddenTermination</key>
 	<false/>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.mac.blocks</string>
+			<key>UTTypeDescription</key>
+			<string>Folevi Blocks</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>public.data</string></array>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.mac.document-ref</string>
+			<key>UTTypeDescription</key>
+			<string>Folevi Document</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>public.data</string></array>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.mac.task-ref</string>
+			<key>UTTypeDescription</key>
+			<string>Folevi Task</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>public.data</string></array>
+		</dict>
+	</array>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Folevi can remind you when a task is due.</string>
 	<key>FoleviConvexURL</key>
 	<string>$(CONVEX_URL)</string>
 	<key>FoleviAuth0Domain</key>

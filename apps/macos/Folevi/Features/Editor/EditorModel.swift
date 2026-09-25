@@ -31,7 +31,7 @@ struct SlashItem: Identifiable, Equatable {
 
     static func == (a: SlashItem, b: SlashItem) -> Bool { a.id == b.id }
 
-    static let all: [SlashItem] = [
+    static var all: [SlashItem] { [
         SlashItem(id: "paragraph", title: "Text", searchText: "text paragraph plain", systemImage: "text.alignleft", shortcut: "⌥⌘0"),
         SlashItem(id: "heading1", title: "Heading 1", searchText: "heading 1 h1 title", systemImage: "textformat.size.larger", shortcut: "#"),
         SlashItem(id: "heading2", title: "Heading 2", searchText: "heading 2 h2 subtitle", systemImage: "textformat.size", shortcut: "##"),
@@ -51,7 +51,7 @@ struct SlashItem: Identifiable, Equatable {
         SlashItem(id: "pagelink", title: "Link to Page", searchText: "link page mention [[", systemImage: "link", shortcut: "[["),
         SlashItem(id: "bookmark", title: "Bookmark", searchText: "bookmark url web link embed", systemImage: "bookmark", shortcut: nil),
         SlashItem(id: "date", title: "Today's Date", searchText: "date today", systemImage: "calendar", shortcut: nil),
-    ]
+    ] }
 }
 
 struct PopupState: Equatable {
@@ -100,6 +100,9 @@ final class EditorModel {
     var linkDraft = ""
     var containerFocusToken = UUID()
     var draggingIds: [String] = []
+    /// True once the editor holds the document's real content. No edit (and no diff) is ever sent
+    /// before this — an unhydrated editor must never be mistaken for an empty document.
+    private(set) var isHydrated = false
     var dropTarget: (id: String, above: Bool)?
 
     @ObservationIgnored var undoManager: UndoManager?
@@ -172,6 +175,7 @@ final class EditorModel {
             }
         }
         setBlocks(wires)
+        isHydrated = true
         loadState = .ready
         if rows.isEmpty == false, focus == nil, document?.title.isEmpty == true {
             focus = FocusRequest(blockId: "__title__", caret: .end)
@@ -279,6 +283,17 @@ final class EditorModel {
         return textView(id)
     }
 
+    /// Keep the caret's block visible (coalesced; the view scrolls with ScrollViewReader).
+    var revealBlockId: String?
+    @ObservationIgnored private var lastReveal: (id: String, at: Date)?
+
+    func requestReveal(_ blockId: String) {
+        guard blockId != "__title__" else { return }
+        if let last = lastReveal, last.id == blockId, Date().timeIntervalSince(last.at) < 0.25 { return }
+        lastReveal = (blockId, Date())
+        revealBlockId = blockId
+    }
+
     func consumeFocus(_ id: UUID) {
         if focus?.id == id { focus = nil }
     }
@@ -343,8 +358,13 @@ final class EditorModel {
 
     /// Applies a structural change locally, queues it for sync and registers the inverse with Undo.
     func commit(upserts: [Block] = [], deletes: [String] = [], restores: [Block] = [], focus: FocusRequest? = nil,
-                actionName: String? = nil, undoable: Bool = true) {
-        guard !isReadOnly else { return }
+                actionName: String? = nil, undoable: Bool = true, explicitDelete: Bool = false) {
+        guard !isReadOnly, isHydrated, loadState == .ready else { return }
+        // Safety net: never let a non-explicit edit delete most of a document.
+        if !explicitDelete, deletes.count >= 5, Double(deletes.count) > Double(blocks.count) * 0.5 {
+            Log.editor.fault("refused a structural edit deleting \(deletes.count, privacy: .public) of \(self.blocks.count, privacy: .public) blocks")
+            return
+        }
         let before = upserts.map { ($0.id, blocks[$0.id]) }
         let deleted = deletes.compactMap { blocks[$0] }
         var wires: [(WireBlock, [ChangedField])] = []
@@ -367,7 +387,8 @@ final class EditorModel {
             undoManager.registerUndo(withTarget: self) { model in
                 MainActor.assumeIsolated {
                     model.commit(upserts: inverseUpserts, deletes: inverseDeletes, restores: inverseRestores,
-                                 focus: refocus.flatMap { model.blocks[$0.blockId] != nil ? $0 : nil }, actionName: actionName)
+                                 focus: refocus.flatMap { model.blocks[$0.blockId] != nil ? $0 : nil }, actionName: actionName,
+                                 explicitDelete: true)
                 }
             }
             if let actionName { undoManager.setActionName(actionName) }
@@ -379,7 +400,7 @@ final class EditorModel {
 
     func textChanged(blockId: String, text: [InlineNode]) {
         if blockId == "__title__" { return }
-        guard var block = blocks[blockId], block.text != text, !isReadOnly else { return }
+        guard isHydrated, var block = blocks[blockId], block.text != text, !isReadOnly else { return }
         block.text = text
         blocks[blockId] = block
         if let i = rows.firstIndex(where: { $0.id == blockId }) { rows[i].block = block }
@@ -388,7 +409,7 @@ final class EditorModel {
     }
 
     func codeChanged(blockId: String, code: String) {
-        guard var block = blocks[blockId], case .code(var p) = block.content, p.code != code, !isReadOnly else { return }
+        guard isHydrated, var block = blocks[blockId], case .code(var p) = block.content, p.code != code, !isReadOnly else { return }
         p.code = code
         block.content = .code(p)
         blocks[blockId] = block
@@ -401,6 +422,7 @@ final class EditorModel {
     }
 
     func setTitle(_ title: String) {
+        guard isHydrated, title != titleDraft || title != document?.title else { return }
         titleDraft = title
         guard !isReadOnly else { return }
         titleTask?.cancel()
@@ -845,7 +867,7 @@ final class EditorModel {
         var seen = Set<String>()
         all = all.filter { seen.insert($0).inserted }
         let firstIdx = rows.firstIndex { all.contains($0.id) } ?? 0
-        commit(deletes: all, actionName: String(localized: "Delete"))
+        commit(deletes: all, actionName: String(localized: "Delete"), explicitDelete: true)
         selectedBlockIds = []
         let remaining = rows
         if let target = remaining.indices.contains(firstIdx - 1) ? remaining[firstIdx - 1] : remaining.first {

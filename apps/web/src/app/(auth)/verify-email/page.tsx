@@ -55,7 +55,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
       </form>
       <p className="mt-6 text-sm text-muted">
         Verified already?{" "}
-        <a href="/signin" className="text-accent underline-offset-2 hover:underline">
+        <a href="/signin" className="text-accent underline underline-offset-2">
           Sign in
         </a>
       </p>

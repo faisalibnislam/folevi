@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 enum BlockStyles {
     static func paragraph(style: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
         BlockTextStyle(font: FoleviType.editorFont(size: 16, design: style.font, scale: scale), color: .foleviInk, lineSpacing: 3,
-                       placeholder: String(localized: "Type '/' for commands"))
+                       placeholder: String(localized: "Start writing, or type '/' for commands"))
     }
 
     static func title(style: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
@@ -244,7 +244,10 @@ struct BlockRowView: View {
         case .todo(let p):
             HStack(alignment: .top, spacing: 6) {
                 textEditor
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
                 TodoMetaView(blockId: block.id, props: p, model: model)
+                    .fixedSize()
             }
         case .callout(let p):
             let tone = Color.folevi(tone: p.tone)
@@ -269,6 +272,7 @@ struct BlockRowView: View {
                 .disabled(model.isReadOnly)
                 .accessibilityLabel(Text("Callout style"))
                 textEditor
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -301,13 +305,19 @@ struct BlockRowView: View {
         }
     }
 
+    /// An empty document's only block shows its placeholder even when unfocused.
+    private var isLoneEmptyBlock: Bool {
+        model.rows.count == 1 && block.text.isEmpty && !model.isReadOnly
+    }
+
     private var focusRequest: FocusRequest? {
         model.focus?.blockId == block.id ? model.focus : nil
     }
 
     private var textEditor: some View {
         BlockTextEditor(blockId: block.id, text: block.text, style: textStyle, isEditable: !model.isReadOnly,
-                        accessibilityLabel: BlockStyles.accessibilityName(block), model: model, focusRequest: focusRequest)
+                        accessibilityLabel: BlockStyles.accessibilityName(block), model: model, focusRequest: focusRequest,
+                        alwaysShowPlaceholder: isLoneEmptyBlock)
     }
 
     // MARK: Popups
@@ -363,7 +373,7 @@ struct TurnIntoOption: Identifiable {
     var title: LocalizedStringKey
     var shortcut: KeyEquivalent
 
-    static let all: [TurnIntoOption] = [
+    static var all: [TurnIntoOption] { [
         TurnIntoOption(id: "paragraph", title: "Text", shortcut: "0"),
         TurnIntoOption(id: "heading1", title: "Heading 1", shortcut: "1"),
         TurnIntoOption(id: "heading2", title: "Heading 2", shortcut: "2"),
@@ -375,7 +385,7 @@ struct TurnIntoOption: Identifiable {
         TurnIntoOption(id: "code", title: "Code", shortcut: "8"),
         TurnIntoOption(id: "quote", title: "Quote", shortcut: "9"),
         TurnIntoOption(id: "callout", title: "Callout", shortcut: "-"),
-    ]
+    ] }
 }
 
 // MARK: - Popup views

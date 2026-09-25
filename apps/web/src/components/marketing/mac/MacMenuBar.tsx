@@ -65,8 +65,8 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
                   onClick={() => setOpen(isOpen ? null : menu.name)}
                   onKeyDown={(event) => onKey(event, index)}
                   className={cx(
-                    "h-7 shrink-0 rounded-[6px] px-2 text-ink transition-colors duration-100 sm:px-2.5",
-                    isOpen ? "bg-accent text-accent-ink" : "hover:bg-ink/5",
+                    "h-7 shrink-0 rounded-[6px] px-2 transition-colors duration-100 sm:px-2.5",
+                    isOpen ? "bg-accent text-accent-ink" : "text-ink hover:bg-ink/5",
                   )}
                 >
                   {menu.name}
@@ -79,7 +79,7 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
                   <ul className="text-[13px]" aria-label={`${menu.name} menu`}>
                     {menu.items.map((item, i) =>
                       item === "separator" ? (
-                        <li key={`sep-${i}`} role="separator" className="mx-2 my-1 h-px bg-line" />
+                        <li key={`sep-${i}`} aria-hidden="true" className="mx-2 my-1 h-px bg-line" />
                       ) : (
                         <li key={item.label} className="flex h-7 items-center justify-between gap-4 rounded-[6px] px-2.5 text-ink">
                           <span>{item.label}</span>

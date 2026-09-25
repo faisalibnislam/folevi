@@ -2,6 +2,7 @@
 import type { Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
+import { closeHistory } from "@tiptap/pm/history";
 import { LIMITS, ulid } from "@folevi/editor-schema";
 import { TEXT_NODES } from "./convert";
 
@@ -74,7 +75,7 @@ export function turnInto(editor: Editor, type: string, attrs: Record<string, unk
     }
   }
   if (!tr.docChanged) return false;
-  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.dispatch(closeHistory(tr).scrollIntoView());
   return true;
 }
 
@@ -104,7 +105,7 @@ export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
     }
   }
   if (!changed) return false;
-  editor.view.dispatch(tr);
+  editor.view.dispatch(closeHistory(tr));
   return true;
 }
 
@@ -139,7 +140,7 @@ export function moveBlock(editor: Editor, dir: -1 | 1): boolean {
     tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(tr.doc.content.size, insertAt + offsetInBlock))));
   }
   normalizeDepths(tr);
-  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.dispatch(closeHistory(tr).scrollIntoView());
   return true;
 }
 

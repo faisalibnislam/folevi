@@ -49,7 +49,7 @@ enum FoleviColor {
         name: "folevi.inkMuted"
     ))
     static let inkFaint = Color(nsColor: .folevi(
-        light: (0.4941, 0.5216, 0.4980, 1),
+        light: (0.3882, 0.4196, 0.3922, 1),
         dark: (0.5412, 0.5686, 0.5451, 1),
         name: "folevi.inkFaint"
     ))
@@ -154,7 +154,7 @@ enum FoleviColor {
         name: "folevi.coralSoft"
     ))
     static let destructive = Color(nsColor: .folevi(
-        light: (0.7255, 0.2627, 0.2627, 1),
+        light: (0.6392, 0.2275, 0.2275, 1),
         dark: (0.8784, 0.4784, 0.4471, 1),
         name: "folevi.destructive"
     ))
@@ -164,7 +164,7 @@ enum FoleviColor {
         name: "folevi.destructiveSoft"
     ))
     static let success = Color(nsColor: .folevi(
-        light: (0.2039, 0.4784, 0.3216, 1),
+        light: (0.1725, 0.4196, 0.2745, 1),
         dark: (0.4353, 0.7529, 0.5608, 1),
         name: "folevi.success"
     ))
@@ -174,7 +174,7 @@ enum FoleviColor {
         name: "folevi.successSoft"
     ))
     static let warning = Color(nsColor: .folevi(
-        light: (0.5804, 0.3765, 0.0588, 1),
+        light: (0.5333, 0.3451, 0.0353, 1),
         dark: (0.8784, 0.6549, 0.3333, 1),
         name: "folevi.warning"
     ))

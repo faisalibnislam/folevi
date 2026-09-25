@@ -88,15 +88,40 @@ final class BlockTextView: NSTextView {
 
     func height(forWidth width: CGFloat) -> CGFloat {
         guard let container = textContainer, let layout = layoutManager else { return 22 }
-        if container.containerSize.width != width {
-            container.containerSize = NSSize(width: max(20, width), height: .greatestFiniteMagnitude)
+        let measureWidth = max(20, width)
+        let original = container.containerSize
+        if container.containerSize.width != measureWidth {
+            container.containerSize = NSSize(width: measureWidth, height: .greatestFiniteMagnitude)
         }
         layout.ensureLayout(for: container)
         var h = layout.usedRect(for: container).height
         let font = (typingAttributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 15)
         let lineHeight = layout.defaultLineHeight(for: font)
         if string.isEmpty || h < lineHeight { h = max(h, lineHeight) }
+        // Measuring must not change how the view currently wraps.
+        if bounds.width > 0, abs(bounds.width - measureWidth) > 0.5 {
+            container.containerSize = NSSize(width: bounds.width, height: original.height)
+        }
         return ceil(h + textContainerInset.height * 2)
+    }
+
+    /// Called instead of AppKit's ancestor scrolling (SwiftUI's ScrollView is not an NSClipView, so the
+    /// default implementation would scroll the whole window).
+    var onRevealRequest: (() -> Void)?
+
+    override func scrollRectToVisible(_ rect: NSRect) -> Bool {
+        onRevealRequest?()
+        return true
+    }
+
+    override func scrollRangeToVisible(_ range: NSRange) {
+        onRevealRequest?()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        let widthChanged = abs(newSize.width - frame.width) > 0.5
+        super.setFrameSize(newSize)
+        if widthChanged { invalidateIntrinsicContentSize() }
     }
 
     override var intrinsicContentSize: NSSize {
@@ -288,6 +313,7 @@ struct BlockTextEditor: NSViewRepresentable {
     var focusRequest: FocusRequest?
     var isCode = false
     var isPlain = false
+    var alwaysShowPlaceholder = false
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -330,7 +356,6 @@ struct BlockTextEditor: NSViewRepresentable {
                     view.setSelectedRange(NSRange(location: l, length: max(0, min(len, length - l))))
                 case .selectAll: view.setSelectedRange(NSRange(location: 0, length: length))
                 }
-                view.scrollRangeToVisible(view.selectedRange())
                 model.consumeFocus(request.id)
             }
         }
@@ -349,6 +374,10 @@ struct BlockTextEditor: NSViewRepresentable {
             view.isAutomaticTextReplacementEnabled = false
         }
         view.placeholder = style.placeholder
+        if view.showsPlaceholderWhenUnfocused != alwaysShowPlaceholder {
+            view.showsPlaceholderWhenUnfocused = alwaysShowPlaceholder
+            view.needsDisplay = true
+        }
         view.accessibilityBlockLabel = accessibilityLabel
         view.setAccessibilityIdentifier("block.\(blockId)")
         let coordinator = context.coordinator
@@ -360,6 +389,8 @@ struct BlockTextEditor: NSViewRepresentable {
         view.canForwardRedo = { [weak model] in model?.undoManager?.canRedo ?? false }
         view.menuInterceptsArrows = { [weak model] in model?.popupActive(for: view.blockId) ?? false }
         view.onMenuKey = { [weak model] key in model?.popupKey(key) ?? false }
+        let id = blockId
+        view.onRevealRequest = { [weak model] in model?.requestReveal(id) }
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: BlockTextView, context: Context) -> CGSize? {

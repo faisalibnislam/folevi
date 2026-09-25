@@ -43,7 +43,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       )}
       <p className="mt-6 text-sm text-muted">
         New to Folevi?{" "}
-        <a href="/signup" className="text-accent underline-offset-2 hover:underline">
+        <a href="/signup" className="text-accent underline underline-offset-2">
           Create an account
         </a>
       </p>

@@ -8,7 +8,7 @@ import { AppLink } from "@/lib/app/router";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { coverBackground } from "@/components/views/DocumentCard";
+import { coverBackground } from "@/lib/cover";
 
 type CollectionData = NonNullable<ReturnType<typeof useCollection>>;
 type Property = CollectionData["properties"][number];
@@ -249,7 +249,7 @@ function CellDisplay({ prop, value }: { prop: Property; value: unknown }) {
   }
   if (prop.type === "url" && typeof value === "string") {
     return (
-      <a href={value} target="_blank" rel="noopener noreferrer nofollow" className="text-accent underline-offset-2 hover:underline">
+      <a href={value} target="_blank" rel="noopener noreferrer nofollow" className="text-accent underline underline-offset-2">
         {value.replace(/^https?:\/\//, "")}
       </a>
     );

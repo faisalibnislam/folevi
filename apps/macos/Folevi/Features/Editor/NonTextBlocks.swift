@@ -599,11 +599,12 @@ struct UnknownBlockView: View {
 
 // MARK: - Quick Look
 
-@MainActor
-final class QuickLookCoordinator: NSObject, QLPreviewPanelDataSource {
+/// Quick Look for attachments. The panel calls its data source on the main thread.
+final class QuickLookCoordinator: NSObject, QLPreviewPanelDataSource, @unchecked Sendable {
     static let shared = QuickLookCoordinator()
     private var url: URL?
 
+    @MainActor
     func show(url: URL) {
         self.url = url
         guard let panel = QLPreviewPanel.shared() else { return }
@@ -612,23 +613,24 @@ final class QuickLookCoordinator: NSObject, QLPreviewPanelDataSource {
         panel.makeKeyAndOrderFront(nil)
     }
 
+    @MainActor
     func preview(block: Block, app: AppModel) {
         switch block.content {
         case .image, .file:
-            Task {
-                if let url = await AttachmentLoader.shared.localURL(block: block, app: app) { show(url: url) }
+            Task { @MainActor in
+                if let url = await AttachmentLoader.shared.localURL(block: block, app: app) { self.show(url: url) }
             }
         default:
             break
         }
     }
 
-    nonisolated func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int {
-        MainActor.assumeIsolated { url == nil ? 0 : 1 }
+    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int {
+        url == nil ? 0 : 1
     }
 
-    nonisolated func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> QLPreviewItem! {
-        MainActor.assumeIsolated { url.map { $0 as NSURL } }
+    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> (any QLPreviewItem)! {
+        url.map { $0 as NSURL }
     }
 }
 

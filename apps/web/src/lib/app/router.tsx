@@ -94,7 +94,11 @@ export function AppRouterProvider({ children }: { children: ReactNode }) {
     if (opts?.replace) window.history.replaceState(null, "", href);
     else window.history.pushState(null, "", href);
     // Move focus to the main region for screen-reader users after navigation.
-    requestAnimationFrame(() => document.getElementById("main")?.focus({ preventScroll: true }));
+    // Only when focus was lost (e.g. the focused element was removed) — never steal it from the new view.
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) document.getElementById("main")?.focus({ preventScroll: true });
+    });
   }, []);
   const back = useCallback(() => window.history.back(), []);
   const search = useMemo(() => new URLSearchParams(searchParams?.toString() ?? ""), [searchParams]);

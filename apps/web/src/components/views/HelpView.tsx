@@ -45,7 +45,7 @@ export function HelpView() {
           <h2 className="font-display text-[34px] leading-tight">Help</h2>
           <p className="text-muted">
             The full guide lives at{" "}
-            <a className="text-accent underline-offset-2 hover:underline" href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"}/docs`}>
+            <a className="text-accent underline underline-offset-2" href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"}/docs`}>
               folevi.com/docs
             </a>
             . Questions or problems? Write to support@folevi.com. Security reports: security@folevi.com.

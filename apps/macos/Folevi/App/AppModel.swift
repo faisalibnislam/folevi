@@ -82,6 +82,8 @@ final class AppModel {
     var showHelp = false
     var showImporter = false
     var showDevSignIn = false
+    /// A document to open once the main window appears (onboarding, notifications, launch arguments).
+    var pendingOpenDocumentId: String?
     var signInError: String?
     /// Documents whose content changed (bumped on every block event; views observe it).
     var blockRevision: [String: Int] = [:]
@@ -142,6 +144,9 @@ final class AppModel {
 
     func start() async {
         guard phase == .launching else { return }
+        #if DEBUG
+        if let a = LaunchOptions.value(after: "-FoleviAppearance"), let pref = AppearancePreference(rawValue: a) { appearance = pref }
+        #endif
         applyAppearance()
         if LaunchOptions.uiTestReset { resetForUITests() }
         guard config.isBackendConfigured, convex != nil else {
@@ -478,10 +483,10 @@ final class AppModel {
 
     /// Creates a document locally (works offline) with a first empty paragraph. Returns its id.
     @discardableResult
-    func createDocument(title: String = "", folderId: String? = nil, parentDocumentId: String? = nil, kind: DocumentKind = .document,
-                        dailyDate: String? = nil, blocks: [WireBlock]? = nil) async -> String? {
+    func createDocument(id explicitId: String? = nil, title: String = "", folderId: String? = nil, parentDocumentId: String? = nil,
+                        kind: DocumentKind = .document, dailyDate: String? = nil, blocks: [WireBlock]? = nil) async -> String? {
         guard let session, let profile else { return nil }
-        let id = ULID.make()
+        let id = explicitId ?? ULID.make()
         let now = Date().timeIntervalSince1970 * 1000
         let create = WireDocumentCreate(id: id, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind, title: title, dailyDate: dailyDate)
         let summary = DocumentSummary(id: id, workspaceId: session.workspaceId, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind,
@@ -489,6 +494,17 @@ final class AppModel {
         let initial = blocks ?? [WireBlock(id: ULID.make(), type: "paragraph", parentId: nil, rank: "V")]
         await session.engine.createDocument(create, summary: summary, blocks: initial)
         return id
+    }
+
+    /// Opens (creating if needed) the Daily Note for a date. The id is deterministic, so every device
+    /// converges on the same document even when created offline.
+    func dailyNoteId(for date: String) async -> String? {
+        guard let profile, let workspace else { return nil }
+        let id = DailyNote.documentId(profileId: profile.id, workspaceId: workspace.id, date: date)
+        if document(id) != nil { return id }
+        if let existing = documents.first(where: { $0.kind == .daily && $0.dailyDate == date && $0.deletedAt == nil }) { return existing.id }
+        // No initial blocks: the note may already exist on the server with content.
+        return await createDocument(id: id, title: DailyNote.title(for: date), kind: .daily, dailyDate: date, blocks: [])
     }
 
     func updateDocument(_ id: String, patch: WireDocumentPatch) async {

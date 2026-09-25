@@ -99,6 +99,11 @@ struct EditorView: View {
                     withAnimation(reduceMotion ? nil : .easeOut(duration: FoleviMotion.fast)) { proxy.scrollTo(id) }
                 }
             }
+            .onChange(of: model.revealBlockId) { _, id in
+                guard let id else { return }
+                model.revealBlockId = nil
+                proxy.scrollTo(id)
+            }
             .onChange(of: model.selectedBlockIds) { _, ids in
                 if let first = model.orderedByRows(Array(ids)).first { proxy.scrollTo(first) }
             }
@@ -287,12 +292,15 @@ struct DocumentHeaderView: View {
                             accessibilityLabel: String(localized: "Title"),
                             model: model,
                             focusRequest: model.focus?.blockId == "__title__" ? model.focus : nil,
-                            isPlain: true)
+                            isPlain: true,
+                            alwaysShowPlaceholder: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("documentTitle")
                 .padding(.bottom, 18)
         }
+        // Align with block text, which sits after the 22pt drag-handle gutter.
+        .padding(.leading, 22)
     }
 }
 

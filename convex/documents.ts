@@ -267,7 +267,8 @@ export const backlinks = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return { linked: [], unlinked: [] };
     const links = await ctx.db
       .query("documentLinks")
       .withIndex("by_target", (q) => q.eq("targetPublicId", doc.publicId))
@@ -360,7 +361,8 @@ export const recordView = mutation({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
     const existing = await ctx.db
       .query("recents")
       .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))

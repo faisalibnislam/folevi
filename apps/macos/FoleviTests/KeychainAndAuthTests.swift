@@ -73,3 +73,20 @@ final class AuthCallbackTests: XCTestCase {
         XCTAssertLessThan(ULID.make(now: Date(timeIntervalSince1970: 1)), ULID.make(now: Date(timeIntervalSince1970: 2)))
     }
 }
+
+final class DailyNoteTests: XCTestCase {
+    func testDailyDocumentIdMatchesTypeScript() {
+        // Reference values computed with packages/editor-schema/src/ids.ts (node --experimental-strip-types).
+        XCTAssertEqual(DailyNote.documentId(profileId: "jd7abc", workspaceId: "01JAWORKSPACE0000000000000", date: "2026-09-25"),
+                       "daily-2026-09-25-853a6c8f815eecb3")
+        XCTAssertEqual(DailyNote.documentId(profileId: "nd757rgzz01edng98mnz5jnj3h8f2hsk", workspaceId: "01M3BF5QHB3E99KWK3RRN8NW6Y", date: "2026-01-02"),
+                       "daily-2026-01-02-a19252a939b28e37")
+        XCTAssertEqual(DailyNote.documentId(profileId: "ü✓", workspaceId: "w", date: "2026-12-31"), "daily-2026-12-31-4421f1d765e718a3")
+    }
+
+    func testDailyIdIsValidAndTitled() {
+        let id = DailyNote.documentId(profileId: "p", workspaceId: "w", date: "2026-09-25")
+        XCTAssertTrue(ULID.isValidId(id))
+        XCTAssertEqual(DailyNote.title(for: "2026-09-25"), "Friday, September 25, 2026")
+    }
+}

@@ -2,17 +2,9 @@
 
 import type { DocumentCover, DocumentStyle } from "@folevi/editor-schema";
 
-const accentVar = (a: DocumentStyle["accent"]) => (a === "accent" ? "var(--color-accent)" : `var(--color-${a})`);
-const softVar = (a: DocumentStyle["accent"]) => (a === "accent" ? "var(--color-accent-soft)" : `var(--color-${a}-soft)`);
+import { accentVar, coverBackground, softVar } from "@/lib/cover";
 
-export function coverBackground(cover: DocumentCover, style: DocumentStyle): string | undefined {
-  if (cover.kind === "color") return softVar((cover.value as DocumentStyle["accent"]) ?? style.accent);
-  if (cover.kind === "gradient") {
-    const a = (cover.value as DocumentStyle["accent"]) ?? style.accent;
-    return `radial-gradient(120% 140% at 0% 0%, color-mix(in oklab, ${accentVar(a)} 38%, transparent) 0%, transparent 60%), linear-gradient(135deg, ${softVar(a)} 0%, var(--color-surface) 100%)`;
-  }
-  return undefined;
-}
+export { coverBackground };
 
 /**
  * Visual preview of a document for the browser grid. Each document's own accent, font and card

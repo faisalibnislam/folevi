@@ -1,6 +1,14 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { requireDocument, requireProfile } from "./lib/auth";
+import { accessAtLeast, documentAccess, getDocumentByPublicId, requireProfile } from "./lib/auth";
+import type { MutationCtx } from "./_generated/server";
+
+/** Presence is best-effort: pages that are not (yet) on the server or not readable are ignored quietly. */
+async function readableDoc(ctx: MutationCtx, profile: Awaited<ReturnType<typeof requireProfile>>, publicId: string) {
+  const doc = await getDocumentByPublicId(ctx, publicId);
+  if (!doc) return null;
+  return accessAtLeast(await documentAccess(ctx, profile, doc), "read") ? doc : null;
+}
 import { keyedHash } from "./lib/crypto";
 
 const ACTIVE_MS = 45_000;
@@ -11,7 +19,8 @@ export const heartbeat = mutation({
   args: { documentId: v.string(), sessionId: v.string(), focusedBlockId: v.optional(v.union(v.string(), v.null())) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    const doc = await readableDoc(ctx, profile, args.documentId);
+    if (!doc) return null;
     const sessionKey = await keyedHash(`${profile._id}:${args.sessionId}`, "presence");
     const existing = await ctx.db
       .query("presence")
@@ -28,7 +37,8 @@ export const leave = mutation({
   args: { documentId: v.string(), sessionId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    const doc = await readableDoc(ctx, profile, args.documentId);
+    if (!doc) return null;
     const sessionKey = await keyedHash(`${profile._id}:${args.sessionId}`, "presence");
     const existing = await ctx.db
       .query("presence")
@@ -43,7 +53,8 @@ export const list = query({
   args: { documentId: v.string(), now: v.number() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return [];
     const rows = await ctx.db
       .query("presence")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id).gt("updatedAt", args.now - ACTIVE_MS))

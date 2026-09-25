@@ -17,7 +17,7 @@ export default async function SignUpPage() {
       {isDevAuthEnabled() ? <DevSignInForm returnTo="/onboarding" mode="signup" /> : <p className="mt-6 text-sm text-muted">Sign-up isn’t configured for this environment. See docs/DEPLOYMENT.md.</p>}
       <p className="mt-6 text-sm text-muted">
         Already have an account?{" "}
-        <a href="/signin" className="text-accent underline-offset-2 hover:underline">
+        <a href="/signin" className="text-accent underline underline-offset-2">
           Sign in
         </a>
       </p>

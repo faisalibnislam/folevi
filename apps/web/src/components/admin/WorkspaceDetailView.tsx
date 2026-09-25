@@ -1,0 +1,290 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import { useMutation } from "convex/react";
+import { Ban, Gauge, RotateCw, Undo2 } from "lucide-react";
+import { api } from "@/lib/convex/api";
+import { Button } from "@/components/ui/Button";
+import { formatBytes, formatDateTime } from "@/lib/format";
+import { ActionDialog } from "./ActionDialog";
+import { useAdmin } from "./AdminApp";
+import { rolesFor } from "./permissions";
+import { useAuditedLoad } from "./useAuditedLoad";
+import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, td, th } from "./ui";
+
+const GB = 1024 ** 3;
+
+export function WorkspaceDetailView({ id }: { id: string }) {
+  const admin = useAdmin();
+  const view = useMutation(api.admin.viewWorkspace);
+  const setSuspended = useMutation(api.admin.setWorkspaceSuspended);
+  const setQuota = useMutation(api.admin.setWorkspaceQuota);
+  const { data: w, error, loading, refresh } = useAuditedLoad(id, (requestId) => view({ workspaceId: id, requestId }));
+  const [action, setAction] = useState<"suspend" | "quota" | null>(null);
+
+  if (error && !w) {
+    return (
+      <>
+        <DocTitle>Workspace</DocTitle>
+        <PageHeader title="Workspace" breadcrumb={{ href: "/admin/workspaces", label: "Workspaces" }} />
+        <ErrorNotice error={error} onRetry={() => void refresh()} />
+      </>
+    );
+  }
+  if (!w) {
+    return (
+      <div aria-busy="true">
+        <DocTitle>Workspace</DocTitle>
+        <PageHeader title={<span className="text-muted">Loading workspace…</span>} breadcrumb={{ href: "/admin/workspaces", label: "Workspaces" }} />
+      </div>
+    );
+  }
+
+  const suspended = w.status === "suspended";
+  const canQuota = admin.can("workspaces.quota");
+  const canSeeUsers = admin.can("users.view");
+  const owners = w.members.filter((m) => m.role === "owner");
+
+  return (
+    <>
+      <DocTitle>{w.name}</DocTitle>
+      <PageHeader
+        breadcrumb={{ href: "/admin/workspaces", label: "Workspaces" }}
+        eyebrow={
+          <>
+            <StatusBadge status={w.status} />
+            <Badge>{w.kind === "personal" ? "Personal workspace" : "Team workspace"}</Badge>
+          </>
+        }
+        title={w.name}
+        description={
+          <>
+            <Mono>{w.id}</Mono> · created {formatDateTime(w.createdAt)}
+          </>
+        }
+        actions={
+          <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload workspace (writes an audit entry)">
+            <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
+          </Button>
+        }
+      />
+      {error ? (
+        <div className="mb-4">
+          <ErrorNotice error={error} onRetry={() => void refresh()} />
+        </div>
+      ) : null}
+      {suspended ? (
+        <div className="mb-4">
+          <Callout tone="danger" title="Suspended">
+            Everyone except the owners is limited to read-only access. Nothing has been deleted.
+          </Callout>
+        </div>
+      ) : null}
+
+      <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 rounded-[12px] border border-line bg-raised p-3">
+        <Button size="sm" variant={suspended ? "secondary" : "danger"} onClick={() => setAction("suspend")} disabled={w.status === "deleting"}>
+          {suspended ? <Undo2 size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
+          {suspended ? "Unsuspend…" : "Suspend…"}
+        </Button>
+        <Button size="sm" onClick={() => setAction("quota")} disabled={!canQuota}>
+          <Gauge size={14} aria-hidden /> Set quota…
+        </Button>
+        {!canQuota ? <span className="text-xs text-muted">Quotas: {rolesFor("workspaces.quota")}</span> : null}
+      </section>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[2fr_3fr]">
+        <Panel title="Usage & quotas">
+          <div className="grid gap-4">
+            <div>
+              <div className="mb-1.5 flex justify-between text-[13px]">
+                <span className="text-muted">Storage</span>
+                <span className="tabular-nums">
+                  {formatBytes(w.storageUsedBytes)} of {formatBytes(w.storageQuotaBytes)}
+                </span>
+              </div>
+              <Meter value={w.storageUsedBytes} max={w.storageQuotaBytes} label="Storage used of quota" />
+            </div>
+            <div>
+              <div className="mb-1.5 flex justify-between text-[13px]">
+                <span className="text-muted">Members</span>
+                <span className="tabular-nums">
+                  {w.members.length} of {w.memberLimit}
+                </span>
+              </div>
+              <Meter value={w.members.length} max={w.memberLimit} label="Members of member limit" />
+            </div>
+            <KeyValues
+              items={[
+                { label: "Documents", value: w.documentCount.toLocaleString() },
+                { label: "Owners", value: owners.length ? owners.map((o) => o.displayName || o.email).join(", ") : "—" },
+                { label: "Pending invites", value: w.invites.filter((i) => i.status === "pending").length },
+              ]}
+            />
+          </div>
+        </Panel>
+
+        <Panel title="Members" description={`${w.members.length} ${w.members.length === 1 ? "person" : "people"}`} flush>
+          <DataTable caption="Workspace members" minWidth={520}>
+            <thead>
+              <tr>
+                <th scope="col" className={th}>Name</th>
+                <th scope="col" className={th}>Email</th>
+                <th scope="col" className={th}>Role</th>
+                <th scope="col" className={th}>Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              {w.members.length === 0 ? (
+                <EmptyRow colSpan={4}>No members.</EmptyRow>
+              ) : (
+                w.members.map((m) => (
+                  <tr key={m.profileId}>
+                    <td className={td}>
+                      {canSeeUsers ? (
+                        <Link href={`/admin/users/${m.profileId}`} className="font-medium underline decoration-line-strong underline-offset-2 hover:decoration-ink">
+                          {m.displayName || "(no name)"}
+                        </Link>
+                      ) : (
+                        m.displayName
+                      )}
+                    </td>
+                    <td className={`${td} break-all`}>{m.email}</td>
+                    <td className={td}>{m.role === "owner" ? <Badge tone="plum">Owner</Badge> : humanize(m.role)}</td>
+                    <td className={td}>
+                      <Time ts={m.joinedAt} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </DataTable>
+        </Panel>
+
+        <Panel title="Invites" description="Recipient addresses are redacted." flush>
+          <DataTable caption="Workspace invites" minWidth={480}>
+            <thead>
+              <tr>
+                <th scope="col" className={th}>Recipient</th>
+                <th scope="col" className={th}>Role</th>
+                <th scope="col" className={th}>Status</th>
+                <th scope="col" className={th}>Sent</th>
+                <th scope="col" className={th}>Expires</th>
+              </tr>
+            </thead>
+            <tbody>
+              {w.invites.length === 0 ? (
+                <EmptyRow colSpan={5}>No invites.</EmptyRow>
+              ) : (
+                w.invites.map((i, idx) => (
+                  <tr key={`${i.email}-${i.createdAt}-${idx}`}>
+                    <td className={td}>
+                      <Mono>{i.email}</Mono>
+                    </td>
+                    <td className={td}>{humanize(i.role)}</td>
+                    <td className={td}>
+                      <StatusBadge status={i.status} />
+                    </td>
+                    <td className={td}>
+                      <Time ts={i.createdAt} />
+                    </td>
+                    <td className={td}>
+                      <Time ts={i.expiresAt} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </DataTable>
+        </Panel>
+
+        <Panel title="Admin history" description="Audit entries that target this workspace" flush>
+          <DataTable caption="Admin audit history for this workspace" minWidth={420}>
+            <thead>
+              <tr>
+                <th scope="col" className={th}>Action</th>
+                <th scope="col" className={th}>Reason</th>
+                <th scope="col" className={th}>When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {w.audit.length === 0 ? (
+                <EmptyRow colSpan={3}>No admin activity.</EmptyRow>
+              ) : (
+                w.audit.map((h, idx) => (
+                  <tr key={`${h.createdAt}-${idx}`}>
+                    <td className={td}>
+                      <Mono>{h.action}</Mono>
+                    </td>
+                    <td className={td}>{h.reason ?? <span className="text-muted">—</span>}</td>
+                    <td className={td}>
+                      <Time ts={h.createdAt} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </DataTable>
+        </Panel>
+      </div>
+
+      <ActionDialog
+        open={action === "suspend"}
+        onClose={() => setAction(null)}
+        title={suspended ? `Unsuspend “${w.name}”?` : `Suspend “${w.name}”?`}
+        description={suspended ? "Members regain normal access." : "Everyone except the owners becomes read-only. Nothing is deleted, and it can be undone."}
+        confirmLabel={suspended ? "Unsuspend workspace" : "Suspend workspace"}
+        tone={suspended ? "primary" : "danger"}
+        confirm={{ label: <>Type the workspace name <strong>{w.name}</strong> to confirm</>, expected: w.name }}
+        onSubmit={async ({ reason, confirmValue, meta }) => {
+          await setSuspended({ workspaceId: w.id, suspended: !suspended, confirmName: confirmValue, reason, ...meta });
+          void refresh();
+          return suspended ? "Workspace unsuspended" : "Workspace suspended";
+        }}
+      />
+      <ActionDialog
+        open={action === "quota"}
+        onClose={() => setAction(null)}
+        title="Set workspace quota"
+        description={`Currently ${formatBytes(w.storageQuotaBytes)} storage and ${w.memberLimit} members. Lowering a quota below current usage blocks new uploads or invites; nothing is removed.`}
+        confirmLabel="Save quota"
+        fields={[
+          {
+            name: "storageGb",
+            label: "Storage quota",
+            type: "number",
+            initial: String(Math.round((w.storageQuotaBytes / GB) * 100) / 100),
+            min: 0,
+            max: 10_000,
+            step: "any",
+            suffix: "GB",
+            hint: `In use: ${formatBytes(w.storageUsedBytes)}. 1 GB = 1024³ bytes.`,
+          },
+          {
+            name: "memberLimit",
+            label: "Member limit",
+            type: "number",
+            initial: String(w.memberLimit),
+            min: 1,
+            max: 10_000,
+            step: 1,
+            suffix: "members",
+            hint: `Current members: ${w.members.length}.`,
+            validate: (v) => (Number.isInteger(Number(v)) ? null : "Use a whole number."),
+          },
+        ]}
+        onSubmit={async ({ reason, fields, meta }) => {
+          await setQuota({
+            workspaceId: w.id,
+            storageQuotaBytes: Math.round(Number(fields.storageGb) * GB),
+            memberLimit: Number(fields.memberLimit),
+            reason,
+            ...meta,
+          });
+          void refresh();
+          return "Quota updated";
+        }}
+      />
+    </>
+  );
+}

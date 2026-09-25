@@ -56,7 +56,7 @@
   --color-surface-sunken: #EDE9DF;
   --color-ink: #18201C;
   --color-ink-muted: #5F6962;
-  --color-ink-faint: #7E857F;
+  --color-ink-faint: #636B64;
   --color-line: #D8D7CF;
   --color-line-strong: #B9B8AE;
   --color-accent: #3159D8;
@@ -77,11 +77,11 @@
   --color-coral: #D77B68;
   --color-coral-ink: #9A4433;
   --color-coral-soft: #F8E3DC;
-  --color-destructive: #B94343;
+  --color-destructive: #A33A3A;
   --color-destructive-soft: #F6E0DD;
-  --color-success: #347A52;
+  --color-success: #2C6B46;
   --color-success-soft: #DDEEE2;
-  --color-warning: #94600F;
+  --color-warning: #885809;
   --color-warning-soft: #F6E7CD;
   --color-code-bg: #EFECE3;
   --color-code-ink: #2A2F2B;

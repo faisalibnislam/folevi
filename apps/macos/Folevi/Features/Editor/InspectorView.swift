@@ -487,7 +487,7 @@ struct VersionHistorySheet: View {
 
     private func loadPreview(_ snap: SnapshotInfo?) async {
         guard let snap, let session = app.session else { return }
-        guard let content = try? await session.documents.snapshotContent(snap.id), let raw = content?.content,
+        guard let fetched = try? await session.documents.snapshotContent(snap.id), let raw = fetched.content,
               let json = try? JSONValue(jsonString: raw) else {
             preview = []
             return

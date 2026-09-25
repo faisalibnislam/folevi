@@ -305,19 +305,19 @@ export function EditorMenus({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         setActive((a) => Math.min(items.length - 1, a + 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         setActive((a) => Math.max(0, a - 1));
       } else if ((e.key === "Enter" || e.key === "Tab") && items[active]) {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         run(items[active]!);
       } else if (e.key === "Escape") {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         setDismissed(triggerKey);
       }
     };

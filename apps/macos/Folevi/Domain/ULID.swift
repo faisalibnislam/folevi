@@ -36,3 +36,33 @@ public enum ULID {
         }
     }
 }
+
+/// Deterministic Daily Note ids (packages/editor-schema/src/ids.ts `dailyDocumentId`), so every device
+/// — even offline — creates or opens the same document instead of racing to create duplicates.
+public enum DailyNote {
+    /// 64-bit FNV-1a over UTF-16 code units, 16 lowercase hex chars.
+    static func fnv1a64(_ input: String) -> String {
+        var h: UInt64 = 0xcbf2_9ce4_8422_2325
+        let prime: UInt64 = 0x0000_0100_0000_01b3
+        for unit in input.utf16 {
+            h ^= UInt64(unit)
+            h = h &* prime
+        }
+        let hex = String(h, radix: 16)
+        return String(repeating: "0", count: max(0, 16 - hex.count)) + hex
+    }
+
+    public static func documentId(profileId: String, workspaceId: String, date: String) -> String {
+        "daily-\(date)-\(fnv1a64("\(profileId):\(workspaceId)"))"
+    }
+
+    /// "Friday, September 25, 2026" (matches convex/tasks.ts `dailyTitle`).
+    public static func title(for date: String) -> String {
+        guard let d = TaskLogic.parseDate(date) else { return date }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.dateFormat = "EEEE, MMMM d, yyyy"
+        return f.string(from: d)
+    }
+}

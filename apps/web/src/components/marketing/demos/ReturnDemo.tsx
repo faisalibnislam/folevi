@@ -127,8 +127,8 @@ export function ReturnDemo() {
 
       <div className="mk-card overflow-hidden">
         <div className="flex h-12 items-center gap-2 border-b mk-hair px-4">
-          <Icon name="calendar" size={16} className="text-accent" />
-          <h4 className="text-[14px] font-semibold text-ink">Today</h4>
+          <Icon name="calendar" size={16} className="mk-ember-ink" />
+          <h4 className="text-[14px] font-semibold text-(--color-heading)">Today</h4>
           <span className="ml-auto text-[12px] text-muted">{left === 0 ? "All done" : `${left} left`}</span>
         </div>
         <TaskGroup label="Due today and overdue" tasks={TASKS.filter((t) => t.section === "today")} done={done} onToggle={toggle} />
@@ -153,19 +153,19 @@ function TaskGroup({
   muted?: boolean;
 }) {
   return (
-    <div className={cx("px-2 py-2", muted && "border-t mk-hair bg-surface")}>
+    <div className={cx("px-2 py-2", muted && "border-t mk-hair bg-(--color-sidebar)")}>
       <p className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-faint">{label}</p>
       <ul>
         {tasks.map((task) => {
           const isDone = done.has(task.id);
           return (
             <li key={task.id}>
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[8px] px-2 py-2 hover:bg-sunken/70">
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[10px] px-2 py-2 hover:bg-sunken/70">
                 <input
                   type="checkbox"
                   checked={isDone}
                   onChange={() => onToggle(task)}
-                  className="mt-[3px] size-[16px] shrink-0 accent-[var(--color-accent)]"
+                  className="mt-[3px] size-[16px] shrink-0 accent-[var(--color-moss-ink)]"
                 />
                 <span className="min-w-0 flex-1">
                   <span className={cx("block text-[14px]", isDone ? "text-faint line-through" : "text-ink")}>{task.text}</span>

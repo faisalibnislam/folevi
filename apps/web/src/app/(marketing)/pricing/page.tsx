@@ -42,16 +42,16 @@ export default function PricingPage() {
   return (
     <>
       <PageHeader eyebrow="Pricing" title="Free during the preview." lede="One honest plan. No tiers, no trials, no card." />
-      <div className={cx(container, "max-w-[1040px] py-14 sm:py-20")}>
+      <div className={cx(container, "max-w-[1080px] pb-20 pt-4 sm:pb-28")}>
         <PricingCard headingLevel="h2" />
         <section aria-labelledby="faq-title" className="mt-20">
-          <h2 id="faq-title" className="font-display text-[36px] leading-tight tracking-[-0.01em] sm:text-[44px]">
+          <h2 id="faq-title" className="mk-h2">
             Questions
           </h2>
-          <dl className="mk-prose mt-8 max-w-none divide-y divide-line border-y mk-hair">
-            {faqs.map((item) => (
-              <div key={item.q} className="grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10">
-                <dt className="text-[17px] font-semibold text-ink">{item.q}</dt>
+          <dl className="mk-prose mk-card mt-8 max-w-none rounded-[24px] px-6 sm:px-8">
+            {faqs.map((item, index) => (
+              <div key={item.q} className={cx("grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10", index > 0 && "border-t mk-hair")}>
+                <dt className="text-[17px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
                 <dd className="text-muted">{item.a}</dd>
               </div>
             ))}

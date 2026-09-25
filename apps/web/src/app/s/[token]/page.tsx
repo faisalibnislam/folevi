@@ -46,7 +46,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
     <div className="min-h-dvh bg-canvas">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
         <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
-          <FoleviMark size={20} accent="var(--color-accent)" />
+          <FoleviMark size={20} accent="var(--color-ember)" />
           <span className="ui-display text-xl">Folevi</span>
         </a>
         <span className="text-xs text-muted">Read-only shared page</span>

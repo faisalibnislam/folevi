@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="ui-canvas grid min-h-dvh place-items-center px-4 py-12">
       <div className="w-full max-w-md">
         <a href={marketing} className="mb-6 inline-flex items-center gap-2 text-ink" aria-label="Folevi home">
-          <FoleviMark size={26} accent="var(--color-accent)" />
+          <FoleviMark size={26} accent="var(--color-ember)" />
           <span className="ui-display text-2xl">Folevi</span>
         </a>
         <main id="main" className="relative">

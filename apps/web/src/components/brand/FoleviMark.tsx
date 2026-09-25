@@ -9,7 +9,7 @@ export function FoleviMark({
   className,
 }: {
   size?: number;
-  /** Optional color for the offset middle leaf (e.g. "var(--color-accent)"). */
+  /** Optional color for the offset middle leaf (e.g. "var(--color-ember)"). */
   accent?: string;
   title?: string;
   className?: string;
@@ -35,8 +35,8 @@ export function FoleviMark({
 export function FoleviWordmark({ className, markSize = 22 }: { className?: string; markSize?: number }) {
   return (
     <span className={`inline-flex items-center gap-2 ${className ?? ""}`}>
-      <FoleviMark size={markSize} accent="var(--color-accent)" />
-      <span className="font-display text-[1.35em] leading-none tracking-[-0.01em]">Folevi</span>
+      <FoleviMark size={markSize} accent="var(--color-ember)" className="text-heading" />
+      <span className="text-[1.3em] font-semibold leading-none tracking-[-0.03em] text-heading">Folevi</span>
     </span>
   );
 }

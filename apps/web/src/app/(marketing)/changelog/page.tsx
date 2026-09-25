@@ -1,5 +1,5 @@
 import { pageMetadata } from "@/components/marketing/seo";
-import { PageHeader, RegMark, container, cx } from "@/components/marketing/ui";
+import { PageHeader, container, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Changelog",
@@ -72,23 +72,23 @@ export default function ChangelogPage() {
   return (
     <>
       <PageHeader eyebrow="Changelog" title="What’s new in Folevi." lede="A running record of every release, newest first." />
-      <div className={cx(container, "py-14 sm:py-20")}>
+      <div className={cx(container, "pb-20 pt-4 sm:pb-28")}>
         {releases.map((release) => (
           <article key={release.version} aria-labelledby={`v${release.version}`} className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
-            <div className="lg:sticky lg:top-24 lg:self-start">
-              <p className="flex items-center gap-2 text-[13px] text-muted">
-                <RegMark />
-                <time dateTime={release.date}>{release.label}</time>
-              </p>
-              <p className="mt-3 inline-flex rounded-control bg-accent-soft px-2 py-1 text-[12.5px] font-medium text-accent-soft-ink">
+            <div className="flex flex-wrap items-center gap-3 lg:sticky lg:top-28 lg:block lg:self-start">
+              <p className="mk-chip mk-tone--ember">
+                <span aria-hidden="true" className="mk-dot" />
                 Version {release.version}
               </p>
+              <p className="text-[14px] text-muted lg:mt-3 lg:pl-1">
+                <time dateTime={release.date}>{release.label}</time>
+              </p>
             </div>
-            <div className="max-w-[720px]">
-              <h2 id={`v${release.version}`} className="font-display text-[40px] leading-tight tracking-[-0.01em] sm:text-[48px]">
+            <div className="mk-card max-w-[760px] rounded-[28px] p-6 sm:p-10">
+              <h2 id={`v${release.version}`} className="mk-h2 text-[34px] sm:text-[44px]">
                 {release.version} · {release.name}
               </h2>
-              <p className="mt-4 text-[17px] leading-relaxed text-muted">{release.intro}</p>
+              <p className="mk-lede mt-4">{release.intro}</p>
               <div className="mk-prose mt-8">
                 {release.groups.map((group) => (
                   <section key={group.title} aria-label={group.title}>

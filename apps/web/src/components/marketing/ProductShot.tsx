@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { MacWindows, WebWindow } from "./mac/MacMiniature";
+import { BrowserBar, MacWindows, WebWindow } from "./mac/MacMiniature";
 import { cx } from "./ui";
 
 /*
@@ -53,15 +53,27 @@ export function ProductShot({ name, alt, fallback, className }: { name: ShotName
 
   const label = alt ?? ALT[name];
   const sizes = "(min-width: 1200px) 1100px, 100vw";
-  const imgClass = "h-auto w-full rounded-[12px] border mk-hair-strong shadow-[var(--mk-shadow-window)]";
-  return (
-    <div className={className}>
+  const images = (imgClass: string) => (
+    <>
       {light ? (
         <Image src={light.src} width={light.width} height={light.height} alt={label} sizes={sizes} className={cx(imgClass, dark !== light && "dark:hidden")} />
       ) : null}
       {dark && dark !== light ? (
         <Image src={dark.src} width={dark.width} height={dark.height} alt={label} sizes={sizes} className={cx(imgClass, light ? "hidden dark:block" : "")} />
       ) : null}
-    </div>
+    </>
   );
+
+  // Web captures are the page only, so they get a quiet browser bar. Mac captures already include the window.
+  if (name === "web") {
+    return (
+      <div className={className}>
+        <div className="mk-window">
+          <BrowserBar />
+          {images("block h-auto w-full")}
+        </div>
+      </div>
+    );
+  }
+  return <div className={className}>{images("mk-shot h-auto w-full")}</div>;
 }

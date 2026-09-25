@@ -143,7 +143,7 @@ export default function SecurityPage() {
 
         <h2 id="subprocessors">Subprocessors</h2>
         <p>These companies process data on our behalf to run Folevi.</p>
-        <div className="overflow-x-auto">
+        <div className="mk-table-card overflow-x-auto" role="region" aria-label="Subprocessors table" tabIndex={0}>
           <table>
             <thead>
               <tr>

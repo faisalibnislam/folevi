@@ -12,6 +12,8 @@ import { MAC_MENUS } from "./shortcuts";
 export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
   const baseId = useId();
   const [open, setOpen] = useState<string | null>(initial);
+  // The initially open menu is only a desktop illustration; on phones it would cover the screenshot.
+  const [touched, setTouched] = useState(false);
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const root = useRef<HTMLDivElement>(null);
 
@@ -45,11 +47,11 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
 
   return (
     <div ref={root} className="relative z-20">
-      <div className="mk-glass flex h-9 items-center gap-0.5 rounded-[10px] px-1.5 text-[13px] sm:px-2">
+      <div className="mk-glass flex h-10 items-center gap-0.5 rounded-[14px] px-1.5 text-[13px] sm:px-2">
         <span className="flex h-7 shrink-0 items-center px-1.5 text-ink sm:px-2" aria-hidden="true">
-          <FoleviMark size={15} accent="var(--color-accent)" />
+          <FoleviMark size={15} accent="var(--color-ember)" />
         </span>
-        <span className="hidden shrink-0 px-2 font-semibold text-ink sm:inline">Folevi</span>
+        <span className="hidden shrink-0 px-2 font-semibold text-(--color-heading) sm:inline">Folevi</span>
         <ul className="flex items-center" aria-label="Mac app menus">
           {MAC_MENUS.map((menu, index) => {
             const isOpen = open === menu.name;
@@ -62,10 +64,16 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
                   type="button"
                   aria-expanded={isOpen}
                   aria-controls={`${baseId}-${menu.name}`}
-                  onClick={() => setOpen(isOpen ? null : menu.name)}
-                  onKeyDown={(event) => onKey(event, index)}
+                  onClick={() => {
+                    setTouched(true);
+                    setOpen(isOpen ? null : menu.name);
+                  }}
+                  onKeyDown={(event) => {
+                    setTouched(true);
+                    onKey(event, index);
+                  }}
                   className={cx(
-                    "h-7 shrink-0 rounded-[6px] px-2 transition-colors duration-100 sm:px-2.5",
+                    "h-7 shrink-0 rounded-[8px] px-2 transition-colors duration-100 sm:px-2.5",
                     isOpen ? "bg-accent text-accent-ink" : "text-ink hover:bg-ink/5",
                   )}
                 >
@@ -74,14 +82,14 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
                 <div
                   id={`${baseId}-${menu.name}`}
                   hidden={!isOpen}
-                  className="mk-glass mk-appear absolute inset-x-0 top-[42px] rounded-[10px] p-1.5 sm:left-0 sm:right-auto sm:top-[35px] sm:w-[244px]"
+                  className={cx(!touched && "max-sm:hidden", "mk-glass mk-appear absolute inset-x-0 top-[46px] rounded-[14px] p-1.5 sm:left-0 sm:right-auto sm:top-[38px] sm:w-[248px]")}
                 >
                   <ul className="text-[13px]" aria-label={`${menu.name} menu`}>
                     {menu.items.map((item, i) =>
                       item === "separator" ? (
                         <li key={`sep-${i}`} aria-hidden="true" className="mx-2 my-1 h-px bg-line" />
                       ) : (
-                        <li key={item.label} className="flex h-7 items-center justify-between gap-4 rounded-[6px] px-2.5 text-ink">
+                        <li key={item.label} className="flex h-8 items-center justify-between gap-4 rounded-[8px] px-2.5 text-ink">
                           <span>{item.label}</span>
                           {item.keys ? <span className="tracking-[0.08em] text-muted">{item.keys}</span> : null}
                         </li>
@@ -94,8 +102,8 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
           })}
         </ul>
         <span className="ml-auto hidden shrink-0 items-center gap-2 pr-1.5 text-muted md:flex" title="Quick Add in the menu bar">
-          <span className="flex size-6 items-center justify-center rounded-[5px] bg-ink/5">
-            <FoleviMark size={13} />
+          <span className="mk-mini-raised flex size-6 items-center justify-center rounded-[7px] text-(--color-heading)">
+            <FoleviMark size={13} accent="var(--color-ember)" />
           </span>
           <span className="text-[12px]">Quick Add</span>
         </span>

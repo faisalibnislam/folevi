@@ -51,7 +51,7 @@ export function DocumentCardPreview({
       ) : null}
       <div className={compact ? "p-3.5" : "px-4 pb-11 pt-0"}>
         {icon ? (
-          <div className={`${compact ? "mb-1.5" : "-mt-6 mb-2"} grid h-11 w-11 place-items-center rounded-[13px] bg-surface text-[24px] leading-none shadow-[var(--shadow-control)]`} aria-hidden>
+          <div className={`${compact ? "mb-1.5" : "relative z-10 -mt-6 mb-2"} grid h-11 w-11 place-items-center rounded-[13px] bg-surface text-[24px] leading-none shadow-[var(--shadow-control)]`} aria-hidden>
             {icon}
           </div>
         ) : !compact ? (

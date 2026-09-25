@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { FoleviWordmark } from "@/components/brand/FoleviMark";
 import { Icon } from "./icons";
-import { cx } from "./ui";
+import { Wordmark } from "./ui";
 
 type NavItem = { label: string; href: string };
 
@@ -57,21 +56,17 @@ export function SiteHeader({ nav, signInUrl, signUpUrl }: { nav: readonly NavIte
   const isCurrent = (href: string) => !href.includes("#") && (pathname === href || pathname.startsWith(`${href}/`));
 
   return (
-    <header className="mk-rail sticky top-0 z-50" data-scrolled={scrolled} data-open={open}>
-      <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center gap-6 px-5 sm:px-8">
-        <Link href="/" className="-ml-1 flex h-11 items-center rounded-control px-1 text-ink" aria-label="Folevi home">
-          <FoleviWordmark markSize={22} className="text-[17px]" />
+    <header className="mk-rail sticky top-0 z-50 px-2.5 pt-3 sm:px-5" data-scrolled={scrolled} data-open={open}>
+      <div className="mk-rail-inner mx-auto grid h-16 w-full max-w-[1200px] grid-cols-[1fr_auto] items-center gap-4 pl-3 pr-2.5 sm:pl-4 md:grid-cols-[1fr_auto_1fr]">
+        <Link href="/" className="flex h-11 w-fit items-center rounded-full px-2" aria-label="Folevi home">
+          <Wordmark markSize={24} className="text-[17px]" />
         </Link>
 
-        <nav aria-label="Primary" className="ml-2 hidden md:block">
-          <ul className="flex items-center gap-1">
+        <nav aria-label="Primary" className="hidden md:block">
+          <ul className="mk-navtrack flex items-center gap-0.5">
             {nav.map((item) => (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  aria-current={isCurrent(item.href) ? "page" : undefined}
-                  className="mk-navlink inline-flex h-9 items-center rounded-control px-2.5 text-[14px] font-medium text-muted transition-colors duration-150 hover:text-ink aria-[current=page]:text-ink"
-                >
+                <Link href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined} className="mk-navlink">
                   {item.label}
                 </Link>
               </li>
@@ -79,11 +74,11 @@ export function SiteHeader({ nav, signInUrl, signUpUrl }: { nav: readonly NavIte
           </ul>
         </nav>
 
-        <div className="ml-auto hidden items-center gap-2 md:flex">
-          <a href={signInUrl} className="inline-flex h-9 items-center rounded-control px-3 text-[14px] font-medium text-muted transition-colors duration-150 hover:text-ink">
+        <div className="hidden items-center justify-end gap-1.5 md:flex">
+          <a href={signInUrl} className="mk-btn mk-btn-ghost h-10 px-4 text-[14px]">
             Sign in
           </a>
-          <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 px-3.5 text-[14px]">
+          <a href={signUpUrl} className="mk-btn mk-btn-primary h-10 px-[18px] text-[14px]">
             Start writing
           </a>
         </div>
@@ -91,7 +86,7 @@ export function SiteHeader({ nav, signInUrl, signUpUrl }: { nav: readonly NavIte
         <button
           ref={buttonRef}
           type="button"
-          className="ml-auto inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control px-2.5 text-[14px] font-medium text-ink md:hidden"
+          className="mk-btn mk-btn-secondary h-11 min-w-11 justify-self-end px-4 text-[14px] md:hidden"
           aria-expanded={open}
           aria-controls={menuId}
           onClick={() => setOpen((value) => !value)}
@@ -101,36 +96,31 @@ export function SiteHeader({ nav, signInUrl, signUpUrl }: { nav: readonly NavIte
         </button>
       </div>
 
-      <div
-        ref={sheetRef}
-        id={menuId}
-        hidden={!open}
-        className={cx("mk-sheet absolute inset-x-0 top-full md:hidden")}
-      >
-        <nav aria-label="Primary" className="mx-auto w-full max-w-[1200px] px-5 pb-5 pt-2 sm:px-8">
-          <ul className="divide-y divide-line border-b mk-hair">
+      <div ref={sheetRef} id={menuId} hidden={!open} className="mk-sheet absolute inset-x-2.5 top-full mt-2 p-2 sm:inset-x-5 md:hidden">
+        <nav aria-label="Primary">
+          <ul className="space-y-0.5">
             {nav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   aria-current={isCurrent(item.href) ? "page" : undefined}
                   onClick={() => setOpen(false)}
-                  className="flex h-12 items-center justify-between text-[17px] text-ink"
+                  className="flex h-12 items-center justify-between rounded-[16px] px-4 text-[17px] font-medium text-(--color-heading) hover:bg-accent-soft aria-[current=page]:bg-accent-soft"
                 >
                   {item.label}
                   <Icon name="chevron-right" size={16} className="text-faint" />
                 </Link>
               </li>
             ))}
-            <li>
-              <a href={signInUrl} className="flex h-12 items-center text-[17px] text-ink">
-                Sign in
-              </a>
-            </li>
           </ul>
-          <a href={signUpUrl} className="mk-btn mk-btn-primary mt-4 h-11 w-full text-[15px]">
-            Start writing
-          </a>
+          <div className="mt-2 grid grid-cols-2 gap-2 border-t mk-hair px-1 pt-3">
+            <a href={signInUrl} className="mk-btn mk-btn-secondary h-12 text-[15px]">
+              Sign in
+            </a>
+            <a href={signUpUrl} className="mk-btn mk-btn-primary h-12 text-[15px]">
+              Start writing
+            </a>
+          </div>
         </nav>
       </div>
     </header>

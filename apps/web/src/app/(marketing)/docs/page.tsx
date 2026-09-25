@@ -72,7 +72,7 @@ export default function DocsPage() {
           These shortcuts work in the Mac app. On the web, most work the same way; shortcuts your browser reserves for itself
           — such as <code>⌘N</code> for a new browser window — are left to the browser.
         </p>
-        <div className="not-prose rounded-card border mk-hair bg-surface p-5">
+        <div className="mk-card rounded-[22px] p-5 sm:p-6">
           <ShortcutTable caption="Folevi keyboard shortcuts" />
         </div>
 
@@ -82,7 +82,7 @@ export default function DocsPage() {
           to filter it (for example <code>/check</code>), then press Return. Use the handle beside a block to drag it, or{" "}
           <code>⌥⇧↑</code> and <code>⌥⇧↓</code> to move it. Nested blocks move with their parent.
         </p>
-        <div className="overflow-x-auto">
+        <div className="mk-table-card overflow-x-auto" role="region" aria-label="Block types table" tabIndex={0}>
           <table>
             <thead>
               <tr>
@@ -129,7 +129,7 @@ export default function DocsPage() {
           storage; on the Mac, in a local database. You can keep writing with no connection at all.
         </p>
         <p>Each page shows one of these statuses:</p>
-        <div className="overflow-x-auto">
+        <div className="mk-table-card overflow-x-auto" role="region" aria-label="Sync statuses table" tabIndex={0}>
           <table>
             <thead>
               <tr>

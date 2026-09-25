@@ -106,11 +106,13 @@ the bottom left, ~35% opacity in light, ~50% in dark — fixed behind content. N
   padding, 24px from the toolbar; cover inside the sheet's top with the sheet radius; icon overlapping
   the cover edge on a raised rounded square (`control` shadow).
 - **Inspector**: a floating card (`surface` at 88% + backdrop blur on web, `card` shadow, radius 16) with
-  12px inset from the window edges. Header: **segmented control** — Insert · Style · Outline · Info ·
-  Comments (icons + labels; sunken track, raised thumb with `control` shadow).
+  12px inset from the window edges. Header: **segmented control** of six icon tabs — Insert · Format ·
+  Style · Outline · Info · Comments (sunken track, raised thumb with `control` shadow); the active tab's
+  name is shown as a 15px semibold heading under it, with the close button.
   - **Insert**: search field, then sections (Basics, Lists, Media, Structure) of 4-column **tiles**
     (64px square, radius 14, `surface` + `control`, icon tinted per block family, label below 11px).
     Tiles are draggable into the page (see drag and drop) and insert after the current block on click.
+  - **Format**: turn-into tiles, text marks, callout tone, code language.
   - **Style**: page font, width, accent swatches, background, card style, cover.
   - **Outline**: headings list, click to jump, the current section marked with an ember bar.
   - **Info**: words, characters, reading time, blocks, created/updated, backlinks, version history.

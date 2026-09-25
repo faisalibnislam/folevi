@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
@@ -7,109 +6,172 @@ export const alt = "Folevi — A quieter place for ideas that keep growing.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const PAPER = "#F4F1E9";
-const IVORY = "#FBFAF6";
-const INK = "#18201C";
-const MUTED = "#5F6962";
-const LINE = "#D8D7CF";
-const ACCENT = "#3159D8";
-const MOSS = "#739779";
+// "Warm Folio" palette (light theme tokens).
+const CREAM = "#FBFAF9";
+const HEADING = "#4A2F2C";
+const INK = "#1D1814";
+const MUTED = "#6B5A56";
+const ACCENT = "#78534E";
+const EMBER = "#F46036";
+const PEACH = "#FFD0AE";
+const ROSE = "#F5DDD2";
+const LILAC = "#E6DDF6";
+const MOSS = "#3FAE6E";
+const MOSS_SOFT = "#E2F4E8";
+const MARIGOLD_SOFT = "#FEEBD3";
+const LINE = "#EDE3DF";
 
-// If an Instrument Serif TTF is placed here, the headline uses it; otherwise the built-in sans is used.
-const SERIF_PATH = join(process.cwd(), "public", "marketing", "fonts", "InstrumentSerif-Regular.ttf");
+// Inter ships with the repo (SIL OFL 1.1, see public/marketing/fonts/Inter-OFL.txt). Read once per module.
+const FONT_DIR = join(process.cwd(), "public", "marketing", "fonts");
+const fonts = Promise.all([readFile(join(FONT_DIR, "Inter-SemiBold.ttf")), readFile(join(FONT_DIR, "Inter-Medium.ttf"))]).catch(() => null);
 
-function contour(cx: number, cy: number, r: number, i: number): string {
-  const n = 120;
-  let d = "";
-  for (let k = 0; k <= n; k++) {
-    const t = (k / n) * Math.PI * 2;
-    const w = 1 + 0.07 * Math.sin(3 * t + i * 0.4) + 0.04 * Math.sin(5 * t - i * 0.3);
-    const x = cx + r * 1.4 * w * Math.cos(t);
-    const y = cy + r * w * Math.sin(t);
-    d += `${k === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-  }
-  return d;
+function Bubble({ left, top, s, children }: { left: number; top: number; s: number; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left,
+        top,
+        width: s,
+        height: s,
+        borderRadius: s,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundImage: "radial-gradient(circle at 32% 26%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 38%, rgba(255,222,200,0.55) 100%)",
+        border: "2px solid rgba(255,255,255,0.95)",
+        boxShadow: "0 22px 40px -16px rgba(74,47,44,0.35)",
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 export default async function OpengraphImage() {
-  const serif = existsSync(SERIF_PATH) ? await readFile(SERIF_PATH) : null;
-  const rings = Array.from({ length: 11 }, (_, i) => contour(930, 170, 30 + i * 34, i));
+  const data = await fonts;
+  const tasks = ["Draft the sign-up sheet", "Print seed labels", "Buy glassine envelopes"];
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: PAPER, ...(serif ? { fontFamily: "Instrument Serif" } : {}) }}>
-        <svg width="1200" height="630" viewBox="0 0 1200 630" style={{ position: "absolute", top: 0, left: 0 }}>
-          {Array.from({ length: 19 }, (_, i) => (
-            <path key={`r${i}`} d={`M0 ${32 * (i + 1)}H1200`} stroke={LINE} strokeOpacity="0.55" strokeWidth="1" />
-          ))}
-          <path d="M84 0V630" stroke={ACCENT} strokeOpacity="0.25" strokeWidth="1" />
-          {rings.map((d, i) => (
-            <path key={i} d={d} fill="none" stroke="#B9B8AE" strokeOpacity={i % 4 === 0 ? 0.9 : 0.55} strokeWidth="1.2" />
-          ))}
-        </svg>
-
-        {/* Offset folio leaves */}
-        <div style={{ position: "absolute", right: 72, top: 150, width: 330, height: 380, display: "flex", background: "#EDE9DF", border: `1px solid ${LINE}`, borderRadius: 14, transform: "rotate(3deg)" }} />
-        <div style={{ position: "absolute", right: 90, top: 160, width: 330, height: 380, display: "flex", background: IVORY, border: `1px solid ${LINE}`, borderRadius: 14, transform: "rotate(1.4deg)" }} />
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          position: "relative",
+          background: CREAM,
+          fontFamily: data ? "Inter" : undefined,
+          backgroundImage: `radial-gradient(circle at 88% 12%, ${PEACH} 0%, rgba(255,208,174,0) 42%), radial-gradient(circle at 6% 88%, ${ROSE} 0%, rgba(245,221,210,0) 40%), radial-gradient(circle at 62% 96%, ${LILAC} 0%, rgba(230,221,246,0) 34%)`,
+        }}
+      >
+        {/* A lifted page sheet */}
         <div
           style={{
             position: "absolute",
-            right: 110,
-            top: 172,
-            width: 330,
-            height: 380,
+            right: 92,
+            top: 132,
+            width: 360,
+            height: 420,
             display: "flex",
             flexDirection: "column",
             background: "#FFFFFF",
-            border: `1px solid ${LINE}`,
-            borderRadius: 14,
+            borderRadius: 26,
             overflow: "hidden",
-            boxShadow: "0 24px 48px -24px rgba(24,32,28,0.35)",
+            boxShadow: "0 0 0 1px rgba(74,47,44,0.06), 0 36px 70px -30px rgba(74,47,44,0.40)",
+            transform: "rotate(2deg)",
           }}
         >
-          <div style={{ height: 70, background: "#E3EDE2", display: "flex" }} />
-          <div style={{ display: "flex", flexDirection: "column", padding: "18px 24px", gap: 12 }}>
-            <div style={{ fontSize: 32, color: INK, display: "flex" }}>Seed library</div>
-            {["Draft the sign-up sheet", "Print seed labels", "Buy glassine envelopes", "Confirm shelves with Ines"].map((t, i) => (
-              <div key={t} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 17, color: i === 0 ? "#7E857F" : INK }}>
-                <div style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${i === 0 ? ACCENT : "#B9B8AE"}`, background: i === 0 ? ACCENT : "#FFFFFF", display: "flex" }} />
+          <div style={{ margin: 12, height: 78, borderRadius: 16, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
+          <div style={{ display: "flex", flexDirection: "column", padding: "4px 28px", gap: 14 }}>
+            <div style={{ fontSize: 34, fontWeight: 600, color: HEADING, letterSpacing: -1.2, display: "flex" }}>Seed library</div>
+            {tasks.map((t, i) => (
+              <div key={t} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 18, fontWeight: 500, color: i === 0 ? "#9A8A86" : INK }}>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 6,
+                    display: "flex",
+                    background: i === 0 ? MOSS : "#FFFFFF",
+                    border: i === 0 ? `1.5px solid ${MOSS}` : `1.5px solid #D8C8C3`,
+                  }}
+                />
                 {t}
               </div>
             ))}
-            <div style={{ display: "flex", marginTop: 6, height: 44, borderRadius: 9, border: `1px solid ${LINE}`, borderLeft: `3px solid ${MOSS}`, alignItems: "center", paddingLeft: 12, fontSize: 16, color: INK }}>
-              Planting calendar
-            </div>
+            <div style={{ display: "flex", marginTop: 8, height: 4, width: 150, borderRadius: 4, background: EMBER }} />
+            <div style={{ display: "flex", height: 10, width: 250, borderRadius: 6, background: LINE }} />
+            <div style={{ display: "flex", height: 10, width: 200, borderRadius: 6, background: LINE }} />
           </div>
         </div>
 
-        <div style={{ position: "absolute", left: 120, top: 92, display: "flex", flexDirection: "column", width: 600 }}>
+        <Bubble left={690} top={96} s={104}>
+          <svg width="46" height="46" viewBox="0 0 32 32">
+            <path d="M16 28C16 18 10 13 4 12c0 7 4 13 12 16Z" fill={MOSS} />
+            <path d="M16 28c0-9 5-15 12-17-1 8-5 14-12 17Z" fill="#5CCB8A" />
+          </svg>
+        </Bubble>
+        <Bubble left={1060} top={470} s={88}>
+          <svg width="38" height="38" viewBox="0 0 32 32">
+            <path d="M6 28V10.5C6 6.9 8.9 4 12.5 4H26.5C26.5 8 23.3 11.2 19.3 11.2H14V28H6Z" fill={HEADING} />
+            <path d="M16.2 14.4H23.6C23.6 18 20.7 20.9 17.1 20.9H16.2V14.4Z" fill={EMBER} />
+          </svg>
+        </Bubble>
+
+        <div style={{ position: "absolute", left: 88, top: 84, display: "flex", flexDirection: "column", width: 640 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <svg width="44" height="44" viewBox="0 0 32 32">
-              <path d="M6 28V10.5C6 6.9 8.9 4 12.5 4H26.5C26.5 8 23.3 11.2 19.3 11.2H14V28H6Z" fill={INK} />
-              <path d="M16.2 14.4H23.6C23.6 18 20.7 20.9 17.1 20.9H16.2V14.4Z" fill={ACCENT} />
+            <svg width="46" height="46" viewBox="0 0 32 32">
+              <path d="M6 28V10.5C6 6.9 8.9 4 12.5 4H26.5C26.5 8 23.3 11.2 19.3 11.2H14V28H6Z" fill={HEADING} />
+              <path d="M16.2 14.4H23.6C23.6 18 20.7 20.9 17.1 20.9H16.2V14.4Z" fill={EMBER} />
             </svg>
-            <div style={{ fontSize: 40, color: INK, display: "flex", letterSpacing: -0.5 }}>Folevi</div>
+            <div style={{ fontSize: 40, fontWeight: 600, color: HEADING, display: "flex", letterSpacing: -1.4 }}>Folevi</div>
           </div>
           <div
             style={{
-              marginTop: 64,
-              fontSize: serif ? 86 : 68,
-              lineHeight: serif ? 0.98 : 1.05,
-              letterSpacing: serif ? -1.5 : -2.5,
-              color: INK,
+              marginTop: 58,
+              fontSize: 74,
+              fontWeight: 600,
+              lineHeight: 1.02,
+              letterSpacing: -3,
+              color: HEADING,
               display: "flex",
-              fontWeight: serif ? 400 : 500,
             }}
           >
             A quieter place for ideas that keep growing.
           </div>
-          <div style={{ marginTop: 30, fontSize: 24, color: MUTED, display: "flex" }}>Notes, pages and tasks · Web and Mac</div>
+          <div style={{ marginTop: 34, display: "flex", alignItems: "center", gap: 14, fontSize: 24, fontWeight: 500, color: MUTED }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                height: 46,
+                padding: "0 22px",
+                borderRadius: 46,
+                color: "#FFFFFF",
+                fontWeight: 600,
+                fontSize: 21,
+                backgroundImage: `linear-gradient(to bottom, #86625D, ${ACCENT})`,
+                boxShadow: "0 8px 18px -8px rgba(74,47,44,0.6)",
+              }}
+            >
+              Free during the preview
+            </div>
+            Web and Mac
+          </div>
         </div>
       </div>
     ),
     {
       ...size,
-      ...(serif ? { fonts: [{ name: "Instrument Serif", data: serif, style: "normal" as const, weight: 400 as const }] } : {}),
+      ...(data
+        ? {
+            fonts: [
+              { name: "Inter", data: data[0], style: "normal" as const, weight: 600 as const },
+              { name: "Inter", data: data[1], style: "normal" as const, weight: 500 as const },
+            ],
+          }
+        : {}),
     },
   );
 }

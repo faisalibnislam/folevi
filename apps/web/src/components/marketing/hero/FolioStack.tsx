@@ -130,8 +130,8 @@ export function FolioStack() {
         })}
       </div>
 
-      <div className="mt-5 flex items-stretch gap-2 pr-8">
-        <div role="tablist" aria-label="Stages of a page" className="grid flex-1 grid-cols-3 gap-2">
+      <div className="mt-6 flex items-center gap-2 pr-7">
+        <div role="tablist" aria-label="Stages of a page" className="mk-seg grid flex-1 grid-cols-3">
           {STAGES.map((stage, index) => {
             const selected = index === active;
             return (
@@ -148,30 +148,25 @@ export function FolioStack() {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => goTo(index)}
                 onKeyDown={(event) => onTabKey(event, index)}
-                className={cx(
-                  "group relative flex min-h-11 flex-col items-start justify-center rounded-control px-2 pb-2 pt-1.5 text-left transition-colors duration-150",
-                  selected ? "text-ink" : "text-muted hover:text-ink",
-                )}
+                className="mk-seg-item flex h-11 items-center sm:h-10 justify-center gap-2 overflow-hidden px-2 text-[13.5px] font-medium"
               >
-                <span className="flex items-baseline gap-2">
-                  <span className="font-mono text-[11px] tracking-wide text-faint">{stage.number}</span>
-                  <span className="text-[14px] font-medium">{stage.label}</span>
-                </span>
-                <span aria-hidden="true" className="absolute inset-x-2 bottom-1 h-px overflow-hidden bg-line">
-                  {selected ? (
-                    reduced ? (
-                      <span className="absolute inset-0 bg-ink" />
+                <span className={cx("hidden text-[11px] tabular-nums sm:inline", selected ? "mk-ember-ink" : "text-faint")}>{stage.number}</span>
+                <span>{stage.label}</span>
+                {selected ? (
+                  <span aria-hidden="true" className="absolute inset-x-5 bottom-[5px] h-[2px] overflow-hidden rounded-full bg-(--color-ember-soft)">
+                    {reduced ? (
+                      <span className="absolute inset-0 bg-(--color-ember)" />
                     ) : (
                       <span
                         key={active}
-                        className="mk-progress absolute inset-0 bg-ink"
+                        className="mk-progress absolute inset-0 rounded-full bg-(--color-ember)"
                         data-running="true"
                         data-paused={!running}
                         style={{ animationDuration: `${durationFor(index)}ms` }}
                       />
-                    )
-                  ) : null}
-                </span>
+                    )}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -180,7 +175,7 @@ export function FolioStack() {
           <button
             type="button"
             onClick={() => setUserPaused((value) => !value)}
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-control text-muted transition-colors duration-150 hover:bg-sunken hover:text-ink"
+            className="mk-btn mk-btn-secondary size-11 shrink-0"
             aria-label={userPaused ? "Play the stage sequence" : "Pause the stage sequence"}
           >
             <Icon name={userPaused ? "play" : "pause"} size={16} />
@@ -196,11 +191,11 @@ export function FolioStack() {
 
 function LeafBar({ crumbs, children }: { crumbs: string[]; children: React.ReactNode }) {
   return (
-    <div className="flex h-10 shrink-0 items-center justify-between gap-3 border-b mk-hair px-4">
-      <p className="flex min-w-0 items-center gap-1.5 truncate text-[12px] text-muted">
+    <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b mk-hair px-5">
+      <p className="flex min-w-0 items-center gap-1.5 truncate text-[12.5px] text-muted">
         {crumbs.map((crumb, index) => (
-          <span key={crumb} className={cx("truncate", index === crumbs.length - 1 && "text-ink")}>
-            {index > 0 ? <span className="mr-1.5 text-faint">/</span> : null}
+          <span key={crumb} className={cx("truncate", index === crumbs.length - 1 && "font-semibold text-(--color-heading)")}>
+            {index > 0 ? <span className="mr-1.5 text-faint">›</span> : null}
             {crumb}
           </span>
         ))}
@@ -221,11 +216,11 @@ function CaptureLeaf({ typed, done }: { typed: number; done: boolean }) {
         className="relative h-[216px] shrink-0 px-5 pt-[12px]"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(to bottom, transparent 0, transparent 29px, color-mix(in oklab, var(--color-accent) 9%, transparent) 29px, color-mix(in oklab, var(--color-accent) 9%, transparent) 30px)",
+            "repeating-linear-gradient(to bottom, transparent 0, transparent 29px, color-mix(in oklab, var(--color-ember) 10%, transparent) 29px, color-mix(in oklab, var(--color-ember) 10%, transparent) 30px)",
           backgroundPosition: "0 12px",
         }}
       >
-        <span aria-hidden="true" className="absolute inset-y-0 left-[38px] w-px bg-coral/30" />
+        <span aria-hidden="true" className="absolute inset-y-0 left-[38px] w-px bg-(--color-ember)/25" />
         <p className="pl-7 text-[12px] leading-[30px] text-faint">Just now</p>
         <p className="pl-7 font-sans text-[15.5px] leading-[30px] text-ink">
           <span className="sr-only">{CAPTURED}</span>
@@ -238,15 +233,15 @@ function CaptureLeaf({ typed, done }: { typed: number; done: boolean }) {
           </span>
         </p>
       </div>
-      <div className="flex-1 border-t mk-hair bg-surface px-5 pt-3.5">
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">Earlier in Unsorted</p>
+      <div className="flex-1 border-t mk-hair bg-(--color-sidebar) px-5 pt-3.5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Earlier in Unsorted</p>
         <ul className="mt-2 space-y-1.5">
           {[
             { text: "Printer on Alder St can do small runs on Fridays", when: "Yesterday" },
             { text: "The Overstory, p. 112 — the part about seed banks", when: "Tue" },
             { text: "Ask Ines what the shelves are made of", when: "Mon" },
           ].map((note) => (
-            <li key={note.text} className="flex items-center gap-3 rounded-[7px] border mk-hair bg-raised px-3 py-2 text-[12.5px]">
+            <li key={note.text} className="mk-mini-raised flex items-center gap-3 rounded-[10px] px-3 py-2 text-[12.5px]">
               <span className="min-w-0 flex-1 truncate text-ink">{note.text}</span>
               <span className="shrink-0 text-[11px] text-faint">{note.when}</span>
             </li>
@@ -264,14 +259,14 @@ function OutlineLeaf() {
         <StatusPill status="Saved" />
       </LeafBar>
       <div className="flex-1 space-y-2.5 px-5 pt-5">
-        <p className="text-[22px] font-semibold leading-tight tracking-[-0.01em] text-ink">Seed library</p>
-        <p className="pt-1 text-[13.5px] font-semibold text-ink">Where</p>
+        <p className="text-[24px] font-semibold leading-tight tracking-[-0.025em] text-(--color-heading)">Seed library</p>
+        <p className="pt-1 text-[13.5px] font-semibold text-(--color-heading)">Where</p>
         <div className="space-y-1">
           <MiniBullet>Old phone box on Alder Street</MiniBullet>
           <MiniBullet>Spare shelves from Ines</MiniBullet>
           <MiniBullet depth={1}>Measure the door first</MiniBullet>
         </div>
-        <p className="pt-1.5 text-[13.5px] font-semibold text-ink">Before swap day</p>
+        <p className="pt-1.5 text-[13.5px] font-semibold text-(--color-heading)">Before swap day</p>
         <div className="space-y-0.5">
           <MiniTodo text="Draft the sign-up sheet" checked />
           <MiniTodo text="Print seed labels" />
@@ -299,7 +294,7 @@ function PageLeaf() {
           <StatusPill status="Saved" />
         </span>
       </LeafBar>
-      <div aria-hidden="true" className="relative h-[58px] shrink-0 overflow-hidden bg-moss-soft">
+      <div aria-hidden="true" className="relative mx-3 mt-3 h-[62px] shrink-0 overflow-hidden rounded-[14px] bg-linear-to-br from-moss-soft via-moss-soft to-marigold-soft">
         <svg className="absolute inset-0 h-full w-full text-moss" viewBox="0 0 400 58" preserveAspectRatio="none" fill="none">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <path
@@ -313,10 +308,10 @@ function PageLeaf() {
         </svg>
       </div>
       <div className="relative flex-1 px-5">
-        <span aria-hidden="true" className="-mt-5 flex size-10 items-center justify-center rounded-[9px] border mk-hair bg-raised text-[20px] shadow-sm">
+        <span aria-hidden="true" className="mk-mini-raised -mt-5 flex size-10 items-center justify-center rounded-[11px] text-[20px]">
           🌱
         </span>
-        <p className="mt-2 font-display text-[28px] leading-none tracking-[-0.01em] text-ink">Seed library</p>
+        <p className="mt-2.5 text-[26px] font-semibold leading-none tracking-[-0.03em] text-(--color-heading)">Seed library</p>
         <p className="mt-1.5 text-[11.5px] text-muted">Updated just now · 3 open tasks</p>
         <div className="mt-3">
           <MiniCallout icon="📅" tone="moss">

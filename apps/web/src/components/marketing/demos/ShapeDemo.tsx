@@ -222,13 +222,13 @@ export function ShapeDemo() {
                 onClick={() => setSelectedId(item.id)}
                 onKeyDown={(event) => onRowKey(event, i)}
                 className={cx(
-                  "relative flex h-11 cursor-default items-center gap-1 rounded-[8px] pr-3 text-[15px] transition-[background-color,opacity] duration-150",
-                  isSelected ? "bg-marigold-soft text-ink" : "text-ink hover:bg-sunken/70",
+                  "relative flex h-11 cursor-default items-center gap-1 rounded-[10px] pr-3 text-[15px] transition-[background-color,opacity] duration-150",
+                  isSelected ? "bg-marigold-soft text-ink shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-marigold-ink)_14%,transparent)]" : "text-ink hover:bg-sunken/70",
                   dragging && "opacity-45",
                 )}
                 style={{ paddingLeft: 4 + item.depth * 26 }}
               >
-                {showIndicator(i) ? <span aria-hidden="true" className="absolute -top-px left-2 right-2 h-[2px] rounded bg-marigold" /> : null}
+                {showIndicator(i) ? <span aria-hidden="true" className="absolute -top-[2px] left-2 right-2 h-[3px] rounded-full bg-(--color-ember)" /> : null}
                 {Array.from({ length: item.depth }, (_, level) => (
                   <span key={level} aria-hidden="true" className="absolute inset-y-0 w-px bg-line-strong/70" style={{ left: 22 + level * 26 }} />
                 ))}
@@ -248,10 +248,10 @@ export function ShapeDemo() {
               </li>
             );
           })}
-          {showIndicator(items.length) ? <li aria-hidden="true" className="mx-2 h-[2px] rounded bg-marigold" /> : null}
+          {showIndicator(items.length) ? <li aria-hidden="true" className="mx-2 h-[3px] rounded-full bg-(--color-ember)" /> : null}
         </ul>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5 border-t mk-hair bg-surface px-3 py-2.5 sm:px-4" role="toolbar" aria-label="Move the selected block">
+      <div className="flex flex-wrap items-center gap-1.5 border-t mk-hair bg-(--color-sidebar) px-3 py-2.5 sm:px-4" role="toolbar" aria-label="Move the selected block">
         <p className="mr-auto hidden min-w-0 truncate pl-1 text-[12.5px] text-muted sm:block">
           <span className="sr-only">Selected: </span>
           {selected.text}
@@ -274,7 +274,7 @@ function ToolButton({ icon, label, disabled, onClick }: { icon: IconName; label:
       disabled={disabled}
       aria-label={`${label} selected block`}
       title={label}
-      className="inline-flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-control border mk-hair bg-raised px-2.5 text-[13px] text-ink transition-colors duration-150 hover:border-line-strong disabled:opacity-40 sm:h-9 sm:min-w-9"
+      className="mk-btn mk-btn-secondary h-11 min-w-11 gap-1.5 px-3 text-[13px] font-medium disabled:pointer-events-none disabled:opacity-40 sm:h-9 sm:min-w-9"
     >
       <Icon name={icon} size={16} />
       <span className="hidden sm:inline">{label}</span>

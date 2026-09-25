@@ -128,7 +128,7 @@ export function ConnectDemo() {
           <div className="relative">
             <div
               className={cx(
-                "flex min-h-11 flex-wrap items-center gap-x-1 rounded-[8px] border border-dashed px-3 py-1 transition-colors duration-150",
+                "flex min-h-11 flex-wrap items-center gap-x-1 rounded-[12px] border border-dashed px-3 py-1 transition-colors duration-150",
                 focused ? "border-plum bg-plum-soft/40" : "border-line-strong",
               )}
               onClick={() => inputRef.current?.focus()}
@@ -167,7 +167,7 @@ export function ConnectDemo() {
               role="listbox"
               aria-label="Pages"
               hidden={!open}
-              className="mk-card mk-appear absolute left-0 z-10 mt-1.5 w-[min(260px,100%)] p-1.5"
+              className="mk-card mk-appear absolute left-0 z-10 mt-1.5 w-[min(260px,100%)] rounded-[14px] p-1.5 shadow-(--shadow-pop)"
             >
               <li role="presentation" className="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-faint">
                 Link to page
@@ -183,7 +183,7 @@ export function ConnectDemo() {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => choose(id)}
                     onMouseMove={() => setActiveIndex(options.indexOf(id))}
-                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-[7px] px-2 text-[14px]", selected ? "bg-plum-soft text-plum-ink" : "text-ink")}
+                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-[9px] px-2 text-[14px]", selected ? "bg-plum-soft text-plum-ink" : "text-ink")}
                   >
                     <span aria-hidden="true">{PAGES[id].icon}</span>
                     {PAGES[id].title}
@@ -201,7 +201,7 @@ export function ConnectDemo() {
           const linked = links.has(id);
           const count = page.staticBacklinks.length + (linked ? 1 : 0);
           return (
-            <li key={id} className={cx("mk-card px-4 py-3 transition-shadow duration-200", linked && "ring-1 ring-plum/35")}>
+            <li key={id} className={cx("mk-card px-4 py-3 transition-shadow duration-200", linked && "shadow-[var(--shadow-card),0_0_0_1.5px_color-mix(in_oklab,var(--color-plum)_45%,transparent)]")}>
               <p className="flex items-center gap-2 text-[14px] font-medium text-ink">
                 <span aria-hidden="true">{page.icon}</span>
                 {page.title}
@@ -248,7 +248,7 @@ function Segments({ segments }: { segments: Segment[] }) {
         ) : (
           <span
             key={i}
-            className="mx-0.5 inline-flex items-center gap-1 rounded-[5px] bg-plum-soft px-1.5 align-baseline text-[14px] font-medium leading-[1.55] text-plum-ink underline decoration-plum/40 underline-offset-2"
+            className="mx-0.5 inline-flex items-center gap-1 rounded-full bg-plum-soft px-1.5 align-baseline text-[14px] font-medium leading-[1.55] text-plum-ink underline decoration-plum/40 underline-offset-2"
           >
             <span aria-hidden="true">{PAGES[segment.page].icon}</span>
             {PAGES[segment.page].title}

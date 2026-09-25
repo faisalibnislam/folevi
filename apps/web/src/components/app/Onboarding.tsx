@@ -40,7 +40,7 @@ export function Onboarding() {
     <main id="main" tabIndex={-1} className="ui-canvas grid min-h-dvh place-items-center px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-6 flex items-center gap-2 text-ink">
-          <FoleviMark size={26} accent="var(--color-accent)" />
+          <FoleviMark size={26} accent="var(--color-ember)" />
           <span className="ui-display text-2xl">Folevi</span>
         </div>
         <div className="relative">

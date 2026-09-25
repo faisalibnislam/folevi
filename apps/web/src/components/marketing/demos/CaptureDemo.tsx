@@ -152,7 +152,7 @@ export function CaptureDemo() {
       <div className="relative px-5 pb-5 sm:px-6">
         <div
           className={cx(
-            "flex min-h-11 items-center gap-2.5 rounded-[8px] border border-dashed px-3 transition-colors duration-150",
+            "flex min-h-11 items-center gap-2.5 rounded-[12px] border border-dashed px-3 transition-colors duration-150",
             focused ? "border-moss bg-moss-soft/40" : "border-line-strong",
             draftType === "quote" && "border-l-2 border-l-ink",
             draftType === "callout" && "bg-moss-soft",
@@ -191,7 +191,7 @@ export function CaptureDemo() {
               "leading-normal",
             )}
           />
-          <span id={`${baseId}-kind`} className="shrink-0 rounded-[5px] bg-sunken px-1.5 py-0.5 text-[11px] font-medium text-muted">
+          <span id={`${baseId}-kind`} className="shrink-0 rounded-full bg-sunken px-2 py-0.5 text-[11px] font-medium text-muted">
             {LABEL[draftType]}
           </span>
         </div>
@@ -201,7 +201,7 @@ export function CaptureDemo() {
           role="listbox"
           aria-label="Block types"
           hidden={!open}
-          className="mk-card mk-appear absolute left-5 z-10 mt-1.5 max-h-[248px] w-[min(280px,calc(100%-2.5rem))] overflow-y-auto p-1.5 sm:left-6"
+          className="mk-card mk-appear absolute left-5 z-10 mt-1.5 max-h-[248px] w-[min(280px,calc(100%-2.5rem))] overflow-y-auto rounded-[14px] p-1.5 shadow-(--shadow-pop) sm:left-6"
         >
           {options.map((option) => {
             const selected = option.type === active?.type;
@@ -215,11 +215,11 @@ export function CaptureDemo() {
                 onClick={() => choose(option.type)}
                 onMouseMove={() => setActiveIndex(options.indexOf(option))}
                 className={cx(
-                  "flex h-10 cursor-pointer items-center gap-3 rounded-[7px] px-2 text-[14px]",
+                  "flex h-10 cursor-pointer items-center gap-3 rounded-[9px] px-2 text-[14px]",
                   selected ? "bg-moss-soft text-moss-ink" : "text-ink",
                 )}
               >
-                <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-[6px] border mk-hair bg-surface text-[12px] font-semibold">
+                <span aria-hidden="true" className="mk-mini-raised flex size-7 items-center justify-center rounded-[8px] text-[12px] font-semibold">
                   {option.glyph}
                 </span>
                 <span className="flex-1">{option.label}</span>
@@ -255,7 +255,7 @@ function BlockView({ block, onToggle }: { block: Block; onToggle: () => void }) 
             type="checkbox"
             checked={Boolean(block.checked)}
             onChange={onToggle}
-            className="mt-[5px] size-[16px] shrink-0 accent-[var(--color-accent)]"
+            className="mt-[5px] size-[16px] shrink-0 accent-[var(--color-moss-ink)]"
           />
           <span className={cx(text, block.checked && "text-faint line-through")}>{block.text}</span>
         </label>
@@ -268,10 +268,10 @@ function BlockView({ block, onToggle }: { block: Block; onToggle: () => void }) 
         </p>
       );
     case "quote":
-      return <blockquote className={cx(text, "mk-appear border-l-2 border-ink/70 pl-3")}>{block.text}</blockquote>;
+      return <blockquote className={cx(text, "mk-appear border-l-[3px] border-(--color-ember) pl-3")}>{block.text}</blockquote>;
     case "callout":
       return (
-        <p className={cx(text, "mk-appear flex gap-2 rounded-[8px] bg-moss-soft px-3 py-2 text-moss-ink")}>
+        <p className={cx(text, "mk-appear flex gap-2 rounded-[12px] bg-moss-soft px-3 py-2 text-moss-ink")}>
           <span aria-hidden="true">💡</span>
           <span>{block.text}</span>
         </p>

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "./icons";
 
 export const container = "mx-auto w-full max-w-[1200px] px-5 sm:px-8";
@@ -18,15 +19,15 @@ export function ButtonLink({
 }: {
   href: string;
   children: ReactNode;
-  variant?: "primary" | "secondary";
-  size?: "sm" | "md";
+  variant?: "primary" | "secondary" | "ghost";
+  size?: "sm" | "md" | "lg";
   icon?: IconName;
   className?: string;
 }) {
   const classes = cx(
     "mk-btn",
-    variant === "primary" ? "mk-btn-primary" : "mk-btn-secondary",
-    size === "sm" ? "h-9 px-3.5 text-[14px]" : "h-11 px-5 text-[15px]",
+    variant === "primary" ? "mk-btn-primary" : variant === "secondary" ? "mk-btn-secondary" : "mk-btn-ghost",
+    size === "sm" ? "h-10 px-4 text-[14px]" : size === "lg" ? "h-12 px-6 text-[15.5px]" : "h-11 px-5 text-[15px]",
     className,
   );
   const content = (
@@ -49,48 +50,81 @@ export function ButtonLink({
   );
 }
 
-/** A tiny printer's registration mark: a crosshair inside a circle. */
-export function RegMark({ className, size = 13 }: { className?: string; size?: number }) {
+/** The Folevi wordmark as the brand guide describes it: the mark in heading colour with an ember middle leaf. */
+export function Wordmark({ className, markSize = 22 }: { className?: string; markSize?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 14 14" aria-hidden="true" focusable="false" className={cx("mk-reg", className)}>
-      <circle cx="7" cy="7" r="3.2" fill="none" stroke="currentColor" strokeWidth="0.9" />
-      <path d="M7 0v14M0 7h14" stroke="currentColor" strokeWidth="0.9" />
-    </svg>
+    <span className={cx("inline-flex items-center gap-2 text-(--color-heading)", className)}>
+      <FoleviMark size={markSize} accent="var(--color-ember)" />
+      <span className="text-[1.2em] font-semibold leading-none tracking-[-0.03em]">Folevi</span>
+    </span>
   );
 }
 
-/** Four corner registration marks for a positioned container. */
-export function CornerMarks({ inset = "-7px" }: { inset?: string }) {
-  const s = { position: "absolute" as const };
+/** A small raised pill that introduces a section. */
+export function Eyebrow({ children, className, tone }: { children: ReactNode; className?: string; tone?: Tone }) {
   return (
-    <>
-      <span aria-hidden="true" className="pointer-events-none" style={{ ...s, top: inset, left: inset }}>
-        <RegMark />
-      </span>
-      <span aria-hidden="true" className="pointer-events-none" style={{ ...s, top: inset, right: inset }}>
-        <RegMark />
-      </span>
-      <span aria-hidden="true" className="pointer-events-none" style={{ ...s, bottom: inset, left: inset }}>
-        <RegMark />
-      </span>
-      <span aria-hidden="true" className="pointer-events-none" style={{ ...s, bottom: inset, right: inset }}>
-        <RegMark />
-      </span>
-    </>
-  );
-}
-
-export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <p className={cx("flex items-center gap-2.5 text-[12px] font-medium uppercase tracking-[0.14em] text-muted", className)}>
-      <span aria-hidden="true" className="inline-block h-px w-6 bg-current opacity-60" />
+    <p className={cx("mk-chip mk-chip--raised", tone && `mk-tone--${tone}`, className)}>
+      <span aria-hidden="true" className="mk-dot" />
       {children}
     </p>
   );
 }
 
+export type Tone = "moss" | "marigold" | "plum" | "coral" | "ember" | "accent";
+
 export function Kbd({ children }: { children: ReactNode }) {
   return <kbd className="mk-kbd">{children}</kbd>;
+}
+
+export type BubbleSpec = { emoji: string; size: number; style: CSSProperties; className?: string; dur?: number; delay?: number };
+
+/** Decorative glass bubbles holding small objects. Purely ornamental; hidden from assistive tech. */
+export function Bubbles({ items }: { items: BubbleSpec[] }) {
+  return (
+    <>
+      {items.map((b) => (
+        <span
+          key={`${b.emoji}-${b.size}`}
+          aria-hidden="true"
+          className={cx("mk-bubble", b.className)}
+          style={{ ...b.style, ["--s" as string]: `${b.size}px`, ["--dur" as string]: `${b.dur ?? 9}s`, ["--delay" as string]: `${b.delay ?? 0}s` }}
+        >
+          <span>{b.emoji}</span>
+        </span>
+      ))}
+    </>
+  );
+}
+
+export function SectionHeading({
+  eyebrow,
+  title,
+  id,
+  lede,
+  align = "left",
+  tone,
+  className,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  id: string;
+  lede?: ReactNode;
+  align?: "left" | "center";
+  tone?: Tone;
+  className?: string;
+}) {
+  const center = align === "center";
+  return (
+    <div className={cx(center && "mx-auto text-center", className)}>
+      <Eyebrow tone={tone} className={center ? "mx-auto" : undefined}>
+        {eyebrow}
+      </Eyebrow>
+      <h2 id={id} className={cx("mk-h2 mt-5 max-w-[17ch]", center && "mx-auto")}>
+        {title}
+      </h2>
+      {lede ? <p className={cx("mk-lede mt-5 max-w-[52ch]", center && "mx-auto")}>{lede}</p> : null}
+    </div>
+  );
 }
 
 export function PageHeader({
@@ -105,12 +139,12 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="relative border-b mk-hair">
-      <div aria-hidden="true" className="mk-rules pointer-events-none absolute inset-0" />
-      <div className={cx(container, "relative pb-14 pt-16 sm:pb-20 sm:pt-24")}>
+    <header className="relative -mt-[76px] overflow-hidden pt-[76px]">
+      <div aria-hidden="true" className="mk-glow mk-glow--soft mk-fade-bottom" />
+      <div className={cx(container, "relative pb-12 pt-14 sm:pb-16 sm:pt-20")}>
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="mt-5 max-w-[18ch] font-display text-[44px] leading-[1.02] tracking-[-0.015em] sm:text-[64px]">{title}</h1>
-        {lede ? <div className="mt-6 max-w-[60ch] text-[18px] leading-relaxed text-muted">{lede}</div> : null}
+        <h1 className="mk-display mt-6 max-w-[18ch] text-[42px] sm:text-[60px] lg:text-[68px]">{title}</h1>
+        {lede ? <div className="mk-lede mt-6 max-w-[58ch]">{lede}</div> : null}
         {children}
       </div>
     </header>
@@ -119,8 +153,12 @@ export function PageHeader({
 
 export function DraftNotice({ updated }: { updated: string }) {
   return (
-    <div role="note" className="mt-8 inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-control border border-warning/40 bg-warning-soft px-3.5 py-2.5 text-[14px] text-ink">
-      <strong className="font-semibold text-warning">Draft — pending legal review</strong>
+    <div
+      role="note"
+      className="mk-tone--marigold mt-8 inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-[18px] bg-(--color-marigold-soft) px-4 py-3 text-[14px] text-ink shadow-[inset_0_1px_0_var(--mk-rim),0_0_0_1px_color-mix(in_oklab,var(--color-marigold-ink)_16%,transparent)]"
+    >
+      <span aria-hidden="true" className="mk-dot" />
+      <strong className="font-semibold text-(--color-marigold-ink)">Draft — pending legal review</strong>
       <span className="text-muted">Last updated {updated}. This plain-language draft is not yet final.</span>
     </div>
   );

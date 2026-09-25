@@ -22,19 +22,19 @@ export function DemoCard({
 }) {
   return (
     <div className={cx("mk-card", clip && "overflow-hidden", className)}>
-      <div className="flex h-11 items-center gap-2 border-b mk-hair px-4">
+      <div className="flex h-12 items-center gap-2 border-b mk-hair px-4">
         {icon ? (
           <span aria-hidden="true" className="text-[14px]">
             {icon}
           </span>
         ) : null}
-        <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{title}</p>
+        <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-(--color-heading)">{title}</p>
         {meta}
         {onReset ? (
           <button
             type="button"
             onClick={onReset}
-            className="-mr-2 inline-flex h-9 items-center gap-1.5 rounded-control px-2 text-[12.5px] text-muted transition-colors duration-150 hover:bg-sunken hover:text-ink"
+            className="mk-btn mk-btn-ghost -mr-2 h-11 gap-1.5 sm:h-9 px-3 text-[12.5px]"
           >
             <Icon name="reset" size={14} />
             Reset

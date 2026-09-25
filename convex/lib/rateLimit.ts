@@ -35,7 +35,11 @@ export async function ruleFor(ctx: MutationCtx, name: RateRuleName): Promise<Rat
   return DEFAULT_RATE_RULES[name];
 }
 
-/** Fixed-window counter. Throws `rate_limited` (with retryAfterMs) and records a rate-limit event. */
+/**
+ * Fixed-window counter. Throws `rate_limited` (with retryAfterMs) once the window is exhausted.
+ * A rejected mutation rolls back its writes, so the durable rate-limit event is recorded by the request
+ * that *reaches* the limit (which commits); every rejection is also written to the structured log.
+ */
 export async function consume(ctx: MutationCtx, name: RateRuleName, subject: string, cost = 1): Promise<void> {
   const rule = await ruleFor(ctx, name);
   const now = Date.now();
@@ -52,10 +56,13 @@ export async function consume(ctx: MutationCtx, name: RateRuleName, subject: str
     return;
   }
   if (row.count + cost > rule.limit) {
-    await ctx.db.insert("rateLimitEvents", { rule: name, subjectHash, createdAt: now });
+    console.warn(JSON.stringify({ event: "rate_limited", rule: name, subject: subjectHash.slice(0, 12) }));
     fail("rate_limited", "Too many requests. Please wait a moment and try again.", {
       retryAfterMs: windowStart + rule.windowMs - now,
     });
   }
   await ctx.db.patch(row._id, { count: row.count + cost });
+  if (row.count < rule.limit && row.count + cost >= rule.limit) {
+    await ctx.db.insert("rateLimitEvents", { rule: name, subjectHash, createdAt: now });
+  }
 }

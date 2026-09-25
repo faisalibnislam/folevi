@@ -98,7 +98,7 @@ export function DocTitle({ children }: { children: string }) {
 export function Panel({ title, description, actions, children, className, flush }: { title: string; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; flush?: boolean }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className={`min-w-0 rounded-[12px] border border-line bg-raised ${className ?? ""}`}>
+    <section aria-labelledby={id} className={`min-w-0 overflow-hidden rounded-[12px] border border-line bg-raised ${className ?? ""}`}>
       <div className="flex flex-wrap items-start gap-3 border-b border-line px-4 py-3">
         <div className="min-w-0 flex-1">
           <h2 id={id} className="text-[14px] font-semibold">
@@ -138,12 +138,13 @@ export function Callout({ tone = "neutral", title, children, icon }: { tone?: "n
 export const th = "whitespace-nowrap border-b border-line bg-surface px-3 py-2 text-left text-[12px] font-medium text-muted";
 export const td = "border-b border-line px-3 py-2 align-top";
 export const tdNum = `${td} text-right tabular-nums`;
+export const tdMid = "border-b border-line px-3 py-2 align-middle";
 export const thNum = `${th} text-right`;
 
 export function DataTable({ caption, captionVisible, children, minWidth = 640 }: { caption: string; captionVisible?: boolean; children: ReactNode; minWidth?: number }) {
   return (
-    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={caption}>
-      <table className="w-full border-collapse text-[13px] [&_tbody_tr:last-child_td]:border-b-0" style={{ minWidth }}>
+    <div className="overflow-x-auto focus-visible:outline-offset-[-2px]" tabIndex={0} role="region" aria-label={caption}>
+      <table className="w-full border-collapse text-[13px] [&_tbody_tr:last-child>*]:border-b-0" style={{ minWidth }}>
         <caption className={captionVisible ? "px-3 pb-2 pt-3 text-left text-[13px] font-semibold" : "sr-only"}>{caption}</caption>
         {children}
       </table>
@@ -279,7 +280,7 @@ export function Switch({ checked, onChange, label, describedBy, disabled }: { ch
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-[22px] w-[38px] flex-none items-center rounded-full border transition-colors disabled:opacity-50 ${
-        checked ? "border-plum bg-plum" : "border-line-strong bg-sunken"
+        checked ? "border-plum bg-plum" : "border-transparent bg-[color-mix(in_oklab,var(--color-ink)_42%,transparent)]"
       }`}
     >
       <span

@@ -171,7 +171,7 @@ export function AuditView() {
         ) : null}
       </form>
 
-      <div className="rounded-[12px] border border-line bg-raised">
+      <div className="overflow-hidden rounded-[12px] border border-line bg-raised">
         <DataTable caption={filter ? `Audit entries for ${filter.targetType} ${filter.targetId}` : "Audit entries, newest first"} minWidth={1100}>
           <thead>
             <tr>

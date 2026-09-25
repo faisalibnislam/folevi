@@ -11,12 +11,10 @@ struct MainWindowView: View {
         NavigationSplitView(columnVisibility: $nav.columnVisibility) {
             SidebarView(nav: nav)
         } detail: {
-            VStack(spacing: 0) {
-                StatusBanners()
-                detail
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .navigationTitle(windowTitle)
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaInset(edge: .top, spacing: 0) { StatusBanners() }
+                .navigationTitle(windowTitle)
         }
         .inspector(isPresented: $nav.showInspector) {
             Group {
@@ -234,7 +232,8 @@ struct StatusBanners: View {
     private func banner(icon: String, text: String, tint: Color, bg: Color) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon).accessibilityHidden(true)
-            Text(text).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+            // No fixedSize here: the window's minimum size is measured at zero width.
+            Text(text).font(.system(size: 12)).lineLimit(2).truncationMode(.tail)
             Spacer()
             if app.sync.pendingCount > 0 && !app.sync.isOnline {
                 Text("\(app.sync.pendingCount) waiting").font(.caption.monospacedDigit())

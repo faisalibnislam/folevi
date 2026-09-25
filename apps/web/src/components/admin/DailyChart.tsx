@@ -85,7 +85,8 @@ export function DailyChart({
   const total = present.reduce((a, b) => a + b, 0);
   const peak = present.length ? Math.max(...present) : 0;
   const peakDate = dates[values.indexOf(peak)];
-  const latest = [...values].reverse().find((v) => v !== null) ?? null;
+  const latestIndex = values.findLastIndex((v) => v !== null);
+  const latest = latestIndex >= 0 ? (values[latestIndex] ?? null) : null;
   const summary = hasData
     ? kind === "bar"
       ? `${title}, last ${days} days: ${total} ${unit} in total, peak ${peak} on ${peakDate ? shortDate(peakDate) : "—"}.`
@@ -163,9 +164,14 @@ export function DailyChart({
                   ))}
                   {values.map((v, i) =>
                     v === null ? null : (
-                      <circle key={i} cx={x(i)} cy={y(v)} r={hover === i ? 4.5 : 3} fill="var(--color-plum)" stroke="var(--color-surface-raised)" strokeWidth={2} />
+                      <circle key={i} cx={x(i)} cy={y(v)} r={hover === i ? 5 : 4} fill="var(--color-plum)" stroke="var(--color-surface-raised)" strokeWidth={1.5} />
                     ),
                   )}
+                  {latestIndex >= 0 && latest !== null ? (
+                    <text x={x(latestIndex) - 8} y={y(latest) - 10} textAnchor="end" fontSize={11.5} fontWeight={600} fill="var(--color-ink)" className="tabular-nums">
+                      {latest}
+                    </text>
+                  ) : null}
                 </>
               )}
           </svg>

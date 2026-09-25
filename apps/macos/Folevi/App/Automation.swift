@@ -21,7 +21,7 @@ enum Automation {
             let lastRoot = editor.rows.last { $0.block.parentId == nil }
             let block = Block(id: ULID.make(), parentId: nil, rank: Rank.betweenOrAfter(lastRoot?.block.rank, nil),
                               text: RichText.text(marker), content: .paragraph(ParagraphProps()))
-            editor.commit(upserts: [block], focus: FocusRequest(blockId: block.id, caret: .end), actionName: "Automation")
+            editor.commit(upserts: [block], focus: LaunchOptions.flag("-FoleviNoFocus") ? nil : FocusRequest(blockId: block.id, caret: .end), actionName: "Automation")
             // A second edit to the same block while offline (coalesced by the reducer).
             try? await Task.sleep(for: .seconds(1))
             editor.textChanged(blockId: block.id, text: RichText.text(marker + " (edited twice)"))
@@ -29,6 +29,33 @@ enum Automation {
             await app.setForcedOffline(false)
         default:
             break
+        }
+    }
+}
+#endif
+
+#if DEBUG
+import AppKit
+@MainActor
+enum LayoutProbe {
+    /// `-FoleviLayoutProbe YES`: writes window/view geometry to the app container's tmp dir after launch.
+    static func scheduleIfRequested() {
+        guard LaunchOptions.flag("-FoleviLayoutProbe") else { return }
+        Task {
+            try? await Task.sleep(for: .seconds(6))
+            var out = ""
+            for w in NSApp.windows where w.isVisible {
+                out += "window \(w.title) frame=\(w.frame) contentLayout=\(w.contentLayoutRect) styleMask=\(w.styleMask.rawValue)\n"
+                func dump(_ v: NSView, _ depth: Int) {
+                    guard depth < 7 else { return }
+                    out += String(repeating: "  ", count: depth) + "\(type(of: v)) frame=\(v.frame) bounds=\(v.bounds)\n"
+                    for s in v.subviews.prefix(6) { dump(s, depth + 1) }
+                }
+                if let cv = w.contentView { dump(cv, 0) }
+            }
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("folevi-layout.txt")
+            try? out.write(to: url, atomically: true, encoding: .utf8)
+            Log.app.info("layout probe written to \(url.path, privacy: .public)")
         }
     }
 }

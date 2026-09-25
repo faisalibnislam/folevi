@@ -148,6 +148,9 @@ final class AppModel {
         if let a = LaunchOptions.value(after: "-FoleviAppearance"), let pref = AppearancePreference(rawValue: a) { appearance = pref }
         #endif
         applyAppearance()
+        #if DEBUG
+        LayoutProbe.scheduleIfRequested()
+        #endif
         if LaunchOptions.uiTestReset { resetForUITests() }
         guard config.isBackendConfigured, convex != nil else {
             phase = .notConfigured

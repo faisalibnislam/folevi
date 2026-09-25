@@ -109,7 +109,7 @@ final class BlockTextView: NSTextView {
     /// default implementation would scroll the whole window).
     var onRevealRequest: (() -> Void)?
 
-    override func scrollRectToVisible(_ rect: NSRect) -> Bool {
+    override func scrollToVisible(_ rect: NSRect) -> Bool {
         onRevealRequest?()
         return true
     }

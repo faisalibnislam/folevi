@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
-import { Badge, Callout, DataTable, DocTitle, LoadingRows, Mono, PageHeader, Panel, Switch, Time, inputCls, td, tdNum, th, thNum } from "./ui";
+import { Badge, Callout, DataTable, DocTitle, LoadingRows, Mono, PageHeader, Panel, Switch, Time, inputCls, tdMid, th, thNum } from "./ui";
 
 type Config = FunctionReturnType<typeof api.admin.configuration>;
 type RateRule = Config["rateLimits"][number];
@@ -117,13 +117,13 @@ export function ConfigurationView() {
               ) : (
                 config.rateLimits.map((r) => (
                   <tr key={r.name}>
-                    <th scope="row" className={`${td} text-left font-normal`}>
+                    <th scope="row" className={`${tdMid} text-left font-normal`}>
                       <Mono>{r.name}</Mono>
                     </th>
-                    <td className={tdNum}>{r.limit.toLocaleString()}</td>
-                    <td className={tdNum}>{formatWindow(r.windowMs)}</td>
-                    <td className={td}>{r.overridden ? <Badge tone="warning">Override</Badge> : <Badge>Default</Badge>}</td>
-                    <td className={`${td} text-right`}>
+                    <td className={`${tdMid} text-right tabular-nums`}>{r.limit.toLocaleString()}</td>
+                    <td className={`${tdMid} text-right tabular-nums`}>{formatWindow(r.windowMs)}</td>
+                    <td className={tdMid}>{r.overridden ? <Badge tone="warning">Override</Badge> : <Badge>Default</Badge>}</td>
+                    <td className={`${tdMid} text-right`}>
                       <span className="inline-flex gap-1.5">
                         <Button size="sm" disabled={!canEdit} onClick={() => setPending({ kind: "rate", rule: r })} aria-label={`Edit ${r.name} limit`}>
                           Edit…

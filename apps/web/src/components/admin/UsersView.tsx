@@ -103,7 +103,7 @@ export function UsersView() {
         </div>
       ) : null}
 
-      <div className="rounded-[12px] border border-line bg-raised">
+      <div className="overflow-hidden rounded-[12px] border border-line bg-raised">
         <DataTable caption={searched ? `Users matching “${q || "all"}”${status ? `, status ${status}` : ""}` : "Users"} minWidth={900}>
           <thead>
             <tr>

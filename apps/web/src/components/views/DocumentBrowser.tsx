@@ -77,6 +77,8 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
   const toast = useToast();
   const [cached, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const reorder = useMutation(api.documents.reorder);
 
   // Keep a last-known copy for offline reloads.
   useEffect(() => {
@@ -138,6 +140,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                 {docs.length} document{docs.length === 1 ? "" : "s"}
                 {status === "CanLoadMore" ? "+" : ""}
                 {!online && cached ? " · showing the copy saved on this device" : ""}
+                {sort === "manual" && layout !== "list" ? " · drag cards to arrange them" : ""}
               </p>
             ) : null}
           </div>
@@ -236,7 +239,29 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
         ) : (
           <ul className={`grid gap-4 ${layout === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
             {docs.map((d) => (
-              <li key={d.id} className="group relative" draggable onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-document", d.id)}>
+              <li
+                key={d.id}
+                className={`group relative rounded-[12px] ${dropTarget === d.id ? "ring-2 ring-accent ring-offset-2 ring-offset-canvas" : ""}`}
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-document", d.id)}
+                onDragOver={(e) => {
+                  if (sort === "manual" && e.dataTransfer.types.includes("application/x-folevi-document")) {
+                    e.preventDefault();
+                    setDropTarget(d.id);
+                  }
+                }}
+                onDragLeave={() => setDropTarget(null)}
+                onDrop={(e) => {
+                  setDropTarget(null);
+                  const dragged = e.dataTransfer.getData("application/x-folevi-document");
+                  if (sort !== "manual" || !dragged || dragged === d.id) return;
+                  e.preventDefault();
+                  const idx = docs.findIndex((x) => x.id === d.id);
+                  reorder({ documentId: dragged, afterDocumentId: docs[idx - 1]?.id === dragged ? d.id : (docs[idx - 1]?.id ?? null), beforeDocumentId: docs[idx - 1]?.id === dragged ? (docs[idx + 1]?.id ?? null) : d.id }).catch((err) =>
+                    toast.show(errorMessage(err), { tone: "error" }),
+                  );
+                }}
+              >
                 <AppLink href={`/d/${d.id}`} className={`block rounded-[12px] outline-none transition-transform duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-focus ${layout === "compact" ? "h-28" : "h-64"}`}>
                   <DocumentCardPreview
                     title={d.title}

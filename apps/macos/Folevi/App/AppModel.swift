@@ -526,7 +526,8 @@ final class AppModel {
     func perform(_ label: String, _ action: @escaping @Sendable (SessionContext) async throws -> Void) {
         guard let session else { return }
         guard sync.isOnline else {
-            showToast(String(localized: "\(label) needs a connection. Try again when you're back online."))
+            showToast(String(localized: "This needs a connection. Try again when you're back online."))
+            Log.app.info("online-only action skipped offline: \(label, privacy: .private)")
             return
         }
         Task {

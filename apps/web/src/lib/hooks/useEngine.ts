@@ -15,6 +15,15 @@ export function useEngineState(engine: SyncEngine | null) {
   );
 }
 
+/** The engine's overall status, including edits an editor is still debouncing. */
+export function useEngineStatus(engine: SyncEngine | null) {
+  return useSyncExternalStore(
+    (cb) => (engine ? engine.subscribe(cb) : () => undefined),
+    () => (engine ? engine.status() : "saved"),
+    () => "saved" as const,
+  );
+}
+
 export function useLocalStorage<T>(key: string, initial: T): [T, (v: T) => void] {
   const value = useSyncExternalStore(
     (cb) => {

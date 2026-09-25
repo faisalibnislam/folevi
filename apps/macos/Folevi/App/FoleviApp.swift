@@ -48,7 +48,7 @@ struct FoleviApp: App {
             MenuBarContent()
                 .environment(app)
         } label: {
-            Image(systemName: "leaf")
+            Image(nsImage: FoleviMarkShape.templateImage(size: 16))
                 .accessibilityLabel(Text("Folevi"))
         }
     }

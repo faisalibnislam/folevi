@@ -47,7 +47,7 @@ struct AccountSettings: View {
                         HStack {
                             Image(systemName: s.client == "mac" ? "laptopcomputer" : "globe").accessibilityHidden(true)
                             VStack(alignment: .leading) {
-                                Text(s.label + (s.current ? String(localized: " (this Mac)") : ""))
+                                Text(s.current ? String(localized: "\(s.label) (this Mac)") : s.label)
                                 Text("Last active \(Date(timeIntervalSince1970: s.lastSeenAt / 1000).formatted(.relative(presentation: .named)))")
                                     .font(.caption).foregroundStyle(FoleviColor.inkMuted)
                             }

@@ -111,6 +111,11 @@ final class EditorModel {
     @ObservationIgnored private var editContinuation: AsyncStream<EditBatch>.Continuation?
     @ObservationIgnored private var editTask: Task<Void, Never>?
     @ObservationIgnored private var inFlightLocal: [String: Int] = [:]
+    /// Incremented for every local edit batch; a reload that raced with a local edit is discarded.
+    @ObservationIgnored private var editSequence = 0
+    /// The block state last handed to the sync engine. Structural operations mutate `blocks` while
+    /// computing ranks, so diffs (changed fields) and Undo snapshots are taken against this instead.
+    @ObservationIgnored private var committed: [String: Block] = [:]
     @ObservationIgnored private var titleTask: Task<Void, Never>?
     @ObservationIgnored private var snapshotTask: Task<Void, Never>?
     @ObservationIgnored private var ackObserver: NSObjectProtocol?
@@ -165,8 +170,7 @@ final class EditorModel {
         titleDraft = document?.title ?? ""
         var wires = await session.engine.blocks(documentId: documentId)
         if wires.isEmpty, !(await session.engine.hasLocalBlocks(documentId: documentId)) {
-            if app.sync.isOnline, let remote: BlocksListResponse? = try? await session.convex.query("blocks:list", ["documentId": .string(documentId)]),
-               let remote {
+            if app.sync.isOnline, let remote: BlocksListResponse = try? await session.convex.query("blocks:list", ["documentId": .string(documentId)]) {
                 await session.engine.ingestRemote(documentId: documentId, blocks: remote.blocks)
                 wires = await session.engine.blocks(documentId: documentId)
             } else if document == nil {
@@ -204,7 +208,13 @@ final class EditorModel {
 
     func reloadFromEngine() async {
         guard let session = app.session, loadState == .ready else { return }
+        let sequenceBefore = editSequence
         let wires = await session.engine.blocks(documentId: documentId)
+        guard sequenceBefore == editSequence else {
+            // A local edit happened while we were reading; read again once it has been applied.
+            scheduleReload()
+            return
+        }
         var next: [String: Block] = [:]
         for w in wires { next[w.id] = Block(wire: w) }
         for (id, count) in inFlightLocal where count > 0 {
@@ -215,6 +225,8 @@ final class EditorModel {
         let textChanged = next.contains { id, b in blocks[id]?.text != b.text }
         guard structureChanged || textChanged else { return }
         blocks = next.compactMapValues { $0 }
+        for (id, b) in blocks where (inFlightLocal[id] ?? 0) == 0 { committed[id] = b }
+        for id in committed.keys where blocks[id] == nil && (inFlightLocal[id] ?? 0) == 0 { committed[id] = nil }
         rebuildRows()
     }
 
@@ -229,6 +241,7 @@ final class EditorModel {
         var map: [String: Block] = [:]
         for w in wires { map[w.id] = Block(wire: w) }
         blocks = map
+        committed = map
         rebuildRows()
     }
 
@@ -320,6 +333,7 @@ final class EditorModel {
     }
 
     private func send(_ batch: EditBatch) {
+        editSequence += 1
         for id in batch.upserts.map(\.0.id) + batch.deletes + batch.restores.map(\.id) {
             inFlightLocal[id, default: 0] += 1
         }
@@ -365,15 +379,22 @@ final class EditorModel {
             Log.editor.fault("refused a structural edit deleting \(deletes.count, privacy: .public) of \(self.blocks.count, privacy: .public) blocks")
             return
         }
-        let before = upserts.map { ($0.id, blocks[$0.id]) }
-        let deleted = deletes.compactMap { blocks[$0] }
+        let before = upserts.map { ($0.id, committed[$0.id]) }
+        let deleted = deletes.compactMap { committed[$0] ?? blocks[$0] }
         var wires: [(WireBlock, [ChangedField])] = []
         for b in upserts {
-            wires.append((b.wire, EditorModel.fields(old: blocks[b.id], new: b)))
+            wires.append((b.wire, EditorModel.fields(old: committed[b.id], new: b)))
             blocks[b.id] = b
+            committed[b.id] = b
         }
-        for id in deletes { blocks[id] = nil }
-        for b in restores { blocks[b.id] = b }
+        for id in deletes {
+            blocks[id] = nil
+            committed[id] = nil
+        }
+        for b in restores {
+            blocks[b.id] = b
+            committed[b.id] = b
+        }
         rebuildRows()
         send(EditBatch(upserts: wires, deletes: deletes, restores: restores.map(\.wire)))
         for id in upserts.map(\.id) + deletes {
@@ -403,6 +424,7 @@ final class EditorModel {
         guard isHydrated, var block = blocks[blockId], block.text != text, !isReadOnly else { return }
         block.text = text
         blocks[blockId] = block
+        committed[blockId] = block
         if let i = rows.firstIndex(where: { $0.id == blockId }) { rows[i].block = block }
         send(EditBatch(upserts: [(block.wire, [.content])], deletes: [], restores: []))
         updateFind()
@@ -413,6 +435,7 @@ final class EditorModel {
         p.code = code
         block.content = .code(p)
         blocks[blockId] = block
+        committed[blockId] = block
         if let i = rows.firstIndex(where: { $0.id == blockId }) { rows[i].block = block }
         send(EditBatch(upserts: [(block.wire, [.content])], deletes: [], restores: []))
     }
@@ -1113,10 +1136,10 @@ final class EditorModel {
         }
     }
 
-    var textStyleProvider: ((String) -> BlockTextStyle)?
-
     func currentTextStyle(for blockId: String) -> BlockTextStyle {
-        textStyleProvider?(blockId) ?? BlockTextStyle(font: .systemFont(ofSize: 16), color: .foleviInk)
+        let scale = CGFloat(app.editorScale)
+        guard let block = blocks[blockId] else { return BlockStyles.paragraph(style: style, scale: scale) }
+        return BlockStyles.style(for: block, document: style, scale: scale)
     }
 
     func performSlash(_ id: String, blockId: String, at location: Int) {

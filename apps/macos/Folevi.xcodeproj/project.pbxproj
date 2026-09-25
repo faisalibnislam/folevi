@@ -66,6 +66,7 @@
 		C4A2FD3F79FB3784B5E11BB1 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */; };
 		C547921978A24E6E5D5EC2F0 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D521EF350EAE4076E43AE4EB /* CalendarView.swift */; };
 		CB6486089B509F21969C1439 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C50EB105B51116C77B54865 /* InspectorView.swift */; };
+		CD19AECFC8FC263DE65F9CB0 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F59E49485426A3BD1B95BBA2 /* Localizable.xcstrings */; };
 		CE7AC193968D91C617574153 /* ConvexMobile in Frameworks */ = {isa = PBXBuildFile; productRef = F044F3544B6292154DF27C05 /* ConvexMobile */; };
 		CF4980E09A02B11003D3322C /* HTMLExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8944B20D5C21961BDA9306 /* HTMLExport.swift */; };
 		D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 928BED4D96939AEFA7D64C3E /* Rank.swift */; };
@@ -160,6 +161,7 @@
 		F3CCE0AD3FA1C1D0EA350752 /* DocumentGoldenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentGoldenTests.swift; sourceTree = "<group>"; };
 		F4CCBECCF299E20709617FF6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		F4CE807CA5595FD32F69BC7F /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
+		F59E49485426A3BD1B95BBA2 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		FA53900F854C513CC2D7695A /* TestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSupport.swift; sourceTree = "<group>"; };
 		FAA42032AE7EBC7195F8F165 /* Repositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repositories.swift; sourceTree = "<group>"; };
 		FD1BA79570FBBDE419AEABBD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -233,6 +235,7 @@
 			isa = PBXGroup;
 			children = (
 				FD1BA79570FBBDE419AEABBD /* Assets.xcassets */,
+				F59E49485426A3BD1B95BBA2 /* Localizable.xcstrings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -580,6 +583,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3124A906509978C2678F9BAA /* Assets.xcassets in Resources */,
+				CD19AECFC8FC263DE65F9CB0 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

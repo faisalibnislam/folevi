@@ -27,6 +27,31 @@ enum Automation {
             editor.textChanged(blockId: block.id, text: RichText.text(marker + " (edited twice)"))
             try? await Task.sleep(for: .seconds(offlineSeconds))
             await app.setForcedOffline(false)
+        case "resolve-both", "resolve-theirs", "resolve-mine":
+            let choice = ConflictChoice(rawValue: String(scenario.dropFirst("resolve-".count))) ?? .theirs
+            for _ in 0..<30 where editor.conflicts.isEmpty { try? await Task.sleep(for: .milliseconds(200)) }
+            for conflict in editor.conflicts { editor.resolve(conflict, choice) }
+        case "export-all":
+            let dir = FileManager.default.temporaryDirectory.appendingPathComponent("folevi-export-test", isDirectory: true)
+            try? FileManager.default.removeItem(at: dir)
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let title = editor.document?.displayTitle ?? "Untitled"
+            for format in ExportService.Format.allCases {
+                let ext = format == .markdown ? "md" : format.rawValue
+                do {
+                    _ = try await ExportService.write(format, to: dir.appendingPathComponent("export.\(ext)"), title: title, blocks: editor.exportBlocks(), app: app, asFolder: false)
+                } catch {
+                    Log.app.error("export \(format.rawValue, privacy: .public) failed")
+                }
+            }
+        case "offline-conflict":
+            // Edit the first paragraph offline; the test harness edits the same block remotely meanwhile.
+            await app.setForcedOffline(true)
+            try? await Task.sleep(for: .seconds(1))
+            guard let row = editor.rows.first(where: { if case .paragraph = $0.block.content { return true } else { return false } }) else { return }
+            editor.textChanged(blockId: row.id, text: row.block.text + RichText.text(" (edited on the Mac)"))
+            try? await Task.sleep(for: .seconds(Double(LaunchOptions.value(after: "-FoleviOfflineSeconds") ?? "8") ?? 8))
+            await app.setForcedOffline(false)
         default:
             break
         }
@@ -46,7 +71,7 @@ enum LayoutProbe {
             var out = ""
             for w in NSApp.windows where w.isVisible {
                 out += "window \(w.title) frame=\(w.frame) contentLayout=\(w.contentLayoutRect) styleMask=\(w.styleMask.rawValue)\n"
-                func dump(_ v: NSView, _ depth: Int) {
+                @MainActor func dump(_ v: NSView, _ depth: Int) {
                     guard depth < 7 else { return }
                     out += String(repeating: "  ", count: depth) + "\(type(of: v)) frame=\(v.frame) bounds=\(v.bounds)\n"
                     for s in v.subviews.prefix(6) { dump(s, depth + 1) }

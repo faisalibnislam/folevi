@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, CloudOff, GitMerge, Loader2, RefreshCw } from "lucide-react";
 import { useAppState } from "@/lib/app/state";
-import { useEngineState } from "@/lib/hooks/useEngine";
-import { sync } from "@folevi/editor-schema";
+import { useEngineState, useEngineStatus } from "@/lib/hooks/useEngine";
 
 const LABELS = {
   saved: "Saved",
@@ -22,7 +21,7 @@ const LABELS = {
 export function SyncStatus({ documentId }: { documentId?: string }) {
   const { engine } = useAppState();
   const state = useEngineState(engine);
-  const status = sync.syncStatus(state);
+  const status = useEngineStatus(engine);
   const pending = state.pending.length + state.inflight.length;
   const conflicts = documentId ? state.conflicts.filter((c) => c.documentId === documentId).length : state.conflicts.length;
   const [open, setOpen] = useState(false);

@@ -54,14 +54,12 @@ enum ExportService {
         }
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            MainActor.assumeIsolated {
-                Task {
-                    do {
-                        let written = try await write(format, to: url, title: title, blocks: blocks, app: app, asFolder: format == .markdown && hasAssets)
-                        NSWorkspace.shared.activateFileViewerSelecting([written])
-                    } catch {
-                        app.showToast(String(localized: "Export failed: \(error.localizedDescription)"))
-                    }
+            Task { @MainActor in
+                do {
+                    let written = try await write(format, to: url, title: title, blocks: blocks, app: app, asFolder: format == .markdown && hasAssets)
+                    NSWorkspace.shared.activateFileViewerSelecting([written])
+                } catch {
+                    app.showToast(String(localized: "Export failed: \(error.localizedDescription)"))
                 }
             }
         }

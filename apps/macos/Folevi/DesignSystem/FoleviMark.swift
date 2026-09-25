@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The Folevi mark: two offset leaf/page shapes that together read as an "F".
@@ -52,4 +53,21 @@ struct FoleviMark: View {
         FoleviMark(size: 96).foregroundStyle(FoleviColor.accent)
     }
     .padding()
+}
+
+extension FoleviMarkShape {
+    /// Template image of the mark for the menu bar (tinted by the system).
+    @MainActor
+    static func templateImage(size: CGFloat = 16) -> NSImage {
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: true) { rect in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            ctx.addPath(FoleviMarkShape().path(in: rect.insetBy(dx: 0.5, dy: 0.5)).cgPath)
+            ctx.setFillColor(NSColor.black.cgColor)
+            ctx.fillPath()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "Folevi"
+        return image
+    }
 }

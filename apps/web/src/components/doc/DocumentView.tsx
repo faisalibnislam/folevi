@@ -40,6 +40,7 @@ import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { ShareDialog } from "./ShareDialog";
 import { VersionHistory } from "./VersionHistory";
+import { Outline } from "./Outline";
 import { exportHtml, exportMarkdown, exportPdf } from "./export";
 import "@/components/editor/editor.css";
 
@@ -167,6 +168,26 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const style: DocumentStyle = summary?.style ?? DEFAULT_DOCUMENT_STYLE;
   const readOnly = Boolean(meta && (meta.access === "read" || meta.access === "comment" || meta.inTrash)) || Boolean(settings?.readOnly && !profile.platformRole);
 
+  // Move focus from the title into the body synchronously (Tiptap's focus() waits a frame, and keystrokes
+  // typed in between would land in the title). If the editor isn't mounted yet, focus it when it is.
+  const wantsBodyFocus = useRef(false);
+  const everReady = useRef(false);
+  const focusEditorStart = useCallback(() => {
+    if (!editor) {
+      wantsBodyFocus.current = true;
+      return;
+    }
+    editor.view.focus();
+    editor.commands.setTextSelection(1);
+  }, [editor]);
+  useEffect(() => {
+    if (editor && wantsBodyFocus.current) {
+      wantsBodyFocus.current = false;
+      editor.view.focus();
+      editor.commands.setTextSelection(1);
+    }
+  }, [editor]);
+
   const openComments = useCallback(
     (blockId?: string) => {
       setCommentBlock(blockId ?? null);
@@ -195,7 +216,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // Mount the editor only once the engine holds this document's blocks (server, local cache, or a new page).
   // A page created on this device (not from a template) is known to be empty, so it can open immediately.
   const freshLocalPage = Boolean(pendingCreate) && pendingCreate?.kind === "document.create" && !pendingCreate.document.templateId;
-  const ready = Boolean(engine) && (reconciled || (cacheLoaded && server === undefined) || freshLocalPage || (Boolean(pendingCreate) && !online));
+  const readyNow = Boolean(engine) && (reconciled || (cacheLoaded && server === undefined) || freshLocalPage || (Boolean(pendingCreate) && !online));
+  // Once mounted, the editor stays mounted: remounting would drop focus and unflushed keystrokes while
+  // the page's queries settle (e.g. metadata arriving before its block list right after creation).
+  if (readyNow) everReady.current = true;
+  const ready = everReady.current;
 
   return (
     <ViewChrome
@@ -264,6 +289,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
       }
     >
       <div className="flex min-h-full">
+        <div className="hidden pl-4 pt-10 2xl:block">
+          <Outline documentId={documentId} onJump={(id) => editorRef.current?.focusBlock(id)} />
+        </div>
         <div
           className="fb-page flex-1 px-3 pb-10 pt-6 sm:px-6"
           data-font={style.font}
@@ -286,7 +314,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               style={style}
               revision={summary?.revision ?? null}
               readOnly={readOnly}
-              onEnter={() => editor?.commands.focus("start")}
+              onEnter={focusEditorStart}
             />
             {summary?.kind === "daily" && summary.dailyDate ? <DailyNav date={summary.dailyDate} /> : null}
             {conflicts.length ? <ConflictBanner documentId={documentId} /> : null}
@@ -406,22 +434,38 @@ function DocumentHeader({
   onEnter: () => void;
 }) {
   const { engine } = useAppState();
-  const { search, pathname } = useAppRouter();
+  const { search } = useAppRouter();
   const [value, setValue] = useState(title);
   const [iconOpen, setIconOpen] = useState(false);
-  // True only while the person has unsaved keystrokes in the title; otherwise the server value wins.
-  const typing = useRef(false);
+  // The title we last saved locally; the server value is ignored until it catches up to it.
+  const pendingTitle = useRef<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    if (!typing.current) setValue(title);
-  }, [title]);
-  useEffect(() => {
-    if (search.get("new") === "1") {
-      titleRef.current?.focus();
-      // Drop the one-shot flag so a reload doesn't re-trigger it.
-      window.history.replaceState(null, "", pathname);
+    if (pendingTitle.current !== null) {
+      if (title !== pendingTitle.current) return;
+      pendingTitle.current = null;
     }
-  }, [search, pathname]);
+    setValue(title);
+  }, [title]);
+  // If the server refuses our title (e.g. conflict), show what the server has.
+  useEffect(() => {
+    if (!engine) return;
+    return engine.subscribe((e) => {
+      if (e.type !== "document-result") return;
+      const doc = (e.result as { document?: { id: string; title: string } }).document;
+      if (doc?.id === documentId && e.result.status !== "applied" && e.result.status !== "duplicate") {
+        pendingTitle.current = null;
+        setValue(doc.title);
+      }
+    });
+  }, [engine, documentId]);
+  // Focus the title once for a brand-new page (never again, so it can't steal focus later).
+  const focusedOnce = useRef(false);
+  useEffect(() => {
+    if (focusedOnce.current || search.get("new") !== "1") return;
+    focusedOnce.current = true;
+    titleRef.current?.focus();
+  }, [search]);
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
@@ -429,14 +473,33 @@ function DocumentHeader({
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushTitle = useRef<(() => void) | null>(null);
   const save = (next: string) => {
+    pendingTitle.current = next;
     if (timer.current) clearTimeout(timer.current);
-    typing.current = true;
-    timer.current = setTimeout(() => {
+    const key = `title:${documentId}`;
+    const commit = () => {
+      timer.current = null;
+      flushTitle.current = null;
       engine?.updateDocument(documentId, { title: next }, revision);
-      typing.current = false;
-    }, 300);
+      engine?.setEditing(key, false);
+    };
+    engine?.setEditing(key, true);
+    flushTitle.current = commit;
+    timer.current = setTimeout(commit, 300);
   };
+  // Leaving the page (or the tab) never drops a title still waiting for its debounce.
+  useEffect(() => {
+    const onHide = () => {
+      if (timer.current) clearTimeout(timer.current);
+      flushTitle.current?.();
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      onHide();
+    };
+  }, [documentId]);
   const bg = coverBackground(cover as never, style);
   return (
     <header>

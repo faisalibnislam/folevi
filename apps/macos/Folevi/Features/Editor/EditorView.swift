@@ -40,10 +40,6 @@ struct EditorView: View {
         .onAppear {
             model.undoManager = undoManager
             model.openDocumentHandler = openDocument
-            model.textStyleProvider = { [weak model] id in
-                guard let model, let block = model.blocks[id] else { return BlockStyles.paragraph(style: model?.style ?? defaultDocumentStyle, scale: 1) }
-                return BlockStyles.style(for: block, document: model.style, scale: CGFloat(model.app.editorScale))
-            }
         }
         .onChange(of: undoManager) { _, new in model.undoManager = new }
         .onChange(of: app.remoteRevision[model.documentId]) { _, _ in model.scheduleReload() }

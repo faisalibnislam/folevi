@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit & integration tests, web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generated files are up to date (tokens, block schema, email templates)
+        run: |
+          node packages/design-tokens/scripts/build.mjs --check
+          node packages/editor-schema/scripts/generate.mjs --check
+          node packages/design-tokens/scripts/contrast.mjs
+      - name: Lint
+        run: |
+          pnpm exec eslint convex
+          pnpm --filter @folevi/web exec eslint src proxy.ts
+          pnpm exec eslint --config packages/email/eslint.config.js packages/email/src packages/email/test
+      - name: Typecheck
+        run: |
+          pnpm exec tsc -p convex/tsconfig.json --noEmit
+          pnpm --filter @folevi/editor-schema exec tsc --noEmit
+          pnpm --filter @folevi/email typecheck
+          pnpm --filter @folevi/web exec tsc --noEmit
+      - name: Schema, sync reducer and email contract tests
+        run: |
+          pnpm --filter @folevi/editor-schema test
+          pnpm --filter @folevi/email test
+      - name: Convex integration tests (tenant isolation, sync, sharing, deletion, admin RBAC)
+        run: pnpm exec vitest run
+      - name: Web unit tests (editor conversion, paste, sync engine)
+        run: pnpm --filter @folevi/web test
+      - name: Web production build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: https://example-123.convex.cloud
+          NEXT_PUBLIC_APP_URL: https://app.folevi.com
+          NEXT_PUBLIC_MARKETING_URL: https://folevi.com
+        run: pnpm --filter @folevi/web build
+
+  e2e:
+    name: End-to-end (local Convex + Next.js + Playwright)
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start a local, account-free Convex backend
+        run: |
+          CONVEX_AGENT_MODE=anonymous npx convex dev --once --typecheck=disable
+          (CONVEX_AGENT_MODE=anonymous npx convex dev --typecheck=disable > convex.log 2>&1 &)
+          sleep 10
+          node scripts/setup-local.mjs
+      - run: pnpm --filter @folevi/web exec playwright install --with-deps chromium
+      - name: Start the web app
+        run: |
+          (cd apps/web && npx next dev --port 3000 > ../../web.log 2>&1 &)
+          npx wait-on http://localhost:3000 --timeout 120000
+      - name: Playwright
+        run: pnpm --filter @folevi/web exec playwright test
+        env:
+          E2E_NO_SERVER: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            convex.log
+            web.log
+
+  macos:
+    name: macOS app build & tests
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Build and test
+        run: |
+          xcodebuild -project apps/macos/Folevi.xcodeproj -scheme Folevi -destination 'platform=macOS' \
+            -only-testing:FoleviTests CODE_SIGNING_ALLOWED=NO build test | tail -60
+
+  security:
+    name: Secret scan & dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm audit --prod --audit-level high

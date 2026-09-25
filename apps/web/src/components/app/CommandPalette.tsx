@@ -34,8 +34,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [active, setActive] = useState(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const listId = useId();
+  const [filters, setFilters] = useState<{ folderId?: string; tagId?: string; creatorId?: string; updated?: "7" | "30" | "365" }>({});
+  const org = useQuery(api.organization.sidebar, open ? { workspaceId: workspace.id } : "skip");
+  const members = useQuery(api.workspaces.members, open ? { workspaceId: workspace.id } : "skip");
   const recent = useQuery(api.documents.recent, open ? { workspaceId: workspace.id, limit: 8 } : "skip");
-  const results = useQuery(api.search.documents, open && debounced ? { workspaceId: workspace.id, query: debounced, limit: 20 } : "skip");
+  // Coarse "updated after" so the query stays cacheable.
+  const updatedAfter = filters.updated ? Math.floor((Date.now() - Number(filters.updated) * 86_400_000) / 3_600_000) * 3_600_000 : undefined;
+  const results = useQuery(
+    api.search.documents,
+    open && debounced ? { workspaceId: workspace.id, query: debounced, limit: 20, folderId: filters.folderId, tagId: filters.tagId, creatorId: filters.creatorId, updatedAfter } : "skip",
+  );
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -131,6 +139,39 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
             />
             <Kbd>Esc</Kbd>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2 text-xs" role="group" aria-label="Search filters">
+            <select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+              <option value="">Any folder</option>
+              {org?.folders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+              <option value="">Any tag</option>
+              {org?.tags.map((t) => (
+                <option key={t.id} value={t.id}>
+                  #{t.name}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+              <option value="">Anyone</option>
+              {members?.members.map((m) => (
+                <option key={m.profileId} value={m.profileId}>
+                  {m.isYou ? "Me" : m.displayName}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+              <option value="">Any time</option>
+              <option value="7">Past week</option>
+              <option value="30">Past month</option>
+              <option value="365">Past year</option>
+            </select>
+            <span className="ml-auto text-faint">{workspace.name}</span>
           </div>
           <div className="max-h-[55vh] overflow-y-auto p-2">
             {debounced && results === undefined ? <p className="px-3 py-2 text-sm text-muted">Searching…</p> : null}

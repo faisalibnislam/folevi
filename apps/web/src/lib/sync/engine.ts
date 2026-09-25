@@ -27,6 +27,7 @@ export class SyncEngine {
   private retryDelay = 1000;
   private persistChain: Promise<void> = Promise.resolve();
   lastError: string | null = null;
+  private editing = new Set<string>();
 
   private constructor(
     private client: ConvexReactClient,
@@ -74,7 +75,17 @@ export class SyncEngine {
   }
 
   status() {
-    return sync.syncStatus(this.state);
+    const s = sync.syncStatus(this.state);
+    // Keystrokes still being debounced by an editor are not saved yet either.
+    return s === "saved" && this.editing.size ? "saving" : s;
+  }
+
+  /** An editor has (or no longer has) local changes it hasn't handed to the engine yet. */
+  setEditing(key: string, unflushed: boolean) {
+    if (unflushed === this.editing.has(key)) return;
+    if (unflushed) this.editing.add(key);
+    else this.editing.delete(key);
+    this.emit({ type: "state" });
   }
 
   pendingCount(): number {

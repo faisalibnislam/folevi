@@ -395,6 +395,8 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
   const toast = useToast();
   const [draft, setDraft] = useState("");
   const [showResolved, setShowResolved] = useState(false);
+  const { workspace } = useAppState();
+  const members = useQuery(api.workspaces.members, { workspaceId: workspace.id });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (blockId) inputRef.current?.focus();
@@ -404,7 +406,29 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
   }, [data, markRead, documentId]);
   if (!data) return <p className="text-sm text-muted">Loading comments…</p>;
   const threads = data.threads.filter((t) => (showResolved ? true : t.status === "open"));
-  const toBody = (text: string) => [{ type: "text" as const, text }];
+  // "@Name" matching a workspace member becomes a real mention (they're notified).
+  const toBody = (text: string) => {
+    const people = [...(members?.members ?? [])].sort((a, b) => b.displayName.length - a.displayName.length);
+    const out: ({ type: "text"; text: string } | { type: "mention"; userId: string; label: string })[] = [];
+    let buf = "";
+    for (let i = 0; i < text.length; ) {
+      if (text[i] === "@" && (i === 0 || /\s/.test(text[i - 1]!))) {
+        const rest = text.slice(i + 1);
+        const hit = people.find((m) => rest.toLowerCase().startsWith(m.displayName.toLowerCase()));
+        if (hit) {
+          if (buf) out.push({ type: "text", text: buf });
+          buf = "";
+          out.push({ type: "mention", userId: hit.profileId, label: hit.displayName });
+          i += 1 + hit.displayName.length;
+          continue;
+        }
+      }
+      buf += text[i];
+      i++;
+    }
+    if (buf) out.push({ type: "text", text: buf });
+    return out;
+  };
   return (
     <div className="space-y-4 text-sm">
       {data.canComment ? (
@@ -424,7 +448,8 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
           <label htmlFor="new-comment" className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-faint">
             {blockId ? "Comment on the selected block" : "Comment on this document"}
           </label>
-          <textarea ref={inputRef} id="new-comment" rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={5000} className="w-full rounded-[8px] border border-line bg-surface p-2 outline-none focus:border-accent" placeholder="Write a comment" />
+          <textarea ref={inputRef} id="new-comment" rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={5000} aria-describedby="comment-hint" className="w-full rounded-[8px] border border-line bg-surface p-2 outline-none focus:border-accent" placeholder="Write a comment" />
+          <p id="comment-hint" className="text-xs text-muted">Type @ and a member’s name to mention them.</p>
           <div className="mt-1.5 flex justify-between">
             {blockId ? (
               <button type="button" onClick={onClearBlock} className="text-xs text-muted hover:text-ink">

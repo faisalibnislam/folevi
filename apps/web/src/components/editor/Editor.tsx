@@ -88,6 +88,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       }
       if (!editor || !dirty.current || !hydrated.current) return;
       dirty.current = false;
+      engine.setEditing(documentId, false);
       const previous = engineBlocksMap();
       const next = docToBlocks(editor.state.doc, previous);
       const diff = diffBlocks(previous, next);
@@ -149,6 +150,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       // Only genuine local document changes count (setEditable and meta-only transactions emit updates too).
       if (!transaction.docChanged || transaction.getMeta("remote")) return;
       dirty.current = true;
+      if (hydrated.current) engine.setEditing(documentId, true);
       if (flushTimer.current) clearTimeout(flushTimer.current);
       flushTimer.current = setTimeout(() => flushLocal(editorRef.current), FLUSH_DELAY);
     },
@@ -246,8 +248,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
       onHide();
+      engine.setEditing(documentId, false);
     };
-  }, [flushLocal]);
+  }, [flushLocal, engine, documentId]);
 
   const insertBlocks = useCallback(
     (afterIndex: number, blocks: WireBlock[]) => {

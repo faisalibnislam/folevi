@@ -4,7 +4,8 @@ import { newPersonWithWorkspace, waitForSaved } from "./helpers";
 test("offline edits are kept, shown as pending, and sync on reconnect", async ({ browser }) => {
   const { page, context } = await newPersonWithWorkspace(browser, "Offline Tester");
   await page.getByRole("button", { name: /New document/ }).click();
-  await page.waitForURL(/\/d\/[0-9A-Z]{26}/);
+  await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+  await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.getByRole("textbox", { name: "Title" }).fill("Written on a train");
   await page.keyboard.press("Enter");
   await page.keyboard.type("Before the tunnel.");
@@ -35,7 +36,8 @@ test("offline edits are kept, shown as pending, and sync on reconnect", async ({
 test("unsent edits survive a reload (durable local queue)", async ({ browser }) => {
   const { page, context } = await newPersonWithWorkspace(browser, "Reload Tester");
   await page.getByRole("button", { name: /New document/ }).click();
-  await page.waitForURL(/\/d\/[0-9A-Z]{26}/);
+  await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+  await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.getByRole("textbox", { name: "Title" }).fill("Queue");
   await page.keyboard.press("Enter");
   await page.keyboard.type("Saved online.");

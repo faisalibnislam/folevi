@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL ?? "";
-const convexSite = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "";
+// HTTP actions live on *.convex.site; derive it from the deployment URL when not set explicitly.
+const convexSite = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? convexUrl.replace(".convex.cloud", ".convex.site");
 const auth0 = process.env.AUTH0_DOMAIN ? `https://${process.env.AUTH0_DOMAIN}` : "";
 const isDev = process.env.NODE_ENV !== "production";
 const appOrigin = (() => {
@@ -54,6 +55,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite },
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ["@folevi/editor-schema", "@folevi/design-tokens"],

@@ -14,4 +14,9 @@ export default [
       "@next/next/no-html-link-for-pages": "off",
     },
   },
+  {
+    // Node scripts; page.evaluate/addInitScript callbacks run in the browser.
+    files: ["e2e/**/*.mjs"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", localStorage: "readonly" } },
+  },
 ];

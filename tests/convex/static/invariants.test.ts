@@ -29,7 +29,7 @@ describe("backend invariants", () => {
     const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "authSupport.ts:requestVerificationEmail", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions"]);
     for (const { p, s } of sources) {
       const name = p.split("/").pop()!;
-      const re = /export const (\w+) = (query|mutation|action)\(\{[\s\S]*?handler: async \([^)]*\)[^{]*\{([\s\S]*?)\n  \},\n\}\);/g;
+      const re = /export const (\w+) = (query|mutation|action)\(\{[\s\S]*?handler: async \([^)]*\)[^{]*\{([\s\S]*?)\n {2}\},\n\}\);/g;
       for (const m of s.matchAll(re)) {
         const [, fn, , body] = m;
         const guarded = /requireProfile|requirePlatformRole|optionalProfile|requireIdentity|collectionFor|threadFor|folderFor|tagFor|writableDoc|checkServer|taskBlock|currentProfileId|internal\.exports\.prepare/.test(body!);

@@ -348,7 +348,7 @@ function splitTableRow(line: string): string[] {
 export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions = {}): MarkdownImportResult {
   const newId = opts.newId ?? (() => ulid());
   const warnings: ImportWarning[] = [];
-  const src = markdown.replace(/\r\n?/g, "\n").replace(/^﻿/, "");
+  const src = markdown.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
   const all = src.split("\n");
   const { data: frontMatter, consumed } = parseFrontMatter(all);
   const lines = all.slice(consumed);

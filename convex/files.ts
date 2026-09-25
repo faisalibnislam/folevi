@@ -172,7 +172,7 @@ export const urls = query({
         .withIndex("by_public_id", (q) => q.eq("publicId", id))
         .unique();
       if (!file || file.status !== "ready") continue;
-      let allowed = false;
+      let allowed: boolean;
       if (file.documentId) {
         const doc = await ctx.db.get(file.documentId);
         allowed = Boolean(doc && accessAtLeast(await documentAccess(ctx, profile, doc), "read"));

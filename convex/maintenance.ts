@@ -274,7 +274,7 @@ export const runDeletionJobs = internalMutation({
     for (const job of [...running, ...jobs]) {
       if (budget.exhausted) break;
       if (job.status === "scheduled") await ctx.db.patch(job._id, { status: "running" });
-      let done = false;
+      let done: boolean;
       try {
         if (job.kind === "document") done = await purgeDocument(ctx, job.targetId as Id<"documents">, budget);
         else if (job.kind === "workspace") done = await purgeWorkspace(ctx, job.targetId as Id<"workspaces">, budget);

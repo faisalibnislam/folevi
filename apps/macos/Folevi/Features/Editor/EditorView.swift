@@ -258,7 +258,8 @@ struct DocumentHeaderView: View {
                 .padding(.top, 20)
             }
             if model.document?.cover.kind == .color || model.document?.cover.kind == .gradient {
-                LinearGradient(colors: [Color.folevi(accent: model.style.accent).opacity(0.6), Color.folevi(accent: model.style.accent).opacity(0.2)],
+                LinearGradient(colors: [Color.folevi(cover: model.document?.cover, style: model.style).opacity(0.6),
+                                        Color.folevi(cover: model.document?.cover, style: model.style).opacity(0.2)],
                                startPoint: .topLeading, endPoint: .bottomTrailing)
                     .frame(height: 120)
                     .clipShape(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous))

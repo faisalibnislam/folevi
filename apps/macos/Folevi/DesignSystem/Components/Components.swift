@@ -202,7 +202,7 @@ struct FolioCard: View {
     }
 
     @ViewBuilder private var coverBackground: some View {
-        let accent = Color.folevi(accent: document.style.accent)
+        let accent = Color.folevi(cover: document.cover, style: document.style)
         switch document.cover.kind {
         case .color, .gradient:
             LinearGradient(colors: [accent.opacity(0.55), accent.opacity(0.25)], startPoint: .topLeading, endPoint: .bottomTrailing)

@@ -75,6 +75,11 @@ extension Color {
         }
     }
 
+    /// A cover's own color wins over the page accent (same rule as the web's `coverBackground`).
+    static func folevi(cover: DocumentCover?, style: DocumentStyle) -> Color {
+        folevi(accent: cover?.value.flatMap(DocumentAccent.init(rawValue:)) ?? style.accent)
+    }
+
     static func folevi(tag name: String) -> Color {
         switch name {
         case "moss": return FoleviColor.moss

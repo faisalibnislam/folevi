@@ -5,7 +5,7 @@ const out = process.argv[2] ?? "/tmp/folevi-shots";
 const APP = "http://app.localhost:3000";
 const browser = await chromium.launch();
 async function shoot(theme, width, height, label, paths) {
-  const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme, deviceScaleFactor: 1 });
+  const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme, deviceScaleFactor: Number(process.env.SHOT_SCALE ?? 1) });
   const email = process.env.SHOT_EMAIL ?? "ada@example.com";
   await context.request.post(`${APP}/api/dev-auth/session`, { form: { email, name: "Ada Example", returnTo: "/documents" }, headers: { origin: APP }, maxRedirects: 0 });
   const page = await context.newPage();
@@ -13,6 +13,8 @@ async function shoot(theme, width, height, label, paths) {
   for (const [name, path] of paths) {
     await page.goto(`${APP}${path}`);
     await page.waitForTimeout(2500);
+    // The Next.js dev-mode badge is not part of the product.
+    await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
     await page.screenshot({ path: `${out}/${label}-${theme}-${width}-${name}.png` });
   }
   await context.close();

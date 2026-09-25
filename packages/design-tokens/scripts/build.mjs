@@ -18,16 +18,22 @@ function cssVars(obj, prefix, unit = "") {
   return Object.entries(obj).map(([k, v]) => `  --${prefix}-${kebab(k)}: ${v}${typeof v === "number" ? unit : ""};`);
 }
 
+const shadowCss = (layers) =>
+  layers.map(([x, y, blur, spread, c, inset]) => `${inset ? "inset " : ""}${x}px ${y}px ${blur}px ${spread}px ${c}`).join(", ");
+const shadowVars = (theme) => Object.entries(tokens.shadow[theme]).map(([k, v]) => `  --shadow-${kebab(k)}: ${shadowCss(v)};`);
+
 function buildCss() {
   const { color, space, radius, font, layout, motion } = tokens;
-  const light = cssVars(color.light, "color").join("\n");
-  const dark = cssVars(color.dark, "color").join("\n");
+  const light = [...cssVars(color.light, "color"), ...shadowVars("light")].join("\n");
+  const dark = [...cssVars(color.dark, "color"), ...shadowVars("dark")].join("\n");
   const shared = [
     ...cssVars(space, "space", "px"),
     ...cssVars(radius, "radius", "px"),
     ...cssVars(font.size, "text", "px"),
     ...Object.entries(font.lineHeight).map(([k, v]) => `  --leading-${kebab(k)}: ${v};`),
     ...Object.entries(font.weight).map(([k, v]) => `  --weight-${kebab(k)}: ${v};`),
+    ...Object.entries(font.tracking).map(([k, v]) => `  --tracking-${kebab(k)}: ${v}em;`),
+    ...Object.entries(font.family).map(([k, v]) => `  --font-family-${kebab(k)}: "${v}";`),
     ...cssVars(layout, "layout", "px"),
     ...Object.entries(motion).map(([k, v]) => `  --motion-${kebab(k)}: ${typeof v === "number" ? `${v}ms` : v};`),
   ].join("\n");
@@ -82,6 +88,32 @@ function hexToRgb(hex) {
   throw new Error(`Unsupported color ${hex}`);
 }
 
+function shadowLines() {
+  const fmt = (n) => (n / 255).toFixed(4);
+  const names = Object.keys(tokens.shadow.light);
+  return names
+    .map((name) => {
+      const light = tokens.shadow.light[name];
+      const dark = tokens.shadow.dark[name];
+      const n = Math.max(light.length, dark.length);
+      const layers = [];
+      // Layers pair up by index; a theme with fewer layers uses a transparent layer.
+      for (let i = 0; i < n; i++) {
+        const l = light[i] ?? [0, 0, 0, 0, "rgba(0, 0, 0, 0)"];
+        const d = dark[i] ?? [0, 0, 0, 0, "rgba(0, 0, 0, 0)"];
+        const [lr, lg, lb, la] = hexToRgb(l[4]);
+        const [dr, dg, db, da] = hexToRgb(d[4]);
+        layers.push(`        FoleviShadowLayer(x: ${l[0]}, y: ${l[1]}, blur: ${l[2]}, spread: ${l[3]}, color: Color(nsColor: .folevi(
+            light: (${fmt(lr)}, ${fmt(lg)}, ${fmt(lb)}, ${la}),
+            dark: (${fmt(dr)}, ${fmt(dg)}, ${fmt(db)}, ${da}),
+            name: "folevi.shadow.${name}.${i}"
+        )), inset: ${Boolean(l[5] || d[5])}),`);
+      }
+      return `    static let ${name}: [FoleviShadowLayer] = [\n${layers.join("\n")}\n    ]`;
+    })
+    .join("\n");
+}
+
 function buildSwift() {
   const names = Object.keys(tokens.color.light);
   const fmt = (n) => (n / 255).toFixed(4);
@@ -121,6 +153,34 @@ extension NSColor {
 
 enum FoleviColor {
 ${colorLines}
+}
+
+/// One layer of a token shadow. SwiftUI draws outer layers with \`.shadow\`; spread and inset
+/// highlights are approximated by the components (inset → a 1pt top stroke).
+struct FoleviShadowLayer {
+    let x: CGFloat
+    let y: CGFloat
+    let blur: CGFloat
+    let spread: CGFloat
+    let color: Color
+    let inset: Bool
+}
+
+enum FoleviShadow {
+${shadowLines()}
+}
+
+enum FoleviFontFamily {
+${Object.entries(tokens.font.family).map(([k, v]) => `    static let ${k} = "${v}"`).join("\n")}
+}
+
+enum FoleviFontSize {
+${num(tokens.font.size)}
+}
+
+/// Letter spacing as a fraction of the font size (multiply by the point size for \`.tracking\`).
+enum FoleviTracking {
+${num(tokens.font.tracking)}
 }
 
 enum FoleviSpace {

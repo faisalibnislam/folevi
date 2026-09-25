@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const instrumentSerif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-instrument-serif", display: "swap" });
+// The Mac app bundles these same families (apps/macos/Folevi/Resources/Fonts).
+const sourceSerif = Source_Serif_4({ subsets: ["latin"], weight: ["400", "600"], style: ["normal", "italic"], variable: "--font-source-serif", display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-jetbrains-mono", display: "swap" });
 
 const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com";
 
@@ -20,8 +22,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F4F1E9" },
-    { media: "(prefers-color-scheme: dark)", color: "#101411" },
+    { media: "(prefers-color-scheme: light)", color: "#FAF6F3" },
+    { media: "(prefers-color-scheme: dark)", color: "#15110F" },
   ],
   colorScheme: "light dark",
   width: "device-width",
@@ -33,7 +35,7 @@ const themeScript = `(function(){try{var t=localStorage.getItem("folevi:appearan
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${instrumentSerif.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

@@ -47,3 +47,11 @@ function fnv1a64(input: string): string {
 export function dailyDocumentId(profileId: string, workspaceId: string, date: string): string {
   return `daily-${date}-${fnv1a64(`${profileId}:${workspaceId}`)}`;
 }
+
+/**
+ * The person's Inbox page in a workspace — where Quick Add puts tasks. Deterministic for the same reason
+ * as daily ids: two offline devices adding a task create the same page instead of two Inboxes.
+ */
+export function inboxDocumentId(profileId: string, workspaceId: string): string {
+  return `inbox-${fnv1a64(`${profileId}:${workspaceId}`)}`;
+}

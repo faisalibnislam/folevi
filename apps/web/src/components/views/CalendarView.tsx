@@ -2,11 +2,11 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, NotebookPen } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
-import { AppLink, useAppRouter } from "@/lib/app/router";
+import { useAppRouter } from "@/lib/app/router";
 import { Button, IconButton } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
@@ -27,7 +27,7 @@ function weekdayOf(date: string): number {
   return (d + 6) % 7;
 }
 
-/** Month grid and agenda for tasks and Daily Notes. Drag a task to a day to reschedule it (with Undo). */
+/** Month grid and agenda for dated tasks. Drag a task to a day to reschedule it (with Undo). */
 export function CalendarView({ month }: { month: string | null }) {
   const { workspace, today, deviceId } = useAppState();
   const { navigate } = useAppRouter();
@@ -39,7 +39,6 @@ export function CalendarView({ month }: { month: string | null }) {
   const from = mode === "month" ? days[0]! : today;
   const to = mode === "month" ? days[41]! : addDays(today, 30);
   const tasks = useQuery(api.tasks.range, { workspaceId: workspace.id, from, to, includeCompleted: true });
-  const dailies = useQuery(api.documents.dailyDates, { workspaceId: workspace.id, from, to });
   const update = useMutation(api.tasks.update);
   const toast = useToast();
   const toggle = useToggleTask();
@@ -51,7 +50,6 @@ export function CalendarView({ month }: { month: string | null }) {
     for (const t of tasks ?? []) if (t.dueDate) m.set(t.dueDate, [...(m.get(t.dueDate) ?? []), t]);
     return m;
   }, [tasks]);
-  const dailySet = useMemo(() => new Map((dailies ?? []).map((d) => [d.date, d])), [dailies]);
 
   const reschedule = (blockId: string, date: string) => {
     const task = tasks?.find((t) => t.blockId === blockId);
@@ -126,7 +124,6 @@ export function CalendarView({ month }: { month: string | null }) {
                   {days.slice(week * 7, week * 7 + 7).map((date) => {
                     const inMonth = date.startsWith(current);
                     const items = byDate.get(date) ?? [];
-                    const daily = dailySet.get(date);
                     const isToday = date === today;
                     return (
                       <div
@@ -135,14 +132,14 @@ export function CalendarView({ month }: { month: string | null }) {
                         aria-selected={selected === date}
                         tabIndex={selected === date ? 0 : -1}
                         data-date={date}
-                        aria-label={`${new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}, ${items.length} task${items.length === 1 ? "" : "s"}${daily ? ", has a daily note" : ""}`}
+                        aria-label={`${new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}, ${items.length} task${items.length === 1 ? "" : "s"}`}
                         onClick={() => setSelected(date)}
                         onKeyDown={(e) => {
                           const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : e.key === "ArrowDown" ? 7 : e.key === "ArrowUp" ? -7 : 0;
                           if (d) {
                             e.preventDefault();
                             moveFocus(date, d);
-                          } else if (e.key === "Enter") navigate(`/daily/${date}`);
+                          } else if (e.key === "Enter") setSelected(date);
                         }}
                         onDragOver={(e) => {
                           if (e.dataTransfer.types.includes("application/x-folevi-task")) e.preventDefault();
@@ -156,11 +153,6 @@ export function CalendarView({ month }: { month: string | null }) {
                       >
                         <div className="flex items-center justify-between">
                           <span className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs tabular-nums ${isToday ? "bg-[var(--color-ember-ink)] font-semibold text-accent-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
-                          {daily ? (
-                            <AppLink href={`/d/${daily.id}`} aria-label={`Daily note for ${date}`} className="text-moss hover:text-moss-ink" onClick={(e) => e.stopPropagation()}>
-                              <NotebookPen size={13} aria-hidden />
-                            </AppLink>
-                          ) : null}
                         </div>
                         <ul className="mt-1 space-y-0.5">
                           {items.slice(0, 3).map((t) => (
@@ -185,31 +177,23 @@ export function CalendarView({ month }: { month: string | null }) {
             </div>
             <aside aria-label="Selected day">
               <h3 className="font-semibold">{new Date(`${selected}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}</h3>
-              <AppLink href={`/daily/${selected}`} className="mt-1 inline-flex items-center gap-1.5 text-sm text-accent hover:underline">
-                <NotebookPen size={14} aria-hidden /> {dailySet.has(selected) ? "Open daily note" : "Start a daily note"}
-              </AppLink>
               <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-[18px]">
                 {(byDate.get(selected) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">No tasks due. Drag a task here to schedule it.</li> : null}
                 {(byDate.get(selected) ?? []).map((t) => (
                   <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} />
                 ))}
               </ul>
-              <p className="mt-3 text-xs text-muted">Tip: drag tasks between days to reschedule. Arrow keys move between days; Enter opens the daily note.</p>
+              <p className="mt-3 text-xs text-muted">Tip: drag tasks between days to reschedule. Arrow keys move between days.</p>
             </aside>
           </div>
         ) : (
           <div className="space-y-6">
             {Array.from({ length: 31 }, (_, i) => addDays(today, i))
-              .filter((d) => byDate.has(d) || dailySet.has(d) || d === today)
+              .filter((d) => byDate.has(d) || d === today)
               .map((d) => (
                 <section key={d} aria-label={d}>
                   <h3 className="mb-2 flex items-center gap-3 text-sm font-semibold">
                     {d === today ? "Today" : new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}
-                    {dailySet.has(d) ? (
-                      <AppLink href={`/d/${dailySet.get(d)!.id}`} className="text-xs font-normal text-moss-ink hover:underline">
-                        Daily note
-                      </AppLink>
-                    ) : null}
                   </h3>
                   <ul className="divide-y divide-line overflow-hidden ui-card rounded-[18px]">
                     {(byDate.get(d) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">Nothing due.</li> : null}

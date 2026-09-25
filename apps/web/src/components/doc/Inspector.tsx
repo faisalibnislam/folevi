@@ -40,6 +40,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { insertBlockAfterCurrent, insertBlockAt, turnInto } from "@/components/editor/commands";
 import { beginPointerDrag } from "@/components/editor/blockDrag";
+import { COVER_ART, coverArtUrl } from "@/lib/cover";
 import { Outline } from "./Outline";
 
 export type InspectorTab = "insert" | "format" | "style" | "outline" | "info" | "comments";
@@ -395,19 +396,52 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
               ["none", "None"],
               ["color", "Color"],
               ["gradient", "Gradient"],
+              ["art", "Art"],
             ] as const
           ).map(([kind, name]) => (
             <button
               key={kind}
               type="button"
               aria-pressed={cover.kind === kind}
-              onClick={() => engine?.updateDocument(documentId, { cover: kind === "none" ? { kind: "none" } : { kind, value: style.accent } }, meta.document.revision)}
+              onClick={() =>
+                engine?.updateDocument(
+                  documentId,
+                  { cover: kind === "none" ? { kind: "none" } : kind === "art" ? { kind, value: cover.kind === "art" && cover.value ? cover.value : COVER_ART[0]!.id } : { kind, value: style.accent } },
+                  meta.document.revision,
+                )
+              }
             >
               {name}
             </button>
           ))}
         </div>
-        <p className="mt-2 px-1 text-xs text-muted">The cover uses the accent color, so pages stay readable in both themes.</p>
+        <div role="radiogroup" aria-label="Cover artwork" className="mt-3 grid grid-cols-4 gap-2">
+          {COVER_ART.map((art) => {
+            const on = cover.kind === "art" && cover.value === art.id;
+            return (
+              <button
+                key={art.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`Cover: ${art.name}`}
+                title={art.name}
+                onClick={() => engine?.updateDocument(documentId, { cover: { kind: "art", value: art.id } }, meta.document.revision)}
+                className={`relative h-12 overflow-hidden rounded-[10px] shadow-[var(--shadow-hairline)] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-card)] ${on ? "ring-2 ring-ember ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`}
+                style={{ background: `linear-gradient(var(--cover-art-tint), var(--cover-art-tint)), url(${coverArtUrl(art.id)}) center / cover no-repeat` }}
+              >
+                {on ? (
+                  <span aria-hidden className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-[var(--color-ember-ink)] text-[10px] font-bold text-accent-ink">
+                    ✓
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 px-1 text-xs text-muted">
+          {cover.kind === "art" ? `${COVER_ART.find((a) => a.id === cover.value)?.name ?? "Artwork"} — pick any artwork above.` : "Color and gradient covers follow the page accent; artwork covers are fixed illustrations."}
+        </p>
       </fieldset>
     </div>
   );

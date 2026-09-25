@@ -31,7 +31,7 @@ test("sessions can be listed and revoked", async ({ browser }) => {
   const b = await browser.newContext();
   const pageB = await signIn(b, { email, name: "Session Person" });
   await pageB.goto("/documents");
-  await expect(pageB.getByRole("heading", { name: "All Documents", level: 2 })).toBeVisible();
+  await expect(pageB.getByRole("heading", { name: "Home", level: 2 })).toBeVisible();
   await pageA.goto("/settings/security");
   const other = pageA.getByRole("listitem").filter({ hasNotText: "This device" }).filter({ has: pageA.getByRole("button", { name: "Revoke" }) });
   await other.first().getByRole("button", { name: "Revoke" }).click();

@@ -38,7 +38,7 @@ type Layout = "grid" | "compact" | "list";
 type Sort = "updated" | "created" | "title" | "manual";
 
 const TITLES: Record<View, string> = {
-  all: "All Documents",
+  all: "Home",
   starred: "Starred",
   archive: "Archive",
   trash: "Trash",

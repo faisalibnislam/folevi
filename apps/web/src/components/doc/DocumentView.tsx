@@ -22,6 +22,7 @@ import {
   StarOff,
   Trash2,
   Undo2,
+  House as Home,
 } from "lucide-react";
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -205,7 +206,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             <h1 className="ui-display text-4xl">This page isn’t available</h1>
             <p className="mt-3 text-muted">It may have been deleted, or you don’t have access. If someone shared it with you, ask them to check the sharing settings.</p>
             <AppLink href="/documents" className="mt-6 inline-block text-accent underline underline-offset-2">
-              Back to All Documents
+              Back to Home
             </AppLink>
           </div>
         </ViewChrome>
@@ -235,8 +236,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
               </>
             ) : (
               <>
-                <FileText size={14} className="flex-none" aria-hidden />
-                <span className="truncate">All Documents</span>
+                <Home size={14} className="flex-none" aria-hidden />
+                <span className="truncate">Home</span>
               </>
             )}
           </AppLink>
@@ -320,7 +321,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
               readOnly={readOnly}
               onEnter={focusEditorStart}
             />
-            {summary?.kind === "daily" && summary.dailyDate ? <DailyNav date={summary.dailyDate} /> : null}
             {conflicts.length ? <ConflictBanner documentId={documentId} /> : null}
             <div className="px-5 sm:px-16">
               {ready && engine ? (
@@ -373,35 +373,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
       <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} canRestore={!readOnly} />
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
     </ViewChrome>
-  );
-}
-
-function DailyNav({ date }: { date: string }) {
-  const { today } = useAppState();
-  const shift = (days: number) => {
-    const d = new Date(`${date}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + days);
-    return d.toISOString().slice(0, 10);
-  };
-  return (
-    <nav aria-label="Daily notes" className="mx-5 mb-3 flex items-center gap-1 text-sm sm:mx-16">
-      <AppLink href={`/daily/${shift(-1)}`} className="rounded-[9px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
-        ← Previous day
-      </AppLink>
-      {date !== today ? (
-        <AppLink href={`/daily/${today}`} className="rounded-[9px] px-2 py-1 font-medium text-accent hover:bg-accent-soft">
-          Today
-        </AppLink>
-      ) : (
-        <span className="rounded-[9px] bg-moss-soft px-2 py-1 text-xs font-medium text-moss-ink">Today</span>
-      )}
-      <AppLink href={`/daily/${shift(1)}`} className="rounded-[9px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
-        Next day →
-      </AppLink>
-      <AppLink href="/calendar" className="ml-auto rounded-[9px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
-        Calendar
-      </AppLink>
-    </nav>
   );
 }
 

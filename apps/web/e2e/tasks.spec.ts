@@ -16,8 +16,9 @@ test("quick add a task with a due date, see it in Today and the calendar, comple
   await expect(page.getByRole("status").filter({ hasText: "Task added" })).toBeVisible();
   const row = page.getByRole("listitem").filter({ hasText: "Water the tomatoes" });
   await expect(row).toBeVisible();
-  // The task lives in today's Daily Note and links back to it.
-  await expect(row.getByRole("link")).toContainText(/\d{4}|day/);
+  // The task lives in the person's Inbox page and links back to it; Daily Notes are gone.
+  await expect(row.getByRole("link")).toContainText("Inbox");
+  await expect(page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Daily Notes" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Calendar" }).first().click();
   await expect(page.getByRole("gridcell").filter({ hasText: "Water the tomatoes" })).toBeVisible();

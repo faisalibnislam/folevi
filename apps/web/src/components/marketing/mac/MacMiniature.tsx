@@ -71,7 +71,7 @@ function Sidebar({ lights = false }: { lights?: boolean }) {
         <Icon name="plus" size={11} /> New page
       </div>
       <div className="space-y-0.5">
-        <SidebarRow icon={<Icon name="page" size={12} />} label="All Documents" />
+        <SidebarRow icon={<Icon name="page" size={12} />} label="Home" />
         <SidebarRow icon={<Icon name="check" size={12} />} label="Tasks" count="3" />
         <SidebarRow icon={<Icon name="calendar" size={12} />} label="Calendar" />
       </div>

@@ -30,7 +30,7 @@ export const vDocumentStyle = v.object({
   card: v.union(v.literal("folio"), v.literal("plain"), v.literal("tinted"), v.literal("outline")),
 });
 export const vDocumentCover = v.object({
-  kind: v.union(v.literal("none"), v.literal("color"), v.literal("gradient"), v.literal("image")),
+  kind: v.union(v.literal("none"), v.literal("color"), v.literal("gradient"), v.literal("image"), v.literal("art")),
   value: v.optional(v.string()),
 });
 export const vCollectionPropertyType = v.union(

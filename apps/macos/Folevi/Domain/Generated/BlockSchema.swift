@@ -92,6 +92,7 @@ public enum CoverKind: String, Codable, Sendable, Hashable, CaseIterable {
     case color
     case gradient
     case image
+    case art
 }
 
 public enum DocumentKind: String, Codable, Sendable, Hashable, CaseIterable {

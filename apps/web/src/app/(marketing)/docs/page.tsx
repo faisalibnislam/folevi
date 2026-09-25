@@ -119,8 +119,8 @@ export default function DocsPage() {
           workspace. Overdue tasks show up there too, so nothing slips quietly past.
         </p>
         <p>
-          The <strong>Calendar</strong> shows dated tasks by day, and <strong>Daily notes</strong> give each day its own page
-          for whatever comes up.
+          The <strong>Calendar</strong> shows dated tasks by day. <strong>Quick Add</strong> (⇧⌘A) saves a task straight into
+          your <strong>Inbox</strong> page, so it always lives somewhere you can find it.
         </p>
 
         <h2 id="sync">Sync & offline</h2>

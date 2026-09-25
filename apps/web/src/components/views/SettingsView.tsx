@@ -109,7 +109,7 @@ function AccountSection() {
                 </option>
               ))}
             </select>
-            <span className="mt-1 block text-xs text-muted">Used for Today, Daily Notes and reminders.</span>
+            <span className="mt-1 block text-xs text-muted">Used for Today, the calendar and reminders.</span>
           </label>
           <div>
             <Button type="submit" variant="primary">
@@ -352,7 +352,6 @@ function WorkspaceSection() {
           <div className="h-full bg-accent" style={{ width: `${Math.min(100, (workspace.storageUsedBytes / workspace.storageQuotaBytes) * 100)}%` }} />
         </div>
       </Card>
-      <DailyTemplateCard />
       <Card title="New team workspace" description="Share folders, documents and tasks with other people. Your personal workspace stays private.">
         <form
           className="flex max-w-md gap-2"
@@ -377,33 +376,6 @@ function WorkspaceSection() {
         </form>
       </Card>
     </>
-  );
-}
-
-function DailyTemplateCard() {
-  const { workspace } = useAppState();
-  const builtIns = useQuery(api.settings.builtInTemplates, {});
-  const own = useQuery(api.documents.list, { workspaceId: workspace.id, view: "templates", paginationOpts: { numItems: 50, cursor: null } });
-  const [template, setTemplate] = useLocalStorage<string | null>("folevi:daily-template", null);
-  return (
-    <Card title="Daily Notes" description="New Daily Notes can start from a template. Existing notes are never changed.">
-      <label className="block max-w-md text-sm">
-        <span className="mb-1 block font-medium">Template for new Daily Notes</span>
-        <select value={template ?? ""} onChange={(e) => setTemplate(e.target.value || null)} className="h-9 w-full ui-input rounded-full px-2">
-          <option value="">Blank page</option>
-          {builtIns?.map((t) => (
-            <option key={t.key} value={t.key}>
-              {t.name} (built-in)
-            </option>
-          ))}
-          {own?.page.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.title || "Untitled template"}
-            </option>
-          ))}
-        </select>
-      </label>
-    </Card>
   );
 }
 

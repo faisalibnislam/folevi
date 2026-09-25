@@ -21,7 +21,6 @@ export default function manifest(): MetadataRoute.Manifest {
     shortcuts: [
       { name: "New document", url: "/documents?new=1" },
       { name: "Today's tasks", url: "/tasks/today" },
-      { name: "Daily note", url: "/daily" },
     ],
   };
 }

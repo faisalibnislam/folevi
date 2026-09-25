@@ -1,11 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useAppRouter } from "@/lib/app/router";
 import { DocumentBrowser } from "@/components/views/DocumentBrowser";
 import { DocumentView } from "@/components/doc/DocumentView";
 import { TasksView } from "@/components/views/TasksView";
 import { CalendarView } from "@/components/views/CalendarView";
-import { DailyView } from "@/components/views/DailyView";
 import { SharedView } from "@/components/views/SharedView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { HelpView } from "@/components/views/HelpView";
@@ -34,7 +34,8 @@ export function RouteView() {
     case "calendar":
       return <CalendarView month={route.month} />;
     case "daily":
-      return <DailyView date={route.date} />;
+      // Daily Notes were retired; old links land on Home.
+      return <RedirectHome />;
     case "shared":
       return <SharedView />;
     case "settings":
@@ -50,10 +51,16 @@ export function RouteView() {
             <h1 className="ui-display text-4xl">This page doesn’t exist</h1>
             <p className="mt-3 text-muted">It may have been moved, or the link is incomplete.</p>
             <a href="/documents" className="mt-6 inline-block text-accent underline underline-offset-2">
-              Go to All Documents
+              Go to Home
             </a>
           </div>
         </ViewChrome>
       );
   }
+}
+
+function RedirectHome() {
+  const { navigate } = useAppRouter();
+  useEffect(() => navigate("/documents", { replace: true }), [navigate]);
+  return null;
 }

@@ -270,15 +270,22 @@ describe("tasks", () => {
     expect(done.map((x) => x.title)).toContain("Water plants");
   });
 
-  test("quick add puts tasks into today's daily note with a deterministic id", async () => {
+  test("quick add puts tasks into the person's Inbox page (deterministic id, restored from Trash, listed on Home)", async () => {
     const t = setup();
     const a = await person(t, "qa@example.com");
     const r1 = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "First", today: "2026-09-25" });
-    const r2 = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "Second", today: "2026-09-25" });
+    const r2 = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "Second", today: "2026-09-26" });
     expect(r1.documentId).toBe(r2.documentId);
-    expect(r1.documentId).toMatch(/^daily-2026-09-25-/);
-    const daily = await a.as.query(api.documents.daily, { workspaceId: a.workspaceId, date: "2026-09-25" });
-    expect(daily?.id).toBe(r1.documentId);
+    expect(r1.documentId).toMatch(/^inbox-[0-9a-f]{16}$/);
+    const home = await a.as.query(api.documents.list, { workspaceId: a.workspaceId, view: "all", paginationOpts: { numItems: 50, cursor: null } });
+    const inbox = home.page.find((d) => d.id === r1.documentId);
+    expect(inbox?.title).toBe("Inbox");
+    // Trashing the Inbox and adding another task brings it back.
+    await a.as.mutation(api.documents.moveToTrash, { documentId: r1.documentId });
+    const r3 = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "Third", today: "2026-09-26" });
+    expect(r3.documentId).toBe(r1.documentId);
+    const tasks = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "all", today: "2026-09-26" });
+    expect(tasks.filter((x) => x.documentId === r1.documentId).map((x) => x.title).sort()).toEqual(["First", "Second", "Third"]);
   });
 });
 

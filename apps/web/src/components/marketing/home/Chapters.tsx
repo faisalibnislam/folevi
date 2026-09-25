@@ -153,7 +153,7 @@ export function Chapters() {
             Search looks through titles and text across your whole workspace. Tasks with dates gather in Today, so the
             next small step is waiting when you open Folevi again.
           </p>
-          <p>A calendar and daily notes keep the rest of the week in view.</p>
+          <p>A calendar keeps the rest of the week in view, and Quick Add drops new tasks into your Inbox page.</p>
         </Chapter>
       </div>
     </section>

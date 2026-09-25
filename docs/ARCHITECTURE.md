@@ -64,7 +64,7 @@ Content tables all carry `workspaceId` and a `seq` stamped from the workspace ch
 
 - `profiles`, `workspaces`, `workspaceMembers`, `workspaceInvites`
 - `folders` (one level of nesting), `tags`, `documentTags`, `stars`, `recents`
-- `documents` — title, icon, cover, style, kind (`document | daily | template | collectionRow`), parent,
+- `documents` — title, icon, cover, style, kind (`document | daily | template | collectionRow`; `daily` is a retired kind shown as an ordinary page), parent,
   folder, access mode, revision/titleRev, derived search text and counts
 - `blocks` — the canonical block rows (`blockId`, `parentId`, `rank`, `type`, `schemaVersion`, `text`,
   `props`, `revision`, `contentRev`, `positionRev`, `deletedAt`)

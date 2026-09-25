@@ -5,11 +5,9 @@ import { useState } from "react";
 import {
   Archive,
   Calendar,
-  CalendarDays,
   CheckSquare,
   ChevronDown,
   ChevronRight,
-  FileText,
   Folder,
   FolderPlus,
   Hash,
@@ -25,6 +23,7 @@ import {
   Star,
   Trash2,
   Users,
+  House as Home,
 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -46,7 +45,6 @@ function isActive(route: Route, href: string): boolean {
     "/documents": (r) => r.name === "documents",
     "/tasks/today": (r) => r.name === "tasks",
     "/calendar": (r) => r.name === "calendar",
-    "/daily": (r) => r.name === "daily",
     "/shared": (r) => r.name === "shared",
     "/templates": (r) => r.name === "templates",
     "/starred": (r) => r.name === "starred",
@@ -238,10 +236,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
         <div className="mt-3 space-y-0.5">
-          <NavItem href="/documents" icon={<FileText size={16} />} label="All Documents" onNavigate={onNavigate} />
+          <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
           <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
-          <NavItem href="/daily" icon={<CalendarDays size={16} />} label="Daily Notes" onNavigate={onNavigate} />
           <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} />
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
           <NavItem href="/unsorted" icon={<Inbox size={16} />} label="Unsorted" onNavigate={onNavigate} draggableFolderId="" />

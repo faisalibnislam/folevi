@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ArrowRight, CalendarDays, CheckSquare, FileText, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckSquare, FileText, House as Home, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -26,7 +26,7 @@ function useDebounced<T>(value: T, ms: number): T {
 
 /** ⌘K palette: recent documents, full-text search with highlighted matches, and actions (combobox pattern). */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { workspace, today, appearance, setAppearance } = useAppState();
+  const { workspace, appearance, setAppearance } = useAppState();
   const { navigate } = useAppRouter();
   const createDocument = useCreateDocument();
   const [query, setQuery] = useState("");
@@ -59,10 +59,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const actions: Item[] = useMemo(
     () => [
       { kind: "action", id: "new", label: "New document", hint: "⌘⌥N", icon: <Plus size={16} />, run: () => void createDocument({}) },
-      { kind: "action", id: "today", label: "Open today's Daily Note", icon: <CalendarDays size={16} />, run: () => navigate(`/daily/${today}`) },
       { kind: "action", id: "tasks", label: "Go to Tasks · Today", icon: <CheckSquare size={16} />, run: () => navigate("/tasks/today") },
       { kind: "action", id: "calendar", label: "Go to Calendar", icon: <CalendarDays size={16} />, run: () => navigate("/calendar") },
-      { kind: "action", id: "all", label: "Go to All Documents", icon: <FileText size={16} />, run: () => navigate("/documents") },
+      { kind: "action", id: "all", label: "Go to Home", icon: <Home size={16} />, run: () => navigate("/documents") },
       { kind: "action", id: "trash", label: "Open Trash", icon: <Trash2 size={16} />, run: () => navigate("/trash") },
       { kind: "action", id: "settings", label: "Open Settings", icon: <Settings size={16} />, run: () => navigate("/settings/account") },
       {
@@ -73,7 +72,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         run: () => setAppearance(appearance === "dark" ? "light" : "dark"),
       },
     ],
-    [createDocument, navigate, today, appearance, setAppearance],
+    [createDocument, navigate, appearance, setAppearance],
   );
 
   const q = query.trim().toLowerCase();

@@ -108,7 +108,7 @@ export const list = query({
             .query("documents")
             .withIndex("by_folder", (q) => q.eq("folderId", folder._id))
             .take(1000)
-        ).filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && d.kind === "document");
+        ).filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && (d.kind === "document" || d.kind === "daily"));
       } else {
         const tag = args.tagId
           ? await ctx.db
@@ -152,8 +152,9 @@ export const list = query({
           case "daily":
             return q.and(q.eq(q.field("kind"), "daily"), q.eq(q.field("dailyOwnerId"), profile._id));
           case "unsorted":
+            // Daily notes (a retired feature) are ordinary pages now.
             return q.and(
-              q.eq(q.field("kind"), "document"),
+              q.or(q.eq(q.field("kind"), "document"), q.eq(q.field("kind"), "daily")),
               q.eq(q.field("folderId"), undefined),
               q.eq(q.field("archivedAt"), undefined),
               q.eq(q.field("parentDocumentId"), undefined),
@@ -162,7 +163,7 @@ export const list = query({
             return q.eq(q.field("kind"), q.field("kind"));
           default:
             return q.and(
-              q.eq(q.field("kind"), "document"),
+              q.or(q.eq(q.field("kind"), "document"), q.eq(q.field("kind"), "daily")),
               q.eq(q.field("archivedAt"), undefined),
               q.eq(q.field("parentDocumentId"), undefined),
             );
@@ -472,7 +473,7 @@ async function descendantsOf(ctx: QueryCtx | MutationCtx, root: Doc<"documents">
   return out;
 }
 
-async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">, inTrash: boolean, stamp: number | undefined) {
+export async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">, inTrash: boolean, stamp: number | undefined) {
   const seq = new SeqAllocator(ctx);
   const s = await seq.for(doc.workspaceId);
   const all = [doc, ...(await descendantsOf(ctx, doc))];
@@ -649,6 +650,7 @@ export const duplicate = mutation({
 });
 
 // ---------------------------------------------------------------- daily notes
+// Retired feature: kept read-only for clients that haven't updated yet. Quick Add uses the Inbox page.
 
 export const daily = query({
   args: { workspaceId: v.string(), date: v.string() },

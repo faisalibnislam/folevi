@@ -281,44 +281,44 @@ enum FoleviShadow {
     ]
     static let control: [FoleviShadowLayer] = [
         FoleviShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: Color(nsColor: .folevi(
-            light: (1.0000, 1.0000, 1.0000, 0.9),
-            dark: (1.0000, 0.9412, 0.9020, 0.07),
+            light: (1.0000, 1.0000, 1.0000, 0.27),
+            dark: (1.0000, 0.9412, 0.9020, 0.021),
             name: "folevi.shadow.control.0"
         )), inset: true),
         FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: Color(nsColor: .folevi(
-            light: (0.2902, 0.1843, 0.1725, 0.1),
-            dark: (1.0000, 0.9412, 0.9020, 0.09),
+            light: (0.2902, 0.1843, 0.1725, 0.075),
+            dark: (1.0000, 0.9412, 0.9020, 0.068),
             name: "folevi.shadow.control.1"
         )), inset: false),
-        FoleviShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: Color(nsColor: .folevi(
-            light: (0.2902, 0.1843, 0.1725, 0.06),
-            dark: (0.0000, 0.0000, 0.0000, 0.5),
+        FoleviShadowLayer(x: 0, y: 0, blur: 1, spread: 0, color: Color(nsColor: .folevi(
+            light: (0.2902, 0.1843, 0.1725, 0.018),
+            dark: (0.0000, 0.0000, 0.0000, 0.15),
             name: "folevi.shadow.control.2"
         )), inset: false),
-        FoleviShadowLayer(x: 0, y: 2, blur: 6, spread: -2, color: Color(nsColor: .folevi(
-            light: (0.2902, 0.1843, 0.1725, 0.08),
+        FoleviShadowLayer(x: 0, y: 1, blur: 3, spread: -1, color: Color(nsColor: .folevi(
+            light: (0.2902, 0.1843, 0.1725, 0.024),
             dark: (0.0000, 0.0000, 0.0000, 0),
             name: "folevi.shadow.control.3"
         )), inset: false),
     ]
     static let primary: [FoleviShadowLayer] = [
         FoleviShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: Color(nsColor: .folevi(
-            light: (1.0000, 1.0000, 1.0000, 0.22),
-            dark: (1.0000, 1.0000, 1.0000, 0.45),
+            light: (1.0000, 1.0000, 1.0000, 0.066),
+            dark: (1.0000, 1.0000, 1.0000, 0.135),
             name: "folevi.shadow.primary.0"
         )), inset: true),
         FoleviShadowLayer(x: 0, y: -1, blur: 0, spread: 0, color: Color(nsColor: .folevi(
-            light: (0.1137, 0.0941, 0.0784, 0.25),
-            dark: (0.1647, 0.0902, 0.0784, 0.25),
+            light: (0.1137, 0.0941, 0.0784, 0.075),
+            dark: (0.1647, 0.0902, 0.0784, 0.075),
             name: "folevi.shadow.primary.1"
         )), inset: true),
-        FoleviShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: Color(nsColor: .folevi(
-            light: (0.1137, 0.0941, 0.0784, 0.18),
-            dark: (0.0000, 0.0000, 0.0000, 0.7),
+        FoleviShadowLayer(x: 0, y: 0, blur: 1, spread: 0, color: Color(nsColor: .folevi(
+            light: (0.1137, 0.0941, 0.0784, 0.054),
+            dark: (0.0000, 0.0000, 0.0000, 0.21),
             name: "folevi.shadow.primary.2"
         )), inset: false),
-        FoleviShadowLayer(x: 0, y: 6, blur: 14, spread: -6, color: Color(nsColor: .folevi(
-            light: (0.2902, 0.1843, 0.1725, 0.55),
+        FoleviShadowLayer(x: 0, y: 3, blur: 7, spread: -3, color: Color(nsColor: .folevi(
+            light: (0.2902, 0.1843, 0.1725, 0.165),
             dark: (0.0000, 0.0000, 0.0000, 0),
             name: "folevi.shadow.primary.3"
         )), inset: false),

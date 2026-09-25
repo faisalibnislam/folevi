@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 
 /**
- * Quick Add Task (⇧⌘A). The task becomes a checklist block in today's Daily Note unless a document is
+ * Quick Add Task (⇧⌘A). The task becomes a checklist block in the person's Inbox page unless a document is
  * chosen — every task always lives in a document.
  */
 export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onClose: () => void; documentId?: string }) {
@@ -35,7 +35,7 @@ export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onC
   }, [open, currentDoc]);
 
   return (
-    <Dialog open={open} onClose={onClose} title="Quick add task" description="Press Enter to add. Tasks without a document go to today's Daily Note." size="sm">
+    <Dialog open={open} onClose={onClose} title="Quick add task" description="Press Enter to add. Tasks without a document go to your Inbox page." size="sm">
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -85,7 +85,7 @@ export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onC
         {currentDoc ? (
           <label className="mt-3 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={attachHere} onChange={(e) => setAttachHere(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
-            Add to the open document instead of today's Daily Note
+            Add to the open document instead of your Inbox
           </label>
         ) : null}
         <div className="mt-5 flex justify-end gap-2">

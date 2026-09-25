@@ -3,8 +3,8 @@ import { newPersonWithWorkspace } from "./helpers";
 
 test("folders, starring, archive, trash and restore", async ({ browser }) => {
   const { page } = await newPersonWithWorkspace(browser, "Organizer");
-  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "All Documents" }).click();
-  await expect(page.getByRole("heading", { name: "All Documents", level: 2 })).toBeVisible();
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Home" }).click();
+  await expect(page.getByRole("heading", { name: "Home", level: 2 })).toBeVisible();
 
   // New folder
   await page.getByRole("button", { name: "New folder" }).click();
@@ -26,7 +26,7 @@ test("folders, starring, archive, trash and restore", async ({ browser }) => {
   await expect(page.getByRole("main").getByText("Field Notes: A Quiet Morning")).toBeVisible();
 
   // Archive then trash then restore
-  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "All Documents" }).click();
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Home" }).click();
   const trip = page.getByRole("listitem").filter({ hasText: "Trip Sketch: Coastal Weekend" });
   await trip.hover();
   await trip.getByRole("button", { name: /Actions for Trip Sketch/ }).click();
@@ -36,7 +36,7 @@ test("folders, starring, archive, trash and restore", async ({ browser }) => {
   await expect(page.getByRole("main").getByText("Trip Sketch: Coastal Weekend")).toBeVisible();
   await page.getByRole("button", { name: /Actions for Trip Sketch/ }).click();
   await page.getByRole("menuitem", { name: "Restore" }).click();
-  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "All Documents" }).click();
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Home" }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Trip Sketch: Coastal Weekend" })).toHaveCount(1);
 });
 

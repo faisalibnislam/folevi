@@ -1,0 +1,82 @@
+[
+  {
+    "id": "art-01",
+    "name": "Peach dunes"
+  },
+  {
+    "id": "art-02",
+    "name": "Ember sun"
+  },
+  {
+    "id": "art-03",
+    "name": "Rose fog"
+  },
+  {
+    "id": "art-04",
+    "name": "Moss hills"
+  },
+  {
+    "id": "art-05",
+    "name": "Marigold rays"
+  },
+  {
+    "id": "art-06",
+    "name": "Plum orbit"
+  },
+  {
+    "id": "art-07",
+    "name": "Coral confetti"
+  },
+  {
+    "id": "art-08",
+    "name": "Cocoa grid"
+  },
+  {
+    "id": "art-09",
+    "name": "Linen weave"
+  },
+  {
+    "id": "art-10",
+    "name": "Tide lines"
+  },
+  {
+    "id": "art-11",
+    "name": "Bloom"
+  },
+  {
+    "id": "art-12",
+    "name": "Folio stack"
+  },
+  {
+    "id": "art-13",
+    "name": "Dawn mesh"
+  },
+  {
+    "id": "art-14",
+    "name": "Terrazzo"
+  },
+  {
+    "id": "art-15",
+    "name": "Arches"
+  },
+  {
+    "id": "art-16",
+    "name": "Sandstone strata"
+  },
+  {
+    "id": "art-17",
+    "name": "Pebbles"
+  },
+  {
+    "id": "art-18",
+    "name": "Aurora"
+  },
+  {
+    "id": "art-19",
+    "name": "Checker sun"
+  },
+  {
+    "id": "art-20",
+    "name": "Leaves"
+  }
+]

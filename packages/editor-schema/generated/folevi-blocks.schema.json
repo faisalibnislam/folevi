@@ -401,7 +401,8 @@
         "none",
         "color",
         "gradient",
-        "image"
+        "image",
+        "art"
       ]
     },
     "DocumentKind": {

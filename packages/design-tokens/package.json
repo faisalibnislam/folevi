@@ -6,12 +6,14 @@
   "exports": {
     "./tokens.json": "./src/tokens.json",
     "./tokens.css": "./generated/tokens.css",
-    ".": "./generated/tokens.ts"
+    ".": "./generated/tokens.ts",
+    "./covers.json": "./covers/covers.json"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node scripts/build.mjs --check && node scripts/contrast.mjs",
     "typecheck": "node scripts/build.mjs --check",
-    "lint": "node scripts/contrast.mjs"
+    "lint": "node scripts/contrast.mjs",
+    "covers": "node scripts/covers.mjs"
   }
 }

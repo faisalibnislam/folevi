@@ -22,7 +22,7 @@ const releases = [
           "Slash menu to insert or turn a block into any type, plus keyboard shortcuts for headings and checklists",
           "Drag or use ⌥⇧↑ / ⌥⇧↓ to move blocks; nest blocks to build outlines",
           "Inline formatting, text colours and highlights, links, dates and mentions",
-          "Page style: sans, serif or mono type; narrow, default or wide width; paper, plain, tinted or grid backgrounds; five accent colours; covers and icons",
+          "Page style: sans, serif or mono type; narrow, default or wide width; paper, plain, tinted or grid backgrounds; five accent colours; colour, gradient and 20 artwork covers; icons",
         ],
       },
       {
@@ -31,13 +31,13 @@ const releases = [
           "Nested pages, shown as links or cards",
           "Links between pages with [[, and backlinks on the linked page",
           "Unsorted for loose notes, folders, tags and starred pages",
-          "Templates and daily notes",
+          "Templates",
           "Search across titles and text with ⌘K",
         ],
       },
       {
         title: "Tasks",
-        items: ["Checklist items with due dates, times and priority", "Today view for due and overdue tasks", "Calendar"],
+        items: ["Checklist items with due dates, times and priority", "Today view for due and overdue tasks", "Quick Add into your Inbox page", "Calendar"],
       },
       {
         title: "Sync, offline and sharing",

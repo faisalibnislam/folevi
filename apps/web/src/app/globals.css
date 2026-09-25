@@ -141,6 +141,10 @@
 /* ------------------------------------------------------------------------------------------------
  * Warm Folio component recipes (docs/DESIGN_SYSTEM.md). Shared by every product surface.
  * --------------------------------------------------------------------------------------------- */
+:root { --cover-art-tint: transparent; }
+:root[data-theme="dark"] { --cover-art-tint: rgb(0 0 0 / 0.18); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cover-art-tint: rgb(0 0 0 / 0.18); } }
+
 @layer components {
   /* Canvas with two very soft ambient glows (peach top-right, rose bottom-left). */
   .ui-canvas {
@@ -176,18 +180,18 @@
   .ui-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .ui-btn-primary {
     color: var(--color-accent-ink);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--color-accent) 86%, white) 0%, var(--color-accent) 55%, color-mix(in oklab, var(--color-accent) 92%, black) 100%);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-accent) 96%, white) 0%, var(--color-accent) 100%);
     box-shadow: var(--shadow-primary);
   }
   .ui-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
-  .ui-btn-primary:active:not(:disabled) { box-shadow: var(--shadow-control); transform: translateY(0.5px); filter: brightness(0.97); }
+  .ui-btn-primary:active:not(:disabled) { filter: brightness(0.96); }
   .ui-btn-secondary {
     color: var(--color-ink);
-    background: linear-gradient(180deg, var(--color-surface-raised) 0%, color-mix(in oklab, var(--color-surface-raised) 90%, var(--color-surface-sunken)) 100%);
+    background: linear-gradient(180deg, var(--color-surface-raised) 0%, color-mix(in oklab, var(--color-surface-raised) 97%, var(--color-surface-sunken)) 100%);
     box-shadow: var(--shadow-control);
   }
   .ui-btn-secondary:hover:not(:disabled) { background: var(--color-surface-raised); color: var(--color-heading); }
-  .ui-btn-secondary:active:not(:disabled) { transform: translateY(0.5px); box-shadow: var(--shadow-hairline); }
+  .ui-btn-secondary:active:not(:disabled) { background: var(--color-surface-sunken); }
   .ui-btn-ghost { color: var(--color-ink); }
   .ui-btn-ghost:hover:not(:disabled) { background: color-mix(in oklab, var(--color-accent-soft) 80%, transparent); color: var(--color-heading); }
   .ui-btn-quiet { color: var(--color-ink-muted); }
@@ -195,7 +199,7 @@
   .ui-btn-quiet[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-heading); }
   .ui-btn-danger {
     color: #fff;
-    background: linear-gradient(180deg, color-mix(in oklab, var(--color-destructive) 88%, white), var(--color-destructive));
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-destructive) 96%, white), var(--color-destructive));
     box-shadow: var(--shadow-primary);
   }
   :root[data-theme="dark"] .ui-btn-danger { color: #2a1714; }

@@ -13,7 +13,7 @@
     "DocumentBackground": { "type": "string", "values": ["paper", "plain", "tinted", "grid"] },
     "DocumentAccent": { "type": "string", "values": ["accent", "moss", "marigold", "plum", "coral"] },
     "CardStyle": { "type": "string", "values": ["folio", "plain", "tinted", "outline"] },
-    "CoverKind": { "type": "string", "values": ["none", "color", "gradient", "image"] },
+    "CoverKind": { "type": "string", "values": ["none", "color", "gradient", "image", "art"] },
     "DocumentKind": { "type": "string", "values": ["document", "daily", "template", "collectionRow"] }
   },
   "unions": {

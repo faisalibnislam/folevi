@@ -2,11 +2,12 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { dailyDocumentId, rankBetween, SCHEMA_VERSION, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
+import { inboxDocumentId, rankBetween, SCHEMA_VERSION, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, requireWorkspace } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { SyncEngine } from "./lib/syncEngine";
+import { setTrashState } from "./documents";
 
 const vView = v.union(v.literal("inbox"), v.literal("today"), v.literal("upcoming"), v.literal("all"), v.literal("completed"), v.literal("mine"));
 
@@ -202,7 +203,8 @@ export const update = mutation({
 
 /**
  * Quick Add: creates a todo block. With a document it is appended there; otherwise it goes into the
- * person's Daily Note for `today` (created if needed), so every task always lives in a document.
+ * person's Inbox page (created if needed, brought back if it was in Trash), so every task always lives
+ * in a document. The Inbox id is deterministic so offline clients create the same page.
  */
 export const quickAdd = mutation({
   args: {
@@ -223,18 +225,15 @@ export const quickAdd = mutation({
     const engine = new SyncEngine(ctx, profile, args.deviceId ?? "server");
     let docPublicId = args.documentId;
     if (!docPublicId) {
-      const daily = await ctx.db
-        .query("documents")
-        .withIndex("by_daily", (q) => q.eq("workspaceId", workspace._id).eq("dailyOwnerId", profile._id).eq("dailyDate", args.today))
-        .first();
-      if (daily && !daily.inTrash) docPublicId = daily.publicId;
-      else {
-        docPublicId = dailyDocumentId(profile._id, workspace.publicId, args.today);
+      docPublicId = inboxDocumentId(profile._id, workspace.publicId);
+      const existing = await getDocumentByPublicId(ctx, docPublicId);
+      if (existing?.inTrash) await setTrashState(ctx, existing, profile._id, false, undefined);
+      else if (!existing) {
         const [r] = await engine.applyAll(workspace.publicId, [
           {
             opId: ulid(),
             kind: "document.create",
-            document: { id: docPublicId, parentDocumentId: null, folderId: null, kind: "daily", title: dailyTitle(args.today), icon: null, dailyDate: args.today },
+            document: { id: docPublicId, parentDocumentId: null, folderId: null, kind: "document", title: "Inbox", icon: "📥" },
           },
         ]);
         if (r?.status === "conflict" && r.document) docPublicId = r.document.id;
@@ -264,11 +263,6 @@ export const quickAdd = mutation({
     return { blockId: block.id, documentId: doc.publicId };
   },
 });
-
-export function dailyTitle(date: string): string {
-  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
-}
 
 /** Moves a task (and nothing else) into another document: new block there, tombstone here. */
 export const moveToDocument = mutation({

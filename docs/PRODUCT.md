@@ -29,18 +29,20 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   Unknown future block types are preserved, never dropped.
 - Markdown shortcuts, a `/` menu, `[[` page links, `@` mentions, nesting with Tab, block moves with
   ⌥⇧↑/↓ and drag handles, undo/redo, paste normalization (HTML and Markdown).
-- Per-page styling: icon, cover, accent, serif/sans/mono font, width, background, card style.
+- Per-page styling: icon, cover (accent color, accent gradient, or one of 20 abstract artworks), accent,
+  serif/sans/mono font, width, background, card style.
 - Nested pages, backlinks, an outline on wide screens, version history (snapshots) with restore.
 
 ### Organizing
-- Folders, starred pages, tags, Unsorted, Archive and Trash (30-day restore).
+- Home (all your pages), folders, starred pages, tags, Unsorted, Archive and Trash (30-day restore).
 - Search with highlighted matches and a ⌘K command palette.
-- Daily Notes with a stable, deterministic page per day, and previous/next day navigation.
 - Templates (built-in and your own).
 
 ### Tasks and calendar
 - Every to-do in every page is a task. Due dates, Today / Upcoming / Anytime / Completed views, a
-  calendar, quick add into today's Daily Note, optional reminders and a daily digest email.
+  calendar, Quick Add into your Inbox page (one per person per workspace, deterministic id so offline
+  devices agree), optional reminders and a daily digest email.
+- Daily Notes were retired: existing daily notes remain as ordinary pages and old `/daily` links open Home.
 
 ### Working with others
 - Workspace roles (Owner, Admin, Editor, Commenter, Viewer), restricted pages with explicit grants,

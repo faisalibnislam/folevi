@@ -42,7 +42,7 @@ export function HelpView() {
     <ViewChrome title={<h1 className="text-sm font-semibold">Help</h1>} tabTitle="Help">
       <div className="mx-auto max-w-3xl space-y-10 px-4 pb-24 pt-6 sm:px-8">
         <header>
-          <h2 className="font-display text-[34px] leading-tight">Help</h2>
+          <h2 className="ui-display text-[34px] leading-tight">Help</h2>
           <p className="text-muted">
             The full guide lives at{" "}
             <a className="text-accent underline underline-offset-2" href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"}/docs`}>
@@ -55,7 +55,7 @@ export function HelpView() {
           <h3 id="h-shortcuts" className="mb-3 text-lg font-semibold">
             Keyboard shortcuts
           </h3>
-          <table className="w-full overflow-hidden rounded-[12px] border border-line bg-raised text-sm">
+          <table className="w-full overflow-hidden ui-card rounded-[18px] text-sm">
             <tbody>
               {SHORTCUTS.map(([label, keys]) => (
                 <tr key={label} className="border-b border-line last:border-0">
@@ -77,7 +77,7 @@ export function HelpView() {
           </h3>
           <dl className="grid gap-3 sm:grid-cols-2">
             {STATUSES.map(([k, v]) => (
-              <div key={k} className="rounded-[10px] border border-line bg-raised p-3">
+              <div key={k} className="ui-card rounded-[18px] p-3">
                 <dt className="font-medium">{k}</dt>
                 <dd className="text-sm text-muted">{v}</dd>
               </div>

@@ -18,8 +18,14 @@
   --color-faint: var(--color-ink-faint);
   --color-line: var(--color-line);
   --color-line-strong: var(--color-line-strong);
+  --color-sidebar: var(--color-sidebar);
+  --color-heading: var(--color-heading);
   --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
   --color-accent-ink: var(--color-accent-ink);
+  --color-ember: var(--color-ember);
+  --color-ember-ink: var(--color-ember-ink);
+  --color-ember-soft: var(--color-ember-soft);
   --color-accent-soft: var(--color-accent-soft);
   --color-accent-soft-ink: var(--color-accent-soft-ink);
   --color-moss: var(--color-moss);
@@ -47,6 +53,14 @@
   --radius-card: var(--radius-card);
   --radius-sheet: var(--radius-sheet);
 
+  --shadow-hairline: var(--shadow-hairline);
+  --shadow-control: var(--shadow-control);
+  --shadow-primary: var(--shadow-primary);
+  --shadow-card: var(--shadow-card);
+  --shadow-sheet: var(--shadow-sheet);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-lift: var(--shadow-lift);
+
   --ease-folio: var(--motion-easing);
 }
 
@@ -62,8 +76,10 @@
     font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.55;
+    letter-spacing: var(--tracking-normal);
     background: var(--color-canvas);
     min-height: 100dvh;
+    font-feature-settings: "cv11", "ss01", "ss03";
   }
   ::selection {
     background: var(--color-selection);
@@ -120,6 +136,138 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Warm Folio component recipes (docs/DESIGN_SYSTEM.md). Shared by every product surface.
+ * --------------------------------------------------------------------------------------------- */
+@layer components {
+  /* Canvas with two very soft ambient glows (peach top-right, rose bottom-left). */
+  .ui-canvas {
+    position: relative;
+    isolation: isolate;
+    background: var(--color-canvas);
+  }
+  .ui-canvas::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60vw 50vh at 100% -5%, color-mix(in oklab, var(--color-glow-peach) 38%, transparent), transparent 70%),
+      radial-gradient(55vw 55vh at -5% 105%, color-mix(in oklab, var(--color-glow-rose) 34%, transparent), transparent 70%);
+  }
+  :root[data-theme="dark"] .ui-canvas::before { opacity: 0.9; }
+
+  /* Pills and buttons */
+  .ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+    border-radius: 999px;
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    user-select: none;
+    transition: box-shadow 160ms var(--motion-easing), transform 120ms var(--motion-easing), background-color 160ms, color 160ms, filter 160ms;
+  }
+  .ui-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ui-btn-primary {
+    color: var(--color-accent-ink);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-accent) 86%, white) 0%, var(--color-accent) 55%, color-mix(in oklab, var(--color-accent) 92%, black) 100%);
+    box-shadow: var(--shadow-primary);
+  }
+  .ui-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+  .ui-btn-primary:active:not(:disabled) { box-shadow: var(--shadow-control); transform: translateY(0.5px); filter: brightness(0.97); }
+  .ui-btn-secondary {
+    color: var(--color-ink);
+    background: linear-gradient(180deg, var(--color-surface-raised) 0%, color-mix(in oklab, var(--color-surface-raised) 90%, var(--color-surface-sunken)) 100%);
+    box-shadow: var(--shadow-control);
+  }
+  .ui-btn-secondary:hover:not(:disabled) { background: var(--color-surface-raised); color: var(--color-heading); }
+  .ui-btn-secondary:active:not(:disabled) { transform: translateY(0.5px); box-shadow: var(--shadow-hairline); }
+  .ui-btn-ghost { color: var(--color-ink); }
+  .ui-btn-ghost:hover:not(:disabled) { background: color-mix(in oklab, var(--color-accent-soft) 80%, transparent); color: var(--color-heading); }
+  .ui-btn-quiet { color: var(--color-ink-muted); }
+  .ui-btn-quiet:hover:not(:disabled) { background: color-mix(in oklab, var(--color-accent-soft) 80%, transparent); color: var(--color-heading); }
+  .ui-btn-quiet[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-heading); }
+  .ui-btn-danger {
+    color: #fff;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-destructive) 88%, white), var(--color-destructive));
+    box-shadow: var(--shadow-primary);
+  }
+  :root[data-theme="dark"] .ui-btn-danger { color: #2a1714; }
+
+  /* Wells: search fields, inputs, segmented tracks */
+  .ui-well {
+    background: var(--color-surface-sunken);
+    box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 10%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent);
+  }
+  :root[data-theme="dark"] .ui-well { box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.45), inset 0 0 0 1px rgb(255 240 230 / 0.06); }
+  .ui-input {
+    background: var(--color-surface);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line);
+    transition: box-shadow 140ms;
+  }
+  .ui-input:focus, .ui-input:focus-within { outline: none; box-shadow: 0 0 0 1px var(--color-focus), 0 0 0 4px color-mix(in oklab, var(--color-focus) 20%, transparent); }
+
+  /* Surfaces */
+  .ui-card { background: var(--color-surface); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+  .ui-sheet { border-radius: var(--radius-sheet); box-shadow: var(--shadow-sheet); }
+  .ui-pop { background: var(--color-surface-raised); border-radius: 14px; box-shadow: var(--shadow-pop); }
+  .ui-raised { background: var(--color-surface-raised); box-shadow: var(--shadow-control); }
+  .ui-glass {
+    background: color-mix(in oklab, var(--color-surface) 86%, transparent);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  }
+  @media (prefers-reduced-transparency: reduce) { .ui-glass { background: var(--color-surface); backdrop-filter: none; } }
+
+  /* Segmented control (track + raised thumb). The active item carries data-active. */
+  .ui-seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; }
+  .ui-seg > * {
+    flex: 1;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+    min-height: 28px; padding: 0 0.6rem; border-radius: 999px;
+    font-size: 12.5px; font-weight: 550; color: var(--color-ink-muted);
+    transition: background-color 180ms var(--motion-easing), box-shadow 180ms var(--motion-easing), color 180ms;
+  }
+  .ui-seg > *:hover { color: var(--color-heading); }
+  .ui-seg > [data-active="true"], .ui-seg > [aria-selected="true"], .ui-seg > [aria-pressed="true"] {
+    background: var(--color-surface-raised); color: var(--color-heading); box-shadow: var(--shadow-control);
+  }
+
+  /* Small caps section label */
+  .ui-caps { font-size: 11px; font-weight: 600; letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--color-ink-faint); }
+
+  /* Keycap */
+  .ui-kbd {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 1.35rem; height: 1.25rem; padding: 0 0.3rem;
+    border-radius: 6px; font: 550 10.5px/1 var(--font-sans); color: var(--color-ink-muted);
+    background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line), 0 1px 0 var(--color-line-strong);
+  }
+
+  /* Chips */
+  .ui-chip { display: inline-flex; align-items: center; gap: 0.3rem; height: 1.6rem; padding: 0 0.65rem; border-radius: 999px; font-size: 12.5px; font-weight: 550; }
+
+  /* Headings in views */
+  .ui-display { font-family: var(--font-sans); font-weight: 620; letter-spacing: -0.028em; color: var(--color-heading); }
+  .ui-title { font-size: var(--text-title); line-height: 1.1; font-weight: 650; letter-spacing: var(--tracking-tight); color: var(--color-heading); }
+  .ui-h2 { font-size: var(--text-xl); line-height: 1.2; font-weight: 600; letter-spacing: var(--tracking-snug); color: var(--color-heading); }
+
+  /* Menus */
+  .ui-menu-item {
+    display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 32px; padding: 0 0.6rem; border-radius: 9px;
+    font-size: 13.5px; text-align: left; color: var(--color-ink);
+  }
+  .ui-menu-item:hover, .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"] { background: var(--color-accent-soft); color: var(--color-heading); outline: none; }
+}
+
+@media (prefers-contrast: more) {
+  .ui-btn-secondary, .ui-raised, .ui-card { box-shadow: 0 0 0 1px var(--color-line-strong); }
 }
 
 /* Index-line texture used across marketing and the canvas (thin, quiet). */

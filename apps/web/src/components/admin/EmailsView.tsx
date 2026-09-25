@@ -88,7 +88,7 @@ export function EmailsView() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-[12px] border border-line bg-raised">
+      <div className="overflow-hidden ui-card rounded-[18px]">
         <DataTable caption={`Email send attempts${status ? `, status ${status}` : ""}`} minWidth={1040}>
           <thead>
             <tr>

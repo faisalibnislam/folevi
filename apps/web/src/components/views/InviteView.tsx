@@ -22,17 +22,17 @@ export function InviteView({ token }: { token: string }) {
           <p className="text-muted">Checking your invitation…</p>
         ) : !preview.valid ? (
           <>
-            <h2 className="font-display text-3xl">This invitation is no longer valid</h2>
+            <h2 className="ui-display text-3xl">This invitation is no longer valid</h2>
             <p className="mt-2 text-muted">It may have expired or been revoked. Ask for a new one.</p>
           </>
         ) : (
           <>
-            <h2 className="font-display text-3xl">Join {preview.workspaceName}</h2>
+            <h2 className="ui-display text-3xl">Join {preview.workspaceName}</h2>
             <p className="mt-2 text-muted">
               {preview.inviterName} invited you as {preview.role === "admin" ? "an admin" : `a${preview.role === "editor" ? "n" : ""} ${preview.role}`}.
             </p>
             {!preview.emailMatches ? (
-              <p className="mt-4 rounded-[10px] border border-warning/30 bg-warning-soft p-3 text-sm">
+              <p className="mt-4 rounded-[14px] border border-warning/30 bg-warning-soft p-3 text-sm">
                 This invitation was sent to a different address than the one you’re signed in with ({profile.email}). Sign in with the invited address to accept it.
               </p>
             ) : (

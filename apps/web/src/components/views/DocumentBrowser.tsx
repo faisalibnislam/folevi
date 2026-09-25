@@ -134,7 +134,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
       <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-6 sm:px-8">
         <div className="mb-5 flex flex-wrap items-end gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-[34px] leading-tight">{title}</h2>
+            <h2 className="ui-display text-[34px] leading-tight">{title}</h2>
             {!loading ? (
               <p className="text-sm text-muted">
                 {docs.length} document{docs.length === 1 ? "" : "s"}
@@ -146,14 +146,14 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
           </div>
           <label className="flex items-center gap-2 text-sm text-muted">
             <span>Sort</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 rounded-[6px] border border-line bg-surface px-2 text-ink">
+            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 ui-input rounded-full px-2 text-ink">
               <option value="updated">Last edited</option>
               <option value="created">Created</option>
               <option value="title">Title</option>
               <option value="manual">Manual order</option>
             </select>
           </label>
-          <div role="radiogroup" aria-label="Layout" className="flex rounded-[7px] border border-line bg-surface p-0.5">
+          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-full p-0.5">
             {(
               [
                 ["grid", "Grid", <LayoutGrid key="g" size={15} />],
@@ -169,7 +169,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                 aria-label={label}
                 title={label}
                 onClick={() => setLayout(value)}
-                className={`grid h-7 w-8 place-items-center rounded-[5px] ${layout === value ? "bg-raised text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-muted hover:text-ink"}`}
+                className={`grid h-7 w-9 place-items-center rounded-full transition-[background-color,box-shadow] ${layout === value ? "bg-raised text-heading shadow-[var(--shadow-control)]" : "text-muted hover:text-heading"}`}
               >
                 {icon}
               </button>
@@ -188,7 +188,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                   key={t.key}
                   type="button"
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
-                  className="flex items-start gap-3 rounded-[12px] border border-line bg-raised p-4 text-left hover:border-line-strong"
+                  className="flex items-start gap-3 ui-card rounded-[18px] p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
                 >
                   <span className="text-2xl" aria-hidden>
                     {t.icon}
@@ -207,12 +207,12 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
         {loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-52 animate-pulse rounded-[12px] border border-line bg-surface motion-reduce:animate-none" />
+              <div key={i} className="h-52 animate-pulse ui-card rounded-[18px] motion-reduce:animate-none" />
             ))}
           </div>
         ) : docs.length === 0 ? (
-          <div className="rounded-[14px] border border-dashed border-line-strong px-6 py-16 text-center">
-            <p className="font-display text-2xl">{EMPTY[view]}</p>
+          <div className="rounded-[18px] border border-dashed border-line-strong px-6 py-16 text-center">
+            <p className="ui-display text-2xl">{EMPTY[view]}</p>
             {view === "all" || view === "folder" ? (
               <Button className="mt-6" variant="primary" onClick={() => void createDocument({ folderId: view === "folder" ? folderId : null })}>
                 <Plus size={14} aria-hidden /> New document
@@ -220,7 +220,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
             ) : null}
           </div>
         ) : layout === "list" ? (
-          <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-raised">
+          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[18px]">
             {docs.map((d) => (
               <li key={d.id} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-surface">
                 <DocDragHandle id={d.id} />
@@ -237,11 +237,11 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
             ))}
           </ul>
         ) : (
-          <ul className={`grid gap-4 ${layout === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
+          <ul className={`grid gap-5 ${layout === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
             {docs.map((d) => (
               <li
                 key={d.id}
-                className={`group relative rounded-[12px] ${dropTarget === d.id ? "ring-2 ring-accent ring-offset-2 ring-offset-canvas" : ""}`}
+                className={`group relative rounded-[18px] ${dropTarget === d.id ? "ring-2 ring-ember ring-offset-2 ring-offset-canvas" : ""}`}
                 draggable
                 onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-document", d.id)}
                 onDragOver={(e) => {
@@ -262,7 +262,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                   );
                 }}
               >
-                <AppLink href={`/d/${d.id}`} className={`block rounded-[12px] outline-none transition-transform duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-focus ${layout === "compact" ? "h-28" : "h-64"}`}>
+                <AppLink href={`/d/${d.id}`} className={`block rounded-[18px] shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus ${layout === "compact" ? "h-28" : "h-64"}`}>
                   <DocumentCardPreview
                     title={d.title}
                     icon={d.icon}
@@ -282,7 +282,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                   />
                 </AppLink>
                 <div className="absolute right-2 top-2 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
-                  <div className="rounded-[7px] bg-raised/90 shadow-sm backdrop-blur">
+                  <div className="ui-raised rounded-full">
                     <DocMenu doc={d} view={view} folders={org?.folders ?? []} />
                   </div>
                 </div>
@@ -392,13 +392,13 @@ function DocMenu({ doc, view, folders }: { doc: Summary; view: View; folders: { 
       <Dialog open={moveOpen} onClose={() => setMoveOpen(false)} title="Move to folder" size="sm">
         <ul className="space-y-1">
           <li>
-            <button type="button" className="w-full rounded-[7px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: null }), "Moved to Unsorted"); }}>
+            <button type="button" className="w-full rounded-[10px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: null }), "Moved to Unsorted"); }}>
               Unsorted (no folder)
             </button>
           </li>
           {folders.map((f) => (
             <li key={f.id}>
-              <button type="button" className="w-full rounded-[7px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: f.id }), `Moved to ${f.name}`); }}>
+              <button type="button" className="w-full rounded-[10px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: f.id }), `Moved to ${f.name}`); }}>
                 {f.name}
               </button>
             </li>
@@ -450,7 +450,7 @@ export function PermanentDeleteDialog({ open, onClose, documentId, title }: { op
       <label className="block text-sm" htmlFor="confirm-title">
         Document title
       </label>
-      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full rounded-[8px] border border-line bg-surface px-3" />
+      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-full px-3" />
     </Dialog>
   );
 }

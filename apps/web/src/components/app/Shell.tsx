@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { PanelLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
@@ -119,27 +119,27 @@ export function Shell() {
 
   return (
     <ShellContext.Provider value={value}>
-      <a href="#main" className="sr-only-focusable fixed left-2 top-2 z-[70] rounded-[6px] bg-accent px-3 py-2 text-accent-ink">
+      <a href="#main" className="sr-only-focusable ui-btn ui-btn-primary fixed left-2 top-2 z-[70] px-4 py-2">
         Skip to content
       </a>
       {settings?.bannerMessage ? (
-        <div role="status" className="border-b border-warning/30 bg-warning-soft px-4 py-2 text-center text-sm text-ink">
+        <div role="status" className="border-b border-line bg-warning-soft px-4 py-2 text-center text-sm text-ink">
           {settings.bannerMessage}
           {settings.readOnly ? " Folevi is read-only right now; your edits are kept on this device." : ""}
         </div>
       ) : null}
-      <div className="flex h-dvh min-h-0 bg-canvas text-ink">
+      <div className="ui-canvas flex h-dvh min-h-0 text-ink">
         {isNarrow ? (
           drawerOpen ? (
             <div className="fixed inset-0 z-40 flex">
-              <div className="h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] border-r border-line bg-canvas shadow-xl">
+              <div className="h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] bg-sidebar shadow-[var(--shadow-pop)]">
                 <Sidebar onNavigate={() => setDrawerOpen(false)} />
               </div>
-              <button type="button" aria-label="Close sidebar" className="flex-1 bg-[var(--color-scrim)]" onClick={() => setDrawerOpen(false)} />
+              <button type="button" aria-label="Close sidebar" className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={() => setDrawerOpen(false)} />
             </div>
           ) : null
         ) : !collapsed ? (
-          <div className="relative flex-none border-r border-line" style={{ width }}>
+          <div className="relative flex-none bg-[color-mix(in_oklab,var(--color-sidebar)_82%,transparent)] shadow-[inset_-1px_0_0_var(--color-line)]" style={{ width }}>
             <Sidebar />
             <div
               role="separator"
@@ -154,7 +154,7 @@ export function Shell() {
                 if (e.key === "ArrowLeft") setWidth(Math.max(248, width - 8));
                 if (e.key === "ArrowRight") setWidth(Math.min(320, width + 8));
               }}
-              className="absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize outline-none hover:bg-accent/20 focus-visible:bg-accent/30"
+              className="absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize outline-none transition-colors hover:bg-ember/25 focus-visible:bg-ember/35"
             />
           </div>
         ) : null}
@@ -174,19 +174,35 @@ export function ViewChrome({ title, leading, actions, children, tabTitle }: { ti
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
   return (
     <>
-      <header className="flex h-12 flex-none items-center gap-2 border-b border-line px-3">
+      <header className="flex h-[52px] flex-none items-center gap-2 px-3 sm:px-4">
         {!sidebarOpen ? (
           <IconButton label="Show sidebar" shortcut="⌘\" onClick={toggleSidebar}>
             <PanelLeft size={16} aria-hidden />
           </IconButton>
         ) : null}
+        <HistoryPills />
         {leading}
         <div className="min-w-0 flex-1 truncate text-sm">{title}</div>
-        <div className="flex flex-none items-center gap-1">{actions}</div>
+        <div className="flex flex-none items-center gap-1.5">{actions}</div>
       </header>
       <main id="main" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none">
         {children}
       </main>
     </>
+  );
+}
+
+/** Back / forward as one raised pill pair (browser history drives the in-app router). */
+function HistoryPills() {
+  return (
+    <div className="ui-raised hidden flex-none items-center rounded-full p-0.5 sm:flex" role="group" aria-label="History">
+      <button type="button" aria-label="Back" title="Back (⌘[)" onClick={() => window.history.back()} className="grid h-7 w-7 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+        <ChevronLeft size={16} aria-hidden />
+      </button>
+      <span className="h-4 w-px bg-line" aria-hidden />
+      <button type="button" aria-label="Forward" title="Forward (⌘])" onClick={() => window.history.forward()} className="grid h-7 w-7 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+        <ChevronRight size={16} aria-hidden />
+      </button>
+    </div>
   );
 }

@@ -49,7 +49,7 @@ export function UsersView() {
       <form
         role="search"
         aria-label="Search users"
-        className="mb-5 flex flex-wrap items-end gap-3 rounded-[12px] border border-line bg-raised p-4"
+        className="mb-5 flex flex-wrap items-end gap-3 ui-card rounded-[18px] p-4"
         onSubmit={(e) => {
           e.preventDefault();
           const sp = new URLSearchParams();
@@ -103,7 +103,7 @@ export function UsersView() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-[12px] border border-line bg-raised">
+      <div className="overflow-hidden ui-card rounded-[18px]">
         <DataTable caption={searched ? `Users matching “${q || "all"}”${status ? `, status ${status}` : ""}` : "Users"} minWidth={900}>
           <thead>
             <tr>

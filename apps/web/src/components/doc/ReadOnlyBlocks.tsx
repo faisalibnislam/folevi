@@ -93,7 +93,7 @@ export function ReadOnlyBlocks({ blocks, fileUrls }: { blocks: WireBlock[]; file
             return src ? (
               <figure key={block.id} className="my-3" style={{ width: `${Math.round(Number(p.width ?? 1) * 100)}%` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={String(p.alt ?? "")} className="w-full rounded-[10px] border border-line" />
+                <img src={src} alt={String(p.alt ?? "")} className="w-full rounded-[14px] border border-line" />
                 {p.caption ? <figcaption className="mt-1 text-center text-sm text-muted">{String(p.caption)}</figcaption> : null}
               </figure>
             ) : null;

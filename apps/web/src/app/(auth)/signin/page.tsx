@@ -25,15 +25,15 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const error = params.error ? (ERRORS[params.error] ?? "We couldn't sign you in. Please try again.") : null;
   return (
     <>
-      <h1 className="font-display text-4xl leading-tight">Welcome back</h1>
+      <h1 className="ui-display text-4xl leading-tight">Welcome back</h1>
       <p className="mt-2 text-muted">Sign in with your email, password and authenticator app.</p>
       {error ? (
-        <p role="alert" className="mt-4 rounded-[8px] border border-danger/30 bg-danger-soft p-3 text-sm">
+        <p role="alert" className="mt-4 rounded-[11px] border border-danger/30 bg-danger-soft p-3 text-sm">
           {error}
         </p>
       ) : null}
       {isAuth0Configured() ? (
-        <a href={`/auth/login?returnTo=${encodeURIComponent(returnTo)}`} className="mt-6 flex h-10 items-center justify-center rounded-[8px] bg-accent text-sm font-medium text-accent-ink">
+        <a href={`/auth/login?returnTo=${encodeURIComponent(returnTo)}`} className="mt-6 flex h-10 items-center justify-center ui-btn ui-btn-primary text-sm font-medium ">
           Continue to sign in
         </a>
       ) : isDevAuthEnabled() ? (

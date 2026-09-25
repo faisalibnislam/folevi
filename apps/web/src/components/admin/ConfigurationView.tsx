@@ -151,7 +151,7 @@ export function ConfigurationView() {
                 const descId = `tpl-${t.key}-desc`;
                 return (
                   <li key={t.key} className="flex items-start gap-3 border-line px-4 py-3 md:border-b">
-                    <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-[8px] border border-line bg-surface text-base">
+                    <span aria-hidden className="grid h-8 w-8 flex-none place-items-center ui-input rounded-full text-base">
                       {t.icon}
                     </span>
                     <div className="min-w-0 flex-1">

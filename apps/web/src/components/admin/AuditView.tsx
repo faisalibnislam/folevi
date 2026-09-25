@@ -104,7 +104,7 @@ export function AuditView() {
       ) : null}
 
       <form
-        className="mb-4 flex flex-wrap items-end gap-3 rounded-[12px] border border-line bg-raised p-4"
+        className="mb-4 flex flex-wrap items-end gap-3 ui-card rounded-[18px] p-4"
         aria-label="Filter audit log"
         noValidate
         onSubmit={(e) => {
@@ -171,7 +171,7 @@ export function AuditView() {
         ) : null}
       </form>
 
-      <div className="overflow-hidden rounded-[12px] border border-line bg-raised">
+      <div className="overflow-hidden ui-card rounded-[18px]">
         <DataTable caption={filter ? `Audit entries for ${filter.targetType} ${filter.targetId}` : "Audit entries, newest first"} minWidth={1100}>
           <thead>
             <tr>
@@ -205,7 +205,7 @@ export function AuditView() {
                           aria-controls={detailId}
                           aria-label={`${expanded ? "Hide" : "Show"} details for ${e.action} at ${formatDateTime(e.createdAt)}`}
                           onClick={() => toggle(e.id)}
-                          className="grid h-6 w-6 place-items-center rounded-[5px] text-muted hover:bg-sunken hover:text-ink"
+                          className="grid h-6 w-6 place-items-center rounded-[8px] text-muted hover:bg-sunken hover:text-ink"
                         >
                           {expanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
                         </button>

@@ -39,7 +39,7 @@ export function NotificationsButton() {
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="relative grid h-8 w-8 place-items-center rounded-[6px] text-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-ink pointer-coarse:h-11 pointer-coarse:w-11"
+        className="relative grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:w-11"
       >
         <Bell size={16} aria-hidden />
         {unread ? <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-coral" aria-hidden /> : null}
@@ -60,7 +60,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
   const { navigate } = useAppRouter();
   const toast = useToast();
   return (
-    <section role="dialog" aria-label="Notifications" className="rounded-[12px] border border-line bg-raised shadow-[0_16px_48px_-20px_rgba(0,0,0,0.45)]">
+    <section role="dialog" aria-label="Notifications" className="ui-card rounded-[18px] shadow-[var(--shadow-pop)]">
       <header className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <h2 className="text-sm font-semibold">Notifications</h2>
         <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => void markRead({})}>
@@ -93,7 +93,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
                 {n.kind === "invite" && n.inviteId ? (
                   <button
                     type="button"
-                    className="mt-1.5 rounded-[6px] bg-accent px-2.5 py-1 text-xs font-medium text-accent-ink"
+                    className="mt-1.5 ui-btn ui-btn-primary px-2.5 py-1 text-xs font-medium "
                     onClick={() =>
                       accept({ inviteId: n.inviteId! }).then(
                         () => toast.show("You joined the workspace.", { tone: "success" }),

@@ -22,7 +22,7 @@ const TONES: Record<Tone, string> = {
 
 export function Badge({ tone = "neutral", children, className, title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-[5px] border px-1.5 py-px text-[11.5px] font-medium leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
+    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-[8px] border px-1.5 py-px text-[11.5px] font-medium leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
       {children}
     </span>
   );
@@ -74,7 +74,7 @@ export function PageHeader({
   return (
     <header className="mb-6">
       {breadcrumb ? (
-        <Link href={breadcrumb.href} className="mb-2 inline-flex items-center gap-1 rounded-[5px] text-[13px] text-muted hover:text-ink">
+        <Link href={breadcrumb.href} className="mb-2 inline-flex items-center gap-1 rounded-[8px] text-[13px] text-muted hover:text-ink">
           <ChevronLeft size={14} aria-hidden />
           {breadcrumb.label}
         </Link>
@@ -82,7 +82,7 @@ export function PageHeader({
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1">
           {eyebrow ? <div className="mb-1 flex flex-wrap items-center gap-1.5">{eyebrow}</div> : null}
-          <h1 className="break-words font-display text-[32px] leading-[1.1] tracking-[-0.005em]">{title}</h1>
+          <h1 className="break-words ui-display text-[32px] leading-[1.1] tracking-[-0.005em]">{title}</h1>
           {description ? <div className="mt-1.5 max-w-3xl text-sm text-muted">{description}</div> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -98,7 +98,7 @@ export function DocTitle({ children }: { children: string }) {
 export function Panel({ title, description, actions, children, className, flush }: { title: string; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; flush?: boolean }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className={`min-w-0 overflow-hidden rounded-[12px] border border-line bg-raised ${className ?? ""}`}>
+    <section aria-labelledby={id} className={`min-w-0 overflow-hidden ui-card rounded-[18px] ${className ?? ""}`}>
       <div className="flex flex-wrap items-start gap-3 border-b border-line px-4 py-3">
         <div className="min-w-0 flex-1">
           <h2 id={id} className="text-[14px] font-semibold">
@@ -123,7 +123,7 @@ export function Callout({ tone = "neutral", title, children, icon }: { tone?: "n
           ? "border-plum/30 bg-plum-soft"
           : "border-line bg-surface";
   return (
-    <div className={`flex gap-3 rounded-[10px] border px-4 py-3 text-[13px] leading-relaxed text-ink ${cls}`}>
+    <div className={`flex gap-3 rounded-[14px] border px-4 py-3 text-[13px] leading-relaxed text-ink ${cls}`}>
       {icon ?? (tone === "warning" || tone === "danger" ? <AlertTriangle size={16} aria-hidden className="mt-0.5 flex-none" /> : null)}
       <div className="min-w-0">
         {title ? <p className="font-semibold">{title}</p> : null}
@@ -240,7 +240,7 @@ export function KeyValues({ items }: { items: { label: string; value: ReactNode 
 
 export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[10px] border border-danger/40 bg-danger-soft px-4 py-3 text-[13px]">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[14px] border border-danger/40 bg-danger-soft px-4 py-3 text-[13px]">
       <AlertTriangle size={16} aria-hidden className="flex-none text-danger" />
       <span className="flex-1">{errorMessage(error)}</span>
       {onRetry ? (
@@ -254,9 +254,9 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
 
 export function StatTile({ label, value, hint, footnote }: { label: string; value: ReactNode; hint?: ReactNode; footnote?: ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col rounded-[12px] border border-line bg-raised px-4 py-3">
+    <div className="flex min-w-0 flex-col ui-card rounded-[18px] px-4 py-3">
       <dt className="text-[12.5px] text-muted">{label}</dt>
-      <dd className="mt-1 font-display text-[30px] leading-none tabular-nums">{value}</dd>
+      <dd className="mt-1 ui-display text-[30px] leading-none tabular-nums">{value}</dd>
       {hint ? <dd className="mt-1.5 text-[12px] text-muted">{hint}</dd> : null}
       {footnote ? <dd className="mt-1.5 text-[12px] text-muted">{footnote}</dd> : null}
     </div>
@@ -266,7 +266,7 @@ export function StatTile({ label, value, hint, footnote }: { label: string; valu
 // ---------------------------------------------------------------- form controls
 
 export const inputCls =
-  "h-9 w-full rounded-[7px] border border-line bg-surface px-3 text-[13.5px] text-ink placeholder:text-muted hover:border-line-strong aria-[invalid=true]:border-danger";
+  "h-9 w-full ui-input rounded-full px-3 text-[13.5px] text-ink placeholder:text-muted transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)] aria-[invalid=true]:border-danger";
 export const selectCls = `${inputCls} pr-8`;
 
 export function Switch({ checked, onChange, label, describedBy, disabled }: { checked: boolean; onChange: (next: boolean) => void; label: string; describedBy?: string; disabled?: boolean }) {

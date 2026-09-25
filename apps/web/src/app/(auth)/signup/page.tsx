@@ -12,7 +12,7 @@ export default async function SignUpPage() {
   if (isAuth0Configured()) redirect(`/auth/login?screen_hint=signup&returnTo=${encodeURIComponent("/onboarding")}`);
   return (
     <>
-      <h1 className="font-display text-4xl leading-tight">Start writing</h1>
+      <h1 className="ui-display text-4xl leading-tight">Start writing</h1>
       <p className="mt-2 text-muted">Folevi is free during the preview. You’ll verify your email and set up an authenticator app — two quick steps that keep your notes yours.</p>
       {isDevAuthEnabled() ? <DevSignInForm returnTo="/onboarding" mode="signup" /> : <p className="mt-6 text-sm text-muted">Sign-up isn’t configured for this environment. See docs/DEPLOYMENT.md.</p>}
       <p className="mt-6 text-sm text-muted">

@@ -37,17 +37,21 @@ export function SyncStatus({ documentId }: { documentId?: string }) {
     else if (status === "saved" && (prev === "offline" || prev === "error" || prev === "conflict")) setAnnounce("All changes saved.");
   }, [status]);
 
+  const dot =
+    status === "saved" ? "bg-moss" :
+    status === "offline" ? "bg-[var(--color-ink-faint)]" :
+    status === "conflict" || status === "error" ? "bg-coral" :
+    "bg-ember animate-pulse motion-reduce:animate-none";
   const icon =
-    status === "saved" ? <Check size={14} aria-hidden /> :
-    status === "offline" ? <CloudOff size={14} aria-hidden /> :
-    status === "conflict" ? <GitMerge size={14} aria-hidden /> :
-    status === "error" ? <AlertTriangle size={14} aria-hidden /> :
-    <Loader2 size={14} aria-hidden className="animate-spin motion-reduce:animate-none" />;
+    status === "offline" ? <CloudOff size={13} aria-hidden /> :
+    status === "conflict" ? <GitMerge size={13} aria-hidden /> :
+    status === "error" ? <AlertTriangle size={13} aria-hidden /> :
+    status === "saved" ? <Check size={13} aria-hidden className="text-moss-ink" /> :
+    <Loader2 size={13} aria-hidden className="animate-spin text-ember-ink motion-reduce:animate-none" />;
   const tone =
-    status === "saved" ? "text-muted" :
-    status === "offline" ? "text-warning bg-warning-soft" :
-    status === "conflict" ? "text-plum-ink bg-plum-soft" :
-    status === "error" ? "text-danger bg-danger-soft" : "text-muted";
+    status === "offline" ? "text-warning" :
+    status === "conflict" ? "text-plum-ink" :
+    status === "error" ? "text-danger" : "text-muted";
 
   return (
     <div className="relative">
@@ -56,10 +60,11 @@ export function SyncStatus({ documentId }: { documentId?: string }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`Sync status: ${LABELS[status]}${pending ? `, ${pending} change${pending === 1 ? "" : "s"} waiting` : ""}`}
-        className={`inline-flex h-7 w-[7.5rem] items-center justify-center gap-1.5 rounded-[6px] px-2 text-xs font-medium ${tone}`}
+        className={`ui-well inline-flex h-8 w-[7.75rem] items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold transition-colors hover:text-heading ${tone}`}
         data-testid="sync-status"
         data-status={status}
       >
+        <span className={`h-1.5 w-1.5 flex-none rounded-full ${dot}`} aria-hidden />
         {icon}
         <span>{LABELS[status]}</span>
         {status === "offline" && pending ? <span className="tabular-nums">· {pending}</span> : null}
@@ -68,8 +73,8 @@ export function SyncStatus({ documentId }: { documentId?: string }) {
         {announce}
       </span>
       {open ? (
-        <div role="dialog" aria-label="Sync details" className="absolute right-0 z-50 mt-1 w-72 rounded-[10px] border border-line bg-raised p-4 text-sm shadow-[0_16px_48px_-20px_rgba(0,0,0,0.45)]">
-          <p className="font-medium">{LABELS[status]}</p>
+        <div role="dialog" aria-label="Sync details" className="ui-pop absolute right-0 z-50 mt-2 w-72 p-4 text-sm animate-[folio-rise_160ms_var(--ease-folio)]">
+          <p className="font-semibold text-heading">{LABELS[status]}</p>
           <p className="mt-1 text-muted">
             {status === "saved" && "Every change has been saved to Folevi."}
             {status === "saving" && "Sending your latest changes."}
@@ -90,7 +95,7 @@ export function SyncStatus({ documentId }: { documentId?: string }) {
             {status !== "saved" ? (
               <button
                 type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-line px-2.5 text-xs hover:bg-surface"
+                className="ui-btn ui-btn-secondary h-8 px-3 text-xs"
                 onClick={() => {
                   engine?.authRefreshed();
                   engine?.scheduleFlush(0);
@@ -100,7 +105,7 @@ export function SyncStatus({ documentId }: { documentId?: string }) {
               </button>
             ) : null}
             {state.errors.length ? (
-              <button type="button" className="inline-flex h-8 items-center rounded-[6px] px-2.5 text-xs text-muted hover:text-ink" onClick={() => engine?.clearErrors()}>
+              <button type="button" className="ui-btn ui-btn-quiet h-8 px-3 text-xs" onClick={() => engine?.clearErrors()}>
                 Dismiss
               </button>
             ) : null}

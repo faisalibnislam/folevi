@@ -6,7 +6,7 @@ import golden from "@folevi/editor-schema/fixtures/document-golden.json";
 import { ALL_MARKS, ALL_NODES } from "@/components/editor/extensions";
 import { BlockIdentity, BlockKeymap, MarkdownShortcuts } from "@/components/editor/plugins";
 import { blocksToDoc, diffBlocks, docToBlocks } from "@/components/editor/convert";
-import { changeDepth, moveBlock, turnInto } from "@/components/editor/commands";
+import { changeDepth, dropTarget, moveBlock, moveSubtreeTo, turnInto } from "@/components/editor/commands";
 import { htmlToBlocks } from "@/components/editor/paste";
 
 const blocks = golden.blocks as unknown as WireBlock[];
@@ -93,5 +93,54 @@ describe("paste normalization", () => {
     expect(json).not.toContain("evil");
     expect(json).toContain('"href":"https://example.com"');
     expect(out.find((b) => b.type === "todo")!.props).toEqual({ checked: true });
+  });
+});
+
+describe("drag and drop math", () => {
+  const para = (id: string, text: string, depth = 0) => ({ type: "paragraph", attrs: { id, depth }, content: [{ type: "text", text }] });
+  const doc = (...nodes: ReturnType<typeof para>[]) => ({ type: "doc", content: nodes });
+  const order = (e: Editor) => {
+    const out: string[] = [];
+    e.state.doc.forEach((n) => out.push(`${n.textContent}:${n.attrs.depth}`));
+    return out;
+  };
+
+  test("dropTarget picks the gap by midpoint, skips the dragged subtree, and clamps depth", () => {
+    const boxes = [
+      { top: 0, bottom: 20, depth: 0 },
+      { top: 20, bottom: 40, depth: 1 },
+      { top: 40, bottom: 60, depth: 0 },
+      { top: 60, bottom: 80, depth: 0, hidden: true },
+    ];
+    expect(dropTarget(boxes, 5, 3, null)).toEqual({ index: 0, depth: 0, lineY: 0 }); // top: nothing above → depth 0
+    expect(dropTarget(boxes, 45, 5, null)).toEqual({ index: 2, depth: 2, lineY: 40 }); // above allows ≤ 1 + 1
+    expect(dropTarget(boxes, 200, 1, null)).toEqual({ index: 4, depth: 1, lineY: 60 }); // end; hidden ignored
+    // Dragging block 0's subtree (0..1): its own rows are not targets and not "above".
+    expect(dropTarget(boxes, 25, 2, { from: 0, count: 2 })).toEqual({ index: 2, depth: 0, lineY: 40 });
+  });
+
+  test("moveSubtreeTo moves a block with its children and re-indents them together", () => {
+    const e = makeEditor(doc(para("a", "A"), para("b", "B"), para("c", "C", 1), para("d", "D")));
+    const moved = moveSubtreeTo(e.state, 1, 4, 1)!; // B (+C) to the end, nested under D
+    e.view.dispatch(moved.tr);
+    expect(moved.index).toBe(2);
+    expect(order(e)).toEqual(["A:0", "D:0", "B:1", "C:2"]);
+    // Into itself is refused; a same-place, same-depth drop is a no-op.
+    expect(moveSubtreeTo(e.state, 2, 3, 1)).toBeNull();
+    expect(moveSubtreeTo(e.state, 1, 1, 0)).toBeNull();
+    // Moving to the top clamps depth to 0.
+    e.view.dispatch(moveSubtreeTo(e.state, 2, 0, 3)!.tr);
+    expect(order(e)).toEqual(["B:0", "C:1", "A:0", "D:0"]);
+    e.destroy();
+  });
+
+  test("a drag-move is a position change only (content untouched, same ids)", () => {
+    const e = makeEditor(doc(para("a", "A"), para("b", "B"), para("c", "C")));
+    const previous = new Map(docToBlocks(e.state.doc, new Map()).map((b) => [b.id, b]));
+    e.view.dispatch(moveSubtreeTo(e.state, 2, 0, 0)!.tr);
+    const diff = diffBlocks(previous, docToBlocks(e.state.doc, previous));
+    expect(diff.deletes).toEqual([]);
+    expect(diff.upserts.map((u) => [u.block.id, u.fields])).toEqual([["c", ["position"]]]);
+    e.destroy();
   });
 });

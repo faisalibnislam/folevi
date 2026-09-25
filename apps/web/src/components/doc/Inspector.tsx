@@ -4,24 +4,54 @@ import type { Editor } from "@tiptap/react";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
-import { Bold, CheckSquare, Code2, Heading1, Heading2, Heading3, History, Italic, List, ListOrdered, Minus, Quote, Strikethrough, Table2, Text, Underline, X, StickyNote, ChevronRight } from "lucide-react";
+import {
+  Bold,
+  CheckSquare,
+  Code2,
+  Heading1,
+  Heading2,
+  Heading3,
+  History,
+  Info,
+  Italic,
+  List,
+  ListOrdered,
+  ListTree,
+  MessageSquare,
+  Minus,
+  Palette,
+  Plus,
+  Quote,
+  Search,
+  Strikethrough,
+  Table2,
+  Text,
+  Type,
+  Underline,
+  X,
+  StickyNote,
+  ChevronRight,
+} from "lucide-react";
 import { DocumentAccentValues, DocumentBackgroundValues, DocumentFontValues, DocumentWidthValues, CardStyleValues, type DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { IconButton, Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
-import { insertBlockAfterCurrent, turnInto } from "@/components/editor/commands";
+import { insertBlockAfterCurrent, insertBlockAt, turnInto } from "@/components/editor/commands";
+import { beginPointerDrag } from "@/components/editor/blockDrag";
+import { Outline } from "./Outline";
 
-export type InspectorTab = "insert" | "format" | "style" | "info" | "comments";
+export type InspectorTab = "insert" | "format" | "style" | "outline" | "info" | "comments";
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
-const TABS: { id: InspectorTab; label: string }[] = [
-  { id: "insert", label: "Insert" },
-  { id: "format", label: "Format" },
-  { id: "style", label: "Style" },
-  { id: "info", label: "Info" },
-  { id: "comments", label: "Comments" },
+const TABS: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
+  { id: "insert", label: "Insert", icon: <Plus size={15} strokeWidth={2.2} /> },
+  { id: "format", label: "Format", icon: <Type size={15} /> },
+  { id: "style", label: "Style", icon: <Palette size={15} /> },
+  { id: "outline", label: "Outline", icon: <ListTree size={15} /> },
+  { id: "info", label: "Info", icon: <Info size={15} /> },
+  { id: "comments", label: "Comments", icon: <MessageSquare size={15} /> },
 ];
 
 export function Inspector({
@@ -51,10 +81,11 @@ export function Inspector({
 }) {
   const baseId = useId();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const current = TABS.find((t) => t.id === tab) ?? TABS[0]!;
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-1 border-b border-line px-2">
-        <div role="tablist" aria-label="Inspector" className="flex flex-1 overflow-x-auto">
+      <div className="flex-none px-3 pt-3">
+        <div role="tablist" aria-label="Inspector" className="ui-seg ui-well">
           {TABS.map((t, i) => (
             <button
               key={t.id}
@@ -66,6 +97,8 @@ export function Inspector({
               id={`${baseId}-tab-${t.id}`}
               aria-selected={tab === t.id}
               aria-controls={`${baseId}-panel`}
+              aria-label={t.label}
+              title={t.label}
               tabIndex={tab === t.id ? 0 : -1}
               onClick={() => onTab(t.id)}
               onKeyDown={(e) => {
@@ -76,20 +109,24 @@ export function Inspector({
                 onTab(TABS[next]!.id);
                 tabRefs.current[next]?.focus();
               }}
-              className={`relative h-11 px-2.5 text-[13px] ${tab === t.id ? "font-semibold text-ink after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-accent" : "text-muted hover:text-ink"}`}
+              className="!min-h-8 !px-0"
             >
-              {t.label}
+              <span aria-hidden>{t.icon}</span>
             </button>
           ))}
         </div>
-        <IconButton label="Close inspector" onClick={onClose}>
-          <X size={15} aria-hidden />
-        </IconButton>
+        <div className="mt-3 flex items-center justify-between px-1">
+          <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-heading">{current.label}</h2>
+          <IconButton label="Close inspector" onClick={onClose} className="!h-7 !w-7">
+            <X size={15} aria-hidden />
+          </IconButton>
+        </div>
       </div>
-      <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${tab}`} className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${tab}`} className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-2">
         {tab === "insert" ? <InsertPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "format" ? <FormatPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}
+        {tab === "outline" ? <Outline documentId={documentId} onJump={onJumpToBlock} variant="panel" /> : null}
         {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} disabled={readOnly} /> : null}
         {tab === "comments" ? <CommentsPanel documentId={documentId} blockId={commentBlock} onClearBlock={onClearCommentBlock} onJumpToBlock={onJumpToBlock} /> : null}
       </div>
@@ -97,7 +134,7 @@ export function Inspector({
   );
 }
 
-function Tile({ label, icon, onClick, disabled, pressed }: { label: string; icon: React.ReactNode; onClick: () => void; disabled?: boolean; pressed?: boolean }) {
+function Tile({ label, icon, onClick, disabled, pressed, tone = "ink" }: { label: string; icon: React.ReactNode; onClick: () => void; disabled?: boolean; pressed?: boolean; tone?: string }) {
   return (
     <button
       type="button"
@@ -105,33 +142,124 @@ function Tile({ label, icon, onClick, disabled, pressed }: { label: string; icon
       aria-pressed={pressed}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-[8px] border px-2 py-2.5 text-xs disabled:opacity-40 ${pressed ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-raised hover:border-line-strong"}`}
+      className={`group flex flex-col items-center gap-1.5 rounded-[14px] px-1 py-2.5 text-[11.5px] font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
+        pressed ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_45%,transparent)]" : "ui-raised text-ink hover:-translate-y-px hover:shadow-[var(--shadow-card)]"
+      }`}
     >
-      <span aria-hidden>{icon}</span>
+      <span aria-hidden className={`grid h-7 w-7 place-items-center rounded-[9px] ${TONES[tone] ?? TONES.ink}`}>
+        {icon}
+      </span>
       {label}
+    </button>
+  );
+}
+
+const TONES: Record<string, string> = {
+  ink: "bg-sunken text-heading",
+  ember: "bg-ember-soft text-ember-ink",
+  moss: "bg-moss-soft text-moss-ink",
+  plum: "bg-plum-soft text-plum-ink",
+  marigold: "bg-marigold-soft text-marigold-ink",
+  coral: "bg-coral-soft text-coral-ink",
+};
+
+type InsertItem = { label: string; type: string; attrs?: Record<string, unknown>; icon: React.ReactNode; tone: string; keywords?: string };
+const INSERT_SECTIONS: { title: string; items: InsertItem[] }[] = [
+  {
+    title: "Basics",
+    items: [
+      { label: "Text", type: "paragraph", icon: <Text size={16} />, tone: "ink", keywords: "paragraph" },
+      { label: "Heading 1", type: "heading", attrs: { level: 1 }, icon: <Heading1 size={16} />, tone: "ember", keywords: "title h1" },
+      { label: "Heading 2", type: "heading", attrs: { level: 2 }, icon: <Heading2 size={16} />, tone: "ember", keywords: "h2" },
+      { label: "Heading 3", type: "heading", attrs: { level: 3 }, icon: <Heading3 size={16} />, tone: "ember", keywords: "h3" },
+    ],
+  },
+  {
+    title: "Lists",
+    items: [
+      { label: "To-do", type: "todo", attrs: { checked: false }, icon: <CheckSquare size={16} />, tone: "moss", keywords: "task checkbox" },
+      { label: "Bullets", type: "bulleted", icon: <List size={16} />, tone: "moss", keywords: "bulleted list" },
+      { label: "Numbers", type: "numbered", icon: <ListOrdered size={16} />, tone: "moss", keywords: "numbered list" },
+      { label: "Toggle", type: "toggle", attrs: { collapsed: false }, icon: <ChevronRight size={16} />, tone: "moss", keywords: "collapse" },
+    ],
+  },
+  {
+    title: "Blocks",
+    items: [
+      { label: "Quote", type: "quote", icon: <Quote size={16} />, tone: "plum" },
+      { label: "Callout", type: "callout", attrs: { tone: "note" }, icon: <StickyNote size={16} />, tone: "plum", keywords: "note tip" },
+      { label: "Code", type: "code", attrs: { language: "plaintext" }, icon: <Code2 size={16} />, tone: "marigold", keywords: "snippet" },
+      { label: "Table", type: "table", attrs: { headerRow: true, rows: [[[], [], []], [[], [], []]] }, icon: <Table2 size={16} />, tone: "marigold", keywords: "grid" },
+    ],
+  },
+  {
+    title: "Structure",
+    items: [{ label: "Divider", type: "divider", icon: <Minus size={16} />, tone: "coral", keywords: "separator line rule" }],
+  },
+];
+
+function InsertTile({ item, editor, disabled }: { item: InsertItem; editor: Editor | null; disabled: boolean }) {
+  const dragged = useRef(false);
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      title={`${item.label} — click to insert below the current block, or drag into the page`}
+      onMouseDown={(e) => e.preventDefault()}
+      onPointerDown={(e) => {
+        if (!editor || disabled || e.button !== 0) return;
+        beginPointerDrag({
+          editor,
+          payload: { kind: "insert", label: item.label },
+          event: e,
+          onStart: () => (dragged.current = true),
+          onDrop: (t) => {
+            const index = insertBlockAt(editor, t.index, t.depth, item.type, item.attrs ?? {});
+            return index < 0 ? null : { index, count: 1 };
+          },
+          onEnd: () => window.setTimeout(() => (dragged.current = false), 0),
+        });
+      }}
+      onClick={() => {
+        if (dragged.current || !editor) return;
+        insertBlockAfterCurrent(editor, item.type, item.attrs ?? {});
+      }}
+      className="group flex touch-none select-none flex-col items-center gap-1.5 rounded-[14px] px-1 pb-2 pt-2.5 text-[11px] font-medium text-ink transition-[box-shadow,transform] duration-150 ui-raised hover:-translate-y-px hover:shadow-[var(--shadow-card)] active:cursor-grabbing disabled:opacity-40 disabled:hover:translate-y-0"
+    >
+      <span aria-hidden className={`grid h-8 w-8 place-items-center rounded-[10px] transition-transform group-hover:scale-105 ${TONES[item.tone] ?? TONES.ink}`}>
+        {item.icon}
+      </span>
+      <span className="max-w-full truncate">{item.label}</span>
     </button>
   );
 }
 
 function InsertPanel({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
   const d = disabled || !editor;
-  const ins = (type: string, attrs: Record<string, unknown> = {}) => editor && insertBlockAfterCurrent(editor, type, attrs);
+  const [q, setQ] = useState("");
+  const query = q.trim().toLowerCase();
+  const sections = INSERT_SECTIONS.map((sec) => ({
+    ...sec,
+    items: sec.items.filter((i) => !query || `${i.label} ${i.keywords ?? ""}`.toLowerCase().includes(query)),
+  })).filter((sec) => sec.items.length);
   return (
     <div>
-      <p className="mb-2 text-xs text-muted">Inserts below the current block. Or type / in the document.</p>
-      <div className="grid grid-cols-3 gap-2">
-        <Tile label="Text" icon={<Text size={16} />} disabled={d} onClick={() => ins("paragraph")} />
-        <Tile label="Heading" icon={<Heading1 size={16} />} disabled={d} onClick={() => ins("heading", { level: 1 })} />
-        <Tile label="To-do" icon={<CheckSquare size={16} />} disabled={d} onClick={() => ins("todo", { checked: false })} />
-        <Tile label="Bullets" icon={<List size={16} />} disabled={d} onClick={() => ins("bulleted")} />
-        <Tile label="Numbers" icon={<ListOrdered size={16} />} disabled={d} onClick={() => ins("numbered")} />
-        <Tile label="Toggle" icon={<ChevronRight size={16} />} disabled={d} onClick={() => ins("toggle", { collapsed: false })} />
-        <Tile label="Quote" icon={<Quote size={16} />} disabled={d} onClick={() => ins("quote")} />
-        <Tile label="Callout" icon={<StickyNote size={16} />} disabled={d} onClick={() => ins("callout", { tone: "note" })} />
-        <Tile label="Code" icon={<Code2 size={16} />} disabled={d} onClick={() => ins("code", { language: "plaintext" })} />
-        <Tile label="Divider" icon={<Minus size={16} />} disabled={d} onClick={() => ins("divider")} />
-        <Tile label="Table" icon={<Table2 size={16} />} disabled={d} onClick={() => ins("table", { headerRow: true, rows: [[[], [], []], [[], [], []]] })} />
-      </div>
+      <label className="ui-well flex h-9 items-center gap-2 rounded-full px-3 text-[13px] text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
+        <Search size={14} aria-hidden />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search blocks" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
+      </label>
+      <p className="mt-2 px-1 text-[12px] text-muted">Drag a block into the page, or click to add it below the cursor.</p>
+      {sections.map((sec) => (
+        <section key={sec.title} className="mt-4">
+          <h3 className="ui-caps mb-2 px-1">{sec.title}</h3>
+          <div className="grid grid-cols-4 gap-2">
+            {sec.items.map((item) => (
+              <InsertTile key={item.label} item={item} editor={editor} disabled={d} />
+            ))}
+          </div>
+        </section>
+      ))}
+      {!sections.length ? <p className="mt-6 text-center text-sm text-muted">No blocks match “{q}”.</p> : null}
     </div>
   );
 }
@@ -156,7 +284,7 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
   return (
     <div className="space-y-5">
       <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Block</h3>
+        <h3 className="ui-caps mb-2 px-1">Block</h3>
         <div className="grid grid-cols-3 gap-2">
           <Tile label="Text" icon={<Text size={16} />} disabled={d} pressed={type === "paragraph"} onClick={() => turnInto(editor, "paragraph")} />
           <Tile label="Heading 1" icon={<Heading1 size={16} />} disabled={d} pressed={type === "heading" && level === 1} onClick={() => turnInto(editor, "heading", { level: 1 })} />
@@ -167,7 +295,7 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
         </div>
       </section>
       <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Text</h3>
+        <h3 className="ui-caps mb-2 px-1">Text</h3>
         <div className="grid grid-cols-5 gap-2">
           <Tile label="Bold" icon={<Bold size={16} />} disabled={d} pressed={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleMark("bold").run()} />
           <Tile label="Italic" icon={<Italic size={16} />} disabled={d} pressed={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleMark("italic").run()} />
@@ -178,10 +306,10 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
       </section>
       {type === "callout" ? (
         <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Callout tone</h3>
+          <h3 className="ui-caps mb-2 px-1">Callout tone</h3>
           <div className="flex flex-wrap gap-2">
             {["note", "info", "success", "warning", "danger"].map((tone) => (
-              <button key={tone} type="button" disabled={d} aria-pressed={node?.attrs.tone === tone} onClick={() => turnInto(editor, "callout", { tone })} className={`h-8 rounded-[6px] border px-2.5 text-xs capitalize ${node?.attrs.tone === tone ? "border-accent" : "border-line"}`}>
+              <button key={tone} type="button" disabled={d} aria-pressed={node?.attrs.tone === tone} onClick={() => turnInto(editor, "callout", { tone })} className={`ui-chip capitalize ${node?.attrs.tone === tone ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : "ui-raised text-ink"}`}>
                 {tone}
               </button>
             ))}
@@ -190,7 +318,7 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
       ) : null}
       {type === "codeBlock" ? (
         <label className="block text-sm">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-faint">Language</span>
+          <span className="ui-caps mb-1.5 block px-1">Language</span>
           <select
             disabled={d}
             value={String(node?.attrs.language ?? "plaintext")}
@@ -198,7 +326,7 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
               const pos = editor.state.selection.$from.before(1);
               editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
             }}
-            className="h-8 w-full rounded-[6px] border border-line bg-surface px-2"
+            className="ui-input h-9 w-full rounded-full px-3 text-sm"
           >
             {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
               <option key={l} value={l}>
@@ -214,9 +342,16 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
 }
 
 function Swatch({ value, active, onClick, label }: { value: string; active: boolean; onClick: () => void; label: string }) {
-  const color = value === "accent" ? "var(--color-accent)" : `var(--color-${value})`;
+  const color = value === "accent" ? "var(--color-ember)" : `var(--color-${value})`;
   return (
-    <button type="button" aria-label={label} aria-pressed={active} onClick={onClick} className={`h-8 w-8 rounded-full border-2 ${active ? "border-ink" : "border-transparent"}`} style={{ background: color }} />
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={active}
+      onClick={onClick}
+      className={`h-8 w-8 rounded-full shadow-[inset_0_1px_0_rgb(255_255_255/0.4),inset_0_-1px_0_rgb(0_0_0/0.12),0_1px_2px_rgb(0_0_0/0.15)] transition-transform hover:scale-110 ${active ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`}
+      style={{ background: color }}
+    />
   );
 }
 
@@ -228,10 +363,10 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const set = (patch: Partial<DocumentStyle>) => engine?.updateDocument(documentId, { style: { ...style, ...patch } }, meta.document.revision);
   const seg = <T extends string>(label: string, values: readonly T[], current: T, onPick: (v: T) => void, names: Record<string, string>) => (
     <fieldset className="mb-5" disabled={disabled}>
-      <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">{label}</legend>
-      <div className="grid grid-cols-3 gap-1.5">
+      <legend className="ui-caps mb-2 px-1">{label}</legend>
+      <div className="ui-seg ui-well">
         {values.map((v) => (
-          <button key={v} type="button" aria-pressed={current === v} onClick={() => onPick(v)} className={`h-9 rounded-[7px] border text-xs ${current === v ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-raised hover:border-line-strong"}`}>
+          <button key={v} type="button" aria-pressed={current === v} onClick={() => onPick(v)}>
             {names[v] ?? v}
           </button>
         ))}
@@ -245,16 +380,16 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
       {seg("Page", DocumentBackgroundValues, style.background, (background) => set({ background }), { paper: "Paper", plain: "Plain", tinted: "Tinted", grid: "Grid" })}
       {seg("Card in lists", CardStyleValues, style.card, (card) => set({ card }), { folio: "Folio", plain: "Plain", tinted: "Tinted", outline: "Outline" })}
       <fieldset className="mb-5" disabled={disabled}>
-        <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Accent</legend>
+        <legend className="ui-caps mb-2 px-1">Accent</legend>
         <div className="flex gap-2">
           {DocumentAccentValues.map((a) => (
-            <Swatch key={a} value={a} label={`Accent ${a === "accent" ? "ultramarine" : a}`} active={style.accent === a} onClick={() => set({ accent: a })} />
+            <Swatch key={a} value={a} label={`Accent ${a === "accent" ? "ember" : a}`} active={style.accent === a} onClick={() => set({ accent: a })} />
           ))}
         </div>
       </fieldset>
       <fieldset disabled={disabled}>
-        <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Cover</legend>
-        <div className="grid grid-cols-3 gap-1.5">
+        <legend className="ui-caps mb-2 px-1">Cover</legend>
+        <div className="ui-seg ui-well">
           {(
             [
               ["none", "None"],
@@ -267,13 +402,12 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
               type="button"
               aria-pressed={cover.kind === kind}
               onClick={() => engine?.updateDocument(documentId, { cover: kind === "none" ? { kind: "none" } : { kind, value: style.accent } }, meta.document.revision)}
-              className={`h-9 rounded-[7px] border text-xs ${cover.kind === kind ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-raised"}`}
             >
               {name}
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted">The cover uses the accent color, so pages stay readable in both themes.</p>
+        <p className="mt-2 px-1 text-xs text-muted">The cover uses the accent color, so pages stay readable in both themes.</p>
       </fieldset>
     </div>
   );
@@ -292,7 +426,7 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
   const tags = meta.document.tags;
   return (
     <div className="space-y-5 text-sm">
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
+      <dl className="ui-card grid grid-cols-2 gap-x-3 gap-y-2 rounded-[14px] p-3.5">
         <dt className="text-muted">Words</dt>
         <dd className="tabular-nums">{info?.wordCount.toLocaleString() ?? "—"}</dd>
         <dt className="text-muted">Characters</dt>
@@ -305,12 +439,12 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
         <dd>{info ? `${formatRelative(info.updatedAt)} by ${info.lastEditedBy}` : "—"}</dd>
       </dl>
       <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Folder</h3>
+        <h3 className="ui-caps mb-2 px-1">Folder</h3>
         <select
           disabled={disabled}
           value={meta.folder?.id ?? ""}
           onChange={(e) => void move({ documentId, folderId: e.target.value || null }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
-          className="h-8 w-full rounded-[6px] border border-line bg-surface px-2"
+          className="ui-input h-9 w-full rounded-full px-3 text-sm"
           aria-label="Folder"
         >
           <option value="">Unsorted</option>
@@ -323,10 +457,10 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
         </select>
       </section>
       <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Tags</h3>
+        <h3 className="ui-caps mb-2 px-1">Tags</h3>
         <div className="flex flex-wrap gap-1.5">
           {tags.map((t) => (
-            <span key={t.id} className="inline-flex items-center gap-1 rounded-[6px] bg-sunken px-2 py-0.5 text-xs">
+            <span key={t.id} className="ui-chip bg-accent-soft text-accent-soft-ink">
               #{t.name}
               {!disabled ? (
                 <button type="button" aria-label={`Remove tag ${t.name}`} onClick={() => void setTags({ documentId, tagIds: tags.filter((x) => x.id !== t.id).map((x) => x.id) })} className="text-faint hover:text-ink">
@@ -353,7 +487,7 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
               }
             }}
           >
-            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="h-8 flex-1 rounded-[6px] border border-line bg-surface px-2" />
+            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-full px-3 text-sm" />
             <datalist id="tag-suggestions">
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.name} />
@@ -366,9 +500,9 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
         ) : null}
       </section>
       <section>
-        <h3 className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.06em] text-faint">
+        <h3 className="ui-caps mb-2 flex items-center justify-between px-1">
           Activity
-          <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 normal-case tracking-normal text-accent hover:underline">
+          <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 normal-case tracking-normal text-ember-ink hover:bg-ember-soft">
             <History size={12} aria-hidden /> Version history
           </button>
         </h3>
@@ -445,10 +579,10 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
             }
           }}
         >
-          <label htmlFor="new-comment" className="mb-1 block text-xs font-semibold uppercase tracking-[0.06em] text-faint">
+          <label htmlFor="new-comment" className="ui-caps mb-1.5 block px-1">
             {blockId ? "Comment on the selected block" : "Comment on this document"}
           </label>
-          <textarea ref={inputRef} id="new-comment" rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={5000} aria-describedby="comment-hint" className="w-full rounded-[8px] border border-line bg-surface p-2 outline-none focus:border-accent" placeholder="Write a comment" />
+          <textarea ref={inputRef} id="new-comment" rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={5000} aria-describedby="comment-hint" className="ui-input w-full rounded-[14px] p-2.5 text-sm" placeholder="Write a comment" />
           <p id="comment-hint" className="text-xs text-muted">Type @ and a member’s name to mention them.</p>
           <div className="mt-1.5 flex justify-between">
             {blockId ? (
@@ -472,9 +606,9 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
       {threads.length === 0 ? <p className="text-muted">No {showResolved ? "" : "open "}comments.</p> : null}
       <ul className="space-y-3">
         {threads.map((t) => (
-          <li key={t.id} className={`rounded-[10px] border p-3 ${t.status === "resolved" ? "border-line opacity-70" : "border-line bg-raised"}`}>
+          <li key={t.id} className={`ui-card rounded-[14px] p-3 ${t.status === "resolved" ? "opacity-70" : ""}`}>
             {t.blockId ? (
-              <button type="button" onClick={() => onJumpToBlock(t.blockId!)} className="mb-2 text-xs text-accent hover:underline">
+              <button type="button" onClick={() => onJumpToBlock(t.blockId!)} className="mb-2 rounded-full bg-ember-soft px-2 py-0.5 text-xs font-medium text-ember-ink">
                 Go to block
               </button>
             ) : null}
@@ -519,7 +653,7 @@ function ReplyBox({ onReply, resolved, onResolve }: { onReply: (text: string) =>
         setText("");
       }}
     >
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Reply" aria-label="Reply" className="h-8 flex-1 rounded-[6px] border border-line bg-surface px-2" />
+      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Reply" aria-label="Reply" className="ui-input h-8 flex-1 rounded-full px-3 text-sm" />
       <Button size="sm" type="submit" disabled={!text.trim()}>
         Reply
       </Button>

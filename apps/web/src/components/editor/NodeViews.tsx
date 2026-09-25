@@ -60,9 +60,9 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
       <figure className="my-2" style={{ width: `${Math.round(width * 100)}%` }}>
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={a.alt || ""} className="w-full rounded-[10px] border border-line bg-sunken" draggable={false} />
+          <img src={src} alt={a.alt || ""} className="w-full rounded-[14px] border border-line bg-sunken" draggable={false} />
         ) : (
-          <div className="grid h-40 place-items-center rounded-[10px] border border-dashed border-line-strong text-sm text-muted">
+          <div className="grid h-40 place-items-center rounded-[14px] border border-dashed border-line-strong text-sm text-muted">
             {a.fileId ? "Loading image…" : <span className="flex items-center gap-2"><ImageOff size={16} aria-hidden /> Image unavailable</span>}
           </div>
         )}
@@ -89,11 +89,11 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted" contentEditable={false}>
           <label className="flex items-center gap-1">
             Alt text
-            <input value={a.alt ?? ""} onChange={(e) => updateAttributes({ alt: e.target.value })} placeholder="Describe the image" className="h-7 w-56 rounded-[6px] border border-line bg-surface px-2 text-ink" />
+            <input value={a.alt ?? ""} onChange={(e) => updateAttributes({ alt: e.target.value })} placeholder="Describe the image" className="h-7 w-56 ui-input rounded-full px-2 text-ink" />
           </label>
           <span>Width</span>
           {[0.5, 0.75, 1].map((w) => (
-            <button key={w} type="button" onClick={() => updateAttributes({ width: w === 1 ? null : w })} aria-pressed={width === w} className={`h-7 rounded-[6px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}>
+            <button key={w} type="button" onClick={() => updateAttributes({ width: w === 1 ? null : w })} aria-pressed={width === w} className={`h-7 rounded-[9px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}>
               {w * 100}%
             </button>
           ))}
@@ -109,7 +109,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
   const upload = useUploadState(a.id);
   return (
     <Frame selected={selected} label={`Attachment ${a.name ?? ""}`}>
-      <div className="my-1.5 flex items-center gap-3 rounded-[10px] border border-line bg-raised px-3 py-2.5">
+      <div className="my-1.5 flex items-center gap-3 ui-card rounded-[18px] px-3 py-2.5">
         <FileText size={20} className="text-muted" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{a.name ?? "Attachment"}</p>
@@ -119,7 +119,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
           </p>
         </div>
         {file ? (
-          <a href={file.url} className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-line px-2.5 text-xs hover:bg-surface" download={a.name ?? true} contentEditable={false}>
+          <a href={file.url} className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-line px-2.5 text-xs hover:bg-surface" download={a.name ?? true} contentEditable={false}>
             <Download size={14} aria-hidden /> Download
           </a>
         ) : null}
@@ -182,10 +182,10 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
         </table>
         {editable ? (
           <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-muted">
-            <button type="button" onClick={addRow} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-surface">
+            <button type="button" onClick={addRow} className="inline-flex items-center gap-1 rounded-[9px] px-2 py-1 hover:bg-surface">
               <Plus size={12} aria-hidden /> Row
             </button>
-            <button type="button" onClick={addCol} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-surface">
+            <button type="button" onClick={addCol} className="inline-flex items-center gap-1 rounded-[9px] px-2 py-1 hover:bg-surface">
               <Plus size={12} aria-hidden /> Column
             </button>
             {selected ? (
@@ -194,7 +194,7 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
                   <input type="checkbox" checked={headerRow} onChange={(e) => updateAttributes({ headerRow: e.target.checked })} /> Header row
                 </label>
                 {width > 1 ? (
-                  <button type="button" onClick={() => removeCol(width - 1)} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-surface">
+                  <button type="button" onClick={() => removeCol(width - 1)} className="inline-flex items-center gap-1 rounded-[9px] px-2 py-1 hover:bg-surface">
                     <Minus size={12} aria-hidden /> Last column
                   </button>
                 ) : null}
@@ -217,7 +217,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
   if (a.display === "link") {
     return (
       <Frame selected={selected} label={`Page ${title}`}>
-        <AppLink href={`/d/${a.documentId}`} className="my-0.5 inline-flex items-center gap-2 rounded-[6px] px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent" contentEditable={false}>
+        <AppLink href={`/d/${a.documentId}`} className="my-0.5 inline-flex items-center gap-2 rounded-[9px] px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent" contentEditable={false}>
           <span aria-hidden>{icon}</span> {title}
         </AppLink>
       </Frame>
@@ -228,7 +228,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
       <AppLink
         href={`/d/${a.documentId}`}
         contentEditable={false}
-        className="group my-2 flex items-start gap-3 rounded-[12px] border border-line bg-raised p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-line-strong"
+        className="group my-2 flex items-start gap-3 ui-card rounded-[18px] p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
         title="Open page (Alt-click opens a new tab)"
       >
         <span className="text-2xl leading-none" aria-hidden>
@@ -255,7 +255,7 @@ function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeVie
   }
   return (
     <Frame selected={selected} label={`Bookmark ${a.title ?? host}`}>
-      <div className="my-2 rounded-[12px] border border-line bg-raised p-4" contentEditable={false}>
+      <div className="my-2 ui-card rounded-[18px] p-4" contentEditable={false}>
         <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="flex items-start gap-3 no-underline">
           <Link2 size={18} className="mt-0.5 text-muted" aria-hidden />
           <span className="min-w-0">
@@ -268,11 +268,11 @@ function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeVie
           <div className="mt-3 grid gap-2 text-xs">
             <label className="grid gap-1">
               Title
-              <input value={a.title ?? ""} onChange={(e) => updateAttributes({ title: e.target.value || null })} className="h-8 rounded-[6px] border border-line bg-surface px-2 text-sm text-ink" />
+              <input value={a.title ?? ""} onChange={(e) => updateAttributes({ title: e.target.value || null })} className="h-8 ui-input rounded-full px-2 text-sm text-ink" />
             </label>
             <label className="grid gap-1">
               Description
-              <input value={a.description ?? ""} onChange={(e) => updateAttributes({ description: e.target.value || null })} className="h-8 rounded-[6px] border border-line bg-surface px-2 text-sm text-ink" />
+              <input value={a.description ?? ""} onChange={(e) => updateAttributes({ description: e.target.value || null })} className="h-8 ui-input rounded-full px-2 text-sm text-ink" />
             </label>
           </div>
         ) : null}
@@ -296,7 +296,7 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
   const wire = node.attrs.wire as { type?: string } | null;
   return (
     <Frame selected={selected} label="Unsupported block">
-      <div contentEditable={false} className="my-2 flex items-center gap-3 rounded-[10px] border border-dashed border-line-strong bg-sunken px-4 py-3 text-sm text-muted">
+      <div contentEditable={false} className="my-2 flex items-center gap-3 rounded-[14px] border border-dashed border-line-strong bg-sunken px-4 py-3 text-sm text-muted">
         <span className="flex-1">
           This “{wire?.type ?? "unknown"}” block was created by a newer version of Folevi. It’s kept safely and will appear once you update.
         </span>

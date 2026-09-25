@@ -89,8 +89,8 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const addView = useMutation(api.collections.addViewToCollection);
   const toast = useToast();
 
-  if (data === undefined) return <div className="h-40 animate-pulse rounded-[12px] border border-line bg-surface motion-reduce:animate-none" aria-busy />;
-  if (data === null) return <p className="rounded-[10px] border border-dashed border-line p-4 text-sm text-muted">This collection is unavailable.</p>;
+  if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-[18px] motion-reduce:animate-none" aria-busy />;
+  if (data === null) return <p className="rounded-[14px] border border-dashed border-line p-4 text-sm text-muted">This collection is unavailable.</p>;
   const view = data.views.find((v) => v.id === viewId) ?? data.views[0]!;
   const canEdit = editable && data.canEdit;
   const rows = applyView(data.rows, view.config, data.properties);
@@ -105,7 +105,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   };
 
   return (
-    <section className="rounded-[12px] border border-line bg-raised" aria-label={`Collection ${data.name}`}>
+    <section className="ui-card rounded-[18px]" aria-label={`Collection ${data.name}`}>
       <header className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-2">
         <h3 className="mr-2 text-sm font-semibold">{data.name}</h3>
         <div role="tablist" aria-label="Views" className="flex flex-wrap gap-1">
@@ -116,7 +116,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
               type="button"
               aria-selected={v.id === view.id}
               onClick={() => setViewId(v.id)}
-              className={`inline-flex h-7 items-center gap-1.5 rounded-[6px] px-2 text-xs ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
+              className={`inline-flex h-7 items-center gap-1.5 rounded-[9px] px-2 text-xs ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
             >
               {v.type === "table" ? <Table2 size={13} aria-hidden /> : v.type === "board" ? <Columns3 size={13} aria-hidden /> : <GalleryHorizontalEnd size={13} aria-hidden />}
               {v.name}
@@ -126,7 +126,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
         <div className="ml-auto flex items-center gap-1">
           {canEdit ? (
             <>
-              <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex h-7 items-center gap-1 rounded-[6px] px-2 text-xs text-muted hover:bg-surface" aria-label="View settings: filter, sort, group, properties">
+              <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex h-7 items-center gap-1 rounded-[9px] px-2 text-xs text-muted hover:bg-surface" aria-label="View settings: filter, sort, group, properties">
                 <Settings2 size={13} aria-hidden /> View
               </button>
               <select
@@ -140,7 +140,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
                     (err) => toast.show(errorMessage(err), { tone: "error" }),
                   );
                 }}
-                className="h-7 rounded-[6px] border border-line bg-surface px-1 text-xs text-muted"
+                className="h-7 ui-input rounded-full px-1 text-xs text-muted"
               >
                 <option value="">+ View</option>
                 <option value="table">Table</option>
@@ -203,7 +203,7 @@ function CellEditor({ collectionId, row, prop, canEdit }: { collectionId: string
           {prop.options.map((o) => {
             const on = selected.includes(o.id);
             return (
-              <button key={o.id} type="button" aria-pressed={on} onClick={() => void save(on ? selected.filter((x) => x !== o.id) : [...selected, o.id])} className={`rounded-[5px] px-1.5 py-0.5 text-[11px] ${on ? "" : "opacity-40"}`} style={optionColor(o.color)}>
+              <button key={o.id} type="button" aria-pressed={on} onClick={() => void save(on ? selected.filter((x) => x !== o.id) : [...selected, o.id])} className={`rounded-[8px] px-1.5 py-0.5 text-[11px] ${on ? "" : "opacity-40"}`} style={optionColor(o.color)}>
                 {o.name}
               </button>
             );
@@ -253,7 +253,7 @@ function RelationEditor({ label, value, onChange }: { label: string; value: stri
   return (
     <div className="flex flex-wrap items-center gap-1" role="group" aria-label={label}>
       {value.map((id) => (
-        <span key={id} className="inline-flex items-center gap-1 rounded-[5px] bg-sunken px-1.5 py-0.5 text-[11px]">
+        <span key={id} className="inline-flex items-center gap-1 rounded-[8px] bg-sunken px-1.5 py-0.5 text-[11px]">
           <AppLink href={`/d/${id}`} className="hover:underline">
             {titles?.[id]?.title || "Untitled"}
           </AppLink>
@@ -279,7 +279,7 @@ function CellDisplay({ prop, value }: { prop: Property; value: unknown }) {
   if (prop.type === "checkbox") return <span>{value ? "✓" : ""}</span>;
   if (prop.type === "select") {
     const o = prop.options.find((x) => x.id === value);
-    return o ? <span className="rounded-[5px] px-1.5 py-0.5 text-[11px]" style={optionColor(o.color)}>{o.name}</span> : null;
+    return o ? <span className="rounded-[8px] px-1.5 py-0.5 text-[11px]" style={optionColor(o.color)}>{o.name}</span> : null;
   }
   if (prop.type === "multiSelect" && Array.isArray(value)) {
     return (
@@ -287,7 +287,7 @@ function CellDisplay({ prop, value }: { prop: Property; value: unknown }) {
         {value.map((id) => {
           const o = prop.options.find((x) => x.id === id);
           return o ? (
-            <span key={id} className="rounded-[5px] px-1.5 py-0.5 text-[11px]" style={optionColor(o.color)}>
+            <span key={id} className="rounded-[8px] px-1.5 py-0.5 text-[11px]" style={optionColor(o.color)}>
               {o.name}
             </span>
           ) : null;
@@ -376,7 +376,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
           <section
             key={col.id ?? "none"}
             aria-label={`${col.name}, ${items.length} cards`}
-            className="flex w-64 flex-none flex-col rounded-[10px] bg-sunken p-2"
+            className="flex w-64 flex-none flex-col rounded-[14px] bg-sunken p-2"
             onDragOver={(e) => canEdit && e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -385,14 +385,14 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
             }}
           >
             <h4 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold">
-              <span className="rounded-[5px] px-1.5 py-0.5" style={optionColor(col.color)}>
+              <span className="rounded-[8px] px-1.5 py-0.5" style={optionColor(col.color)}>
                 {col.name}
               </span>
               <span className="text-faint">{items.length}</span>
             </h4>
             <ul className="space-y-2">
               {items.map((row) => (
-                <li key={row.id} draggable={canEdit} onDragStart={() => setDragging(row.id)} className="rounded-[8px] border border-line bg-raised p-2.5 text-sm shadow-[0_1px_0_var(--color-line)]">
+                <li key={row.id} draggable={canEdit} onDragStart={() => setDragging(row.id)} className="rounded-[11px] border border-line bg-raised p-2.5 text-sm shadow-[0_1px_0_var(--color-line)]">
                   <AppLink href={`/d/${row.documentId}`} className="font-medium hover:underline">
                     {row.icon ? `${row.icon} ` : ""}
                     {row.title || "Untitled"}
@@ -422,7 +422,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
               ))}
             </ul>
             {canEdit ? (
-              <button type="button" onClick={() => void onAdd(col.id ? { [group.id]: col.id } : undefined)} className="mt-2 flex items-center gap-1 rounded-[6px] px-1 py-1 text-xs text-muted hover:bg-raised">
+              <button type="button" onClick={() => void onAdd(col.id ? { [group.id]: col.id } : undefined)} className="mt-2 flex items-center gap-1 rounded-[9px] px-1 py-1 text-xs text-muted hover:bg-raised">
                 <Plus size={12} aria-hidden /> New
               </button>
             ) : null}
@@ -439,7 +439,7 @@ function GalleryCollection({ view, rows, visible }: { data: CollectionData; view
     <ul className={`grid grid-cols-1 gap-3 p-3 ${size}`}>
       {rows.map((row) => (
         <li key={row.id}>
-          <AppLink href={`/d/${row.documentId}`} className="block overflow-hidden rounded-[10px] border border-line bg-raised hover:border-line-strong">
+          <AppLink href={`/d/${row.documentId}`} className="block overflow-hidden ui-card rounded-[18px] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
             {view.config.cardPreview !== "none" ? (
               <div className="h-24 border-b border-line" style={{ background: coverBackground(row.cover, { font: "sans", width: "default", background: "paper", accent: "plum", card: "folio" }) ?? "var(--color-surface)" }}>
                 {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-xs text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-3xl">{row.icon ?? "📄"}</div>}
@@ -483,14 +483,14 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
           </h3>
           {config.filters.map((f, i) => (
             <div key={i} className="mb-2 flex flex-wrap items-center gap-1.5 text-sm">
-              <select aria-label="Property" value={f.propertyId} onChange={(e) => void save({ filters: config.filters.map((x, j) => (j === i ? { ...x, propertyId: e.target.value } : x)) })} className="h-8 rounded-[6px] border border-line bg-surface px-1">
+              <select aria-label="Property" value={f.propertyId} onChange={(e) => void save({ filters: config.filters.map((x, j) => (j === i ? { ...x, propertyId: e.target.value } : x)) })} className="h-8 ui-input rounded-full px-1">
                 {data.properties.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
               </select>
-              <select aria-label="Condition" value={f.op} onChange={(e) => void save({ filters: config.filters.map((x, j) => (j === i ? { ...x, op: e.target.value as typeof f.op } : x)) })} className="h-8 rounded-[6px] border border-line bg-surface px-1">
+              <select aria-label="Condition" value={f.op} onChange={(e) => void save({ filters: config.filters.map((x, j) => (j === i ? { ...x, op: e.target.value as typeof f.op } : x)) })} className="h-8 ui-input rounded-full px-1">
                 {["is", "isNot", "contains", "isEmpty", "isNotEmpty", "gt", "lt", "checked", "unchecked"].map((op) => (
                   <option key={op} value={op}>
                     {op.replace(/([A-Z])/g, " $1").toLowerCase()}
@@ -498,7 +498,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
                 ))}
               </select>
               {!["isEmpty", "isNotEmpty", "checked", "unchecked"].includes(f.op) ? (
-                <input aria-label="Value" defaultValue={String(f.value ?? "")} onBlur={(e) => void save({ filters: config.filters.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })} className="h-8 w-28 rounded-[6px] border border-line bg-surface px-2" />
+                <input aria-label="Value" defaultValue={String(f.value ?? "")} onBlur={(e) => void save({ filters: config.filters.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })} className="h-8 w-28 ui-input rounded-full px-2" />
               ) : null}
               <button type="button" aria-label="Remove filter" onClick={() => void save({ filters: config.filters.filter((_, j) => j !== i) })} className="text-faint hover:text-danger">
                 <Trash2 size={13} aria-hidden />
@@ -514,7 +514,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
           </h3>
           {config.sorts.map((s, i) => (
             <div key={i} className="mb-2 flex items-center gap-1.5 text-sm">
-              <select aria-label="Sort property" value={s.propertyId} onChange={(e) => void save({ sorts: config.sorts.map((x, j) => (j === i ? { ...x, propertyId: e.target.value } : x)) })} className="h-8 rounded-[6px] border border-line bg-surface px-1">
+              <select aria-label="Sort property" value={s.propertyId} onChange={(e) => void save({ sorts: config.sorts.map((x, j) => (j === i ? { ...x, propertyId: e.target.value } : x)) })} className="h-8 ui-input rounded-full px-1">
                 <option value="title">Name</option>
                 {data.properties.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -522,7 +522,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
                   </option>
                 ))}
               </select>
-              <select aria-label="Direction" value={s.direction} onChange={(e) => void save({ sorts: config.sorts.map((x, j) => (j === i ? { ...x, direction: e.target.value as "asc" | "desc" } : x)) })} className="h-8 rounded-[6px] border border-line bg-surface px-1">
+              <select aria-label="Direction" value={s.direction} onChange={(e) => void save({ sorts: config.sorts.map((x, j) => (j === i ? { ...x, direction: e.target.value as "asc" | "desc" } : x)) })} className="h-8 ui-input rounded-full px-1">
                 <option value="asc">Ascending</option>
                 <option value="desc">Descending</option>
               </select>
@@ -538,7 +538,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
           {view.type === "board" ? (
             <label className="mt-6 block text-sm">
               <span className="font-semibold">Group by</span>
-              <select value={config.groupBy ?? ""} onChange={(e) => void save({ groupBy: e.target.value || undefined })} className="mt-1 block h-8 rounded-[6px] border border-line bg-surface px-1">
+              <select value={config.groupBy ?? ""} onChange={(e) => void save({ groupBy: e.target.value || undefined })} className="mt-1 block h-8 ui-input rounded-full px-1">
                 {selectProps.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -551,7 +551,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
             <div className="mt-6 flex gap-4 text-sm">
               <label>
                 <span className="font-semibold">Card preview</span>
-                <select value={config.cardPreview} onChange={(e) => void save({ cardPreview: e.target.value as ViewConfig["cardPreview"] })} className="mt-1 block h-8 rounded-[6px] border border-line bg-surface px-1">
+                <select value={config.cardPreview} onChange={(e) => void save({ cardPreview: e.target.value as ViewConfig["cardPreview"] })} className="mt-1 block h-8 ui-input rounded-full px-1">
                   <option value="none">None</option>
                   <option value="cover">Cover</option>
                   <option value="content">Page content</option>
@@ -559,7 +559,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
               </label>
               <label>
                 <span className="font-semibold">Card size</span>
-                <select value={config.cardSize} onChange={(e) => void save({ cardSize: e.target.value as ViewConfig["cardSize"] })} className="mt-1 block h-8 rounded-[6px] border border-line bg-surface px-1">
+                <select value={config.cardSize} onChange={(e) => void save({ cardSize: e.target.value as ViewConfig["cardSize"] })} className="mt-1 block h-8 ui-input rounded-full px-1">
                   <option value="small">Small</option>
                   <option value="medium">Medium</option>
                   <option value="large">Large</option>
@@ -583,7 +583,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
                   aria-label="Property name"
                   defaultValue={p.name}
                   onBlur={(e) => e.target.value !== p.name && void updateProperty({ collectionId: data.id, propertyId: p.id, name: e.target.value })}
-                  className="h-7 flex-1 rounded-[5px] border border-transparent bg-transparent px-1 hover:border-line focus:border-accent"
+                  className="h-7 flex-1 rounded-[8px] border border-transparent bg-transparent px-1 hover:border-line"
                 />
                 <span className="text-xs text-faint">{TYPE_LABELS[p.type]}</span>
                 <button type="button" aria-label={`Delete property ${p.name}`} onClick={() => void deleteProperty({ collectionId: data.id, propertyId: p.id })} className="text-faint hover:text-danger">
@@ -604,7 +604,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
                     const options = names.map((name) => ({ id: p.options.find((o) => o.name === name)?.id, name, color: p.options.find((o) => o.name === name)?.color }));
                     void updateProperty({ collectionId: data.id, propertyId: p.id, options });
                   }}
-                  className="mt-1 block h-8 w-full rounded-[6px] border border-line bg-surface px-2 text-sm"
+                  className="mt-1 block h-8 w-full ui-input rounded-full px-2 text-sm"
                 />
               </label>
             ))}
@@ -621,9 +621,9 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
           >
             <label className="flex-1 text-xs">
               New property
-              <input value={newProp.name} onChange={(e) => setNewProp({ ...newProp, name: e.target.value })} className="mt-1 block h-8 w-full rounded-[6px] border border-line bg-surface px-2 text-sm" />
+              <input value={newProp.name} onChange={(e) => setNewProp({ ...newProp, name: e.target.value })} className="mt-1 block h-8 w-full ui-input rounded-full px-2 text-sm" />
             </label>
-            <select aria-label="Property type" value={newProp.type} onChange={(e) => setNewProp({ ...newProp, type: e.target.value as Property["type"] })} className="h-8 rounded-[6px] border border-line bg-surface px-1 text-sm">
+            <select aria-label="Property type" value={newProp.type} onChange={(e) => setNewProp({ ...newProp, type: e.target.value as Property["type"] })} className="h-8 ui-input rounded-full px-1 text-sm">
               {Object.entries(TYPE_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v}

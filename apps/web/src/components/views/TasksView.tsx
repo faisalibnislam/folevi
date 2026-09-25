@@ -38,7 +38,7 @@ export function TaskItem({ task, today, onToggle }: { task: TaskRow; today: stri
         aria-checked={task.status === "done"}
         aria-label={task.status === "done" ? `Mark “${task.title}” as not done` : `Mark “${task.title}” as done`}
         onClick={() => onToggle(task)}
-        className={`mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-[5px] border-[1.5px] ${task.status === "done" ? "border-accent bg-accent text-accent-ink" : "border-line-strong hover:border-accent"}`}
+        className={`mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-[6px] border-[1.5px] transition-colors ${task.status === "done" ? "border-transparent bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-moss)_82%,white),var(--color-moss))] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]" : "border-line-strong bg-surface hover:border-moss"}`}
       >
         {task.status === "done" ? <span className="text-[11px] leading-none">✓</span> : null}
       </button>
@@ -54,7 +54,7 @@ export function TaskItem({ task, today, onToggle }: { task: TaskRow; today: stri
         </p>
       </div>
       {task.priority !== "none" ? (
-        <span className={`mt-0.5 rounded-[5px] px-1.5 text-[11px] font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{task.priority}</span>
+        <span className={`mt-0.5 rounded-[8px] px-1.5 text-[11px] font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{task.priority}</span>
       ) : null}
       {task.dueDate ? (
         <span className={`mt-0.5 whitespace-nowrap text-xs ${overdue ? "font-medium text-danger" : "text-muted"}`}>
@@ -108,9 +108,9 @@ export function TasksView({ view }: { view: View }) {
       }
     >
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:px-8">
-        <h2 className="font-display text-[34px] leading-tight">{meta.label}</h2>
+        <h2 className="ui-display text-[34px] leading-tight">{meta.label}</h2>
         <p className="text-sm text-muted">Every task lives in a document. Open its page to see the context it was written in.</p>
-        <nav aria-label="Task views" className="mt-5 flex flex-wrap gap-1.5">
+        <nav aria-label="Task views" className="ui-seg ui-well mt-5 flex-wrap sm:flex-nowrap">
           {VIEWS.map((v) => {
             const count = counts && v.id !== "completed" ? counts[v.id as keyof typeof counts] : undefined;
             return (
@@ -118,31 +118,32 @@ export function TasksView({ view }: { view: View }) {
                 key={v.id}
                 href={`/tasks/${v.id}`}
                 aria-current={v.id === view ? "page" : undefined}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-[7px] border px-3 text-sm ${v.id === view ? "border-ink bg-ink text-canvas" : "border-line bg-raised hover:border-line-strong"}`}
+                data-active={v.id === view}
+                className="!min-h-8 !text-[13px]"
               >
                 {v.label}
-                {count ? <span className={`text-xs tabular-nums ${v.id === view ? "opacity-80" : "text-faint"}`}>{count}</span> : null}
+                {count ? <span className={`rounded-full px-1.5 text-[11px] font-semibold leading-[18px] tabular-nums ${v.id === view ? "bg-ember-soft text-ember-ink" : "text-[var(--color-ink-faint)]"}`}>{count}</span> : null}
               </AppLink>
             );
           })}
         </nav>
         <label className="mt-4 block">
           <span className="sr-only">Filter tasks</span>
-          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by task or page" className="h-9 w-full rounded-[8px] border border-line bg-surface px-3 text-sm" />
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by task or page" className="h-9 w-full ui-input rounded-full px-3 text-sm" />
         </label>
         {tasks === undefined ? (
           <div className="mt-6 space-y-2" aria-busy>
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-[10px] bg-surface motion-reduce:animate-none" />
+              <div key={i} className="h-12 animate-pulse rounded-[14px] bg-surface motion-reduce:animate-none" />
             ))}
           </div>
         ) : shown.length === 0 ? (
-          <p className="mt-10 text-center font-display text-2xl text-muted">{meta.empty}</p>
+          <p className="mt-10 text-center ui-display text-2xl text-muted">{meta.empty}</p>
         ) : (
           groups.map((g) => (
             <section key={g.key} className="mt-6" aria-label={g.label ?? meta.label}>
               {g.label ? <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
-              <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-raised">
+              <ul className="divide-y divide-line overflow-hidden ui-card rounded-[18px]">
                 {g.items.map((t) => (
                   <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} />
                 ))}

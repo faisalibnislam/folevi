@@ -10,6 +10,7 @@ import {
   Copy,
   FileCode,
   FileText,
+  Folder,
   History,
   LayoutTemplate,
   MessageSquare,
@@ -40,7 +41,6 @@ import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { ShareDialog } from "./ShareDialog";
 import { VersionHistory } from "./VersionHistory";
-import { Outline } from "./Outline";
 import { exportHtml, exportMarkdown, exportPdf } from "./export";
 import "@/components/editor/editor.css";
 
@@ -202,7 +202,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       return (
         <ViewChrome title="Unavailable">
           <div className="mx-auto max-w-lg px-6 py-24 text-center">
-            <h1 className="font-display text-4xl">This page isn’t available</h1>
+            <h1 className="ui-display text-4xl">This page isn’t available</h1>
             <p className="mt-3 text-muted">It may have been deleted, or you don’t have access. If someone shared it with you, ask them to check the sharing settings.</p>
             <AppLink href="/documents" className="mt-6 inline-block text-accent underline underline-offset-2">
               Back to All Documents
@@ -226,29 +226,35 @@ export function DocumentView({ documentId }: { documentId: string }) {
     <ViewChrome
       tabTitle={summary?.title || localTitle || "Untitled"}
       title={
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm">
-          {meta?.folder ? (
-            <>
-              <AppLink href={`/folders/${meta.folder.id}`} className="truncate text-muted hover:text-ink">
-                {meta.folder.name}
-              </AppLink>
-              <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
-            </>
-          ) : null}
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-[13.5px]">
+          <AppLink href={meta?.folder ? `/folders/${meta.folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-full px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+            {meta?.folder ? (
+              <>
+                <Folder size={14} className="flex-none" aria-hidden />
+                <span className="truncate">{meta.folder.name}</span>
+              </>
+            ) : (
+              <>
+                <FileText size={14} className="flex-none" aria-hidden />
+                <span className="truncate">All Documents</span>
+              </>
+            )}
+          </AppLink>
+          <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
           {meta?.breadcrumbs.map((b) => (
-            <span key={b.id} className="flex min-w-0 items-center gap-1">
-              <AppLink href={`/d/${b.id}`} className="truncate text-muted hover:text-ink">
+            <span key={b.id} className="flex min-w-0 items-center gap-0.5">
+              <AppLink href={`/d/${b.id}`} className="max-w-[12rem] truncate rounded-full px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                 {b.icon ? `${b.icon} ` : ""}
                 {b.title || "Untitled"}
               </AppLink>
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </span>
           ))}
-          <span className="truncate font-medium" aria-current="page">
+          <span className="truncate rounded-full px-2 py-1 font-semibold text-heading" aria-current="page">
             {summary?.icon ? `${summary.icon} ` : ""}
             {summary?.title || localTitle || "Untitled"}
           </span>
-          {readOnly ? <span className="ml-2 rounded-[5px] bg-sunken px-1.5 py-0.5 text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
+          {readOnly ? <span className="ui-chip ml-1 h-6 flex-none bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
         </nav>
       }
       actions={
@@ -258,11 +264,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <IconButton label={`Comments${threads?.threads.some((t) => t.unread) ? " (unread)" : ""}`} onClick={() => openComments()}>
             <span className="relative">
               <MessageSquare size={16} aria-hidden />
-              {threads?.threads.some((t) => t.unread && t.status === "open") ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-marigold" aria-hidden /> : null}
+              {threads?.threads.some((t) => t.unread && t.status === "open") ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-ember ring-2 ring-canvas" aria-hidden /> : null}
             </span>
           </IconButton>
           {meta ? (
-            <Button size="sm" variant="secondary" onClick={() => setShareOpen(true)} className="hidden sm:inline-flex">
+            <Button size="sm" variant="primary" onClick={() => setShareOpen(true)} className="hidden sm:inline-flex">
               <Share2 size={14} aria-hidden /> Share
             </Button>
           ) : null}
@@ -289,20 +295,18 @@ export function DocumentView({ documentId }: { documentId: string }) {
       }
     >
       <div className="flex min-h-full">
-        <div className="hidden pl-4 pt-10 2xl:block">
-          <Outline documentId={documentId} onJump={(id) => editorRef.current?.focusBlock(id)} />
-        </div>
         <div
-          className="fb-page flex-1 px-3 pb-10 pt-6 sm:px-6"
+          className="fb-page min-w-0 flex-1 px-3 pb-16 pt-3 sm:px-8"
           data-font={style.font}
           data-width={style.width}
           style={{
-            ["--doc-accent" as string]: style.accent === "accent" ? "var(--color-accent)" : `var(--color-${style.accent})`,
-            ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-accent-soft)" : `var(--color-${style.accent}-soft)`,
+            ["--doc-accent" as string]: style.accent === "accent" ? "var(--color-ember)" : `var(--color-${style.accent})`,
+            ["--doc-accent-ink" as string]: style.accent === "accent" ? "var(--color-ember-ink)" : `var(--color-${style.accent}-ink)`,
+            ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-ember-soft)" : `var(--color-${style.accent}-soft)`,
           }}
         >
           <article
-            className="fb-sheet relative mx-auto rounded-[14px] border border-line shadow-[0_1px_0_var(--color-line),0_18px_50px_-36px_rgba(24,32,28,0.45)] animate-[folio-settle_240ms_var(--ease-folio)]"
+            className="fb-sheet ui-sheet relative mx-auto animate-[folio-settle_240ms_var(--ease-folio)]"
             data-background={style.background}
             style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}
           >
@@ -345,8 +349,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
         {inspectorOpen ? (
           <aside
             aria-label="Inspector"
-            className={`${isNarrow ? "fixed inset-y-0 right-0 z-40 w-[min(92vw,340px)] shadow-2xl" : "sticky top-0 h-[calc(100dvh-3rem)] w-[320px] flex-none"} border-l border-line bg-canvas`}
+            className={`${isNarrow ? "fixed inset-y-0 right-0 z-40 w-[min(92vw,344px)] p-2" : "sticky top-0 h-[calc(100dvh-52px)] w-[344px] flex-none pb-3 pl-1 pr-3"} animate-[folio-rise_180ms_var(--ease-folio)]`}
           >
+            <div className="ui-card ui-glass h-full overflow-hidden rounded-[20px]">
             <Inspector
               documentId={documentId}
               editor={editor}
@@ -360,6 +365,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               onHistory={() => setHistoryOpen(true)}
               readOnly={readOnly}
             />
+            </div>
           </aside>
         ) : null}
       </div>
@@ -379,20 +385,20 @@ function DailyNav({ date }: { date: string }) {
   };
   return (
     <nav aria-label="Daily notes" className="mx-5 mb-3 flex items-center gap-1 text-sm sm:mx-16">
-      <AppLink href={`/daily/${shift(-1)}`} className="rounded-[6px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
+      <AppLink href={`/daily/${shift(-1)}`} className="rounded-[9px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
         ← Previous day
       </AppLink>
       {date !== today ? (
-        <AppLink href={`/daily/${today}`} className="rounded-[6px] px-2 py-1 font-medium text-accent hover:bg-accent-soft">
+        <AppLink href={`/daily/${today}`} className="rounded-[9px] px-2 py-1 font-medium text-accent hover:bg-accent-soft">
           Today
         </AppLink>
       ) : (
-        <span className="rounded-[6px] bg-moss-soft px-2 py-1 text-xs font-medium text-moss-ink">Today</span>
+        <span className="rounded-[9px] bg-moss-soft px-2 py-1 text-xs font-medium text-moss-ink">Today</span>
       )}
-      <AppLink href={`/daily/${shift(1)}`} className="rounded-[6px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
+      <AppLink href={`/daily/${shift(1)}`} className="rounded-[9px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
         Next day →
       </AppLink>
-      <AppLink href="/calendar" className="ml-auto rounded-[6px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
+      <AppLink href="/calendar" className="ml-auto rounded-[9px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
         Calendar
       </AppLink>
     </nav>
@@ -512,18 +518,18 @@ function DocumentHeader({
             onClick={() => setIconOpen((o) => !o)}
             aria-label={icon ? `Page icon ${icon}. Change icon` : "Add page icon"}
             aria-expanded={iconOpen}
-            className={`grid h-16 w-16 place-items-center rounded-[14px] text-[40px] leading-none ${icon ? "bg-raised shadow-[0_1px_0_var(--color-line)]" : "text-faint hover:bg-surface"} disabled:cursor-default`}
+            className={`grid h-[72px] w-[72px] place-items-center rounded-[20px] text-[42px] leading-none transition-transform ${icon ? "ui-raised hover:-translate-y-px" : "ui-btn-secondary text-faint hover:text-heading"} disabled:cursor-default disabled:hover:translate-y-0`}
           >
             {icon ?? <span className="text-sm">＋ Icon</span>}
           </button>
           {iconOpen ? (
-            <div role="dialog" aria-label="Choose an icon" className="absolute left-0 top-full z-30 mt-2 grid w-72 grid-cols-8 gap-1 rounded-[12px] border border-line bg-raised p-2 shadow-xl">
+            <div role="dialog" aria-label="Choose an icon" className="ui-pop absolute left-0 top-full z-30 mt-2 grid w-80 grid-cols-8 gap-1 p-2.5 animate-[folio-rise_160ms_var(--ease-folio)]">
               {ICONS.map((i) => (
-                <button key={i} type="button" className="grid h-8 w-8 place-items-center rounded-[6px] text-xl hover:bg-surface" onClick={() => { engine?.updateDocument(documentId, { icon: i }, revision); setIconOpen(false); }} aria-label={`Use ${i}`}>
+                <button key={i} type="button" className="grid h-8 w-8 place-items-center rounded-[9px] text-xl transition-transform hover:scale-110 hover:bg-accent-soft" onClick={() => { engine?.updateDocument(documentId, { icon: i }, revision); setIconOpen(false); }} aria-label={`Use ${i}`}>
                   {i}
                 </button>
               ))}
-              <button type="button" className="col-span-8 mt-1 rounded-[6px] py-1 text-xs text-muted hover:bg-surface" onClick={() => { engine?.updateDocument(documentId, { icon: null }, revision); setIconOpen(false); }}>
+              <button type="button" className="ui-btn ui-btn-quiet col-span-8 mt-1 h-8 text-xs" onClick={() => { engine?.updateDocument(documentId, { icon: null }, revision); setIconOpen(false); }}>
                 Remove icon
               </button>
             </div>
@@ -550,7 +556,7 @@ function DocumentHeader({
               onEnter();
             }
           }}
-          className={`mt-3 block w-full resize-none overflow-hidden bg-transparent text-[40px] leading-[1.15] tracking-[-0.015em] text-ink outline-none placeholder:text-faint ${style.font === "sans" ? "font-sans font-semibold tracking-[-0.025em]" : style.font === "mono" ? "font-mono text-[34px]" : "font-display"}`}
+          className={`mt-4 block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] text-heading outline-none placeholder:text-[var(--color-ink-faint)] ${style.font === "sans" ? "font-sans tracking-[-0.028em]" : style.font === "mono" ? "font-mono text-[34px] tracking-[-0.02em]" : "font-serif tracking-[-0.018em]"}`}
           aria-describedby={readOnly ? `ro-${documentId}` : undefined}
         />
         {readOnly ? (
@@ -580,18 +586,18 @@ function ConflictBanner({ documentId }: { documentId: string }) {
     engine.resolveConflict(c.id, "both", rank);
   };
   return (
-    <section role="alert" aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-4 rounded-[12px] border border-plum/40 bg-plum-soft p-4 sm:mx-16">
+    <section role="alert" aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-[18px] bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
       <h2 id={`conflict-${c.id}`} className="text-sm font-semibold text-plum-ink">
         {conflicts.length === 1 ? "This block was changed in two places" : `${conflicts.length} blocks were changed in two places`}
       </h2>
       <p className="mt-1 text-sm text-ink">Both versions are kept. Nothing is lost until you choose.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[8px] border border-line bg-raised p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">{c.reason === "deleted" ? "Deleted elsewhere" : "Version from elsewhere"}</p>
+        <div className="ui-card rounded-[16px] p-3">
+          <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : "Version from elsewhere"}</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(c.server)}</p>
         </div>
-        <div className="rounded-[8px] border border-accent/40 bg-raised p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Your version</p>
+        <div className="ui-card rounded-[16px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
+          <p className="ui-caps">Your version</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{text(c.client)}</p>
         </div>
       </div>
@@ -608,7 +614,7 @@ function ConflictBanner({ documentId }: { documentId: string }) {
           </Button>
         ) : null}
         {conflicts.length > 1 ? (
-          <select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 rounded-[6px] border border-line bg-raised px-2 text-xs">
+          <select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 ui-raised rounded-full px-2 text-xs">
             {conflicts.map((x, i) => (
               <option key={x.id} value={x.id}>
                 Conflict {i + 1}
@@ -632,7 +638,7 @@ function Backlinks({ documentId }: { documentId: string }) {
       <ul className="mt-2 space-y-1">
         {data.linked.map((l) => (
           <li key={l.id}>
-            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[6px] px-2 py-1 hover:bg-surface">
+            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[9px] px-2 py-1 hover:bg-surface">
               <span aria-hidden>{l.icon ?? "📄"}</span>
               <span className="font-medium">{l.title || "Untitled"}</span>
               <span className="truncate text-xs text-muted">{l.excerpt}</span>
@@ -647,7 +653,7 @@ function Backlinks({ documentId }: { documentId: string }) {
           <ul className="mt-2 space-y-1">
             {data.unlinked.map((l) => (
               <li key={l.id}>
-                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[6px] px-2 py-1 hover:bg-surface">
+                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[9px] px-2 py-1 hover:bg-surface">
                   <span aria-hidden>{l.icon ?? "📄"}</span>
                   <span className="font-medium">{l.title || "Untitled"}</span>
                 </AppLink>

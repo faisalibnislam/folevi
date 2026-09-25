@@ -26,7 +26,7 @@ export function DeletionJobsView() {
           ))}
         </ul>
       ) : null}
-      <div className="overflow-hidden rounded-[12px] border border-line bg-raised">
+      <div className="overflow-hidden ui-card rounded-[18px]">
         <DataTable caption="Deletion jobs, newest first" minWidth={1040}>
           <thead>
             <tr>

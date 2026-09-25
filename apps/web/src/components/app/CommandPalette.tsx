@@ -93,6 +93,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     else navigate(`/d/${item.id}`);
   };
 
+  // Enter pressed while the search for what was typed is still in flight opens the top result once
+  // it arrives (fast typists shouldn't get a stale "recent" document or nothing at all).
+  const settled = !query.trim() || (debounced === query.trim() && results !== undefined);
+  const [pendingEnter, setPendingEnter] = useState(false);
+  useEffect(() => {
+    if (!pendingEnter || !settled) return;
+    setPendingEnter(false);
+    if (items[0]) run(items[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingEnter, settled, items]);
+
   const docCount = items.filter((i) => i.kind === "doc").length;
 
   return (
@@ -107,12 +118,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
-      className="m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl rounded-[14px] border border-line bg-raised p-0 text-ink shadow-[0_24px_80px_-24px_rgba(0,0,0,0.5)] backdrop:bg-[var(--color-scrim)]"
+      className="m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-[22px] bg-raised p-0 text-ink shadow-[var(--shadow-pop)] backdrop:bg-[var(--color-scrim)] backdrop:backdrop-blur-[4px] open:animate-[folio-rise_160ms_var(--ease-folio)]"
     >
       {open ? (
         <div>
-          <div className="flex items-center gap-3 border-b border-line px-4">
-            <Search size={18} className="text-muted" aria-hidden />
+          <div className="flex items-center gap-3 px-5 shadow-[inset_0_-1px_0_var(--color-line)]">
+            <Search size={18} className="text-ember" aria-hidden />
             <input
               autoFocus
               role="combobox"
@@ -131,17 +142,18 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 } else if (e.key === "ArrowUp") {
                   e.preventDefault();
                   setActive((a) => Math.max(0, a - 1));
-                } else if (e.key === "Enter" && items[active]) {
+                } else if (e.key === "Enter") {
                   e.preventDefault();
-                  run(items[active]!);
+                  if (!settled) setPendingEnter(true);
+                  else if (items[active]) run(items[active]!);
                 }
               }}
-              className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
+              className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[var(--color-ink-faint)]"
             />
             <Kbd>Esc</Kbd>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2 text-xs" role="group" aria-label="Search filters">
-            <select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+          <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
+            <select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-full px-2.5 text-muted">
               <option value="">Any folder</option>
               {org?.folders.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -149,7 +161,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 </option>
               ))}
             </select>
-            <select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+            <select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="ui-well h-7 rounded-full px-2.5 text-muted">
               <option value="">Any tag</option>
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -157,7 +169,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 </option>
               ))}
             </select>
-            <select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+            <select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-full px-2.5 text-muted">
               <option value="">Anyone</option>
               {members?.members.map((m) => (
                 <option key={m.profileId} value={m.profileId}>
@@ -165,7 +177,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 </option>
               ))}
             </select>
-            <select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="h-7 rounded-[6px] border border-line bg-surface px-1.5 text-muted">
+            <select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="ui-well h-7 rounded-full px-2.5 text-muted">
               <option value="">Any time</option>
               <option value="7">Past week</option>
               <option value="30">Past month</option>
@@ -176,14 +188,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           <div className="max-h-[55vh] overflow-y-auto p-2">
             {debounced && results === undefined ? <p className="px-3 py-2 text-sm text-muted">Searching…</p> : null}
             {debounced && results?.length === 0 ? <p className="px-3 py-2 text-sm text-muted">No documents match “{debounced}”.</p> : null}
-            <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">{debounced ? "Documents" : "Recent"}</p>
+            <p className="ui-caps px-3 pb-1.5 pt-2">{debounced ? "Documents" : "Recent"}</p>
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {
                 const selected = i === active;
-                const cls = `flex cursor-pointer items-start gap-3 rounded-[8px] px-3 py-2 ${selected ? "bg-accent-soft text-accent-soft-ink" : ""}`;
+                const cls = `flex cursor-pointer items-start gap-3 rounded-[16px] px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
                 const header =
                   i === docCount && item.kind === "action" ? (
-                    <li role="presentation" className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
+                    <li role="presentation" className="ui-caps px-3 pb-1.5 pt-3">
                       Actions
                     </li>
                   ) : null;

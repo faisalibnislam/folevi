@@ -108,9 +108,9 @@ export function UserDetailView({ id }: { id: string }) {
               { label: "Documents", value: user.usage.documents.toLocaleString() },
               { label: "Storage", value: formatBytes(user.usage.storageBytes) },
             ].map((s) => (
-              <div key={s.label} className="rounded-[10px] border border-line bg-surface px-3 py-2.5">
+              <div key={s.label} className="ui-card rounded-[18px] px-3 py-2.5">
                 <dt className="text-[12px] text-muted">{s.label}</dt>
-                <dd className="mt-0.5 font-display text-[24px] leading-tight tabular-nums">{s.value}</dd>
+                <dd className="mt-0.5 ui-display text-[24px] leading-tight tabular-nums">{s.value}</dd>
               </div>
             ))}
           </dl>
@@ -287,7 +287,7 @@ function UserActions({ user, role, selfId, onAction }: { user: UserDetail; role:
   if (user.platformRole) notes.push("Remove the platform role before scheduling deletion.");
   if (user.emailVerified) notes.push("Resend verification is only offered while the email is unverified.");
   return (
-    <section aria-label="Account actions" className="rounded-[12px] border border-line bg-raised p-3">
+    <section aria-label="Account actions" className="ui-card rounded-[18px] p-3">
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={() => onAction("suspend")} disabled={isSelf || protectedSuper}>
           {suspended ? <UserCheck size={14} aria-hidden /> : <Ban size={14} aria-hidden />}

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
+import { beginPointerDrag, isDragging } from "./blockDrag";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -75,7 +76,7 @@ function Popover({ anchor, children, label, width = 300 }: { anchor: { left: num
       role="dialog"
       aria-label={label}
       style={{ left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, visibility: pos ? "visible" : "hidden" }}
-      className="fixed z-50 max-h-[min(420px,70vh)] overflow-y-auto rounded-[10px] border border-line bg-raised p-1 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.45)]"
+      className="fixed z-50 max-h-[min(420px,70vh)] overflow-y-auto ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]"
       onMouseDown={(e) => e.preventDefault()}
     >
       {children}
@@ -98,9 +99,9 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId }: { ite
           aria-selected={i === active}
           onMouseEnter={() => setActive(i)}
           onClick={() => onRun(item)}
-          className={`flex cursor-pointer items-center gap-2.5 rounded-[7px] px-2.5 py-1.5 text-sm ${i === active ? "bg-accent-soft text-accent-soft-ink" : ""}`}
+          className={`flex cursor-pointer items-center gap-2.5 rounded-[14px] px-2 py-1.5 text-sm transition-colors ${i === active ? "bg-accent-soft text-heading" : ""}`}
         >
-          <span className="grid h-7 w-7 flex-none place-items-center rounded-[6px] border border-line bg-surface text-muted" aria-hidden>
+          <span className="grid h-7 w-7 flex-none place-items-center rounded-[9px] bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
             {item.icon}
           </span>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -136,7 +137,7 @@ export function EditorMenus({
   trigger: TriggerState | null;
   editable: boolean;
   onInsertFiles: (files: File[]) => Promise<void>;
-  onDropBlock: (from: number, to: number) => void;
+  onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null;
   onCommentBlock?: (blockId: string) => void;
 }) {
   const { workspace, today } = useAppState();
@@ -385,7 +386,7 @@ function BookmarkPrompt({ onClose, onSubmit }: { onClose: () => void; onSubmit: 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--color-scrim)]" onClick={onClose}>
       <form
-        className="w-[min(92vw,420px)] rounded-[12px] border border-line bg-raised p-4"
+        className="w-[min(92vw,420px)] ui-pop rounded-[20px] p-5"
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
@@ -400,17 +401,17 @@ function BookmarkPrompt({ onClose, onSubmit }: { onClose: () => void; onSubmit: 
         <label htmlFor="bm-url" className="text-sm font-medium">
           Bookmark URL
         </label>
-        <input id="bm-url" autoFocus value={value} onChange={(e) => setValue(e.target.value)} className="mt-2 h-10 w-full rounded-[8px] border border-line bg-surface px-3" aria-invalid={Boolean(error)} aria-describedby={error ? "bm-err" : undefined} />
+        <input id="bm-url" autoFocus value={value} onChange={(e) => setValue(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-full px-4" aria-invalid={Boolean(error)} aria-describedby={error ? "bm-err" : undefined} />
         {error ? (
           <p id="bm-err" className="mt-1 text-xs text-danger">
             {error}
           </p>
         ) : null}
         <div className="mt-3 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-8 rounded-[6px] px-3 text-sm">
+          <button type="button" onClick={onClose} className="ui-btn ui-btn-quiet h-8 px-3.5 text-sm">
             Cancel
           </button>
-          <button type="submit" className="h-8 rounded-[6px] bg-accent px-3 text-sm text-accent-ink">
+          <button type="submit" className="ui-btn ui-btn-primary h-8 px-4 text-sm">
             Add bookmark
           </button>
         </div>
@@ -450,12 +451,12 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   }, [editor]);
   if (!state) return null;
   const btn = (label: string, isActive: boolean, onClick: () => void, icon: React.ReactNode) => (
-    <button type="button" aria-label={label} title={label} aria-pressed={isActive} onMouseDown={(e) => e.preventDefault()} onClick={onClick} className={`grid h-8 w-8 place-items-center rounded-[6px] ${isActive ? "bg-accent-soft text-accent-soft-ink" : "text-ink hover:bg-surface"}`}>
+    <button type="button" aria-label={label} title={label} aria-pressed={isActive} onMouseDown={(e) => e.preventDefault()} onClick={onClick} className={`grid h-8 w-8 place-items-center rounded-full transition-colors ${isActive ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_25%,transparent)]" : "text-muted hover:bg-accent-soft hover:text-heading"}`}>
       {icon}
     </button>
   );
   return (
-    <div role="toolbar" aria-label="Text formatting" className="fixed z-40 -translate-x-1/2 -translate-y-[calc(100%+8px)] rounded-[10px] border border-line bg-raised p-1 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.4)]" style={{ left: state.left, top: state.top }} onMouseDown={(e) => e.preventDefault()}>
+    <div role="toolbar" aria-label="Text formatting" className="fixed z-40 -translate-x-1/2 -translate-y-[calc(100%+8px)] ui-pop rounded-full p-1 animate-[folio-rise_120ms_var(--ease-folio)]" style={{ left: state.left, top: state.top }} onMouseDown={(e) => e.preventDefault()}>
       {linkMode ? (
         <form
           className="flex items-center gap-1"
@@ -466,12 +467,12 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
             setLinkMode(false);
           }}
         >
-          <input autoFocus value={href} onChange={(e) => setHref(e.target.value)} placeholder="Paste or type a link" aria-label="Link address" className="h-8 w-60 rounded-[6px] border border-line bg-surface px-2 text-sm" onMouseDown={(e) => e.stopPropagation()} />
-          <button type="submit" className="h-8 rounded-[6px] bg-accent px-2.5 text-xs text-accent-ink">
+          <input autoFocus value={href} onChange={(e) => setHref(e.target.value)} placeholder="Paste or type a link" aria-label="Link address" className="ui-input h-8 w-60 rounded-full px-3 text-sm" onMouseDown={(e) => e.stopPropagation()} />
+          <button type="submit" className="ui-btn ui-btn-primary h-8 px-3 text-xs">
             Apply
           </button>
           {editor.isActive("link") ? (
-            <button type="button" className="h-8 rounded-[6px] px-2 text-xs text-muted" onClick={() => { editor.chain().focus().extendMarkRange("link").unsetMark("link").run(); setLinkMode(false); }}>
+            <button type="button" className="ui-btn ui-btn-quiet h-8 px-2.5 text-xs" onClick={() => { editor.chain().focus().extendMarkRange("link").unsetMark("link").run(); setLinkMode(false); }}>
               Remove
             </button>
           ) : null}
@@ -479,17 +480,17 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
       ) : colors ? (
         <div className="flex items-center gap-1 p-0.5">
           {COLORS.map((c) => (
-            <button key={c} type="button" aria-label={`Text color ${c}`} onClick={() => editor.chain().focus().setMark("textColor", { value: c }).run()} className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-surface">
+            <button key={c} type="button" aria-label={`Text color ${c}`} onClick={() => editor.chain().focus().setMark("textColor", { value: c }).run()} className="grid h-7 w-7 place-items-center rounded-full hover:bg-accent-soft">
               <span className={`fb-color-${c} text-sm font-semibold`}>A</span>
             </button>
           ))}
           <span className="mx-1 h-5 w-px bg-line" aria-hidden />
           {HIGHLIGHTS.map((h) => (
-            <button key={h} type="button" aria-label={`Highlight ${h}`} onClick={() => editor.chain().focus().setMark("highlight", { value: h }).run()} className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-surface">
+            <button key={h} type="button" aria-label={`Highlight ${h}`} onClick={() => editor.chain().focus().setMark("highlight", { value: h }).run()} className="grid h-7 w-7 place-items-center rounded-full hover:bg-accent-soft">
               <span className={`fb-hl-${h} h-4 w-4 rounded-[3px]`} />
             </button>
           ))}
-          <button type="button" className="h-7 rounded-[6px] px-2 text-xs text-muted" onClick={() => editor.chain().focus().unsetMark("textColor").unsetMark("highlight").run()}>
+          <button type="button" className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs" onClick={() => editor.chain().focus().unsetMark("textColor").unsetMark("highlight").run()}>
             Reset
           </button>
         </div>
@@ -523,11 +524,11 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
 }
 
 /** Hover gutter with a drag handle and block menu; also reachable from the keyboard with ⌘. (Ctrl+.). */
-function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number) => void; onCommentBlock?: (blockId: string) => void }) {
+function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null; onCommentBlock?: (blockId: string) => void }) {
   const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number } | null>(null);
   const [menu, setMenu] = useState<{ index: number; left: number; top: number; bottom: number } | null>(null);
-  const [dropLine, setDropLine] = useState<{ top: number; left: number; width: number; index: number } | null>(null);
-  const dragIndex = useRef<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const justDragged = useRef(false);
   const toast = useToast();
 
   const blockDomAt = useCallback(
@@ -541,7 +542,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const onMove = (e: MouseEvent) => {
-      if (menu) return;
+      if (menu || isDragging()) return;
       const children = [...dom.children] as HTMLElement[];
       const idx = children.findIndex((c) => {
         const r = c.getBoundingClientRect();
@@ -600,12 +601,16 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
 
   return (
     <>
-      {hover && !menu ? (
-        <div className="fixed z-30 flex items-center" style={{ top: hover.top, left: hover.left - 52, height: hover.height }} onMouseDown={(e) => e.preventDefault()}>
+      {hover && !menu && !dragging ? (
+        <div
+          className="ui-raised fixed z-30 flex items-center gap-px rounded-full p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
+          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <button
             type="button"
             aria-label="Insert block below"
-            className="grid h-6 w-6 place-items-center rounded-[5px] text-faint hover:bg-surface hover:text-ink"
+            className="grid h-6 w-6 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {
               selectBlock(hover.index);
               const at = (() => {
@@ -621,21 +626,30 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
           </button>
           <button
             type="button"
-            draggable
             aria-label="Drag to move, click for block options"
-            className="grid h-6 w-5 cursor-grab place-items-center rounded-[5px] text-faint hover:bg-surface hover:text-ink active:cursor-grabbing"
-            onDragStart={(e) => {
-              dragIndex.current = hover.index;
-              e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("application/x-folevi-block", String(hover.index));
-              const el = blockDomAt(hover.index);
-              if (el) e.dataTransfer.setDragImage(el, 0, 0);
-            }}
-            onDragEnd={() => {
-              dragIndex.current = null;
-              setDropLine(null);
+            className="grid h-6 w-5 cursor-grab touch-none place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing"
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              const index = hover.index;
+              beginPointerDrag({
+                editor,
+                payload: { kind: "block", index },
+                event: e,
+                onStart: () => {
+                  justDragged.current = true;
+                  setDragging(true);
+                  setHover(null);
+                },
+                onDrop: (t) => onDropBlock(index, t.index, t.depth),
+                onEnd: () => {
+                  setDragging(false);
+                  window.setTimeout(() => (justDragged.current = false), 0);
+                },
+              });
             }}
             onClick={() => {
+              if (justDragged.current) return;
               const el = blockDomAt(hover.index);
               const r = el?.getBoundingClientRect();
               setMenu({ index: hover.index, left: hover.left - 40, top: r?.top ?? hover.top, bottom: (r?.top ?? hover.top) + 24 });
@@ -645,7 +659,6 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
           </button>
         </div>
       ) : null}
-      <DropTarget editor={editor} dragIndex={dragIndex} dropLine={dropLine} setDropLine={setDropLine} onDrop={onDropBlock} />
       {menu ? (
         <>
           <div className="fixed inset-0 z-40" onMouseDown={() => setMenu(null)} />
@@ -653,7 +666,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
             <div className="p-1 text-sm" role="menu" aria-label="Block options" onKeyDown={(e) => e.key === "Escape" && setMenu(null)}>
               {isText ? (
                 <>
-                  <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Turn into</p>
+                  <p className="ui-caps px-2 pb-1.5 pt-1">Turn into</p>
                   <div className="grid grid-cols-2 gap-0.5">
                     {(
                       [
@@ -670,12 +683,12 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                         ["code", "Code", { language: "plaintext" }],
                       ] as const
                     ).map(([type, label, attrs]) => (
-                      <button key={label} type="button" role="menuitem" className="rounded-[6px] px-2 py-1.5 text-left hover:bg-accent-soft focus:bg-accent-soft" onClick={() => act(() => turnInto(editor, type, attrs))}>
+                      <button key={label} type="button" role="menuitem" className="rounded-[9px] px-2 py-1.5 text-left transition-colors hover:bg-accent-soft hover:text-heading focus:bg-accent-soft" onClick={() => act(() => turnInto(editor, type, attrs))}>
                         {label}
                       </button>
                     ))}
                   </div>
-                  <div className="my-1 h-px bg-line" />
+                  <div className="mx-2 my-1.5 h-px bg-line" />
                 </>
               ) : null}
               {[
@@ -695,7 +708,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                 },
                 { label: "Delete", hint: "⌘⇧⌫", icon: <Trash2 size={14} />, danger: true, run: () => act(() => deleteBlocks(editor, [menu.index])) },
               ].map((item) => (
-                <button key={item.label} type="button" role="menuitem" onClick={item.run} className={`flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left hover:bg-accent-soft focus:bg-accent-soft ${"danger" in item && item.danger ? "text-danger" : ""}`}>
+                <button key={item.label} type="button" role="menuitem" onClick={item.run} className={`flex w-full items-center gap-2 rounded-[9px] px-2 py-1.5 text-left transition-colors hover:bg-accent-soft hover:text-heading focus:bg-accent-soft ${"danger" in item && item.danger ? "text-danger" : ""}`}>
                   <span className="text-muted" aria-hidden>
                     {item.icon}
                   </span>
@@ -709,57 +722,6 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       ) : null}
     </>
   );
-}
-
-function DropTarget({
-  editor,
-  dragIndex,
-  dropLine,
-  setDropLine,
-  onDrop,
-}: {
-  editor: Editor;
-  dragIndex: React.RefObject<number | null>;
-  dropLine: { top: number; left: number; width: number; index: number } | null;
-  setDropLine: (d: { top: number; left: number; width: number; index: number } | null) => void;
-  onDrop: (from: number, to: number) => void;
-}) {
-  useEffect(() => {
-    const dom = editor.view.dom as HTMLElement;
-    const over = (e: DragEvent) => {
-      if (dragIndex.current === null) return;
-      e.preventDefault();
-      const children = [...dom.children] as HTMLElement[];
-      let index = children.length;
-      for (let i = 0; i < children.length; i++) {
-        const r = children[i]!.getBoundingClientRect();
-        if (e.clientY < r.top + r.height / 2) {
-          index = i;
-          break;
-        }
-      }
-      const ref = children[Math.min(index, children.length - 1)]!.getBoundingClientRect();
-      const top = index >= children.length ? ref.bottom : ref.top;
-      const d = dom.getBoundingClientRect();
-      setDropLine({ top, left: d.left, width: d.width, index });
-    };
-    const drop = (e: DragEvent) => {
-      if (dragIndex.current === null || !dropLine) return;
-      e.preventDefault();
-      e.stopPropagation();
-      onDrop(dragIndex.current, dropLine.index);
-      dragIndex.current = null;
-      setDropLine(null);
-    };
-    dom.addEventListener("dragover", over);
-    dom.addEventListener("drop", drop, true);
-    return () => {
-      dom.removeEventListener("dragover", over);
-      dom.removeEventListener("drop", drop, true);
-    };
-  }, [editor, dragIndex, dropLine, setDropLine, onDrop]);
-  if (!dropLine) return null;
-  return <div aria-hidden className="pointer-events-none fixed z-40 h-0.5 rounded-full bg-accent" style={{ top: dropLine.top - 1, left: dropLine.left, width: dropLine.width }} />;
 }
 
 /** Due date, time, priority, assignee and reminder for a task block. */
@@ -806,15 +768,15 @@ function TaskDetails({ editor }: { editor: Editor }) {
         <form className="grid gap-3 p-2 text-sm" onSubmit={(e) => { e.preventDefault(); setTarget(null); editor.commands.focus(); }} onKeyDown={(e) => e.key === "Escape" && (setTarget(null), editor.commands.focus())}>
           <label className="grid gap-1">
             <span className="text-xs text-muted">Due date</span>
-            <input type="date" autoFocus value={(node.attrs.dueDate as string) ?? ""} onChange={(e) => set({ dueDate: e.target.value || null, dueTime: e.target.value ? node.attrs.dueTime : null })} className="h-8 rounded-[6px] border border-line bg-surface px-2" />
+            <input type="date" autoFocus value={(node.attrs.dueDate as string) ?? ""} onChange={(e) => set({ dueDate: e.target.value || null, dueTime: e.target.value ? node.attrs.dueTime : null })} className="h-8 ui-input rounded-full px-3" />
           </label>
           <label className="grid gap-1">
             <span className="text-xs text-muted">Time (leave empty for all day)</span>
-            <input type="time" disabled={!node.attrs.dueDate} value={(node.attrs.dueTime as string) ?? ""} onChange={(e) => set({ dueTime: e.target.value || null })} className="h-8 rounded-[6px] border border-line bg-surface px-2 disabled:opacity-50" />
+            <input type="time" disabled={!node.attrs.dueDate} value={(node.attrs.dueTime as string) ?? ""} onChange={(e) => set({ dueTime: e.target.value || null })} className="h-8 ui-input rounded-full px-3 disabled:opacity-50" />
           </label>
           <label className="grid gap-1">
             <span className="text-xs text-muted">Priority</span>
-            <select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 rounded-[6px] border border-line bg-surface px-2">
+            <select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-full px-3">
               <option value="none">None</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -824,7 +786,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           {members && members.members.length > 1 ? (
             <label className="grid gap-1">
               <span className="text-xs text-muted">Assignee</span>
-              <select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 rounded-[6px] border border-line bg-surface px-2">
+              <select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 ui-input rounded-full px-3">
                 <option value="">Unassigned</option>
                 {members.members.map((m) => (
                   <option key={m.profileId} value={m.profileId}>
@@ -837,13 +799,13 @@ function TaskDetails({ editor }: { editor: Editor }) {
           ) : null}
           <label className="grid gap-1">
             <span className="text-xs text-muted">Reminder</span>
-            <input type="datetime-local" value={reminderValue} onChange={(e) => set({ reminderAt: e.target.value ? new Date(e.target.value).getTime() : null })} className="h-8 rounded-[6px] border border-line bg-surface px-2" />
+            <input type="datetime-local" value={reminderValue} onChange={(e) => set({ reminderAt: e.target.value ? new Date(e.target.value).getTime() : null })} className="h-8 ui-input rounded-full px-3" />
           </label>
           <div className="flex justify-between">
             <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null })}>
               Clear all
             </button>
-            <button type="submit" className="h-8 rounded-[6px] bg-accent px-3 text-xs text-accent-ink">
+            <button type="submit" className="h-8 ui-btn ui-btn-primary px-3.5 text-xs">
               Done
             </button>
           </div>

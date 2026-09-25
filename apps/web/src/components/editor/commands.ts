@@ -216,3 +216,86 @@ export function deleteBlocks(editor: Editor, indices?: number[]): boolean {
   editor.view.dispatch(tr.scrollIntoView());
   return true;
 }
+
+/** Top-level child index → document position of its start. */
+function posOfIndex(doc: EditorState["doc"], index: number): number {
+  let pos = 0;
+  for (let i = 0; i < Math.min(index, doc.childCount); i++) pos += doc.child(i).nodeSize;
+  return pos;
+}
+
+/**
+ * Moves the block at `fromIndex` (with its nested children) so it lands before the block currently at
+ * `toIndex` (childCount = the end), re-indented to `depth`. Children keep their depth relative to it.
+ * Returns the new index of the moved block, or null when the move is a no-op or impossible.
+ */
+export function moveSubtreeTo(state: EditorState, fromIndex: number, toIndex: number, depth: number): { tr: Transaction; index: number } | null {
+  if (fromIndex < 0 || fromIndex >= state.doc.childCount) return null;
+  const range = subtreeRange(state, fromIndex);
+  if (toIndex > fromIndex && toIndex < fromIndex + range.count) return null; // into itself
+  const baseDepth = Number(state.doc.child(fromIndex).attrs.depth ?? 0);
+  const newIndex = toIndex > fromIndex ? toIndex - range.count : toIndex;
+  if ((toIndex === fromIndex || toIndex === fromIndex + range.count) && depth === baseDepth) return null;
+  const delta = depth - baseDepth;
+  const nodes: PMNode[] = [];
+  for (let i = fromIndex; i < fromIndex + range.count; i++) {
+    const n = state.doc.child(i);
+    const d = Math.max(0, Math.min(LIMITS.maxDepth, Number(n.attrs.depth ?? 0) + delta));
+    nodes.push(n.type.create({ ...n.attrs, depth: d }, n.content, n.marks));
+  }
+  const tr = state.tr;
+  tr.delete(range.start, range.end);
+  tr.insert(posOfIndex(tr.doc, newIndex), nodes);
+  normalizeDepths(tr);
+  return { tr, index: newIndex };
+}
+
+/** Inserts a new block of `type` before the block at `index` (childCount = the end) at `depth`. */
+export function insertBlockAt(editor: Editor, index: number, depth: number, type: string, attrs: Record<string, unknown> = {}): number {
+  const { state } = editor;
+  const schemaType = state.schema.nodes[type === "code" ? "codeBlock" : type];
+  if (!schemaType) return -1;
+  const node = schemaType.create({ id: ulid(), depth, ...attrs });
+  const tr = state.tr;
+  const at = posOfIndex(state.doc, index);
+  tr.insert(at, node);
+  if (!node.isTextblock) {
+    const after = at + node.nodeSize;
+    if (!tr.doc.nodeAt(after)) tr.insert(after, state.schema.nodes.paragraph!.create({ id: ulid(), depth }));
+    tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(tr.doc.content.size, after + 1))));
+  } else {
+    tr.setSelection(TextSelection.near(tr.doc.resolve(at + 1)));
+  }
+  normalizeDepths(tr);
+  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.focus();
+  return index;
+}
+
+/**
+ * Where a dragged block would land, given each top-level block's vertical box. Blocks in `skip`
+ * (the dragged subtree) and hidden blocks are ignored. `desiredDepth` is clamped to what the block
+ * above allows (at most one deeper). Pure, so it is unit-tested.
+ */
+export function dropTarget(
+  boxes: { top: number; bottom: number; depth: number; hidden?: boolean }[],
+  y: number,
+  desiredDepth: number,
+  skip: { from: number; count: number } | null,
+): { index: number; depth: number; lineY: number } {
+  const visible = boxes.map((b, i) => ({ ...b, i })).filter((b) => !b.hidden && !(skip && b.i >= skip.from && b.i < skip.from + skip.count));
+  if (!visible.length) return { index: boxes.length, depth: 0, lineY: 0 };
+  let index = boxes.length;
+  let lineY = visible[visible.length - 1]!.bottom;
+  for (const b of visible) {
+    if (y < b.top + (b.bottom - b.top) / 2) {
+      index = b.i;
+      lineY = b.top;
+      break;
+    }
+  }
+  // The block that would end up directly above the drop point.
+  const above = [...visible].reverse().find((b) => b.i < index);
+  const maxDepth = above ? Math.min(LIMITS.maxDepth, above.depth + 1) : 0;
+  return { index, depth: Math.max(0, Math.min(maxDepth, desiredDepth)), lineY };
+}

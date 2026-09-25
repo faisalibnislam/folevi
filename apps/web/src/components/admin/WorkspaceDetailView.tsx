@@ -82,7 +82,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         </div>
       ) : null}
 
-      <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 rounded-[12px] border border-line bg-raised p-3">
+      <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 ui-card rounded-[18px] p-3">
         <Button size="sm" variant={suspended ? "secondary" : "danger"} onClick={() => setAction("suspend")} disabled={w.status === "deleting"}>
           {suspended ? <Undo2 size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
           {suspended ? "Unsuspend…" : "Suspend…"}

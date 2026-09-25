@@ -27,12 +27,12 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
   const { sent } = await searchParams;
   return (
     <>
-      <h1 className="font-display text-4xl leading-tight">Check your inbox</h1>
+      <h1 className="ui-display text-4xl leading-tight">Check your inbox</h1>
       <p className="mt-2 text-muted">
         We sent a verification link to your email address. Open it to activate your account, then sign in again. Links expire after a few days and can only be used once.
       </p>
       {sent ? (
-        <p role="status" className="mt-4 rounded-[8px] border border-success/30 bg-success-soft p-3 text-sm">
+        <p role="status" className="mt-4 rounded-[11px] border border-success/30 bg-success-soft p-3 text-sm">
           If an unverified account exists for that address, a new link is on its way.
         </p>
       ) : null}
@@ -47,9 +47,9 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
       >
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Didn’t get it? Send a new link to</span>
-          <input name="email" type="email" required autoComplete="email" className="h-10 w-full rounded-[8px] border border-line bg-surface px-3" />
+          <input name="email" type="email" required autoComplete="email" className="h-10 w-full ui-input rounded-full px-3" />
         </label>
-        <button type="submit" className="h-10 w-full rounded-[8px] border border-line bg-surface text-sm font-medium hover:border-line-strong">
+        <button type="submit" className="h-10 w-full ui-input rounded-full text-sm font-medium transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
           Send a new verification link
         </button>
       </form>

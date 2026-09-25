@@ -14,7 +14,8 @@ import { blockToNode, blocksToDoc, contentKey, diffBlocks, docToBlocks } from ".
 import { flattenTree } from "@folevi/editor-schema";
 import { htmlToBlocks } from "./paste";
 import { EditorMenus } from "./EditorMenus";
-import { subtreeRange, normalizeDepths } from "./commands";
+import { subtreeRange, normalizeDepths, moveSubtreeTo } from "./commands";
+import { closeHistory } from "@tiptap/pm/history";
 
 export interface EditorHandle {
   /** Pushes pending local edits into the sync engine immediately. */
@@ -318,26 +319,19 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     [flushLocal, applyFromEngine],
   );
 
-  // Block drag & drop (handle in EditorMenus sets the dragged index).
-  const onDropBlock = useCallback((fromIndex: number, toIndex: number) => {
+  // Block drag & drop (the grip in EditorMenus runs the pointer drag; this applies the move).
+  const onDropBlock = useCallback((fromIndex: number, toIndex: number, depth: number) => {
     const ed = editorRef.current;
-    if (!ed || fromIndex === toIndex) return;
-    const state = ed.state;
-    const range = subtreeRange(state, fromIndex);
-    if (toIndex > fromIndex && toIndex < fromIndex + range.count) return;
-    const slice = state.doc.slice(range.start, range.end);
-    let target = 0;
-    for (let i = 0; i < Math.min(toIndex, state.doc.childCount); i++) target += state.doc.child(i).nodeSize;
-    const tr = state.tr;
-    tr.delete(range.start, range.end);
-    const mapped = target > range.start ? target - (range.end - range.start) : target;
-    tr.insert(mapped, slice.content);
-    normalizeDepths(tr);
-    ed.view.dispatch(tr.scrollIntoView());
+    if (!ed) return null;
+    const count = subtreeRange(ed.state, fromIndex).count;
+    const moved = moveSubtreeTo(ed.state, fromIndex, toIndex, depth);
+    if (!moved) return null;
+    ed.view.dispatch(closeHistory(moved.tr).scrollIntoView());
+    return { index: moved.index, count };
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative" data-fb-root={documentId}>
       <EditorContent editor={editor} />
       {editor ? (
         <EditorMenus

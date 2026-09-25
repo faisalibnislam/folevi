@@ -70,16 +70,16 @@ export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onC
           onChange={(e) => setTitle(e.target.value)}
           placeholder="What needs doing?"
           maxLength={500}
-          className="h-11 w-full rounded-[8px] border border-line bg-surface px-3 text-[15px] outline-none focus:border-accent"
+          className="h-11 w-full ui-input rounded-full px-3 text-[15px] outline-none"
         />
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="text-sm">
             <span className="block text-muted">Due date</span>
-            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="mt-1 h-9 rounded-[7px] border border-line bg-surface px-2" />
+            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="mt-1 h-9 ui-input rounded-full px-2" />
           </label>
           <label className="text-sm">
             <span className="block text-muted">Time (optional)</span>
-            <input type="time" value={time} disabled={!due} onChange={(e) => setTime(e.target.value)} className="mt-1 h-9 rounded-[7px] border border-line bg-surface px-2 disabled:opacity-50" />
+            <input type="time" value={time} disabled={!due} onChange={(e) => setTime(e.target.value)} className="mt-1 h-9 ui-input rounded-full px-2 disabled:opacity-50" />
           </label>
         </div>
         {currentDoc ? (

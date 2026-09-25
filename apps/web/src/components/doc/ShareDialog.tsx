@@ -54,7 +54,7 @@ export function ShareDialog({ open, onClose, documentId, title }: { open: boolea
                   aria-checked={data.accessMode === mode}
                   disabled={!canManage}
                   onClick={() => void run(setMode({ documentId, mode }))}
-                  className={`flex items-start gap-2 rounded-[10px] border p-3 text-left disabled:opacity-60 ${data.accessMode === mode ? "border-accent bg-accent-soft" : "border-line"}`}
+                  className={`flex items-start gap-2 rounded-[14px] border p-3 text-left disabled:opacity-60 ${data.accessMode === mode ? "border-accent bg-accent-soft" : "border-line"}`}
                 >
                   <span className="mt-0.5 text-muted" aria-hidden>
                     {icon}
@@ -82,8 +82,8 @@ export function ShareDialog({ open, onClose, documentId, title }: { open: boolea
                 <label className="sr-only" htmlFor="share-email">
                   Email address
                 </label>
-                <input id="share-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 rounded-[7px] border border-line bg-surface px-3" />
-                <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as typeof role)} className="h-9 rounded-[7px] border border-line bg-surface px-2">
+                <input id="share-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 ui-input rounded-full px-3" />
+                <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as typeof role)} className="h-9 ui-input rounded-full px-2">
                   <option value="viewer">Can view</option>
                   <option value="commenter">Can comment</option>
                   <option value="editor">Can edit</option>
@@ -93,7 +93,7 @@ export function ShareDialog({ open, onClose, documentId, title }: { open: boolea
                 </Button>
               </form>
             ) : null}
-            <ul className="mt-3 divide-y divide-line rounded-[10px] border border-line">
+            <ul className="mt-3 divide-y divide-line rounded-[14px] border border-line">
               {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">No one has been added directly.</li> : null}
               {data.people.map((p) => (
                 <li key={p.profileId} className="flex items-center gap-3 px-3 py-2">
@@ -120,10 +120,10 @@ export function ShareDialog({ open, onClose, documentId, title }: { open: boolea
               <p className="text-xs text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Links aren’t indexed by search engines and can be revoked instantly.</p>
               {!data.publicLinksAvailable ? <p className="mt-2 text-xs text-warning">Public links are temporarily turned off for Folevi.</p> : null}
               {freshLink ? (
-                <div className="mt-3 rounded-[10px] border border-success/40 bg-success-soft p-3">
+                <div className="mt-3 rounded-[14px] border border-success/40 bg-success-soft p-3">
                   <p className="text-xs font-medium">Copy this link now — for your security it isn’t shown again.</p>
                   <div className="mt-2 flex gap-2">
-                    <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 rounded-[7px] border border-line bg-raised px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
+                    <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 ui-well rounded-[14px] px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
                     <Button size="sm" onClick={() => void navigator.clipboard.writeText(freshLink).then(() => toast.show("Link copied"))}>
                       <Copy size={13} aria-hidden /> Copy
                     </Button>
@@ -132,7 +132,7 @@ export function ShareDialog({ open, onClose, documentId, title }: { open: boolea
               ) : null}
               <ul className="mt-3 space-y-2">
                 {data.links.map((l) => (
-                  <li key={l.id} className="flex items-center gap-3 rounded-[10px] border border-line px-3 py-2">
+                  <li key={l.id} className="flex items-center gap-3 rounded-[14px] border border-line px-3 py-2">
                     <span className="min-w-0 flex-1">
                       <span className="block font-mono text-xs">…/s/{l.tokenHint}••••••••</span>
                       <span className="block text-xs text-muted">
@@ -166,11 +166,11 @@ export function ShareDialog({ open, onClose, documentId, title }: { open: boolea
                 >
                   <label className="text-xs">
                     Expires (optional)
-                    <input type="datetime-local" value={linkForm.expires} onChange={(e) => setLinkForm({ ...linkForm, expires: e.target.value })} className="mt-1 block h-9 w-full rounded-[7px] border border-line bg-surface px-2" />
+                    <input type="datetime-local" value={linkForm.expires} onChange={(e) => setLinkForm({ ...linkForm, expires: e.target.value })} className="mt-1 block h-9 w-full ui-input rounded-full px-2" />
                   </label>
                   <label className="text-xs">
                     Password (optional, 8+ characters)
-                    <input type="password" autoComplete="new-password" minLength={8} value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="mt-1 block h-9 w-full rounded-[7px] border border-line bg-surface px-2" />
+                    <input type="password" autoComplete="new-password" minLength={8} value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="mt-1 block h-9 w-full ui-input rounded-full px-2" />
                   </label>
                   <Button type="submit" className="self-end">
                     Create link

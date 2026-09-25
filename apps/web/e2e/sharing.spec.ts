@@ -6,7 +6,7 @@ test("share a page with another person, comment, and publish a revocable public 
   const guest = await newPersonWithWorkspace(browser, "Guest Person");
 
   // Owner opens the brief and shares it with the guest as a commenter.
-  await owner.page.getByRole("link", { name: "All Documents" }).click();
+  await owner.page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "All Documents" }).click();
   await owner.page.getByRole("link", { name: /Project Atlas Brief/ }).first().click();
   await owner.page.getByRole("button", { name: "Share" }).click();
   const share = owner.page.getByRole("dialog", { name: /Share/ });

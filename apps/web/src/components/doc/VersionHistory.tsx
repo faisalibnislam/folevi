@@ -43,7 +43,7 @@ export function VersionHistory({ open, onClose, documentId, canRestore }: { open
             {list?.length === 0 ? <li className="text-sm text-muted">No versions yet.</li> : null}
             {list?.map((s) => (
               <li key={s.id}>
-                <button type="button" role="option" aria-selected={selected === s.id} onClick={() => { setSelected(s.id); setConfirm(false); }} className={`w-full rounded-[8px] px-3 py-2 text-left text-sm ${selected === s.id ? "bg-accent-soft text-accent-soft-ink" : "hover:bg-surface"}`}>
+                <button type="button" role="option" aria-selected={selected === s.id} onClick={() => { setSelected(s.id); setConfirm(false); }} className={`w-full rounded-[11px] px-3 py-2 text-left text-sm ${selected === s.id ? "bg-accent-soft text-accent-soft-ink" : "hover:bg-surface"}`}>
                   <span className="block font-medium">{formatDateTime(s.createdAt)}</span>
                   <span className="block text-xs text-muted">
                     {REASONS[s.reason] ?? "Version"} · {s.createdBy}
@@ -53,7 +53,7 @@ export function VersionHistory({ open, onClose, documentId, canRestore }: { open
             ))}
           </ul>
         </div>
-        <div className="flex min-h-0 flex-col rounded-[10px] border border-line bg-surface">
+        <div className="flex min-h-0 flex-col ui-card rounded-[18px]">
           {!selected ? (
             <p className="m-auto p-6 text-sm text-muted">Choose a version to preview it.</p>
           ) : !preview ? (

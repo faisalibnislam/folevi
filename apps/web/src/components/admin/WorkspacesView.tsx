@@ -15,7 +15,7 @@ export function WorkspacesView() {
     <>
       <DocTitle>Workspaces</DocTitle>
       <PageHeader title="Workspaces" description="All workspaces, newest first. Names identify records; opening one shows members, quotas and invites (and is recorded in the audit log). Document contents are never shown." />
-      <div className="overflow-hidden rounded-[12px] border border-line bg-raised">
+      <div className="overflow-hidden ui-card rounded-[18px]">
         <DataTable caption="Workspaces, newest first" minWidth={820}>
           <thead>
             <tr>

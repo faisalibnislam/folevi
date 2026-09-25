@@ -37,17 +37,17 @@ export function Onboarding() {
   const welcome = docs?.page.find((d) => d.title === "Welcome to Folevi") ?? docs?.page[0];
 
   return (
-    <main id="main" tabIndex={-1} className="folio-lines grid min-h-dvh place-items-center bg-canvas px-4 py-10">
+    <main id="main" tabIndex={-1} className="ui-canvas grid min-h-dvh place-items-center px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-6 flex items-center gap-2 text-ink">
           <FoleviMark size={26} accent="var(--color-accent)" />
-          <span className="font-display text-2xl">Folevi</span>
+          <span className="ui-display text-2xl">Folevi</span>
         </div>
         <div className="relative">
           {/* Offset leaves behind the sheet echo the folio mark. */}
-          <div aria-hidden className="absolute inset-0 translate-x-3 translate-y-3 rounded-[14px] border border-line bg-sunken" />
-          <div aria-hidden className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-[14px] border border-line bg-surface" />
-          <section className="relative rounded-[14px] border border-line bg-raised p-8 animate-[folio-settle_320ms_var(--ease-folio)]" aria-labelledby="onboarding-title">
+          <div aria-hidden className="absolute inset-0 translate-x-3 translate-y-3 ui-well rounded-[18px]" />
+          <div aria-hidden className="absolute inset-0 translate-x-1.5 translate-y-1.5 ui-card rounded-[18px]" />
+          <section className="relative ui-card rounded-[18px] p-8 animate-[folio-settle_320ms_var(--ease-folio)]" aria-labelledby="onboarding-title">
             <ol className="mb-8 flex gap-2" aria-label="Setup progress">
               {STEPS.map((label, i) => (
                 <li key={label} className="flex-1">
@@ -60,7 +60,7 @@ export function Onboarding() {
               ))}
             </ol>
             <p className="text-sm text-muted">Step {stepIndex + 1} of 3</p>
-            <h1 id="onboarding-title" className="mt-1 font-display text-4xl leading-tight">
+            <h1 id="onboarding-title" className="mt-1 ui-display text-4xl leading-tight">
               {stepIndex === 0 ? `Welcome, ${profile.displayName.split(" ")[0]}.` : stepIndex === 1 ? "How should Folevi look?" : "Your folio is ready."}
             </h1>
 
@@ -86,7 +86,7 @@ export function Onboarding() {
                   maxLength={80}
                   required
                   autoFocus
-                  className="mt-2 h-11 w-full rounded-[8px] border border-line bg-surface px-3 text-base outline-none focus:border-accent"
+                  className="mt-2 h-11 w-full ui-input rounded-full px-3 text-base outline-none"
                 />
                 <div className="mt-6 flex justify-end">
                   <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
@@ -114,7 +114,7 @@ export function Onboarding() {
                         role="radio"
                         aria-checked={appearance === value}
                         onClick={() => setAppearance(value)}
-                        className={`flex flex-col items-center gap-2 rounded-[10px] border p-4 text-sm transition-colors ${appearance === value ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface hover:border-line-strong"}`}
+                        className={`flex flex-col items-center gap-2 rounded-[14px] border p-4 text-sm transition-colors ${appearance === value ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"}`}
                       >
                         {icon}
                         {label}

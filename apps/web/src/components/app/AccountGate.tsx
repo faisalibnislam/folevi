@@ -46,7 +46,7 @@ export function AccountGate() {
   if (!isLoading && !isAuthenticated) {
     return (
       <FullPageMessage title="Your session has ended" body="Sign in again to keep writing. Anything you wrote offline is still on this device.">
-        <a className="inline-flex h-9 items-center rounded-[7px] bg-accent px-4 text-sm font-medium text-accent-ink" href={`/signin?returnTo=${encodeURIComponent(location.pathname)}`}>
+        <a className="inline-flex h-9 items-center ui-btn ui-btn-primary px-4 text-sm font-medium " href={`/signin?returnTo=${encodeURIComponent(location.pathname)}`}>
           Sign in
         </a>
       </FullPageMessage>
@@ -63,7 +63,7 @@ export function AccountGate() {
           body="We sent a verification link to your inbox. Open it, then sign in again. The link expires, so request a new one if it doesn't arrive."
         >
           <div className="flex gap-2">
-            <a className="inline-flex h-9 items-center rounded-[7px] bg-accent px-4 text-sm font-medium text-accent-ink" href="/verify-email">
+            <a className="inline-flex h-9 items-center ui-btn ui-btn-primary px-4 text-sm font-medium " href="/verify-email">
               Resend the link
             </a>
             <SignOutButton />

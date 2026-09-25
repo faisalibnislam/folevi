@@ -28,7 +28,7 @@ const SECTIONS: { id: Section; label: string }[] = [
 
 function Card({ title, description, children }: { title: string; description?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-[12px] border border-line bg-raised p-5" aria-labelledby={`s-${title}`}>
+    <section className="ui-card rounded-[18px] p-5" aria-labelledby={`s-${title}`}>
       <h3 id={`s-${title}`} className="font-semibold">
         {title}
       </h3>
@@ -46,7 +46,7 @@ export function SettingsView({ section }: { section: Section }) {
           <ul className="flex gap-1 overflow-x-auto md:flex-col">
             {SECTIONS.map((s) => (
               <li key={s.id}>
-                <AppLink href={`/settings/${s.id}`} aria-current={section === s.id ? "page" : undefined} className={`block whitespace-nowrap rounded-[7px] px-3 py-1.5 text-sm ${section === s.id ? "bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)] font-medium" : "text-muted hover:text-ink"}`}>
+                <AppLink href={`/settings/${s.id}`} aria-current={section === s.id ? "page" : undefined} className={`block whitespace-nowrap rounded-[10px] px-3 py-1.5 text-sm ${section === s.id ? "ui-raised font-semibold text-heading" : "text-muted transition-colors hover:bg-accent-soft hover:text-heading"}`}>
                   {s.label}
                 </AppLink>
               </li>
@@ -54,7 +54,7 @@ export function SettingsView({ section }: { section: Section }) {
           </ul>
         </nav>
         <div className="min-w-0 space-y-5">
-          <h2 className="font-display text-[34px] leading-tight">{SECTIONS.find((s) => s.id === section)?.label}</h2>
+          <h2 className="ui-display text-[34px] leading-tight">{SECTIONS.find((s) => s.id === section)?.label}</h2>
           {section === "account" ? <AccountSection /> : null}
           {section === "security" ? <SecuritySection /> : null}
           {section === "appearance" ? <AppearanceSection /> : null}
@@ -91,18 +91,18 @@ function AccountSection() {
         >
           <label className="text-sm">
             <span className="mb-1 block font-medium">Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 w-full rounded-[7px] border border-line bg-surface px-3" />
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 w-full ui-input rounded-full px-3" />
           </label>
           <label className="text-sm">
             <span className="mb-1 block font-medium">Email</span>
-            <input value={profile.email} readOnly aria-describedby="email-hint" className="h-9 w-full rounded-[7px] border border-line bg-sunken px-3 text-muted" />
+            <input value={profile.email} readOnly aria-describedby="email-hint" className="h-9 w-full ui-well rounded-full px-3 text-muted" />
             <span id="email-hint" className="mt-1 block text-xs text-muted">
               Your sign-in address. Contact support to change it.
             </span>
           </label>
           <label className="text-sm">
             <span className="mb-1 block font-medium">Time zone</span>
-            <select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full rounded-[7px] border border-line bg-surface px-2">
+            <select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full ui-input rounded-full px-2">
               {zones.map((z) => (
                 <option key={z} value={z}>
                   {z}
@@ -160,7 +160,7 @@ function AccountSection() {
         <label className="text-sm" htmlFor="confirm-email">
           Type <strong>{profile.email}</strong> to confirm
         </label>
-        <input id="confirm-email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} className="mt-2 h-10 w-full rounded-[8px] border border-line bg-surface px-3" autoComplete="off" />
+        <input id="confirm-email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-full px-3" autoComplete="off" />
       </Dialog>
     </>
   );
@@ -200,7 +200,7 @@ function SecuritySection() {
         </p>
       </Card>
       <Card title="Sessions" description="Devices and browsers signed in to your account. Revoking a session signs it out the next time it contacts Folevi.">
-        <ul className="divide-y divide-line rounded-[10px] border border-line">
+        <ul className="divide-y divide-line rounded-[14px] border border-line">
           {sessions === undefined ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
           {sessions?.map((s) => (
             <li key={s.id} className="flex items-center gap-3 px-4 py-3">
@@ -256,7 +256,7 @@ function AppearanceSection() {
                 setAppearance(v);
                 void update({ appearance: v });
               }}
-              className={`flex flex-col items-center gap-2 rounded-[10px] border p-4 text-sm ${appearance === v ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface"}`}
+              className={`flex flex-col items-center gap-2 rounded-[14px] border p-4 text-sm ${appearance === v ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface"}`}
             >
               {icon}
               {label}
@@ -340,7 +340,7 @@ function WorkspaceSection() {
           <label className="sr-only" htmlFor="ws-name">
             Workspace name
           </label>
-          <input id="ws-name" disabled={!canAdmin} value={name} onChange={(e) => setName(e.target.value)} className="h-9 flex-1 rounded-[7px] border border-line bg-surface px-3 disabled:opacity-60" />
+          <input id="ws-name" disabled={!canAdmin} value={name} onChange={(e) => setName(e.target.value)} className="h-9 flex-1 ui-input rounded-full px-3 disabled:opacity-60" />
           <Button type="submit" disabled={!canAdmin}>
             Rename
           </Button>
@@ -370,7 +370,7 @@ function WorkspaceSection() {
           <label className="sr-only" htmlFor="team-name">
             Team workspace name
           </label>
-          <input id="team-name" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. Ashgrove Gardens" className="h-9 flex-1 rounded-[7px] border border-line bg-surface px-3" />
+          <input id="team-name" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. Ashgrove Gardens" className="h-9 flex-1 ui-input rounded-full px-3" />
           <Button type="submit" variant="primary" disabled={!teamName.trim()}>
             Create
           </Button>
@@ -389,7 +389,7 @@ function DailyTemplateCard() {
     <Card title="Daily Notes" description="New Daily Notes can start from a template. Existing notes are never changed.">
       <label className="block max-w-md text-sm">
         <span className="mb-1 block font-medium">Template for new Daily Notes</span>
-        <select value={template ?? ""} onChange={(e) => setTemplate(e.target.value || null)} className="h-9 w-full rounded-[7px] border border-line bg-surface px-2">
+        <select value={template ?? ""} onChange={(e) => setTemplate(e.target.value || null)} className="h-9 w-full ui-input rounded-full px-2">
           <option value="">Blank page</option>
           {builtIns?.map((t) => (
             <option key={t.key} value={t.key}>
@@ -433,8 +433,8 @@ function MembersSection() {
             <label className="sr-only" htmlFor="invite-email">
               Email
             </label>
-            <input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 rounded-[7px] border border-line bg-surface px-3" />
-            <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as typeof role)} className="h-9 rounded-[7px] border border-line bg-surface px-2">
+            <input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 ui-input rounded-full px-3" />
+            <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as typeof role)} className="h-9 ui-input rounded-full px-2">
               {data?.yourRole === "owner" ? <option value="admin">Admin</option> : null}
               <option value="editor">Editor</option>
               <option value="commenter">Commenter</option>
@@ -447,7 +447,7 @@ function MembersSection() {
         </Card>
       ) : null}
       <Card title="Members">
-        <ul className="divide-y divide-line rounded-[10px] border border-line">
+        <ul className="divide-y divide-line rounded-[14px] border border-line">
           {data?.members.map((m) => (
             <li key={m.profileId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <span className="min-w-0 flex-1">
@@ -458,7 +458,7 @@ function MembersSection() {
               </span>
               {canAdmin && m.role !== "owner" && !m.isYou ? (
                 <>
-                  <select aria-label={`Role for ${m.displayName}`} value={m.role} onChange={(e) => void act(changeRole({ workspaceId: workspace.id, profileId: m.profileId, role: e.target.value as typeof role }), "Role updated")} className="h-8 rounded-[6px] border border-line bg-surface px-2 text-sm">
+                  <select aria-label={`Role for ${m.displayName}`} value={m.role} onChange={(e) => void act(changeRole({ workspaceId: workspace.id, profileId: m.profileId, role: e.target.value as typeof role }), "Role updated")} className="h-8 ui-input rounded-full px-2 text-sm">
                     {data?.yourRole === "owner" ? <option value="admin">Admin</option> : null}
                     <option value="editor">Editor</option>
                     <option value="commenter">Commenter</option>
@@ -477,7 +477,7 @@ function MembersSection() {
         {data?.invites.length ? (
           <>
             <h4 className="mb-2 mt-5 text-sm font-semibold">Pending invitations</h4>
-            <ul className="divide-y divide-line rounded-[10px] border border-line">
+            <ul className="divide-y divide-line rounded-[14px] border border-line">
               {data.invites.map((i) => (
                 <li key={i.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                   <span className="flex-1">{i.email}</span>
@@ -594,7 +594,7 @@ function DataSection() {
         {results.length ? (
           <ul className="mt-4 space-y-2 text-sm">
             {results.map((r) => (
-              <li key={r.name} className="rounded-[8px] border border-line p-3">
+              <li key={r.name} className="rounded-[11px] border border-line p-3">
                 <p className="font-medium">
                   {r.id ? <AppLink href={`/d/${r.id}`} className="hover:underline">{r.name}</AppLink> : r.name}
                   {r.error ? <span className="ml-2 text-danger">— {r.error}</span> : null}

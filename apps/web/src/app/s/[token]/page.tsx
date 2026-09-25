@@ -47,7 +47,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
         <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
           <FoleviMark size={20} accent="var(--color-accent)" />
-          <span className="font-display text-xl">Folevi</span>
+          <span className="ui-display text-xl">Folevi</span>
         </a>
         <span className="text-xs text-muted">Read-only shared page</span>
       </header>
@@ -60,7 +60,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   if (result.status === "password_required" || result.status === "password_incorrect") {
     return shell(
       <form
-        className="mx-auto mt-16 max-w-sm rounded-[14px] border border-line bg-raised p-6"
+        className="mx-auto mt-16 max-w-sm ui-card rounded-[18px] p-6"
         action={async (fd) => {
           "use server";
           const { redirect } = await import("next/navigation");
@@ -70,7 +70,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
           redirect(`/s/${encodeURIComponent(token)}`);
         }}
       >
-        <h1 className="font-display text-3xl">This page is protected</h1>
+        <h1 className="ui-display text-3xl">This page is protected</h1>
         <p className="mt-2 text-sm text-muted">Enter the password the owner gave you.</p>
         {result.status === "password_incorrect" ? (
           <p role="alert" className="mt-3 text-sm text-danger">
@@ -80,8 +80,8 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
         <label className="mt-4 block text-sm" htmlFor="pw">
           Password
         </label>
-        <input id="pw" name="password" type="password" required autoComplete="off" className="mt-1 h-10 w-full rounded-[8px] border border-line bg-surface px-3" />
-        <button type="submit" className="mt-4 h-10 w-full rounded-[8px] bg-accent text-sm font-medium text-accent-ink">
+        <input id="pw" name="password" type="password" required autoComplete="off" className="mt-1 h-10 w-full ui-input rounded-full px-3" />
+        <button type="submit" className="mt-4 h-10 w-full ui-btn ui-btn-primary text-sm font-medium ">
           Open page
         </button>
       </form>,
@@ -96,7 +96,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
           : "This link doesn’t work any more. It may have been revoked.";
     return shell(
       <div className="mx-auto mt-24 max-w-md text-center">
-        <h1 className="font-display text-4xl">Page unavailable</h1>
+        <h1 className="ui-display text-4xl">Page unavailable</h1>
         <p className="mt-3 text-muted">{copy}</p>
       </div>,
     );
@@ -105,7 +105,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   const bg = coverBackground(document.cover, document.style);
   return shell(
     <article
-      className="fb-page fb-sheet mx-auto max-w-[calc(var(--editor-width)+8rem)] rounded-[14px] border border-line"
+      className="fb-page fb-sheet mx-auto max-w-[calc(var(--editor-width)+8rem)] rounded-[18px] border border-line"
       data-font={document.style.font}
       data-width={document.style.width}
       data-background={document.style.background}
@@ -114,7 +114,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       {bg ? <div className="h-36 rounded-t-[14px]" style={{ background: bg }} aria-hidden /> : <div className="h-8" />}
       <div className="px-5 pb-6 pt-4 sm:px-16">
         {document.icon ? <div className="text-[40px]" aria-hidden>{document.icon}</div> : null}
-        <h1 className={`mt-2 text-[40px] leading-tight ${document.style.font === "serif" ? "font-display" : "font-semibold tracking-tight"}`}>{document.title || "Untitled"}</h1>
+        <h1 className={`mt-2 text-[40px] leading-tight ${document.style.font === "serif" ? "ui-display" : "font-semibold tracking-tight"}`}>{document.title || "Untitled"}</h1>
         <p className="mb-6 mt-1 text-xs text-muted">Last updated {new Date(document.updatedAt).toLocaleDateString("en-US", { dateStyle: "medium" })}</p>
         <ReadOnlyBlocks blocks={blocks} fileUrls={fileUrls} />
       </div>

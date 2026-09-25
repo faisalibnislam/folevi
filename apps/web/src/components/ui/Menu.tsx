@@ -74,7 +74,7 @@ export function MenuButton({
             setOpen(true);
           }
         }}
-        className="inline-flex h-8 min-w-8 items-center justify-center rounded-[6px] text-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-ink pointer-coarse:h-11 pointer-coarse:min-w-11"
+        className="inline-flex h-8 min-w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:min-w-11"
       >
         {trigger}
       </button>
@@ -84,7 +84,7 @@ export function MenuButton({
           id={id}
           role="menu"
           aria-label={label}
-          className={`absolute z-50 mt-1 min-w-52 rounded-[10px] border border-line bg-raised p-1 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.45)] ${align === "end" ? "right-0" : "left-0"}`}
+          className={`ui-pop absolute z-50 mt-2 min-w-56 p-1.5 animate-[folio-rise_140ms_var(--ease-folio)] ${align === "end" ? "right-0 origin-top-right" : "left-0 origin-top-left"}`}
           onKeyDown={(e) => {
             const pos = actionable.indexOf(active);
             if (e.key === "ArrowDown") {
@@ -107,7 +107,7 @@ export function MenuButton({
         >
           {items.map((item, i) =>
             item === "separator" ? (
-              <div key={`sep-${i}`} role="separator" className="my-1 h-px bg-line" />
+              <div key={`sep-${i}`} role="separator" className="mx-2 my-1.5 h-px bg-line" />
             ) : (
               <button
                 key={item.label}
@@ -120,7 +120,7 @@ export function MenuButton({
                   close(false);
                   item.onSelect();
                 }}
-                className={`flex w-full items-center gap-2.5 rounded-[6px] px-2.5 py-1.5 text-left text-sm outline-none focus:bg-accent-soft focus:text-accent-soft-ink disabled:opacity-40 pointer-coarse:py-3 ${item.danger ? "text-danger" : "text-ink"}`}
+                className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.danger ? "!text-danger" : ""}`}
               >
                 {item.icon ? <span className="text-muted" aria-hidden>{item.icon}</span> : null}
                 <span className="flex-1">{item.label}</span>

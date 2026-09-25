@@ -34,7 +34,7 @@ class PageBoundary extends Component<{ children: ReactNode }, { error: unknown }
   override render() {
     if (this.state.error) {
       return (
-        <div role="alert" className="m-8 rounded-[12px] border border-danger/40 bg-danger-soft p-5 text-sm">
+        <div role="alert" className="m-8 rounded-[16px] border border-danger/40 bg-danger-soft p-5 text-sm">
           <p className="font-semibold">This page couldn&apos;t load.</p>
           <p className="mt-1">{errorMessage(this.state.error)}</p>
           <Button className="mt-3" size="sm" onClick={() => this.setState({ error: null })}>
@@ -53,7 +53,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const items = NAV.filter((n) => admin.can(n.capability));
   return (
     <div className="min-h-dvh bg-canvas text-ink md:flex">
-      <a href="#admin-main" className="sr-only-focusable fixed left-2 top-2 z-[70] rounded-[6px] bg-accent px-3 py-2 text-accent-ink">
+      <a href="#admin-main" className="sr-only-focusable fixed left-2 top-2 z-[70] rounded-[9px] bg-accent px-3 py-2 text-accent-ink">
         Skip to content
       </a>
       {/* Operations accent: a plum strip distinguishes the console from the product at a glance. */}
@@ -61,7 +61,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <aside className="flex flex-none flex-col border-b border-line bg-surface pt-[3px] md:sticky md:top-0 md:h-dvh md:w-[228px] md:border-b-0 md:border-r">
         <div className="flex items-center gap-2 px-4 pb-3 pt-4">
           <FoleviMark size={22} accent="var(--color-plum)" />
-          <span className="font-display text-[22px] leading-none">Folevi</span>
+          <span className="ui-display text-[22px] leading-none">Folevi</span>
           <Badge tone="plum" className="ml-1 uppercase tracking-[0.08em]">
             Admin
           </Badge>
@@ -76,8 +76,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   <Link
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-2.5 whitespace-nowrap rounded-[7px] px-2.5 py-1.5 text-[13.5px] ${
-                      active ? "bg-plum-soft font-medium text-plum-ink" : "text-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-ink"
+                    className={`flex items-center gap-2.5 whitespace-nowrap rounded-[10px] px-2.5 py-1.5 text-[13.5px] ${
+                      active ? "bg-plum-soft font-medium text-plum-ink" : "text-muted transition-colors hover:bg-accent-soft hover:text-heading"
                     }`}
                   >
                     <Icon size={15} aria-hidden className="flex-none" />
@@ -96,11 +96,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <p className="text-xs text-muted">{ROLE_LABEL[admin.role]}</p>
           </div>
           <div className="mt-3 flex flex-col gap-0.5">
-            <a href="/documents" className="flex items-center gap-2 rounded-[6px] px-1.5 py-1 text-[13px] text-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-ink">
+            <a href="/documents" className="flex items-center gap-2 rounded-[9px] px-1.5 py-1 text-[13px] text-muted transition-colors hover:bg-accent-soft hover:text-heading">
               <ArrowLeft size={14} aria-hidden /> Back to Folevi
             </a>
             <form method="post" action="/signout">
-              <button type="submit" className="flex w-full items-center gap-2 rounded-[6px] px-1.5 py-1 text-left text-[13px] text-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-ink">
+              <button type="submit" className="flex w-full items-center gap-2 rounded-[9px] px-1.5 py-1 text-left text-[13px] text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                 <LogOut size={14} aria-hidden /> Sign out
               </button>
             </form>

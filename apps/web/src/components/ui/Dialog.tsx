@@ -48,13 +48,13 @@ export function Dialog({
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
-      className={`m-auto w-[calc(100%-2rem)] ${width} rounded-[14px] border border-line bg-raised p-0 text-ink shadow-[0_24px_80px_-24px_rgba(0,0,0,0.45)] backdrop:bg-[var(--color-scrim)] backdrop:backdrop-blur-[2px] open:animate-[folio-rise_180ms_var(--ease-folio)]`}
+      className={`m-auto w-[calc(100%-2rem)] ${width} rounded-[22px] bg-raised p-0 text-ink shadow-[var(--shadow-pop)] backdrop:bg-[var(--color-scrim)] backdrop:backdrop-blur-[4px] open:animate-[folio-rise_180ms_var(--ease-folio)]`}
     >
       {open ? (
         <div className="flex max-h-[85dvh] flex-col">
-          <header className="flex items-start gap-3 border-b border-line px-5 py-4">
+          <header className="flex items-start gap-3 px-6 pb-2 pt-5">
             <div className="min-w-0 flex-1">
-              <h2 id={titleId} className="text-[17px] font-semibold leading-snug">
+              <h2 id={titleId} className="text-[18px] font-semibold leading-snug tracking-[-0.015em] text-heading">
                 {title}
               </h2>
               {description ? (
@@ -67,8 +67,8 @@ export function Dialog({
               <X size={16} aria-hidden />
             </IconButton>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
-          {footer ? <footer className="flex justify-end gap-2 border-t border-line px-5 py-3">{footer}</footer> : null}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
+          {footer ? <footer className="flex justify-end gap-2 bg-[color-mix(in_oklab,var(--color-surface-sunken)_60%,transparent)] px-6 py-3.5 shadow-[inset_0_1px_0_var(--color-line)]">{footer}</footer> : null}
         </div>
       ) : null}
     </dialog>

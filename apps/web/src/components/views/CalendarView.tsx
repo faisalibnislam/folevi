@@ -83,9 +83,9 @@ export function CalendarView({ month }: { month: string | null }) {
       actions={
         <>
           <SyncStatus />
-          <div role="radiogroup" aria-label="Calendar layout" className="flex rounded-[7px] border border-line bg-surface p-0.5 text-xs">
+          <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-full p-0.5 text-xs">
             {(["month", "agenda"] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`h-7 rounded-[5px] px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`h-7 rounded-[8px] px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
                 {m}
               </button>
             ))}
@@ -95,7 +95,7 @@ export function CalendarView({ month }: { month: string | null }) {
     >
       <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-6 sm:px-8">
         <div className="mb-4 flex items-center gap-2">
-          <h2 className="font-display text-[34px] leading-tight">{mode === "month" ? monthLabel : "Next 30 days"}</h2>
+          <h2 className="ui-display text-[34px] leading-tight">{mode === "month" ? monthLabel : "Next 30 days"}</h2>
           {mode === "month" ? (
             <div className="ml-auto flex items-center gap-1">
               <IconButton label="Previous month" onClick={() => navigate(`/calendar/${shiftMonth(current, -1)}`)}>
@@ -113,7 +113,7 @@ export function CalendarView({ month }: { month: string | null }) {
 
         {mode === "month" ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-            <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden rounded-[12px] border border-line bg-raised">
+            <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-[18px]">
               <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-medium text-muted">
                 {weekdays.map((w) => (
                   <div key={w} role="columnheader" className="py-2">
@@ -155,7 +155,7 @@ export function CalendarView({ month }: { month: string | null }) {
                         className={`min-h-[104px] border-b border-r border-line p-1.5 outline-none last:border-r-0 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${inMonth ? "" : "bg-surface/60"} ${selected === date ? "bg-accent-soft/40" : ""}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs tabular-nums ${isToday ? "bg-accent font-semibold text-accent-ink" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
+                          <span className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs tabular-nums ${isToday ? "bg-[var(--color-ember-ink)] font-semibold text-accent-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
                           {daily ? (
                             <AppLink href={`/d/${daily.id}`} aria-label={`Daily note for ${date}`} className="text-moss hover:text-moss-ink" onClick={(e) => e.stopPropagation()}>
                               <NotebookPen size={13} aria-hidden />
@@ -188,7 +188,7 @@ export function CalendarView({ month }: { month: string | null }) {
               <AppLink href={`/daily/${selected}`} className="mt-1 inline-flex items-center gap-1.5 text-sm text-accent hover:underline">
                 <NotebookPen size={14} aria-hidden /> {dailySet.has(selected) ? "Open daily note" : "Start a daily note"}
               </AppLink>
-              <ul className="mt-3 divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-raised">
+              <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-[18px]">
                 {(byDate.get(selected) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">No tasks due. Drag a task here to schedule it.</li> : null}
                 {(byDate.get(selected) ?? []).map((t) => (
                   <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} />
@@ -211,7 +211,7 @@ export function CalendarView({ month }: { month: string | null }) {
                       </AppLink>
                     ) : null}
                   </h3>
-                  <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-raised">
+                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-[18px]">
                     {(byDate.get(d) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">Nothing due.</li> : null}
                     {(byDate.get(d) ?? []).map((t) => (
                       <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} />

@@ -95,15 +95,15 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
             }
           : undefined
       }
-      className={`group flex h-8 items-center gap-2.5 rounded-[7px] px-2 text-[13.5px] outline-none transition-colors pointer-coarse:h-11 ${
-        active ? "bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)] font-medium text-ink" : "text-ink/85 hover:bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)]"
-      } ${over ? "ring-2 ring-accent" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
+      className={`group relative flex h-8 items-center gap-2.5 rounded-[10px] px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 pointer-coarse:h-11 ${
+        active ? "ui-raised font-semibold text-heading" : "text-ink/90 hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] hover:text-heading"
+      } ${over ? "ring-2 ring-ember" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
-      <span className={active ? "text-ink" : "text-muted"} aria-hidden>
+      <span className={`transition-colors ${active ? "text-ember" : "text-muted group-hover:text-heading"}`} aria-hidden>
         {icon}
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {count ? <span className="text-xs tabular-nums text-faint">{count}</span> : null}
+      {count ? <span className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums ${active ? "bg-ember-soft text-ember-ink" : "bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] text-muted"}`}>{count}</span> : null}
     </AppLink>
   );
 }
@@ -111,15 +111,15 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
 function Section({ title, children, action, defaultOpen = true }: { title: string; children: React.ReactNode; action?: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className="mt-4">
-      <div className="flex h-7 items-center gap-1 px-2">
-        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex flex-1 items-center gap-1 text-[11.5px] font-semibold uppercase tracking-[0.06em] text-faint hover:text-muted">
+    <section className="mt-5">
+      <div className="flex h-7 items-center gap-1 px-2.5">
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="ui-caps flex flex-1 items-center gap-1 hover:text-muted">
           {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
           {title}
         </button>
         {action}
       </div>
-      {open ? <div className="mt-0.5 space-y-px">{children}</div> : null}
+      {open ? <div className="mt-1 space-y-0.5">{children}</div> : null}
     </section>
   );
 }
@@ -182,16 +182,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const roots = folders.filter((f) => !f.parentFolderId);
 
   return (
-    <nav aria-label="Workspace" className="flex h-full flex-col bg-canvas">
-      <div className="flex h-12 flex-none items-center gap-1 px-2">
+    <nav aria-label="Workspace" className="flex h-full flex-col">
+      <div className="flex h-[52px] flex-none items-center gap-1 px-2.5">
         <MenuButton
           label="Switch workspace"
           align="start"
           className="min-w-0 flex-1"
           trigger={
-            <span className="flex min-w-0 items-center gap-2 px-1 text-sm font-semibold text-ink">
-              <span className="grid h-6 w-6 flex-none place-items-center rounded-[6px] bg-ink text-canvas">
-                <FoleviMark size={14} />
+            <span className="flex min-w-0 items-center gap-2.5 px-1 text-[14px] font-semibold tracking-[-0.01em] text-heading">
+              <span className="grid h-7 w-7 flex-none place-items-center rounded-[9px] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-accent)_80%,white),var(--color-accent-strong))] text-accent-ink shadow-[var(--shadow-primary)]">
+                <FoleviMark size={15} />
               </span>
               <span className="truncate">{workspace.name}</span>
               <ChevronDown size={14} className="text-muted" aria-hidden />
@@ -210,11 +210,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </IconButton>
       </div>
 
-      <div className="flex-none space-y-1 px-2">
+      <div className="flex-none space-y-2 px-2.5 pt-1">
         <button
           type="button"
           onClick={openPalette}
-          className="flex h-8 w-full items-center gap-2 rounded-[7px] border border-line bg-surface px-2 text-left text-[13px] text-muted hover:border-line-strong pointer-coarse:h-11"
+          className="ui-well flex h-9 w-full items-center gap-2 rounded-full pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
         >
           <Search size={14} aria-hidden />
           <span className="flex-1">Search or jump to…</span>
@@ -226,16 +226,18 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             onNavigate?.();
             void createDocument({});
           }}
-          className="flex h-8 w-full items-center gap-2 rounded-[7px] px-2 text-left text-[13.5px] font-medium text-accent hover:bg-accent-soft pointer-coarse:h-11"
+          className="ui-btn ui-btn-secondary h-9 w-full justify-start px-3 text-[13.5px] pointer-coarse:h-11"
         >
-          <Plus size={16} aria-hidden />
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-ember text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]" aria-hidden>
+            <Plus size={13} strokeWidth={2.5} />
+          </span>
           New document
           <span className="ml-auto text-[11px] font-normal text-faint">{modKey()}⌥N</span>
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-        <div className="mt-2 space-y-px">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
+        <div className="mt-3 space-y-0.5">
           <NavItem href="/documents" icon={<FileText size={16} />} label="All Documents" onNavigate={onNavigate} />
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
           <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
@@ -303,7 +305,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           ))}
         </Section>
 
-        <div className="mt-4 space-y-px">
+        <div className="mt-5 space-y-0.5">
           <NavItem href="/archive" icon={<Archive size={16} />} label="Archive" onNavigate={onNavigate} />
           <NavItem href="/trash" icon={<Trash2 size={16} />} label="Trash" onNavigate={onNavigate} />
         </div>
@@ -323,14 +325,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           }
         }}
       />
-      <div className="flex flex-none items-center gap-1 border-t border-line px-2 py-2">
+      <div className="mx-2.5 mb-2.5 flex flex-none items-center gap-1 rounded-[14px] p-1.5 ui-raised">
         <MenuButton
           label="Account"
           align="start"
           className="min-w-0 flex-1"
           trigger={
-            <span className="flex min-w-0 items-center gap-2 px-1 text-[13px] text-ink">
-              <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-moss-soft text-[11px] font-semibold text-moss-ink">{profile.displayName.slice(0, 1).toUpperCase()}</span>
+            <span className="flex min-w-0 items-center gap-2 px-1 text-[13px] font-medium text-ink">
+              <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-[linear-gradient(135deg,var(--color-glow-peach),var(--color-ember-soft))] text-[12px] font-semibold text-heading shadow-[inset_0_0_0_1px_rgb(255_255_255/0.6)]">{profile.displayName.slice(0, 1).toUpperCase()}</span>
               <span className="truncate">{profile.displayName}</span>
             </span>
           }
@@ -353,10 +355,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             },
           ]}
         />
-        <AppLink href="/help" aria-label="Help" className="grid h-8 w-8 place-items-center rounded-[6px] text-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-ink">
+        <AppLink href="/help" aria-label="Help" className="grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
           <HelpCircle size={16} aria-hidden />
         </AppLink>
-        <AppLink href="/settings/account" aria-label="Settings" className="grid h-8 w-8 place-items-center rounded-[6px] text-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-ink">
+        <AppLink href="/settings/account" aria-label="Settings" className="grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
           <Settings size={16} aria-hidden />
         </AppLink>
       </div>

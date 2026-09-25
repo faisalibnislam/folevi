@@ -4,9 +4,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useQuery } from "convex/react";
 import { PanelLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
-import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
+import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { IconButton } from "@/components/ui/Button";
 import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
@@ -169,10 +169,9 @@ export function Shell() {
 }
 
 /** Top bar shared by all views: sidebar toggle, title/breadcrumbs, and actions. */
-export function ViewChrome({ title, leading, actions, children }: { title: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode }) {
+export function ViewChrome({ title, leading, actions, children, tabTitle }: { title: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string }) {
   const { sidebarOpen, toggleSidebar } = useShell();
-  const { workspace } = useAppState();
-  void workspace;
+  useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
   return (
     <>
       <header className="flex h-12 flex-none items-center gap-2 border-b border-line px-3">

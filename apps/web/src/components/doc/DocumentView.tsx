@@ -199,6 +199,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
   return (
     <ViewChrome
+      tabTitle={summary?.title || localTitle || "Untitled"}
       title={
         <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm">
           {meta?.folder ? (
@@ -287,6 +288,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               readOnly={readOnly}
               onEnter={() => editor?.commands.focus("start")}
             />
+            {summary?.kind === "daily" && summary.dailyDate ? <DailyNav date={summary.dailyDate} /> : null}
             {conflicts.length ? <ConflictBanner documentId={documentId} /> : null}
             <div className="px-5 sm:px-16">
               {ready && engine ? (
@@ -337,6 +339,35 @@ export function DocumentView({ documentId }: { documentId: string }) {
       <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} canRestore={!readOnly} />
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
     </ViewChrome>
+  );
+}
+
+function DailyNav({ date }: { date: string }) {
+  const { today } = useAppState();
+  const shift = (days: number) => {
+    const d = new Date(`${date}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  return (
+    <nav aria-label="Daily notes" className="mx-5 mb-3 flex items-center gap-1 text-sm sm:mx-16">
+      <AppLink href={`/daily/${shift(-1)}`} className="rounded-[6px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
+        ← Previous day
+      </AppLink>
+      {date !== today ? (
+        <AppLink href={`/daily/${today}`} className="rounded-[6px] px-2 py-1 font-medium text-accent hover:bg-accent-soft">
+          Today
+        </AppLink>
+      ) : (
+        <span className="rounded-[6px] bg-moss-soft px-2 py-1 text-xs font-medium text-moss-ink">Today</span>
+      )}
+      <AppLink href={`/daily/${shift(1)}`} className="rounded-[6px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
+        Next day →
+      </AppLink>
+      <AppLink href="/calendar" className="ml-auto rounded-[6px] px-2 py-1 text-muted hover:bg-sunken hover:text-ink">
+        Calendar
+      </AppLink>
+    </nav>
   );
 }
 

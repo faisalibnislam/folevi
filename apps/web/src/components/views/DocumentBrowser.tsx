@@ -108,6 +108,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
   return (
     <ViewChrome
       title={<h1 className="truncate text-sm font-semibold">{title}</h1>}
+      tabTitle={title}
       actions={
         <>
           <SyncStatus />

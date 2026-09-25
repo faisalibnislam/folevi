@@ -10,6 +10,7 @@ crons.daily("trash retention", { hourUTC: 3, minuteUTC: 0 }, internal.maintenanc
 crons.daily("tombstone retention", { hourUTC: 3, minuteUTC: 20 }, internal.maintenance.purgeTombstones, {});
 crons.daily("housekeeping", { hourUTC: 3, minuteUTC: 40 }, internal.maintenance.housekeeping, {});
 crons.daily("snapshot retention", { hourUTC: 4, minuteUTC: 0 }, internal.documents.purgeSnapshots, {});
+crons.daily("comment digest", { hourUTC: 8, minuteUTC: 0 }, internal.digest.sendDailyDigests, {});
 crons.daily("daily metrics", { hourUTC: 0, minuteUTC: 15 }, internal.maintenance.dailyMetrics, {});
 
 export default crons;

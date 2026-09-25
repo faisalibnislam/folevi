@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowDownUp, Columns3, Filter, GalleryHorizontalEnd, Plus, Settings2, Table2, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { AppLink } from "@/lib/app/router";
+import { useAppState } from "@/lib/app/state";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
@@ -210,6 +211,10 @@ function CellEditor({ collectionId, row, prop, canEdit }: { collectionId: string
         </div>
       );
     }
+    case "person":
+      return <PersonEditor label={label} value={typeof value === "string" ? value : null} onChange={(v) => void save(v)} />;
+    case "relation":
+      return <RelationEditor label={label} value={Array.isArray(value) ? (value as string[]) : []} onChange={(v) => void save(v)} />;
     default:
       return (
         <input
@@ -224,6 +229,49 @@ function CellEditor({ collectionId, row, prop, canEdit }: { collectionId: string
         />
       );
   }
+}
+
+function PersonEditor({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
+  const { workspace } = useAppState();
+  const members = useQuery(api.workspaces.members, { workspaceId: workspace.id });
+  return (
+    <select aria-label={label} value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} className="w-full bg-transparent outline-none">
+      <option value="">—</option>
+      {members?.members.map((m) => (
+        <option key={m.profileId} value={m.profileId}>
+          {m.displayName}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function RelationEditor({ label, value, onChange }: { label: string; value: string[]; onChange: (v: string[]) => void }) {
+  const { workspace } = useAppState();
+  const titles = useQuery(api.documents.titles, value.length ? { documentIds: value } : "skip");
+  const recent = useQuery(api.documents.recent, { workspaceId: workspace.id, limit: 12 });
+  return (
+    <div className="flex flex-wrap items-center gap-1" role="group" aria-label={label}>
+      {value.map((id) => (
+        <span key={id} className="inline-flex items-center gap-1 rounded-[5px] bg-sunken px-1.5 py-0.5 text-[11px]">
+          <AppLink href={`/d/${id}`} className="hover:underline">
+            {titles?.[id]?.title || "Untitled"}
+          </AppLink>
+          <button type="button" aria-label={`Remove ${titles?.[id]?.title || "page"}`} onClick={() => onChange(value.filter((x) => x !== id))} className="text-faint hover:text-ink">
+            ×
+          </button>
+        </span>
+      ))}
+      <select aria-label={`Add page to ${label}`} value="" onChange={(e) => e.target.value && onChange([...value, e.target.value])} className="max-w-[8rem] bg-transparent text-[11px] text-muted outline-none">
+        <option value="">+ Link page</option>
+        {recent?.filter((d) => !value.includes(d.id)).map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.title || "Untitled"}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
 function CellDisplay({ prop, value }: { prop: Property; value: unknown }) {

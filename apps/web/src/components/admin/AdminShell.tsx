@@ -113,7 +113,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <span>
             Every view of user data and every change is recorded in the immutable audit log with your name, role, reason and request ID.
           </span>
-          <span className="ml-auto hidden whitespace-nowrap text-xs md:inline">
+          <span className="ml-auto hidden whitespace-nowrap text-xs xl:inline">
             Signed in as {admin.displayName} · {ROLE_LABEL[admin.role]}
           </span>
         </div>

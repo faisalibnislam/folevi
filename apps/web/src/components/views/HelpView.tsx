@@ -39,7 +39,7 @@ export function HelpView() {
   const mac = isMac();
   const fmt = (s: string) => (mac ? s : s.replace(/⌘/g, "Ctrl").replace(/⌥/g, "Alt").replace(/⇧/g, "Shift"));
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Help</h1>}>
+    <ViewChrome title={<h1 className="text-sm font-semibold">Help</h1>} tabTitle="Help">
       <div className="mx-auto max-w-3xl space-y-10 px-4 pb-24 pt-6 sm:px-8">
         <header>
           <h2 className="font-display text-[34px] leading-tight">Help</h2>

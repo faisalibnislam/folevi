@@ -79,6 +79,7 @@ export function CalendarView({ month }: { month: string | null }) {
   return (
     <ViewChrome
       title={<h1 className="text-sm font-semibold">Calendar</h1>}
+      tabTitle="Calendar"
       actions={
         <>
           <SyncStatus />

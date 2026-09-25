@@ -14,6 +14,7 @@ import type * as blocks from "../blocks.js";
 import type * as collections from "../collections.js";
 import type * as comments from "../comments.js";
 import type * as crons from "../crons.js";
+import type * as digest from "../digest.js";
 import type * as documents from "../documents.js";
 import type * as email from "../email.js";
 import type * as exports from "../exports.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   collections: typeof collections;
   comments: typeof comments;
   crons: typeof crons;
+  digest: typeof digest;
   documents: typeof documents;
   email: typeof email;
   exports: typeof exports;

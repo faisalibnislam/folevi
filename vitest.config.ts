@@ -7,7 +7,8 @@ export default defineConfig({
         test: {
           name: "convex",
           environment: "edge-runtime",
-          include: ["convex/tests/**/*.test.ts"],
+          include: ["tests/convex/**/*.test.ts"],
+          exclude: ["tests/convex/static/**"],
           server: { deps: { inline: ["convex-test"] } },
         },
       },
@@ -15,7 +16,7 @@ export default defineConfig({
         test: {
           name: "convex-static",
           environment: "node",
-          include: ["convex/tests/static/**/*.test.ts"],
+          include: ["tests/convex/static/**/*.test.ts"],
         },
       },
     ],

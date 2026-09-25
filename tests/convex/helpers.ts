@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
-import schema from "../schema";
-import { modules } from "../test.setup";
-import { api } from "../_generated/api";
+import schema from "../../convex/schema";
+import { modules } from "./setup";
+import { api } from "../../convex/_generated/api";
 import { SCHEMA_VERSION, ulid, type WireBlock } from "@folevi/editor-schema";
 
 process.env.FOLEVI_HASH_SALT = "test-salt";

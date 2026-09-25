@@ -40,7 +40,7 @@ function Card({ title, description, children }: { title: string; description?: R
 
 export function SettingsView({ section }: { section: Section }) {
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>}>
+    <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
       <div className="mx-auto grid max-w-5xl gap-8 px-4 pb-24 pt-6 sm:px-8 md:grid-cols-[200px_1fr]">
         <nav aria-label="Settings sections">
           <ul className="flex gap-1 overflow-x-auto md:flex-col">
@@ -307,6 +307,13 @@ function NotificationsSection() {
         {row("comments", "Comments and replies on my pages")}
         {row("shares", "When a page is shared with me")}
         {row("invites", "Workspace invitations")}
+        <label className="flex items-center justify-between gap-4 py-2.5 text-sm">
+          <span>
+            Daily digest of unread comments and mentions
+            <span className="block text-xs text-muted">One email a day with page titles only — never comment text.</span>
+          </span>
+          <input type="checkbox" checked={prefs.digest === "daily"} onChange={(e) => void set({ digest: e.target.checked ? "daily" : "off" })} className="h-5 w-5 accent-[var(--color-accent)]" />
+        </label>
       </div>
     </Card>
   );
@@ -345,6 +352,7 @@ function WorkspaceSection() {
           <div className="h-full bg-accent" style={{ width: `${Math.min(100, (workspace.storageUsedBytes / workspace.storageQuotaBytes) * 100)}%` }} />
         </div>
       </Card>
+      <DailyTemplateCard />
       <Card title="New team workspace" description="Share folders, documents and tasks with other people. Your personal workspace stays private.">
         <form
           className="flex max-w-md gap-2"
@@ -369,6 +377,33 @@ function WorkspaceSection() {
         </form>
       </Card>
     </>
+  );
+}
+
+function DailyTemplateCard() {
+  const { workspace } = useAppState();
+  const builtIns = useQuery(api.settings.builtInTemplates, {});
+  const own = useQuery(api.documents.list, { workspaceId: workspace.id, view: "templates", paginationOpts: { numItems: 50, cursor: null } });
+  const [template, setTemplate] = useLocalStorage<string | null>("folevi:daily-template", null);
+  return (
+    <Card title="Daily Notes" description="New Daily Notes can start from a template. Existing notes are never changed.">
+      <label className="block max-w-md text-sm">
+        <span className="mb-1 block font-medium">Template for new Daily Notes</span>
+        <select value={template ?? ""} onChange={(e) => setTemplate(e.target.value || null)} className="h-9 w-full rounded-[7px] border border-line bg-surface px-2">
+          <option value="">Blank page</option>
+          {builtIns?.map((t) => (
+            <option key={t.key} value={t.key}>
+              {t.name} (built-in)
+            </option>
+          ))}
+          {own?.page.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.title || "Untitled template"}
+            </option>
+          ))}
+        </select>
+      </label>
+    </Card>
   );
 }
 

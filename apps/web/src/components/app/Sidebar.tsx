@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Inbox,
   LayoutTemplate,
+  MoreHorizontal,
   PanelLeftClose,
   Plus,
   Search,
@@ -28,7 +29,8 @@ import {
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter, type Route } from "@/lib/app/router";
-import { IconButton, Kbd } from "@/components/ui/Button";
+import { Button, IconButton, Kbd } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { MenuButton } from "@/components/ui/Menu";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -119,6 +121,48 @@ function Section({ title, children, action, defaultOpen = true }: { title: strin
       </div>
       {open ? <div className="mt-0.5 space-y-px">{children}</div> : null}
     </section>
+  );
+}
+
+function FolderMenu({ folder, folders }: { folder: { id: string; name: string; parentFolderId: string | null }; folders: { id: string; name: string }[] }) {
+  const rename = useMutation(api.organization.renameFolder);
+  const moveFolder = useMutation(api.organization.moveFolder);
+  const del = useMutation(api.organization.deleteFolder);
+  const toast = useToast();
+  const [renaming, setRenaming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const act = (p: Promise<unknown>, msg: string) => p.then(() => toast.show(msg), (e) => toast.show(errorMessage(e), { tone: "error" }));
+  const targets = folders.filter((f) => f.id !== folder.id);
+  return (
+    <div className="opacity-0 transition-opacity focus-within:opacity-100 group-hover/folder:opacity-100 pointer-coarse:opacity-100">
+      <MenuButton
+        label={`Folder options for ${folder.name}`}
+        trigger={<MoreHorizontal size={14} aria-hidden />}
+        items={[
+          { label: "Rename…", onSelect: () => setRenaming(true) },
+          ...(folder.parentFolderId ? [{ label: "Move to top level", onSelect: () => void act(moveFolder({ folderId: folder.id, parentFolderId: null }), "Moved") }] : []),
+          ...targets.filter((t) => t.id !== folder.parentFolderId).slice(0, 8).map((t) => ({ label: `Move into ${t.name}`, onSelect: () => void act(moveFolder({ folderId: folder.id, parentFolderId: t.id }), `Moved into ${t.name}`) })),
+          "separator" as const,
+          { label: "Delete folder…", danger: true, onSelect: () => setDeleting(true) },
+        ]}
+      />
+      <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(rename({ folderId: folder.id, name }), "Renamed")} />
+      <Dialog
+        open={deleting}
+        onClose={() => setDeleting(false)}
+        title={`Delete “${folder.name}”?`}
+        description="The folder is removed. Its documents are kept and move to Unsorted."
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setDeleting(false)}>Cancel</Button>
+            <Button variant="danger" onClick={() => { setDeleting(false); void act(del({ folderId: folder.id }), "Folder deleted"); }}>
+              Delete folder
+            </Button>
+          </>
+        }
+      />
+    </div>
   );
 }
 
@@ -230,14 +274,20 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   ) : (
                     <span className="w-5" />
                   )}
-                  <div className="min-w-0 flex-1">
-                    <NavItem href={`/folders/${f.id}`} icon={f.icon ? <span className="inline-block w-4 text-center">{f.icon}</span> : <Folder size={16} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} />
+                  <div className="group/folder flex min-w-0 flex-1 items-center">
+                    <div className="min-w-0 flex-1">
+                      <NavItem href={`/folders/${f.id}`} icon={f.icon ? <span className="inline-block w-4 text-center">{f.icon}</span> : <Folder size={16} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} />
+                    </div>
+                    <FolderMenu folder={f} folders={roots} />
                   </div>
                 </div>
                 {open
                   ? children.map((c) => (
-                      <div key={c.id} className="pl-7">
-                        <NavItem href={`/folders/${c.id}`} icon={c.icon ? <span className="inline-block w-4 text-center">{c.icon}</span> : <Folder size={16} />} label={c.name} onNavigate={onNavigate} draggableFolderId={c.id} />
+                      <div key={c.id} className="group/folder flex items-center pl-7">
+                        <div className="min-w-0 flex-1">
+                          <NavItem href={`/folders/${c.id}`} icon={c.icon ? <span className="inline-block w-4 text-center">{c.icon}</span> : <Folder size={16} />} label={c.name} onNavigate={onNavigate} draggableFolderId={c.id} />
+                        </div>
+                        <FolderMenu folder={c} folders={roots} />
                       </div>
                     ))
                   : null}

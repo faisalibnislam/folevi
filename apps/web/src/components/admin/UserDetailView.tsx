@@ -289,7 +289,7 @@ function UserActions({ user, role, selfId, onAction }: { user: UserDetail; role:
   return (
     <section aria-label="Account actions" className="rounded-[12px] border border-line bg-raised p-3">
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant={suspended ? "secondary" : "secondary"} onClick={() => onAction("suspend")} disabled={isSelf || protectedSuper}>
+        <Button size="sm" onClick={() => onAction("suspend")} disabled={isSelf || protectedSuper}>
           {suspended ? <UserCheck size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
           {suspended ? "Unsuspend…" : "Suspend…"}
         </Button>

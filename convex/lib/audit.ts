@@ -4,7 +4,7 @@ import { ulid } from "@folevi/editor-schema";
 
 /**
  * Appends an immutable admin audit record. There is intentionally no update or delete path for
- * `adminAuditLogs` anywhere in the backend (enforced by test/audit-immutability.test.ts).
+ * `adminAuditLogs` anywhere in the backend (enforced by tests/convex/static/invariants.test.ts).
  */
 export async function recordAudit(
   ctx: MutationCtx,

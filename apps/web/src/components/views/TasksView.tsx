@@ -97,6 +97,7 @@ export function TasksView({ view }: { view: View }) {
   return (
     <ViewChrome
       title={<h1 className="text-sm font-semibold">Tasks</h1>}
+      tabTitle={`Tasks · ${meta.label}`}
       actions={
         <>
           <SyncStatus />

@@ -18,6 +18,7 @@ import { builtInTemplateBlocks } from "./templates";
 import { bump } from "./metrics";
 import { SeqAllocator } from "./seq";
 import { fail } from "./errors";
+import { mentionedIds, notify } from "./notify";
 
 export const MAX_BATCH = 100;
 
@@ -31,6 +32,8 @@ interface Touched {
 export class SyncEngine {
   private seq: SeqAllocator;
   private touched = new Map<string, Touched>();
+  /** People newly @-mentioned in block text during this batch (notified after the batch applies). */
+  private newMentions: { doc: Doc<"documents">; userIds: string[]; excerpt: string }[] = [];
   private ids: IdResolver;
   constructor(
     private ctx: MutationCtx,
@@ -245,6 +248,7 @@ export class SyncEngine {
         updatedBy: this.profile._id,
       });
       this.touch(doc, rowId);
+      this.trackMentions(doc, [], incoming);
       const row = (await this.ctx.db.get(rowId))!;
       return { opId: op.opId, status: "applied", revision: 1, block: toWireBlock(row), deleted: false, normalized: normalized || undefined };
     }
@@ -308,6 +312,7 @@ export class SyncEngine {
     }
     await this.ctx.db.patch(existing._id, patch);
     this.touch(doc, existing._id);
+    if (patch.text !== undefined) this.trackMentions(doc, existing.text, incoming);
     const row = (await this.ctx.db.get(existing._id))!;
     if (contentConflict) {
       return {
@@ -536,8 +541,31 @@ export class SyncEngine {
     return { opId: op.opId, status: "applied", revision: fresh.revision, document: summary };
   }
 
+  private trackMentions(doc: Doc<"documents">, before: unknown, after: WireBlock) {
+    const had = new Set(mentionedIds(before));
+    const added = mentionedIds(after.text).filter((id) => !had.has(id) && id !== this.profile._id);
+    if (!added.length) return;
+    const excerpt = after.text.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : n.type === "date" ? n.date : n.label)).join("").slice(0, 140);
+    this.newMentions.push({ doc, userIds: added, excerpt });
+  }
+
   /** Post-batch bookkeeping: derived text, task projections, links, document revision/seq. */
   private async finish(): Promise<void> {
+    for (const m of this.newMentions) {
+      for (const id of m.userIds) {
+        const recipientId = this.ctx.db.normalizeId("profiles", id);
+        if (!recipientId) continue;
+        await notify(this.ctx, {
+          recipientId,
+          actor: this.profile,
+          kind: "mention",
+          doc: m.doc,
+          title: `${this.profile.displayName} mentioned you in ${m.doc.title || "Untitled"}`,
+          excerpt: m.excerpt,
+          email: { key: "mention_notification" },
+        });
+      }
+    }
     for (const { doc, changedBlocks } of this.touched.values()) {
       if (changedBlocks.size === 0) continue;
       const fresh = (await this.ctx.db.get(doc._id))!;

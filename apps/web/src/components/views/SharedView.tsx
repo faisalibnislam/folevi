@@ -9,7 +9,7 @@ import { formatRelative } from "@/lib/format";
 export function SharedView() {
   const docs = useQuery(api.sharing.sharedWithMe, {});
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Shared with Me</h1>}>
+    <ViewChrome title={<h1 className="text-sm font-semibold">Shared with Me</h1>} tabTitle="Shared with Me">
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:px-8">
         <h2 className="font-display text-[34px] leading-tight">Shared with Me</h2>
         <p className="text-sm text-muted">Pages people added you to directly, across all workspaces.</p>

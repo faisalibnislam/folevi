@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { api, internal } from "../_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import { identity, para, person, setup, ulid } from "./helpers";
 
 async function newDoc(p: Awaited<ReturnType<typeof person>>, title = "Doc") {

@@ -61,6 +61,7 @@
 		B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04542070393D918E567E845 /* NavigationModel.swift */; };
 		B2CBA3AC45F70E9BC05916A4 /* WireBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338F3C4CB476BCF3E8688E51 /* WireBlock.swift */; };
 		B93D1674ED59DBFB4A9CEDDF /* AuthCallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D5C2CDE8D60DA93116A294 /* AuthCallback.swift */; };
+		BEB519463607420EB13AAE3C /* FoleviUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C97E8048E4772C8AF3F8B /* FoleviUITests.swift */; };
 		C0EF162736B8446447D583EE /* BlockSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF52F09620D4DD7D2837804 /* BlockSchema.swift */; };
 		C4A2FD3F79FB3784B5E11BB1 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */; };
 		C547921978A24E6E5D5EC2F0 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D521EF350EAE4076E43AE4EB /* CalendarView.swift */; };
@@ -106,6 +107,7 @@
 		27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonTextBlocks.swift; sourceTree = "<group>"; };
 		29B1E829D3BC461A2BFA76C2 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		2ACBAB1371653FF027D7F2FD /* MarkdownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTests.swift; sourceTree = "<group>"; };
+		2C6C97E8048E4772C8AF3F8B /* FoleviUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviUITests.swift; sourceTree = "<group>"; };
 		305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		30B8821EC08FD811EE1FE1A6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		338F3C4CB476BCF3E8688E51 /* WireBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WireBlock.swift; sourceTree = "<group>"; };
@@ -267,6 +269,7 @@
 		570D8873B06063E72BA99CCA /* FoleviUITests */ = {
 			isa = PBXGroup;
 			children = (
+				2C6C97E8048E4772C8AF3F8B /* FoleviUITests.swift */,
 			);
 			path = FoleviUITests;
 			sourceTree = "<group>";
@@ -674,6 +677,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BEB519463607420EB13AAE3C /* FoleviUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

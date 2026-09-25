@@ -1,0 +1,110 @@
+import { pageMetadata } from "@/components/marketing/seo";
+import { PageHeader, RegMark, container, cx } from "@/components/marketing/ui";
+
+export const metadata = pageMetadata({
+  title: "Changelog",
+  description: "What’s new in Folevi. Version 0.1, the first preview, brings block documents, nested pages, tasks, calendar, offline editing, real-time sync, sharing and export to the web and the Mac.",
+  path: "/changelog",
+});
+
+const releases = [
+  {
+    version: "0.1",
+    name: "Preview",
+    date: "2026-09-25",
+    label: "25 September 2026",
+    intro: "The first public preview of Folevi, on the web and — for preview accounts — on the Mac.",
+    groups: [
+      {
+        title: "Writing",
+        items: [
+          "Block documents: text, headings (three levels), bulleted and numbered lists, checklists, toggles, quotes, callouts, dividers, code, tables, images, files and bookmarks",
+          "Slash menu to insert or turn a block into any type, plus keyboard shortcuts for headings and checklists",
+          "Drag or use ⌥⇧↑ / ⌥⇧↓ to move blocks; nest blocks to build outlines",
+          "Inline formatting, text colours and highlights, links, dates and mentions",
+          "Page style: sans, serif or mono type; narrow, default or wide width; paper, plain, tinted or grid backgrounds; five accent colours; covers and icons",
+        ],
+      },
+      {
+        title: "Organising",
+        items: [
+          "Nested pages, shown as links or cards",
+          "Links between pages with [[, and backlinks on the linked page",
+          "Unsorted for loose notes, folders, tags and starred pages",
+          "Templates and daily notes",
+          "Search across titles and text with ⌘K",
+        ],
+      },
+      {
+        title: "Tasks",
+        items: ["Checklist items with due dates, times and priority", "Today view for due and overdue tasks", "Calendar"],
+      },
+      {
+        title: "Sync, offline and sharing",
+        items: [
+          "Offline editing on the web and the Mac, with a clear status: Saved, Saving, Offline, Syncing, Conflict or Error",
+          "Real-time sync between devices, with version snapshots",
+          "Private by default; public links with optional expiry and password, revocable at any time",
+          "Export any page to Markdown, HTML or PDF, or the whole workspace as a ZIP",
+        ],
+      },
+      {
+        title: "Mac app (private preview)",
+        items: [
+          "Native menus and shortcuts, multiple windows, sidebar and inspector",
+          "Quick Look, drag from Finder and menu bar Quick Add",
+          "Liquid Glass on macOS 26; supports macOS 15 and later",
+        ],
+      },
+      {
+        title: "Account security",
+        items: [
+          "Email verification before workspace access",
+          "Required two-step verification with an authenticator app, plus one-time recovery codes",
+          "Account deletion with a 7-day grace period",
+        ],
+      },
+    ],
+  },
+];
+
+export default function ChangelogPage() {
+  return (
+    <>
+      <PageHeader eyebrow="Changelog" title="What’s new in Folevi." lede="A running record of every release, newest first." />
+      <div className={cx(container, "py-14 sm:py-20")}>
+        {releases.map((release) => (
+          <article key={release.version} aria-labelledby={`v${release.version}`} className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
+            <div className="lg:sticky lg:top-24 lg:self-start">
+              <p className="flex items-center gap-2 text-[13px] text-muted">
+                <RegMark />
+                <time dateTime={release.date}>{release.label}</time>
+              </p>
+              <p className="mt-3 inline-flex rounded-control bg-accent-soft px-2 py-1 text-[12.5px] font-medium text-accent-soft-ink">
+                Version {release.version}
+              </p>
+            </div>
+            <div className="max-w-[720px]">
+              <h2 id={`v${release.version}`} className="font-display text-[40px] leading-tight tracking-[-0.01em] sm:text-[48px]">
+                {release.version} · {release.name}
+              </h2>
+              <p className="mt-4 text-[17px] leading-relaxed text-muted">{release.intro}</p>
+              <div className="mk-prose mt-8">
+                {release.groups.map((group) => (
+                  <section key={group.title} aria-label={group.title}>
+                    <h3>{group.title}</h3>
+                    <ul>
+                      {group.items.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </>
+  );
+}

@@ -14,7 +14,7 @@ export function welcomeBlocks(today: string): BlockSpec[] {
     { type: "heading", props: { level: 2 }, md: "Capture in three seconds" },
     {
       type: "bulleted",
-      md: "Press **⌘N** (Ctrl+N on Windows) for a new document, or **⌘K** to search and jump anywhere.",
+      md: "Press **⌘N** in the Mac app (**⌘⌥N** on the web) for a new document, or **⌘K** to search and jump anywhere.",
     },
     { type: "bulleted", md: "Type `/` on an empty line to insert headings, checklists, tables, code, callouts and more." },
     { type: "bulleted", md: "Type `[[` to link to another page. Links show up as backlinks on the page you linked to." },
@@ -30,7 +30,7 @@ export function welcomeBlocks(today: string): BlockSpec[] {
       children: [
         { type: "bulleted", md: "**⌘B**, **⌘I**, **⌘U** — bold, italic, underline" },
         { type: "bulleted", md: "**⌘E** — inline code" },
-        { type: "bulleted", md: "**⌘⇧8** — toggle a checklist" },
+        { type: "bulleted", md: "**⌘⇧9** — turn a line into a checklist item" },
         { type: "bulleted", md: "**⌘⌥1**, **⌘⌥2**, **⌘⌥3** — headings" },
         { type: "bulleted", md: "**⌘⌥I** — open the inspector" },
       ],

@@ -1,0 +1,378 @@
+/*
+ * Folevi marketing — "The Living Folio".
+ * Plain CSS on top of the shared design tokens. Scoped with `mk-` prefixes so nothing leaks into
+ * the product surfaces that share this Next.js app.
+ */
+
+/* Keep Tailwind's layer order so utilities can refine these component styles. */
+@layer theme, base, components, utilities;
+
+@layer components {
+.mk-root {
+  --mk-hair: color-mix(in oklab, var(--color-line) 80%, transparent);
+  --mk-hair-strong: var(--color-line-strong);
+  --mk-shadow-leaf: 0 1px 0 rgb(24 32 28 / 0.04), 0 1px 2px rgb(24 32 28 / 0.05), 0 18px 40px -18px rgb(24 32 28 / 0.22);
+  --mk-shadow-soft: 0 1px 0 rgb(24 32 28 / 0.03), 0 10px 28px -16px rgb(24 32 28 / 0.18);
+  --mk-shadow-window: 0 1px 0 rgb(24 32 28 / 0.05), 0 2px 6px rgb(24 32 28 / 0.05), 0 32px 64px -28px rgb(24 32 28 / 0.32);
+  --mk-vellum: color-mix(in oklab, var(--color-canvas) 78%, transparent);
+  --mk-topo-opacity: 0.55;
+  --mk-ease: var(--motion-easing, cubic-bezier(0.2, 0.7, 0.2, 1));
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+:root[data-theme="dark"] .mk-root {
+  --mk-shadow-leaf: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 20px 44px -20px rgb(0 0 0 / 0.7);
+  --mk-shadow-soft: 0 14px 30px -18px rgb(0 0 0 / 0.6);
+  --mk-shadow-window: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 36px 70px -28px rgb(0 0 0 / 0.75);
+  --mk-vellum: color-mix(in oklab, var(--color-canvas) 74%, transparent);
+  --mk-topo-opacity: 0.5;
+}
+
+@media (prefers-contrast: more) {
+  .mk-root {
+    --mk-hair: var(--color-line-strong);
+    --mk-hair-strong: var(--color-ink-muted);
+    --mk-topo-opacity: 0.9;
+  }
+}
+
+/* Hairlines ------------------------------------------------------------------------------------ */
+.mk-hair { border-color: var(--mk-hair); }
+.mk-hair-strong { border-color: var(--mk-hair-strong); }
+
+/* Skip link --------------------------------------------------------------------------------------- */
+.mk-skip:focus {
+  position: fixed;
+  z-index: 100;
+  top: 10px;
+  left: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-raised);
+  color: var(--color-ink);
+  box-shadow: var(--mk-shadow-soft);
+}
+
+/* Navigation rail --------------------------------------------------------------------------------- */
+.mk-rail {
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background-color var(--motion-slow, 220ms) var(--mk-ease), border-color var(--motion-slow, 220ms) var(--mk-ease);
+}
+.mk-rail[data-scrolled="true"],
+.mk-rail[data-open="true"] {
+  background: var(--mk-vellum);
+  border-bottom-color: var(--mk-hair);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  backdrop-filter: blur(16px) saturate(1.25);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mk-rail[data-scrolled="true"],
+  .mk-rail[data-open="true"] {
+    background: var(--color-canvas);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+.mk-navlink {
+  position: relative;
+}
+.mk-navlink[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 1px;
+  background: currentColor;
+}
+.mk-sheet {
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--mk-hair);
+  box-shadow: var(--mk-shadow-soft);
+  animation: mk-sheet-in var(--motion-slow, 220ms) var(--mk-ease);
+}
+@keyframes mk-sheet-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Buttons ----------------------------------------------------------------------------------------- */
+.mk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-control);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color var(--motion-fast, 140ms) var(--mk-ease), border-color var(--motion-fast, 140ms) var(--mk-ease),
+    color var(--motion-fast, 140ms) var(--mk-ease), transform var(--motion-fast, 140ms) var(--mk-ease);
+}
+.mk-btn:active { transform: translateY(1px); }
+.mk-btn-primary {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 1px 2px rgb(24 32 28 / 0.18);
+}
+.mk-btn-primary:hover { background: color-mix(in oklab, var(--color-accent) 88%, var(--color-ink)); }
+.mk-btn-secondary {
+  background: color-mix(in oklab, var(--color-surface) 70%, transparent);
+  color: var(--color-ink);
+  border: 1px solid var(--mk-hair-strong);
+}
+.mk-btn-secondary:hover { background: var(--color-surface-raised); border-color: var(--color-ink-faint); }
+
+/* Keys -------------------------------------------------------------------------------------------- */
+.mk-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  height: 1.6em;
+  padding: 0 0.4em;
+  border-radius: 5px;
+  border: 1px solid var(--mk-hair-strong);
+  border-bottom-width: 2px;
+  background: var(--color-surface-raised);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.78em;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-feature-settings: "tnum";
+}
+
+/* Hero art ---------------------------------------------------------------------------------------- */
+.mk-topo {
+  color: var(--color-line-strong);
+  opacity: var(--mk-topo-opacity);
+  -webkit-mask-image: radial-gradient(ellipse 70% 80% at 68% 38%, #000 25%, transparent 78%);
+  mask-image: radial-gradient(ellipse 70% 80% at 68% 38%, #000 25%, transparent 78%);
+}
+.mk-rules {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    color-mix(in oklab, var(--color-line) 60%, transparent) 31px,
+    color-mix(in oklab, var(--color-line) 60%, transparent) 32px
+  );
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 70%, transparent);
+  opacity: 0.45;
+}
+
+/* Folio stack ------------------------------------------------------------------------------------- */
+.mk-leaf {
+  --d: 0;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  top: 32px;
+  right: 32px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--mk-hair);
+  box-shadow: var(--mk-shadow-leaf);
+  transform-origin: 20% 100%;
+  transform: translate(calc(var(--d) * 16px), calc(var(--d) * -16px)) rotate(calc(var(--d) * 1.1deg));
+  transition: transform var(--motion-page, 320ms) var(--mk-ease), opacity var(--motion-page, 320ms) var(--mk-ease),
+    filter var(--motion-page, 320ms) var(--mk-ease);
+  overflow: hidden;
+}
+.mk-leaf[data-depth="1"] { background: var(--color-surface); }
+.mk-leaf[data-depth="2"] { background: var(--color-surface-sunken); }
+.mk-leaf[data-depth="1"] > .mk-leaf-body,
+.mk-leaf[data-depth="2"] > .mk-leaf-body { opacity: 0.35; filter: saturate(0.4); }
+.mk-leaf-body { transition: opacity var(--motion-page, 320ms) var(--mk-ease); }
+.mk-leaf[data-depth="0"][data-settle="true"] {
+  animation: mk-settle var(--motion-page, 320ms) var(--mk-ease) both;
+}
+@keyframes mk-settle {
+  0% { transform: translate(-14px, -22px) rotate(-2.2deg); box-shadow: 0 30px 60px -24px rgb(24 32 28 / 0.35); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-leaf, .mk-leaf-body { transition: none; }
+  .mk-leaf[data-depth="0"][data-settle="true"] { animation: none; }
+}
+
+.mk-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--color-accent);
+  animation: mk-blink 1.05s steps(1) infinite;
+}
+@keyframes mk-blink { 50% { opacity: 0; } }
+
+/* Typed text: the full text is shown when scripting is off or motion is reduced. */
+.mk-typed-full { display: none; }
+@media (scripting: none) {
+  .mk-typed-live { display: none; }
+  .mk-typed-full { display: inline; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-typed-live { display: none; }
+  .mk-typed-full { display: inline; }
+  .mk-caret { animation: none; }
+}
+
+.mk-progress {
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.mk-progress[data-running="true"] {
+  animation: mk-progress linear forwards;
+}
+.mk-progress[data-paused="true"] { animation-play-state: paused; }
+@keyframes mk-progress { to { transform: scaleX(1); } }
+
+/* Registration marks ------------------------------------------------------------------------------ */
+.mk-reg { color: var(--color-ink-faint); opacity: 0.8; }
+
+/* Accent fields for chapters ---------------------------------------------------------------------- */
+.mk-field {
+  --field-bg: var(--color-surface-sunken);
+  --field-ink: var(--color-ink-muted);
+  position: relative;
+  background-color: var(--field-bg);
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0, transparent 27px, color-mix(in oklab, var(--field-ink) 12%, transparent) 27px, color-mix(in oklab, var(--field-ink) 12%, transparent) 28px);
+  border: 1px solid color-mix(in oklab, var(--field-ink) 18%, transparent);
+  border-radius: var(--radius-sheet);
+}
+.mk-field--moss { --field-bg: var(--color-moss-soft); --field-ink: var(--color-moss-ink); }
+.mk-field--marigold { --field-bg: var(--color-marigold-soft); --field-ink: var(--color-marigold-ink); }
+.mk-field--plum { --field-bg: var(--color-plum-soft); --field-ink: var(--color-plum-ink); }
+.mk-field--accent { --field-bg: var(--color-accent-soft); --field-ink: var(--color-accent-soft-ink); }
+.mk-field--coral { --field-bg: var(--color-coral-soft); --field-ink: var(--color-coral-ink); }
+.mk-field-ink { color: var(--field-ink); }
+
+.mk-card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--mk-hair);
+  border-radius: var(--radius-card);
+  box-shadow: var(--mk-shadow-soft);
+}
+
+.mk-appear {
+  animation: mk-appear var(--motion-slow, 220ms) var(--mk-ease) both;
+}
+@keyframes mk-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.mk-flash {
+  animation: mk-flash 1.2s var(--mk-ease) both;
+}
+@keyframes mk-flash {
+  0% { background-color: color-mix(in oklab, var(--color-plum) 28%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* Search highlights */
+.mk-root mark {
+  background: var(--color-highlight-yellow);
+  color: var(--color-ink);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+/* Mac window + menu bar --------------------------------------------------------------------------- */
+.mk-window {
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--mk-hair-strong);
+  box-shadow: var(--mk-shadow-window);
+  overflow: hidden;
+}
+.mk-glass {
+  background: color-mix(in oklab, var(--color-surface-raised) 93%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid color-mix(in oklab, var(--color-line-strong) 70%, transparent);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 18px 40px -16px rgb(24 32 28 / 0.35);
+}
+:root[data-theme="dark"] .mk-glass {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 18px 40px -16px rgb(0 0 0 / 0.7);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mk-glass {
+    background: var(--color-surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+.mk-lights span { display: block; width: 11px; height: 11px; border-radius: 999px; }
+.mk-lights span:nth-child(1) { background: #EC6A5E; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
+.mk-lights span:nth-child(2) { background: #F4BF4F; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
+.mk-lights span:nth-child(3) { background: #61C554; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
+.mk-lights--inactive span:nth-child(n) { background: var(--color-line-strong); }
+
+/* Long-form pages (docs, legal) ------------------------------------------------------------------ */
+.mk-prose { color: var(--color-ink); font-size: 16px; line-height: 1.7; }
+.mk-prose > * + * { margin-top: 1em; }
+.mk-prose h2 {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.2vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-top: 2.4em;
+  padding-top: 0.9em;
+  border-top: 1px solid var(--mk-hair);
+  scroll-margin-top: 88px;
+}
+.mk-prose h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.mk-prose h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 1.8em;
+  scroll-margin-top: 88px;
+}
+.mk-prose p, .mk-prose li { color: color-mix(in oklab, var(--color-ink) 88%, var(--color-ink-muted)); }
+.mk-prose ul { list-style: none; padding-left: 0; }
+.mk-prose ul > li { position: relative; padding-left: 1.3em; }
+.mk-prose ul > li + li { margin-top: 0.4em; }
+.mk-prose ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0.2em;
+  top: 0.75em;
+  width: 0.45em;
+  height: 1px;
+  background: var(--color-ink-muted);
+}
+.mk-prose ol { list-style: decimal; padding-left: 1.4em; }
+.mk-prose ol > li + li { margin-top: 0.4em; }
+.mk-prose a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.mk-prose a:hover { text-decoration-thickness: 2px; }
+.mk-prose strong { font-weight: 600; color: var(--color-ink); }
+.mk-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--color-code-bg);
+  color: var(--color-code-ink);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.mk-prose table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.mk-prose th { text-align: left; font-weight: 500; color: var(--color-ink); }
+.mk-prose thead th { font-weight: 600; font-size: 13px; color: var(--color-ink-muted); }
+.mk-prose th, .mk-prose td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--mk-hair); vertical-align: top; }
+
+.mk-table { width: 100%; border-collapse: collapse; }
+.mk-table th, .mk-table td { border-bottom: 1px solid var(--mk-hair); padding: 11px 12px 11px 0; vertical-align: top; }
+.mk-table th { text-align: start; }
+.mk-table td { text-align: end; }
+.mk-table thead th { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-appear, .mk-flash, .mk-sheet { animation: none; }
+}
+}

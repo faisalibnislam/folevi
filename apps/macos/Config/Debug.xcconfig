@@ -1,0 +1,12 @@
+// Debug configuration: local Convex backend and development-only sign-in.
+#include "Shared.xcconfig"
+
+CONVEX_URL = http:/$()/127.0.0.1:3210
+// Development sign-in endpoint served by apps/web when dev auth is enabled. Only compiled into DEBUG builds.
+FOLEVI_DEV_AUTH_URL = http:/$()/localhost:3000/api/dev-auth/token
+// Auth0 Native application (placeholders; set real values to enable Universal Login in Debug).
+AUTH0_DOMAIN = auth.folevi.com
+AUTH0_CLIENT_ID = set-me
+
+// Allow plain http to localhost / 127.0.0.1 (ATS exception) in Debug only.
+INFOPLIST_PREPROCESSOR_DEFINITIONS = FOLEVI_LOCAL_ATS=1

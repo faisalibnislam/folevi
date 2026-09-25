@@ -6,6 +6,7 @@ import { fail } from "./lib/errors";
 import { hashSharePassword, keyedHash, randomToken, sha256Hex, timingSafeEqualHex } from "./lib/crypto";
 import { consume } from "./lib/rateLimit";
 import { liveBlocks, toWireBlock } from "./lib/documents";
+import { signFileUrl } from "./lib/fileUrls";
 import { notify } from "./lib/notify";
 import { vShareRole } from "./lib/validators";
 
@@ -233,11 +234,26 @@ export const openPublicLink = mutation({
       if (!timingSafeEqualHex(hash, found.passwordHash)) return { status: "password_incorrect" as const };
     }
     await ctx.db.patch(found._id, { viewCount: found.viewCount + 1 });
-    const blocks = (await liveBlocks(ctx, doc._id)).map(toWireBlock);
+    const blocks = (await liveBlocks(ctx, doc._id)).map(toWireBlock).filter((b) => b.type !== "collection");
+    // Attachments of this document only, via short-lived signed URLs.
+    const site = process.env.CONVEX_SITE_URL ?? "";
+    const exp = Date.now() + 60 * 60_000;
+    const fileUrls: Record<string, string> = {};
+    for (const b of blocks) {
+      const fileId = (b.props as { fileId?: unknown }).fileId;
+      if (typeof fileId !== "string") continue;
+      const file = await ctx.db
+        .query("files")
+        .withIndex("by_public_id", (q) => q.eq("publicId", fileId))
+        .unique();
+      if (!file || file.documentId !== doc._id || file.status !== "ready") continue;
+      fileUrls[fileId] = `${site}/files/${fileId}?exp=${exp}&sig=${await signFileUrl(`${fileId}:${exp}`)}`;
+    }
     return {
       status: "ok" as const,
       document: { title: doc.title, icon: doc.icon ?? null, style: doc.style, cover: doc.cover, updatedAt: doc.updatedAt },
-      blocks: blocks.filter((b) => b.type !== "collection"),
+      blocks,
+      fileUrls,
       allowIndexing: found.allowIndexing,
     };
   },

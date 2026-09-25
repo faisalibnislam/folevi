@@ -1,0 +1,20 @@
+// Server-safe list of product route heads (mirrors parseRoute in router.tsx).
+export const APP_ROUTE_HEADS = new Set([
+  "documents",
+  "d",
+  "tasks",
+  "calendar",
+  "daily",
+  "shared",
+  "templates",
+  "starred",
+  "archive",
+  "trash",
+  "unsorted",
+  "folders",
+  "tags",
+  "settings",
+  "help",
+  "onboarding",
+  "invite",
+]);

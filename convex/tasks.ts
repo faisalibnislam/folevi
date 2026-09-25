@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { rankBetween, SCHEMA_VERSION, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
+import { dailyDocumentId, rankBetween, SCHEMA_VERSION, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, requireWorkspace } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
@@ -229,7 +229,7 @@ export const quickAdd = mutation({
         .first();
       if (daily && !daily.inTrash) docPublicId = daily.publicId;
       else {
-        docPublicId = ulid();
+        docPublicId = dailyDocumentId(profile._id, workspace.publicId, args.today);
         const [r] = await engine.applyAll(workspace.publicId, [
           {
             opId: ulid(),

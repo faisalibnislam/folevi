@@ -1,0 +1,115 @@
+import Link from "next/link";
+import { DocShell } from "@/components/marketing/DocShell";
+import { pageMetadata } from "@/components/marketing/seo";
+import { SECURITY_EMAIL } from "@/components/marketing/site";
+import { DraftNotice, PageHeader } from "@/components/marketing/ui";
+
+export const metadata = pageMetadata({
+  title: "Terms",
+  description: "A plain-language draft of the terms for using Folevi during the preview. Pending legal review.",
+  path: "/terms",
+});
+
+const toc = [
+  { id: "agreement", label: "The agreement" },
+  { id: "preview", label: "A preview service" },
+  { id: "account", label: "Your account" },
+  { id: "content", label: "Your content" },
+  { id: "use", label: "Acceptable use" },
+  { id: "sharing", label: "Sharing" },
+  { id: "price", label: "Price" },
+  { id: "ending", label: "Ending" },
+  { id: "liability", label: "Warranties and liability" },
+  { id: "changes", label: "Changes" },
+  { id: "contact", label: "Contact" },
+];
+
+export default function TermsPage() {
+  return (
+    <>
+      <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
+        <DraftNotice updated="25 September 2026" />
+      </PageHeader>
+      <DocShell toc={toc}>
+        <h2 id="agreement">The agreement</h2>
+        <p>
+          By creating an account or using Folevi — the website, the web app and the Mac app — you agree to these terms and
+          to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organisation, you confirm you’re
+          allowed to accept these terms on its behalf.
+        </p>
+
+        <h2 id="preview">A preview service</h2>
+        <p>
+          Folevi is in preview. Features will change, some will be added and a few may be removed. We work hard to keep your
+          content safe, but you should keep your own exports of anything you can’t afford to lose, especially during the
+          preview.
+        </p>
+
+        <h2 id="account">Your account</h2>
+        <ul>
+          <li>Give us an email address you control, and keep your sign-in details and recovery codes safe.</li>
+          <li>Two-step verification is required; please don’t try to get around it.</li>
+          <li>You’re responsible for what happens under your account. Tell us promptly if you think it has been compromised.</li>
+        </ul>
+
+        <h2 id="content">Your content</h2>
+        <p>
+          <strong>What you write is yours.</strong> You keep all rights to your content. To run Folevi, you give us permission
+          to store, process, sync, back up and display your content — only as needed to provide the service to you and to
+          the people you share with. This permission ends when your content is deleted.
+        </p>
+        <p>You can export your content at any time.</p>
+
+        <h2 id="use">Acceptable use</h2>
+        <p>Please don’t use Folevi to:</p>
+        <ul>
+          <li>break the law or infringe other people’s rights;</li>
+          <li>share malware, or content that exploits or harms children;</li>
+          <li>harass, threaten or spam people, including through public links or share invitations;</li>
+          <li>probe, overload or interfere with the service, except for good-faith security research as described on our{" "}
+            <Link href="/security#disclosure">Security</Link> page;</li>
+          <li>access other people’s accounts or data without permission.</li>
+        </ul>
+        <p>If an account is used in these ways, we may restrict or suspend it. Where it’s safe and lawful, we’ll tell you why.</p>
+
+        <h2 id="sharing">Sharing</h2>
+        <p>
+          When you invite someone to a page or create a public link, you decide who can see it. You’re responsible for what
+          you choose to share and with whom. You can revoke access or a link at any time.
+        </p>
+
+        <h2 id="price">Price</h2>
+        <p>
+          Folevi is free during the preview. If we introduce paid plans, we’ll tell preview accounts well in advance, and
+          nothing you’ve created will be held back behind a payment — you’ll always be able to export it.
+        </p>
+
+        <h2 id="ending">Ending</h2>
+        <p>
+          You can stop using Folevi and delete your account whenever you like. Deletion has a 7-day grace period, then it’s
+          permanent. We may end the service or an account under these terms; if we end the service, we’ll give reasonable
+          notice so you can export your content.
+        </p>
+
+        <h2 id="liability">Warranties and liability</h2>
+        <p>
+          Folevi is provided “as is” during the preview, without promises that it will be uninterrupted or error-free. To the
+          extent the law allows, we aren’t liable for indirect or consequential losses, or for loss of data you could have
+          protected with an export. Nothing in these terms limits rights you have that can’t be limited by law.
+        </p>
+
+        <h2 id="changes">Changes to these terms</h2>
+        <p>
+          This is a draft pending legal review, and the final version will differ. When we make meaningful changes, we’ll
+          update the date at the top and tell you by email before significant changes take effect.
+        </p>
+
+        <h2 id="contact">Contact</h2>
+        <p>
+          Questions about these terms can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a> during the
+          preview.
+        </p>
+      </DocShell>
+    </>
+  );
+}

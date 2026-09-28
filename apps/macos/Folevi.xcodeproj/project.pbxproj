@@ -13,6 +13,7 @@
 		091A1564F7B1B2F351BF533C /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79F8DBDD8CC37789B62517B /* ExportService.swift */; };
 		0DDC7B49D4B86550B1C7CDFA /* Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 934BBAF4E5C10A62E553FE7B /* Toolbar.swift */; };
 		0F42CEA902572E751C8832F7 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B826C727C7B595B97B6567 /* Typography.swift */; };
+		101326CC537ADDA96E68AF1F /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */; };
 		1293EB55B903080AF59D4478 /* BlockSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF52F09620D4DD7D2837804 /* BlockSchema.swift */; };
 		14DA214364C4CC1A61AF5561 /* SyncScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8687F771CF0B4E201557BA19 /* SyncScenarioTests.swift */; };
 		18B2FF723BEE21EC65E64BA1 /* RankTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAE0742A02D411799235409 /* RankTests.swift */; };
@@ -60,6 +61,7 @@
 		8E9E7251154AF98B5ECB2103 /* Repositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA42032AE7EBC7195F8F165 /* Repositories.swift */; };
 		8F851AADD02DEF8524E9EA94 /* CommandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22AEE9F0D974540815E971F6 /* CommandPalette.swift */; };
 		91DCDBA36109EC91DBE16D1E /* RichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1453B0B437427892BFA595 /* RichText.swift */; };
+		937E1967DD5924A4E12B4C19 /* Folders.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDC3E1DEB42D59731DDD1C3 /* Folders.swift */; };
 		96FD231E741DBDF2A4954467 /* Automation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFDF0C6E1756ADAF3EC4466F /* Automation.swift */; };
 		9AD4F5FB98F13921D83B5D71 /* KeychainAndAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */; };
 		9BBE1FABAFFAE0EFE0996408 /* reference-outputs.json in Resources */ = {isa = PBXBuildFile; fileRef = 9D17CE53B422079DD74B262C /* reference-outputs.json */; };
@@ -128,6 +130,7 @@
 		30B8821EC08FD811EE1FE1A6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		338F3C4CB476BCF3E8688E51 /* WireBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WireBlock.swift; sourceTree = "<group>"; };
 		3489657AE3324D753E15ED23 /* FoleviCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviCommands.swift; sourceTree = "<group>"; };
+		34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
 		36792CB853DBCAC3A0E5E49B /* AuthProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthProviders.swift; sourceTree = "<group>"; };
 		376035683CC3F41336F41070 /* SQLiteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteStore.swift; sourceTree = "<group>"; };
 		3910E7BCAD0DCAB13EDFE343 /* WindowChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChrome.swift; sourceTree = "<group>"; };
@@ -164,6 +167,7 @@
 		ABD610F62BCADDED90106F87 /* BlockDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDrag.swift; sourceTree = "<group>"; };
 		B0D3EF72620701C4F4CEDCD7 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = Folevi/Resources/Fonts; sourceTree = SOURCE_ROOT; };
 		B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorModel.swift; sourceTree = "<group>"; };
+		BCDC3E1DEB42D59731DDD1C3 /* Folders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Folders.swift; sourceTree = "<group>"; };
 		BFDF0C6E1756ADAF3EC4466F /* Automation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Automation.swift; sourceTree = "<group>"; };
 		C1D5C2CDE8D60DA93116A294 /* AuthCallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthCallback.swift; sourceTree = "<group>"; };
 		C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
@@ -290,6 +294,7 @@
 				C4A94F05749D769691AF6608 /* Components */,
 				E4DB8C5E4E3285A93715A3E1 /* Generated */,
 				42122FC37C2F0057901A6606 /* CoverArt.swift */,
+				BCDC3E1DEB42D59731DDD1C3 /* Folders.swift */,
 				C56CB70FC209619CF7304013 /* FoleviFont.swift */,
 				DA763499A687D1E479FDAEC4 /* FoleviMark.swift */,
 				002A90A0994B97E70A8FE249 /* Surfaces.swift */,
@@ -349,6 +354,7 @@
 			isa = PBXGroup;
 			children = (
 				C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */,
+				34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */,
 				EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */,
 				305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */,
 				934BBAF4E5C10A62E553FE7B /* Toolbar.swift */,
@@ -685,12 +691,14 @@
 				453D038092E66A995B4F3544 /* EditorView.swift in Sources */,
 				091A1564F7B1B2F351BF533C /* ExportService.swift in Sources */,
 				81F10BAE45F5D5A42AF1BAD2 /* FlexibleDecoding.swift in Sources */,
+				937E1967DD5924A4E12B4C19 /* Folders.swift in Sources */,
 				D9A1F77CA7E8AA32318A35BF /* FoleviApp.swift in Sources */,
 				550DC0E1F11D91328AAB15AE /* FoleviCommands.swift in Sources */,
 				9DFC7AB2E11A3388FAD057E8 /* FoleviFont.swift in Sources */,
 				EEC9E4C411F152437FE6B4AC /* FoleviMark.swift in Sources */,
 				E2D2598A0526702F42EA5124 /* FoleviTokens.swift in Sources */,
 				E222C01E7C0582A11A181418 /* HTMLExport.swift in Sources */,
+				101326CC537ADDA96E68AF1F /* HomeDashboardView.swift in Sources */,
 				3EEE9746D056BCCFE5DFF7A3 /* InlineAttributedString.swift in Sources */,
 				CB6486089B509F21969C1439 /* InspectorView.swift in Sources */,
 				2C99E4D36C99EDF95983A7EC /* JSONValue.swift in Sources */,

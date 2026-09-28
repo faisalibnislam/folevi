@@ -117,7 +117,9 @@ struct MainWindowView: View {
                 .id(editor.documentId)
         } else {
             switch nav.selection {
-            case .tasks: TasksView(openDocument: open)
+            case .all: HomeDashboardView(nav: nav, openDocument: open)
+            case .folders: FoldersIndexView(nav: nav)
+            case .tasks: TasksView(openDocument: open, openCalendar: { nav.selection = .calendar })
             case .calendar: CalendarView(openDocument: open)
             case .shared: SharedWithMeView(openDocument: open)
             default: BrowserView(nav: nav, openDocument: open)
@@ -140,6 +142,9 @@ struct MainWindowView: View {
             case "tasks": nav.selection = .tasks
             case "calendar": nav.selection = .calendar
             case "trash": nav.selection = .trash
+            case "folders": nav.selection = .folders
+            case "notes": nav.selection = .notes
+            case "drafts": nav.selection = .drafts
             default: break
             }
         }

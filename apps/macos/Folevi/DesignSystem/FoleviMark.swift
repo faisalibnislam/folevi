@@ -70,3 +70,23 @@ enum FoleviMarkShape {
         return image
     }
 }
+
+/// The logo: the mark and the "Folevi" letters (the web's FoleviLogo). The letters take the foreground
+/// style, so they follow the text colour in light and dark.
+struct FoleviLogo: View {
+    var height: CGFloat = 26
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Image("FoleviWordmark")
+                .renderingMode(.template)
+                .resizable()
+                .interpolation(.high)
+            FoleviMark(size: height)
+        }
+        .frame(width: height * 900 / 236, height: height)
+        .accessibilityElement()
+        .accessibilityLabel(Text("Folevi"))
+        .accessibilityAddTraits(.isImage)
+    }
+}

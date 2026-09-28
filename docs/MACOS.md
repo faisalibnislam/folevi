@@ -265,10 +265,11 @@ shadows and layout vocabulary, drawn natively.
 | Argument | Build | Purpose |
 | --- | --- | --- |
 | `-FoleviDevToken <jwt>` / `FOLEVI_DEV_TOKEN` | DEBUG | sign in with a development token |
+| `FOLEVI_DEV_SESSION=<session token>` (environment) | DEBUG | sign in with a Folevi session from the local web app (e.g. minted for a test account with the native-auth endpoints), kept in memory only — never in the Keychain — and renewed like a real sign-in |
 | `-FoleviUITestReset YES` | all | wipe local cache and saved credentials on launch (UI tests) |
 | `-FoleviForceOffline YES` | DEBUG | start with sync forced offline (also View ▸ Force Offline, ⌃⌥⌘O) |
 | `-FoleviAppearance light\|dark` | DEBUG | override appearance |
-| `-FoleviOpenDocument <id or title>`, `-FoleviSidebar tasks\|calendar\|trash`, `-FoleviInspector insert\|format\|style\|outline\|info\|comments` | DEBUG | open a view (screenshots) |
+| `-FoleviOpenDocument <id or title>`, `-FoleviSidebar tasks\|calendar\|trash\|folders\|notes\|drafts`, `-FoleviInspector insert\|format\|style\|outline\|info\|comments` | DEBUG | open a view (screenshots) |
 | `-FoleviAutomation offline-edit\|offline-conflict\|resolve-both\|export-all` | DEBUG | scripted verification scenarios through the real editor model and sync engine |
 | `-FoleviAutomation drag\|drag-nest\|drag-cancel\|drag-tile [-FoleviDragHold s] [-FoleviDragDY pt]` | DEBUG | drives a block (or Insert tile) drag with posted mouse events through the drag controller, holds for screenshots, drops (or Escape-cancels), then undoes. Activates the app. |
 | `-FoleviAutomation cover-art [-FoleviCover art-07]`, `cover-set -FoleviCover gradient:moss` | DEBUG | shows an art cover for a while and restores the original; sets a cover |

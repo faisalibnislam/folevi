@@ -2,7 +2,11 @@ import Observation
 import SwiftUI
 
 enum SidebarItem: Hashable, Codable, Sendable {
+    /// Home: the dashboard.
     case all
+    case drafts
+    case notes
+    case folders
     case tasks
     case calendar
     case shared
@@ -16,6 +20,9 @@ enum SidebarItem: Hashable, Codable, Sendable {
     var title: LocalizedStringKey {
         switch self {
         case .all: return "Home"
+        case .drafts: return "Drafts"
+        case .notes: return "All notes"
+        case .folders: return "Folders"
         case .tasks: return "Tasks"
         case .calendar: return "Calendar"
         case .shared: return "Shared with Me"
@@ -31,6 +38,9 @@ enum SidebarItem: Hashable, Codable, Sendable {
     var titleString: String {
         switch self {
         case .all: return String(localized: "Home")
+        case .drafts: return String(localized: "Drafts")
+        case .notes: return String(localized: "All notes")
+        case .folders: return String(localized: "Folders")
         case .tasks: return String(localized: "Tasks")
         case .calendar: return String(localized: "Calendar")
         case .shared: return String(localized: "Shared with Me")
@@ -46,6 +56,9 @@ enum SidebarItem: Hashable, Codable, Sendable {
     var systemImage: String {
         switch self {
         case .all: return "house"
+        case .drafts: return "tray"
+        case .notes: return "doc.on.doc"
+        case .folders: return "folder"
         case .tasks: return "checklist"
         case .calendar: return "calendar"
         case .shared: return "person.2"
@@ -61,6 +74,9 @@ enum SidebarItem: Hashable, Codable, Sendable {
     var accessibilityId: String {
         switch self {
         case .all: return "sidebar.all"
+        case .drafts: return "sidebar.drafts"
+        case .notes: return "sidebar.notes"
+        case .folders: return "sidebar.folders"
         case .tasks: return "sidebar.tasks"
         case .calendar: return "sidebar.calendar"
         case .shared: return "sidebar.shared"

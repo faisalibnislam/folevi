@@ -8,9 +8,9 @@ struct DocumentDragPayload: Codable, Transferable {
     }
 }
 
-/// Warm Folio sidebar: sidebar tint, 32pt rows (radius 10), hover accentSoft, the active row a raised
-/// white pill with heading text and an ember icon; caps section labels; a sunken search pill with a
-/// ⌘K keycap and a secondary "New Page" pill; account, help and settings in a raised footer.
+/// The sidebar, as on the web: the Folevi logo, a search well with ⌘K, Home / Starred / Drafts /
+/// All notes / Tasks / Shared with Me / Templates, Folders and Tags (collapsible, remembered; Tags starts
+/// collapsed), Archive and Trash, and the account row with Help and Settings.
 struct SidebarView: View {
     @Bindable var nav: NavigationModel
     @Environment(AppModel.self) private var app
@@ -19,8 +19,9 @@ struct SidebarView: View {
     @State private var newFolderName = ""
     @State private var showNewFolder = false
     @State private var dropTargetFolder: String?
-    @State private var foldersOpen = true
-    @State private var tagsOpen = true
+    // Remembered on this Mac; Tags starts collapsed, as on the web.
+    @AppStorage("sidebar.section.folders") private var foldersOpen = true
+    @AppStorage("sidebar.section.tags") private var tagsOpen = false
     @State private var todayTasks = 0
     @FocusState private var listFocused: Bool
 
@@ -39,21 +40,18 @@ struct SidebarView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
 
-            VStack(spacing: 8) {
-                searchPill
-                newPagePill
-            }
-            .padding(.horizontal, 10)
+            searchPill
+                .padding(.horizontal, 10)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
-                    row(.all, count: libraryCount)
+                    row(.all)
+                    row(.starred)
+                    row(.drafts, count: draftCount)
+                    row(.notes)
                     row(.tasks, count: todayTaskCount)
-                    row(.calendar)
                     row(.shared)
                     row(.templates)
-
-                    section("Starred") { row(.starred) }
 
                     section("Folders", isOpen: $foldersOpen, action: folderAction) {
                         let roots = app.sidebar.folders.filter { $0.parentFolderId == nil }
@@ -72,7 +70,7 @@ struct SidebarView: View {
                         section("Tags", isOpen: $tagsOpen) {
                             ForEach(app.sidebar.tags) { tag in
                                 SidebarRow(title: Text(tag.name), isActive: nav.selection == .tag(tag.id)) {
-                                    Circle().fill(Color.folevi(tag: tag.color)).frame(width: 8, height: 8)
+                                    Image(systemName: "number").foregroundStyle(Color.folevi(tag: tag.color))
                                 } action: {
                                     nav.selection = .tag(tag.id)
                                 }
@@ -83,7 +81,7 @@ struct SidebarView: View {
 
                     Spacer().frame(height: 14)
                     row(.archive)
-                    row(.trash, count: trashCount)
+                    row(.trash)
                 }
                 .padding(.horizontal, 10)
                 .padding(.top, 12)
@@ -119,19 +117,22 @@ struct SidebarView: View {
 
     // MARK: Header
 
+    /// The Folevi logo (goes Home), as at the top of the web's sidebar.
     private var workspaceHeader: some View {
-        HStack(spacing: 10) {
-            FoleviMark(size: 28)
-            Text(app.workspace?.name ?? "Folevi")
-                .font(.ui(14, .semibold))
-                .tracking(-0.01 * 14)
-                .foregroundStyle(FoleviColor.heading)
-                .lineLimit(1)
-            Spacer(minLength: 0)
+        Button {
+            nav.selection = .all
+            nav.closeDocument()
+        } label: {
+            HStack {
+                FoleviLogo(height: 26).foregroundStyle(FoleviColor.heading)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("Workspace \(app.workspace?.name ?? "Folevi")"))
+        .buttonStyle(.plain)
+        .help(Text("Go to Home"))
+        .accessibilityLabel(Text("Folevi, go to Home"))
     }
 
     private var searchPill: some View {
@@ -157,28 +158,6 @@ struct SidebarView: View {
         .accessibilityIdentifier("toolbar.search")
     }
 
-    private var newPagePill: some View {
-        Button {
-            Task { await newDocument() }
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: "plus")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 20, height: 20)
-                    .background(Circle().fill(FoleviColor.ember))
-                    .accessibilityHidden(true)
-                Text("New Document")
-                Spacer(minLength: 4)
-                Text("⌘N").font(.ui(11)).foregroundStyle(FoleviColor.inkFaint)
-            }
-            .padding(.leading, -6)
-        }
-        .buttonStyle(.folevi(.secondary, .medium, fullWidth: true))
-        .accessibilityLabel(Text("New Document"))
-        .accessibilityIdentifier("sidebar.newDocument")
-    }
-
     // MARK: Footer
 
     private var footer: some View {
@@ -191,8 +170,8 @@ struct SidebarView: View {
                         .font(.ui(12, .semibold))
                         .foregroundStyle(FoleviColor.heading)
                         .frame(width: 28, height: 28)
-                        .background(Circle().fill(LinearGradient(colors: [FoleviColor.glowPeach, FoleviColor.emberSoft], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                        .overlay(Circle().strokeBorder(.white.opacity(0.6), lineWidth: 1))
+                        .background(Circle().fill(FoleviGlass.hover))
+                        .overlay(Circle().strokeBorder(FoleviGlass.border, lineWidth: 1))
                         .accessibilityHidden(true)
                     Text(app.profile?.displayName ?? "")
                         .font(.ui(13, .medium))
@@ -211,7 +190,6 @@ struct SidebarView: View {
                 .accessibilityIdentifier("sidebar.settings")
         }
         .padding(6)
-        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(14), shadow: FoleviShadow.control)
     }
 
     // MARK: Rows
@@ -228,7 +206,7 @@ struct SidebarView: View {
     private func folderRow(_ folder: FolderInfo) -> some View {
         SidebarRow(title: Text(folder.name), isActive: nav.selection == .folder(folder.id) && nav.openDocumentId == nil,
                    isDropTarget: dropTargetFolder == folder.id) {
-            if let icon = folder.icon, !icon.isEmpty { Text(icon).font(.system(size: 13)) } else { Image(systemName: "folder") }
+            FolderGlyph(color: folder.color, size: 17)
         } action: {
             nav.selection = .folder(folder.id)
         }
@@ -290,7 +268,7 @@ struct SidebarView: View {
 
     /// ↑/↓ move through the fixed items when the list has keyboard focus.
     private func step(_ delta: Int) -> KeyPress.Result {
-        var items: [SidebarItem] = [.all, .tasks, .calendar, .shared, .templates, .starred]
+        var items: [SidebarItem] = [.all, .starred, .drafts, .notes, .tasks, .shared, .templates]
         items += app.sidebar.folders.map { .folder($0.id) }
         items += app.sidebar.tags.map { .tag($0.id) }
         items += [.archive, .trash]
@@ -300,12 +278,9 @@ struct SidebarView: View {
         return .handled
     }
 
-    private var libraryCount: Int {
-        app.documents.filter { ($0.kind == .document || $0.kind == .daily) && $0.deletedAt == nil && $0.archivedAt == nil && $0.parentDocumentId == nil }.count
-    }
-
-    private var trashCount: Int {
-        app.documents.filter { $0.deletedAt != nil }.count
+    /// Notes that aren't in a folder yet.
+    private var draftCount: Int {
+        app.documents.filter { $0.folderId == nil && ($0.kind == .document || $0.kind == .daily) && $0.deletedAt == nil && $0.archivedAt == nil && $0.parentDocumentId == nil }.count
     }
 
     private var todayTaskCount: Int? { todayTasks }
@@ -342,8 +317,8 @@ func withSidebarAnimation(_ body: () -> Void) {
     }
 }
 
-/// One sidebar row: 32pt, radius 10. Hover = accentSoft; active = raised white pill, heading
-/// semibold text, ember icon; counts in a small pill.
+/// One sidebar row, as the web's NavItem: 32pt, radius 6. Hover = glass hover; active = the glass
+/// "active" fill with its edge, heading semibold text and icon; counts in a small pill (inverted when active).
 struct SidebarRow<Icon: View>: View {
     var title: Text
     var count: Int?
@@ -358,7 +333,7 @@ struct SidebarRow<Icon: View>: View {
             HStack(spacing: 10) {
                 icon
                     .font(.system(size: 13.5, weight: .medium))
-                    .foregroundStyle(isActive ? FoleviColor.ember : hovering ? FoleviColor.heading : FoleviColor.inkMuted)
+                    .foregroundStyle(isActive || hovering ? FoleviColor.heading : FoleviColor.inkMuted)
                     .frame(width: 18)
                     .accessibilityHidden(true)
                 title
@@ -371,28 +346,30 @@ struct SidebarRow<Icon: View>: View {
                     Text("\(count)")
                         .font(.ui(11, .semibold))
                         .monospacedDigit()
-                        .foregroundStyle(isActive ? FoleviColor.emberInk : FoleviColor.inkMuted)
+                        .foregroundStyle(isActive ? FoleviColor.canvas : FoleviColor.inkMuted)
                         .padding(.horizontal, 6)
                         .frame(minWidth: 20, minHeight: 20)
-                        .background(Capsule().fill(isActive ? FoleviColor.emberSoft : FoleviColor.ink.opacity(0.07)))
+                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(isActive ? FoleviColor.heading : FoleviGlass.hover))
                 }
             }
             .padding(.horizontal, 10)
             .frame(height: 32)
             .background {
+                let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
                 if isActive {
-                    Color.clear.foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(FoleviRadius.control), shadow: FoleviShadow.control)
+                    shape.fill(FoleviGlass.active)
+                        .overlay(shape.strokeBorder(Color.black.opacity(0.06), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.06), radius: 1.5, y: 1)
                 } else {
-                    RoundedRectangle(cornerRadius: FoleviRadius.control, style: .continuous)
-                        .fill(hovering ? FoleviColor.accentSoft.opacity(0.75) : .clear)
+                    shape.fill(hovering ? FoleviGlass.hover : .clear)
                 }
             }
             .overlay {
                 if isDropTarget {
-                    RoundedRectangle(cornerRadius: FoleviRadius.control, style: .continuous).strokeBorder(FoleviColor.ember, lineWidth: 2)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(FoleviColor.heading, lineWidth: 2)
                 }
             }
-            .contentShape(RoundedRectangle(cornerRadius: FoleviRadius.control, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

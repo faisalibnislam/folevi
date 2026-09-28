@@ -68,6 +68,8 @@ enum TaskStore {
 
 struct TasksView: View {
     var openDocument: (String, Bool) -> Void
+    /// Opens the calendar (it's reached from Tasks, as on the web).
+    var openCalendar: (() -> Void)?
     @Environment(AppModel.self) private var app
     @State private var view: TaskLogic.View = .today
     @State private var tasks: [LocalTask] = []
@@ -95,9 +97,19 @@ struct TasksView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text(label(view))
-                    .foleviViewTitle(size: 34)
-                    .accessibilityIdentifier("tasks.title")
+                HStack(alignment: .center) {
+                    Text(label(view))
+                        .foleviViewTitle(size: 34)
+                        .accessibilityIdentifier("tasks.title")
+                    Spacer()
+                    if let openCalendar {
+                        Button(action: openCalendar) {
+                            Label("Calendar", systemImage: "calendar")
+                        }
+                        .buttonStyle(.folevi(.secondary))
+                        .accessibilityIdentifier("tasks.calendar")
+                    }
+                }
                 Text("Every task lives in a document. Open its page to see the context it was written in.")
                     .font(.ui(14))
                     .foregroundStyle(FoleviColor.inkMuted)
@@ -105,7 +117,7 @@ struct TasksView: View {
                 tabs
                     .padding(.top, 22)
                 HStack(spacing: 10) {
-                    Image(systemName: "plus").font(.system(size: 12, weight: .semibold)).foregroundStyle(FoleviColor.ember).accessibilityHidden(true)
+                    Image(systemName: "plus").font(.system(size: 12, weight: .semibold)).foregroundStyle(FoleviColor.heading).accessibilityHidden(true)
                     TextField("Add a task to your Inbox", text: $quickTitle)
                         .textFieldStyle(.plain)
                         .font(.ui(14))

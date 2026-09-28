@@ -490,108 +490,174 @@ struct SyncDetailsView: View {
     }
 }
 
-// MARK: - Folio card
+// MARK: - Note card
 
-struct FolioCard: View {
+/// A note in the grid, drawn as a notebook (the web's NoteCardFace): a spine down the left carries the
+/// note's style (its artwork thumbnail, or a light grey for plain notes), and the cover shows the title
+/// (serif), when it was created, its opening text, and a footer with the last edit and its folder (or
+/// Draft). Starred notes get a corner tab. Everything scales with the card's width, as on the web.
+struct NoteCard: View {
     var document: DocumentSummary
-    var compact = false
+    var folder: FolderInfo?
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
-    private var bandHeight: CGFloat { compact ? 52 : 72 }
-    private var iconSize: CGFloat { compact ? 36 : 44 }
+    /// Portrait notebook proportions (25 : 27).
+    static let aspect: CGFloat = 25 / 27
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .bottomLeading) {
-                band
-                    .frame(height: bandHeight)
-                    .overlay(alignment: .bottom) { FoleviColor.line.opacity(0.6).frame(height: 1) }
-                Text(document.icon ?? "📄")
-                    .font(.system(size: compact ? 18 : 22))
-                    .frame(width: iconSize, height: iconSize)
-                    .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(compact ? 10 : 12), shadow: FoleviShadow.control)
-                    .padding(.leading, 18)
-                    .offset(y: iconSize / 2)
-                    .accessibilityHidden(true)
+        GeometryReader { geo in
+            let u = geo.size.width / 100 // the web's cqw
+            let shape = UnevenRoundedRectangle(topLeadingRadius: 0.8 * u, bottomLeadingRadius: 0.8 * u, bottomTrailingRadius: 4.6 * u, topTrailingRadius: 4.6 * u, style: .continuous)
+            ZStack(alignment: .topLeading) {
+                // The page block, peeking out past the cover's open edge and bottom.
+                shape.fill(FoleviColor.heading.mix(with: FoleviColor.canvas, by: 0.87))
+                    .padding(.leading, geo.size.width * 0.01)
+                    .padding(.top, geo.size.height * 0.014)
+                cover(u: u, shape: shape)
+                    .padding(.trailing, u)
+                    .padding(.bottom, u)
             }
-            .zIndex(1)
-            VStack(alignment: .leading, spacing: 7) {
-                Text(document.displayTitle)
-                    .font(.document(document.style.font, compact ? 15 : 16.5, .semibold))
-                    .tracking(document.style.font == .sans ? FoleviTracking.snug * 16 : 0)
-                    .foregroundStyle(FoleviColor.heading)
-                    .lineLimit(2)
-                if !compact {
-                    Text(document.excerpt.isEmpty ? String(localized: "Empty page") : document.excerpt)
-                        .font(.ui(13))
-                        .lineSpacing(3)
-                        .foregroundStyle(FoleviColor.inkMuted)
-                        .lineLimit(3)
-                }
-                Spacer(minLength: 0)
-                HStack(spacing: 5) {
-                    Text("Edited \(Text(Date(timeIntervalSince1970: document.updatedAt / 1000), format: .relative(presentation: .named)))")
-                    if let tag = document.tags?.first {
-                        Text("·")
-                        Text("#\(tag.name)")
-                    }
-                }
-                .font(.ui(12))
-                .foregroundStyle(FoleviColor.inkFaint)
-                .lineLimit(1)
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, iconSize / 2 + 12)
-            .padding(.bottom, 16)
         }
-        .frame(height: compact ? 150 : 250)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .foleviSurface(fill, shape: .rounded(18), shadow: shadow)
+        .aspectRatio(Self.aspect, contentMode: .fit)
+        .shadow(color: .black.opacity(hovering ? 0.24 : 0.2), radius: hovering ? 18 : 15, x: hovering ? -5 : -4, y: hovering ? 12 : 9)
         .offset(y: hovering && !reduceMotion ? -2 : 0)
         .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)
-        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(document.displayTitle))
-        .accessibilityHint(Text("Opens the document"))
+        .accessibilityHint(Text("Opens the note"))
     }
 
-    private var accentKey: DocumentAccent {
-        document.cover.value.flatMap(DocumentAccent.init(rawValue:)) ?? document.style.accent
-    }
-
-    /// Card style (Folio / Plain / Tinted / Outline) from the page's style.
-    private var fill: SurfaceFill {
-        switch document.style.card {
-        case .tinted: return .color(Color.folevi(accentSoft: accentKey).mix(with: FoleviColor.surface, by: 0.45))
-        case .plain: return .color(FoleviColor.surfaceRaised)
-        default: return .color(FoleviColor.surface)
+    private func cover(u: CGFloat, shape: UnevenRoundedRectangle) -> some View {
+        HStack(spacing: 0) {
+            spine
+                .frame(width: 6 * u)
+                .overlay(alignment: .trailing) { Color.black.opacity(0.06).frame(width: 1) }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(document.displayTitle)
+                    .font(.serif(6.6 * u, .medium))
+                    .tracking(0.005 * 6.6 * u)
+                    .foregroundStyle(FoleviColor.heading)
+                    .lineLimit(2)
+                    .padding(.trailing, 7 * u)
+                Text(Date(timeIntervalSince1970: document.createdAt / 1000), format: .dateTime.day().month(.wide).year())
+                    .font(.ui(4.5 * u))
+                    .foregroundStyle(FoleviColor.inkFaint)
+                    .lineLimit(1)
+                    .padding(.top, u)
+                Text(document.excerpt.isEmpty ? String(localized: "Empty page") : document.excerpt)
+                    .font(.ui(3.6 * u))
+                    .italic(document.excerpt.isEmpty)
+                    .lineSpacing(1.4 * u)
+                    .foregroundStyle(FoleviColor.inkFaint)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, 4.6 * u)
+                    .clipped()
+                footer(u: u)
+                    .frame(height: 8.6 * u)
+                    .padding(.top, 3.5 * u)
+            }
+            .padding(EdgeInsets(top: 8 * u, leading: 7 * u, bottom: 6 * u, trailing: 6 * u))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-    }
-
-    private var shadow: [FoleviShadowLayer] {
-        switch document.style.card {
-        case .outline:
-            return [FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: FoleviColor.lineStrong, inset: false)] + (hovering ? FoleviShadow.card : [])
-        case .plain:
-            return hovering ? FoleviShadow.card : FoleviShadow.hairline
-        default:
-            return hovering ? FoleviShadow.pop : FoleviShadow.card
-        }
-    }
-
-    /// Cover band: the page accent's soft multi-glow (stronger when the page has a cover).
-    private var band: some View {
-        let kind = document.cover.kind
-        let hasCover = kind == .color || kind == .gradient || kind == .art
-        return Group {
-            if kind == .art, let image = CoverArt.image(document.cover.value) {
-                ArtCoverImage(image: image)
-            } else {
-                CoverGlow(accent: Color.folevi(accent: accentKey), soft: Color.folevi(accentSoft: accentKey), intensity: hasCover ? 0.85 : 0.3)
+        .background(FoleviColor.surface)
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(Color.black.opacity(0.05), lineWidth: 1))
+        .overlay(alignment: .topTrailing) {
+            if document.starred == true {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 5.6 * u))
+                    .foregroundStyle(FoleviColor.heading)
+                    .frame(width: 12 * u, height: 12 * u)
+                    .background(chip, in: UnevenRoundedRectangle(bottomLeadingRadius: 2 * u, style: .continuous))
+                    .clipShape(shape)
+                    .accessibilityLabel(Text("Starred"))
             }
         }
+    }
+
+    /// The spine: the note's style artwork, or a very light grey for plain notes.
+    @ViewBuilder private var spine: some View {
+        if document.cover.kind == .art, let image = CoverArt.thumbnail(document.cover.value) {
+            ArtCoverImage(image: image)
+        } else {
+            FoleviColor.heading.mix(with: FoleviColor.canvas, by: 0.93)
+        }
+    }
+
+    private var chip: Color { FoleviColor.line.opacity(0.75) }
+
+    private func footer(u: CGFloat) -> some View {
+        HStack(spacing: 2 * u) {
+            Text(Date(timeIntervalSince1970: document.updatedAt / 1000), format: .relative(presentation: .named))
+                .foregroundStyle(FoleviColor.inkMuted)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 1.8 * u) {
+                if let folder {
+                    FolderGlyph(color: folder.color, size: 4.4 * u)
+                } else {
+                    Image(systemName: "pencil.line")
+                        .font(.system(size: 3.8 * u, weight: .semibold))
+                        .foregroundStyle(FoleviColor.heading)
+                }
+                Text(folder?.name ?? String(localized: "Draft"))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(FoleviColor.heading)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 3 * u)
+            .frame(maxHeight: .infinity)
+            .background(chip, in: RoundedRectangle(cornerRadius: 1.5 * u, style: .continuous))
+            .frame(maxWidth: 55 * u, alignment: .trailing)
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .font(.ui(3.8 * u))
+    }
+}
+
+/// The compact card (Compact layout): title and folder, as the web's DocumentCardPreview.
+struct CompactNoteCard: View {
+    var document: DocumentSummary
+    var folder: FolderInfo?
+    @State private var hovering = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(document.displayTitle)
+                .font(.serif(16.5, .semibold))
+                .foregroundStyle(FoleviColor.heading)
+                .lineLimit(2)
+            Spacer(minLength: 8)
+            HStack(spacing: 6) {
+                Text(folder?.name ?? String(localized: "Draft"))
+                Text("·")
+                Text(Date(timeIntervalSince1970: document.updatedAt / 1000), format: .relative(presentation: .named))
+            }
+            .font(.ui(11.5))
+            .foregroundStyle(FoleviColor.inkFaint)
+            .lineLimit(1)
+        }
+        .padding(14)
+        .frame(height: 120, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FoleviColor.surface, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.black.opacity(0.05)))
+        .shadow(color: .black.opacity(hovering ? 0.12 : 0.06), radius: hovering ? 10 : 4, y: 2)
+        .onHover { hovering = $0 }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+extension Color {
+    /// `#RRGGBB`.
+    init?(hex: String) {
+        let s = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
+        self.init(red: Double((v >> 16) & 255) / 255, green: Double((v >> 8) & 255) / 255, blue: Double(v & 255) / 255)
     }
 }
 

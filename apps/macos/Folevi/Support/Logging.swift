@@ -37,6 +37,15 @@ enum LaunchOptions {
         if let t = ProcessInfo.processInfo.environment["FOLEVI_DEV_TOKEN"], !t.isEmpty { return t }
         return nil
     }
+
+    /// `FOLEVI_DEV_SESSION=<session token>` (DEBUG builds only): signs in with a Folevi session from the
+    /// local web app (e.g. one minted by apps/web/e2e for a test account), kept in memory — never written to
+    /// the Keychain — and renewed like a real sign-in. For screenshots and automation. Taken from the
+    /// environment only, so it never shows up in the process's arguments.
+    static var devSession: String? {
+        guard let t = ProcessInfo.processInfo.environment["FOLEVI_DEV_SESSION"], !t.isEmpty else { return nil }
+        return t
+    }
     #endif
 
     /// Wipes local state and cached credentials on launch (UI tests).

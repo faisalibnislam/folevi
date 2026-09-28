@@ -14,7 +14,8 @@ struct BrowserView: View {
         switch selection {
         case .folder(let id): return app.sidebar.folders.first { $0.id == id }?.name ?? String(localized: "Folder")
         case .tag(let id): return app.sidebar.tags.first { $0.id == id }.map { "#" + $0.name } ?? String(localized: "Tag")
-        case .all: return String(localized: "Home")
+        case .notes: return String(localized: "All notes")
+        case .drafts: return String(localized: "Drafts")
         case .templates: return String(localized: "Templates")
         case .starred: return String(localized: "Starred")
         case .archive: return String(localized: "Archive")
@@ -41,7 +42,9 @@ struct BrowserView: View {
             docs = app.documents.filter { d in
                 switch selection {
                 // Former Daily Notes are ordinary pages now.
-                case .all: return (d.kind == .document || d.kind == .daily) && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
+                case .notes: return (d.kind == .document || d.kind == .daily) && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
+                // Drafts: notes that aren't in a folder yet.
+                case .drafts: return d.folderId == nil && (d.kind == .document || d.kind == .daily) && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
                 case .folder(let id): return d.folderId == id && (d.kind == .document || d.kind == .daily) && d.deletedAt == nil && d.archivedAt == nil && d.parentDocumentId == nil
                 case .templates: return d.kind == .template && d.deletedAt == nil
                 case .archive: return d.archivedAt != nil && d.deletedAt == nil
@@ -68,7 +71,7 @@ struct BrowserView: View {
                 } else {
                     switch nav.layout {
                     case .grid, .compact:
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: nav.layout == .grid ? 236 : 188, maximum: 340), spacing: 20)], spacing: 20) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: nav.layout == .grid ? 230 : 188, maximum: nav.layout == .grid ? 290 : 340), spacing: nav.layout == .grid ? 32 : 20)], spacing: nav.layout == .grid ? 36 : 20) {
                             ForEach(docs) { doc in card(doc) }
                         }
                         .padding(.top, 22)
@@ -154,7 +157,14 @@ struct BrowserView: View {
     }
 
     private func card(_ doc: DocumentSummary) -> some View {
-        FolioCard(document: doc, compact: nav.layout == .compact)
+        let folder = doc.folderId.flatMap { id in app.sidebar.folders.first { $0.id == id } }
+        return Group {
+            if nav.layout == .compact {
+                CompactNoteCard(document: doc, folder: folder)
+            } else {
+                NoteCard(document: doc, folder: folder)
+            }
+        }
             .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
             .draggable(DocumentDragPayload(documentId: doc.id)) {
                 Text(doc.displayTitle).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading)

@@ -12,6 +12,7 @@
 //   apps/web/public/icons/icon-192.png, -512.png   rounded tile (install icons)
 //   apps/web/public/icons/icon-maskable-512.png    full bleed (Android masks it)
 //   apps/macos/…/Assets.xcassets/FoleviMark.imageset   the mark for the Mac app's UI
+//   apps/macos/…/Assets.xcassets/FoleviWordmark.imageset   the logo's letters (template), for FoleviLogo
 //   packages/design-tokens/brand/app-icon/
 //     folevi-app-icon-1024.png                     iOS / iPadOS (full bleed)
 //     folevi-macos-1024.png                        macOS: rounded tile on the 1024 canvas with margin and shadow
@@ -95,6 +96,29 @@ writeFileSync(
         { filename: "folevi-mark@2x.png", idiom: "universal", scale: "2x" },
       ],
       info: { author: "xcode", version: 1 },
+    },
+    null,
+    2,
+  )}\n`,
+);
+
+// The logo's letters alone, on the logo's 900 x 236 canvas (the mark's square left empty), as a template
+// image so the Mac tints it with the text colour — the mark is drawn beside it (FoleviLogo in Swift).
+const logoSvg = readFileSync(resolve(brand, "source/logo.svg"), "utf8");
+const letters = logoSvg.slice(0, logoSvg.indexOf("<g")).match(/<path d="[^"]+" fill="black"\/>/g) ?? [];
+const lettersSvg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="236" viewBox="0 0 900 236">${letters.join("")}</svg>`);
+const wordSet = resolve(macAssets, "FoleviWordmark.imageset");
+mkdirSync(wordSet, { recursive: true });
+for (const [scale, h] of [[1, 26], [2, 52], [3, 78]]) {
+  await save(sharp(lettersSvg, { density: 300 }).resize(Math.round((h * 900) / 236), h), resolve(wordSet, `folevi-wordmark@${scale}x.png`));
+}
+writeFileSync(
+  resolve(wordSet, "Contents.json"),
+  `${JSON.stringify(
+    {
+      images: [1, 2, 3].map((n) => ({ filename: `folevi-wordmark@${n}x.png`, idiom: "universal", scale: `${n}x` })),
+      info: { author: "xcode", version: 1 },
+      properties: { "template-rendering-intent": "template" },
     },
     null,
     2,

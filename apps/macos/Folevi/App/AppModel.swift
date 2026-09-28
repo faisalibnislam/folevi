@@ -157,6 +157,12 @@ final class AppModel {
             return
         }
         #if DEBUG
+        if let session = LaunchOptions.devSession, let account = authProvider.account {
+            account.useEphemeralSession(session)
+            authProvider.setMode(.ephemeral)
+            await signIn(interactive: false)
+            return
+        }
         if let token = LaunchOptions.devToken {
             authProvider.setMode(.token(token))
             await signIn(interactive: true)

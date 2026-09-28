@@ -87,6 +87,8 @@ final class FoleviAccountAuth: @unchecked Sendable {
     private let http: URLSession
     private let lock = NSLock()
     private var cached: FoleviCredentials?
+    /// DEBUG automation only: a session kept in memory instead of the Keychain.
+    private var ephemeralSession: String?
 
     init(origin: URL, keychain: Keychain = .app, http: URLSession = .shared) {
         self.origin = origin
@@ -94,7 +96,24 @@ final class FoleviAccountAuth: @unchecked Sendable {
         self.http = http
     }
 
-    var hasSession: Bool { keychain.string(for: Self.sessionKey) != nil }
+    var hasSession: Bool { storedSession != nil }
+
+    private var storedSession: String? {
+        lock.lock()
+        let ephemeral = ephemeralSession
+        lock.unlock()
+        return ephemeral ?? keychain.string(for: Self.sessionKey)
+    }
+
+    #if DEBUG
+    /// Uses `token` for this process only (see `LaunchOptions.devSession`).
+    func useEphemeralSession(_ token: String) {
+        lock.lock()
+        ephemeralSession = token
+        cached = nil
+        lock.unlock()
+    }
+    #endif
 
     private var originHeader: String {
         var comps = URLComponents()
@@ -148,7 +167,7 @@ final class FoleviAccountAuth: @unchecked Sendable {
     /// Network failures are rethrown as they are (the app keeps working offline and retries).
     func credentials(minTTL: TimeInterval = 120) async throws -> FoleviCredentials {
         if let c = getCached(), let exp = c.expiresAt, exp.timeIntervalSinceNow > minTTL { return c }
-        guard let session = keychain.string(for: Self.sessionKey) else { throw FoleviError.notSignedIn }
+        guard let session = storedSession else { throw FoleviError.notSignedIn }
         var request = URLRequest(url: endpoint("api/auth/convex/token"), timeoutInterval: 20)
         request.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await http.data(for: request)
@@ -168,7 +187,7 @@ final class FoleviAccountAuth: @unchecked Sendable {
 
     /// Ends this Mac's session on the server (best effort) and forgets it here.
     func signOut() async {
-        if let session = keychain.string(for: Self.sessionKey) {
+        if let session = storedSession {
             var request = URLRequest(url: endpoint("api/auth/sign-out"), timeoutInterval: 10)
             request.httpMethod = "POST"
             request.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
@@ -182,7 +201,11 @@ final class FoleviAccountAuth: @unchecked Sendable {
     }
 
     func forget() {
-        try? keychain.delete(Self.sessionKey)
+        lock.lock()
+        let ephemeral = ephemeralSession != nil
+        ephemeralSession = nil
+        lock.unlock()
+        if !ephemeral { try? keychain.delete(Self.sessionKey) }
         setCached(nil)
     }
 
@@ -218,6 +241,8 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
         case folevi
         #if DEBUG
         case token(String)
+        /// A Folevi session kept in memory (LaunchOptions.devSession); nothing is saved.
+        case ephemeral
         #endif
     }
 
@@ -265,6 +290,9 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
     }
 
     private func remember(_ creds: FoleviCredentials) {
+        #if DEBUG
+        if case .ephemeral = currentMode { return }
+        #endif
         try? keychain.setString(creds.method.rawValue, for: "session.method")
         #if DEBUG
         if creds.method == .developerToken { try? keychain.setString(creds.idToken, for: "dev.token") }
@@ -272,6 +300,12 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
     }
 
     func clearSaved() {
+        #if DEBUG
+        if case .ephemeral = currentMode {
+            account?.forget()
+            return
+        }
+        #endif
         for key in ["session.method", "dev.token", "dev.email", "dev.name"] { try? keychain.delete(key) }
         account?.forget()
     }
@@ -293,7 +327,13 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
     }
 
     func logout() async throws {
-        if case .folevi = currentMode { await account?.signOut() }
+        switch currentMode {
+        case .folevi: await account?.signOut()
+        #if DEBUG
+        case .ephemeral: account?.forget()
+        #endif
+        default: break
+        }
         clearSaved()
         setMode(.none)
     }
@@ -312,6 +352,9 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
         #if DEBUG
         case .token(let token):
             return FoleviCredentials(idToken: token, expiresAt: JWT.expiry(token), method: .developerToken)
+        case .ephemeral:
+            guard let account else { throw FoleviError.notConfigured }
+            return try await account.credentials()
         #endif
         }
     }

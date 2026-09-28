@@ -506,7 +506,7 @@ private struct ArtThumb: View {
     var body: some View {
         Button(action: action) {
             Group {
-                if let image = CoverArt.image(art.id) {
+                if let image = CoverArt.thumbnail(art.id) {
                     ArtCoverImage(image: image)
                 } else {
                     FoleviColor.surfaceSunken

@@ -62,6 +62,8 @@ struct FolderInfo: Codable, Sendable, Hashable, Identifiable {
     var icon: String?
     var parentFolderId: String?
     var rank: String
+    /// The folder's colour (hex), when it has one.
+    var color: String?
 }
 
 struct TagInfo: Codable, Sendable, Hashable, Identifiable {

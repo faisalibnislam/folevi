@@ -40,6 +40,12 @@ identity service to deploy.
    non-production values (`FOLEVI_ENV=preview`, its own `BETTER_AUTH_SECRET`, `SITE_URL` = the preview
    origin). `FOLEVI_DEV_MAILBOX_SECRET` and `FOLEVI_AUTH_RATE_LIMIT_SCALE` are allowed here.
 
+Shortcut: with your Convex production deploy key exported as `CONVEX_DEPLOY_KEY`, run
+`bash scripts/setup-production-env.sh`. It sets the plain settings, generates the random secrets
+(server secret — the same value in Vercel and Convex — Better Auth secret, hash salt, file-URL secret)
+straight into Vercel and Convex without printing them, adds the deploy key to Vercel, and asks for the
+Loops key with hidden input. Existing values are kept unless you pass `--rotate`.
+
 ## 2. Vercel
 
 1. Import the GitHub repository. Root directory: `apps/web`. Framework: Next.js. Keep "Include files outside

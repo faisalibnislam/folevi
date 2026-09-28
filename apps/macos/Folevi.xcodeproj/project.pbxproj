@@ -105,6 +105,7 @@
 		F08B11222441F976CC26868E /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */; };
 		F2F3CC2B3BDB6B92261BFB14 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */; };
 		F720C829FD78D2FBC5B738D1 /* TasksAndSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */; };
+		F8D0B1671DE2C0A0F484B353 /* TabStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F406F4BC175F6055EDF933 /* TabStrip.swift */; };
 		F9D533A2F1721D4D315E57FE /* Templates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */; };
 /* End PBXBuildFile section */
 
@@ -127,6 +128,7 @@
 		1537182453B34751A655E02B /* FlexibleDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlexibleDecoding.swift; sourceTree = "<group>"; };
 		160F2F7A5055D14E027F9A6D /* SheetPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetPalette.swift; sourceTree = "<group>"; };
 		190C86CC285A3AF163AA972F /* FoleviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviApp.swift; sourceTree = "<group>"; };
+		20F406F4BC175F6055EDF933 /* TabStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStrip.swift; sourceTree = "<group>"; };
 		22AEE9F0D974540815E971F6 /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
 		232119F7184516D1E495B084 /* BlockDropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDropTests.swift; sourceTree = "<group>"; };
 		254FC1B4800C33B010EDCF13 /* AiViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiViews.swift; sourceTree = "<group>"; };
@@ -381,6 +383,7 @@
 				EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */,
 				108029BC222AB2486B986775 /* NoteSidebar.swift */,
 				305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */,
+				20F406F4BC175F6055EDF933 /* TabStrip.swift */,
 				D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */,
 				934BBAF4E5C10A62E553FE7B /* Toolbar.swift */,
 			);
@@ -748,6 +751,7 @@
 				D71AC08E27E4ACE8790C1554 /* Surfaces.swift in Sources */,
 				41203E06365B91E1168CFCFB /* SyncEngine.swift in Sources */,
 				35B82347CCE496556BB3290D /* SyncReducer.swift in Sources */,
+				F8D0B1671DE2C0A0F484B353 /* TabStrip.swift in Sources */,
 				F720C829FD78D2FBC5B738D1 /* TasksAndSearch.swift in Sources */,
 				8A1308644B77A49A783E3B72 /* TasksView.swift in Sources */,
 				F9D533A2F1721D4D315E57FE /* Templates.swift in Sources */,

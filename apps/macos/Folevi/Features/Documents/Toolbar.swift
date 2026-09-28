@@ -175,9 +175,15 @@ struct MainToolbar: View {
                 IconButton(systemImage: "sidebar.left", label: "Show Sidebar", shortcutHint: "⌃⌘S", size: 28) { withSidebarAnimation { nav.toggleSidebar() } }
             }
             if showsHistory { BackForwardPill(nav: nav) }
-            BreadcrumbBar(crumbs: crumbs)
-                .padding(.leading, 2)
-            Spacer(minLength: 8)
+            if hasSidebar {
+                // The main window: tabs, as on the web.
+                TabStrip(nav: nav)
+                    .padding(.leading, 2)
+            } else {
+                BreadcrumbBar(crumbs: crumbs)
+                    .padding(.leading, 2)
+                Spacer(minLength: 8)
+            }
             trailing
         }
         .padding(.horizontal, 14)
@@ -190,7 +196,7 @@ struct MainToolbar: View {
             SyncStatusPill(snapshot: app.sync)
                 .frame(width: 118)
                 .padding(.trailing, 4)
-            if editor == nil, let primary {
+            if hasSidebar || editor == nil, let primary {
                 Button(action: primary.action) {
                     Label(primary.title, systemImage: primary.systemImage)
                 }
@@ -198,19 +204,13 @@ struct MainToolbar: View {
                 .padding(.trailing, 2)
             }
             if let editor {
-                IconButton(systemImage: "text.bubble", label: "Comments", size: 30,
-                           isActive: nav.showInspector && nav.inspectorTab == .comments) {
-                    if nav.showInspector && nav.inspectorTab == .comments { nav.showInspector = false } else {
-                        nav.inspectorTab = .comments
-                        nav.showInspector = true
-                    }
-                }
+                // Comments live in the note's dock (NoteDock), as on the web.
                 ShareLink(item: MarkdownShareItem(title: editor.document?.displayTitle ?? "Untitled",
                                                   markdown: MarkdownCodec.blocksToMarkdown(editor.exportBlocks(), .init(title: editor.document?.displayTitle))),
                           preview: SharePreview(editor.document?.displayTitle ?? "Untitled")) {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
-                .buttonStyle(.folevi(.primary, .medium))
+                .buttonStyle(.folevi(.secondary, .medium))
                 .help(Text("Share as Markdown"))
                 .padding(.horizontal, 2)
                 DocumentMoreMenu(editor: editor, nav: nav)

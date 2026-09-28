@@ -105,13 +105,15 @@ struct MainWindowView: View {
     }
 
     private var primaryAction: (title: LocalizedStringKey, systemImage: String, action: () -> Void)? {
-        switch nav.selection {
+        // On a note, as on the web: always "New note".
+        let selection: SidebarItem = editorIfOpen == nil ? nav.selection : .notes
+        switch selection {
         case .tasks:
             return ("Add Task", "plus", { NotificationCenter.default.post(name: .foleviFocusQuickTask, object: nil) })
         case .calendar, .shared, .trash, .archive, .starred, .tag:
             return nil
         default:
-            return ("New", "plus", {
+            return ("New note", "plus", {
                 Task {
                     var folderId: String?
                     if case .folder(let fid) = nav.selection { folderId = fid }
@@ -226,7 +228,7 @@ struct DocumentWindowView: View {
     let documentId: String
     @Environment(AppModel.self) private var app
     @Environment(\.openWindow) private var openWindow
-    @State private var nav = NavigationModel()
+    @State private var nav = NavigationModel(persistsTabs: false)
     @State private var editor: EditorModel?
 
     var body: some View {

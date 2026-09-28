@@ -168,9 +168,54 @@ final class NavigationModel {
     }
 
     func open(_ documentId: String) {
+        addTab(documentId)
         guard documentId != openDocumentId else { return }
         pushHistory(current)
         openDocumentId = documentId
+    }
+
+    // MARK: Tabs
+
+    /// Open notes as tabs (the web's tab strip), remembered for the main window.
+    var tabs: [String] = (UserDefaults.standard.array(forKey: "openTabs") as? [String]) ?? [] {
+        didSet { if persistsTabs { UserDefaults.standard.set(tabs, forKey: "openTabs") } }
+    }
+    /// Document windows keep their own tabs out of the saved list.
+    let persistsTabs: Bool
+
+    init(persistsTabs: Bool = true) {
+        self.persistsTabs = persistsTabs
+        if !persistsTabs { tabs = [] }
+    }
+    private static let maxTabs = 8
+
+    func addTab(_ documentId: String) {
+        guard !tabs.contains(documentId) else { return }
+        tabs.append(documentId)
+        // Drop the oldest tabs that aren't open.
+        while tabs.count > Self.maxTabs, let drop = tabs.first(where: { $0 != openDocumentId && $0 != documentId }) {
+            tabs.removeAll { $0 == drop }
+        }
+    }
+
+    /// Closes a tab; closing the open note opens its neighbour, or goes back to the list.
+    func closeTab(_ documentId: String) {
+        guard let index = tabs.firstIndex(of: documentId) else { return }
+        tabs.remove(at: index)
+        guard documentId == openDocumentId else { return }
+        if tabs.isEmpty {
+            closeDocument()
+        } else {
+            let next = tabs[min(index, tabs.count - 1)]
+            pushHistory(current)
+            openDocumentId = next
+        }
+    }
+
+    /// Forgets tabs for notes that no longer exist here (deleted or never synced).
+    func pruneTabs(existing: Set<String>) {
+        let kept = tabs.filter { existing.contains($0) }
+        if kept != tabs { tabs = kept }
     }
 
     func closeDocument() {

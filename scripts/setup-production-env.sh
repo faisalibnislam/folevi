@@ -19,6 +19,10 @@ if [[ -z "${CONVEX_DEPLOY_KEY:-}" || "${CONVEX_DEPLOY_KEY}" != prod:* ]]; then
   echo "Set CONVEX_DEPLOY_KEY to your Convex *production* deploy key first (it starts with 'prod:')." >&2
   exit 1
 fi
+if [[ "${CONVEX_DEPLOY_KEY}" == *"…"* || "${CONVEX_DEPLOY_KEY}" == *"your key"* || ${#CONVEX_DEPLOY_KEY} -lt 20 ]]; then
+  echo "CONVEX_DEPLOY_KEY looks like the example placeholder. Paste your real production deploy key." >&2
+  exit 1
+fi
 command -v vercel >/dev/null || { echo "Install the Vercel CLI first: npm i -g vercel" >&2; exit 1; }
 
 random() { openssl rand -base64 32 | tr -d '\n'; }

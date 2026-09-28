@@ -25,6 +25,13 @@ if [[ "${CONVEX_DEPLOY_KEY}" == *"…"* || "${CONVEX_DEPLOY_KEY}" == *"your key"
 fi
 command -v vercel >/dev/null || { echo "Install the Vercel CLI first: npm i -g vercel" >&2; exit 1; }
 
+# Check the key with Convex before changing anything anywhere.
+if ! npx convex env list >/dev/null 2>&1; then
+  echo "Convex didn't accept CONVEX_DEPLOY_KEY. In the Convex dashboard open your project → Settings →" >&2
+  echo "URL & Deploy Key, generate a new *Production* deploy key, export it, and run this again." >&2
+  exit 1
+fi
+
 random() { openssl rand -base64 32 | tr -d '\n'; }
 
 vercel_has() { vercel env ls production --scope "$SCOPE" --project "$PROJECT" 2>/dev/null | grep -q "^ *$1 "; }
@@ -38,26 +45,29 @@ vercel_set() { # name value — Production only, value on stdin (never on the co
 }
 
 convex_has() { npx convex env get "$1" >/dev/null 2>&1; }
-convex_set() { # name value
-  if convex_has "$1" && [[ "$ROTATE" != "--rotate" ]]; then echo "Convex $1 already set — kept."; return; fi
-  npx convex env set "$1" "$2" >/dev/null
+convex_put() { # name value — always writes; stops the script if Convex refuses
+  if ! npx convex env set "$1" "$2" >/dev/null 2>&1; then echo "Convex refused to set $1 — stopping." >&2; exit 1; fi
   echo "Convex $1 set."
+}
+convex_set() { # name value — keeps an existing value unless --rotate
+  if convex_has "$1" && [[ "$ROTATE" != "--rotate" ]]; then echo "Convex $1 already set — kept."; return; fi
+  convex_put "$1" "$2"
 }
 
 echo "Vercel project $SCOPE/$PROJECT, Convex production deployment from CONVEX_DEPLOY_KEY."
 
 # Plain settings.
-npx convex env set FOLEVI_ENV production >/dev/null && echo "Convex FOLEVI_ENV set."
-npx convex env set FOLEVI_APP_URL "$APP_URL" >/dev/null && echo "Convex FOLEVI_APP_URL set."
-npx convex env set SITE_URL "$APP_URL" >/dev/null && echo "Convex SITE_URL set."
+convex_put FOLEVI_ENV production
+convex_put FOLEVI_APP_URL "$APP_URL"
+convex_put SITE_URL "$APP_URL"
 
 # Shared between Vercel and Convex: one value, set on both.
 if vercel_has FOLEVI_SERVER_SECRET && convex_has FOLEVI_SERVER_SECRET && [[ "$ROTATE" != "--rotate" ]]; then
   echo "FOLEVI_SERVER_SECRET already set on both — kept."
 else
   shared="$(random)"
+  convex_put FOLEVI_SERVER_SECRET "$shared"
   ROTATE="--rotate" vercel_set FOLEVI_SERVER_SECRET "$shared"
-  npx convex env set FOLEVI_SERVER_SECRET "$shared" >/dev/null && echo "Convex FOLEVI_SERVER_SECRET set."
   unset shared
 fi
 
@@ -72,7 +82,7 @@ vercel_set CONVEX_DEPLOY_KEY "$CONVEX_DEPLOY_KEY"
 # Loops (transactional email). Hidden input; skip with Enter and add it later.
 if ! convex_has LOOPS_API_KEY || [[ "$ROTATE" == "--rotate" ]]; then
   read -r -s -p "Loops API key (hidden; Enter to skip): " loops; echo
-  if [[ -n "$loops" ]]; then npx convex env set LOOPS_API_KEY "$loops" >/dev/null && echo "Convex LOOPS_API_KEY set."; fi
+  if [[ -n "$loops" ]]; then convex_put LOOPS_API_KEY "$loops"; fi
   unset loops
 fi
 

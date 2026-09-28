@@ -372,3 +372,12 @@ struct PullResponse: Decodable, Sendable {
 }
 
 struct EmptyResult: Decodable, Sendable {}
+
+/// A built-in template ("builtin:<key>").
+struct BuiltInTemplate: Codable, Sendable, Hashable, Identifiable {
+    var key: String
+    var name: String
+    var description: String
+    var icon: String
+    var id: String { key }
+}

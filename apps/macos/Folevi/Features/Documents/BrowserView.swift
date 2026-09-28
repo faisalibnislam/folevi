@@ -66,6 +66,9 @@ struct BrowserView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header(count: docs.count)
+                if selection == .templates {
+                    BuiltInTemplatesSection(openDocument: openDocument)
+                }
                 if docs.isEmpty {
                     empty.frame(minHeight: 420)
                 } else {
@@ -144,7 +147,7 @@ struct BrowserView: View {
         case .starred:
             EmptyStateView(systemImage: "star", title: "No starred documents",
                            message: app.sync.isOnline ? "Star documents to keep them close." : "Starred documents appear here when you're online.")
-        case .templates: EmptyStateView(systemImage: "square.on.square.dashed", title: "No templates", message: "Templates you save appear here.")
+        case .templates: EmptyStateView(systemImage: "square.on.square.dashed", title: "No templates of your own yet", message: "Save a page as a template and it appears here.")
         default:
             EmptyStateView(systemImage: "doc.on.doc", title: "Nothing here yet", message: "Create a document to begin.", actionTitle: "New Document") {
                 Task {

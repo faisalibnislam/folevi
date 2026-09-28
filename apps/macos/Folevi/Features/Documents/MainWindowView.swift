@@ -161,6 +161,7 @@ struct MainWindowView: View {
             case "folders": nav.selection = .folders
             case "notes": nav.selection = .notes
             case "drafts": nav.selection = .drafts
+            case "templates": nav.selection = .templates
             default: break
             }
         }

@@ -50,6 +50,18 @@ struct AccountRepository: Sendable {
 struct DocumentsRepository: Sendable {
     let convex: ConvexService
 
+    /// The built-in templates this deployment offers (settings:builtInTemplates).
+    func builtInTemplates() async throws -> [BuiltInTemplate] { try await convex.query("settings:builtInTemplates") }
+
+    /// Creates a note from a template online; the server fills in the template's blocks.
+    func createFromTemplate(id: String, workspaceId: String, templateId: String, title: String, folderId: String?) async throws {
+        var args: [String: JSONValue] = [
+            "id": .string(id), "workspaceId": .string(workspaceId), "templateId": .string(templateId), "title": .string(title),
+        ]
+        if let folderId { args["folderId"] = .string(folderId) }
+        try await convex.mutationVoid("documents:create", args)
+    }
+
     func list(workspaceId: String, view: String, folderId: String? = nil, tagId: String? = nil, sort: String = "updated") async throws -> [DocumentSummary] {
         var args: [String: JSONValue] = [
             "workspaceId": .string(workspaceId), "view": .string(view), "sort": .string(sort),

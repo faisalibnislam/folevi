@@ -103,6 +103,7 @@
 		F08B11222441F976CC26868E /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */; };
 		F2F3CC2B3BDB6B92261BFB14 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */; };
 		F720C829FD78D2FBC5B738D1 /* TasksAndSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */; };
+		F9D533A2F1721D4D315E57FE /* Templates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -181,6 +182,7 @@
 		C79F8DBDD8CC37789B62517B /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Whiteboard.swift; sourceTree = "<group>"; };
 		CACD826A2F5AD954969F8FF4 /* FoleviTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Templates.swift; sourceTree = "<group>"; };
 		D521EF350EAE4076E43AE4EB /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		DA763499A687D1E479FDAEC4 /* FoleviMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviMark.swift; sourceTree = "<group>"; };
 		DFAE0742A02D411799235409 /* RankTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankTests.swift; sourceTree = "<group>"; };
@@ -373,6 +375,7 @@
 				34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */,
 				EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */,
 				305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */,
+				D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */,
 				934BBAF4E5C10A62E553FE7B /* Toolbar.swift */,
 			);
 			path = Documents;
@@ -739,6 +742,7 @@
 				35B82347CCE496556BB3290D /* SyncReducer.swift in Sources */,
 				F720C829FD78D2FBC5B738D1 /* TasksAndSearch.swift in Sources */,
 				8A1308644B77A49A783E3B72 /* TasksView.swift in Sources */,
+				F9D533A2F1721D4D315E57FE /* Templates.swift in Sources */,
 				0DDC7B49D4B86550B1C7CDFA /* Toolbar.swift in Sources */,
 				713250803A20F82A4D87A671 /* Tree.swift in Sources */,
 				0F42CEA902572E751C8832F7 /* Typography.swift in Sources */,

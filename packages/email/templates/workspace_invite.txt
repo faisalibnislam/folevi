@@ -14,4 +14,4 @@ were not expecting it, you can ignore this email.
 --
 You received this because someone invited this email address to Folevi.
 Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
-Folevi · The Living Folio
+Folevi · A quieter place for ideas that keep growing.

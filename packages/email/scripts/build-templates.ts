@@ -1,5 +1,5 @@
 // Generates packages/email/templates/<key>.mjml and <key>.txt from the manifest plus the
-// copy below, so every template shares one audited layout ("The Living Folio").
+// copy below, so every template shares one audited layout (the neutral Folevi look, matching the app).
 //
 //   node scripts/build-templates.ts          # write files
 //   node scripts/build-templates.ts --check  # exit 1 if files are stale (used by `typecheck`)
@@ -19,20 +19,25 @@ import type { TemplateDefinition, TemplateKey } from "../src/types.ts";
 // ---------------------------------------------------------------------------
 // Brand tokens
 // ---------------------------------------------------------------------------
+// Neutral, like the app: white card on a soft grey canvas, near-black ink and a black button.
 const C = {
-  canvas: "#F4F1E9",
-  card: "#FBFAF6",
-  ink: "#18201C",
-  muted: "#5F6962",
-  accent: "#3159D8",
-  hairline: "#D8D7CF",
+  canvas: "#F4F4F5",
+  card: "#FFFFFF",
+  ink: "#0B0B0C",
+  muted: "#63636B",
+  accent: "#111114",
+  hairline: "#E4E4E7",
+  // The logo tile (brand files: white tile, #DFDFE2 edge, black F) stays the same in dark mode.
+  tile: "#FFFFFF",
+  tileEdge: "#DFDFE2",
+  mark: "#000000",
   // Dark-mode counterparts (applied only by clients that honour prefers-color-scheme).
-  darkCanvas: "#121714",
-  darkCard: "#1B221E",
-  darkInk: "#ECE9E0",
-  darkMuted: "#AEB6AF",
-  darkAccent: "#8FA8FF",
-  darkHairline: "#343C37",
+  darkCanvas: "#0B0B0C",
+  darkCard: "#18181B",
+  darkInk: "#F2F2F3",
+  darkMuted: "#A1A1AA",
+  darkAccent: "#F2F2F3",
+  darkHairline: "#2A2A2D",
 } as const;
 
 const SERIF = "'Iowan Old Style', 'Palatino Linotype', Georgia, ui-serif, 'Times New Roman', serif";
@@ -273,17 +278,27 @@ function wrap(text: string, width = 72): string {
   return out.join("\n");
 }
 
+// The Folevi mark (packages/design-tokens/brand): a white rounded tile whose black "F" runs off its top-right
+// and bottom edges, with a short middle bar. Drawn with table cells — emails carry no images — on a 28px grid
+// that follows the brand file's proportions (109-unit tile). Hidden from assistive tech (the wordmark is text).
+const MARK_COLS = [5, 4, 3, 6, 10]; // px: margin, stem, gap, middle bar, rest (= 28)
+const MARK_ROWS: { h: number; fill: number[] }[] = [
+  { h: 5, fill: [] }, // above the F
+  { h: 4, fill: [1, 2, 3, 4] }, // top bar, running off the right edge
+  { h: 5, fill: [1] }, // stem
+  { h: 4, fill: [1, 3] }, // stem + middle bar
+  { h: 10, fill: [1] }, // stem, running off the bottom edge
+];
 const LOGO_MARK = [
-  // Two offset leaf/page shapes on a stem forming an "F". Table-only, no images, hidden from AT.
-  `<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">`,
-  `<tr>`,
-  `<td rowspan="3" class="fv-mark-stem" style="width:4px;height:20px;background-color:${C.ink};border-radius:2px;font-size:0;line-height:0;">&nbsp;</td>`,
-  `<td style="width:3px;font-size:0;line-height:0;">&nbsp;</td>`,
-  `<td class="fv-mark-leaf" style="width:13px;height:7px;background-color:${C.accent};border-radius:0 8px 0 8px;font-size:0;line-height:0;">&nbsp;</td>`,
-  `</tr>`,
-  `<tr><td style="height:3px;font-size:0;line-height:0;" colspan="2">&nbsp;</td></tr>`,
-  `<tr><td style="width:3px;font-size:0;line-height:0;">&nbsp;</td>`,
-  `<td class="fv-mark-leaf2" style="width:9px;height:7px;background-color:${C.muted};border-radius:0 7px 0 7px;font-size:0;line-height:0;">&nbsp;</td></tr>`,
+  `<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" border="0" class="fv-mark" style="border-collapse:separate;border:1px solid ${C.tileEdge};border-radius:7px;background-color:${C.tile};overflow:hidden;width:28px;height:28px;">`,
+  ...MARK_ROWS.map(
+    (row, r) =>
+      `<tr>${MARK_COLS.map((w, c) => {
+        const on = row.fill.includes(c);
+        const radius = on && r === 1 && c === 1 ? "border-radius:2px 0 0 0;" : on && r === 3 && c === 3 ? "border-radius:1px;" : "";
+        return `<td${on ? ' class="fv-mark-on"' : ""} style="width:${w}px;height:${row.h}px;${on ? `background-color:${C.mark};` : ""}${radius}font-size:0;line-height:0;">&nbsp;</td>`;
+      }).join("")}</tr>`,
+  ),
   `</table>`,
 ].join("");
 
@@ -346,18 +361,18 @@ function renderMjml(def: TemplateDefinition, content: Content): string {
     </mj-attributes>
     <mj-style>
       :root { color-scheme: light dark; supported-color-schemes: light dark; }
-      .fv-link { color: ${C.accent}; }
+      .fv-link { color: ${C.accent}; text-decoration: underline; }
       @media (prefers-color-scheme: dark) {
-        .fv-body, .fv-canvas, .fv-canvas table, .fv-canvas td { background-color: ${C.darkCanvas} !important; }
+        body, .fv-body, .fv-canvas, .fv-canvas table, .fv-canvas td { background-color: ${C.darkCanvas} !important; }
+        /* The logo tile keeps its brand colours: white tile, black F. */
+        .fv-canvas table.fv-mark, .fv-canvas table.fv-mark td { background-color: ${C.tile} !important; }
+        .fv-canvas table.fv-mark td.fv-mark-on { background-color: ${C.mark} !important; }
         .fv-card, .fv-card table, .fv-card td { background-color: ${C.darkCard} !important; border-color: ${C.darkHairline} !important; }
         .fv-card div, .fv-card td, .fv-card strong, .fv-wordmark div { color: ${C.darkInk} !important; }
         .fv-muted div, .fv-muted-cell, .fv-canvas .fv-muted div { color: ${C.darkMuted} !important; }
         .fv-link, .fv-card a.fv-link { color: ${C.darkAccent} !important; }
-        .fv-button table, .fv-button td, .fv-button a, .fv-button p { background-color: ${C.darkAccent} !important; color: ${C.darkCanvas} !important; }
+        .fv-button td, .fv-button a, .fv-button p { background-color: ${C.darkAccent} !important; color: ${C.darkCanvas} !important; }
         .fv-code-box { background-color: ${C.darkCanvas} !important; border-color: ${C.darkHairline} !important; }
-        .fv-mark-stem { background-color: ${C.darkInk} !important; }
-        .fv-mark-leaf { background-color: ${C.darkAccent} !important; }
-        .fv-mark-leaf2 { background-color: ${C.darkMuted} !important; }
       }
     </mj-style>
   </mj-head>
@@ -369,7 +384,7 @@ function renderMjml(def: TemplateDefinition, content: Content): string {
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 20px;">
               <tr>
                 <td style="vertical-align:middle;padding-right:10px;">${LOGO_MARK}</td>
-                <td class="fv-wordmark" style="vertical-align:middle;font-family:${SERIF};font-size:22px;line-height:24px;color:${C.ink};letter-spacing:0.2px;"><div style="color:${C.ink};">Folevi</div></td>
+                <td class="fv-wordmark" style="vertical-align:middle;font-family:${SANS};font-size:22px;font-weight:700;line-height:24px;color:${C.ink};letter-spacing:-0.6px;"><div style="color:${C.ink};">Folevi</div></td>
               </tr>
             </table>
           </mj-raw>
@@ -389,7 +404,7 @@ ${body}
       <mj-section>
         <mj-column>
 ${footer}
-        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="22px">Folevi · The Living Folio</mj-text>
+        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="22px">Folevi · A quieter place for ideas that keep growing.</mj-text>
         </mj-column>
       </mj-section>
     </mj-wrapper>
@@ -429,7 +444,7 @@ function renderText(def: TemplateDefinition, content: Content): string {
   } else {
     parts.push(wrap(SECURITY_FOOTER));
   }
-  parts.push("Folevi · The Living Folio", "");
+  parts.push("Folevi · A quieter place for ideas that keep growing.", "");
   return parts.join("\n");
 }
 

@@ -15,4 +15,4 @@ View the mention:
 You received this because mention emails are turned on for your Folevi
 account.
 Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
-Folevi · The Living Folio
+Folevi · A quieter place for ideas that keep growing.

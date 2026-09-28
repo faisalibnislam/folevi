@@ -13,4 +13,4 @@ Open your inbox:
 You received this because the comment digest is turned on for your
 Folevi account.
 Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
-Folevi · The Living Folio
+Folevi · A quieter place for ideas that keep growing.

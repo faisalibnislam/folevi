@@ -15,4 +15,4 @@ be activated.
 --
 This is a required email about the security of your Folevi account, so
 it is sent even if you have turned off notifications.
-Folevi · The Living Folio
+Folevi · A quieter place for ideas that keep growing.

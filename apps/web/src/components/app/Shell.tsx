@@ -65,6 +65,12 @@ function focusables(root: HTMLElement): HTMLElement[] {
  */
 function NavDrawer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The latest onClose, so the effect below runs once per opening: re-running it (a new onClose after a
+  // re-render) would record an element inside the drawer as the opener and lose the focus return.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     const root = ref.current;
     if (!root) return;
@@ -74,7 +80,7 @@ function NavDrawer({ onClose, children }: { onClose: () => void; children: React
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -100,13 +106,21 @@ function NavDrawer({ onClose, children }: { onClose: () => void; children: React
       document.removeEventListener("keydown", onKey, true);
       // Return focus to the opener when it is still on screen, else to the (re-mounted) sidebar toggle,
       // else to the main region.
-      const target =
-        opener && opener.isConnected && opener.getClientRects().length
-          ? opener
-          : (document.querySelector<HTMLElement>("[data-drawer-toggle]") ?? document.getElementById("main"));
-      target?.focus({ preventScroll: true });
+      const restore = () => {
+        const target =
+          opener && opener.isConnected && opener.getClientRects().length && !opener.closest("[inert]")
+            ? opener
+            : (document.querySelector<HTMLElement>("[data-drawer-toggle]") ?? document.getElementById("main"));
+        target?.focus({ preventScroll: true });
+        return target;
+      };
+      // The page behind the drawer may still be inert in this commit; try again on the next frame.
+      const target = restore();
+      requestAnimationFrame(() => {
+        if (document.activeElement !== target) restore();
+      });
     };
-  }, [onClose]);
+  }, []);
   return (
     <div ref={ref} id={DRAWER_ID} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="fixed inset-0 z-40 flex outline-none">
       <div className="ui-pop h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] rounded-none motion-reduce:animate-none">

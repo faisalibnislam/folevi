@@ -7,12 +7,14 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             AccountSettings().tabItem { Label("Account", systemImage: "person.crop.circle") }
+            PlanSettings().tabItem { Label("Plan & Billing", systemImage: "creditcard") }
+            DevicesSettings().tabItem { Label("Devices", systemImage: "laptopcomputer.and.iphone") }
             AppearanceSettings().tabItem { Label("Appearance", systemImage: "paintbrush") }
             NotificationSettings().tabItem { Label("Notifications", systemImage: "bell") }
             SyncSettings().tabItem { Label("Offline & Sync", systemImage: "arrow.triangle.2.circlepath") }
             AboutSettings().tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 560, height: 420)
+        .frame(width: 620, height: 460)
         .environment(app)
     }
 }
@@ -20,8 +22,6 @@ struct SettingsView: View {
 struct AccountSettings: View {
     @Environment(AppModel.self) private var app
     @State private var name = ""
-    @State private var sessions: [SessionInfo] = []
-    @State private var loading = false
     @State private var confirmSignOut = false
 
     var body: some View {
@@ -37,27 +37,11 @@ struct AccountSettings: View {
                         Button("Save Name") { save() }.disabled(name.isEmpty || name == profile.displayName || !app.sync.isOnline)
                     }
                 }
-                Section("Sessions") {
-                    if !app.sync.isOnline {
-                        Text("Session management is available when you're online.").foregroundStyle(FoleviColor.inkMuted)
-                    } else if loading {
-                        ProgressView().controlSize(.small)
-                    }
-                    ForEach(sessions) { s in
-                        HStack {
-                            Image(systemName: s.client == "mac" ? "laptopcomputer" : "globe").accessibilityHidden(true)
-                            VStack(alignment: .leading) {
-                                Text(s.current ? String(localized: "\(s.label) (this Mac)") : s.label)
-                                Text("Last active \(Date(timeIntervalSince1970: s.lastSeenAt / 1000).formatted(.relative(presentation: .named)))")
-                                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
-                            }
-                            Spacer()
-                            if s.revokedAt != nil {
-                                Text("Signed out").font(.ui(11.5)).foregroundStyle(FoleviColor.inkFaint)
-                            } else if !s.current {
-                                Button("Sign Out") { revoke(s.id) }
-                            }
-                        }
+                Section("Security") {
+                    HStack {
+                        Text("Password and two-step verification are managed on the web.").foregroundStyle(FoleviColor.inkMuted)
+                        Spacer()
+                        Button("Open Security…") { openWebApp("settings/security", config: app.config) }
                     }
                 }
                 Section {
@@ -71,7 +55,6 @@ struct AccountSettings: View {
         .scrollContentBackground(.hidden)
         .background(CanvasBackground())
         .onAppear { name = app.profile?.displayName ?? "" }
-        .task { await loadSessions() }
         .confirmationDialog("Sign out of Folevi?", isPresented: $confirmSignOut) {
             Button("Sign Out", role: .destructive) { Task { await app.signOut() } }
         } message: {
@@ -88,20 +71,6 @@ struct AccountSettings: View {
         app.profile?.displayName = n
     }
 
-    private func loadSessions() async {
-        guard let session = app.session, app.sync.isOnline else { return }
-        loading = true
-        defer { loading = false }
-        sessions = (try? await session.account.sessions()) ?? []
-    }
-
-    private func revoke(_ id: String) {
-        app.perform(String(localized: "Signing out a session")) { try await $0.account.revokeSession(id) }
-        Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            await loadSessions()
-        }
-    }
 }
 
 struct AppearanceSettings: View {

@@ -38,6 +38,7 @@ struct AccountRepository: Sendable {
     }
 
     func sessions() async throws -> [SessionInfo] { try await convex.query("users:listSessions") }
+    func billing() async throws -> BillingSummary { try await convex.query("billing:mine") }
     func revokeSession(_ id: String) async throws { try await convex.mutationVoid("users:revokeSession", ["sessionId": .string(id)]) }
     func revokeOtherSessions() async throws { try await convex.mutationVoid("users:revokeOtherSessions") }
     func workspaces() async throws -> [WorkspaceInfo] { try await convex.query("workspaces:mine") }

@@ -42,6 +42,55 @@ struct Profile: Codable, Sendable, Hashable {
     var defaultWorkspaceId: String?
     var notificationPrefs: NotificationPrefs?
     var createdAt: Double
+    /// What their plan includes right now (users.me; the server enforces it again).
+    var entitlements: Entitlements?
+}
+
+/// A person's plan right now (convex/lib/plans.ts `entitlementsOf`).
+struct Entitlements: Codable, Sendable, Hashable {
+    /// "free" | "basic" | "pro" — Pro while a trial runs.
+    var plan: String
+    /// What they pay for (or were given); "free" during a trial.
+    var paidPlan: String
+    var trialing: Bool
+    var trialEndsAt: Double?
+    var ai: Bool
+    var aiSource: String?
+    var storageBytes: Double
+    /// nil = unlimited (a float64 from Convex).
+    var devices: Double?
+    var deviceLimit: Int? { devices.map { Int($0) } }
+
+    var planName: String {
+        switch plan {
+        case "basic": return String(localized: "Basic")
+        case "pro": return String(localized: "Pro")
+        default: return String(localized: "Free")
+        }
+    }
+
+    /// Whole days left in the trial (at least 1 while it runs).
+    var trialDaysLeft: Int {
+        guard trialing, let end = trialEndsAt else { return 0 }
+        return max(1, Int(ceil((end - Date().timeIntervalSince1970 * 1000) / 86_400_000)))
+    }
+}
+
+/// billing:mine — plan, subscription, usage.
+struct BillingSummary: Decodable, Sendable {
+    struct Subscription: Decodable, Sendable {
+        var plan: String
+        var interval: String?
+        var status: String
+        var provider: String
+        var currentPeriodEnd: Double?
+        var cancelAtPeriodEnd: Bool
+    }
+    var entitlements: Entitlements
+    var subscription: Subscription?
+    var storageUsedBytes: Double
+    var devicesActive: Double
+    var aiRequestsThisMonth: Double
 }
 
 struct WorkspaceInfo: Codable, Sendable, Hashable, Identifiable {

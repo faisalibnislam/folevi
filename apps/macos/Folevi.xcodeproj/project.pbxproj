@@ -68,6 +68,7 @@
 		9DFC7AB2E11A3388FAD057E8 /* FoleviFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56CB70FC209619CF7304013 /* FoleviFont.swift */; };
 		A0C7C542CD512F5859F91465 /* ConvexService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A37155882F35C796979FCD2 /* ConvexService.swift */; };
 		A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */; };
+		AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E496B814D8B72A36CF417C4F /* PlanSettings.swift */; };
 		ACDE0FA46D66C1FACF416B5D /* Covers in Resources */ = {isa = PBXBuildFile; fileRef = 267FDB9FA33CE6745D1F8769 /* Covers */; };
 		B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04542070393D918E567E845 /* NavigationModel.swift */; };
 		B2CBA3AC45F70E9BC05916A4 /* WireBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338F3C4CB476BCF3E8688E51 /* WireBlock.swift */; };
@@ -182,6 +183,7 @@
 		DA763499A687D1E479FDAEC4 /* FoleviMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviMark.swift; sourceTree = "<group>"; };
 		DFAE0742A02D411799235409 /* RankTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankTests.swift; sourceTree = "<group>"; };
 		E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksAndSearch.swift; sourceTree = "<group>"; };
+		E496B814D8B72A36CF417C4F /* PlanSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanSettings.swift; sourceTree = "<group>"; };
 		EA1453B0B437427892BFA595 /* RichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichText.swift; sourceTree = "<group>"; };
 		EAA172BDC79C4CBC205E802A /* SQLiteStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteStoreTests.swift; sourceTree = "<group>"; };
 		EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
@@ -426,6 +428,7 @@
 		D32869F3A8C072C54F68749E /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				E496B814D8B72A36CF417C4F /* PlanSettings.swift */,
 				30B8821EC08FD811EE1FE1A6 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -711,6 +714,7 @@
 				8E9CFD203A2D756BF6E85C9A /* Markdown.swift in Sources */,
 				B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */,
 				74DA55791FDC4668604AA950 /* NonTextBlocks.swift in Sources */,
+				AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */,
 				D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */,
 				8E9E7251154AF98B5ECB2103 /* Repositories.swift in Sources */,
 				EE9EF0B72AEA3430B9B61776 /* RichText.swift in Sources */,

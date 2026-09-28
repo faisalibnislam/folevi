@@ -94,6 +94,9 @@ struct SidebarView: View {
             .onKeyPress(.upArrow) { step(-1) }
             .onKeyPress(.downArrow) { step(1) }
 
+            planPill
+                .padding(.horizontal, 10)
+                .padding(.bottom, 6)
             footer
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
@@ -166,6 +169,31 @@ struct SidebarView: View {
     }
 
     // MARK: Footer
+
+    /// Trial days left, or an upgrade nudge on Free; nothing once they're paying (the web's sidebar pill).
+    @ViewBuilder private var planPill: some View {
+        if let e = app.profile?.entitlements, e.trialing || e.paidPlan == "free" {
+            Button {
+                openWebApp("settings/billing", config: app.config)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles").font(.system(size: 12, weight: .medium)).foregroundStyle(FoleviColor.heading)
+                    Text(e.trialing ? String(localized: "Pro trial · \(e.trialDaysLeft) days left") : String(localized: "Upgrade to Pro"))
+                        .font(.ui(12.5, .medium))
+                        .foregroundStyle(FoleviColor.heading)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(e.trialing ? "Choose plan" : "See plans").font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 34)
+                .background(FoleviGlass.hover, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(Text("Plans open in your browser"))
+        }
+    }
 
     private var footer: some View {
         HStack(spacing: 4) {

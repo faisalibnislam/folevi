@@ -4,7 +4,9 @@ const baseURL = process.env.E2E_BASE_URL ?? "http://app.localhost:3000";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 60_000,
+  // CI machines are slower and every page compiles on first visit in `next dev`; tests that sign in twice
+  // sat right at a one-minute limit there.
+  timeout: process.env.CI ? 120_000 : 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 2,

@@ -13,6 +13,8 @@ struct DocumentDragPayload: Codable, Transferable {
 /// collapsed), Archive and Trash, and the account row with Help and Settings.
 struct SidebarView: View {
     @Bindable var nav: NavigationModel
+    /// The open note: the sidebar then shows its tools (NoteSidebarContent) instead of navigation, as on the web.
+    var editor: EditorModel? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.openSettings) private var openSettings
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -40,59 +42,64 @@ struct SidebarView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
 
-            searchPill
-                .padding(.horizontal, 10)
+            if let editor {
+                NoteSidebarContent(model: editor, nav: nav)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            } else {
+                searchPill
+                    .padding(.horizontal, 10)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    row(.all)
-                    row(.starred)
-                    row(.drafts, count: draftCount)
-                    row(.notes)
-                    row(.tasks, count: todayTaskCount)
-                    row(.shared)
-                    row(.templates)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        row(.all)
+                        row(.starred)
+                        row(.drafts, count: draftCount)
+                        row(.notes)
+                        row(.tasks, count: todayTaskCount)
+                        row(.shared)
+                        row(.templates)
 
-                    section("Folders", isOpen: $foldersOpen, action: folderAction) {
-                        let roots = app.sidebar.folders.filter { $0.parentFolderId == nil }
-                        if roots.isEmpty {
-                            Text("No folders yet").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint).padding(.horizontal, 10).padding(.vertical, 4)
-                        }
-                        ForEach(roots) { folder in
-                            folderRow(folder)
-                            ForEach(app.sidebar.folders.filter { $0.parentFolderId == folder.id }) { child in
-                                folderRow(child).padding(.leading, 18)
+                        section("Folders", isOpen: $foldersOpen, action: folderAction) {
+                            let roots = app.sidebar.folders.filter { $0.parentFolderId == nil }
+                            if roots.isEmpty {
+                                Text("No folders yet").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint).padding(.horizontal, 10).padding(.vertical, 4)
                             }
-                        }
-                    }
-
-                    if !app.sidebar.tags.isEmpty {
-                        section("Tags", isOpen: $tagsOpen) {
-                            ForEach(app.sidebar.tags) { tag in
-                                SidebarRow(title: Text(tag.name), isActive: nav.selection == .tag(tag.id)) {
-                                    Image(systemName: "number").foregroundStyle(Color.folevi(tag: tag.color))
-                                } action: {
-                                    nav.selection = .tag(tag.id)
+                            ForEach(roots) { folder in
+                                folderRow(folder)
+                                ForEach(app.sidebar.folders.filter { $0.parentFolderId == folder.id }) { child in
+                                    folderRow(child).padding(.leading, 18)
                                 }
-                                .accessibilityIdentifier(SidebarItem.tag(tag.id).accessibilityId)
                             }
                         }
-                    }
 
-                    Spacer().frame(height: 14)
-                    row(.archive)
-                    row(.trash)
+                        if !app.sidebar.tags.isEmpty {
+                            section("Tags", isOpen: $tagsOpen) {
+                                ForEach(app.sidebar.tags) { tag in
+                                    SidebarRow(title: Text(tag.name), isActive: nav.selection == .tag(tag.id)) {
+                                        Image(systemName: "number").foregroundStyle(Color.folevi(tag: tag.color))
+                                    } action: {
+                                        nav.selection = .tag(tag.id)
+                                    }
+                                    .accessibilityIdentifier(SidebarItem.tag(tag.id).accessibilityId)
+                                }
+                            }
+                        }
+
+                        Spacer().frame(height: 14)
+                        row(.archive)
+                        row(.trash)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 12)
+                    .padding(.bottom, 16)
                 }
-                .padding(.horizontal, 10)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
+                .scrollIndicators(.never)
+                .focusable()
+                .focused($listFocused)
+                .focusEffectDisabled()
+                .onKeyPress(.upArrow) { step(-1) }
+                .onKeyPress(.downArrow) { step(1) }
             }
-            .scrollIndicators(.never)
-            .focusable()
-            .focused($listFocused)
-            .focusEffectDisabled()
-            .onKeyPress(.upArrow) { step(-1) }
-            .onKeyPress(.downArrow) { step(1) }
 
             planPill
                 .padding(.horizontal, 10)

@@ -67,6 +67,7 @@
 		9AD4F5FB98F13921D83B5D71 /* KeychainAndAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */; };
 		9BBE1FABAFFAE0EFE0996408 /* reference-outputs.json in Resources */ = {isa = PBXBuildFile; fileRef = 9D17CE53B422079DD74B262C /* reference-outputs.json */; };
 		9DFC7AB2E11A3388FAD057E8 /* FoleviFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56CB70FC209619CF7304013 /* FoleviFont.swift */; };
+		A088D66E6C4847DD7570BD6A /* NoteSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108029BC222AB2486B986775 /* NoteSidebar.swift */; };
 		A0C7C542CD512F5859F91465 /* ConvexService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A37155882F35C796979FCD2 /* ConvexService.swift */; };
 		A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */; };
 		AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E496B814D8B72A36CF417C4F /* PlanSettings.swift */; };
@@ -122,6 +123,7 @@
 		05445DDCFDEC1AEDBBD52FF2 /* InlineAttributedString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineAttributedString.swift; sourceTree = "<group>"; };
 		09123928534E4B78174DD3E7 /* Markdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Markdown.swift; sourceTree = "<group>"; };
 		0F3CD96AA81DFC63886DC50E /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		108029BC222AB2486B986775 /* NoteSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSidebar.swift; sourceTree = "<group>"; };
 		1537182453B34751A655E02B /* FlexibleDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlexibleDecoding.swift; sourceTree = "<group>"; };
 		160F2F7A5055D14E027F9A6D /* SheetPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetPalette.swift; sourceTree = "<group>"; };
 		190C86CC285A3AF163AA972F /* FoleviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviApp.swift; sourceTree = "<group>"; };
@@ -377,6 +379,7 @@
 				C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */,
 				34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */,
 				EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */,
+				108029BC222AB2486B986775 /* NoteSidebar.swift */,
 				305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */,
 				D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */,
 				934BBAF4E5C10A62E553FE7B /* Toolbar.swift */,
@@ -733,6 +736,7 @@
 				B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */,
 				74DA55791FDC4668604AA950 /* NonTextBlocks.swift in Sources */,
 				6A3CE3155F5163DDA607BBBC /* NoteDock.swift in Sources */,
+				A088D66E6C4847DD7570BD6A /* NoteSidebar.swift in Sources */,
 				AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */,
 				D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */,
 				8E9E7251154AF98B5ECB2103 /* Repositories.swift in Sources */,

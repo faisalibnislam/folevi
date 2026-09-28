@@ -13,7 +13,7 @@ struct MainWindowView: View {
     var body: some View {
         HStack(spacing: 0) {
             if nav.sidebarVisible {
-                SidebarView(nav: nav)
+                SidebarView(nav: nav, editor: editorIfOpen)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
             VStack(spacing: 0) {

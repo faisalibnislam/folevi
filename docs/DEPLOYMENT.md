@@ -42,7 +42,10 @@ identity service to deploy.
 
 ## 2. Vercel
 
-1. Import the GitHub repository. Root directory: `apps/web`. Framework: Next.js. `apps/web/vercel.json`
+1. Import the GitHub repository. Root directory: `apps/web`. Framework: Next.js. Keep "Include files outside
+   the Root Directory" on (the build installs and deploys from the repository root). Vercel deploys only the
+   web app — the native macOS and iOS apps in this monorepo ship through Xcode — and the `ignoreCommand` in
+   `apps/web/vercel.json` skips builds for commits that change only them (or docs). `apps/web/vercel.json`
    sets install and build commands; the build runs `scripts/check-prod-env.mjs`, then
    `npx convex deploy --cmd 'pnpm --filter @folevi/web build'`, which deploys the backend first and injects
    `NEXT_PUBLIC_CONVEX_URL` for the matching deployment (preview builds get a per-branch backend).

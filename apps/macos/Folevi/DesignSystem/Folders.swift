@@ -69,6 +69,8 @@ struct FolderCard: View {
     var documentCount: Int
     var updatedAt: Double?
     var parentName: String?
+    /// Up to three of the notes inside (most recent first), fanned behind the front cover.
+    var previews: [DocumentSummary] = []
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -91,11 +93,21 @@ struct FolderCard: View {
                     .fill(backTone)
                     .overlay(UnevenRoundedRectangle(bottomLeadingRadius: 4 * u, bottomTrailingRadius: 4 * u, topTrailingRadius: 4 * u, style: .continuous).strokeBorder(outline))
                     .padding(.top, h * 0.05)
-                // A sheet inside.
-                RoundedRectangle(cornerRadius: 2.4 * u, style: .continuous)
-                    .fill(Color.white.opacity(0.6))
-                    .frame(width: geo.size.width * 0.76, height: h * 0.6)
-                    .offset(x: geo.size.width * 0.12, y: h * (hovering && !reduceMotion ? 0.09 : 0.12))
+                // The notes inside (or a blank sheet), fanned and rising a little on hover.
+                if previews.isEmpty {
+                    RoundedRectangle(cornerRadius: 2.4 * u, style: .continuous)
+                        .fill(Color.white.opacity(0.6))
+                        .frame(width: geo.size.width * 0.76, height: h * 0.6)
+                        .offset(x: geo.size.width * 0.12, y: h * (hovering && !reduceMotion ? 0.09 : 0.12))
+                } else {
+                    ForEach(Array(previews.prefix(3).enumerated().reversed()), id: \.element.id) { index, note in
+                        FolderNoteSheet(note: note, unit: u)
+                            .frame(width: geo.size.width * 0.78, height: h * 0.7)
+                            .rotationEffect(.degrees([-4, 3, -1][index]))
+                            .offset(x: geo.size.width * [0.09, 0.14, 0.11][index],
+                                    y: h * [0.08, 0.10, 0.125][index] - (hovering && !reduceMotion ? h * [0.05, 0.035, 0.02][index] : 0))
+                    }
+                }
                 // Frosted front cover.
                 RoundedRectangle(cornerRadius: 4 * u, style: .continuous)
                     .fill(LinearGradient(colors: [base.opacity(0.62), base.opacity(0.86)], startPoint: .top, endPoint: .bottom))
@@ -145,5 +157,44 @@ struct FolderCard: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(folder.name)\(parentName.map { ", in \($0)" } ?? ""), \(documentCount) pages"))
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// One note inside a folder card (the web's FolderNote): its page colour, a thin spine of its style,
+/// the serif title and a few lines of its text.
+private struct FolderNoteSheet: View {
+    var note: DocumentSummary
+    var unit: CGFloat
+
+    var body: some View {
+        let u = unit
+        let art = note.cover.kind == .art ? CoverArt.entry(note.cover.value) : nil
+        let paper = art?.paper.flatMap(Color.init(hex:)) ?? .white
+        let ink = art?.ink.flatMap(Color.init(hex:)) ?? Color(red: 0.11, green: 0.11, blue: 0.12)
+        GeometryReader { geo in
+            ZStack(alignment: .topLeading) {
+                paper
+                if note.cover.kind == .art, let image = CoverArt.thumbnail(note.cover.value) {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                        .frame(width: geo.size.width * 0.07, height: geo.size.height).clipped()
+                }
+                VStack(alignment: .leading, spacing: 2 * u) {
+                    Text(note.displayTitle)
+                        .font(.serif(5.4 * u, .medium))
+                        .foregroundStyle(ink)
+                        .lineLimit(2)
+                    Text(note.excerpt)
+                        .font(.ui(3.2 * u))
+                        .foregroundStyle(ink.mix(with: paper, by: 0.18))
+                }
+                .padding(.leading, geo.size.width * 0.13)
+                .padding(.trailing, geo.size.width * 0.07)
+                .padding(.top, geo.size.height * 0.07)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 2.4 * u, style: .continuous))
+        .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
+        .shadow(color: .black.opacity(0.25), radius: 7, y: 6)
+        .accessibilityHidden(true)
     }
 }

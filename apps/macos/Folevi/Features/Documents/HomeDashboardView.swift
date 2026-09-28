@@ -143,13 +143,22 @@ struct HomeDashboardView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 210, maximum: 300), spacing: 32)], spacing: 40) {
                     ForEach(folders.prefix(10)) { folder in
                         FolderCard(folder: folder, documentCount: stats[folder.id]?.count ?? 0, updatedAt: stats[folder.id]?.updatedAt,
-                                   parentName: folder.parentFolderId.flatMap { id in app.sidebar.folders.first { $0.id == id }?.name })
+                                   parentName: folder.parentFolderId.flatMap { id in app.sidebar.folders.first { $0.id == id }?.name },
+                                   previews: previews(in: folder.id))
                             .onTapGesture { nav.selection = .folder(folder.id) }
                             .accessibilityAction { nav.selection = .folder(folder.id) }
                     }
                 }
             }
         }
+    }
+
+    /// The three most recently edited notes in a folder.
+    private func previews(in folderId: String) -> [DocumentSummary] {
+        Array(app.documents
+            .filter { $0.folderId == folderId && $0.deletedAt == nil && $0.archivedAt == nil && ($0.kind == .document || $0.kind == .daily) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(3))
     }
 
     private func loadStarred() async {
@@ -192,7 +201,8 @@ struct FoldersIndexView: View {
                         ForEach(folders) { folder in
                             let docs = app.documents.filter { $0.folderId == folder.id && $0.deletedAt == nil && $0.archivedAt == nil }
                             FolderCard(folder: folder, documentCount: docs.count, updatedAt: docs.map(\.updatedAt).max(),
-                                       parentName: folder.parentFolderId.flatMap { id in folders.first { $0.id == id }?.name })
+                                       parentName: folder.parentFolderId.flatMap { id in folders.first { $0.id == id }?.name },
+                                       previews: Array(docs.sorted { $0.updatedAt > $1.updatedAt }.prefix(3)))
                                 .onTapGesture { nav.selection = .folder(folder.id) }
                                 .accessibilityAction { nav.selection = .folder(folder.id) }
                         }

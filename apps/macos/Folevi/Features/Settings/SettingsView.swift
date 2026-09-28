@@ -37,6 +37,18 @@ struct AccountSettings: View {
                         Button("Save Name") { save() }.disabled(name.isEmpty || name == profile.displayName || !app.sync.isOnline)
                     }
                 }
+                Section("AI Assistant") {
+                    Toggle(isOn: Binding(get: { profile.aiEnabled != false }, set: { setAi($0) })) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Show the AI Assistant")
+                            Text(profile.aiEntitled
+                                 ? "Ask AI, Catch me up and the note's AI. Turning it off hides them everywhere, on every device."
+                                 : "Comes with Pro. Turning it off hides AI entry points everywhere, on every device.")
+                                .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
+                        }
+                    }
+                    .disabled(!app.sync.isOnline)
+                }
                 Section("Security") {
                     HStack {
                         Text("Password and two-step verification are managed on the web.").foregroundStyle(FoleviColor.inkMuted)
@@ -62,6 +74,11 @@ struct AccountSettings: View {
                  ? "\(app.sync.pendingCount) changes haven't synced yet. They stay on this Mac and sync the next time you sign in."
                  : "Your documents stay safely in your account.")
         }
+    }
+
+    private func setAi(_ on: Bool) {
+        app.profile?.aiEnabled = on
+        app.perform(String(localized: "Updating the AI Assistant setting")) { try await $0.account.updateProfile(aiEnabled: on) }
     }
 
     private func save() {

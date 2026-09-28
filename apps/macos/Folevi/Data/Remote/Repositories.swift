@@ -29,8 +29,9 @@ struct AccountRepository: Sendable {
         try await convex.mutationVoid("users:completeOnboardingStep", args)
     }
 
-    func updateProfile(displayName: String? = nil, appearance: String? = nil, notificationPrefs: NotificationPrefs? = nil) async throws {
+    func updateProfile(displayName: String? = nil, appearance: String? = nil, notificationPrefs: NotificationPrefs? = nil, aiEnabled: Bool? = nil) async throws {
         var args: [String: JSONValue] = [:]
+        if let aiEnabled { args["aiEnabled"] = .bool(aiEnabled) }
         if let displayName { args["displayName"] = .string(displayName) }
         if let appearance { args["appearance"] = .string(appearance) }
         if let notificationPrefs { args["notificationPrefs"] = try JSONValue(encoding: notificationPrefs) }

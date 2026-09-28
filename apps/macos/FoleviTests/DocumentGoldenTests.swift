@@ -4,7 +4,7 @@ final class DocumentGoldenTests: XCTestCase {
     func testDecodeEncodeIsCanonicallyIdentical() throws {
         let fixture = try Fixtures.json(Fixtures.editorSchema("document-golden.json"))
         let blocks = try XCTUnwrap(fixture["blocks"]?.arrayValue)
-        XCTAssertEqual(blocks.count, 19)
+        XCTAssertEqual(blocks.count, 23)
         for raw in blocks {
             let wire = try WireBlock(json: raw)
             let typed = Block(wire: wire)

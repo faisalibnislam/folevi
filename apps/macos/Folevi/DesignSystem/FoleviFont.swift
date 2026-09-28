@@ -8,13 +8,15 @@ import SwiftUI
 /// registered for this process at launch; San Francisco / New York are never used for product UI.
 enum FoleviFont {
     enum Family: Sendable {
-        case sans, serif, mono
+        /// `rounded` is the system's rounded design (SF Pro Rounded), as the web's `ui-rounded` stack is.
+        case sans, serif, mono, rounded
 
         init(_ document: DocumentFont) {
             switch document {
             case .sans: self = .sans
             case .serif: self = .serif
             case .mono: self = .mono
+            case .rounded: self = .rounded
             }
         }
     }
@@ -71,6 +73,8 @@ enum FoleviFont {
             return face >= .semibold ? "SourceSerif4-SemiBold" : "SourceSerif4-Regular"
         case .mono:
             return face >= .semibold ? "JetBrainsMono-SemiBold" : "JetBrainsMono-Regular"
+        case .rounded:
+            return ".AppleSystemUIFontRounded"
         }
     }
 
@@ -79,7 +83,7 @@ enum FoleviFont {
         switch family {
         case .sans: return face == .regular
         case .serif: return face < .semibold
-        case .mono: return false
+        case .mono, .rounded: return false
         }
     }
 
@@ -87,6 +91,7 @@ enum FoleviFont {
 
     static func nsFont(_ family: Family, size: CGFloat, weight: Face = .regular, italic: Bool = false) -> NSFont {
         registerBundledFonts()
+        if family == .rounded { return rounded(size: size, weight: weight, italic: italic) }
         let name = postScriptName(family, weight, italic: italic)
         guard let base = NSFont(name: name, size: size) else {
             // Only if the bundle is damaged: keep the app usable.
@@ -123,6 +128,18 @@ enum FoleviFont {
         return nsFont(d.family, size: font.pointSize, weight: face, italic: italic || d.italic)
     }
 
+    private static func rounded(size: CGFloat, weight: Face, italic: Bool) -> NSFont {
+        let nsWeight: NSFont.Weight = switch weight {
+        case .regular: .regular
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        }
+        let system = NSFont.systemFont(ofSize: size, weight: nsWeight)
+        let font = system.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: size) } ?? system
+        return italic ? oblique(font) : font
+    }
+
     private static func oblique(_ font: NSFont) -> NSFont {
         let skew = AffineTransform(m11: 1, m12: 0, m21: 0.2, m22: 1, tX: 0, tY: 0)
         let descriptor = font.fontDescriptor.withMatrix(skew)
@@ -134,6 +151,7 @@ enum FoleviFont {
     static func font(_ family: Family, size: CGFloat, weight: Font.Weight = .regular, italic: Bool = false) -> Font {
         registerBundledFonts()
         let face = Face(weight)
+        if family == .rounded { return Font(nsFont(.rounded, size: size, weight: face, italic: italic) as CTFont) }
         if italic && !hasItalic(family, face) {
             return Font(nsFont(family, size: size, weight: face, italic: true) as CTFont)
         }

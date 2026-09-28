@@ -14,7 +14,7 @@ extension NSAttributedString.Key {
 }
 
 /// Visual style of a text-bearing block.
-struct BlockTextStyle: Equatable {
+struct TextRenderStyle: Equatable {
     var font: NSFont
     var color: NSColor
     var lineSpacing: CGFloat = 2
@@ -24,7 +24,7 @@ struct BlockTextStyle: Equatable {
     /// Letter spacing in points (`FoleviTracking` × size).
     var kern: CGFloat = 0
 
-    static func == (a: BlockTextStyle, b: BlockTextStyle) -> Bool {
+    static func == (a: TextRenderStyle, b: TextRenderStyle) -> Bool {
         a.font == b.font && a.color == b.color && a.lineSpacing == b.lineSpacing && a.placeholder == b.placeholder
             && a.strikethrough == b.strikethrough && a.kern == b.kern
     }
@@ -33,7 +33,7 @@ struct BlockTextStyle: Equatable {
 /// Converts between the canonical inline model and the attributed text shown in NSTextView.
 /// Marks are stored as custom attributes (the source of truth); fonts/colors are derived from them.
 enum InlineAttributedString {
-    static func make(_ nodes: [InlineNode], style: BlockTextStyle) -> NSAttributedString {
+    static func make(_ nodes: [InlineNode], style: TextRenderStyle) -> NSAttributedString {
         let out = NSMutableAttributedString()
         for node in nodes {
             switch node {
@@ -69,7 +69,7 @@ enum InlineAttributedString {
     }
 
     /// Derives visual attributes (font, color, underline…) from the Folevi mark attributes.
-    static func applyStyle(to text: NSMutableAttributedString, range: NSRange, style: BlockTextStyle) {
+    static func applyStyle(to text: NSMutableAttributedString, range: NSRange, style: TextRenderStyle) {
         guard range.length > 0, NSMaxRange(range) <= text.length else { return }
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = style.lineSpacing
@@ -159,7 +159,7 @@ enum InlineAttributedString {
     }
 
     static func length(_ nodes: [InlineNode]) -> Int {
-        make(nodes, style: BlockTextStyle(font: FoleviFont.nsFont(.sans, size: 13), color: .textColor)).length
+        make(nodes, style: TextRenderStyle(font: FoleviFont.nsFont(.sans, size: 13), color: .textColor)).length
     }
 
     /// Mark keys that toggle.

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03B9DBE4C6059D33DD67F836 /* Whiteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */; };
 		07776219DE53B36CEE9EF4D8 /* BlockDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */; };
 		083E6CBC635BDDA358344BE3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B8821EC08FD811EE1FE1A6 /* SettingsView.swift */; };
 		091A1564F7B1B2F351BF533C /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79F8DBDD8CC37789B62517B /* ExportService.swift */; };
@@ -37,6 +38,7 @@
 		453D038092E66A995B4F3544 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9764CABA30C2B0015130D53B /* EditorView.swift */; };
 		4B20ACE33F4565B40B76F862 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 441C2FFE29369E8B2BB86075 /* APIModels.swift */; };
 		4BAA2AEEA48E84FBD2A4C081 /* MarkdownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACBAB1371653FF027D7F2FD /* MarkdownTests.swift */; };
+		536DF3AA60DBF7CFFFD384F8 /* Whiteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */; };
 		550DC0E1F11D91328AAB15AE /* FoleviCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3489657AE3324D753E15ED23 /* FoleviCommands.swift */; };
 		5F2232FDD4BF7B113532480D /* AuthProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36792CB853DBCAC3A0E5E49B /* AuthProviders.swift */; };
 		62E372AAE10CBD27824373E8 /* TasksAndSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */; };
@@ -169,6 +171,7 @@
 		C56CB70FC209619CF7304013 /* FoleviFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviFont.swift; sourceTree = "<group>"; };
 		C6BF1B7B39DD24E84C6B8C6B /* Folevi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Folevi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C79F8DBDD8CC37789B62517B /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Whiteboard.swift; sourceTree = "<group>"; };
 		CACD826A2F5AD954969F8FF4 /* FoleviTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D521EF350EAE4076E43AE4EB /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		DA763499A687D1E479FDAEC4 /* FoleviMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviMark.swift; sourceTree = "<group>"; };
@@ -216,6 +219,7 @@
 				E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */,
 				52E4AF08906F26C6AFA1053E /* Tree.swift */,
 				51F373F3397161B4614F1000 /* ULID.swift */,
+				CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */,
 				338F3C4CB476BCF3E8688E51 /* WireBlock.swift */,
 			);
 			path = Domain;
@@ -653,6 +657,7 @@
 				F0734C08A3767A37825A2403 /* Tree.swift in Sources */,
 				8272528FEE36D191A5565814 /* TreeTests.swift in Sources */,
 				21250992C67E35A8E3EB5A56 /* ULID.swift in Sources */,
+				03B9DBE4C6059D33DD67F836 /* Whiteboard.swift in Sources */,
 				B2CBA3AC45F70E9BC05916A4 /* WireBlock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -714,6 +719,7 @@
 				713250803A20F82A4D87A671 /* Tree.swift in Sources */,
 				0F42CEA902572E751C8832F7 /* Typography.swift in Sources */,
 				DF677EA35638172E5F904D20 /* ULID.swift in Sources */,
+				536DF3AA60DBF7CFFFD384F8 /* Whiteboard.swift in Sources */,
 				8BE6A43FDAED72B50615E7C3 /* WindowChrome.swift in Sources */,
 				ED87701E0C1C9DE98963A9B0 /* WireBlock.swift in Sources */,
 			);

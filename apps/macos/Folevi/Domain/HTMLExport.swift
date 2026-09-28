@@ -73,7 +73,12 @@ img{max-width:100%;border-radius:10px}
 ul.todo{list-style:none;padding-left:0}ul.todo li::before{content:"☐ ";}ul.todo li.done::before{content:"☑ ";}
 ul.todo li.done{color:var(--muted);text-decoration:line-through}
 mark{background:#F7E7A6;color:inherit}
-@media print{body{background:#fff;color:#000}main{margin:0 auto}}
+.page-break{break-after:page;page-break-after:always;height:0;margin:32px 0;border-top:1px dashed var(--line)}
+.formula{margin:16px 0;text-align:center;overflow-x:auto}.formula pre{text-align:left}
+.whiteboard svg{width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
+hr.divider-extralight{border:0;border-top:2px dotted var(--line);opacity:.7}hr.divider-light{border:0;border-top:1px dotted var(--muted)}
+hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{border:0;border-top:3px solid var(--ink)}
+@media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
 
 """
 
@@ -125,7 +130,14 @@ mark{background:#F7E7A6;color:inherit}
                 let icon = (p["icon"]?.isTruthy ?? false) ? "\(escape(str(p["icon"]))) " : ""
                 parts.append("<aside class=\"callout callout-\(escape(str(p["tone"])))\">\(icon)\(t)</aside>")
             case "divider":
-                parts.append("<hr>")
+                parts.append((p["style"]?.isTruthy ?? false) ? "<hr class=\"divider-\(escape(str(p["style"])))\">" : "<hr>")
+            case "pageBreak":
+                parts.append("<div class=\"page-break\" role=\"separator\" aria-label=\"Page break\"></div>")
+            case "formula":
+                // No math renderer on the Mac yet: formulas export as their LaTeX source (the web's fallback).
+                parts.append("<div class=\"formula\"><pre><code class=\"language-latex\">\(escape((p["latex"]?.isNull == false ? str(p["latex"]) : "")))</code></pre></div>")
+            case "whiteboard":
+                parts.append("<figure class=\"whiteboard\">\(Whiteboard.svg(data: (p["data"]?.isNull == false ? str(p["data"]) : ""), height: p["height"]?.doubleValue))</figure>")
             case "code":
                 let code = p["code"].flatMap { $0.isNull ? nil : $0 }.map { str($0) } ?? ""
                 parts.append("<pre><code class=\"language-\(escape(str(p["language"])))\">\(escape(code))</code></pre>")

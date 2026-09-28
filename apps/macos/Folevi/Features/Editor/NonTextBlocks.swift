@@ -580,6 +580,67 @@ struct CellStyle: ViewModifier {
     }
 }
 
+// MARK: - Page break, formula, whiteboard
+
+/// Where the page splits when printed or exported to PDF (web: a dashed rule with a small label).
+struct PageBreakBlockView: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            dash
+            Text("Page break").font(.ui(11, .medium)).foregroundStyle(FoleviColor.inkFaint)
+            dash
+        }
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Page break"))
+    }
+
+    private var dash: some View {
+        Line().stroke(FoleviColor.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])).frame(height: 1)
+    }
+
+    private struct Line: Shape {
+        func path(in rect: CGRect) -> Path {
+            Path { p in p.move(to: CGPoint(x: 0, y: rect.midY)); p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY)) }
+        }
+    }
+}
+
+/// A formula, shown as its LaTeX source until the Mac has a math renderer.
+struct FormulaBlockView: View {
+    let props: FormulaProps
+
+    var body: some View {
+        Text(props.latex.isEmpty ? "Empty formula" : props.latex)
+            .font(.mono(14))
+            .foregroundStyle(props.latex.isEmpty ? FoleviColor.inkFaint : FoleviColor.ink)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(FoleviColor.codeBg))
+            .accessibilityLabel(Text("Formula: \(props.latex)"))
+    }
+}
+
+/// A whiteboard drawn on the web. Its drawing is kept exactly as it is.
+struct WhiteboardBlockView: View {
+    let props: WhiteboardProps
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "scribble.variable").font(.system(size: 20)).foregroundStyle(FoleviColor.inkMuted)
+                .accessibilityHidden(true)
+            Text("Whiteboard").font(.ui(13, .medium))
+            Text("Open this page on the web to draw on it.").font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: min(max(props.height, 120), 480))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(FoleviColor.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 // MARK: - Unknown
 
 struct UnknownBlockView: View {

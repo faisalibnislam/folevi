@@ -15,7 +15,7 @@ enum BlockStyles {
     /// Body size per document family (web: sans 16, serif 17.5, mono 15).
     static func bodySize(_ font: DocumentFont) -> CGFloat {
         switch font {
-        case .sans: return FoleviFontSize.body
+        case .sans, .rounded: return FoleviFontSize.body
         case .serif: return 17.5
         case .mono: return 15
         }
@@ -26,22 +26,22 @@ enum BlockStyles {
         max(0, (font.pointSize * lineHeight - NSLayoutManager().defaultLineHeight(for: font)).rounded())
     }
 
-    static func paragraph(style: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
+    static func paragraph(style: DocumentStyle, scale: CGFloat) -> TextRenderStyle {
         let font = FoleviType.editorFont(size: bodySize(style.font), design: style.font, scale: scale)
-        return BlockTextStyle(font: font, color: .foleviInk, lineSpacing: spacing(for: font, lineHeight: 1.6),
+        return TextRenderStyle(font: font, color: .foleviInk, lineSpacing: spacing(for: font, lineHeight: 1.6),
                               placeholder: String(localized: "Start writing, or type '/' for commands"),
                               kern: style.font == .mono ? 0 : FoleviTracking.normal * font.pointSize)
     }
 
     /// Page title: 38pt semibold, heading color, tight tracking (mono 34).
-    static func title(style: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
+    static func title(style: DocumentStyle, scale: CGFloat) -> TextRenderStyle {
         let size: CGFloat = style.font == .mono ? 34 : 40
         let font = FoleviType.editorFont(size: size, weight: .semibold, design: style.font, scale: scale)
-        return BlockTextStyle(font: font, color: .foleviHeading, lineSpacing: spacing(for: font, lineHeight: 1.12),
+        return TextRenderStyle(font: font, color: .foleviHeading, lineSpacing: spacing(for: font, lineHeight: 1.12),
                               placeholder: String(localized: "Untitled"), kern: FoleviTracking.tight * font.pointSize * (style.font == .mono ? 0.5 : 1.2))
     }
 
-    static func style(for block: Block, document: DocumentStyle, scale: CGFloat) -> BlockTextStyle {
+    static func style(for block: Block, document: DocumentStyle, scale: CGFloat) -> TextRenderStyle {
         var s = paragraph(style: document, scale: scale)
         switch block.content {
         case .heading(let h):
@@ -80,7 +80,7 @@ enum BlockStyles {
         return s
     }
 
-    static func lineHeight(_ style: BlockTextStyle) -> CGFloat {
+    static func lineHeight(_ style: TextRenderStyle) -> CGFloat {
         NSLayoutManager().defaultLineHeight(for: style.font) + style.lineSpacing
     }
 
@@ -128,7 +128,7 @@ struct BlockRowView: View {
 
     private var block: Block { row.block }
     private var scale: CGFloat { CGFloat(app.editorScale) }
-    private var textStyle: BlockTextStyle { BlockStyles.style(for: block, document: model.style, scale: scale) }
+    private var textStyle: TextRenderStyle { BlockStyles.style(for: block, document: model.style, scale: scale) }
     private var isSelected: Bool { model.selectedBlockIds.contains(block.id) }
     private var isMatch: Bool { model.findMatches.contains(block.id) }
     private var isDragged: Bool { model.drag.draggedIds.contains(block.id) }
@@ -401,6 +401,16 @@ struct BlockRowView: View {
                 .contentShape(Rectangle().inset(by: -8))
                 .onTapGesture { model.select(block.id, extend: false) }
                 .accessibilityLabel(Text("Divider"))
+        case .pageBreak:
+            PageBreakBlockView()
+                .contentShape(Rectangle())
+                .onTapGesture { model.select(block.id, extend: false) }
+        case .formula(let p):
+            FormulaBlockView(props: p)
+                .onTapGesture { model.select(block.id, extend: false) }
+        case .whiteboard(let p):
+            WhiteboardBlockView(props: p)
+                .onTapGesture { model.select(block.id, extend: false) }
         case .image(let p):
             ImageBlockView(block: block, props: p, model: model)
         case .file(let p):

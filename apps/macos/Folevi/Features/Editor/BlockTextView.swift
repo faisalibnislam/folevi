@@ -309,7 +309,7 @@ final class BlockTextView: NSTextView {
 struct BlockTextEditor: NSViewRepresentable {
     let blockId: String
     let text: [InlineNode]
-    let style: BlockTextStyle
+    let style: TextRenderStyle
     let isEditable: Bool
     let accessibilityLabel: String
     let model: EditorModel
@@ -396,7 +396,7 @@ struct BlockTextEditor: NSViewRepresentable {
         var parent: BlockTextEditor
         weak var view: BlockTextView?
         var lastText: [InlineNode] = []
-        var style: BlockTextStyle
+        var style: TextRenderStyle
         var handledFocus: UUID?
         private var isInstalling = false
 
@@ -429,7 +429,7 @@ struct BlockTextEditor: NSViewRepresentable {
             }
         }
 
-        func install(text: [InlineNode], style: BlockTextStyle, preserveSelection: Bool = false) {
+        func install(text: [InlineNode], style: TextRenderStyle, preserveSelection: Bool = false) {
             guard let view, let storage = view.textStorage else { return }
             isInstalling = true
             let selection = view.selectedRange()
@@ -549,7 +549,7 @@ struct BlockTextEditor: NSViewRepresentable {
 
 extension BlockTextView {
     /// Toggles a mark on the selection (or the typing attributes when nothing is selected).
-    func toggle(mark: Mark, style: BlockTextStyle) {
+    func toggle(mark: Mark, style: TextRenderStyle) {
         let key = InlineAttributedString.key(for: mark)
         let sel = selectedRange()
         guard let storage = textStorage else { return }
@@ -585,7 +585,7 @@ extension BlockTextView {
         didChangeText()
     }
 
-    func removeMark(_ key: NSAttributedString.Key, style: BlockTextStyle) {
+    func removeMark(_ key: NSAttributedString.Key, style: TextRenderStyle) {
         let sel = selectedRange()
         guard let storage = textStorage, sel.length > 0, shouldChangeText(in: sel, replacementString: nil) else { return }
         storage.removeAttribute(key, range: sel)
@@ -593,7 +593,7 @@ extension BlockTextView {
         didChangeText()
     }
 
-    func clearFormatting(style: BlockTextStyle) {
+    func clearFormatting(style: TextRenderStyle) {
         let sel = selectedRange()
         guard let storage = textStorage, sel.length > 0, shouldChangeText(in: sel, replacementString: nil) else { return }
         for key in InlineAttributedString.markKeys { storage.removeAttribute(key, range: sel) }
@@ -602,7 +602,7 @@ extension BlockTextView {
     }
 
     /// Replaces a range with inline nodes (slash/page-link commits).
-    func replace(range: NSRange, with nodes: [InlineNode], style: BlockTextStyle) {
+    func replace(range: NSRange, with nodes: [InlineNode], style: TextRenderStyle) {
         guard let storage = textStorage, NSMaxRange(range) <= storage.length, shouldChangeText(in: range, replacementString: nil) else { return }
         let insert = InlineAttributedString.make(nodes, style: style)
         storage.replaceCharacters(in: range, with: insert)

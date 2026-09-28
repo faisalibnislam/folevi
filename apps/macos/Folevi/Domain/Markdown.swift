@@ -94,6 +94,9 @@ public enum MarkdownCodec {
         }
     }
 
+    /// Forces a page break in Markdown viewers that render HTML (and in PDF exports).
+    public static let pageBreakHTML = "<div style=\"page-break-after: always\"></div>"
+
     public static func blocksToMarkdown(_ blocks: [WireBlock], _ opts: ExportOptions = ExportOptions()) -> String {
         var lines: [String] = []
         if !opts.frontMatter.isEmpty {
@@ -163,6 +166,17 @@ public enum MarkdownCodec {
                 lines.append("")
             case "divider":
                 lines.append("---")
+                lines.append("")
+            case "pageBreak":
+                lines.append(pageBreakHTML)
+                lines.append("")
+            case "formula":
+                let latex = (p["latex"]?.isNull == false ? string(p["latex"]) : "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if !latex.isEmpty { lines.append(contentsOf: ["$$", latex, "$$", ""]) }
+            case "whiteboard":
+                // An inline SVG image, so the drawing survives in any Markdown viewer.
+                let svg = Whiteboard.svg(data: (p["data"]?.isNull == false ? string(p["data"]) : ""), height: p["height"]?.doubleValue)
+                lines.append("\(indent)![Whiteboard](\(Whiteboard.dataURI(svg)))")
                 lines.append("")
             case "code":
                 let code = p["code"].flatMap { $0.isNull ? nil : $0 }.map { string($0) } ?? ""
@@ -372,22 +386,25 @@ public enum MarkdownCodec {
         var props: [String: JSONValue]
     }
 
-    static func parseFrontMatter(_ lines: [String]) -> (data: [String: String], consumed: Int) {
-        guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return ([:], 0) }
+    /// `order` lists the keys as first written (JavaScript object key order), for warnings.
+    static func parseFrontMatter(_ lines: [String]) -> (data: [String: String], consumed: Int, order: [String]) {
+        guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return ([:], 0, []) }
         var data: [String: String] = [:]
+        var order: [String] = []
         for i in 1..<max(1, lines.count) {
             let line = lines[i]
             let t = line.trimmingCharacters(in: .whitespaces)
-            if t == "---" || t == "..." { return (data, i + 1) }
+            if t == "---" || t == "..." { return (data, i + 1, order) }
             if let m = Regex.match(#"^([A-Za-z0-9_-]+):\s*(.*)$"#, line), let k = m.groups[0] {
                 var v = (m.groups[1] ?? "").trimmingCharacters(in: .whitespaces)
                 if v.count >= 2 && ((v.hasPrefix("\"") && v.hasSuffix("\"")) || (v.hasPrefix("'") && v.hasSuffix("'"))) {
                     v = String(v.dropFirst().dropLast())
                 }
+                if data[k] == nil { order.append(k) }
                 data[k] = v
             }
         }
-        return ([:], 0)
+        return ([:], 0, [])
     }
 
     static let languageAliases: [String: String] = [
@@ -453,6 +470,43 @@ public enum MarkdownCodec {
             let line = lines[i].replacingOccurrences(of: "\t", with: "    ")
             if line.trimmingCharacters(in: .whitespaces).isEmpty {
                 flushParagraph()
+                continue
+            }
+            // Page break (the `<div style="page-break-after: always"></div>` convention).
+            if Regex.match(#"^\s*<div\s+style=["']\s*(page-break-after|break-after)\s*:\s*(always|page)\s*;?\s*["']\s*>\s*</div>\s*$"#, line, caseInsensitive: true) != nil {
+                flushParagraph()
+                drafts.append(Draft(id: newId(), type: "pageBreak", depth: 0, text: [], props: [:]))
+                continue
+            }
+            // Display math ($$ … $$) becomes a formula block.
+            if let math = Regex.match(#"^\s*\$\$(.*)$"#, line) {
+                flushParagraph()
+                let startLine = i
+                var body: [String] = []
+                var rest = math.groups[0] ?? ""
+                let trim = { (s: String) in s.trimmingCharacters(in: .whitespacesAndNewlines) }
+                if let closed = Regex.match(#"^(.*?)\$\$\s*$"#, rest), !trim(rest).isEmpty {
+                    body.append(trim(closed.groups[0] ?? ""))
+                } else {
+                    if !trim(rest).isEmpty { body.append(rest) }
+                    i += 1
+                    while i < lines.count && Regex.match(#"\$\$\s*$"#, lines[i]) == nil {
+                        body.append(lines[i])
+                        i += 1
+                    }
+                    if i < lines.count {
+                        rest = lines[i].replacingOccurrences(of: #"\$\$\s*$"#, with: "", options: .regularExpression)
+                        if !trim(rest).isEmpty { body.append(rest) }
+                    }
+                }
+                let latex = trim(body.joined(separator: "\n"))
+                if latex.utf16.count > FoleviLimits.maxFormulaLength {
+                    drafts.append(Draft(id: newId(), type: "code", depth: 0, text: [],
+                                        props: ["language": .string("latex"), "code": .string(latex)]))
+                    warnings.append(ImportWarning(line: lineNo(startLine), code: "math", message: "A very long formula was kept as a LaTeX code block"))
+                } else if !latex.isEmpty {
+                    drafts.append(Draft(id: newId(), type: "formula", depth: 0, text: [], props: ["latex": .string(latex)]))
+                }
                 continue
             }
             // Fenced code
@@ -595,9 +649,19 @@ public enum MarkdownCodec {
             } else if Regex.test(#"^\s{0,3}\[[^\]]+\]:\s+\S+"#, line) {
                 warnings.append(ImportWarning(line: lineNo(i), code: "reference_link", message: "Reference-style link definition imported as text"))
             }
+            if Regex.test(#"\$\$[^$]+\$\$"#, line) {
+                warnings.append(ImportWarning(line: lineNo(i), code: "math", message: "Inline math ($$…$$) isn’t rendered yet; it was kept as text"))
+            }
             paragraph.append(line.trimmingCharacters(in: .whitespaces))
         }
         flushParagraph()
+
+        // Front matter: only `title` becomes part of the document; say which fields were left out.
+        let dropped = fm.order.filter { $0 != "title" }
+        if !dropped.isEmpty {
+            warnings.insert(ImportWarning(line: 1, code: "front_matter",
+                                          message: "Front matter \(dropped.count == 1 ? "field" : "fields") not imported: \(dropped.joined(separator: ", ")) (only “title” is used)"), at: 0)
+        }
 
         // Convert depth annotations into parent/rank assignments.
         var stack: [Draft] = []

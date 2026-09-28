@@ -102,6 +102,7 @@ public enum SearchText {
             }
         case "bookmark": parts += [s("title"), s("description"), s("url")]
         case "page": parts.append(s("titleCache"))
+        case "formula": parts.append(s("latex"))
         default: break
         }
         return parts.filter { !$0.isEmpty }.joined(separator: " ")

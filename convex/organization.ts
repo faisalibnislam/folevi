@@ -1,11 +1,13 @@
 // Folders (one level of nesting in v1) and tags.
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import { normalizeForSearch, rankBetween, ulid } from "@folevi/editor-schema";
-import { assertWritable, requireDocument, requireProfile, requireWorkspace } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, requireDocument, requireProfile, requireWorkspace } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { nextSeq } from "./lib/seq";
+import { isFolderColor, randomFolderColor } from "./lib/folderColors";
 
 const TAG_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
 
@@ -37,12 +39,78 @@ export const sidebar = query({
         .map((f) => ({
           id: f.publicId,
           name: f.name,
-          icon: f.icon ?? null,
+          color: f.color ?? null,
           parentFolderId: f.parentFolderId ? (idToPublic.get(f.parentFolderId) ?? null) : null,
           rank: f.rank,
         })),
       tags: tags.sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ id: t.publicId, name: t.name, color: t.color })),
     };
+  },
+});
+
+/**
+ * Every folder and tag with its page count and dates, for the All folders / All tags views (the
+ * sidebar shows only the first few). Counts are pages the person can see in lists: not trashed, not
+ * archived, top-level in the folder.
+ */
+/** Up to three notes' previews, skipping any the person can't read (restricted pages stay hidden). */
+async function readablePreviews(ctx: QueryCtx, profile: Doc<"profiles">, docs: Doc<"documents">[]) {
+  const out: { cover: Doc<"documents">["cover"]; title: string; excerpt: string }[] = [];
+  for (const d of docs) {
+    if (out.length === 3) break;
+    if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+    out.push({ cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280) });
+  }
+  return out;
+}
+
+export const index = query({
+  args: { workspaceId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const folders = (
+      await ctx.db
+        .query("folders")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
+        .collect()
+    ).filter((f) => !f.deletedAt);
+    const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
+    const folderRows = [];
+    for (const f of folders) {
+      const docs = (
+        await ctx.db
+          .query("documents")
+          .withIndex("by_folder", (q) => q.eq("folderId", f._id))
+          .take(2000)
+      ).filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && d.kind !== "template");
+      folderRows.push({
+        id: f.publicId,
+        name: f.name,
+        color: f.color ?? null,
+        parentFolderId: f.parentFolderId ? (idToPublic.get(f.parentFolderId) ?? null) : null,
+        rank: f.rank,
+        createdAt: f.createdAt,
+        updatedAt: Math.max(f.updatedAt, ...docs.map((d) => d.updatedAt)),
+        documentCount: docs.length,
+        // The most recently edited notes inside that this person can read: style, title and opening text,
+        // shown as small pages peeking out of the folder.
+        previews: await readablePreviews(ctx, profile, [...docs].sort((a, b) => b.updatedAt - a.updatedAt)),
+      });
+    }
+    const tags = await ctx.db
+      .query("tags")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
+      .collect();
+    const tagRows = [];
+    for (const t of tags) {
+      const links = await ctx.db
+        .query("documentTags")
+        .withIndex("by_tag", (q) => q.eq("tagId", t._id))
+        .take(2000);
+      tagRows.push({ id: t.publicId, name: t.name, color: t.color, createdAt: t.createdAt, documentCount: links.length });
+    }
+    return { folders: folderRows, tags: tagRows };
   },
 });
 
@@ -75,6 +143,8 @@ export const createFolder = mutation({
       parentFolderId,
       name: cleanName(args.name),
       icon: args.icon?.slice(0, 16),
+      // Every folder gets a colour; people can change it from the folder menu.
+      color: randomFolderColor(),
       rank: rankBetween(last, null),
       createdBy: profile._id,
       createdAt: now,
@@ -109,6 +179,32 @@ export const renameFolder = mutation({
       seq: await nextSeq(ctx, folder.workspaceId),
     });
     return null;
+  },
+});
+
+/** Sets a folder's colour (one of FOLDER_COLORS), or back to the default with null. */
+export const setFolderColor = mutation({
+  args: { folderId: v.string(), color: v.union(v.string(), v.null()) },
+  handler: async (ctx, args) => {
+    const { profile, folder } = await folderFor(ctx, args.folderId);
+    await assertWritable(ctx, profile);
+    if (args.color !== null && !isFolderColor(args.color)) fail("invalid_argument", "Unknown folder colour.");
+    await ctx.db.patch(folder._id, { color: args.color ?? undefined, updatedAt: Date.now(), seq: await nextSeq(ctx, folder.workspaceId) });
+    return null;
+  },
+});
+
+/** How many pages are in Drafts (not in any folder, top level, not archived or trashed). */
+export const draftCount = query({
+  args: { workspaceId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const rows = await ctx.db
+      .query("documents")
+      .withIndex("by_workspace_folder", (q) => q.eq("workspaceId", workspace._id).eq("folderId", undefined))
+      .take(5000);
+    return rows.filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && (d.kind === "document" || d.kind === "daily")).length;
   },
 });
 
@@ -216,10 +312,19 @@ export const updateTag = mutation({
     const { profile, tag } = await tagFor(ctx, args.tagId);
     await assertWritable(ctx, profile);
     const name = args.name !== undefined ? cleanName(args.name.replace(/^#/, ""), 40) : tag.name;
+    const normalizedName = normalizeForSearch(name);
+    if (normalizedName !== tag.normalizedName) {
+      const clash = await ctx.db
+        .query("tags")
+        .withIndex("by_workspace_name", (q) => q.eq("workspaceId", tag.workspaceId).eq("normalizedName", normalizedName))
+        .first();
+      if (clash && clash._id !== tag._id) fail("invalid_argument", `There's already a tag called #${clash.name}.`);
+    }
+    if (args.color !== undefined && !TAG_COLORS.includes(args.color)) fail("invalid_argument", "Unknown tag color.");
     await ctx.db.patch(tag._id, {
       name,
-      normalizedName: normalizeForSearch(name),
-      color: args.color && TAG_COLORS.includes(args.color) ? args.color : tag.color,
+      normalizedName,
+      color: args.color ?? tag.color,
       seq: await nextSeq(ctx, tag.workspaceId),
     });
     return null;

@@ -1,75 +1,194 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import { Laptop, Monitor, Smartphone } from "lucide-react";
-import { api } from "@/lib/convex/api";
+import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
+import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Button } from "@/components/ui/Button";
-import { useToast, errorMessage } from "@/components/ui/Toast";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { Dialog } from "@/components/ui/Dialog";
+import { useToast } from "@/components/ui/Toast";
+import { Alert, PasswordField } from "@/components/auth/fields";
+import { BackupCodes, TotpEnrollment } from "@/components/auth/TwoFactor";
 import { Card } from "./Card";
+import { DeleteAccountCard } from "./DeleteAccountCard";
 
-export function SecuritySection() {
-  const sessions = useQuery(api.users.listSessions, {});
-  const revoke = useMutation(api.users.revokeSession);
-  const revokeOthers = useMutation(api.users.revokeOtherSessions);
-  const resetPassword = useMutation(api.authSupport.requestPasswordReset);
-  const toast = useToast();
+/** Asks for the current password before showing secrets (backup codes, authenticator key). */
+function PasswordGate({
+  open,
+  title,
+  description,
+  action,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  action: string;
+  onClose: () => void;
+  onConfirm: (password: string) => Promise<string | null>;
+}) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   return (
-    <>
-      <Card
-        title="Sign-in protection"
-        description={
-          <>
-            Every Folevi account signs in with an email, a password and an authenticator app (TOTP). One-time recovery codes are shown once when you set up the authenticator — keep them somewhere safe.
-            When you choose “Remember this browser”, the authenticator step is skipped on that browser for 30 days; signing out or revoking the session below ends that.
-          </>
-        }
+    <Dialog
+      open={open}
+      onClose={() => {
+        setPassword("");
+        setError(null);
+        onClose();
+      }}
+      title={title}
+      description={description}
+      size="sm"
+    >
+      <form
+        className="space-y-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (busy || !password) return;
+          setBusy(true);
+          const problem = await onConfirm(password);
+          setBusy(false);
+          if (problem) setError(problem);
+          else setPassword("");
+        }}
       >
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() =>
-              resetPassword({}).then(
-                (r) => toast.show(r.configured ? "Check your email for a password reset link." : "Password reset isn't available in this environment (no identity provider configured)."),
-                (e) => toast.show(errorMessage(e), { tone: "error" }),
-              )
-            }
-          >
-            Change password
+        {error ? <Alert>{error}</Alert> : null}
+        <PasswordField label="Current password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+        <div className="flex justify-end">
+          <Button type="submit" variant="primary" disabled={busy || !password}>
+            {action}
           </Button>
         </div>
-        <p className="mt-3 text-xs text-muted">
-          To move your authenticator to a new phone, sign in on the new device and use a recovery code, or ask support to reset two-step verification after verifying your identity.
-        </p>
-      </Card>
-      <Card title="Sessions" description="Devices and browsers signed in to your account. Revoking a session signs it out the next time it contacts Folevi.">
-        <ul className="divide-y divide-line rounded-[14px] border border-line">
-          {sessions === undefined ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
-          {sessions?.map((s) => (
-            <li key={s.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-muted" aria-hidden>
-                {s.client === "mac" ? <Laptop size={18} /> : /iOS|Android/.test(s.label) ? <Smartphone size={18} /> : <Monitor size={18} />}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">
-                  {s.label} {s.current ? <span className="ml-1 rounded-[4px] bg-moss-soft px-1.5 py-0.5 text-[11px] text-moss-ink">This device</span> : null}
-                </span>
-                <span className="block text-xs text-muted">
-                  Signed in {formatDateTime(s.createdAt)} · last active {formatRelative(s.lastSeenAt)}
-                  {s.revokedAt ? ` · revoked ${formatRelative(s.revokedAt)}` : ""}
-                </span>
-              </span>
-              {!s.revokedAt && !s.current ? (
-                <Button size="sm" onClick={() => void revoke({ sessionId: s.id }).then(() => toast.show("Session revoked"), (e) => toast.show(errorMessage(e), { tone: "error" }))}>
-                  Revoke
-                </Button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        <Button className="mt-3" onClick={() => void revokeOthers({}).then(() => toast.show("Signed out everywhere else"))}>
-          Sign out of all other sessions
-        </Button>
-      </Card>
+      </form>
+    </Dialog>
+  );
+}
+
+function TwoStepCard() {
+  const toast = useToast();
+  const [gate, setGate] = useState<"codes" | "key" | null>(null);
+  const [codes, setCodes] = useState<string[] | null>(null);
+  const [totpUri, setTotpUri] = useState<string | null>(null);
+  return (
+    <Card
+      title="Two-step verification"
+      description="Folevi asks for a code from your authenticator app every time you sign in on a new device. It's required for every account and can't be turned off."
+    >
+      <p className="flex items-center gap-2 text-sm font-medium text-success">
+        <ShieldCheck size={16} aria-hidden /> On — authenticator app
+      </p>
+      <p className="mt-2 text-xs text-muted">
+        When you tick “Trust this device for 30 days” while signing in, that browser skips the code for 30 days. Signing out, revoking the session below, or changing your
+        password ends it.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button onClick={() => setGate("key")}>Move to a new authenticator app</Button>
+        <Button onClick={() => setGate("codes")}>Get new backup codes</Button>
+      </div>
+      <PasswordGate
+        open={gate === "codes"}
+        title="New backup codes"
+        description="Your old backup codes stop working as soon as new ones are created."
+        action="Create new codes"
+        onClose={() => setGate(null)}
+        onConfirm={async (password) => {
+          const { data, error } = await authClient.twoFactor.generateBackupCodes({ password });
+          if (error || !data) return authErrorMessage(error);
+          setGate(null);
+          setCodes(data.backupCodes);
+          return null;
+        }}
+      />
+      <PasswordGate
+        open={gate === "key"}
+        title="Move to a new authenticator app"
+        description="Shows your authenticator key again so you can add Folevi to another app or phone."
+        action="Show my key"
+        onClose={() => setGate(null)}
+        onConfirm={async (password) => {
+          const { data, error } = await authClient.twoFactor.getTotpUri({ password });
+          if (error || !data) return authErrorMessage(error);
+          setGate(null);
+          setTotpUri(data.totpURI);
+          return null;
+        }}
+      />
+      <Dialog open={codes !== null} onClose={() => setCodes(null)} title="Save your new backup codes" description="Each code works once. You'll only see these now.">
+        {codes ? (
+          <BackupCodes
+            codes={codes}
+            doneLabel="Done"
+            onDone={() => {
+              setCodes(null);
+              toast.show("New backup codes saved", { tone: "success" });
+            }}
+          />
+        ) : null}
+      </Dialog>
+      <Dialog open={totpUri !== null} onClose={() => setTotpUri(null)} title="Add Folevi to your new authenticator" description="Scan the code or enter the key, then check that the codes match.">
+        {totpUri ? <TotpEnrollment totpUri={totpUri} /> : null}
+        <div className="mt-4 flex justify-end">
+          <Button variant="primary" onClick={() => setTotpUri(null)}>
+            Done
+          </Button>
+        </div>
+      </Dialog>
+    </Card>
+  );
+}
+
+function PasswordCard() {
+  const toast = useToast();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Card title="Password" description="Changing your password signs you out on every other device.">
+      <form
+        className="max-w-md space-y-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (busy) return;
+          if (next.length < 10) return setError("Use at least 10 characters for the new password.");
+          if (next !== repeat) return setError("The two new passwords don't match.");
+          setBusy(true);
+          setError(null);
+          const { error: err } = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
+          setBusy(false);
+          if (err) return setError(authErrorMessage(err));
+          setCurrent("");
+          setNext("");
+          setRepeat("");
+          toast.show("Password changed. Other devices were signed out.", { tone: "success" });
+        }}
+      >
+        {error ? <Alert>{error}</Alert> : null}
+        <PasswordField label="Current password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
+        <PasswordField label="New password" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} hint="At least 10 characters." />
+        <PasswordField label="Repeat new password" autoComplete="new-password" required value={repeat} onChange={(e) => setRepeat(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" variant="primary" disabled={busy}>
+            Change password
+          </Button>
+          <a href="/forgot-password" className="text-sm text-accent underline underline-offset-2">
+            Forgot your current password?
+          </a>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+export function SecuritySection() {
+  return (
+    <>
+      <TwoStepCard />
+      <PasswordCard />
+      <DeleteAccountCard />
     </>
   );
 }

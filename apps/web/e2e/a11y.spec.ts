@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { newPersonWithWorkspace } from "./helpers";
 
-const VIEWS = ["/documents", "/tasks/today", "/calendar", "/settings/account", "/settings/security", "/help"];
+const VIEWS = ["/documents", "/tasks/today", "/calendar", "/settings/account", "/settings/security", "/settings/devices", "/help"];
 
 for (const scheme of ["light", "dark"] as const) {
   test(`no serious accessibility violations in the app (${scheme})`, async ({ browser }) => {

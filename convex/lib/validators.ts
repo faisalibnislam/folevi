@@ -23,15 +23,39 @@ export const vDocumentKind = v.union(
   v.literal("collectionRow"),
 );
 export const vDocumentStyle = v.object({
-  font: v.union(v.literal("sans"), v.literal("serif"), v.literal("mono")),
+  font: v.union(v.literal("sans"), v.literal("serif"), v.literal("mono"), v.literal("rounded")),
   width: v.union(v.literal("narrow"), v.literal("default"), v.literal("wide")),
   background: v.union(v.literal("paper"), v.literal("plain"), v.literal("tinted"), v.literal("grid")),
   accent: v.union(v.literal("accent"), v.literal("moss"), v.literal("marigold"), v.literal("plum"), v.literal("coral")),
   card: v.union(v.literal("folio"), v.literal("plain"), v.literal("tinted"), v.literal("outline")),
+  /** Behind the page: "art:<cover art id>" or "color:<name>" (see apps/web/src/lib/cover.ts). */
+  backdrop: v.optional(v.string()),
+  sheet: v.optional(
+    v.union(v.literal("white"), v.literal("paper"), v.literal("ivory"), v.literal("mist"), v.literal("sage"), v.literal("blush"), v.literal("night")),
+  ),
+  text: v.optional(v.union(v.literal("ink"), v.literal("slate"), v.literal("navy"), v.literal("forest"), v.literal("plum"), v.literal("brown"), v.literal("white"))),
+  separator: v.optional(v.union(v.literal("line"), v.literal("dots"), v.literal("doodle"))),
 });
 export const vDocumentCover = v.object({
   kind: v.union(v.literal("none"), v.literal("color"), v.literal("gradient"), v.literal("image"), v.literal("art")),
   value: v.optional(v.string()),
+});
+/** Colours picked from a note style image: page/text for light and dark themes, and how the cover reads. */
+export const vImagePalette = v.object({
+  paper: v.string(),
+  ink: v.string(),
+  paperDark: v.string(),
+  inkDark: v.string(),
+  tone: v.union(v.literal("deep"), v.literal("light")),
+  // The accent, text and highlight colours (packages/design-tokens/src/palette.ts). Optional: palettes
+  // saved before these existed lack them, and the app picks them again.
+  accent: v.optional(v.string()),
+  accentDark: v.optional(v.string()),
+  text: v.optional(v.array(v.string())),
+  textDark: v.optional(v.array(v.string())),
+  names: v.optional(v.array(v.string())),
+  highlight: v.optional(v.array(v.string())),
+  highlightDark: v.optional(v.array(v.string())),
 });
 export const vCollectionPropertyType = v.union(
   v.literal("text"),
@@ -71,6 +95,7 @@ export const vDocumentCreate = v.object({
   dailyDate: v.optional(v.union(v.string(), v.null())),
   templateId: v.optional(v.union(v.string(), v.null())),
   collectionId: v.optional(v.union(v.string(), v.null())),
+  workspaceId: v.optional(v.union(v.string(), v.null())),
 });
 
 export const vDocumentPatch = v.object({

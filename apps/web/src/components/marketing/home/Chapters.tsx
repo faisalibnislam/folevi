@@ -90,7 +90,7 @@ export function Chapters() {
             Open a page and start typing. Everything is a block, and <span className="font-medium text-ink">/</span> turns the line
             you’re on into a heading, a checklist, a quote or a callout — without reaching for the mouse.
           </p>
-          <p>Nothing asks you to file it first. Loose notes can live in Unsorted until they find a home.</p>
+          <p>Nothing asks you to file it first. Loose notes can live in Drafts until they find a home.</p>
         </Chapter>
 
         <Chapter

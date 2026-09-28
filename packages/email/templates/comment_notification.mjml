@@ -55,7 +55,7 @@
         <mj-text css-class="fv-muted" color="#5F6962" font-size="14px" line-height="20px" letter-spacing="1px" text-transform="uppercase" padding="0 32px 8px 32px">Comment</mj-text>
         <mj-text font-family="'Iowan Old Style', 'Palatino Linotype', Georgia, ui-serif, 'Times New Roman', serif" font-size="28px" line-height="36px" padding="0 32px 16px 32px"><h1 style="margin:0;font-size:28px;line-height:36px;font-weight:normal;font-family:'Iowan Old Style', 'Palatino Linotype', Georgia, ui-serif, 'Times New Roman', serif;">New comment on a document</h1></mj-text>
         <mj-text><strong>{DATA_VARIABLE:actorName}</strong> commented on <strong>{DATA_VARIABLE:documentTitle}</strong>.</mj-text>
-        <mj-text css-class="fv-muted" color="#5F6962" font-size="15px" line-height="24px" font-style="italic" padding="0 32px 12px 32px">{DATA_VARIABLE:excerpt}</mj-text>
+        <mj-text css-class="fv-muted" color="#5F6962" font-size="14px" line-height="22px">Open the document to read it. Folevi never puts your notes or comments in email.</mj-text>
         <mj-button href="{DATA_VARIABLE:documentUrl}" css-class="fv-button" background-color="#3159D8" color="#FBFAF6" font-size="16px" font-weight="600" border-radius="8px" inner-padding="13px 24px" align="left" padding="12px 32px 8px 32px">View the comment</mj-button>
         <mj-text css-class="fv-muted" color="#5F6962" font-size="14px" line-height="22px" padding="4px 32px 16px 32px">Button not working? Paste this link into your browser:<br /><a href="{DATA_VARIABLE:documentUrl}" class="fv-link" style="color:#3159D8;word-break:break-all;">{DATA_VARIABLE:documentUrl}</a></mj-text>
         </mj-column>

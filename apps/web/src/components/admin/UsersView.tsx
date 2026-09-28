@@ -9,7 +9,10 @@ import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { ROLE_LABEL } from "./permissions";
+import { PlanBadge } from "./UserBillingPanel";
+import type { PlanId } from "@/lib/plans";
 import { Badge, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, PageHeader, Pager, StatusBadge, Time, inputCls, selectCls, td, th } from "./ui";
+import { Select } from "@/components/ui/Select";
 
 const STATUSES = ["active", "suspended", "pending_deletion", "deleted"] as const;
 type ProfileStatus = (typeof STATUSES)[number];
@@ -38,7 +41,7 @@ export function UsersView() {
   const cursor = cursors.at(-1) ?? null;
   const search = useMutation(api.admin.searchUsers);
   const key = searched ? JSON.stringify([q, status ?? "", cursor, nonce]) : null;
-  const { data, error, loading, refresh } = useAuditedLoad(key, (requestId) => search({ query: q, status, cursor, requestId }));
+  const { data, error, loading, refresh } = useAuditedLoad(key, (meta) => search({ query: q, status, cursor, ...meta }));
   const emailMode = q.includes("@");
 
   return (
@@ -49,7 +52,7 @@ export function UsersView() {
       <form
         role="search"
         aria-label="Search users"
-        className="mb-5 flex flex-wrap items-end gap-3 ui-card rounded-[18px] p-4"
+        className="mb-5 flex flex-wrap items-end gap-3 ui-card rounded-[8px] p-4"
         onSubmit={(e) => {
           e.preventDefault();
           const sp = new URLSearchParams();
@@ -80,14 +83,14 @@ export function UsersView() {
           <label htmlFor={`${uid}-status`} className="mb-1 block font-medium">
             Status
           </label>
-          <select id={`${uid}-status`} value={draftStatus} onChange={(e) => setDraftStatus(e.target.value)} className={selectCls}>
+          <Select id={`${uid}-status`} value={draftStatus} onChange={(e) => setDraftStatus(e.target.value)} className={selectCls}>
             <option value="">Any status</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s === "pending_deletion" ? "Pending deletion" : s.charAt(0).toUpperCase() + s.slice(1)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <Button type="submit" variant="primary">
           <Search size={15} aria-hidden /> Search
@@ -103,14 +106,15 @@ export function UsersView() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden ui-card rounded-[18px]">
-        <DataTable caption={searched ? `Users matching “${q || "all"}”${status ? `, status ${status}` : ""}` : "Users"} minWidth={900}>
+      <div className="overflow-hidden ui-card rounded-[8px]">
+        <DataTable caption={searched ? `Users matching “${q || "all"}”${status ? `, status ${status}` : ""}` : "Users"} minWidth={980}>
           <thead>
             <tr>
               <th scope="col" className={th}>Name</th>
               <th scope="col" className={th}>Email</th>
               <th scope="col" className={th}>Status</th>
               <th scope="col" className={th}>Verification</th>
+              <th scope="col" className={th}>Plan</th>
               <th scope="col" className={th}>Platform role</th>
               <th scope="col" className={th}>Created</th>
               <th scope="col" className={th}>Last active</th>
@@ -118,11 +122,11 @@ export function UsersView() {
           </thead>
           <tbody aria-busy={loading || undefined}>
             {!searched ? (
-              <EmptyRow colSpan={7}>Search to see accounts. Nothing is loaded until you ask.</EmptyRow>
+              <EmptyRow colSpan={8}>Search to see accounts. Nothing is loaded until you ask.</EmptyRow>
             ) : loading && !data ? (
-              <LoadingRows colSpan={7} />
+              <LoadingRows colSpan={8} />
             ) : data && data.users.length === 0 ? (
-              <EmptyRow colSpan={7}>{emailMode ? "No account uses that exact email address." : "No matching accounts on this page."}</EmptyRow>
+              <EmptyRow colSpan={8}>{emailMode ? "No account uses that exact email address." : "No matching accounts on this page."}</EmptyRow>
             ) : (
               data?.users.map((u) => (
                 <tr key={u.id} className="hover:bg-surface">
@@ -138,6 +142,12 @@ export function UsersView() {
                   <td className={td}>
                     <span className="flex flex-wrap gap-1">
                       <VerificationBadges emailVerified={u.emailVerified} mfaVerified={u.mfaVerified} />
+                    </span>
+                  </td>
+                  <td className={td}>
+                    <span className="flex flex-wrap gap-1">
+                      <PlanBadge plan={u.plan as PlanId} trialing={u.trialing} />
+                      {u.ai && u.plan !== "pro" && !u.trialing ? <Badge tone="plum">AI</Badge> : null}
                     </span>
                   </td>
                   <td className={td}>{u.platformRole ? <Badge tone="plum">{ROLE_LABEL[u.platformRole]}</Badge> : <span className="text-muted">—</span>}</td>

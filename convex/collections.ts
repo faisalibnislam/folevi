@@ -3,12 +3,13 @@ import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { rankBetween, ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, requireDocument, requireProfile, type Access } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, requireDocument, requireProfile, type Access } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { addView, createCollection, normalizeValue } from "./lib/collections";
 import { createDocument, specsToWireBlocks } from "./lib/create";
 import { nextSeq } from "./lib/seq";
 import { vCollectionPropertyType, vCollectionViewType } from "./lib/validators";
+import { SyncEngine } from "./lib/syncEngine";
 
 const OPTION_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
 
@@ -79,9 +80,24 @@ export const get = query({
         updatedAt: doc.updatedAt,
       });
     }
+    // Names for person values (display + picker). Members of the collection's workspace only; no emails.
+    const memberRows = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", collection.workspaceId))
+      .take(300);
+    const people: { id: string; name: string }[] = [];
+    for (const m of memberRows) {
+      const p = await ctx.db.get(m.profileId);
+      if (p && p.status !== "deleted") people.push({ id: p._id as string, name: p.displayName });
+    }
+    people.sort((a, b) => a.name.localeCompare(b.name));
+    const workspace = await ctx.db.get(collection.workspaceId);
     return {
       id: collection.publicId,
       name: collection.name,
+      workspaceId: workspace?.publicId ?? null,
+      isMember: Boolean(await membership(ctx, profile._id, collection.workspaceId)),
+      people,
       hostDocumentId: (await ctx.db.get(collection.documentId))!.publicId,
       canEdit: accessAtLeast(access, "write"),
       properties: props.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options })),
@@ -93,7 +109,8 @@ export const get = query({
 
 /** Creates a collection hosted by a document. The client then inserts a `collection` block pointing at it. */
 export const create = mutation({
-  args: { documentId: v.string(), name: v.optional(v.string()) },
+  // `view` picks the first view's layout (Insert → Table / Gallery / Kanban); defaults to a table.
+  args: { documentId: v.string(), name: v.optional(v.string()), view: v.optional(vCollectionViewType) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
@@ -118,8 +135,16 @@ export const create = mutation({
         { key: "date", name: "Date", type: "date" },
       ],
     });
-    const vis = [coll.propertyPublicIds.get("status")!, coll.propertyPublicIds.get("date")!];
-    const viewId = await addView(ctx, coll.collectionId, { name: "Table", type: "table", visibleProperties: vis, rank: "V" });
+    const status = coll.propertyPublicIds.get("status")!;
+    const vis = [status, coll.propertyPublicIds.get("date")!];
+    const type = args.view ?? "table";
+    const viewId = await addView(ctx, coll.collectionId, {
+      name: type === "board" ? "Board" : type === "gallery" ? "Gallery" : "Table",
+      type,
+      groupBy: type === "board" ? status : undefined,
+      visibleProperties: vis,
+      rank: "V",
+    });
     return { collectionId: coll.publicId, viewId };
   },
 });
@@ -320,6 +345,74 @@ export const moveRow = mutation({
       else await ctx.db.insert("collectionValues", { rowId: row._id, propertyId: prop._id, collectionId: collection._id, value: normalized, updatedAt: Date.now() });
     }
     return null;
+  },
+});
+
+/** Renames a row (its page title) inline from a collection view. Goes through the sync engine so derived text and link labels follow. */
+export const renameRow = mutation({
+  args: { collectionId: v.string(), rowId: v.string(), title: v.string() },
+  handler: async (ctx, args) => {
+    const { profile, collection } = await collectionFor(ctx, args.collectionId, "write");
+    await assertWritable(ctx, profile);
+    const row = await rowFor(ctx, collection, args.rowId);
+    const doc = await ctx.db.get(row.documentId);
+    if (!doc || doc.inTrash) fail("not_found", "Row not found.");
+    const engine = new SyncEngine(ctx, profile, "server");
+    const [r] = await engine.applyAll(null, [
+      { opId: ulid(), kind: "document.update", documentId: doc.publicId, patch: { title: args.title.slice(0, 300) }, baseRevision: null },
+    ]);
+    if (!r || r.status === "rejected") fail("forbidden", r?.error?.message ?? "Couldn't rename this row.");
+    await ctx.db.patch(row._id, { updatedAt: Date.now() });
+    return null;
+  },
+});
+
+/**
+ * The collection a page belongs to as a row (null for ordinary pages): shown as editable properties
+ * at the top of the row's page.
+ */
+export const rowForDocument = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || doc.kind !== "collectionRow" || !doc.collectionId) return null;
+    const access = await documentAccess(ctx, profile, doc);
+    if (!accessAtLeast(access, "read")) return null;
+    const collection = await ctx.db.get(doc.collectionId);
+    if (!collection || collection.deletedAt) return null;
+    const row = (
+      await ctx.db
+        .query("collectionRows")
+        .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
+        .collect()
+    ).find((r) => r.documentId === doc._id && !r.deletedAt);
+    if (!row) return null;
+    const host = await ctx.db.get(collection.documentId);
+    const hostReadable = host ? accessAtLeast(await documentAccess(ctx, profile, host), "read") : false;
+    const props = (
+      await ctx.db
+        .query("collectionProperties")
+        .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
+        .collect()
+    )
+      .filter((p) => !p.deletedAt)
+      .sort((a, b) => (a.rank < b.rank ? -1 : 1));
+    const byId = new Map(props.map((p) => [p._id as string, p.publicId]));
+    const values: Record<string, unknown> = {};
+    for (const val of await ctx.db
+      .query("collectionValues")
+      .withIndex("by_row", (q) => q.eq("rowId", row._id))
+      .collect()) {
+      const pid = byId.get(val.propertyId);
+      if (pid) values[pid] = val.value;
+    }
+    return {
+      collection: { id: collection.publicId, name: collection.name, hostDocumentId: hostReadable && host ? host.publicId : null, hostTitle: hostReadable && host ? host.title : null },
+      canEdit: accessAtLeast(access, "write"),
+      row: { id: row.publicId, documentId: doc.publicId, title: doc.title, values },
+      properties: props.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options })),
+    };
   },
 });
 

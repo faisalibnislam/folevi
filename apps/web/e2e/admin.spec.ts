@@ -1,28 +1,25 @@
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { APP, newPersonWithWorkspace, signIn } from "./helpers";
+import { APP, completeOnboarding, createAccount, grantPlatformRole, newPersonWithWorkspace, pick } from "./helpers";
 
-// The admin used by these tests. Locally, the first super admin is granted with
-// `npx convex run admin:bootstrapSuperAdmin '{"email":"ada@example.com"}'` (see docs/ADMIN.md).
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "ada@example.com";
-const ADMIN_NAME = process.env.E2E_ADMIN_NAME ?? "Ada Example";
-const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+// One fresh super admin per run (granted through the local-only testSupport function), reused by every
+// test through its saved browser session so nobody signs in twice in the same authenticator window.
+let adminState: Awaited<ReturnType<import("@playwright/test").BrowserContext["storageState"]>> | null = null;
+let adminEmail = "";
 
-test.beforeAll(() => {
-  // Idempotent in practice: it refuses once any super admin exists, which is fine.
-  try {
-    execFileSync("npx", ["convex", "run", "admin:bootstrapSuperAdmin", JSON.stringify({ email: ADMIN_EMAIL })], { cwd: REPO_ROOT, stdio: "ignore", timeout: 60_000 });
-  } catch {
-    /* a super admin already exists (or the CLI isn't available in this environment) */
-  }
+test.beforeAll(async ({ browser }) => {
+  const context = await browser.newContext();
+  const { page, account } = await createAccount(context, { name: "Ada Example" });
+  await completeOnboarding(page);
+  grantPlatformRole(account.email, "super_admin");
+  adminEmail = account.email;
+  adminState = await context.storageState();
+  await context.close();
 });
 
 async function adminPage(browser: Browser, path: string): Promise<Page> {
-  const context = await browser.newContext();
-  // Visit the product once so the admin's profile exists, then open the console.
-  const page = await signIn(context, { email: ADMIN_EMAIL, name: ADMIN_NAME });
+  const context = await browser.newContext({ storageState: adminState ?? undefined });
+  const page = await context.newPage();
   await page.goto(`${APP}${path}`);
   await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible({ timeout: 30_000 });
   return page;
@@ -69,7 +66,7 @@ test("user search and view are written to the audit log; suspending requires a r
 
   // The view appears in the audit log, filtered to this user.
   await page.getByRole("link", { name: "Audit log" }).click();
-  await page.getByRole("combobox", { name: "Target type" }).selectOption("profile");
+  await pick(page.getByRole("combobox", { name: "Target type" }), "profile");
   await page.getByRole("textbox", { name: "Target ID" }).fill(profileId);
   await page.getByRole("button", { name: "Apply" }).click();
   const log = page.getByRole("table", { name: `Audit entries for profile ${profileId}` });
@@ -102,11 +99,96 @@ test("user search and view are written to the audit log; suspending requires a r
   await target.context.close();
 });
 
+test("listing workspaces is audited, and identity emails appear in the email log", async ({ browser }) => {
+  const page = await adminPage(browser, "/admin/workspaces");
+  await expect(page.getByRole("table", { name: "Workspaces, newest first" }).getByRole("link").first()).toBeVisible();
+  await page.goto(`${APP}/admin/audit`);
+  await expect(page.getByRole("table", { name: "Audit entries, newest first" }).getByText("workspace.list").first()).toBeVisible();
+
+  // The admin's own sign-up verification email went through Folevi's pipeline, so it is in the log
+  // (as a recipient hint only), with an honest status — never "delivered" without a webhook.
+  await page.goto(`${APP}/admin/emails`);
+  const table = page.getByRole("table", { name: "Email send attempts" });
+  await expect(table.getByText("auth_verify_email").first()).toBeVisible();
+  await expect(table.getByText(adminEmail)).toHaveCount(0);
+  await expect(table.getByText(/delivered/i)).toHaveCount(0);
+  await page.context().close();
+});
+
+test("an owner manages a person's plan and AI from their page; analytics and revenue load", async ({ browser }) => {
+  const target = await newPersonWithWorkspace(browser, "Plan Target");
+  const page = await adminPage(browser, "/admin/users");
+  await page.getByRole("searchbox", { name: "Email or name" }).fill(target.email);
+  await page.getByRole("button", { name: "Search" }).click();
+  const row = page.getByRole("row").filter({ hasText: "Plan Target" });
+  await expect(row.getByText("Free · trial")).toBeVisible();
+  await row.getByRole("link", { name: "Plan Target" }).click();
+  await expect(page.getByRole("heading", { name: "Plan & billing" })).toBeVisible();
+
+  // Set Basic by hand (a comp), with a reason.
+  await page.getByRole("button", { name: "Set plan…" }).click();
+  let dialog = page.getByRole("dialog", { name: /Set .*plan/ });
+  await pick(dialog.getByRole("combobox", { name: "Plan" }), "Basic — 20 GB");
+  await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: comped for a support issue");
+  await dialog.getByRole("button", { name: "Save plan" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Plan set to Basic" })).toBeVisible();
+
+  // Grant AI.
+  await page.getByRole("button", { name: /Grant AI…|AI access…/ }).click();
+  dialog = page.getByRole("dialog", { name: /AI/ });
+  await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: beta tester gets AI");
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "AI access granted" })).toBeVisible();
+  await expect(page.getByText("AI granted")).toBeVisible();
+
+  // The person sees it in their settings.
+  await target.page.goto(`${APP}/settings/billing`);
+  await expect(target.page.getByText(/Included by the Folevi team/)).toBeVisible({ timeout: 30_000 });
+
+  // Prepare an export for the person: delivered to them, never to staff.
+  await page.getByRole("button", { name: "Prepare export for user…" }).click();
+  dialog = page.getByRole("dialog", { name: /Prepare an export/ });
+  await dialog.getByRole("checkbox").check();
+  await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: user asked support for an export");
+  await dialog.getByRole("button", { name: "Prepare export" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /Export started/ })).toBeVisible();
+
+  await page.getByRole("link", { name: "User analytics" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "User analytics" })).toBeVisible();
+  await expect(page.getByRole("figure", { name: "Signups" })).toBeVisible();
+  await page.getByRole("link", { name: "Revenue" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Revenue" })).toBeVisible();
+  await expect(page.getByText("MRR", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("table", { name: "Net revenue by month" })).toBeVisible();
+  await page.context().close();
+  await target.context.close();
+});
+
+test("support staff see analytics but not revenue, and can't set plans", async ({ browser }) => {
+  const staff = await newPersonWithWorkspace(browser, "Support Person");
+  grantPlatformRole(staff.email, "support_admin");
+  const page = staff.page;
+  await page.goto(`${APP}/admin`);
+  const nav = page.getByRole("navigation", { name: "Admin" });
+  await expect(nav).toBeVisible({ timeout: 30_000 });
+  await expect(nav.getByRole("link", { name: "User analytics" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Revenue" })).toHaveCount(0);
+  await expect(page.getByText("Support staff").first()).toBeVisible();
+  await page.goto(`${APP}/admin/users?q=`);
+  await page.getByRole("searchbox", { name: "Email or name" }).fill(staff.email);
+  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("link", { name: "Support Person" }).click();
+  await expect(page.getByRole("button", { name: "Set plan…" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Extend trial…|Give Pro trial…/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Suspend…" })).toBeDisabled();
+  await staff.context.close();
+});
+
 for (const scheme of ["light", "dark"] as const) {
   test(`admin pages have no serious accessibility violations (${scheme})`, async ({ browser }) => {
     const page = await adminPage(browser, "/admin");
     await page.evaluate((s) => localStorage.setItem("folevi:appearance", s), scheme);
-    for (const path of ["/admin", "/admin/users?q=", "/admin/workspaces", "/admin/emails", "/admin/audit", "/admin/deletion-jobs", "/admin/configuration"]) {
+    for (const path of ["/admin", "/admin/users?q=", "/admin/workspaces", "/admin/emails", "/admin/audit", "/admin/deletion-jobs", "/admin/configuration", "/admin/analytics", "/admin/revenue"]) {
       await page.goto(`${APP}${path}`);
       await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible();
       await page.waitForTimeout(1500);

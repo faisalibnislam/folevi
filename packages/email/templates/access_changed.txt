@@ -1,0 +1,16 @@
+Folevi
+
+Your access changed
+
+{DATA_VARIABLE:actorName} {DATA_VARIABLE:summary}
+
+Open Folevi:
+{DATA_VARIABLE:actionUrl}
+
+If you think this was a mistake, ask the person who made the change.
+
+--
+You received this because share emails are turned on for your Folevi
+account.
+Manage notification preferences: {DATA_VARIABLE:preferencesUrl}
+Folevi · The Living Folio

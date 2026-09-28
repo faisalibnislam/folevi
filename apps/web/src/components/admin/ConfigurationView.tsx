@@ -1,5 +1,6 @@
 "use client";
 
+import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { useId, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -92,7 +93,7 @@ export function ConfigurationView() {
             <MaintenanceForm
               key={`${config.maintenance.bannerMessage ?? ""}|${String(config.maintenance.readOnly ?? false)}`}
               current={{ bannerMessage: config.maintenance.bannerMessage ?? "", readOnly: config.maintenance.readOnly ?? false }}
-              disabled={!canEdit}
+              disabled={!admin.can("config.maintenance")}
               onSave={(v) => setPending({ kind: "maintenance", ...v })}
             />
           )}
@@ -151,9 +152,7 @@ export function ConfigurationView() {
                 const descId = `tpl-${t.key}-desc`;
                 return (
                   <li key={t.key} className="flex items-start gap-3 border-line px-4 py-3 md:border-b">
-                    <span aria-hidden className="grid h-8 w-8 flex-none place-items-center ui-input rounded-full text-base">
-                      {t.icon}
-                    </span>
+                    <TemplateTile name={t.icon} size={32} iconSize={16} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13.5px] font-medium">{t.name}</p>
                       <p id={descId} className="mt-0.5 text-[12.5px] text-muted">

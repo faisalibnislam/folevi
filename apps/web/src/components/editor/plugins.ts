@@ -268,7 +268,9 @@ function markRule(find: RegExp, mark: string) {
     handler: ({ state, range, match }) => {
       const full = match[1]!;
       const inner = match[2]!;
-      const start = range.to - full.length;
+      // range.from is where the whole match (including a leading space) starts in the document; the
+      // last typed character is part of the match but not yet in the document, so start from `from`.
+      const start = range.from + (match[0].length - full.length);
       const markType = state.schema.marks[mark]!;
       const tr = state.tr;
       tr.replaceWith(start, range.to, state.schema.text(inner, [markType.create()]));

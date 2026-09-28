@@ -22,8 +22,9 @@ contrast check (every semantic text pair ≥ 4.5:1 in both themes, focus ≥ 3:1
 
 | Role | Family | Web | Mac |
 | --- | --- | --- | --- |
-| All UI, headings, default document text | **Inter** 400/500/600/700 | `next/font/google` | bundled TTF (`Resources/Fonts`) |
-| Document font “Serif” | **Source Serif 4** 400/600, italic | `next/font/google` | bundled TTF |
+| Body text and UI (and the default “System” note font) | **Instrument Sans** 400–700 | `next/font/google` (self-hosted) | bundled TTF (`Resources/Fonts`) — Mac to follow |
+| Titles and larger UI text (`.ui-display`: view/section/dialog titles, note titles, card titles, folder names, the wordmark) | **Spectral** 400/500/600/700, italic | `next/font/google` (self-hosted) | bundled TTF — Mac to follow |
+| Document font “Serif” | **Spectral** (same family) | `next/font/google` | bundled TTF |
 | Document font “Mono”, code | **JetBrains Mono** 400/600 | `next/font/google` | bundled TTF |
 
 The Mac app never falls back to San Francisco or New York for product UI; it registers the bundled
@@ -52,6 +53,23 @@ Body text: 16px/1.6, `ink`.
 | ember / emberInk / emberSoft | `#F46036` / `#B0401B` / `#FDE9DF` | `#FF7A4D` / `#FF9C78` / `#3B221B` | highlights, badges, drop indicator, “today” |
 | glowPeach / glowRose | `#FFD0AE` / `#EAD3E3` | `#5A3222` / `#3E2638` | ambient canvas glow only |
 | moss · marigold · plum · coral | green · orange · mauve · coral | lifted for dark | page accents, tags, covers |
+
+### Neutral app chrome (web product)
+
+Inside the product the chrome is neutral so the notes carry the colour — their covers, artwork and
+accent colours. `AccountGate` sets `data-chrome="neutral"` on `<html>`, and `globals.css` overrides the
+surface tokens for that scope only (the marketing site keeps the warm palette above):
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| canvas / sidebar | `#FFFFFF` / `#FFFFFF` (pure white; the sidebar is separated by a hairline) | `#101011` / `#18181A` |
+| surface / raised / sunken | `#FFFFFF` / `#FFFFFF` / `#F1F1F3` | `#1C1C1E` / `#29292C` / `#0B0B0C` |
+| ink / heading | `#18181B` / `#0B0B0C` | `#F2F2F3` / `#FAFAFA` |
+| muted / faint | `#56565E` / `#67676F` | `#A6A6AE` / `#93939B` |
+| accent (primary buttons) / accentSoft (hovers, active rows) | `#1F1F22` / `#EFEFF1` | `#F2F2F3` / `#2A2A2D` |
+
+The ambient canvas glows are off in the neutral chrome. Ember stays for small signals (active markers,
+"today", drop indicators). The Mac app will adopt the same split when it is updated.
 
 ## Covers
 
@@ -97,42 +115,136 @@ the bottom left, ~35% opacity in light, ~50% in dark — fixed behind content. N
 ## Layout (app)
 
 ```
-┌ sidebar (sidebar tint, 264px) ┬───────────── toolbar (52px, transparent) ─────────────┬ inspector ┐
-│ workspace switcher            │ ⟨ ⟩  Folder › Parent › 🌿 Page        [sync pill] … ⓘ │ (320px)   │
-│ [ Search            ⌘K ]      ├────────────────────────────────────────────────────────┤ floating  │
-│ (+ New page)                  │        ╭──────────── page sheet ────────────╮         │ card with │
-│ ● Home           (active pill)│        │ cover                              │         │ segmented │
-│   Tasks · Calendar · Shared…  │        │ icon  Title                        │         │ tabs      │
-│ STARRED / FOLDERS / TAGS      │        │ blocks…                            │         │           │
-│ account · help · settings     │        ╰────────────────────────────────────╯         │           │
-└───────────────────────────────┴────────────────────────────────────────────────────────┴───────────┘
+┌ left sidebar ─────────────┬ tab strip: ▯ │ ⌂ Home ┊ 📄 Note A × ┊ 📄 Note B ┊ … +  ──────────────────┐
+│ ▣ Folevi            🔔    │ toolbar (52px): title / breadcrumb                   (☁ 💬 ⤴ …)       │
+│ list views: app folders   ├──────────────────────────────────────────────────────────────────────┤
+│ pages: the page's tools   │        ╭──────────── page sheet ────────────╮                        │
+│  Title · In Folder        │        │ cover · Title · blocks…            │                        │
+│  [☰ ✓ 📎 🔍]              │        ╰────────────────────────────────────╯                        │
+│ ◉ Personal / You    ⇕     │              [ + Insert  T Format  🖌 Style  ⓘ Info ]                  │
+└───────────────────────────┴──────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Sidebar**: `sidebar` tint, no hard border (a `line` hairline on its trailing edge). Items are 32px
-  rows with 10px radius; hover = `accentSoft` at 60%; **active = a raised white pill** (`surfaceRaised`
-  + `control` shadow) with `heading` text and the icon in ember. Section labels use the caps style.
-  Search is a sunken pill with a ⌘K keycap. “New page” is a full-width secondary pill.
-- **Toolbar**: 52px, transparent over the canvas. Back/forward pill pair, then the **breadcrumb**
-  (workspace/folder › parents › current page with its icon; each crumb is a hover pill; the current
-  crumb is `heading` semibold). Right side: presence, **sync pill** (sunken pill, status dot + label),
-  comments, **Share** (primary pill), more (…), inspector toggle.
-- **Page sheet**: `surface`, radius 22, `sheet` shadow, centered, readable width 640/760/960 + 128px
-  padding, 24px from the toolbar; cover inside the sheet's top with the sheet radius; icon overlapping
-  the cover edge on a raised rounded square (`control` shadow).
-- **Inspector**: a floating card (`surface` at 88% + backdrop blur on web, `card` shadow, radius 16) with
-  12px inset from the window edges. Header: **segmented control** of six icon tabs — Insert · Format ·
-  Style · Outline · Info · Comments (sunken track, raised thumb with `control` shadow); the active tab's
-  name is shown as a 15px semibold heading under it, with the close button.
-  - **Insert**: search field, then sections (Basics, Lists, Media, Structure) of 4-column **tiles**
-    (64px square, radius 14, `surface` + `control`, icon tinted per block family, label below 11px).
-    Tiles are draggable into the page (see drag and drop) and insert after the current block on click.
-  - **Format**: turn-into tiles, text marks, callout tone, code language.
-  - **Style**: page font, width, accent swatches, background, card style, cover.
-  - **Outline**: headings list, click to jump, the current section marked with an ember bar.
-  - **Info**: words, characters, reading time, blocks, created/updated, backlinks, version history.
-  - **Comments**: threads.
-- **Views** (Home, Tasks, Calendar…): 32px header area with a large `title` heading in
-  `heading`, filter chips (pills), content in cards with the `card` shadow.
+- **Corners**: base radius **6px** (buttons, inputs, chips, menu rows, tabs, cards, icon buttons);
+  larger surfaces step up only as needed — menus/popovers 8, the floating note panel and page sheet 10,
+  Home shelves 10–12. Circles are kept only for avatars, dots, colour swatches and switches.
+  (Tokens: `controlSmall` 4, `control` 6, `card` 8, `sheet` 10.)
+- **Sidebar top**: the Folevi logo (black tile + wordmark) — it goes to the Home tab — and
+  notifications. **Sidebar bottom**: one button with the workspace's mark and name over your name; its
+  menu (opens upward) holds everything, grouped with dividers: workspaces (✓ current) + New team
+  workspace · Invite people (modal) · Members · Workspace settings · Account settings · Security &
+  sessions · Help (· Admin console) · Sign out. Team workspaces show a square logo (6px); the personal
+  workspace — always named **Personal** — shows your profile picture (round). No workspace name in page
+  breadcrumbs (Home is one click away).
+- **Sidebar menu** (panel icon, `SidebarMenu`): Hide / Show sidebar (⌘\), Focus mode, and — on notes only —
+  Show folders / Show document. It sits in the sidebar (next to notifications; top-right of a note's
+  sidebar) and moves to the start of the tab strip only while the sidebar is hidden.
+- **Tab strip** (48px, every view except phones): the tabs — a Home tab (house;
+  shows the last list view's name while current) and one tab per open note (doc icon + title, close ×
+  on hover or when current, middle-click closes). Every tab is an outlined 6px rounded rectangle,
+  128–210px wide, shrinking evenly; closed tabs sit back (light grey fill, hairline, muted text) and the
+  open tab comes forward (white, firm dark outline, soft shadow, semibold). A focus ring shows only for
+  keyboard focus. **+** follows the last tab. When they overflow, the strip scrolls with soft edge fades and keeps the current tab in
+  view. Tabs are remembered per account on the device (at most 12);
+  closing the current tab goes to its right-hand neighbour, else Home.
+- **Left sidebar, list views**: the app navigation — Home, Starred (with starred pages nested),
+  Drafts, Tasks, Shared with Me, Templates; Folders; Tags; Archive, Trash. Starred, Folders and Tags show
+  at most 5 items (plus the one you're in) and then "+N more" / "View all". The **Folders** and **Tags**
+  section titles are links to **All folders** (`/folders`: search, sort by name / last updated / most
+  pages / newest, grid or list, page counts, New folder) and **All tags** (`/tags`: search, sort by name /
+  most used / newest). Calendar is reached from
+  Tasks (and ⌘K).
+- **Left sidebar, pages** (default; "Show folders" switches back to the navigation): the page's icon
+  and title with a breadcrumb ("In Workspace › Folder › Parent page"), then four icon tabs —
+  **Table of contents** (title + headings + nested pages, current section marked), **Tasks** (the
+  page's to-dos with checkboxes and a done count), **Attachments & links** (images/files; bookmarks,
+  web links and page links), **Find** (matches highlighted in the page with the CSS Custom Highlight
+  API, ↑/↓ or Enter/Shift+Enter to step, result snippets).
+- **Toolbar**: 52px. Back/forward pill pair and **+** (new page); on pages the breadcrumb shows here
+  only when the left sidebar is hidden. Right side on pages: presence, then **one icon group** — save
+  state (cloud with a status dot; the popover explains it), comments, share, more (…). Other views keep
+  the labelled sync pill.
+- **Floating note**: the note sits in a rounded panel (radius 22, hairline + soft shadow) between the
+  sidebars, filled with the page's **artwork** — the same artwork that is the note's cover (a quiet
+  sunken grey when the page has none). The sheet floats centred in it; sidebars and the inspector sit flat on the chrome behind.
+- **Page sheet**: radius 22, `sheet` shadow, readable width 640/760 (Wide page: 960) + 128px padding;
+  cover inside the sheet's top; icon overlapping the cover edge on a raised rounded square.
+- **Page tools dock** (no right sidebar — the note keeps the full width): a floating pill docked at the
+  bottom centre of the note, **Insert · Format · Style · Info** (icon + label; icons only on phones; the
+  active tool is a black pill). Each opens its panel as a floating card above the dock (from 1400px wide
+  it sits in the bottom-right margin so it never covers the text column). Pressing the tool again, ×
+  or Escape closes it and returns focus; ⌘⌥I toggles the last tool. Comments open in the same card.
+  The note gains bottom padding so its end scrolls clear of the dock and the open card.
+  - **Format** (like Craft): *Text* — Title · Subtitle · Heading (headings 1–3), Strong · Body · Caption
+    (paragraph text styles); *Groups* — Page · Card (a card group draws consecutive blocks as one raised
+    card); a marks row (bold, italic, strike, code), a list row (to-do, toggle, bullets, numbers),
+    indent/outdent and alignment (left, center, right, justify); *Decorations* — Focus (a bar in the
+    block colour with a soft tint) · Block (a filled rounded background); *Color* — Auto + 11 block
+    colours; *Font* — System · Serif · Mono · Rounded for the block. Quote, callout, code, underline,
+    highlight, links and inline text colour sit under "More". All of these are optional block props
+    (`textStyle`, `group`, `decoration`, `color`, `align`, `font`) in the block spec.
+  - **Style** (like Craft): a live preview with **All styles** (12 presets; each sets an artwork plus
+    document colour, text colour, font and separator) and **Tailored style** (built from the artwork);
+    *Artwork* — one choice used for both the cover and the page background (none, an accent gradient,
+    an accent colour, or any of the 20 artworks); *Color* — Document color (auto, white, paper, ivory,
+    mist, sage, blush, night), Text color (auto, ink, slate, navy, forest, plum, brown, white), Accent;
+    *Separator style* — line · dots · doodle; *Font* — System · Serif · Mono · Rounded; *Advanced* —
+    Wide page. An explicit document colour is an explicit appearance: light sheets keep dark text and the
+    night sheet keeps light text in either app theme. (`style.backdrop` still exists in the schema for
+    older pages; choosing an artwork clears it.)
+  - **Info** has two views: *Page info* (properties, stats, location, tags, activity) and *Actions*.
+    **Comments** open from the toolbar as their own panel with a back link to the previous tab.
+- **Sidebar Folders / Document**: chosen from the sidebar menu on notes (no switch at the sidebar bottom).
+- **No big page titles** on list views (Home, All notes, Drafts, folders, tags, Starred, Templates,
+  Shared with Me, Folders, Tags, Tasks, Calendar): the small title in the 52px toolbar names the view, and the key fact sits
+  right after it in muted 12.5px text (e.g. "48 notes", "12 templates", "52 folders", "3 pages · across all
+  workspaces", "Today · 4 open", "September 2026"; a "+" when more are still loading), announced as a status. Sort and layout controls sit
+  right-aligned at the top of the content.
+- **Someone else's Personal workspace** reads "Personal · Ada" in the workspace menu, and the bottom button
+  shows "Shared by Ada" under the name.
+- **Home** is a dashboard: *Recent notes* and *Starred* are single sideways-scrolling rows on the page
+  itself (no tray), with white fades at an edge while there is more to scroll that way of the latest
+  10 notes (snap scrolling, hidden scrollbar, round arrow buttons at either end that appear only when
+  there's more that way), and *Recent folders* is two whole rows. Each has "See all" (All notes `/notes`,
+  Starred, All folders).
+- **Notes have no emoji icon** in the web UI: the page header starts with the title, and wherever a
+  page needs a marker (tabs, starred list, search, links to pages, lists) it's a plain document glyph.
+  (The `icon` field still exists in the data; it just isn't shown or edited.)
+- **Dropdowns are Folevi's own** (`Select`, never the OS menu): a pill button with a chevron that opens a
+  rounded listbox (check on the chosen option). It follows the select-only combobox pattern (↑/↓,
+  Home/End, type-ahead, Enter/Space, Escape) and opens in the top layer, so it works in dialogs.
+- **Tabs are notes**: a tab belongs to a top-level page and keeps its name; nested pages open inside it
+  and never get a tab of their own (opening one from anywhere switches to its note's tab).
+- **Save state is a small icon everywhere** (cloud + status dot, details in its popover).
+- **Folders have colours, not emoji**: a simple filled, upright folder icon (`FolderGlyph`, the same
+  silhouette as the big folder cards: a lighter back cover and the front with its stepped tab) in one of
+  the note styles' light page colours (one per distinct colour, named after its style; `covers/folder-colors.json`, written by `scripts/covers.mjs`) with a subtle dark outline (`FOLDER_COLORS`; new folders get a random one). The colour picker is a 5-wide grid of rounded
+  squares. One folder menu (`FolderMenu`, "…" on hover in the sidebar, on folder cards and list rows):
+  New note in folder, New subfolder…, Rename…, Change color…, Move to top level (nested), Copy link,
+  Invite people… (owners/admins; collaboration is per workspace), Delete folder…. No "Move into…".
+- **Sidebars have no divider line**; the sidebar tint alone separates them from the page.
+- **New notes go to Drafts** wherever they're created; the sidebar shows the Drafts count like Tasks.
+- **App chrome is black and white**: primary buttons, active markers, counts, focus rings and
+  selection are neutral; orange (ember) stays only as a note accent a page can choose.
+- **Glass** (the app's chrome): translucent, frosted panels over an ambient canvas. Tokens `--glass-*` in
+  `globals.css` (light and dark). The canvas is a soft neutral light; on a note, Shell's ambient layer shows
+  the note's own style image (its thumbnail, blurred 56px, saturated, under a veil) so the note's colour glows
+  through the chrome while the chrome itself stays neutral. The sidebar is a floating `ui-glass` panel
+  (radius 14, 8px from the window edges, above the content in stacking order so its menus can spill over);
+  list views sit on a nearly opaque `ui-content` panel; a note's page panel sits straight on the canvas. The
+  tab bar is `ui-glass`; the dock, inspector, menus, dropdowns, dialogs and command palette are `ui-pop`
+  (stronger tint for legibility). Buttons are flatter (solid primary, glass secondary), hovers use
+  `--glass-hover`, the selected sidebar item a lighter glass pill. `prefers-reduced-transparency` swaps all
+  glass for solid surfaces and hides the ambient layer. Write `-webkit-backdrop-filter` before
+  `backdrop-filter` in hand-written CSS: the build keeps only the prefixed one otherwise.
+- **Note cards** (Home, All notes, folders, Drafts…): a portrait **notebook** (20:27): nearly square corners
+  at the spine and rounded ones on the open edge, a grey page block peeking out past the right edge and the
+  bottom, and a soft shadow falling down and slightly left. A plain spine down the left (6% of the width)
+  carries the note's style (artwork, uploaded image, or a light grey for Plain). The cover uses the note's
+  own sheet and text colours: serif title (up to 2 lines), created age ("12 Days Ago"), the opening text from
+  `documents.preview` as plain grey text clamped to fit with "…", and a footer with the last edit
+  ("1 hour ago") and a chip with the coloured folder icon + folder name (or "Draft"). Starred notes get a square
+  corner tab with a filled star. All sizes are container-query units, so the card scales as one drawing.
 
 ## Components
 
@@ -141,10 +253,10 @@ the bottom left, ~35% opacity in light, ~50% in dark — fixed behind content. N
 - **Icon buttons**: 30px circles/pills, ghost; `aria-label` required; tooltips with shortcuts.
 - **Segmented control**: sunken pill track, raised thumb that slides (180ms) under the active item.
 - **Chips/tags**: pills, 24px, soft fills (`*-soft` + `*-ink`).
-- **Menus/popovers/palette**: `surfaceRaised`, radius 14, `pop` shadow, 6px inner padding, 32px rows
-  with 8px radius, hover `accentSoft`.
+- **Menus/popovers/palette**: `surfaceRaised`, radius 8, `pop` shadow, 6px inner padding, 32px rows
+  with 4px radius, hover `accentSoft`.
 - **Dialogs**: radius 22, `pop` shadow, scrim `scrim` with 4px backdrop blur.
-- **Inputs**: sunken pill (single line) or radius 12 (multi-line), focus ring 2px `focus` offset 2px.
+- **Inputs**: radius 6, focus ring 2px `focus` offset 2px.
 - **Cards** (documents): `surface`, radius 16, `card` shadow; cover strip uses the page accent; hover
   lifts 1px with a slightly deeper shadow.
 - **Sync status pill**: saved = moss dot, saving/syncing = ember pulsing dot, offline = faint dot,
@@ -182,10 +294,137 @@ disabled under `prefers-reduced-motion` / Reduce Motion (tokens collapse to 0ms)
 ## Brand
 
 The mark is two offset leaves forming an F. In product UI it is drawn in `heading` with the middle leaf
-in ember. The wordmark sets “Folevi” in Inter semibold, tracking tight.
+in ember. The wordmark sets “Folevi” in Spectral semibold.
 
 ## Accessibility
 
 WCAG 2.2 AA: landmarks, labelled controls, visible focus (2px `focus` ring), no information by color
 alone, targets ≥ 24×24 (44 on touch), `prefers-contrast: more` swaps hairlines to `lineStrong` and muted
 text to `ink`. Axe runs in the e2e suite in both themes.
+
+## Chrome (latest)
+
+- **Tab strip** floats in its own rounded rectangle (8px, hairline, translucent white; content scrolls
+  behind it). Left to right: ‹ › scroll arrows (together, only when the tabs overflow), the tabs
+  (172–284px), then **+ New note** at the far right — always there (⌘⌥N), opening a new note in its own tab.
+- **No view title bar.** A view's name is in its tab (and a visually hidden h1 for screen readers). What
+  used to sit in the bar stays only when it's real content, as a plain row with no box: e.g. Tasks'
+  "Today · 88 open" + Calendar / Add task, Calendar's month + layout, Templates' New template, a note's
+  breadcrumb when its sidebar is hidden, and on phones the drawer toggle and save state. List views have no New note button of their own (Templates keeps "New template"). Counts ("48 notes",
+  "52 folders") sit at the start of the row with Sort and view options, not in the bar.
+- **Save state** is a small cloud icon in the sidebar's top bar (logo · save state · notifications ·
+  sidebar menu — the same row in the app sidebar and a note's sidebar); on phones it sits in the view bar.
+- **Notes**: no header bar; comments, share and the page's "…" menu live in the bottom dock after the four
+  tools (divider between). The note's backdrop panel has no outline or shadow.
+- **Appearance**: Light / Dark / Match system are in the workspace & account menu (also in Settings).
+
+- **Note styles**: images in `packages/design-tokens/covers/source/` (`NN-name.jpg` → style `art-NN`, named
+  from the file). `scripts/covers.mjs` writes to `apps/web/public/covers/` `art-NN.webp` (3200 px, Retina/2×) and
+  `art-NN-1x.webp` (1600 px), picked per screen by CSS `image-set()` for the cover and page background, and
+  a 640 px `art-NN-thumb.webp` (picker tiles, note-card spines). Sources are kept at 3200 px, and picks every style colour from the image with the
+  same engine as uploads (`covers.json`). There are 40 (`art-01`…`art-40`); should fewer exist, higher ids wrap
+  onto the ones there are. Every new note gets a random style (templates stay plain); **Plain** is only
+  chosen by hand. The title sits on the cover over a soft shade: white on covers that read deep, the style's
+  dark ink on ones that read light.
+- **Style colours everywhere in the note**: every note style (built-in or your image) gives, besides the
+  page and text, an **accent** and **five text colours + four highlights** (`palette.ts`: the style's own
+  distinct colours first — key colour first, hues ≥ 40° apart — then harmonies of the key hue; each text
+  colour ≥ 4.8:1 on the page and on its own highlight, both themes). While Document color is on Auto the
+  page carries them (`data-palette`, `--pal-*`): bullets, checkboxes, quote bars, links, underlines, inline
+  code and code-block tint, and plain/"note"/"info" callouts use them (success/warning/danger keep their
+  meaning colours). Format → Text color and Highlight show the style's colours with their names ("Teal"),
+  **Default** selected by default. The block Color picker is gone. Built-in styles carry these precomputed
+  in `covers.json`; images save them with the file (`files.palette`).
+- **Up**: the tab bar starts with an Up button (then a divider): nested page → parent, note → its folder
+  (or Drafts / Templates), folder → Folders, tag → Tags, other views → Home; disabled on Home.
+- **Your own image**: "Upload your own image…" under the style grid makes any PNG, JPEG, WebP or GIF (up to
+  20 MB) the note's style — its cover and page background. Best at **2400 × 1500 px** (16:10, landscape;
+  1600 × 1000 at least), with the subject near the middle: the cover shows a wide strip of it and the
+  background fills the window. It's stored with the note (`cover: { kind: "image", value: <file id> }`,
+  checked server-side to be an image in the same workspace) and served through signed file URLs. Auto page
+  and text colours are **picked from the image** (`apps/web/src/lib/palette.ts`): it's sampled small and
+  clustered in OKLab; the key colour balances area against colourfulness (skipping near-black/white); the
+  page (very light, tinted) and text (dark, coloured) are built in OKLCH from its hue and pushed to a ≥ 10:1
+  contrast, with dark-theme pairs. The colours are saved with the file (`files.palette`, hex only, editors
+  only). The title is white over a dark shade when the band behind it reads deep, or the ink colour over a
+  light shade when it reads light.
+- **Auto colours**: Document color and Text color default to **Auto**, taken from the note style — a very
+  light page and a dark, high-contrast text in the style's hue (dark theme: a deep page and light text in
+  the same hue). With a cover, the note title sits on the cover in white. Each style's pair is precomputed in `covers.json` (`paper`, `ink`, `paperDark`,
+  `inkDark`) and applied by `sheetProps()` (`data-sheet="art"`, `data-text="art"`). Picking a colour by hand
+  overrides Auto.
+- **Style panel**: a live preview, then **Note Style** — one row named after the style ("Plain" when none)
+  that opens Plain + the grid of 40. Then Color (Document color, Text color — both Auto by
+  default; no accent picker), Separator style, Font, and Wide page (on by default). No style gallery.
+
+## AI assistant (Google Gemini)
+
+- **Where**: *Ask AI* (⌘J, sidebar button under search, command palette "Ask AI: …") — a chat over your
+  notes, each answer citing the notes it used (chips that open them); follow-ups keep context. In a note,
+  the dock's **AI** panel: *Write* (a prompt; uses the note and any selected text), *Ask* (about this note
+  and your other notes), and one-click actions — Summarize, Continue writing, Action items, Outline,
+  Brainstorm ideas, Suggest a title. Selecting text → formatting toolbar → **Ask AI** → Improve writing, Fix
+  spelling & grammar, Shorter, Longer, Simplify, Professional, Casual, Translate (language picker), Explain,
+  Summarize. Slash menu: "Ask AI to write…". Results show in a card: Replace selection / Insert below /
+  Insert into note / Use as title, Copy, Try again, Discard. AI Markdown goes in as real blocks (headings,
+  lists, to-dos). A replaced selection that changed meanwhile is never overwritten (inserted below instead).
+- **Inline AI** (`components/ai/InlineAi.tsx`), the main way to use AI while writing: a composer that opens
+  right under the text it's about. Opened by **⌘J** in a note (with or without a selection; the app-wide ⌘J
+  opens Ask AI), the **"/" AI commands** (Ask AI…, AI · Continue writing / Summarize note / Find action items /
+  Make an outline / Brainstorm ideas — the last five run at once), the **selection toolbar's Ask AI**, and
+  the **block menu's Ask AI…** (acts on the whole block/blocks). Type an instruction or pick a suggestion
+  (edit suggestions for a selection, write suggestions at the cursor; Translate opens a language list). The
+  result shows in place with **Replace** / **Insert below** (or **Insert**), **Try again**, quick refinements
+  (Shorter, Longer, Simpler, More formal, More casual) or any typed change (task `refine`), and Discard.
+  ⏎ accepts, Esc discards. After inserting, the cursor sits after the new text (nothing left selected). The
+  empty-line hint mentions ⌘J while AI is on.
+- **Elsewhere**: an untitled note with writing shows **Suggest a title** under the title. Home has **Catch me
+  up** (`ai.brief`: this week's readable notes + open tasks → "This week" / "Up next", citing notes; on
+  request only, kept for the browser session). A folder's "…" menu has **Ask AI about this folder…** (Ask AI
+  scoped to that folder's notes, with folder suggestions; "Search all notes instead" widens it). The dock
+  panel's results get the same quick refinements.
+- **Streaming**: replies appear word by word everywhere (inline composer, AI panel, Ask AI, Catch me up).
+  The client opens a stream (`ai.startStream` → an `aiStreams` row) and passes its id to the action; the
+  action streams from Gemini (`streamGenerateContent`, SSE, `\r\n`-separated) and writes the text so far
+  into the row every ~90 ms; the client subscribes (`ai.stream`) and a typewriter reveals it a few words per
+  frame (instantly under reduced motion), finishing the reveal before the result card appears. **Stop**
+  (`ai.cancelStream`) makes the action stop and keep what it had. Rows hold only the AI's reply (never the
+  prompt or notes), are readable only by their owner, claimed once, deleted 5 minutes after finishing, and
+  swept hourly. Gemini 3 models run with `thinkingLevel: "low"` (first words ~1.5 s instead of ~4 s).
+- **On/off**: Settings → Account → **AI assistant** (a switch; on unless turned off, stored as
+  `profiles.aiEnabled`). Off hides every AI entry point (sidebar, ⌘J, command palette, dock, selection
+  toolbar, slash menu) and the server refuses AI requests (`ai.begin`), so nothing is sent to Google.
+- **Backend** (`convex/ai.ts`): actions `ai.ask` and `ai.write`, calling Gemini's REST API server-side
+  (`GEMINI_API_KEY` on the Convex deployment; models `GEMINI_MODEL`, default `gemini-3.8-flash`, and
+  `GEMINI_FAST_MODEL`, default `gemini-flash-lite-latest`, used for search terms and as the fallback when the
+  main model is busy). Retrieval: the fast model turns the question into keyword queries → the workspace
+  full-text index → only notes the person can read (`documentAccess`), up to 8 (the open note first, in
+  full as Markdown). Budget: rate rule `ai`, 150 requests/hour per person. Prompts, note text and answers
+  are never logged (only event, model, status). Tests: `tests/convex/ai.test.ts` (no key → clean error;
+  access control); `apps/web/e2e/ai.spec.ts` calls Gemini for real, so it runs only with `E2E_AI=1`.
+
+## Plans and billing
+
+- **Plans** (`convex/lib/plans.ts`, the only place prices live; the web re-exports it from `@/lib/plans`):
+  **Free** $0 — 1 GB, 2 devices, no AI · **Basic** $2/month or $9/year — 20 GB, unlimited devices, no AI · **Pro** $5/month or
+  $49/year — 100 GB, unlimited AI. Every plan includes web, Mac and iOS. Storage counts across every
+  workspace a person owns (personal and team); uploads to someone else's team workspace count toward that
+  owner. New accounts get **Pro free for 7 days** (no card); it ends without charge. Choosing a paid plan
+  ends a running trial.
+- **Entitlements** (`entitlementsOf`): trial counts as Pro; an admin AI grant turns AI on whatever the plan;
+  a plan whose period has ended falls back to Free. AI is checked on the server in `ai.begin` (after the
+  person's own on/off switch), storage in `files.generateUploadUrl`/`commitFile` (`assertStorageFor`).
+- **Devices**: a device is one signed-in browser or app (one session). Free allows 2 at a time; Basic,
+  Pro and the trial are unlimited (admins can override per person). Over the limit, the devices that signed
+  in first keep working and the newest wait on a "device limit" screen (`users.me` → `device_limit`,
+  `components/app/DeviceLimit.tsx`) where they can sign another device out or upgrade; every other backend
+  call refuses them (`requireProfile` → `lib/devices.ts`). Nobody is signed out automatically.
+- **Settings → Plan & billing** (`settings/BillingSection.tsx`): current plan card (trial days left,
+  renewal, storage meter, AI status and use), cancel/keep, a Monthly/Yearly segmented control with the three
+  plans, and billing history. The workspace menu shows a "Pro trial · N days left" / "Upgrade to Pro" pill;
+  the sidebar shows "Ask AI · Pro" when AI is switched on but not included.
+- **Payments**: Stripe Checkout + billing portal + webhook (`/webhooks/stripe`, HMAC-verified,
+  idempotent per invoice) when `STRIPE_*` is set. Without it, non-production deployments offer **test
+  purchases** (marked "Test" everywhere, excluded from revenue by default); production refuses them.
+- **Marketing**: `/pricing` and the home pricing section render the same `PLANS` (three cards, Pro
+  highlighted, FAQs on trial, storage, switching and yearly savings).

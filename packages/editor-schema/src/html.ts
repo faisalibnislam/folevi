@@ -2,6 +2,7 @@ import type { InlineNode } from "./generated/schema";
 import type { WireBlock } from "./types";
 import { flattenTree } from "./tree";
 import { sanitizeHref } from "./richtext";
+import { whiteboardToSvg } from "./whiteboard";
 
 export function escapeHtml(value: string): string {
   return value
@@ -15,6 +16,13 @@ export function escapeHtml(value: string): string {
 export interface HtmlExportOptions {
   resolveFile?: (fileId: string) => string | null;
   resolveDocument?: (documentId: string) => string | null;
+  /** The linked page's current title (otherwise the title cached when it was linked). */
+  resolveDocumentTitle?: (documentId: string) => string | null;
+  /**
+   * Renders a formula's LaTeX to trusted markup (e.g. KaTeX MathML). Its output is inserted as-is, so it
+   * must be produced by a sanitising renderer. Without it formulas are exported as their LaTeX source.
+   */
+  renderMath?: (latex: string) => string | null;
 }
 
 export function inlineToHtml(nodes: readonly InlineNode[], opts: HtmlExportOptions = {}): string {
@@ -27,7 +35,8 @@ export function inlineToHtml(nodes: readonly InlineNode[], opts: HtmlExportOptio
           return `<time datetime="${escapeHtml(n.date)}">${escapeHtml(n.date)}</time>`;
         case "pageLink": {
           const href = opts.resolveDocument?.(n.documentId);
-          return href ? `<a href="${escapeHtml(href)}">${escapeHtml(n.label)}</a>` : escapeHtml(n.label);
+          const label = opts.resolveDocumentTitle?.(n.documentId) || n.label || "Untitled";
+          return href ? `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>` : escapeHtml(label);
         }
         case "text": {
           let s = escapeHtml(n.text).replace(/\n/g, "<br>");
@@ -85,7 +94,12 @@ img{max-width:100%;border-radius:10px}
 ul.todo{list-style:none;padding-left:0}ul.todo li::before{content:"☐ ";}ul.todo li.done::before{content:"☑ ";}
 ul.todo li.done{color:var(--muted);text-decoration:line-through}
 mark{background:#F7E7A6;color:inherit}
-@media print{body{background:#fff;color:#000}main{margin:0 auto}}
+.page-break{break-after:page;page-break-after:always;height:0;margin:32px 0;border-top:1px dashed var(--line)}
+.formula{margin:16px 0;text-align:center;overflow-x:auto}.formula pre{text-align:left}
+.whiteboard svg{width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
+hr.divider-extralight{border:0;border-top:2px dotted var(--line);opacity:.7}hr.divider-light{border:0;border-top:1px dotted var(--muted)}
+hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{border:0;border-top:3px solid var(--ink)}
+@media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
 `;
 
 export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptions & { title: string }): string {
@@ -135,7 +149,19 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
         parts.push(`<aside class="callout callout-${escapeHtml(String(p.tone))}">${p.icon ? `${escapeHtml(String(p.icon))} ` : ""}${t}</aside>`);
         break;
       case "divider":
-        parts.push("<hr>");
+        parts.push(p.style ? `<hr class="divider-${escapeHtml(String(p.style))}">` : "<hr>");
+        break;
+      case "pageBreak":
+        parts.push('<div class="page-break" role="separator" aria-label="Page break"></div>');
+        break;
+      case "formula": {
+        const latex = String(p.latex ?? "");
+        const rendered = latex ? opts.renderMath?.(latex) : null;
+        parts.push(`<div class="formula">${rendered ?? `<pre><code class="language-latex">${escapeHtml(latex)}</code></pre>`}</div>`);
+        break;
+      }
+      case "whiteboard":
+        parts.push(`<figure class="whiteboard">${whiteboardToSvg(String(p.data ?? ""), Number(p.height))}</figure>`);
         break;
       case "code":
         parts.push(`<pre><code class="language-${escapeHtml(String(p.language))}">${escapeHtml(String(p.code ?? ""))}</code></pre>`);
@@ -167,7 +193,7 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
       }
       case "page": {
         const href = opts.resolveDocument?.(String(p.documentId));
-        const label = escapeHtml(String(p.titleCache ?? "Untitled"));
+        const label = escapeHtml(opts.resolveDocumentTitle?.(String(p.documentId)) || String(p.titleCache || "Untitled"));
         parts.push(`<p>${href ? `<a href="${escapeHtml(href)}">${label}</a>` : label}</p>`);
         break;
       }

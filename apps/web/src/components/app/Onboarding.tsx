@@ -8,9 +8,9 @@ import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
-import { FoleviMark } from "@/components/brand/FoleviMark";
+import { FoleviLogo } from "@/components/brand/FoleviMark";
 
-const STEPS = ["Name your workspace", "Choose an appearance", "Open your first page"] as const;
+const STEPS = ["Your workspace", "Choose an appearance", "Open your first page"] as const;
 
 export function Onboarding() {
   const { profile, workspace, setAppearance, appearance } = useAppState();
@@ -18,7 +18,6 @@ export function Onboarding() {
   const complete = useMutation(api.users.completeOnboardingStep);
   const docs = useQuery(api.documents.list, { workspaceId: workspace.id, view: "all", paginationOpts: { numItems: 20, cursor: null } });
   const stepIndex = profile.onboardingStep === "workspace" ? 0 : profile.onboardingStep === "appearance" ? 1 : 2;
-  const [name, setName] = useState(workspace.name);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -40,14 +39,13 @@ export function Onboarding() {
     <main id="main" tabIndex={-1} className="ui-canvas grid min-h-dvh place-items-center px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-6 flex items-center gap-2 text-ink">
-          <FoleviMark size={26} accent="var(--color-ember)" />
-          <span className="ui-display text-2xl">Folevi</span>
+          <FoleviLogo height={28} className="text-heading" />
         </div>
         <div className="relative">
           {/* Offset leaves behind the sheet echo the folio mark. */}
-          <div aria-hidden className="absolute inset-0 translate-x-3 translate-y-3 ui-well rounded-[18px]" />
-          <div aria-hidden className="absolute inset-0 translate-x-1.5 translate-y-1.5 ui-card rounded-[18px]" />
-          <section className="relative ui-card rounded-[18px] p-8 animate-[folio-settle_320ms_var(--ease-folio)]" aria-labelledby="onboarding-title">
+          <div aria-hidden className="absolute inset-0 translate-x-3 translate-y-3 ui-well rounded-[10px]" />
+          <div aria-hidden className="absolute inset-0 translate-x-1.5 translate-y-1.5 ui-card rounded-[10px]" />
+          <section className="relative ui-card rounded-[10px] p-8 animate-[folio-settle_320ms_var(--ease-folio)]" aria-labelledby="onboarding-title">
             <ol className="mb-8 flex gap-2" aria-label="Setup progress">
               {STEPS.map((label, i) => (
                 <li key={label} className="flex-1">
@@ -69,27 +67,20 @@ export function Onboarding() {
                 className="mt-6"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  void run(() => complete({ step: "workspace", workspaceName: name }));
+                  void run(() => complete({ step: "workspace", workspaceName: "Personal" }));
                 }}
               >
-                <label htmlFor="ws-name" className="block text-sm font-medium">
-                  Name your workspace
-                </label>
-                <p id="ws-name-hint" className="text-sm text-muted">
-                  This is your personal space. You can rename it any time.
-                </p>
-                <input
-                  id="ws-name"
-                  aria-describedby="ws-name-hint"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={80}
-                  required
-                  autoFocus
-                  className="mt-2 h-11 w-full ui-input rounded-full px-3 text-base outline-none"
-                />
+                <div className="flex items-center gap-3 rounded-[6px] bg-sunken px-4 py-3">
+                  <span aria-hidden className="grid h-9 w-9 flex-none place-items-center rounded-full bg-heading text-[15px] font-semibold text-canvas">
+                    {profile.displayName.trim().slice(0, 1).toUpperCase()}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-heading">Personal</span>
+                    <span className="block text-sm text-muted">Your own workspace for notes and folders. Invite collaborators any time from the menu at the bottom of the sidebar.</span>
+                  </span>
+                </div>
                 <div className="mt-6 flex justify-end">
-                  <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
+                  <Button type="submit" variant="primary" disabled={busy}>
                     Continue
                   </Button>
                 </div>
@@ -114,7 +105,7 @@ export function Onboarding() {
                         role="radio"
                         aria-checked={appearance === value}
                         onClick={() => setAppearance(value)}
-                        className={`flex flex-col items-center gap-2 rounded-[14px] border p-4 text-sm transition-colors ${appearance === value ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"}`}
+                        className={`flex flex-col items-center gap-2 rounded-[6px] border p-4 text-sm transition-colors ${appearance === value ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"}`}
                       >
                         {icon}
                         {label}

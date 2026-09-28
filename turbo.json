@@ -5,7 +5,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "generated/**"],
-      "env": ["NEXT_PUBLIC_*", "AUTH0_*", "APP_BASE_URL", "CONVEX_*", "FOLEVI_*"]
+      "env": ["NEXT_PUBLIC_*", "CONVEX_*", "FOLEVI_*"]
     },
     "dev": { "cache": false, "persistent": true },
     "lint": { "dependsOn": ["^build"] },

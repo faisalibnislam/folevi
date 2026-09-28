@@ -4,6 +4,9 @@ import type { UserIdentity } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { fail } from "./errors";
+import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./claims";
+import { findActiveSession } from "./authStore";
+import { deviceStatus } from "./devices";
 
 type Ctx = QueryCtx | MutationCtx;
 export type WorkspaceRole = Doc<"workspaceMembers">["role"];
@@ -13,8 +16,7 @@ export type PlatformRole = NonNullable<Doc<"profiles">["platformRole"]>;
 const ROLE_RANK: Record<WorkspaceRole, number> = { viewer: 0, commenter: 1, editor: 2, admin: 3, owner: 4 };
 const ACCESS_RANK: Record<Access, number> = { none: -1, read: 0, comment: 1, write: 2, manage: 3 };
 
-export const CLAIM_EMAIL_VERIFIED = "https://folevi.com/email_verified";
-export const CLAIM_MFA = "https://folevi.com/mfa";
+export { CLAIM_EMAIL_VERIFIED, CLAIM_MFA };
 
 export function roleAtLeast(role: WorkspaceRole, min: WorkspaceRole): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[min];
@@ -76,6 +78,24 @@ export function assertIdentityClaims(identity: UserIdentity): VerifiedClaims {
   return claims;
 }
 
+/** The Better Auth session id carried by the token (added by the Convex plugin). */
+export function sessionIdOf(identity: UserIdentity): string | null {
+  const raw = identity as unknown as Record<string, unknown>;
+  return typeof raw.sessionId === "string" ? raw.sessionId : null;
+}
+
+/**
+ * The session behind the token must still exist: signing out, revoking a session (Settings or admin),
+ * resetting the password and account suspension all delete sessions, and that takes effect on the very
+ * next backend call even though the short-lived token itself hasn't expired yet. Because live queries
+ * read the session row, open subscriptions re-run (and fail) as soon as it's deleted.
+ */
+export async function requireActiveSession(ctx: Ctx, identity: UserIdentity): Promise<string> {
+  const sessionId = sessionIdOf(identity);
+  if (!sessionId || !(await findActiveSession(ctx, sessionId))) fail("unauthenticated", "This session has ended. Sign in again.");
+  return sessionId;
+}
+
 export async function findProfile(ctx: Ctx, identity: UserIdentity): Promise<Doc<"profiles"> | null> {
   return await ctx.db
     .query("profiles")
@@ -83,13 +103,22 @@ export async function findProfile(ctx: Ctx, identity: UserIdentity): Promise<Doc
     .unique();
 }
 
-export async function requireProfile(ctx: Ctx): Promise<Doc<"profiles">> {
+/**
+ * The signed-in person. Also enforces their plan's device limit: a device held at the limit (see
+ * lib/devices.ts) is refused — except by the few functions that let it get unstuck (listing and signing out
+ * devices, upgrading), which pass `allowOverDeviceLimit`.
+ */
+export async function requireProfile(ctx: Ctx, opts: { allowOverDeviceLimit?: boolean } = {}): Promise<Doc<"profiles">> {
   const identity = await requireIdentity(ctx);
   assertIdentityClaims(identity);
+  const sessionId = await requireActiveSession(ctx, identity);
   const profile = await findProfile(ctx, identity);
   if (!profile) fail("profile_missing", "Finish setting up your account.");
   if (profile.status === "suspended") fail("suspended", "This account is suspended.");
   if (profile.status === "deleted") fail("account_deleted", "This account has been deleted.");
+  if (!opts.allowOverDeviceLimit && !(await deviceStatus(ctx, profile, sessionId)).allowed) {
+    fail("device_limit", "Your plan's device limit is reached. Sign out on another device or upgrade to use Folevi here.");
+  }
   return profile;
 }
 
@@ -97,6 +126,8 @@ export async function requireProfile(ctx: Ctx): Promise<Doc<"profiles">> {
 export async function optionalProfile(ctx: Ctx): Promise<Doc<"profiles"> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
+  const sessionId = sessionIdOf(identity);
+  if (!sessionId || !(await findActiveSession(ctx, sessionId))) return null;
   const profile = await findProfile(ctx, identity);
   if (!profile || profile.status === "suspended" || profile.status === "deleted") return null;
   return profile;

@@ -38,7 +38,8 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | todo | yes | `checked`, `canceled?`, `dueDate?`, `dueTime?`, `priority?`, `assigneeId?`, `reminderAt?`, `completedAt?` |
 | toggle | yes | `collapsed` |
 | callout | yes | `tone` (note/info/success/warning/danger), `icon?` |
-| divider | no | — |
+| divider | no | `style?` (extralight/light/regular/strong; unset follows the page's separator style) |
+| pageBreak | no | — (a sheet break in the editor; `break-after: page` in print/PDF) |
 | code | no | `language`, `code` |
 | image | no | `fileId?` or `url?`, `alt`, `caption`, `width?`, `naturalWidth?`, `naturalHeight?` |
 | file | no | `fileId`, `name`, `size`, `mimeType` |
@@ -46,6 +47,10 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | page | no | `documentId`, `display` (link/card), `titleCache?`, `iconCache?` |
 | bookmark | no | `url`, `title?`, `description?`, `siteName?` |
 | collection | no | `collectionId`, `viewId?` |
+| formula | no | `latex` (≤ `LIMITS.maxFormulaLength`; rendered with KaTeX, `trust: false`) |
+| whiteboard | no | `data` (JSON `{ v: 1, strokes: [{ points: [[x, y]…] \| d, color, width, opacity? }] }`, ≤ `LIMITS.maxWhiteboardDataLength`; x in 0–1000, y in 0–`height`), `height` (logical units, `minWhiteboardHeight`–`maxWhiteboardHeight`) |
+
+Mermaid diagrams are `code` blocks with `language: "mermaid"`; editors render a live SVG preview.
 
 Documents carry `DocumentStyle` (`font`, `width`, `background`, `accent`, `card`) and `DocumentCover`.
 Tasks are `todo` blocks; the `tasks` table is only a projection.
@@ -97,6 +102,9 @@ past `LIMITS.maxRankLength` (`blocks.rebalance`).
 
 Markdown import (`markdownToBlocks`) keeps headings, lists (nested), checklists (with `(due YYYY-MM-DD HH:mm)`),
 links, code fences (language normalized), quotes, GitHub-style callouts, tables, images (absolute URLs or
-uploaded files), front matter; HTML blocks, footnotes, reference links and unresolved images are kept as
+uploaded files), display math (`$$…$$` → formula), page breaks (`<div style="page-break-after: always"></div>`),
+front matter; HTML blocks, footnotes, reference links and unresolved images are kept as
 text and reported as warnings. Markdown/HTML export (`blocksToMarkdown`, `blocksToHtml`) is used for page
-exports, workspace ZIPs and version previews.
+exports, workspace ZIPs and version previews. Formulas export as `$$…$$` (HTML: MathML from KaTeX when
+the caller passes `renderMath`, otherwise the LaTeX source), whiteboards as an inline SVG (Markdown: an SVG
+data-URL image) and page breaks as a `page-break-after` div.

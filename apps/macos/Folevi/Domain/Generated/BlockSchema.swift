@@ -57,6 +57,7 @@ public enum DocumentFont: String, Codable, Sendable, Hashable, CaseIterable {
     case sans
     case serif
     case mono
+    case rounded
 }
 
 public enum DocumentWidth: String, Codable, Sendable, Hashable, CaseIterable {
@@ -100,6 +101,82 @@ public enum DocumentKind: String, Codable, Sendable, Hashable, CaseIterable {
     case daily
     case template
     case collectionRow
+}
+
+public enum DocumentSheet: String, Codable, Sendable, Hashable, CaseIterable {
+    case white
+    case paper
+    case ivory
+    case mist
+    case sage
+    case blush
+    case night
+}
+
+public enum DocumentText: String, Codable, Sendable, Hashable, CaseIterable {
+    case ink
+    case slate
+    case navy
+    case forest
+    case plum
+    case brown
+    case white
+}
+
+public enum SeparatorStyle: String, Codable, Sendable, Hashable, CaseIterable {
+    case line
+    case dots
+    case doodle
+}
+
+public enum BlockTextStyle: String, Codable, Sendable, Hashable, CaseIterable {
+    case strong
+    case caption
+}
+
+public enum BlockDecoration: String, Codable, Sendable, Hashable, CaseIterable {
+    case focus
+    case block
+}
+
+public enum BlockColor: String, Codable, Sendable, Hashable, CaseIterable {
+    case black
+    case slate
+    case gray
+    case navy
+    case blue
+    case sky
+    case green
+    case purple
+    case red
+    case orange
+    case brown
+}
+
+public enum BlockAlign: String, Codable, Sendable, Hashable, CaseIterable {
+    case left
+    case center
+    case right
+    case justify
+}
+
+public enum BlockFont: String, Codable, Sendable, Hashable, CaseIterable {
+    case system
+    case serif
+    case mono
+    case rounded
+}
+
+public enum BlockGroup: String, Codable, Sendable, Hashable, CaseIterable {
+    case `page`
+    case card
+}
+
+public enum DividerStyle: String, Codable, Sendable, Hashable, CaseIterable {
+    case extralight
+    case light
+    case regular
+    case strong
 }
 
 public enum Mark: Codable, Sendable, Hashable {
@@ -223,16 +300,24 @@ public struct DocumentStyle: Codable, Sendable, Hashable {
     public var background: DocumentBackground
     public var accent: DocumentAccent
     public var card: CardStyle
+    public var backdrop: String?
+    public var sheet: DocumentSheet?
+    public var text: DocumentText?
+    public var separator: SeparatorStyle?
 
-    public init(font: DocumentFont, width: DocumentWidth, background: DocumentBackground, accent: DocumentAccent, card: CardStyle) {
+    public init(font: DocumentFont, width: DocumentWidth, background: DocumentBackground, accent: DocumentAccent, card: CardStyle, backdrop: String? = nil, sheet: DocumentSheet? = nil, text: DocumentText? = nil, separator: SeparatorStyle? = nil) {
         self.font = font
         self.width = width
         self.background = background
         self.accent = accent
         self.card = card
+        self.backdrop = backdrop
+        self.sheet = sheet
+        self.text = text
+        self.separator = separator
     }
 
-    enum CodingKeys: String, CodingKey { case font, width, background, accent, card }
+    enum CodingKeys: String, CodingKey { case font, width, background, accent, card, backdrop, sheet, text, separator }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -241,6 +326,10 @@ public struct DocumentStyle: Codable, Sendable, Hashable {
         self.background = try c.decode(DocumentBackground.self, forKey: .background)
         self.accent = try c.decode(DocumentAccent.self, forKey: .accent)
         self.card = try c.decode(CardStyle.self, forKey: .card)
+        self.backdrop = try c.decodeIfPresent(String.self, forKey: .backdrop)
+        self.sheet = try c.decodeIfPresent(DocumentSheet.self, forKey: .sheet)
+        self.text = try c.decodeIfPresent(DocumentText.self, forKey: .text)
+        self.separator = try c.decodeIfPresent(SeparatorStyle.self, forKey: .separator)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -250,6 +339,10 @@ public struct DocumentStyle: Codable, Sendable, Hashable {
         try c.encode(background, forKey: .background)
         try c.encode(accent, forKey: .accent)
         try c.encode(card, forKey: .card)
+        try c.encodeIfPresent(backdrop, forKey: .backdrop)
+        try c.encodeIfPresent(sheet, forKey: .sheet)
+        try c.encodeIfPresent(text, forKey: .text)
+        try c.encodeIfPresent(separator, forKey: .separator)
     }
 }
 
@@ -278,35 +371,155 @@ public struct DocumentCover: Codable, Sendable, Hashable {
 }
 
 public struct ParagraphProps: Codable, Sendable, Hashable {
-    public init() {}
+    public var textStyle: BlockTextStyle?
+    public var decoration: BlockDecoration?
+    public var color: BlockColor?
+    public var align: BlockAlign?
+    public var font: BlockFont?
+    public var group: BlockGroup?
+
+    public init(textStyle: BlockTextStyle? = nil, decoration: BlockDecoration? = nil, color: BlockColor? = nil, align: BlockAlign? = nil, font: BlockFont? = nil, group: BlockGroup? = nil) {
+        self.textStyle = textStyle
+        self.decoration = decoration
+        self.color = color
+        self.align = align
+        self.font = font
+        self.group = group
+    }
+
+    enum CodingKeys: String, CodingKey { case textStyle, decoration, color, align, font, group }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.textStyle = try c.decodeIfPresent(BlockTextStyle.self, forKey: .textStyle)
+        self.decoration = try c.decodeIfPresent(BlockDecoration.self, forKey: .decoration)
+        self.color = try c.decodeIfPresent(BlockColor.self, forKey: .color)
+        self.align = try c.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.font = try c.decodeIfPresent(BlockFont.self, forKey: .font)
+        self.group = try c.decodeIfPresent(BlockGroup.self, forKey: .group)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(textStyle, forKey: .textStyle)
+        try c.encodeIfPresent(decoration, forKey: .decoration)
+        try c.encodeIfPresent(color, forKey: .color)
+        try c.encodeIfPresent(align, forKey: .align)
+        try c.encodeIfPresent(font, forKey: .font)
+        try c.encodeIfPresent(group, forKey: .group)
+    }
 }
 
 public struct HeadingProps: Codable, Sendable, Hashable {
     public var level: HeadingLevel
+    public var decoration: BlockDecoration?
+    public var color: BlockColor?
+    public var align: BlockAlign?
+    public var font: BlockFont?
+    public var group: BlockGroup?
 
-    public init(level: HeadingLevel) {
+    public init(level: HeadingLevel, decoration: BlockDecoration? = nil, color: BlockColor? = nil, align: BlockAlign? = nil, font: BlockFont? = nil, group: BlockGroup? = nil) {
         self.level = level
+        self.decoration = decoration
+        self.color = color
+        self.align = align
+        self.font = font
+        self.group = group
     }
 
-    enum CodingKeys: String, CodingKey { case level }
+    enum CodingKeys: String, CodingKey { case level, decoration, color, align, font, group }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.level = try c.decode(HeadingLevel.self, forKey: .level)
+        self.decoration = try c.decodeIfPresent(BlockDecoration.self, forKey: .decoration)
+        self.color = try c.decodeIfPresent(BlockColor.self, forKey: .color)
+        self.align = try c.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.font = try c.decodeIfPresent(BlockFont.self, forKey: .font)
+        self.group = try c.decodeIfPresent(BlockGroup.self, forKey: .group)
     }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(level, forKey: .level)
+        try c.encodeIfPresent(decoration, forKey: .decoration)
+        try c.encodeIfPresent(color, forKey: .color)
+        try c.encodeIfPresent(align, forKey: .align)
+        try c.encodeIfPresent(font, forKey: .font)
+        try c.encodeIfPresent(group, forKey: .group)
     }
 }
 
 public struct BulletedProps: Codable, Sendable, Hashable {
-    public init() {}
+    public var decoration: BlockDecoration?
+    public var color: BlockColor?
+    public var align: BlockAlign?
+    public var font: BlockFont?
+    public var group: BlockGroup?
+
+    public init(decoration: BlockDecoration? = nil, color: BlockColor? = nil, align: BlockAlign? = nil, font: BlockFont? = nil, group: BlockGroup? = nil) {
+        self.decoration = decoration
+        self.color = color
+        self.align = align
+        self.font = font
+        self.group = group
+    }
+
+    enum CodingKeys: String, CodingKey { case decoration, color, align, font, group }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.decoration = try c.decodeIfPresent(BlockDecoration.self, forKey: .decoration)
+        self.color = try c.decodeIfPresent(BlockColor.self, forKey: .color)
+        self.align = try c.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.font = try c.decodeIfPresent(BlockFont.self, forKey: .font)
+        self.group = try c.decodeIfPresent(BlockGroup.self, forKey: .group)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(decoration, forKey: .decoration)
+        try c.encodeIfPresent(color, forKey: .color)
+        try c.encodeIfPresent(align, forKey: .align)
+        try c.encodeIfPresent(font, forKey: .font)
+        try c.encodeIfPresent(group, forKey: .group)
+    }
 }
 
 public struct NumberedProps: Codable, Sendable, Hashable {
-    public init() {}
+    public var decoration: BlockDecoration?
+    public var color: BlockColor?
+    public var align: BlockAlign?
+    public var font: BlockFont?
+    public var group: BlockGroup?
+
+    public init(decoration: BlockDecoration? = nil, color: BlockColor? = nil, align: BlockAlign? = nil, font: BlockFont? = nil, group: BlockGroup? = nil) {
+        self.decoration = decoration
+        self.color = color
+        self.align = align
+        self.font = font
+        self.group = group
+    }
+
+    enum CodingKeys: String, CodingKey { case decoration, color, align, font, group }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.decoration = try c.decodeIfPresent(BlockDecoration.self, forKey: .decoration)
+        self.color = try c.decodeIfPresent(BlockColor.self, forKey: .color)
+        self.align = try c.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.font = try c.decodeIfPresent(BlockFont.self, forKey: .font)
+        self.group = try c.decodeIfPresent(BlockGroup.self, forKey: .group)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(decoration, forKey: .decoration)
+        try c.encodeIfPresent(color, forKey: .color)
+        try c.encodeIfPresent(align, forKey: .align)
+        try c.encodeIfPresent(font, forKey: .font)
+        try c.encodeIfPresent(group, forKey: .group)
+    }
 }
 
 public struct TodoProps: Codable, Sendable, Hashable {
@@ -318,8 +531,13 @@ public struct TodoProps: Codable, Sendable, Hashable {
     public var assigneeId: String?
     public var reminderAt: Double?
     public var completedAt: Double?
+    public var decoration: BlockDecoration?
+    public var color: BlockColor?
+    public var align: BlockAlign?
+    public var font: BlockFont?
+    public var group: BlockGroup?
 
-    public init(checked: Bool, canceled: Bool? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: TaskPriority? = nil, assigneeId: String? = nil, reminderAt: Double? = nil, completedAt: Double? = nil) {
+    public init(checked: Bool, canceled: Bool? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: TaskPriority? = nil, assigneeId: String? = nil, reminderAt: Double? = nil, completedAt: Double? = nil, decoration: BlockDecoration? = nil, color: BlockColor? = nil, align: BlockAlign? = nil, font: BlockFont? = nil, group: BlockGroup? = nil) {
         self.checked = checked
         self.canceled = canceled
         self.dueDate = dueDate
@@ -328,9 +546,14 @@ public struct TodoProps: Codable, Sendable, Hashable {
         self.assigneeId = assigneeId
         self.reminderAt = reminderAt
         self.completedAt = completedAt
+        self.decoration = decoration
+        self.color = color
+        self.align = align
+        self.font = font
+        self.group = group
     }
 
-    enum CodingKeys: String, CodingKey { case checked, canceled, dueDate, dueTime, priority, assigneeId, reminderAt, completedAt }
+    enum CodingKeys: String, CodingKey { case checked, canceled, dueDate, dueTime, priority, assigneeId, reminderAt, completedAt, decoration, color, align, font, group }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -342,6 +565,11 @@ public struct TodoProps: Codable, Sendable, Hashable {
         self.assigneeId = try c.decodeIfPresent(String.self, forKey: .assigneeId)
         self.reminderAt = try c.decodeIfPresent(Double.self, forKey: .reminderAt)
         self.completedAt = try c.decodeIfPresent(Double.self, forKey: .completedAt)
+        self.decoration = try c.decodeIfPresent(BlockDecoration.self, forKey: .decoration)
+        self.color = try c.decodeIfPresent(BlockColor.self, forKey: .color)
+        self.align = try c.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.font = try c.decodeIfPresent(BlockFont.self, forKey: .font)
+        self.group = try c.decodeIfPresent(BlockGroup.self, forKey: .group)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -354,31 +582,88 @@ public struct TodoProps: Codable, Sendable, Hashable {
         try c.encodeIfPresent(assigneeId, forKey: .assigneeId)
         try c.encodeIfPresent(reminderAt, forKey: .reminderAt)
         try c.encodeIfPresent(completedAt, forKey: .completedAt)
+        try c.encodeIfPresent(decoration, forKey: .decoration)
+        try c.encodeIfPresent(color, forKey: .color)
+        try c.encodeIfPresent(align, forKey: .align)
+        try c.encodeIfPresent(font, forKey: .font)
+        try c.encodeIfPresent(group, forKey: .group)
     }
 }
 
 public struct ToggleProps: Codable, Sendable, Hashable {
     public var collapsed: Bool
+    public var decoration: BlockDecoration?
+    public var color: BlockColor?
+    public var align: BlockAlign?
+    public var font: BlockFont?
+    public var group: BlockGroup?
 
-    public init(collapsed: Bool) {
+    public init(collapsed: Bool, decoration: BlockDecoration? = nil, color: BlockColor? = nil, align: BlockAlign? = nil, font: BlockFont? = nil, group: BlockGroup? = nil) {
         self.collapsed = collapsed
+        self.decoration = decoration
+        self.color = color
+        self.align = align
+        self.font = font
+        self.group = group
     }
 
-    enum CodingKeys: String, CodingKey { case collapsed }
+    enum CodingKeys: String, CodingKey { case collapsed, decoration, color, align, font, group }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.collapsed = try c.decode(Bool.self, forKey: .collapsed)
+        self.decoration = try c.decodeIfPresent(BlockDecoration.self, forKey: .decoration)
+        self.color = try c.decodeIfPresent(BlockColor.self, forKey: .color)
+        self.align = try c.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.font = try c.decodeIfPresent(BlockFont.self, forKey: .font)
+        self.group = try c.decodeIfPresent(BlockGroup.self, forKey: .group)
     }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(collapsed, forKey: .collapsed)
+        try c.encodeIfPresent(decoration, forKey: .decoration)
+        try c.encodeIfPresent(color, forKey: .color)
+        try c.encodeIfPresent(align, forKey: .align)
+        try c.encodeIfPresent(font, forKey: .font)
+        try c.encodeIfPresent(group, forKey: .group)
     }
 }
 
 public struct QuoteProps: Codable, Sendable, Hashable {
-    public init() {}
+    public var decoration: BlockDecoration?
+    public var color: BlockColor?
+    public var align: BlockAlign?
+    public var font: BlockFont?
+    public var group: BlockGroup?
+
+    public init(decoration: BlockDecoration? = nil, color: BlockColor? = nil, align: BlockAlign? = nil, font: BlockFont? = nil, group: BlockGroup? = nil) {
+        self.decoration = decoration
+        self.color = color
+        self.align = align
+        self.font = font
+        self.group = group
+    }
+
+    enum CodingKeys: String, CodingKey { case decoration, color, align, font, group }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.decoration = try c.decodeIfPresent(BlockDecoration.self, forKey: .decoration)
+        self.color = try c.decodeIfPresent(BlockColor.self, forKey: .color)
+        self.align = try c.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.font = try c.decodeIfPresent(BlockFont.self, forKey: .font)
+        self.group = try c.decodeIfPresent(BlockGroup.self, forKey: .group)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(decoration, forKey: .decoration)
+        try c.encodeIfPresent(color, forKey: .color)
+        try c.encodeIfPresent(align, forKey: .align)
+        try c.encodeIfPresent(font, forKey: .font)
+        try c.encodeIfPresent(group, forKey: .group)
+    }
 }
 
 public struct CalloutProps: Codable, Sendable, Hashable {
@@ -406,6 +691,26 @@ public struct CalloutProps: Codable, Sendable, Hashable {
 }
 
 public struct DividerProps: Codable, Sendable, Hashable {
+    public var style: DividerStyle?
+
+    public init(style: DividerStyle? = nil) {
+        self.style = style
+    }
+
+    enum CodingKeys: String, CodingKey { case style }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.style = try c.decodeIfPresent(DividerStyle.self, forKey: .style)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(style, forKey: .style)
+    }
+}
+
+public struct PageBreakProps: Codable, Sendable, Hashable {
     public init() {}
 }
 
@@ -621,6 +926,50 @@ public struct CollectionProps: Codable, Sendable, Hashable {
     }
 }
 
+public struct FormulaProps: Codable, Sendable, Hashable {
+    public var latex: String
+
+    public init(latex: String) {
+        self.latex = latex
+    }
+
+    enum CodingKeys: String, CodingKey { case latex }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.latex = try c.decode(String.self, forKey: .latex)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(latex, forKey: .latex)
+    }
+}
+
+public struct WhiteboardProps: Codable, Sendable, Hashable {
+    public var data: String
+    public var height: Double
+
+    public init(data: String, height: Double) {
+        self.data = data
+        self.height = height
+    }
+
+    enum CodingKeys: String, CodingKey { case data, height }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.data = try c.decode(String.self, forKey: .data)
+        self.height = try c.decode(Double.self, forKey: .height)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(data, forKey: .data)
+        try c.encode(height, forKey: .height)
+    }
+}
+
 /// Typed block content. Unknown types (written by a newer client) are preserved verbatim.
 public enum BlockContent: Sendable, Hashable {
     case paragraph(ParagraphProps)
@@ -632,6 +981,7 @@ public enum BlockContent: Sendable, Hashable {
     case quote(QuoteProps)
     case callout(CalloutProps)
     case divider(DividerProps)
+    case pageBreak(PageBreakProps)
     case `code`(CodeProps)
     case image(ImageProps)
     case `file`(FileProps)
@@ -639,9 +989,11 @@ public enum BlockContent: Sendable, Hashable {
     case `page`(PageProps)
     case bookmark(BookmarkProps)
     case collection(CollectionProps)
+    case formula(FormulaProps)
+    case whiteboard(WhiteboardProps)
     case unknown(type: String, props: JSONValue)
 
-    public static let knownTypes: Set<String> = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote", "callout", "divider", "code", "image", "file", "table", "page", "bookmark", "collection"]
+    public static let knownTypes: Set<String> = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote", "callout", "divider", "pageBreak", "code", "image", "file", "table", "page", "bookmark", "collection", "formula", "whiteboard"]
     public static let textTypes: Set<String> = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote", "callout"]
 
     public var typeName: String {
@@ -655,6 +1007,7 @@ public enum BlockContent: Sendable, Hashable {
         case .quote: return "quote"
         case .callout: return "callout"
         case .divider: return "divider"
+        case .pageBreak: return "pageBreak"
         case .code: return "code"
         case .image: return "image"
         case .file: return "file"
@@ -662,6 +1015,8 @@ public enum BlockContent: Sendable, Hashable {
         case .page: return "page"
         case .bookmark: return "bookmark"
         case .collection: return "collection"
+        case .formula: return "formula"
+        case .whiteboard: return "whiteboard"
         case .unknown(let type, _): return type
         }
     }
@@ -679,6 +1034,7 @@ public enum BlockContent: Sendable, Hashable {
         case "quote": return .quote(try props.decode(QuoteProps.self))
         case "callout": return .callout(try props.decode(CalloutProps.self))
         case "divider": return .divider(try props.decode(DividerProps.self))
+        case "pageBreak": return .pageBreak(try props.decode(PageBreakProps.self))
         case "code": return .code(try props.decode(CodeProps.self))
         case "image": return .image(try props.decode(ImageProps.self))
         case "file": return .file(try props.decode(FileProps.self))
@@ -686,6 +1042,8 @@ public enum BlockContent: Sendable, Hashable {
         case "page": return .page(try props.decode(PageProps.self))
         case "bookmark": return .bookmark(try props.decode(BookmarkProps.self))
         case "collection": return .collection(try props.decode(CollectionProps.self))
+        case "formula": return .formula(try props.decode(FormulaProps.self))
+        case "whiteboard": return .whiteboard(try props.decode(WhiteboardProps.self))
         default: return .unknown(type: type, props: props)
         }
     }
@@ -701,6 +1059,7 @@ public enum BlockContent: Sendable, Hashable {
         case .quote(let p): return try JSONValue(encoding: p)
         case .callout(let p): return try JSONValue(encoding: p)
         case .divider(let p): return try JSONValue(encoding: p)
+        case .pageBreak(let p): return try JSONValue(encoding: p)
         case .code(let p): return try JSONValue(encoding: p)
         case .image(let p): return try JSONValue(encoding: p)
         case .file(let p): return try JSONValue(encoding: p)
@@ -708,6 +1067,8 @@ public enum BlockContent: Sendable, Hashable {
         case .page(let p): return try JSONValue(encoding: p)
         case .bookmark(let p): return try JSONValue(encoding: p)
         case .collection(let p): return try JSONValue(encoding: p)
+        case .formula(let p): return try JSONValue(encoding: p)
+        case .whiteboard(let p): return try JSONValue(encoding: p)
         case .unknown(_, let props): return props
         }
     }
@@ -721,6 +1082,10 @@ public enum FoleviLimits {
     public static let maxTableColumns = 20
     public static let maxBlocksPerDocument = 5000
     public static let maxRankLength = 128
+    public static let maxFormulaLength = 10000
+    public static let maxWhiteboardDataLength = 200000
+    public static let minWhiteboardHeight = 120
+    public static let maxWhiteboardHeight = 2400
 }
 
 public let foleviCodeLanguages: [String] = ["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"]

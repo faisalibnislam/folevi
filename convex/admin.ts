@@ -10,16 +10,25 @@ import { ALL_ADMIN_ROLES, requirePlatformRole, type PlatformRole } from "./lib/a
 import { recordAudit } from "./lib/audit";
 import { fail } from "./lib/errors";
 import { DEFAULT_RATE_RULES } from "./lib/rateLimit";
+import { KNOWN_FLAGS, knownFlag } from "./lib/flags";
 import { BUILT_IN_TEMPLATES } from "./lib/templates";
 import { keyedHash, redactEmail } from "./lib/crypto";
 import { vPlatformRole } from "./lib/validators";
+import { entitlementsFor } from "./lib/billing";
 
-const SUPPORT: PlatformRole[] = ["super_admin", "support_admin"];
-const OPS: PlatformRole[] = ["super_admin", "ops_admin"];
-const SUPER: PlatformRole[] = ["super_admin"];
+// Three tiers (stored names kept for existing admins and audit records):
+//   Owner (super_admin)      — everything, including admin roles and money matters
+//   Admin (ops_admin)        — users, plans, workspaces, configuration
+//   Support staff (support_admin) — look up users and help them (resend emails, password resets,
+//                               trial extensions, exports delivered to the user)
+const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
+const ADMIN: PlatformRole[] = ["super_admin", "ops_admin"];
+const OWNER: PlatformRole[] = ["super_admin"];
 
 const vReason = v.string();
-const vRequest = { reason: vReason, requestId: v.optional(v.string()), clientHash: v.optional(v.string()) };
+/** Correlation fields every audited admin call accepts (reads and writes alike). */
+const vMeta = { requestId: v.optional(v.string()), clientHash: v.optional(v.string()) };
+const vRequest = { reason: vReason, ...vMeta };
 
 function requireReason(reason: string): string {
   const r = reason.trim();
@@ -132,12 +141,12 @@ export const searchUsers = mutation({
     query: v.string(),
     status: v.optional(v.union(v.literal("active"), v.literal("suspended"), v.literal("pending_deletion"), v.literal("deleted"))),
     cursor: v.optional(v.union(v.string(), v.null())),
-    requestId: v.optional(v.string()),
+    ...vMeta,
   },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, STAFF);
     const q = args.query.trim().toLowerCase();
-    await audit(ctx, admin, "user.search", { type: "users", id: q ? await keyedHash(q, "admin-search") : "all" }, { requestId: args.requestId });
+    await audit(ctx, admin, "user.search", { type: "users", id: q ? await keyedHash(q, "admin-search") : "all" }, { requestId: args.requestId, clientHash: args.clientHash });
     let rows: Doc<"profiles">[];
     let continueCursor: string | null = null;
     if (q.includes("@")) {
@@ -153,6 +162,11 @@ export const searchUsers = mutation({
       rows = page.page.filter((p) => !q || p.displayName.toLowerCase().includes(q) || p.email.includes(q) || (p._id as string) === q);
       continueCursor = page.isDone ? null : page.continueCursor;
     }
+    const plans = new Map<string, { plan: string; trialing: boolean; ai: boolean }>();
+    for (const p of rows) {
+      const e = await entitlementsFor(ctx, p._id);
+      plans.set(p._id, { plan: e.paidPlan, trialing: e.trialing, ai: e.ai });
+    }
     return {
       users: rows.map((p) => ({
         id: p._id as string,
@@ -164,6 +178,7 @@ export const searchUsers = mutation({
         platformRole: p.platformRole ?? null,
         createdAt: p.createdAt,
         lastActiveAt: p.lastActiveAt,
+        ...plans.get(p._id)!,
       })),
       continueCursor,
     };
@@ -171,13 +186,13 @@ export const searchUsers = mutation({
 });
 
 export const viewUser = mutation({
-  args: { profileId: v.string(), requestId: v.optional(v.string()) },
+  args: { profileId: v.string(), ...vMeta },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, STAFF);
     const id = ctx.db.normalizeId("profiles", args.profileId);
     const p = id ? await ctx.db.get(id) : null;
     if (!p) fail("not_found", "User not found.");
-    await audit(ctx, admin, "user.view", { type: "profile", id: p._id }, { requestId: args.requestId });
+    await audit(ctx, admin, "user.view", { type: "profile", id: p._id }, { requestId: args.requestId, clientHash: args.clientHash });
     const sessions = await ctx.db
       .query("sessionsMirror")
       .withIndex("by_profile", (q) => q.eq("profileId", p._id))
@@ -248,7 +263,7 @@ async function targetProfile(ctx: MutationCtx, raw: string) {
 export const suspendUser = mutation({
   args: { profileId: v.string(), suspend: v.boolean(), confirmEmail: v.string(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
     if (p._id === admin._id) fail("forbidden", "You can't suspend yourself.");
@@ -273,7 +288,7 @@ export const suspendUser = mutation({
 export const revokeAllSessions = mutation({
   args: { profileId: v.string(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
     const sessions = await ctx.db
@@ -296,7 +311,7 @@ export const revokeAllSessions = mutation({
 export const resendVerification = mutation({
   args: { profileId: v.string(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, STAFF);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
     if (p.emailVerified) fail("invalid_argument", "This email address is already verified.");
@@ -310,7 +325,7 @@ export const resendVerification = mutation({
 export const initiatePasswordReset = mutation({
   args: { profileId: v.string(), userRequested: v.literal(true), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, STAFF);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
     await ctx.scheduler.runAfter(0, internal.identity.startPasswordReset, { profileId: p._id });
@@ -322,7 +337,7 @@ export const initiatePasswordReset = mutation({
 export const setPlatformRole = mutation({
   args: { profileId: v.string(), role: v.union(vPlatformRole, v.null()), confirmEmail: v.string(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPER);
+    const admin = await requirePlatformRole(ctx, OWNER);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
     if (args.confirmEmail.trim().toLowerCase() !== p.email) fail("invalid_argument", "Type the user's email to confirm.");
@@ -344,7 +359,7 @@ export const setPlatformRole = mutation({
 export const scheduleAccountDeletion = mutation({
   args: { profileId: v.string(), confirmEmail: v.string(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
     if (args.confirmEmail.trim().toLowerCase() !== p.email) fail("invalid_argument", "Type the user's email to confirm.");
@@ -376,15 +391,15 @@ export const scheduleAccountDeletion = mutation({
 // ---------------------------------------------------------------- workspaces
 
 export const viewWorkspace = mutation({
-  args: { workspaceId: v.string(), requestId: v.optional(v.string()) },
+  args: { workspaceId: v.string(), ...vMeta },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, [...SUPPORT, "ops_admin"]);
+    const admin = await requirePlatformRole(ctx, STAFF);
     const w = await ctx.db
       .query("workspaces")
       .withIndex("by_public_id", (q) => q.eq("publicId", args.workspaceId))
       .unique();
     if (!w) fail("not_found", "Workspace not found.");
-    await audit(ctx, admin, "workspace.view", { type: "workspace", id: w._id }, { requestId: args.requestId });
+    await audit(ctx, admin, "workspace.view", { type: "workspace", id: w._id }, { requestId: args.requestId, clientHash: args.clientHash });
     const members = await ctx.db
       .query("workspaceMembers")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", w._id))
@@ -423,7 +438,7 @@ export const viewWorkspace = mutation({
 export const setWorkspaceSuspended = mutation({
   args: { workspaceId: v.string(), suspended: v.boolean(), confirmName: v.string(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, [...SUPPORT, "ops_admin"]);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const w = await ctx.db
       .query("workspaces")
@@ -441,7 +456,7 @@ export const setWorkspaceSuspended = mutation({
 export const setWorkspaceQuota = mutation({
   args: { workspaceId: v.string(), storageQuotaBytes: v.number(), memberLimit: v.number(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, OPS);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const w = await ctx.db
       .query("workspaces")
@@ -456,10 +471,12 @@ export const setWorkspaceQuota = mutation({
   },
 });
 
-export const listWorkspaces = query({
-  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+/** Listing workspaces reveals names (user content), so like other identity reads it is an audited mutation. */
+export const listWorkspaces = mutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())), ...vMeta },
   handler: async (ctx, args) => {
-    await requirePlatformRole(ctx, [...SUPPORT, "ops_admin"]);
+    const admin = await requirePlatformRole(ctx, STAFF);
+    await audit(ctx, admin, "workspace.list", { type: "workspaces", id: args.cursor ? "page" : "first_page" }, { requestId: args.requestId, clientHash: args.clientHash });
     const page = await ctx.db.query("workspaces").withIndex("by_created").order("desc").paginate({ cursor: args.cursor ?? null, numItems: 50 });
     // Workspace names are user content but needed to identify records; no document data is exposed.
     return {
@@ -472,10 +489,10 @@ export const listWorkspaces = query({
 // ---------------------------------------------------------------- email operations
 
 export const listEmails = mutation({
-  args: { status: v.optional(v.union(v.literal("queued"), v.literal("accepted"), v.literal("failed"), v.literal("skipped"))), requestId: v.optional(v.string()) },
+  args: { status: v.optional(v.union(v.literal("queued"), v.literal("accepted"), v.literal("failed"), v.literal("skipped"))), ...vMeta },
   handler: async (ctx, args) => {
     const admin = await requirePlatformRole(ctx, ALL_ADMIN_ROLES);
-    await audit(ctx, admin, "email.list", { type: "email_attempts", id: args.status ?? "all" }, { requestId: args.requestId });
+    await audit(ctx, admin, "email.list", { type: "email_attempts", id: args.status ?? "all" }, { requestId: args.requestId, clientHash: args.clientHash });
     const rows = args.status
       ? await ctx.db
           .query("emailSendAttempts")
@@ -485,10 +502,11 @@ export const listEmails = mutation({
       : await ctx.db.query("emailSendAttempts").withIndex("by_created").order("desc").take(100);
     const out = [];
     for (const r of rows) {
-      // Provider delivery state appears only if a signature-verified Loops webhook reported it.
+      // Provider delivery state appears only if a signature-verified Loops webhook reported it, and only
+      // events matched to this exact send (provider id, or recipient + template + time) at receipt.
       const events = await ctx.db
         .query("emailProviderEvents")
-        .withIndex("by_recipient", (q) => q.eq("recipientHash", r.recipientHash).gte("eventTime", r.createdAt - 60_000))
+        .withIndex("by_attempt", (q) => q.eq("attemptId", r._id))
         .take(10);
       out.push({
         id: r._id as string,
@@ -502,7 +520,8 @@ export const listEmails = mutation({
         environment: r.environment,
         requestId: r.requestId,
         createdAt: r.createdAt,
-        providerEvents: events.map((e) => ({ eventName: e.eventName, eventTime: e.eventTime })),
+        hasProviderId: Boolean(r.providerMessageId),
+        providerEvents: events.map((e) => ({ eventName: e.eventName, eventTime: e.eventTime < 1e12 ? e.eventTime * 1000 : e.eventTime })),
       });
     }
     return { attempts: out, webhooksConfigured: Boolean(process.env.LOOPS_WEBHOOK_SECRET) };
@@ -516,7 +535,7 @@ export const listEmails = mutation({
 export const resendEmail = mutation({
   args: { attemptId: v.string(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, SUPPORT);
+    const admin = await requirePlatformRole(ctx, STAFF);
     const reason = requireReason(args.reason);
     const id = ctx.db.normalizeId("emailSendAttempts", args.attemptId);
     const attempt = id ? await ctx.db.get(id) : null;
@@ -572,19 +591,12 @@ export const configuration = query({
   },
 });
 
-export const KNOWN_FLAGS = [
-  { key: "public_links", description: "Allow documents to be published with a public share link.", default: true },
-  { key: "workspace_invites", description: "Allow inviting people to workspaces.", default: true },
-  { key: "new_signups", description: "Allow new accounts to finish setup (existing accounts are unaffected).", default: true },
-  { key: "workspace_export", description: "Allow workspace ZIP exports.", default: true },
-];
-
 export const setFlag = mutation({
   args: { key: v.string(), enabled: v.boolean(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, OPS);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
-    const known = KNOWN_FLAGS.find((f) => f.key === args.key);
+    const known = knownFlag(args.key);
     if (!known) fail("invalid_argument", "Unknown flag.");
     const row = await ctx.db
       .query("featureFlags")
@@ -601,7 +613,7 @@ export const setFlag = mutation({
 export const setMaintenance = mutation({
   args: { bannerMessage: v.string(), readOnly: v.boolean(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, OPS);
+    const admin = await requirePlatformRole(ctx, OWNER);
     const reason = requireReason(args.reason);
     const value = { bannerMessage: args.bannerMessage.trim().slice(0, 280), readOnly: args.readOnly };
     const row = await ctx.db
@@ -619,7 +631,7 @@ export const setMaintenance = mutation({
 export const setRateLimit = mutation({
   args: { name: v.string(), limit: v.union(v.number(), v.null()), windowMs: v.optional(v.number()), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, OPS);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     if (!(args.name in DEFAULT_RATE_RULES)) fail("invalid_argument", "Unknown rule.");
     const row = await ctx.db
@@ -645,7 +657,7 @@ export const setRateLimit = mutation({
 export const setTemplateEnabled = mutation({
   args: { key: v.string(), enabled: v.boolean(), ...vRequest },
   handler: async (ctx, args) => {
-    const admin = await requirePlatformRole(ctx, OPS);
+    const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const t = BUILT_IN_TEMPLATES.find((x) => x.key === args.key);
     if (!t) fail("invalid_argument", "Unknown template.");
@@ -699,7 +711,7 @@ export const auditLog = query({
 export const deletionJobs = query({
   args: {},
   handler: async (ctx) => {
-    await requirePlatformRole(ctx, [...SUPPORT, "ops_admin"]);
+    await requirePlatformRole(ctx, ADMIN);
     const rows = await ctx.db.query("deletionJobs").order("desc").take(100);
     return rows.map((j) => ({ id: j._id as string, kind: j.kind, status: j.status, requestedByAdmin: j.requestedByAdmin, reason: j.reason, scheduledFor: j.scheduledFor, progress: j.progress, createdAt: j.createdAt, completedAt: j.completedAt ?? null, error: j.error ?? null }));
   },

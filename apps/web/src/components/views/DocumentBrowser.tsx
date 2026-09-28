@@ -1,23 +1,8 @@
 "use client";
 
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
-import {
-  Archive,
-  ArchiveRestore,
-  Copy,
-  ExternalLink,
-  FolderInput,
-  LayoutGrid,
-  List,
-  MoreHorizontal,
-  Plus,
-  Rows3,
-  Star,
-  StarOff,
-  Trash2,
-  Undo2,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Copy, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -27,11 +12,25 @@ import { MenuButton } from "@/components/ui/Menu";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
-import { SyncStatus } from "@/components/app/SyncStatus";
 import { useCreateDocument } from "@/components/app/useCreateDocument";
-import { formatRelative } from "@/lib/format";
+import { ageText, formatRelative } from "@/lib/format";
+import { t } from "@/i18n";
 import { localDb } from "@/lib/sync/db";
-import { DocumentCardPreview } from "./DocumentCard";
+import { TemplateTile } from "@/components/ui/TemplateIcon";
+import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
+import { FolderBadge } from "./FolderBadge";
+import { usePendingDocs } from "@/lib/hooks/usePendingDocs";
+import { Select } from "@/components/ui/Select";
+
+/** Marks a page with edits on this device the server hasn't confirmed yet. */
+function UnsyncedMarker({ className = "" }: { className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-medium text-heading ${className}`} title="Changes on this device haven’t synced yet">
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-heading" aria-hidden />
+      <span>Not synced</span>
+    </span>
+  );
+}
 
 type View = "all" | "starred" | "archive" | "trash" | "templates" | "unsorted" | "folder" | "tag";
 type Layout = "grid" | "compact" | "list";
@@ -43,7 +42,7 @@ const TITLES: Record<View, string> = {
   archive: "Archive",
   trash: "Trash",
   templates: "Templates",
-  unsorted: "Unsorted",
+  unsorted: "Drafts",
   folder: "Folder",
   tag: "Tag",
 };
@@ -59,9 +58,41 @@ const EMPTY: Record<View, string> = {
   tag: "No documents carry this tag yet.",
 };
 
-type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api.documents.list>>["results"]>[number];
+export type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api.documents.list>>["results"]>[number];
 
-export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderId?: string; tagId?: string }) {
+export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; folderId?: string; tagId?: string; title?: string }) {
+  const { workspace } = useAppState();
+  const org = useQuery(api.organization.sidebar, { workspaceId: workspace.id });
+  // A folder/tag link that doesn't resolve in this workspace (deleted, mistyped, or from another
+  // workspace) gets a real not-found page instead of a failing list query.
+  const missing =
+    org !== undefined &&
+    ((view === "folder" && !org.folders.some((f) => f.id === folderId)) || (view === "tag" && !org.tags.some((t) => t.id === tagId)));
+  if (missing) return <MissingContainer kind={view === "folder" ? "folder" : "tag"} />;
+  return <DocumentList view={view} folderId={folderId} tagId={tagId} org={org} titleOverride={title} />;
+}
+
+function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
+  const { workspace, workspaces } = useAppState();
+  const title = kind === "folder" ? "Folder not found" : "Tag not found";
+  return (
+    <ViewChrome title={<h1 className="truncate text-sm font-semibold">{title}</h1>} tabTitle={title}>
+      <div className="mx-auto max-w-lg px-6 py-24 text-center">
+        <h2 className="ui-display text-4xl">{kind === "folder" ? "This folder isn’t here" : "This tag isn’t here"}</h2>
+        <p className="mt-3 text-muted">
+          It may have been deleted{workspaces.length > 1 ? `, or it belongs to a workspace other than ${workspace.name}` : ""}. Links to {kind === "folder" ? "folders" : "tags"} only work in their own workspace.
+        </p>
+        <AppLink href="/documents" className="ui-btn ui-btn-primary mt-6 h-9 px-4 text-sm">
+          Go to Home
+        </AppLink>
+      </div>
+    </ViewChrome>
+  );
+}
+
+type Org = ReturnType<typeof useQuery<typeof api.organization.sidebar>>;
+
+function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
   const { workspace, profile, online } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
@@ -70,7 +101,6 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
     { workspaceId: workspace.id, view, folderId, tagId, sort },
     { initialNumItems: 48 },
   );
-  const org = useQuery(api.organization.sidebar, { workspaceId: workspace.id });
   const builtIns = useQuery(api.settings.builtInTemplates, view === "templates" ? {} : "skip");
   const createDocument = useCreateDocument();
   const emptyTrash = useMutation(api.documents.emptyTrash);
@@ -103,57 +133,68 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
   }, [status, online, profile.id, workspace.id]);
 
   const title =
-    view === "folder" ? (org?.folders.find((f) => f.id === folderId)?.name ?? "Folder") : view === "tag" ? `#${org?.tags.find((t) => t.id === tagId)?.name ?? "tag"}` : TITLES[view];
+    titleOverride ?? (view === "folder" ? (org?.folders.find((f) => f.id === folderId)?.name ?? "Folder") : view === "tag" ? `#${org?.tags.find((t) => t.id === tagId)?.name ?? "tag"}` : TITLES[view]);
   const docs = status === "LoadingFirstPage" && cached ? cached : results;
   const loading = status === "LoadingFirstPage" && !cached;
+  const canArrange = sort === "manual" && view !== "trash";
+  const pendingDocs = usePendingDocs();
+  const unsynced = useMemo(() => new Set(pendingDocs.filter((p) => p.changes > 0 || p.uploads > 0).map((p) => p.documentId)), [pendingDocs]);
+
+  /** Moves `dragged` onto `target`'s slot: after it when moving down, before it when moving up. */
+  const place = (dragged: string, target: string) => {
+    if (dragged === target) return;
+    const from = docs.findIndex((x) => x.id === dragged);
+    const to = docs.findIndex((x) => x.id === target);
+    if (to < 0) return;
+    const down = from >= 0 && from < to;
+    const afterDocumentId = down ? target : (docs[to - 1]?.id ?? null);
+    const beforeDocumentId = down ? (docs[to + 1]?.id ?? null) : target;
+    reorder({ documentId: dragged, afterDocumentId, beforeDocumentId }).catch((err) => toast.show(errorMessage(err), { tone: "error" }));
+  };
+  const nudge = (id: string, delta: -1 | 1) => {
+    const i = docs.findIndex((x) => x.id === id);
+    const target = docs[i + delta];
+    if (target) place(id, target.id);
+  };
+  const dropProps = (d: Summary) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (canArrange && e.dataTransfer.types.includes("application/x-folevi-document")) {
+        e.preventDefault();
+        setDropTarget(d.id);
+      }
+    },
+    onDragLeave: () => setDropTarget(null),
+    onDrop: (e: React.DragEvent) => {
+      setDropTarget(null);
+      const dragged = e.dataTransfer.getData("application/x-folevi-document");
+      if (!canArrange || !dragged || dragged === d.id) return;
+      e.preventDefault();
+      place(dragged, d.id);
+    },
+  });
 
   return (
     <ViewChrome
       title={<h1 className="truncate text-sm font-semibold">{title}</h1>}
       tabTitle={title}
-      actions={
-        <>
-          <SyncStatus />
-          {view === "trash" && results.length ? (
-            <Button size="sm" variant="quiet" onClick={() => setConfirmEmpty(true)}>
-              Empty Trash
-            </Button>
-          ) : null}
-          {view !== "trash" && view !== "archive" ? (
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => void createDocument({ folderId: view === "folder" ? folderId : null, kind: view === "templates" ? "template" : "document" })}
-            >
-              <Plus size={14} aria-hidden /> {view === "templates" ? "New template" : "New"}
-            </Button>
-          ) : null}
-        </>
-      }
     >
-      <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-6 sm:px-8">
-        <div className="mb-5 flex flex-wrap items-end gap-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="ui-display text-[34px] leading-tight">{title}</h2>
-            {!loading ? (
-              <p className="text-sm text-muted">
-                {docs.length} document{docs.length === 1 ? "" : "s"}
-                {status === "CanLoadMore" ? "+" : ""}
-                {!online && cached ? " · showing the copy saved on this device" : ""}
-                {sort === "manual" && layout !== "list" ? " · drag cards to arrange them" : ""}
-              </p>
-            ) : null}
-          </div>
+      <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-3 sm:px-8">
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <p role="status" className="mr-auto min-w-0 truncate text-[13px] text-muted">
+            {loading
+          ? undefined
+          : `${docs.length}${status === "CanLoadMore" ? "+" : ""} ${view === "templates" ? (docs.length === 1 ? "template" : "templates") : docs.length === 1 ? "note" : "notes"}${!online && cached ? " · saved on this device" : ""}${canArrange ? " · drag to arrange" : ""}`}
+          </p>
           <label className="flex items-center gap-2 text-sm text-muted">
             <span>Sort</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 ui-input rounded-full px-2 text-ink">
+            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 ui-input rounded-[6px] px-3 text-ink">
               <option value="updated">Last edited</option>
               <option value="created">Created</option>
               <option value="title">Title</option>
               <option value="manual">Manual order</option>
-            </select>
+            </Select>
           </label>
-          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-full p-0.5">
+          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-[6px] p-0.5">
             {(
               [
                 ["grid", "Grid", <LayoutGrid key="g" size={15} />],
@@ -169,12 +210,23 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                 aria-label={label}
                 title={label}
                 onClick={() => setLayout(value)}
-                className={`grid h-7 w-9 place-items-center rounded-full transition-[background-color,box-shadow] ${layout === value ? "bg-raised text-heading shadow-[var(--shadow-control)]" : "text-muted hover:text-heading"}`}
+                className={`grid h-7 w-9 place-items-center rounded-[6px] transition-[background-color,box-shadow] ${layout === value ? "bg-raised text-heading shadow-[var(--shadow-control)]" : "text-muted hover:text-heading"}`}
               >
                 {icon}
               </button>
             ))}
           </div>
+          {/* Page actions share the toolbar row (new notes come from the tab bar). */}
+          {view === "trash" && results.length ? (
+            <Button size="sm" variant="quiet" onClick={() => setConfirmEmpty(true)}>
+              Empty Trash
+            </Button>
+          ) : null}
+          {view === "templates" ? (
+            <Button size="sm" variant="primary" onClick={() => void createDocument({ folderId: null, kind: "template" })}>
+              <Plus size={14} aria-hidden /> New template
+            </Button>
+          ) : null}
         </div>
 
         {view === "templates" && builtIns?.length ? (
@@ -187,12 +239,11 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                 <button
                   key={t.key}
                   type="button"
+                  aria-label={`New page from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
-                  className="flex items-start gap-3 ui-card rounded-[18px] p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+                  className="flex items-start gap-3 ui-card rounded-[8px] p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
                 >
-                  <span className="text-2xl" aria-hidden>
-                    {t.icon}
-                  </span>
+                  <TemplateTile name={t.icon} />
                   <span>
                     <span className="block font-medium">{t.name}</span>
                     <span className="block text-sm text-muted">{t.description}</span>
@@ -205,85 +256,88 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
         ) : null}
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-52 animate-pulse ui-card rounded-[18px] motion-reduce:animate-none" />
+              <div key={i} className="h-52 animate-pulse ui-card rounded-[8px] motion-reduce:animate-none" />
             ))}
           </div>
         ) : docs.length === 0 ? (
-          <div className="rounded-[18px] border border-dashed border-line-strong px-6 py-16 text-center">
+          <div className="rounded-[6px] border border-dashed border-line-strong px-6 py-16 text-center">
             <p className="ui-display text-2xl">{EMPTY[view]}</p>
             {view === "all" || view === "folder" ? (
-              <Button className="mt-6" variant="primary" onClick={() => void createDocument({ folderId: view === "folder" ? folderId : null })}>
+              <Button className="mt-6" variant="primary" onClick={() => void createDocument({ folderId: null })}>
                 <Plus size={14} aria-hidden /> New document
               </Button>
             ) : null}
           </div>
         ) : layout === "list" ? (
-          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[18px]">
+          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[8px]">
             {docs.map((d) => (
-              <li key={d.id} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-surface">
+              <li
+                key={d.id}
+                className={`group flex items-center gap-3 px-4 py-2.5 hover:bg-surface ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
+                draggable={view !== "trash"}
+                onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-document", d.id)}
+                {...dropProps(d)}
+              >
                 <DocDragHandle id={d.id} />
-                <span className="w-6 text-center text-lg" aria-hidden>
-                  {d.icon ?? "·"}
-                </span>
+                <FileText size={16} aria-hidden className="flex-none text-muted" />
                 <AppLink href={`/d/${d.id}`} className="min-w-0 flex-1 truncate font-medium outline-none focus-visible:underline">
                   {d.title || "Untitled"}
                 </AppLink>
+                {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
+                {d.kind !== "template" ? <FolderBadge folder={d.homeFolder} /> : null}
                 <span className="hidden text-xs text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
                 <span className="w-28 text-right text-xs text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : formatRelative(d.updatedAt)}</span>
-                <DocMenu doc={d} view={view} folders={org?.folders ?? []} />
+                {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
+                <DocMenu doc={d} view={view} folders={org?.folders ?? []} arrange={canArrange ? { up: () => nudge(d.id, -1), down: () => nudge(d.id, 1) } : undefined} />
               </li>
             ))}
           </ul>
         ) : (
-          <ul className={`grid gap-5 ${layout === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
+          <ul className={`grid gap-x-8 gap-y-10 ${layout === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-[repeat(auto-fill,minmax(230px,1fr))]"}`}>
             {docs.map((d) => (
               <li
                 key={d.id}
-                className={`group relative rounded-[18px] ${dropTarget === d.id ? "ring-2 ring-ember ring-offset-2 ring-offset-canvas" : ""}`}
+                className={`group relative [container-type:inline-size] ${layout === "compact" ? "rounded-[6px]" : "rounded-[6px]"} ${dropTarget === d.id ? "ring-2 ring-heading ring-offset-2 ring-offset-canvas" : ""}`}
                 draggable
                 onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-document", d.id)}
-                onDragOver={(e) => {
-                  if (sort === "manual" && e.dataTransfer.types.includes("application/x-folevi-document")) {
-                    e.preventDefault();
-                    setDropTarget(d.id);
-                  }
-                }}
-                onDragLeave={() => setDropTarget(null)}
-                onDrop={(e) => {
-                  setDropTarget(null);
-                  const dragged = e.dataTransfer.getData("application/x-folevi-document");
-                  if (sort !== "manual" || !dragged || dragged === d.id) return;
-                  e.preventDefault();
-                  const idx = docs.findIndex((x) => x.id === d.id);
-                  reorder({ documentId: dragged, afterDocumentId: docs[idx - 1]?.id === dragged ? d.id : (docs[idx - 1]?.id ?? null), beforeDocumentId: docs[idx - 1]?.id === dragged ? (docs[idx + 1]?.id ?? null) : d.id }).catch((err) =>
-                    toast.show(errorMessage(err), { tone: "error" }),
-                  );
-                }}
+                {...dropProps(d)}
               >
-                <AppLink href={`/d/${d.id}`} className={`block rounded-[18px] shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus ${layout === "compact" ? "h-28" : "h-64"}`}>
-                  <DocumentCardPreview
-                    title={d.title}
-                    icon={d.icon}
-                    excerpt={d.excerpt}
-                    cover={d.cover}
-                    style={d.style}
-                    compact={layout === "compact"}
-                    footer={
-                      layout === "compact" ? null : (
+                {layout === "compact" ? (
+                  <AppLink href={`/d/${d.id}`} className="block h-28 rounded-[6px] shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
+                    <DocumentCardPreview
+                      title={d.title}
+                      style={d.style}
+                      footer={
                         <>
-                          {d.starred ? <Star size={11} className="fill-marigold text-marigold" aria-label="Starred" /> : null}
-                          <span>{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : `Edited ${formatRelative(d.updatedAt)}`}</span>
-                          {d.tags.length ? <span className="truncate">· {d.tags.map((t) => `#${t.name}`).join(" ")}</span> : null}
+                          {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
+                          {d.kind !== "template" ? <FolderBadge folder={d.homeFolder} className="ml-auto" /> : null}
                         </>
-                      )
-                    }
-                  />
-                </AppLink>
-                <div className="absolute right-2 top-2 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
-                  <div className="ui-raised rounded-full">
-                    <DocMenu doc={d} view={view} folders={org?.folders ?? []} />
+                      }
+                    />
+                  </AppLink>
+                ) : (
+                  <AppLink href={`/d/${d.id}`} className={NOTE_CARD_LINK}>
+                    <NoteCardFace
+                      title={d.title}
+                      excerpt={d.excerpt}
+                      preview={d.preview}
+                      cover={d.cover}
+                      style={d.style}
+                      createdAt={d.createdAt}
+                      time={view === "trash" && d.deletedAt ? `Deleted ${ageText(d.deletedAt).toLowerCase()}` : ageText(d.updatedAt)}
+                      starred={d.starred}
+                      folder={d.homeFolder}
+                      showFolder={d.kind !== "template"}
+                      extra={unsynced.has(d.id) ? <UnsyncedMarker /> : null}
+                    />
+                  </AppLink>
+                )}
+                <div className={`absolute top-2 flex items-center gap-1 ${d.starred && layout !== "compact" ? "right-[calc(12cqw+8px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
+                  {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} raised /> : null}
+                  <div className="ui-raised rounded-[6px]">
+                    <DocMenu doc={d} view={view} folders={org?.folders ?? []} arrange={canArrange ? { up: () => nudge(d.id, -1), down: () => nudge(d.id, 1) } : undefined} />
                   </div>
                 </div>
               </li>
@@ -311,7 +365,7 @@ export function DocumentBrowser({ view, folderId, tagId }: { view: View; folderI
                 setConfirmEmpty(false);
                 try {
                   const r = await emptyTrash({ workspaceId: workspace.id });
-                  toast.show(`${r.scheduled} document${r.scheduled === 1 ? "" : "s"} will be permanently deleted.`);
+                  toast.show(t("documents.trash.scheduled", { count: r.scheduled }));
                 } catch (e) {
                   toast.show(errorMessage(e), { tone: "error" });
                 }
@@ -339,7 +393,22 @@ function DocDragHandle({ id }: { id: string }) {
   );
 }
 
-function DocMenu({ doc, view, folders }: { doc: Summary; view: View; folders: { id: string; name: string }[] }) {
+function UseTemplateButton({ doc, raised }: { doc: Summary; raised?: boolean }) {
+  const createDocument = useCreateDocument();
+  return (
+    <button
+      type="button"
+      onClick={() => void createDocument({ title: doc.title, templateId: doc.id })}
+      className={`ui-btn ${raised ? "ui-btn-secondary" : "ui-btn-ghost"} h-7 gap-1 px-2.5 text-xs`}
+      aria-label={`New page from template ${doc.title || "Untitled"}`}
+    >
+      <FilePlus2 size={13} aria-hidden /> Use
+    </button>
+  );
+}
+
+export function DocMenu({ doc, view, folders, arrange }: { doc: Summary; view: View; folders: { id: string; name: string }[]; arrange?: { up: () => void; down: () => void } }) {
+  const createDocument = useCreateDocument();
   const setStarred = useMutation(api.documents.setStarred);
   const setArchived = useMutation(api.documents.setArchived);
   const trash = useMutation(api.documents.moveToTrash);
@@ -363,7 +432,8 @@ function DocMenu({ doc, view, folders }: { doc: Summary; view: View; folders: { 
           { label: "Delete permanently…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setDeleteOpen(true) },
         ]
       : [
-          { label: "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
+          ...(doc.kind === "template" ? [{ label: "New page from template", icon: <FilePlus2 size={14} />, onSelect: () => void createDocument({ title: doc.title, templateId: doc.id }) }] : []),
+          { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
           { label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(`/d/${doc.id}`, "_blank", "noopener") },
           doc.starred
             ? { label: "Unstar", icon: <StarOff size={14} />, onSelect: () => void act(setStarred({ documentId: doc.id, starred: false })) }
@@ -377,6 +447,9 @@ function DocMenu({ doc, view, folders }: { doc: Summary; view: View; folders: { 
                 icon: <Archive size={14} />,
                 onSelect: () => void act(setArchived({ documentId: doc.id, archived: true }), "Archived", () => void setArchived({ documentId: doc.id, archived: false })),
               },
+          ...(arrange
+            ? ["separator" as const, { label: "Move up", icon: <ArrowUp size={14} />, onSelect: arrange.up }, { label: "Move down", icon: <ArrowDown size={14} />, onSelect: arrange.down }]
+            : []),
           "separator" as const,
           {
             label: "Move to Trash",
@@ -392,13 +465,13 @@ function DocMenu({ doc, view, folders }: { doc: Summary; view: View; folders: { 
       <Dialog open={moveOpen} onClose={() => setMoveOpen(false)} title="Move to folder" size="sm">
         <ul className="space-y-1">
           <li>
-            <button type="button" className="w-full rounded-[10px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: null }), "Moved to Unsorted"); }}>
-              Unsorted (no folder)
+            <button type="button" className="w-full rounded-[6px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: null }), "Moved to Drafts"); }}>
+              Drafts (no folder)
             </button>
           </li>
           {folders.map((f) => (
             <li key={f.id}>
-              <button type="button" className="w-full rounded-[10px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: f.id }), `Moved to ${f.name}`); }}>
+              <button type="button" className="w-full rounded-[6px] px-3 py-2 text-left hover:bg-surface" onClick={() => { setMoveOpen(false); void act(move({ documentId: doc.id, folderId: f.id }), `Moved to ${f.name}`); }}>
                 {f.name}
               </button>
             </li>
@@ -450,7 +523,7 @@ export function PermanentDeleteDialog({ open, onClose, documentId, title }: { op
       <label className="block text-sm" htmlFor="confirm-title">
         Document title
       </label>
-      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-full px-3" />
+      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-[6px] px-3" />
     </Dialog>
   );
 }

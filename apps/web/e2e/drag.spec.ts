@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { newPersonWithWorkspace, waitForSaved, openTool } from "./helpers";
 
 const blocks = (page: Page) => page.locator(".fb-editor > .fb");
 const texts = async (page: Page) => (await blocks(page).allTextContents()).map((t) => t.trim()).filter(Boolean);
 
 async function newPage(page: Page, lines: string[]) {
-  await page.getByRole("button", { name: /New document/ }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.getByRole("textbox", { name: "Title" }).fill("Drag test");
@@ -72,9 +72,9 @@ test("blocks can be dragged to reorder and re-indent, and the order syncs", asyn
 test("blocks can be dragged from the Insert panel into the page", async ({ browser }) => {
   const { page } = await newPersonWithWorkspace(browser, "Insert Tester");
   await newPage(page, ["First", "Second"]);
-  await page.getByRole("button", { name: "Show inspector" }).click();
-  await page.getByRole("tab", { name: "Insert" }).click();
+  await openTool(page, "Insert");
   const tile = page.getByRole("button", { name: /^To-do/ });
+  await tile.scrollIntoViewIfNeeded();
   const t = (await tile.boundingBox())!;
   const second = (await blocks(page).filter({ hasText: "Second" }).boundingBox())!;
   await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2);
@@ -87,8 +87,8 @@ test("blocks can be dragged from the Insert panel into the page", async ({ brows
   await page.keyboard.type("Dropped task");
   await expect(blocks(page).nth(1)).toContainText("Dropped task");
   await expect(blocks(page).nth(2)).toContainText("Second");
-  // Clicking a tile inserts below the current block.
-  await page.getByRole("button", { name: /^Divider/ }).click();
+  // Clicking an item inserts below the current block.
+  await page.getByRole("button", { name: "Divider, regular" }).click();
   await expect(blocks(page).nth(2)).toHaveClass(/fb-divider/);
   await waitForSaved(page);
 });

@@ -10,7 +10,7 @@ import { FullPageMessage } from "@/lib/app/state";
 
 export function ProductApp() {
   return (
-    <ConvexClientProvider signedIn>
+    <ConvexClientProvider>
       <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
         <AppRouterProvider>
           <ToastProvider>

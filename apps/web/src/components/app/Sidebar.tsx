@@ -4,26 +4,21 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import {
   Archive,
-  Calendar,
   CheckSquare,
   ChevronDown,
   ChevronRight,
-  Folder,
   FolderPlus,
   Hash,
-  HelpCircle,
+  Files,
   Inbox,
   LayoutTemplate,
   MoreHorizontal,
-  PanelLeftClose,
-  Plus,
   Search,
-  Settings,
   Share2,
   Star,
   Trash2,
-  Users,
   House as Home,
+  FileText,
 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -33,28 +28,34 @@ import { Dialog } from "@/components/ui/Dialog";
 import { MenuButton } from "@/components/ui/Menu";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
-import { FoleviMark } from "@/components/brand/FoleviMark";
-import { modKey } from "@/lib/hooks/useEngine";
+import { FoleviLogo } from "@/components/brand/FoleviMark";
+import { modKey, useLocalStorage } from "@/lib/hooks/useEngine";
 import { useShell } from "./Shell";
-import { useCreateDocument } from "./useCreateDocument";
+import { FolderMenu } from "./FolderMenu";
 import { NotificationsButton } from "./NotificationsButton";
-import { clearAllLocalData } from "@/lib/sync/db";
+import { SidebarMenu } from "./SidebarMenu";
+import { SyncStatus } from "./SyncStatus";
+import { WorkspaceMenu } from "./WorkspaceMenu";
+import { openNextInNewTab } from "@/lib/app/tabs";
+import { FolderGlyph } from "@/components/ui/FolderGlyph";
 
 function isActive(route: Route, href: string): boolean {
   const map: Record<string, (r: Route) => boolean> = {
     "/documents": (r) => r.name === "documents",
+    "/notes": (r) => r.name === "notes",
     "/tasks/today": (r) => r.name === "tasks",
-    "/calendar": (r) => r.name === "calendar",
     "/shared": (r) => r.name === "shared",
     "/templates": (r) => r.name === "templates",
     "/starred": (r) => r.name === "starred",
     "/archive": (r) => r.name === "archive",
     "/trash": (r) => r.name === "trash",
-    "/unsorted": (r) => r.name === "unsorted",
+    "/drafts": (r) => r.name === "unsorted",
     "/settings/account": (r) => r.name === "settings",
     "/help": (r) => r.name === "help",
   };
   if (map[href]) return map[href]!(route);
+  if (href === "/folders") return route.name === "folders";
+  if (href === "/tags") return route.name === "tags";
   if (href.startsWith("/folders/")) return route.name === "folder" && route.id === href.slice(9);
   if (href.startsWith("/tags/")) return route.name === "tag" && route.id === href.slice(6);
   if (href.startsWith("/d/")) return route.name === "doc" && route.id === href.slice(3);
@@ -70,7 +71,11 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
   return (
     <AppLink
       href={href}
-      onClick={onNavigate}
+      onClick={() => {
+        // A note opened from the sidebar (e.g. Starred) gets its own tab.
+        if (href.startsWith("/d/")) openNextInNewTab();
+        onNavigate?.();
+      }}
       aria-current={active ? "page" : undefined}
       onDragOver={
         draggableFolderId !== undefined
@@ -93,28 +98,75 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
             }
           : undefined
       }
-      className={`group relative flex h-8 items-center gap-2.5 rounded-[10px] px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 pointer-coarse:h-11 ${
-        active ? "ui-raised font-semibold text-heading" : "text-ink/90 hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] hover:text-heading"
-      } ${over ? "ring-2 ring-ember" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
+      className={`group relative flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 pointer-coarse:h-11 ${
+        active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
+      } ${over ? "ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
-      <span className={`transition-colors ${active ? "text-ember" : "text-muted group-hover:text-heading"}`} aria-hidden>
+      <span className={`transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} aria-hidden>
         {icon}
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {count ? <span className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums ${active ? "bg-ember-soft text-ember-ink" : "bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] text-muted"}`}>{count}</span> : null}
+      {count ? <span className={`min-w-5 rounded-[6px] px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums ${active ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted"}`}>{count}</span> : null}
     </AppLink>
   );
 }
 
-function Section({ title, children, action, defaultOpen = true }: { title: string; children: React.ReactNode; action?: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
+/** Sidebar lists show a few items; the rest are one click away on the section's own page. */
+const SIDEBAR_LIMIT = 5;
+
+function MoreLink({ href, count, noun, onNavigate, exact = true }: { href: string; count: number; noun: string; onNavigate?: () => void; exact?: boolean }) {
+  if (count <= 0) return null;
+  if (!exact) {
+    return (
+      <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-[6px] px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+        View all <span className="sr-only">{noun}</span>
+      </AppLink>
+    );
+  }
+  return (
+    <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-[6px] px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+      +{count.toLocaleString()} more <span className="sr-only">{noun}</span>
+    </AppLink>
+  );
+}
+
+function Section({ title, href, children, action, defaultOpen = true, onNavigate }: { title: string; href?: string; children: React.ReactNode; action?: React.ReactNode; defaultOpen?: boolean; onNavigate?: () => void }) {
+  const { route } = useAppRouter();
+  // Follows `defaultOpen` (which may only be known once data loads) until the person toggles it; their
+  // choice is remembered on this device (e.g. Tags stays open once opened).
+  const [toggled, setToggled] = useLocalStorage<boolean | null>(`folevi:sidebar-section:${title.toLowerCase()}`, null);
+  const open = toggled ?? defaultOpen;
+  const setOpen = (next: boolean) => setToggled(next);
   return (
     <section className="mt-5">
       <div className="flex h-7 items-center gap-1 px-2.5">
-        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="ui-caps flex flex-1 items-center gap-1 hover:text-muted">
-          {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
-          {title}
-        </button>
+        {href ? (
+          <span className="flex min-w-0 flex-1 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setOpen(!open)}
+              aria-expanded={open}
+              aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
+              className="ui-caps grid h-7 w-6 flex-none place-items-center rounded-[6px] transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
+            >
+              {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+            </button>
+            <AppLink
+              href={href}
+              onClick={onNavigate}
+              aria-current={isActive(route, href) ? "page" : undefined}
+              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-[6px] px-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
+              title={`All ${title.toLowerCase()}`}
+            >
+              {title}
+            </AppLink>
+          </span>
+        ) : (
+          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="ui-caps flex flex-1 items-center gap-1 hover:text-muted">
+            {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+            {title}
+          </button>
+        )}
         {action}
       </div>
       {open ? <div className="mt-1 space-y-0.5">{children}</div> : null}
@@ -122,40 +174,131 @@ function Section({ title, children, action, defaultOpen = true }: { title: strin
   );
 }
 
-function FolderMenu({ folder, folders }: { folder: { id: string; name: string; parentFolderId: string | null }; folders: { id: string; name: string }[] }) {
-  const rename = useMutation(api.organization.renameFolder);
-  const moveFolder = useMutation(api.organization.moveFolder);
-  const del = useMutation(api.organization.deleteFolder);
+const FOLDER_MENU_REVEAL = "opacity-0 transition-opacity focus-within:opacity-100 group-hover/folder:opacity-100 pointer-coarse:opacity-100";
+
+const TAG_COLORS = [
+  { id: "accent", label: "Cocoa" },
+  { id: "moss", label: "Moss" },
+  { id: "marigold", label: "Marigold" },
+  { id: "plum", label: "Plum" },
+  { id: "coral", label: "Coral" },
+  { id: "muted", label: "Gray" },
+] as const;
+
+function tagColorVar(color: string) {
+  return `var(--color-${color === "muted" ? "ink-muted" : color})`;
+}
+
+function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) {
+  const update = useMutation(api.organization.updateTag);
+  const del = useMutation(api.organization.deleteTag);
   const toast = useToast();
-  const [renaming, setRenaming] = useState(false);
+  const { route, navigate } = useAppRouter();
+  const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const act = (p: Promise<unknown>, msg: string) => p.then(() => toast.show(msg), (e) => toast.show(errorMessage(e), { tone: "error" }));
-  const targets = folders.filter((f) => f.id !== folder.id);
+  const [name, setName] = useState(tag.name);
+  const [color, setColor] = useState(tag.color);
+  const [error, setError] = useState<string | null>(null);
   return (
-    <div className="opacity-0 transition-opacity focus-within:opacity-100 group-hover/folder:opacity-100 pointer-coarse:opacity-100">
+    <div className="opacity-0 transition-opacity focus-within:opacity-100 group-hover/tag:opacity-100 pointer-coarse:opacity-100">
       <MenuButton
-        label={`Folder options for ${folder.name}`}
+        label={`Tag options for ${tag.name}`}
         trigger={<MoreHorizontal size={14} aria-hidden />}
         items={[
-          { label: "Rename…", onSelect: () => setRenaming(true) },
-          ...(folder.parentFolderId ? [{ label: "Move to top level", onSelect: () => void act(moveFolder({ folderId: folder.id, parentFolderId: null }), "Moved") }] : []),
-          ...targets.filter((t) => t.id !== folder.parentFolderId).slice(0, 8).map((t) => ({ label: `Move into ${t.name}`, onSelect: () => void act(moveFolder({ folderId: folder.id, parentFolderId: t.id }), `Moved into ${t.name}`) })),
+          {
+            label: "Edit tag…",
+            onSelect: () => {
+              setName(tag.name);
+              setColor(tag.color);
+              setError(null);
+              setEditing(true);
+            },
+          },
+          ...TAG_COLORS.filter((c) => c.id !== tag.color).map((c) => ({
+            label: `Color: ${c.label}`,
+            icon: <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: tagColorVar(c.id) }} />,
+            onSelect: () => void update({ tagId: tag.id, color: c.id }).catch((e) => toast.show(errorMessage(e), { tone: "error" })),
+          })),
           "separator" as const,
-          { label: "Delete folder…", danger: true, onSelect: () => setDeleting(true) },
+          { label: "Delete tag…", danger: true, onSelect: () => setDeleting(true) },
         ]}
       />
-      <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(rename({ folderId: folder.id, name }), "Renamed")} />
+      <Dialog open={editing} onClose={() => setEditing(false)} title="Edit tag" size="sm">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await update({ tagId: tag.id, name, color });
+              setEditing(false);
+              toast.show("Tag updated", { tone: "success" });
+            } catch (err) {
+              setError(errorMessage(err));
+            }
+          }}
+        >
+          <label className="block text-sm font-medium" htmlFor={`tag-name-${tag.id}`}>
+            Name
+          </label>
+          <input
+            id={`tag-name-${tag.id}`}
+            autoFocus
+            value={name}
+            maxLength={40}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+            aria-invalid={error ? true : undefined}
+            className="ui-input mt-2 h-10 w-full rounded-[6px] px-4"
+          />
+          <fieldset className="mt-4">
+            <legend className="text-sm font-medium">Color</legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {TAG_COLORS.map((c) => (
+                <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2 py-1 text-sm has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
+                  <input type="radio" name={`tag-color-${tag.id}`} value={c.id} checked={color === c.id} onChange={() => setColor(c.id)} className="sr-only" />
+                  <span className="inline-block h-3 w-3 rounded-full" style={{ background: tagColorVar(c.id) }} aria-hidden />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {error ? (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-5 flex justify-end gap-2">
+            <Button onClick={() => setEditing(false)}>Cancel</Button>
+            <Button type="submit" variant="primary">
+              Save
+            </Button>
+          </div>
+        </form>
+      </Dialog>
       <Dialog
         open={deleting}
         onClose={() => setDeleting(false)}
-        title={`Delete “${folder.name}”?`}
-        description="The folder is removed. Its documents are kept and move to Unsorted."
+        title={`Delete #${tag.name}?`}
+        description="The tag is removed from every document. The documents themselves are not affected."
         size="sm"
         footer={
           <>
             <Button onClick={() => setDeleting(false)}>Cancel</Button>
-            <Button variant="danger" onClick={() => { setDeleting(false); void act(del({ folderId: folder.id }), "Folder deleted"); }}>
-              Delete folder
+            <Button
+              variant="danger"
+              onClick={async () => {
+                try {
+                  await del({ tagId: tag.id });
+                  setDeleting(false);
+                  toast.show(`Deleted #${tag.name}`, { tone: "success" });
+                  if (route.name === "tag" && route.id === tag.id) navigate("/documents", { replace: true });
+                } catch (e) {
+                  toast.show(errorMessage(e), { tone: "error" });
+                }
+              }}
+            >
+              Delete tag
             </Button>
           </>
         }
@@ -164,95 +307,108 @@ function FolderMenu({ folder, folders }: { folder: { id: string; name: string; p
   );
 }
 
+/**
+ * The top of either sidebar (app navigation or a note's tools): the Folevi logo (goes Home), save state,
+ * notifications and the sidebar menu — the same row in both, so it never jumps when you switch.
+ */
+export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
+  const { drawerMode } = useShell();
+  const { route } = useAppRouter();
+  return (
+    <div className="flex h-[52px] flex-none items-center gap-1 px-3">
+      <AppLink
+        href="/documents"
+        onClick={onNavigate}
+        aria-label="Folevi"
+        title="Go to Home"
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-[6px] px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        <FoleviLogo height={26} title={null} className="flex-none" />
+      </AppLink>
+      {drawerMode ? null : <SyncStatus align="start" documentId={route.name === "doc" ? route.id : undefined} />}
+      <NotificationsButton />
+      {drawerMode ? null : <SidebarMenu />}
+    </div>
+  );
+}
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { workspace, workspaces, setWorkspace, profile, today } = useAppState();
-  const { toggleSidebar, openPalette } = useShell();
+  const { workspace, today } = useAppState();
+  const { openPalette } = useShell();
   const org = useQuery(api.organization.sidebar, { workspaceId: workspace.id });
   const counts = useQuery(api.tasks.counts, { workspaceId: workspace.id, today });
+  const drafts = useQuery(api.organization.draftCount, { workspaceId: workspace.id });
   const starred = useQuery(api.documents.list, { workspaceId: workspace.id, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
   const createFolder = useMutation(api.organization.createFolder);
-  const createDocument = useCreateDocument();
+  const { route } = useAppRouter();
   const toast = useToast();
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   const [folderDialog, setFolderDialog] = useState(false);
+  const [starredOpen, setStarredOpen] = useLocalStorage("folevi:sidebar-starred-open", true);
 
   const folders = org?.folders ?? [];
   const roots = folders.filter((f) => !f.parentFolderId);
+  // Only the first few folders and tags are listed (plus the one you're in); "+N more" opens the full list.
+  const activeFolder = route.name === "folder" ? folders.find((f) => f.id === route.id) : undefined;
+  const activeRootId = activeFolder ? (activeFolder.parentFolderId ?? activeFolder.id) : null;
+  const shownRoots = roots.filter((f, i) => i < SIDEBAR_LIMIT || f.id === activeRootId);
+  const shownFolderCount = shownRoots.reduce((n, r) => n + 1 + folders.filter((c) => c.parentFolderId === r.id).length, 0);
+  const allTags = org?.tags ?? [];
+  const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (route.name === "tag" && route.id === t.id));
 
   return (
     <nav aria-label="Workspace" className="flex h-full flex-col">
-      <div className="flex h-[52px] flex-none items-center gap-1 px-2.5">
-        <MenuButton
-          label="Switch workspace"
-          align="start"
-          className="min-w-0 flex-1"
-          trigger={
-            <span className="flex min-w-0 items-center gap-2.5 px-1 text-[14px] font-semibold tracking-[-0.01em] text-heading">
-              <span className="grid h-7 w-7 flex-none place-items-center rounded-[9px] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-accent)_80%,white),var(--color-accent-strong))] text-accent-ink shadow-[var(--shadow-primary)]">
-                <FoleviMark size={15} />
-              </span>
-              <span className="truncate">{workspace.name}</span>
-              <ChevronDown size={14} className="text-muted" aria-hidden />
-            </span>
-          }
-          items={[
-            ...workspaces.map((w) => ({ label: `${w.name}${w.id === workspace.id ? " ✓" : ""}`, onSelect: () => setWorkspace(w.id) })),
-            "separator" as const,
-            { label: "Workspace settings", icon: <Settings size={14} />, onSelect: () => window.history.pushState(null, "", "/settings/workspace") },
-            { label: "Members", icon: <Users size={14} />, onSelect: () => window.history.pushState(null, "", "/settings/members") },
-          ]}
-        />
-        <NotificationsButton />
-        <IconButton label="Hide sidebar" shortcut={`${modKey()}\\`} onClick={toggleSidebar}>
-          <PanelLeftClose size={16} aria-hidden />
-        </IconButton>
-      </div>
+      <SidebarTopBar onNavigate={onNavigate} />
 
       <div className="flex-none space-y-2 px-2.5 pt-1">
         <button
           type="button"
           onClick={openPalette}
-          className="ui-well flex h-9 w-full items-center gap-2 rounded-full pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
+          className="ui-well flex h-9 w-full items-center gap-2 rounded-[6px] pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
         >
           <Search size={14} aria-hidden />
           <span className="flex-1">Search or jump to…</span>
           <Kbd>{modKey()}K</Kbd>
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.();
-            void createDocument({});
-          }}
-          className="ui-btn ui-btn-secondary h-9 w-full justify-start px-3 text-[13.5px] pointer-coarse:h-11"
-        >
-          <span className="grid h-5 w-5 place-items-center rounded-full bg-ember text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]" aria-hidden>
-            <Plus size={13} strokeWidth={2.5} />
-          </span>
-          New document
-          <span className="ml-auto text-[11px] font-normal text-faint">{modKey()}⌥N</span>
-        </button>
+        {/* Ask AI lives in the floating chat button (bottom right). */}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
         <div className="mt-3 space-y-0.5">
           <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
+          <div className="group/starred relative">
+            <NavItem href="/starred" icon={<Star size={16} />} label="Starred" onNavigate={onNavigate} />
+            {starred?.page.length ? (
+              <button
+                type="button"
+                onClick={() => setStarredOpen(!starredOpen)}
+                aria-expanded={starredOpen}
+                aria-label={starredOpen ? "Collapse Starred" : "Expand Starred"}
+                className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-[6px] text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                {starredOpen ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+              </button>
+            ) : null}
+          </div>
+          {starred?.page.length && starredOpen ? (
+            <div className="space-y-0.5 pl-5" aria-label="Starred pages" role="group">
+              {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
+                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} />
+              ))}
+              <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="starred pages" onNavigate={onNavigate} exact={starred.isDone} />
+            </div>
+          ) : null}
+          <NavItem href="/drafts" icon={<Inbox size={16} />} label="Drafts" count={drafts ?? undefined} onNavigate={onNavigate} draggableFolderId="" />
+          <NavItem href="/notes" icon={<Files size={16} />} label="All notes" onNavigate={onNavigate} />
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
-          <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
           <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} />
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
-          <NavItem href="/unsorted" icon={<Inbox size={16} />} label="Unsorted" onNavigate={onNavigate} draggableFolderId="" />
         </div>
-
-        <Section title="Starred">
-          <NavItem href="/starred" icon={<Star size={16} />} label="All starred" onNavigate={onNavigate} />
-          {starred?.page.map((d) => (
-            <NavItem key={d.id} href={`/d/${d.id}`} icon={<span className="inline-block w-4 text-center text-[13px]">{d.icon ?? "·"}</span>} label={d.title || "Untitled"} onNavigate={onNavigate} />
-          ))}
-        </Section>
 
         <Section
           title="Folders"
+          href="/folders"
+          onNavigate={onNavigate}
           action={
             <IconButton label="New folder" onClick={() => setFolderDialog(true)}>
               <FolderPlus size={14} aria-hidden />
@@ -260,7 +416,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           }
         >
           {roots.length === 0 ? <p className="px-2 py-1 text-xs text-faint">No folders yet</p> : null}
-          {roots.map((f) => {
+          {shownRoots.map((f) => {
             const children = folders.filter((c) => c.parentFolderId === f.id);
             const open = openFolders[f.id] ?? true;
             return (
@@ -275,31 +431,38 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   )}
                   <div className="group/folder flex min-w-0 flex-1 items-center">
                     <div className="min-w-0 flex-1">
-                      <NavItem href={`/folders/${f.id}`} icon={f.icon ? <span className="inline-block w-4 text-center">{f.icon}</span> : <Folder size={16} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} />
+                      <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} />
                     </div>
-                    <FolderMenu folder={f} folders={roots} />
+                    <FolderMenu folder={f} className={FOLDER_MENU_REVEAL} />
                   </div>
                 </div>
                 {open
                   ? children.map((c) => (
                       <div key={c.id} className="group/folder flex items-center pl-7">
                         <div className="min-w-0 flex-1">
-                          <NavItem href={`/folders/${c.id}`} icon={c.icon ? <span className="inline-block w-4 text-center">{c.icon}</span> : <Folder size={16} />} label={c.name} onNavigate={onNavigate} draggableFolderId={c.id} />
+                          <NavItem href={`/folders/${c.id}`} icon={<FolderGlyph color={c.color} size={18} />} label={c.name} onNavigate={onNavigate} draggableFolderId={c.id} />
                         </div>
-                        <FolderMenu folder={c} folders={roots} />
+                        <FolderMenu folder={c} className={FOLDER_MENU_REVEAL} />
                       </div>
                     ))
                   : null}
               </div>
             );
           })}
+          <MoreLink href="/folders" count={folders.length - shownFolderCount} noun="folders" onNavigate={onNavigate} />
         </Section>
 
-        <Section title="Tags" defaultOpen={Boolean(org?.tags.length)}>
+        <Section title="Tags" href="/tags" onNavigate={onNavigate} defaultOpen={false}>
           {org?.tags.length === 0 ? <p className="px-2 py-1 text-xs text-faint">Tag documents from the inspector</p> : null}
-          {org?.tags.map((t) => (
-            <NavItem key={t.id} href={`/tags/${t.id}`} icon={<Hash size={15} style={{ color: `var(--color-${t.color === "muted" ? "ink-muted" : t.color})` }} />} label={t.name} onNavigate={onNavigate} />
+          {shownTags.map((t) => (
+            <div key={t.id} className="group/tag flex items-center">
+              <div className="min-w-0 flex-1">
+                <NavItem href={`/tags/${t.id}`} icon={<Hash size={15} style={{ color: tagColorVar(t.color) }} />} label={t.name} onNavigate={onNavigate} />
+              </div>
+              {workspace.role !== "viewer" && workspace.role !== "commenter" ? <TagMenu key={`${t.id}:${t.name}:${t.color}`} tag={t} /> : null}
+            </div>
           ))}
+          <MoreLink href="/tags" count={(org?.tags.length ?? 0) - shownTags.length} noun="tags" onNavigate={onNavigate} />
         </Section>
 
         <div className="mt-5 space-y-0.5">
@@ -322,42 +485,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           }
         }}
       />
-      <div className="mx-2.5 mb-2.5 flex flex-none items-center gap-1 rounded-[14px] p-1.5 ui-raised">
-        <MenuButton
-          label="Account"
-          align="start"
-          className="min-w-0 flex-1"
-          trigger={
-            <span className="flex min-w-0 items-center gap-2 px-1 text-[13px] font-medium text-ink">
-              <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-[linear-gradient(135deg,var(--color-glow-peach),var(--color-ember-soft))] text-[12px] font-semibold text-heading shadow-[inset_0_0_0_1px_rgb(255_255_255/0.6)]">{profile.displayName.slice(0, 1).toUpperCase()}</span>
-              <span className="truncate">{profile.displayName}</span>
-            </span>
-          }
-          items={[
-            { label: "Settings", icon: <Settings size={14} />, onSelect: () => window.history.pushState(null, "", "/settings/account") },
-            { label: "Security & sessions", onSelect: () => window.history.pushState(null, "", "/settings/security") },
-            ...(profile.platformRole ? [{ label: "Admin console", onSelect: () => (window.location.href = "/admin") }] : []),
-            "separator" as const,
-            {
-              label: "Sign out",
-              onSelect: () => {
-                void clearAllLocalData().finally(() => {
-                  const form = document.createElement("form");
-                  form.method = "post";
-                  form.action = "/signout";
-                  document.body.appendChild(form);
-                  form.submit();
-                });
-              },
-            },
-          ]}
-        />
-        <AppLink href="/help" aria-label="Help" className="grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-          <HelpCircle size={16} aria-hidden />
-        </AppLink>
-        <AppLink href="/settings/account" aria-label="Settings" className="grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-          <Settings size={16} aria-hidden />
-        </AppLink>
+      <div className="flex-none px-2 pb-2">
+        <WorkspaceMenu onNavigate={onNavigate} />
       </div>
     </nav>
   );

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireProfile } from "./lib/auth";
+import { accessAtLeast, documentAccess, requireProfile } from "./lib/auth";
 
 export const list = query({
   args: { limit: v.optional(v.number()) },
@@ -21,8 +21,10 @@ export const list = query({
         kind: n.kind,
         title: n.title,
         body: n.body ?? null,
+        fileId: n.fileId ?? null,
         actorName: actor?.displayName ?? null,
-        documentId: doc && !doc.inTrash ? doc.publicId : null,
+        // Only link to documents the person can still open (access may have changed since).
+        documentId: doc && !doc.inTrash && accessAtLeast(await documentAccess(ctx, profile, doc), "read") ? doc.publicId : null,
         inviteId: invite && invite.status === "pending" ? invite.publicId : null,
         createdAt: n.createdAt,
         read: n.readAt !== undefined,

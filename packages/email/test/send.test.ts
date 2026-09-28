@@ -6,7 +6,10 @@ import {
   type SendPolicy,
 } from "../src/index";
 
-const ENV = { [emailManifest.mention_notification.envVar]: "cltemplate123" };
+const ENV = {
+  [emailManifest.mention_notification.envVar]: "cltemplate123",
+  [emailManifest.security_new_device.envVar]: "cltemplate456",
+};
 const PROD: SendPolicy = { environment: "production" };
 
 function input(overrides: Partial<LoopsSendInput> = {}): LoopsSendInput {
@@ -46,6 +49,19 @@ function setup(responses: Array<Response | Error>) {
 }
 
 describe("sendTransactional", () => {
+  it("returns the provider message id when Loops includes one", async () => {
+    const opts = { apiKey: "k", env: ENV, policy: PROD, sleep: async () => {} };
+    const a = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true, id: "em_01HX9" })]).fetchImpl });
+    expect(a).toMatchObject({ status: "accepted", providerMessageId: "em_01HX9" });
+    const b = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true, data: { emailId: "abc-123" } })]).fetchImpl });
+    expect(b.providerMessageId).toBe("abc-123");
+    const c = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true })]).fetchImpl });
+    expect(c).not.toHaveProperty("providerMessageId");
+    // Anything that doesn't look like an opaque id is ignored rather than stored.
+    const d = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true, id: "<script>" })]).fetchImpl });
+    expect(d).not.toHaveProperty("providerMessageId");
+  });
+
   it("sends once and reports accepted", async () => {
     const { fetchImpl, calls, sleep } = setup([res(200)]);
     const out = await sendTransactional(input(), {
@@ -74,9 +90,9 @@ describe("sendTransactional", () => {
 
   it("never sends booleans or null in dataVariables; addToAudience is always false", async () => {
     const { fetchImpl, calls } = setup([res(200)]);
-    const vars = { ...emailManifest.mention_notification.fixture } as Record<string, unknown>;
-    delete vars.excerpt;
-    await sendTransactional(input({ dataVariables: vars }), {
+    const vars = { ...emailManifest.security_new_device.fixture } as Record<string, unknown>;
+    delete vars.approximateLocation;
+    await sendTransactional(input({ key: "security_new_device", dataVariables: vars }), {
       apiKey: "k",
       env: ENV,
       policy: PROD,
@@ -87,13 +103,13 @@ describe("sendTransactional", () => {
     expect(body.addToAudience).toBe(false);
     for (const v of Object.values(body.dataVariables))
       expect(["string", "number"]).toContain(typeof v);
-    expect(body.dataVariables.excerpt).toBe("");
+    expect(body.dataVariables.approximateLocation).toBe("");
   });
 
   it("rejects a boolean variable before calling Loops", async () => {
     const { fetchImpl, calls } = setup([res(200)]);
     const out = await sendTransactional(
-      input({ dataVariables: { ...emailManifest.mention_notification.fixture, excerpt: false } }),
+      input({ dataVariables: { ...emailManifest.mention_notification.fixture, actorName: false } }),
       {
         apiKey: "k",
         env: ENV,

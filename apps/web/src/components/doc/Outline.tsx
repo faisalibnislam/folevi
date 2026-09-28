@@ -27,7 +27,7 @@ export function Outline({ documentId, onJump }: { documentId: string; onJump: (b
           if (b.type === "page") {
             return (
               <li key={b.id}>
-                <AppLink href={`/d/${p.documentId}`} className="block truncate rounded-[10px] px-2.5 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+                <AppLink href={`/d/${p.documentId}`} className="block truncate rounded-[6px] px-2.5 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                   ↳ {p.titleCache || "Nested page"}
                 </AppLink>
               </li>
@@ -37,12 +37,12 @@ export function Outline({ documentId, onJump }: { documentId: string; onJump: (b
           const on = current === b.id;
           return (
             <li key={b.id} className="relative">
-              {on ? <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-ember" /> : null}
+              {on ? <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-heading" /> : null}
               <button
                 type="button"
                 onClick={() => onJump(b.id)}
                 aria-current={on ? "location" : undefined}
-                className={`block w-full truncate rounded-[10px] py-1.5 pr-2 text-left transition-colors hover:bg-accent-soft hover:text-heading ${
+                className={`block w-full truncate rounded-[6px] py-1.5 pr-2 text-left transition-colors hover:bg-accent-soft hover:text-heading ${
                   level === 1 ? "pl-3 font-semibold" : level === 2 ? "pl-6" : "pl-9"
                 } ${on ? "text-heading" : level === 1 ? "text-ink" : "text-muted"}`}
               >

@@ -1,58 +1,85 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import {
   Bold,
-  CheckSquare,
+  CalendarDays,
+  Eraser,
+  FileText,
+  Highlighter,
+  Pencil,
   Code2,
-  Heading1,
-  Heading2,
-  Heading3,
   History,
-  Info,
   Italic,
   List,
   ListOrdered,
-  ListTree,
-  MessageSquare,
-  Minus,
-  Palette,
-  Plus,
   Quote,
-  Search,
   Strikethrough,
-  Table2,
-  Text,
-  Type,
   Underline,
+  UserRound,
+  Equal,
+  Grip,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  IndentDecrease,
+  IndentIncrease,
+  PanelTop,
+  Play,
+  SquareCheck,
   X,
   StickyNote,
   ChevronRight,
+  ImagePlus,
+  Loader2,
 } from "lucide-react";
-import { DocumentAccentValues, DocumentBackgroundValues, DocumentFontValues, DocumentWidthValues, CardStyleValues, type DocumentStyle } from "@folevi/editor-schema";
+import type { DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { IconButton, Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
-import { insertBlockAfterCurrent, insertBlockAt, turnInto } from "@/components/editor/commands";
-import { beginPointerDrag } from "@/components/editor/blockDrag";
-import { COVER_ART, coverArtUrl } from "@/lib/cover";
-import { Outline } from "./Outline";
+import type { MenuItem } from "@/components/ui/Menu";
+import {
+  HIGHLIGHT_COLORS,
+  TEXT_COLORS,
+  applyLink,
+  changeDepth,
+  clearFormatting,
+  removeLink,
+  selectedBlockFormat,
+  setBlockFormat,
+  setHighlight,
+  setTextColor,
+  turnInto,
+} from "@/components/editor/commands";
+import { COVER_ART, COVER_IMAGE_HINT, COVER_IMAGE_PLACEHOLDER, coverArtOf, coverArtThumbUrl, pageBackdrop, styleColorsOf } from "@/lib/cover";
+import { COVER_IMAGE_ACCEPT, coverImageProblem, uploadCoverImage, useCoverImage } from "@/lib/app/coverImage";
 
-export type InspectorTab = "insert" | "format" | "style" | "outline" | "info" | "comments";
+/** The Plain note style: a very light grey page background. */
+const PLAIN_CSS = "#F1F1F3";
+import { MentionInput, textToCommentBody, type MentionInputHandle, type MentionPerson } from "./MentionInput";
+import { MovePageDialog } from "./MovePageDialog";
+import { InsertPanel } from "./InsertPanel";
+import { AiPanel } from "@/components/ai/AiPanel";
+import { useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
+import { Select } from "@/components/ui/Select";
+import { colorName, useNotePalette } from "@/components/editor/notePalette";
+
+// The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
+export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments";
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
-const TABS: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
-  { id: "insert", label: "Insert", icon: <Plus size={15} strokeWidth={2.2} /> },
-  { id: "format", label: "Format", icon: <Type size={15} /> },
-  { id: "style", label: "Style", icon: <Palette size={15} /> },
-  { id: "outline", label: "Outline", icon: <ListTree size={15} /> },
-  { id: "info", label: "Info", icon: <Info size={15} /> },
-  { id: "comments", label: "Comments", icon: <MessageSquare size={15} /> },
+const TABS: { id: Exclude<InspectorTab, "comments">; label: string }[] = [
+  { id: "ai", label: "AI" },
+  { id: "insert", label: "Insert" },
+  { id: "format", label: "Format" },
+  { id: "style", label: "Style" },
+  { id: "info", label: "Info" },
 ];
 
 export function Inspector({
@@ -66,7 +93,11 @@ export function Inspector({
   onJumpToBlock,
   onClose,
   onHistory,
+  actions,
   readOnly,
+  hideTabs,
+  aiRun = null,
+  onAiTitle,
 }: {
   documentId: string;
   editor: Editor | null;
@@ -78,16 +109,51 @@ export function Inspector({
   onJumpToBlock: (id: string) => void;
   onClose: () => void;
   onHistory: () => void;
+  /** The page's actions (same as the "…" menu), listed under Info → Actions. */
+  actions: (MenuItem | "separator")[];
   readOnly: boolean;
+  /** Floating panel opened from the icon rail: the rail picks the tab, so only its name is shown. */
+  hideTabs?: boolean;
+  /** A rewrite of the selected text, requested from the editor's toolbar (AI tab). */
+  aiRun?: (AiRunDetail & { id: number }) | null;
+  /** The AI's suggested title was accepted. */
+  onAiTitle?: (title: string) => void;
 }) {
   const baseId = useId();
+  const aiOn = useAiEnabled();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const current = TABS.find((t) => t.id === tab) ?? TABS[0]!;
+  const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments">>("format");
+  useEffect(() => {
+    if (tab !== "comments") setLastTab(tab);
+  }, [tab]);
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-none px-3 pt-3">
-        <div role="tablist" aria-label="Inspector" className="ui-seg ui-well">
-          {TABS.map((t, i) => (
+      <div className="flex-none px-3 pt-2.5">
+        {hideTabs && tab !== "comments" ? (
+          <div className="flex h-9 items-center gap-1 px-1">
+            <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex-1 text-[18px]">
+              {TABS.find((t) => t.id === tab)?.label}
+            </h2>
+            <IconButton label="Close inspector" onClick={onClose} className="!h-7 !w-7">
+              <X size={15} aria-hidden />
+            </IconButton>
+          </div>
+        ) : tab === "comments" ? (
+          <div className="flex h-9 items-center gap-1">
+            <button type="button" onClick={() => onTab(lastTab)} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-[13px] text-muted hover:bg-accent-soft hover:text-heading">
+              <ChevronRight size={14} className="rotate-180" aria-hidden /> {TABS.find((t) => t.id === lastTab)?.label}
+            </button>
+            <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-[13.5px] font-semibold text-heading">
+              Comments
+            </h2>
+            <IconButton label="Close inspector" onClick={onClose} className="!h-7 !w-7">
+              <X size={15} aria-hidden />
+            </IconButton>
+          </div>
+        ) : (
+        <div className="flex h-9 items-center gap-1 border-b border-line/70">
+        <div role="tablist" aria-label="Inspector" className="flex flex-1 items-center gap-0.5">
+          {TABS.filter((t) => aiOn || t.id !== "ai").map((t, i) => (
             <button
               key={t.id}
               ref={(el) => {
@@ -98,8 +164,6 @@ export function Inspector({
               id={`${baseId}-tab-${t.id}`}
               aria-selected={tab === t.id}
               aria-controls={`${baseId}-panel`}
-              aria-label={t.label}
-              title={t.label}
               tabIndex={tab === t.id ? 0 : -1}
               onClick={() => onTab(t.id)}
               onKeyDown={(e) => {
@@ -110,25 +174,25 @@ export function Inspector({
                 onTab(TABS[next]!.id);
                 tabRefs.current[next]?.focus();
               }}
-              className="!min-h-8 !px-0"
+              className={`relative h-9 rounded-[6px] px-2 text-[13px] transition-colors hover:text-heading ${tab === t.id ? "font-semibold text-heading" : "text-muted"}`}
             >
-              <span aria-hidden>{t.icon}</span>
+              {t.label}
+              {tab === t.id ? <span aria-hidden className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-heading" /> : null}
             </button>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between px-1">
-          <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-heading">{current.label}</h2>
           <IconButton label="Close inspector" onClick={onClose} className="!h-7 !w-7">
             <X size={15} aria-hidden />
           </IconButton>
         </div>
+        )}
       </div>
-      <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${tab}`} className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-2">
+      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
+        {tab === "ai" && aiOn ? <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} /> : null}
         {tab === "insert" ? <InsertPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "format" ? <FormatPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}
-        {tab === "outline" ? <Outline documentId={documentId} onJump={onJumpToBlock} variant="panel" /> : null}
-        {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} disabled={readOnly} /> : null}
+        {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} actions={actions} disabled={readOnly} /> : null}
         {tab === "comments" ? <CommentsPanel documentId={documentId} blockId={commentBlock} onClearBlock={onClearCommentBlock} onJumpToBlock={onJumpToBlock} /> : null}
       </div>
     </div>
@@ -143,11 +207,11 @@ function Tile({ label, icon, onClick, disabled, pressed, tone = "ink" }: { label
       aria-pressed={pressed}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={`group flex flex-col items-center gap-1.5 rounded-[14px] px-1 py-2.5 text-[11.5px] font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
+      className={`group flex flex-col items-center gap-1.5 rounded-[6px] px-1 py-2.5 text-[11.5px] font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
         pressed ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_45%,transparent)]" : "ui-raised text-ink hover:-translate-y-px hover:shadow-[var(--shadow-card)]"
       }`}
     >
-      <span aria-hidden className={`grid h-7 w-7 place-items-center rounded-[9px] ${TONES[tone] ?? TONES.ink}`}>
+      <span aria-hidden className={`grid h-7 w-7 place-items-center rounded-[6px] ${TONES[tone] ?? TONES.ink}`}>
         {icon}
       </span>
       {label}
@@ -155,125 +219,37 @@ function Tile({ label, icon, onClick, disabled, pressed, tone = "ink" }: { label
   );
 }
 
+// The app chrome is black and white; tiles don't carry colour of their own.
 const TONES: Record<string, string> = {
   ink: "bg-sunken text-heading",
-  ember: "bg-ember-soft text-ember-ink",
-  moss: "bg-moss-soft text-moss-ink",
-  plum: "bg-plum-soft text-plum-ink",
-  marigold: "bg-marigold-soft text-marigold-ink",
-  coral: "bg-coral-soft text-coral-ink",
+  ember: "bg-sunken text-heading",
+  moss: "bg-sunken text-heading",
+  plum: "bg-sunken text-heading",
+  marigold: "bg-sunken text-heading",
+  coral: "bg-sunken text-heading",
 };
 
-type InsertItem = { label: string; type: string; attrs?: Record<string, unknown>; icon: React.ReactNode; tone: string; keywords?: string };
-const INSERT_SECTIONS: { title: string; items: InsertItem[] }[] = [
-  {
-    title: "Basics",
-    items: [
-      { label: "Text", type: "paragraph", icon: <Text size={16} />, tone: "ink", keywords: "paragraph" },
-      { label: "Heading 1", type: "heading", attrs: { level: 1 }, icon: <Heading1 size={16} />, tone: "ember", keywords: "title h1" },
-      { label: "Heading 2", type: "heading", attrs: { level: 2 }, icon: <Heading2 size={16} />, tone: "ember", keywords: "h2" },
-      { label: "Heading 3", type: "heading", attrs: { level: 3 }, icon: <Heading3 size={16} />, tone: "ember", keywords: "h3" },
-    ],
-  },
-  {
-    title: "Lists",
-    items: [
-      { label: "To-do", type: "todo", attrs: { checked: false }, icon: <CheckSquare size={16} />, tone: "moss", keywords: "task checkbox" },
-      { label: "Bullets", type: "bulleted", icon: <List size={16} />, tone: "moss", keywords: "bulleted list" },
-      { label: "Numbers", type: "numbered", icon: <ListOrdered size={16} />, tone: "moss", keywords: "numbered list" },
-      { label: "Toggle", type: "toggle", attrs: { collapsed: false }, icon: <ChevronRight size={16} />, tone: "moss", keywords: "collapse" },
-    ],
-  },
-  {
-    title: "Blocks",
-    items: [
-      { label: "Quote", type: "quote", icon: <Quote size={16} />, tone: "plum" },
-      { label: "Callout", type: "callout", attrs: { tone: "note" }, icon: <StickyNote size={16} />, tone: "plum", keywords: "note tip" },
-      { label: "Code", type: "code", attrs: { language: "plaintext" }, icon: <Code2 size={16} />, tone: "marigold", keywords: "snippet" },
-      { label: "Table", type: "table", attrs: { headerRow: true, rows: [[[], [], []], [[], [], []]] }, icon: <Table2 size={16} />, tone: "marigold", keywords: "grid" },
-    ],
-  },
-  {
-    title: "Structure",
-    items: [{ label: "Divider", type: "divider", icon: <Minus size={16} />, tone: "coral", keywords: "separator line rule" }],
-  },
-];
-
-function InsertTile({ item, editor, disabled }: { item: InsertItem; editor: Editor | null; disabled: boolean }) {
-  const dragged = useRef(false);
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      title={`${item.label} — click to insert below the current block, or drag into the page`}
-      onMouseDown={(e) => e.preventDefault()}
-      onPointerDown={(e) => {
-        if (!editor || disabled || e.button !== 0) return;
-        beginPointerDrag({
-          editor,
-          payload: { kind: "insert", label: item.label },
-          event: e,
-          onStart: () => (dragged.current = true),
-          onDrop: (t) => {
-            const index = insertBlockAt(editor, t.index, t.depth, item.type, item.attrs ?? {});
-            return index < 0 ? null : { index, count: 1 };
-          },
-          onEnd: () => window.setTimeout(() => (dragged.current = false), 0),
-        });
-      }}
-      onClick={() => {
-        if (dragged.current || !editor) return;
-        insertBlockAfterCurrent(editor, item.type, item.attrs ?? {});
-      }}
-      className="group flex touch-none select-none flex-col items-center gap-1.5 rounded-[14px] px-1 pb-2 pt-2.5 text-[11px] font-medium text-ink transition-[box-shadow,transform] duration-150 ui-raised hover:-translate-y-px hover:shadow-[var(--shadow-card)] active:cursor-grabbing disabled:opacity-40 disabled:hover:translate-y-0"
-    >
-      <span aria-hidden className={`grid h-8 w-8 place-items-center rounded-[10px] transition-transform group-hover:scale-105 ${TONES[item.tone] ?? TONES.ink}`}>
-        {item.icon}
-      </span>
-      <span className="max-w-full truncate">{item.label}</span>
-    </button>
-  );
-}
-
-function InsertPanel({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
-  const d = disabled || !editor;
-  const [q, setQ] = useState("");
-  const query = q.trim().toLowerCase();
-  const sections = INSERT_SECTIONS.map((sec) => ({
-    ...sec,
-    items: sec.items.filter((i) => !query || `${i.label} ${i.keywords ?? ""}`.toLowerCase().includes(query)),
-  })).filter((sec) => sec.items.length);
-  return (
-    <div>
-      <label className="ui-well flex h-9 items-center gap-2 rounded-full px-3 text-[13px] text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
-        <Search size={14} aria-hidden />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search blocks" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
-      </label>
-      <p className="mt-2 px-1 text-[12px] text-muted">Drag a block into the page, or click to add it below the cursor.</p>
-      {sections.map((sec) => (
-        <section key={sec.title} className="mt-4">
-          <h3 className="ui-caps mb-2 px-1">{sec.title}</h3>
-          <div className="grid grid-cols-4 gap-2">
-            {sec.items.map((item) => (
-              <InsertTile key={item.label} item={item} editor={editor} disabled={d} />
-            ))}
-          </div>
-        </section>
-      ))}
-      {!sections.length ? <p className="mt-6 text-center text-sm text-muted">No blocks match “{q}”.</p> : null}
-    </div>
-  );
-}
-
 function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
+  const palette = useNotePalette();
   const [, force] = useState(0);
+  const [href, setHref] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const linkId = useId();
   useEffect(() => {
     if (!editor) return;
     const on = () => force((n) => n + 1);
+    // The link field follows the selection: it shows the address of the link under the cursor.
+    const onSelection = () => {
+      setHref(String(editor.getAttributes("link").href ?? ""));
+      setLinkError(null);
+    };
+    onSelection();
     editor.on("selectionUpdate", on);
+    editor.on("selectionUpdate", onSelection);
     editor.on("transaction", on);
     return () => {
       editor.off("selectionUpdate", on);
+      editor.off("selectionUpdate", onSelection);
       editor.off("transaction", on);
     };
   }, [editor]);
@@ -282,27 +258,249 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
   const node = editor.state.selection.$from.depth >= 1 ? editor.state.selection.$from.node(1) : null;
   const type = node?.type.name;
   const level = node?.attrs.level;
+  const inCode = type === "codeBlock";
+  const marksOff = d || inCode;
+  const linkActive = editor.isActive("link");
+  const fmt = selectedBlockFormat(editor);
+  const formattable = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"].includes(type ?? "");
+  const blockOff = d || !formattable;
+  const textStyle = type === "paragraph" ? (fmt.textStyle ?? "body") : null;
+  const seg = "flex overflow-hidden rounded-[6px] bg-sunken/80 p-0.5";
+  const segBtn = (on: boolean) =>
+    `grid h-9 flex-1 place-items-center rounded-[6px] text-[13px] transition-colors disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
+  const toggleList = (t: string, attrs: Record<string, unknown> = {}) => (type === t ? turnInto(editor, "paragraph") : turnInto(editor, t, attrs));
   return (
     <div className="space-y-5">
       <section>
-        <h3 className="ui-caps mb-2 px-1">Block</h3>
-        <div className="grid grid-cols-3 gap-2">
-          <Tile label="Text" icon={<Text size={16} />} disabled={d} pressed={type === "paragraph"} onClick={() => turnInto(editor, "paragraph")} />
-          <Tile label="Heading 1" icon={<Heading1 size={16} />} disabled={d} pressed={type === "heading" && level === 1} onClick={() => turnInto(editor, "heading", { level: 1 })} />
-          <Tile label="Heading 2" icon={<Heading2 size={16} />} disabled={d} pressed={type === "heading" && level === 2} onClick={() => turnInto(editor, "heading", { level: 2 })} />
-          <Tile label="Heading 3" icon={<Heading3 size={16} />} disabled={d} pressed={type === "heading" && level === 3} onClick={() => turnInto(editor, "heading", { level: 3 })} />
-          <Tile label="To-do" icon={<CheckSquare size={16} />} disabled={d} pressed={type === "todo"} onClick={() => turnInto(editor, "todo", { checked: false })} />
-          <Tile label="Quote" icon={<Quote size={16} />} disabled={d} pressed={type === "quote"} onClick={() => turnInto(editor, "quote")} />
+        <h3 className="ui-caps mb-2 px-1">Text</h3>
+        <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Text style">
+          {(
+            [
+              ["Title", type === "heading" && level === 1, () => turnInto(editor, "heading", { level: 1 }), "text-[15px] font-bold"],
+              ["Subtitle", type === "heading" && level === 2, () => turnInto(editor, "heading", { level: 2 }), "text-[14px] font-semibold"],
+              ["Heading", type === "heading" && level === 3, () => turnInto(editor, "heading", { level: 3 }), "text-[13.5px] font-semibold"],
+              ["Strong", textStyle === "strong", () => turnInto(editor, "paragraph", { textStyle: "strong" }), "font-semibold"],
+              ["Body", textStyle === "body", () => turnInto(editor, "paragraph", { textStyle: null }), ""],
+              ["Caption", textStyle === "caption", () => turnInto(editor, "paragraph", { textStyle: "caption" }), "text-[12px] text-muted"],
+            ] as const
+          ).map(([label, on, run, cls]) => (
+            <button key={label} type="button" disabled={d || inCode} aria-pressed={on} onMouseDown={(e) => e.preventDefault()} onClick={run} className={`h-10 rounded-[6px] ${on ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"} disabled:opacity-40 ${cls}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h3 className="ui-caps mb-2 px-1">Groups</h3>
+        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Group">
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group !== "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: null })} className={`flex h-11 items-center justify-center gap-2 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.group !== "card" ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <FileText size={15} aria-hidden /> Page
+          </button>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group === "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" })} className={`flex h-11 items-center justify-center gap-2 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.group === "card" ? "bg-heading font-semibold text-canvas" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            Card <PanelTop size={15} aria-hidden />
+          </button>
+        </div>
+      </section>
+
+      <section className="space-y-1.5" aria-label="Text and block formatting">
+        <div className={seg} role="group" aria-label="Text marks">
+          {(
+            [
+              ["Bold", "bold", <Bold key="b" size={15} />],
+              ["Italic", "italic", <Italic key="i" size={15} />],
+              ["Strikethrough", "strike", <Strikethrough key="s" size={15} />],
+              ["Inline code", "code", <Code2 key="c" size={15} />],
+            ] as const
+          ).map(([label, mark, icon]) => (
+            <button key={mark} type="button" aria-label={label} title={label} disabled={marksOff} aria-pressed={editor.isActive(mark)} onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleMark(mark).run()} className={segBtn(editor.isActive(mark))}>
+              {icon}
+            </button>
+          ))}
+        </div>
+        <div className={seg} role="group" aria-label="Lists">
+          {(
+            [
+              ["To-do", "todo", { checked: false }, <SquareCheck key="t" size={15} />],
+              ["Toggle", "toggle", { collapsed: false }, <Play key="g" size={13} className="fill-current" />],
+              ["Bullets", "bulleted", {}, <List key="l" size={15} />],
+              ["Numbers", "numbered", {}, <ListOrdered key="n" size={15} />],
+            ] as const
+          ).map(([label, t, attrs, icon]) => (
+            <button key={t} type="button" aria-label={label} title={label} disabled={d || inCode} aria-pressed={type === t} onMouseDown={(e) => e.preventDefault()} onClick={() => toggleList(t, attrs)} className={segBtn(type === t)}>
+              {icon}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1.5">
+          <div className={`${seg} w-[34%]`} role="group" aria-label="Indent">
+            <button type="button" aria-label="Outdent" title="Outdent (⇧Tab)" disabled={d} onMouseDown={(e) => e.preventDefault()} onClick={() => changeDepth(editor, -1)} className={segBtn(false)}>
+              <IndentDecrease size={15} />
+            </button>
+            <button type="button" aria-label="Indent" title="Indent (Tab)" disabled={d} onMouseDown={(e) => e.preventDefault()} onClick={() => changeDepth(editor, 1)} className={segBtn(false)}>
+              <IndentIncrease size={15} />
+            </button>
+          </div>
+          <div className={`${seg} flex-1`} role="group" aria-label="Alignment">
+            {(
+              [
+                ["left", "Align left", <AlignLeft key="l" size={15} />],
+                ["center", "Align center", <AlignCenter key="c" size={15} />],
+                ["right", "Align right", <AlignRight key="r" size={15} />],
+                ["justify", "Justify", <AlignJustify key="j" size={15} />],
+              ] as const
+            ).map(([value, label, icon]) => {
+              const on = (fmt.align ?? "left") === value;
+              return (
+                <button key={value} type="button" aria-label={label} title={label} disabled={blockOff} aria-pressed={on} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { align: value === "left" ? null : value })} className={segBtn(on)}>
+                  {icon}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="ui-caps mb-2 px-1">Decorations</h3>
+        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Decoration">
+          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "focus"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "focus" ? null : "focus" })} className={`flex h-10 items-center justify-center gap-2 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.decoration === "focus" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <span aria-hidden className="h-4 w-[3px] rounded-full bg-current" /> Focus
+          </button>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "block"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" })} className={`h-10 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.decoration === "block" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <span className="rounded-[6px] bg-line/80 px-3 py-1">Block</span>
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="ui-caps mb-2 px-1">Font</h3>
+        <div className="ui-seg ui-well" role="group" aria-label="Block font">
+          {(
+            [
+              ["system", "Aa", "System", "var(--font-sans)"],
+              ["serif", "Ss", "Serif", "var(--font-serif)"],
+              ["mono", "00", "Mono", "var(--font-mono)"],
+              ["rounded", "Rr", "Rounded", "var(--font-rounded)"],
+            ] as const
+          ).map(([id, , name, family]) => {
+            const on = fmt.font === id;
+            return (
+              <button key={id} type="button" aria-label={`Font: ${name}`} disabled={blockOff} aria-pressed={on} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { font: on ? null : id })} className="!flex-1 !px-1" style={{ fontFamily: family }}>
+                <span aria-hidden>{name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <details className="group rounded-[6px] bg-sunken/50 px-2.5 py-2">
+        <summary className="cursor-pointer list-none text-[13px] font-medium text-ink marker:hidden">
+          <span className="inline-flex items-center gap-1.5">
+            <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden /> More: quote, callout, code, links, highlight
+          </span>
+        </summary>
+        <div className="mt-3 space-y-5">
+      <section>
+        <h3 className="ui-caps mb-2 px-1">Blocks</h3>
+        <div className="grid grid-cols-4 gap-2">
+          <Tile label="Quote" icon={<Quote size={16} />} tone="plum" disabled={d} pressed={type === "quote"} onClick={() => turnInto(editor, "quote")} />
+          <Tile label="Callout" icon={<StickyNote size={16} />} tone="plum" disabled={d} pressed={type === "callout"} onClick={() => turnInto(editor, "callout", { tone: "note" })} />
+          <Tile label="Code block" icon={<Code2 size={16} />} tone="marigold" disabled={d} pressed={inCode} onClick={() => turnInto(editor, "code", { language: "plaintext" })} />
+          <Tile label="Underline" icon={<Underline size={16} />} disabled={marksOff} pressed={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleMark("underline").run()} />
+          <Tile label="Highlight" icon={<Highlighter size={16} />} tone="marigold" disabled={marksOff} pressed={editor.isActive("highlight")} onClick={() => editor.chain().focus().toggleMark("highlight", { value: "yellow" }).run()} />
+          <Tile label="Clear" icon={<Eraser size={16} />} disabled={marksOff} onClick={() => clearFormatting(editor)} />
         </div>
       </section>
       <section>
-        <h3 className="ui-caps mb-2 px-1">Text</h3>
-        <div className="grid grid-cols-5 gap-2">
-          <Tile label="Bold" icon={<Bold size={16} />} disabled={d} pressed={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleMark("bold").run()} />
-          <Tile label="Italic" icon={<Italic size={16} />} disabled={d} pressed={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleMark("italic").run()} />
-          <Tile label="Underline" icon={<Underline size={16} />} disabled={d} pressed={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleMark("underline").run()} />
-          <Tile label="Strike" icon={<Strikethrough size={16} />} disabled={d} pressed={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleMark("strike").run()} />
-          <Tile label="Code" icon={<Code2 size={16} />} disabled={d} pressed={editor.isActive("code")} onClick={() => editor.chain().focus().toggleMark("code").run()} />
+        <h3 className="ui-caps mb-2 px-1">
+          <label htmlFor={linkId}>Link</label>
+        </h3>
+        <form
+          className="flex gap-1.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!href.trim()) {
+              if (linkActive) removeLink(editor);
+              return;
+            }
+            if (!applyLink(editor, href)) setLinkError("That doesn’t look like a web address.");
+          }}
+        >
+          <input
+            id={linkId}
+            value={href}
+            disabled={marksOff}
+            onChange={(e) => {
+              setHref(e.target.value);
+              setLinkError(null);
+            }}
+            placeholder={editor.state.selection.empty && !linkActive ? "Address to insert as a link" : "Paste or type a link"}
+            aria-invalid={Boolean(linkError)}
+            aria-describedby={`${linkId}-hint`}
+            className="ui-input h-8 min-w-0 flex-1 rounded-[6px] px-3 text-sm disabled:opacity-50"
+          />
+          <Button size="sm" type="submit" disabled={marksOff || !href.trim()}>
+            {linkActive ? "Update" : "Link"}
+          </Button>
+          {linkActive ? (
+            <Button size="sm" variant="quiet" disabled={marksOff} onClick={() => removeLink(editor)}>
+              Remove
+            </Button>
+          ) : null}
+        </form>
+        <p id={`${linkId}-hint`} className={`mt-1 px-1 text-xs ${linkError ? "text-danger" : "text-muted"}`} role={linkError ? "alert" : undefined}>
+          {linkError ?? "Links the selected text. Shortcut: ⌘⇧K."}
+        </p>
+      </section>
+      {/* Text colours and highlights come from the note's style (its own colours and names) when it has
+          them; "Default" (the page's text colour / no highlight) is the starting choice. */}
+      <section {...palette?.attrs}>
+        <h3 className="ui-caps mb-2 px-1">Text color</h3>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Text color">
+          <button type="button" disabled={marksOff} onMouseDown={(e) => e.preventDefault()} onClick={() => setTextColor(editor, null)} aria-pressed={!editor.isActive("textColor")} className={`ui-chip ui-raised text-ink disabled:opacity-40 ${!editor.isActive("textColor") ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}>
+            Default
+          </button>
+          {TEXT_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              disabled={marksOff}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setTextColor(editor, c)}
+              aria-label={`Text color: ${colorName(palette, c)}`}
+              aria-pressed={editor.isActive("textColor", { value: c })}
+              title={colorName(palette, c)}
+              className={`grid h-8 w-8 place-items-center rounded-[6px] ui-raised disabled:opacity-40 ${editor.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+            >
+              <span className={`fb-color-${c} text-sm font-semibold`} aria-hidden>
+                A
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+      <section {...palette?.attrs}>
+        <h3 className="ui-caps mb-2 px-1">Highlight</h3>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Highlight">
+          <button type="button" disabled={marksOff} onMouseDown={(e) => e.preventDefault()} onClick={() => setHighlight(editor, null)} aria-pressed={!editor.isActive("highlight")} className={`ui-chip ui-raised text-ink disabled:opacity-40 ${!editor.isActive("highlight") ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}>
+            Default
+          </button>
+          {HIGHLIGHT_COLORS.map((h) => (
+            <button
+              key={h}
+              type="button"
+              disabled={marksOff}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setHighlight(editor, h)}
+              aria-label={`Highlight: ${colorName(palette, h)}`}
+              aria-pressed={editor.isActive("highlight", { value: h })}
+              title={colorName(palette, h)}
+              className={`grid h-8 w-8 place-items-center rounded-[6px] ui-raised disabled:opacity-40 ${editor.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+            >
+              <span className={`fb-hl-${h} h-4 w-4 rounded-[4px]`} aria-hidden />
+            </button>
+          ))}
         </div>
       </section>
       {type === "callout" ? (
@@ -317,137 +515,362 @@ function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: bo
           </div>
         </section>
       ) : null}
-      {type === "codeBlock" ? (
+      {inCode ? (
         <label className="block text-sm">
           <span className="ui-caps mb-1.5 block px-1">Language</span>
-          <select
+          <Select
             disabled={d}
             value={String(node?.attrs.language ?? "plaintext")}
             onChange={(e) => {
               const pos = editor.state.selection.$from.before(1);
               editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
             }}
-            className="ui-input h-9 w-full rounded-full px-3 text-sm"
+            className="ui-input h-9 w-full rounded-[6px] px-3 text-sm"
           >
             {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
               <option key={l} value={l}>
                 {l}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       ) : null}
-      <p className="text-xs text-muted">Shortcuts: ⌘⌥0–3 headings, ⌘⇧7/8/9 lists and to-dos, Tab / ⇧Tab to nest, ⌥⇧↑↓ to move, ⌘. for block options.</p>
+        </div>
+      </details>
+      <p className="text-xs text-muted">Shortcuts: ⌘⌥0–3 headings, ⌘⇧7/8/9 lists and to-dos, Tab / ⇧Tab to nest, ⌥⇧↑↓ to move, ⌘⇧K link, ⌥F10 formatting toolbar, Esc then ⇧↑↓ to select blocks, ⌘. for block options.</p>
     </div>
   );
 }
 
-function Swatch({ value, active, onClick, label }: { value: string; active: boolean; onClick: () => void; label: string }) {
-  const color = value === "accent" ? "var(--color-ember)" : `var(--color-${value})`;
+const SHEETS: { id: NonNullable<DocumentStyle["sheet"]>; name: string; color: string }[] = [
+  { id: "white", name: "White", color: "#ffffff" },
+  { id: "paper", name: "Paper", color: "#fbf8f2" },
+  { id: "ivory", name: "Ivory", color: "#f4ecdb" },
+  { id: "mist", name: "Mist", color: "#edf1f6" },
+  { id: "sage", name: "Sage", color: "#ecf2ea" },
+  { id: "blush", name: "Blush", color: "#f8ecec" },
+  { id: "night", name: "Night", color: "#161618" },
+];
+const TEXTS: { id: NonNullable<DocumentStyle["text"]>; name: string; color: string }[] = [
+  { id: "ink", name: "Ink", color: "#1c1c1f" },
+  { id: "slate", name: "Slate", color: "#3a4758" },
+  { id: "navy", name: "Navy", color: "#23406f" },
+  { id: "forest", name: "Forest", color: "#25543a" },
+  { id: "plum", name: "Plum", color: "#5a2d66" },
+  { id: "brown", name: "Brown", color: "#5b3b23" },
+  { id: "white", name: "White", color: "#f2f2f4" },
+];
+const FONTS: { id: DocumentStyle["font"]; glyph: string; name: string; family: string }[] = [
+  { id: "sans", glyph: "Aa", name: "System", family: "var(--font-sans)" },
+  { id: "serif", glyph: "Ss", name: "Serif", family: "var(--font-serif)" },
+  { id: "mono", glyph: "00", name: "Mono", family: "var(--font-mono)" },
+  { id: "rounded", glyph: "Rr", name: "Rounded", family: 'ui-rounded, "SF Pro Rounded", "Nunito", var(--font-sans)' },
+];
+const SEPARATORS: { id: NonNullable<DocumentStyle["separator"]>; name: string; icon: React.ReactNode }[] = [
+  { id: "line", name: "Line", icon: <Equal size={15} /> },
+  { id: "dots", name: "Dots", icon: <Grip size={15} /> },
+  { id: "doodle", name: "Doodle", icon: <Squiggle /> },
+];
+
+function Squiggle() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+      <path d="M1 9 Q4 3 7 8 T13 7 T15 6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Drops undefined keys (Convex values can't carry undefined). */
+function cleanStyle(style: DocumentStyle): DocumentStyle {
+  return Object.fromEntries(Object.entries(style).filter(([, v]) => v !== undefined)) as DocumentStyle;
+}
+
+function StyleRow({ label, swatch, open, onToggle, children, disabled }: { label: string; swatch: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode; disabled: boolean }) {
+  const id = useId();
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={onToggle}
+        className="flex h-10 w-full items-center justify-between rounded-[6px] px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
+      >
+        {label}
+        <span className="flex items-center gap-2">{swatch}</span>
+      </button>
+      {open ? (
+        <div id={id} className="mb-2 mt-1 rounded-[6px] bg-sunken/70 p-2.5">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ColorDot({ css, ring }: { css: string; ring?: boolean }) {
+  return <span aria-hidden className={`inline-block h-7 w-9 rounded-[6px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] ${ring ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`} style={{ background: css }} />;
+}
+
+function Choice({ label, on, onPick, children, wide }: { label: string; on: boolean; onPick: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={on}
       aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      className={`h-8 w-8 rounded-full shadow-[inset_0_1px_0_rgb(255_255_255/0.4),inset_0_-1px_0_rgb(0_0_0/0.12),0_1px_2px_rgb(0_0_0/0.15)] transition-transform hover:scale-110 ${active ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`}
-      style={{ background: color }}
-    />
+      title={label}
+      onClick={onPick}
+      className={`relative overflow-hidden rounded-[6px] transition-transform hover:-translate-y-px ${wide ? "h-12" : "h-9"} ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : "shadow-[var(--shadow-hairline)]"}`}
+    >
+      {children}
+    </button>
   );
 }
 
 function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: Meta | null; disabled: boolean }) {
-  const { engine } = useAppState();
+  const { engine, workspace } = useAppState();
+  const client = useConvex();
+  const toast = useToast();
+  const [open, setOpen] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const { url: imageUrl, palette } = useCoverImage(meta?.document.cover);
   if (!meta) return <p className="text-sm text-muted">Style is available once the document has synced.</p>;
   const style = meta.document.style;
   const cover = meta.document.cover;
-  const set = (patch: Partial<DocumentStyle>) => engine?.updateDocument(documentId, { style: { ...style, ...patch } }, meta.document.revision);
-  const seg = <T extends string>(label: string, values: readonly T[], current: T, onPick: (v: T) => void, names: Record<string, string>) => (
-    <fieldset className="mb-5" disabled={disabled}>
-      <legend className="ui-caps mb-2 px-1">{label}</legend>
-      <div className="ui-seg ui-well">
-        {values.map((v) => (
-          <button key={v} type="button" aria-pressed={current === v} onClick={() => onPick(v)}>
-            {names[v] ?? v}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
+  const rev = meta.document.revision;
+  const set = (patch: Partial<DocumentStyle>) => engine?.updateDocument(documentId, { style: cleanStyle({ ...style, ...patch }) }, rev);
+  // Choosing a cover also sets the page's backdrop: it goes back to following the cover.
+  const setCover = (next: typeof cover) => engine?.updateDocument(documentId, { cover: next, style: cleanStyle({ ...style, backdrop: undefined }) }, rev);
+  const toggle = (key: string) => setOpen(open === key ? null : key);
+  // The note's style is named after its artwork ("Your image" for an uploaded one, "Plain" when it has none).
+  const art = coverArtOf(cover);
+  const ownImage = cover.kind === "image" && Boolean(cover.value);
+  const imageCss = imageUrl ? `url(${JSON.stringify(imageUrl)}) center / cover no-repeat` : COVER_IMAGE_PLACEHOLDER;
+  const styleName = art?.name ?? (ownImage ? "Your image" : "Plain");
+  const noBackdrop = "linear-gradient(180deg, var(--color-surface-sunken), var(--color-canvas))";
+  const backdropCss = pageBackdrop(style, cover, imageUrl) ?? noBackdrop;
+  // Your own image: checked here, uploaded into this note (online only), then used as its style.
+  const uploadImage = async (file: File) => {
+    const problem = coverImageProblem(file);
+    if (problem) return toast.show(problem, { tone: "error" });
+    if (typeof navigator !== "undefined" && !navigator.onLine) return toast.show("Connect to the internet to upload an image.", { tone: "error" });
+    setUploading(true);
+    try {
+      const fileId = await uploadCoverImage(client, { workspaceId: workspace.id, documentId, file });
+      setCover({ kind: "image", value: fileId });
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    } finally {
+      setUploading(false);
+    }
+  };
+  // Auto: the page and text colours come from the note style (its artwork, or picked from your image).
+  const auto = styleColorsOf(cover, palette);
+  const sheetColor = SHEETS.find((s) => s.id === style.sheet)?.color ?? auto?.paper ?? "var(--color-surface)";
+  const textColor = TEXTS.find((t) => t.id === style.text)?.color ?? auto?.ink ?? "var(--color-ink)";
+  const font = FONTS.find((f) => f.id === style.font) ?? FONTS[0]!;
+
   return (
-    <div>
-      {seg("Font", DocumentFontValues, style.font, (font) => set({ font }), { sans: "Sans", serif: "Serif", mono: "Mono" })}
-      {seg("Width", DocumentWidthValues, style.width, (width) => set({ width }), { narrow: "Narrow", default: "Regular", wide: "Wide" })}
-      {seg("Page", DocumentBackgroundValues, style.background, (background) => set({ background }), { paper: "Paper", plain: "Plain", tinted: "Tinted", grid: "Grid" })}
-      {seg("Card in lists", CardStyleValues, style.card, (card) => set({ card }), { folio: "Folio", plain: "Plain", tinted: "Tinted", outline: "Outline" })}
-      <fieldset className="mb-5" disabled={disabled}>
-        <legend className="ui-caps mb-2 px-1">Accent</legend>
-        <div className="flex gap-2">
-          {DocumentAccentValues.map((a) => (
-            <Swatch key={a} value={a} label={`Accent ${a === "accent" ? "ember" : a}`} active={style.accent === a} onClick={() => set({ accent: a })} />
-          ))}
+    <div className="space-y-5 text-sm">
+      <section aria-label="Page style">
+        <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-[6px] shadow-[var(--shadow-card)]" style={{ background: backdropCss }}>
+          <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-[6px] px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: sheetColor, color: textColor, fontFamily: font.family }}>
+            <span className="block text-[10.5px] font-semibold leading-tight">{styleName}</span>
+            <span className="mt-1.5 block h-1 w-4/5 rounded-full opacity-25" style={{ background: textColor }} />
+            <span className="mt-1 block h-1 w-3/5 rounded-full opacity-25" style={{ background: textColor }} />
+          </span>
         </div>
-      </fieldset>
+      </section>
+
       <fieldset disabled={disabled}>
-        <legend className="ui-caps mb-2 px-1">Cover</legend>
+        <legend className="ui-caps mb-1 px-1">Note Style</legend>
+        {/* One choice: the artwork is the note's cover and its page background. */}
+        <StyleRow
+          label={styleName}
+          swatch={<ColorDot css={art ? `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` : ownImage ? imageCss : PLAIN_CSS} />}
+          open={open === "artwork"}
+          onToggle={() => toggle("artwork")}
+          disabled={disabled}
+        >
+          <div role="radiogroup" aria-label="Note style" className="grid grid-cols-4 gap-2">
+            <Choice label="Plain" on={cover.kind !== "art" && !ownImage} onPick={() => setCover({ kind: "none" })}>
+              <span className="grid h-full place-items-center text-[11px] text-muted" style={{ background: PLAIN_CSS }}>Plain</span>
+            </Choice>
+            {ownImage ? (
+              <Choice label="Note style: Your image" on onPick={() => undefined}>
+                <span aria-hidden className="block h-full w-full" style={{ background: imageCss }} />
+              </Choice>
+            ) : null}
+            {COVER_ART.map((a) => (
+              <Choice key={a.id} label={`Note style: ${a.name}`} on={art?.id === a.id} onPick={() => setCover({ kind: "art", value: a.id })}>
+                <span aria-hidden className="block h-full w-full" style={{ background: `url(${coverArtThumbUrl(a.id)}) center / cover no-repeat` }} />
+              </Choice>
+            ))}
+          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            name="note-style-image"
+            accept={COVER_IMAGE_ACCEPT}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void uploadImage(file);
+            }}
+          />
+          <button
+            type="button"
+            disabled={disabled || uploading}
+            aria-busy={uploading || undefined}
+            onClick={() => fileInput.current?.click()}
+            className="mt-2.5 flex h-9 w-full items-center justify-center gap-2 rounded-[6px] border border-dashed border-[color-mix(in_oklab,var(--color-ink)_22%,transparent)] text-[13px] font-medium text-heading transition-colors hover:bg-accent-soft/60 disabled:opacity-60"
+          >
+            {uploading ? <Loader2 size={15} aria-hidden className="animate-spin" /> : <ImagePlus size={15} aria-hidden />}
+            {uploading ? "Uploading…" : ownImage ? "Replace your image…" : "Upload your own image…"}
+          </button>
+          <p className="mt-1.5 px-0.5 text-[11.5px] text-faint">{COVER_IMAGE_HINT}</p>
+          <p className="mt-2 px-0.5 text-xs text-muted">
+            {art
+              ? `${art.name} — the cover and page background; Auto colours come from it.`
+              : ownImage
+                ? "Your image — the cover and page background; Auto colours are picked from it."
+                : "Plain — a very light grey page background, no cover."}
+          </p>
+        </StyleRow>
+      </fieldset>
+
+      <fieldset disabled={disabled}>
+        <legend className="ui-caps mb-1 px-1">Color</legend>
+        <StyleRow label="Document color" swatch={<ColorDot css={sheetColor} />} open={open === "sheet"} onToggle={() => toggle("sheet")} disabled={disabled}>
+          <div role="radiogroup" aria-label="Document color" className="grid grid-cols-4 gap-2">
+            <Choice label="Auto (from the note style)" on={!style.sheet} onPick={() => set({ sheet: undefined })}>
+              <span className="grid h-full place-items-center text-[11px] text-muted" style={{ background: auto?.paper ?? "var(--color-surface)" }}>Auto</span>
+            </Choice>
+            {SHEETS.map((s) => (
+              <Choice key={s.id} label={`Document color: ${s.name}`} on={style.sheet === s.id} onPick={() => set({ sheet: s.id, ...(s.id === "night" && (!style.text || style.text === "ink") ? { text: "white" as const } : {}), ...(s.id !== "night" && style.text === "white" ? { text: "ink" as const } : {}) })}>
+                <span aria-hidden className="block h-full w-full" style={{ background: s.color }} />
+              </Choice>
+            ))}
+          </div>
+        </StyleRow>
+        <StyleRow label="Text color" swatch={<ColorDot css={textColor} />} open={open === "text"} onToggle={() => toggle("text")} disabled={disabled}>
+          <div role="radiogroup" aria-label="Text color" className="grid grid-cols-4 gap-2">
+            <Choice label="Auto (from the note style)" on={!style.text} onPick={() => set({ text: undefined })}>
+              <span className="grid h-full place-items-center text-[11px] font-semibold" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink)" }}>Auto</span>
+            </Choice>
+            {TEXTS.map((t) => (
+              <Choice key={t.id} label={`Text color: ${t.name}`} on={style.text === t.id} onPick={() => set({ text: t.id })}>
+                <span aria-hidden className="grid h-full w-full place-items-center text-[15px] font-semibold" style={{ background: t.id === "white" ? "#1c1c1f" : "#fff", color: t.color }}>
+                  A
+                </span>
+              </Choice>
+            ))}
+          </div>
+        </StyleRow>
+      </fieldset>
+
+
+      <fieldset disabled={disabled}>
+        <legend className="ui-caps mb-2 px-1">Separator style</legend>
         <div className="ui-seg ui-well">
-          {(
-            [
-              ["none", "None"],
-              ["color", "Color"],
-              ["gradient", "Gradient"],
-              ["art", "Art"],
-            ] as const
-          ).map(([kind, name]) => (
-            <button
-              key={kind}
-              type="button"
-              aria-pressed={cover.kind === kind}
-              onClick={() =>
-                engine?.updateDocument(
-                  documentId,
-                  { cover: kind === "none" ? { kind: "none" } : kind === "art" ? { kind, value: cover.kind === "art" && cover.value ? cover.value : COVER_ART[0]!.id } : { kind, value: style.accent } },
-                  meta.document.revision,
-                )
-              }
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-        <div role="radiogroup" aria-label="Cover artwork" className="mt-3 grid grid-cols-4 gap-2">
-          {COVER_ART.map((art) => {
-            const on = cover.kind === "art" && cover.value === art.id;
+          {SEPARATORS.map((s) => {
+            const on = (style.separator ?? "line") === s.id;
             return (
-              <button
-                key={art.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                aria-label={`Cover: ${art.name}`}
-                title={art.name}
-                onClick={() => engine?.updateDocument(documentId, { cover: { kind: "art", value: art.id } }, meta.document.revision)}
-                className={`relative h-12 overflow-hidden rounded-[10px] shadow-[var(--shadow-hairline)] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-card)] ${on ? "ring-2 ring-ember ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`}
-                style={{ background: `linear-gradient(var(--cover-art-tint), var(--cover-art-tint)), url(${coverArtUrl(art.id)}) center / cover no-repeat` }}
-              >
-                {on ? (
-                  <span aria-hidden className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-[var(--color-ember-ink)] text-[10px] font-bold text-accent-ink">
-                    ✓
-                  </span>
-                ) : null}
+              <button key={s.id} type="button" aria-pressed={on} aria-label={`Separator: ${s.name}`} onClick={() => set({ separator: s.id === "line" ? undefined : s.id })} className="!flex-1 gap-1.5">
+                <span aria-hidden>{s.icon}</span>
+                <span aria-hidden>{s.name}</span>
               </button>
             );
           })}
         </div>
-        <p className="mt-2 px-1 text-xs text-muted">
-          {cover.kind === "art" ? `${COVER_ART.find((a) => a.id === cover.value)?.name ?? "Artwork"} — pick any artwork above.` : "Color and gradient covers follow the page accent; artwork covers are fixed illustrations."}
-        </p>
+      </fieldset>
+
+      <fieldset disabled={disabled}>
+        <legend className="ui-caps mb-2 px-1">Font</legend>
+        <div className="ui-seg ui-well">
+          {FONTS.map((f) => {
+            const on = style.font === f.id;
+            return (
+              <button key={f.id} type="button" aria-pressed={on} aria-label={`Font: ${f.name}`} onClick={() => set({ font: f.id })} className="!flex-1 !px-1" style={{ fontFamily: f.family }}>
+                <span aria-hidden>{f.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset disabled={disabled}>
+        <legend className="ui-caps mb-2 px-1">Page width</legend>
+        <div className="ui-seg ui-well" role="group" aria-label="Page width">
+          {(
+            [
+              ["default", "Narrow"],
+              ["wide", "Wide"],
+            ] as const
+          ).map(([w, name]) => {
+            const on = w === "wide" ? style.width === "wide" : style.width !== "wide";
+            return (
+              <button key={w} type="button" aria-pressed={on} onClick={() => set({ width: w })} className="!flex-1">
+                {name}
+              </button>
+            );
+          })}
+        </div>
       </fieldset>
     </div>
   );
 }
 
-function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: string; meta: Meta | null; onHistory: () => void; disabled: boolean }) {
+function InfoPanel({ documentId, meta, onHistory, actions, disabled }: { documentId: string; meta: Meta | null; onHistory: () => void; actions: (MenuItem | "separator")[]; disabled: boolean }) {
+  const [view, setView] = useState<"page" | "actions">("page");
+  return (
+    <div className="space-y-4">
+      <div role="group" aria-label="Info view" className="ui-seg ui-well">
+        <button type="button" aria-pressed={view === "page"} onClick={() => setView("page")}>
+          Page info
+        </button>
+        <button type="button" aria-pressed={view === "actions"} onClick={() => setView("actions")}>
+          Actions
+        </button>
+      </div>
+      {view === "page" ? <PageInfo documentId={documentId} meta={meta} onHistory={onHistory} disabled={disabled} /> : <ActionList actions={actions} />}
+    </div>
+  );
+}
+
+function ActionList({ actions }: { actions: (MenuItem | "separator")[] }) {
+  return (
+    <ul className="space-y-1.5" aria-label="Page actions">
+      {actions.map((a, i) =>
+        a === "separator" ? (
+          <li key={`sep-${i}`} aria-hidden className="!my-3 h-px bg-line/70" />
+        ) : (
+          <li key={a.label}>
+            <button
+              type="button"
+              disabled={a.disabled}
+              onClick={a.onSelect}
+              className={`flex h-9 w-full items-center gap-2.5 rounded-[6px] px-3 text-left text-[13px] font-medium transition-colors disabled:opacity-40 ${a.danger ? "bg-coral-soft/60 text-coral-ink hover:bg-coral-soft" : "bg-sunken/70 text-ink hover:bg-accent-soft hover:text-heading"}`}
+            >
+              <span aria-hidden className={a.danger ? "text-coral-ink" : "text-muted"}>
+                {a.icon}
+              </span>
+              {a.label}
+            </button>
+          </li>
+        ),
+      )}
+    </ul>
+  );
+}
+
+function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: string; meta: Meta | null; onHistory: () => void; disabled: boolean }) {
   const info = useQuery(api.documents.info, meta ? { documentId } : "skip");
   const { workspace } = useAppState();
   const org = useQuery(api.organization.sidebar, { workspaceId: workspace.id });
@@ -456,39 +879,85 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
   const move = useMutation(api.documents.move);
   const toast = useToast();
   const [newTag, setNewTag] = useState("");
+  const [moveOpen, setMoveOpen] = useState(false);
   if (!meta) return <p className="text-sm text-muted">Details appear once the document has synced.</p>;
   const tags = meta.document.tags;
+  const parent = meta.breadcrumbs[meta.breadcrumbs.length - 1] ?? null;
   return (
     <div className="space-y-5 text-sm">
-      <dl className="ui-card grid grid-cols-2 gap-x-3 gap-y-2 rounded-[14px] p-3.5">
-        <dt className="text-muted">Words</dt>
-        <dd className="tabular-nums">{info?.wordCount.toLocaleString() ?? "—"}</dd>
-        <dt className="text-muted">Characters</dt>
-        <dd className="tabular-nums">{info?.charCount.toLocaleString() ?? "—"}</dd>
-        <dt className="text-muted">Blocks</dt>
-        <dd className="tabular-nums">{info?.blockCount ?? "—"}</dd>
-        <dt className="text-muted">Created</dt>
-        <dd>{info ? `${formatDateTime(info.createdAt)} by ${info.createdBy}` : "—"}</dd>
-        <dt className="text-muted">Last edited</dt>
-        <dd>{info ? `${formatRelative(info.updatedAt)} by ${info.lastEditedBy}` : "—"}</dd>
-      </dl>
       <section>
-        <h3 className="ui-caps mb-2 px-1">Folder</h3>
-        <select
+        <h3 className="ui-caps mb-2 px-1">Properties</h3>
+        <dl className="space-y-1.5 px-1">
+          <div className="flex items-center gap-2">
+            <CalendarDays size={14} className="flex-none text-faint" aria-hidden />
+            <dt className="text-muted">Created:</dt>
+            <dd className="min-w-0 truncate" title={info ? formatDateTime(info.createdAt) : undefined}>{info ? formatRelative(info.createdAt) : "—"}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <Pencil size={14} className="flex-none text-faint" aria-hidden />
+            <dt className="text-muted">Updated:</dt>
+            <dd className="min-w-0 truncate">{info ? `${formatRelative(info.updatedAt)} by ${info.lastEditedBy}` : "—"}</dd>
+          </div>
+          <div className="flex items-center gap-2">
+            <UserRound size={14} className="flex-none text-faint" aria-hidden />
+            <dt className="text-muted">Author:</dt>
+            <dd className="min-w-0 truncate">{info?.createdBy ?? "—"}</dd>
+          </div>
+        </dl>
+      </section>
+      <section>
+        <h3 className="ui-caps mb-2 px-1">Stats · full document</h3>
+        <dl className="grid grid-cols-3 gap-2">
+          {[
+            ["Words", info?.wordCount.toLocaleString(), "Words in the page body (the title isn’t counted)"],
+            ["Characters", info?.charCount.toLocaleString(), undefined],
+            ["Blocks", info?.blockCount?.toLocaleString(), undefined],
+          ].map(([label, value, title]) => (
+            <div key={label} className="rounded-[6px] bg-sunken/70 px-2.5 py-2" title={title}>
+              <dt className="text-[11px] text-muted">{label}</dt>
+              <dd className="text-[15px] font-semibold tabular-nums text-heading">{value ?? "—"}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <section>
+        <h3 className="ui-caps mb-2 px-1">Location</h3>
+        <Select
           disabled={disabled}
           value={meta.folder?.id ?? ""}
           onChange={(e) => void move({ documentId, folderId: e.target.value || null }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
-          className="ui-input h-9 w-full rounded-full px-3 text-sm"
+          className="ui-input h-9 w-full rounded-[6px] px-3 text-sm"
           aria-label="Folder"
         >
-          <option value="">Unsorted</option>
+          <option value="">Drafts</option>
           {org?.folders.map((f) => (
             <option key={f.id} value={f.id}>
               {f.parentFolderId ? "— " : ""}
               {f.name}
             </option>
           ))}
-        </select>
+        </Select>
+      </section>
+      <section>
+        <h3 className="sr-only">Parent page</h3>
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate px-1">
+            {parent ? (
+              <>
+                <FileText size={13} aria-hidden className="mr-1 inline align-[-2px] text-muted" />
+                {parent.title || "Untitled"}
+              </>
+            ) : (
+              <span className="text-muted">None — top level</span>
+            )}
+          </p>
+          {!disabled ? (
+            <Button size="sm" onClick={() => setMoveOpen(true)}>
+              Move…
+            </Button>
+          ) : null}
+        </div>
+        <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={meta.document.title} currentParentId={parent?.id ?? null} />
       </section>
       <section>
         <h3 className="ui-caps mb-2 px-1">Tags</h3>
@@ -497,7 +966,12 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
             <span key={t.id} className="ui-chip bg-accent-soft text-accent-soft-ink">
               #{t.name}
               {!disabled ? (
-                <button type="button" aria-label={`Remove tag ${t.name}`} onClick={() => void setTags({ documentId, tagIds: tags.filter((x) => x.id !== t.id).map((x) => x.id) })} className="text-faint hover:text-ink">
+                <button
+                  type="button"
+                  aria-label={`Remove tag ${t.name}`}
+                  onClick={() => void setTags({ documentId, tagIds: tags.filter((x) => x.id !== t.id).map((x) => x.id) }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
+                  className="text-faint hover:text-ink"
+                >
                   <X size={11} aria-hidden />
                 </button>
               ) : null}
@@ -521,7 +995,7 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
               }
             }}
           >
-            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-full px-3 text-sm" />
+            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-[6px] px-3 text-sm" />
             <datalist id="tag-suggestions">
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.name} />
@@ -536,7 +1010,7 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
       <section>
         <h3 className="ui-caps mb-2 flex items-center justify-between px-1">
           Activity
-          <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 normal-case tracking-normal text-ember-ink hover:bg-ember-soft">
+          <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 normal-case tracking-normal text-heading hover:bg-accent-soft">
             <History size={12} aria-hidden /> Version history
           </button>
         </h3>
@@ -553,19 +1027,40 @@ function InfoPanel({ documentId, meta, onHistory, disabled }: { documentId: stri
   );
 }
 
+function CommentBody({ body }: { body: { type: string; text?: string; label?: string }[] }) {
+  return (
+    <>
+      {body.map((n, i) =>
+        n.type === "mention" ? (
+          <span key={i} className="rounded-[6px] bg-accent-soft px-1.5 font-medium text-heading">
+            @{n.label}
+          </span>
+        ) : n.type === "text" ? (
+          <span key={i}>{n.text}</span>
+        ) : null,
+      )}
+    </>
+  );
+}
+
+const bodyToText = (body: { type: string; text?: string; label?: string }[]) => body.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : "")).join("");
+
 function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { documentId: string; blockId: string | null; onClearBlock: () => void; onJumpToBlock: (id: string) => void }) {
   const data = useQuery(api.comments.threads, { documentId });
+  const people = useQuery(api.comments.mentionable, { documentId });
   const create = useMutation(api.comments.create);
   const reply = useMutation(api.comments.reply);
   const setResolved = useMutation(api.comments.setResolved);
   const remove = useMutation(api.comments.remove);
+  const edit = useMutation(api.comments.edit);
   const markRead = useMutation(api.comments.markRead);
   const toast = useToast();
   const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
-  const { workspace } = useAppState();
-  const members = useQuery(api.workspaces.members, { workspaceId: workspace.id });
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const inputRef = useRef<MentionInputHandle>(null);
+  const editRef = useRef<MentionInputHandle>(null);
   useEffect(() => {
     if (blockId) inputRef.current?.focus();
   }, [blockId]);
@@ -573,51 +1068,59 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
     if (data?.threads.some((t) => t.unread)) void markRead({ documentId }).catch(() => undefined);
   }, [data, markRead, documentId]);
   if (!data) return <p className="text-sm text-muted">Loading comments…</p>;
+  const everyone: MentionPerson[] = people ?? [];
   const threads = data.threads.filter((t) => (showResolved ? true : t.status === "open"));
-  // "@Name" matching a workspace member becomes a real mention (they're notified).
-  const toBody = (text: string) => {
-    const people = [...(members?.members ?? [])].sort((a, b) => b.displayName.length - a.displayName.length);
-    const out: ({ type: "text"; text: string } | { type: "mention"; userId: string; label: string })[] = [];
-    let buf = "";
-    for (let i = 0; i < text.length; ) {
-      if (text[i] === "@" && (i === 0 || /\s/.test(text[i - 1]!))) {
-        const rest = text.slice(i + 1);
-        const hit = people.find((m) => rest.toLowerCase().startsWith(m.displayName.toLowerCase()));
-        if (hit) {
-          if (buf) out.push({ type: "text", text: buf });
-          buf = "";
-          out.push({ type: "mention", userId: hit.profileId, label: hit.displayName });
-          i += 1 + hit.displayName.length;
-          continue;
-        }
-      }
-      buf += text[i];
-      i++;
+  const fail = (err: unknown) => toast.show(errorMessage(err), { tone: "error" });
+  const submit = async () => {
+    if (!draft.trim() || busy) return;
+    setBusy(true);
+    try {
+      await create({ documentId, blockId: blockId ?? undefined, body: textToCommentBody(draft.trim(), inputRef.current?.picked() ?? [], everyone) });
+      setDraft("");
+      inputRef.current?.reset();
+      onClearBlock();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
     }
-    if (buf) out.push({ type: "text", text: buf });
-    return out;
+  };
+  const saveEdit = async () => {
+    if (!editing || !editing.text.trim()) return;
+    try {
+      await edit({ commentId: editing.id, body: textToCommentBody(editing.text.trim(), editRef.current?.picked() ?? [], everyone) });
+      setEditing(null);
+    } catch (err) {
+      fail(err);
+    }
   };
   return (
     <div className="space-y-4 text-sm">
       {data.canComment ? (
         <form
-          onSubmit={async (e) => {
+          onSubmit={(e) => {
             e.preventDefault();
-            if (!draft.trim()) return;
-            try {
-              await create({ documentId, blockId: blockId ?? undefined, body: toBody(draft.trim()) });
-              setDraft("");
-              onClearBlock();
-            } catch (err) {
-              toast.show(errorMessage(err), { tone: "error" });
-            }
+            void submit();
           }}
         >
           <label htmlFor="new-comment" className="ui-caps mb-1.5 block px-1">
             {blockId ? "Comment on the selected block" : "Comment on this document"}
           </label>
-          <textarea ref={inputRef} id="new-comment" rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={5000} aria-describedby="comment-hint" className="ui-input w-full rounded-[14px] p-2.5 text-sm" placeholder="Write a comment" />
-          <p id="comment-hint" className="text-xs text-muted">Type @ and a member’s name to mention them.</p>
+          <MentionInput
+            ref={inputRef}
+            id="new-comment"
+            multiline
+            value={draft}
+            onChange={setDraft}
+            people={everyone}
+            describedBy="comment-hint"
+            placeholder="Write a comment"
+            className="ui-input w-full rounded-[6px] p-2.5 text-sm"
+            onSubmitShortcut={() => void submit()}
+          />
+          <p id="comment-hint" className="text-xs text-muted">
+            Type @ to mention someone who can see this page. ⌘↩ to send.
+          </p>
           <div className="mt-1.5 flex justify-between">
             {blockId ? (
               <button type="button" onClick={onClearBlock} className="text-xs text-muted hover:text-ink">
@@ -626,8 +1129,8 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
             ) : (
               <span />
             )}
-            <Button size="sm" variant="primary" type="submit" disabled={!draft.trim()}>
-              Comment
+            <Button size="sm" variant="primary" type="submit" disabled={!draft.trim() || busy}>
+              {busy ? "Sending…" : "Comment"}
             </Button>
           </div>
         </form>
@@ -640,9 +1143,9 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
       {threads.length === 0 ? <p className="text-muted">No {showResolved ? "" : "open "}comments.</p> : null}
       <ul className="space-y-3">
         {threads.map((t) => (
-          <li key={t.id} className={`ui-card rounded-[14px] p-3 ${t.status === "resolved" ? "opacity-70" : ""}`}>
+          <li key={t.id} className={`ui-card rounded-[8px] p-3 ${t.status === "resolved" ? "opacity-70" : ""}`}>
             {t.blockId ? (
-              <button type="button" onClick={() => onJumpToBlock(t.blockId!)} className="mb-2 rounded-full bg-ember-soft px-2 py-0.5 text-xs font-medium text-ember-ink">
+              <button type="button" onClick={() => onJumpToBlock(t.blockId!)} className="mb-2 rounded-[6px] bg-accent-soft px-2 py-0.5 text-xs font-medium text-heading">
                 Go to block
               </button>
             ) : null}
@@ -652,20 +1155,57 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
                   <p className="text-xs">
                     <span className="font-semibold text-ink">{c.authorName}</span> <span className="text-faint">· {formatRelative(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
                   </p>
-                  <p className={`mt-0.5 whitespace-pre-wrap ${c.deleted ? "italic text-faint" : ""}`}>{c.deleted ? "Comment deleted" : c.body.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : "")).join("")}</p>
-                  {c.mine && !c.deleted ? (
-                    <button type="button" className="text-[11px] text-faint hover:text-danger" onClick={() => void remove({ commentId: c.id })}>
-                      Delete
-                    </button>
+                  {editing?.id === c.id ? (
+                    <form
+                      className="mt-1"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void saveEdit();
+                      }}
+                    >
+                      <MentionInput
+                        ref={editRef}
+                        multiline
+                        label="Edit comment"
+                        value={editing.text}
+                        onChange={(text) => setEditing({ id: c.id, text })}
+                        people={everyone}
+                        className="ui-input w-full rounded-[6px] p-2 text-sm"
+                        onSubmitShortcut={() => void saveEdit()}
+                        onEscape={() => setEditing(null)}
+                      />
+                      <div className="mt-1 flex justify-end gap-1.5">
+                        <Button size="sm" variant="quiet" onClick={() => setEditing(null)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" variant="primary" type="submit" disabled={!editing.text.trim()}>
+                          Save
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className={`mt-0.5 whitespace-pre-wrap ${c.deleted ? "italic text-faint" : ""}`}>{c.deleted ? "Comment deleted" : <CommentBody body={c.body} />}</p>
+                  )}
+                  {c.mine && !c.deleted && editing?.id !== c.id ? (
+                    <div className="flex gap-3">
+                      <button type="button" className="inline-flex items-center gap-1 text-[11px] text-faint hover:text-ink" onClick={() => setEditing({ id: c.id, text: bodyToText(c.body) })}>
+                        <Pencil size={10} aria-hidden /> Edit
+                      </button>
+                      <button type="button" className="text-[11px] text-faint hover:text-danger" onClick={() => void remove({ commentId: c.id }).catch(fail)}>
+                        Delete
+                      </button>
+                    </div>
                   ) : null}
                 </li>
               ))}
             </ul>
             {data.canComment ? (
               <ReplyBox
-                onReply={(text) => reply({ threadId: t.id, body: toBody(text) }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
+                people={everyone}
+                onReply={(text, picked) => reply({ threadId: t.id, body: textToCommentBody(text, picked, everyone) })}
+                onError={fail}
                 resolved={t.status === "resolved"}
-                onResolve={() => void setResolved({ threadId: t.id, resolved: t.status !== "resolved" })}
+                onResolve={() => void setResolved({ threadId: t.id, resolved: t.status !== "resolved" }).catch(fail)}
               />
             ) : null}
           </li>
@@ -675,20 +1215,47 @@ function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { d
   );
 }
 
-function ReplyBox({ onReply, resolved, onResolve }: { onReply: (text: string) => Promise<unknown>; resolved: boolean; onResolve: () => void }) {
+function ReplyBox({
+  people,
+  onReply,
+  onError,
+  resolved,
+  onResolve,
+}: {
+  people: MentionPerson[];
+  onReply: (text: string, picked: MentionPerson[]) => Promise<unknown>;
+  onError: (err: unknown) => void;
+  resolved: boolean;
+  onResolve: () => void;
+}) {
   const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<MentionInputHandle>(null);
+  const send = async () => {
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    try {
+      await onReply(text.trim(), ref.current?.picked() ?? []);
+      setText("");
+      ref.current?.reset();
+    } catch (err) {
+      onError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <form
-      className="mt-2 flex items-end gap-1.5"
-      onSubmit={async (e) => {
+      className="mt-2 flex items-start gap-1.5"
+      onSubmit={(e) => {
         e.preventDefault();
-        if (!text.trim()) return;
-        await onReply(text.trim());
-        setText("");
+        void send();
       }}
     >
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Reply" aria-label="Reply" className="ui-input h-8 flex-1 rounded-full px-3 text-sm" />
-      <Button size="sm" type="submit" disabled={!text.trim()}>
+      <div className="min-w-0 flex-1">
+        <MentionInput ref={ref} value={text} onChange={setText} people={people} placeholder="Reply" label="Reply" className="ui-input h-8 w-full rounded-[6px] px-3 text-sm" />
+      </div>
+      <Button size="sm" type="submit" disabled={!text.trim() || busy}>
         Reply
       </Button>
       <Button size="sm" variant="quiet" onClick={onResolve}>

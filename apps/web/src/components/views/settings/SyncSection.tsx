@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "./Card";
+import { t } from "@/i18n";
 
 export function SyncSection() {
   const { engine, deviceId, online } = useAppState();
   const state = useEngineState(engine);
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
+  const unsent = state.pending.length + state.inflight.length;
   return (
     <>
       <Card title="This device" description="Folevi keeps your recent documents and every unsent change in this browser, so you can keep writing offline and nothing is lost if the tab closes.">
@@ -21,7 +23,9 @@ export function SyncSection() {
           <dt className="text-muted">Connection</dt>
           <dd>{online ? "Online" : "Offline"}</dd>
           <dt className="text-muted">Changes waiting to sync</dt>
-          <dd className="tabular-nums">{state.pending.length + state.inflight.length}</dd>
+          <dd className="tabular-nums">
+            {unsent} <span className="text-xs text-faint">(all workspaces and shared pages)</span>
+          </dd>
           <dt className="text-muted">Uploads waiting</dt>
           <dd className="tabular-nums">{state.uploads.length}</dd>
           <dt className="text-muted">Unresolved conflicts</dt>
@@ -40,7 +44,9 @@ export function SyncSection() {
         open={confirm}
         onClose={() => setConfirm(false)}
         title="Clear local data?"
-        description={state.pending.length ? `${state.pending.length} change(s) haven't synced yet and will be lost. Reconnect first if you want to keep them.` : "Your documents stay in your account. This browser will download them again."}
+        description={
+          unsent ? t("settings.sync.unsent", { count: unsent }) : "Your documents stay in your account. This browser will download them again."
+        }
         size="sm"
         footer={
           <>

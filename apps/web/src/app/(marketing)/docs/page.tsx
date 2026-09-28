@@ -63,7 +63,7 @@ export default function DocsPage() {
           </li>
         </ol>
         <p>
-          Loose notes can live in <strong>Unsorted</strong> until you decide where they belong. Pages can be nested inside
+          Loose notes can live in <strong>Drafts</strong> until you decide where they belong. Pages can be nested inside
           other pages, filed in folders, tagged and starred.
         </p>
 

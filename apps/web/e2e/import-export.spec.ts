@@ -5,7 +5,7 @@ test("import Markdown with a warning report, then export a page as Markdown", as
   const { page } = await newPersonWithWorkspace(browser, "Importer");
   await page.goto("/settings/data");
   const md = ["---", "title: Garden log", "---", "", "## Beds", "", "- [x] Compost", "- [ ] Sow beans", "", "```python", "print('hi')", "```", "", "<div>raw html</div>", ""].join("\n");
-  await page.locator('input[type="file"]').setInputFiles({ name: "garden.md", mimeType: "text/markdown", buffer: Buffer.from(md) });
+  await page.locator('input[type="file"]').first().setInputFiles({ name: "garden.md", mimeType: "text/markdown", buffer: Buffer.from(md) });
   await expect(page.getByRole("link", { name: "garden.md" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/Raw HTML was imported as plain text/)).toBeVisible();
   await page.getByRole("link", { name: "garden.md" }).click();

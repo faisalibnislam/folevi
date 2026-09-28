@@ -12,6 +12,23 @@ export function formatRelative(ts: number, now = Date.now()): string {
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: new Date(ts).getFullYear() === new Date(now).getFullYear() ? undefined : "numeric" });
 }
 
+/**
+ * A short, plain age: "Just now", "23 mins ago", "1 hour ago", "12 days ago", "3 months ago", "2 years ago".
+ * With { title: true } each word is capitalised ("12 Days Ago").
+ */
+export function ageText(ts: number, { title = false }: { title?: boolean } = {}, now = Date.now()): string {
+  const mins = Math.max(0, Math.round((now - ts) / 60_000));
+  const unit = (n: number, u: string) => `${n} ${u}${n === 1 ? "" : "s"} ago`;
+  const out =
+    mins < 1 ? "just now" :
+    mins < 60 ? unit(mins, "min") :
+    mins < 60 * 24 ? unit(Math.round(mins / 60), "hour") :
+    mins < 60 * 24 * 30 ? unit(Math.round(mins / 1440), "day") :
+    mins < 60 * 24 * 365 ? unit(Math.max(1, Math.round(mins / 43_200)), "month") :
+    unit(Math.max(1, Math.round(mins / 525_600)), "year");
+  return title ? out.replace(/\b\w/g, (c) => c.toUpperCase()) : out.charAt(0).toUpperCase() + out.slice(1);
+}
+
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }): string {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { ...opts, timeZone: "UTC" });

@@ -2,20 +2,28 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { formatBytes } from "@/lib/format";
-import { DataTable, DocTitle, EmptyRow, LoadingRows, Mono, PageHeader, Pager, StatusBadge, Time, td, tdNum, th, thNum } from "./ui";
+import { useAuditedLoad } from "./useAuditedLoad";
+import { DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, Mono, PageHeader, Pager, StatusBadge, Time, td, tdNum, th, thNum } from "./ui";
 
 export function WorkspacesView() {
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const cursor = cursors.at(-1) ?? null;
-  const page = useQuery(api.admin.listWorkspaces, { cursor });
+  const list = useMutation(api.admin.listWorkspaces);
+  // Listing names is an audited read (one audit entry per page view).
+  const { data: page, error, loading, refresh } = useAuditedLoad(JSON.stringify([cursor]), (meta) => list({ cursor, ...meta }));
   return (
     <>
       <DocTitle>Workspaces</DocTitle>
-      <PageHeader title="Workspaces" description="All workspaces, newest first. Names identify records; opening one shows members, quotas and invites (and is recorded in the audit log). Document contents are never shown." />
-      <div className="overflow-hidden ui-card rounded-[18px]">
+      <PageHeader title="Workspaces" description="All workspaces, newest first. Names identify records; listing and opening them is recorded in the audit log. Document contents are never shown." />
+      {error ? (
+        <div className="mb-4">
+          <ErrorNotice error={error} onRetry={() => void refresh()} />
+        </div>
+      ) : null}
+      <div className="overflow-hidden ui-card rounded-[8px]">
         <DataTable caption="Workspaces, newest first" minWidth={820}>
           <thead>
             <tr>
@@ -30,7 +38,11 @@ export function WorkspacesView() {
           </thead>
           <tbody>
             {page === undefined ? (
-              <LoadingRows colSpan={7} />
+              error ? (
+                <EmptyRow colSpan={7}>Workspaces couldn’t be loaded.</EmptyRow>
+              ) : (
+                <LoadingRows colSpan={7} />
+              )
             ) : page.workspaces.length === 0 ? (
               <EmptyRow colSpan={7}>No workspaces yet.</EmptyRow>
             ) : (
@@ -63,7 +75,7 @@ export function WorkspacesView() {
             page={cursors.length}
             hasPrev={cursors.length > 1}
             hasNext={Boolean(page?.continueCursor)}
-            busy={page === undefined}
+            busy={loading}
             onPrev={() => setCursors((c) => c.slice(0, -1))}
             onNext={() => page?.continueCursor && setCursors((c) => [...c, page.continueCursor])}
           />

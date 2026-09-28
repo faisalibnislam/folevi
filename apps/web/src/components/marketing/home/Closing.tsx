@@ -1,3 +1,4 @@
+import { PLANS, PLAN_ORDER, formatPrice } from "@/lib/plans";
 import Link from "next/link";
 import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
@@ -81,54 +82,45 @@ export function SecuritySection() {
   );
 }
 
-export const PREVIEW_INCLUDES = [
-  "Pages, sub-pages and every block type",
-  "Tasks with dates, Today and a calendar",
-  "The web app and the Mac app (as builds become available)",
-  "Offline editing and real-time sync",
-  "Sharing with expiring, password-protected links",
-  "Export to Markdown, HTML, PDF and ZIP",
-];
-
+/** The three plans side by side (marketing home and /pricing). Prices come from lib/plans. */
 export function PricingCard({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3" }) {
   const Heading = headingLevel;
   return (
-    <div className="mk-panel overflow-hidden">
-      <div className="grid md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="mk-wash relative overflow-hidden p-7 sm:p-10">
-          <div className="relative">
-            <span aria-hidden="true" className="absolute right-0 top-0 text-(--color-heading)">
-              <FoleviMark size={30} accent="var(--color-ember)" />
-            </span>
-            <Heading className="mk-chip mk-chip--raised w-fit">
-              <span aria-hidden="true" className="mk-dot" />
-              Preview
-            </Heading>
-            <p className="mk-display mt-8 text-[80px] leading-none sm:text-[96px]">Free</p>
-            <p className="mt-3 max-w-[30ch] text-[15.5px] leading-relaxed text-ink">during the preview, for everyone who signs up.</p>
-            <ButtonLink href={SIGN_UP_URL} className="mt-8 w-full sm:w-auto" icon="arrow-right" size="lg">
-              Start writing
+    <div className="grid gap-4 md:grid-cols-3">
+      {PLAN_ORDER.map((id) => {
+        const plan = PLANS[id];
+        const pro = id === "pro";
+        return (
+          <div key={id} className={cx("mk-panel flex flex-col overflow-hidden p-7", pro && "mk-wash--soft")}>
+            <div className="flex items-center gap-2">
+              <Heading className="mk-chip mk-chip--raised w-fit">
+                <span aria-hidden="true" className="mk-dot" />
+                {plan.name}
+              </Heading>
+              {pro ? <span className="ml-auto text-[12.5px] font-semibold text-(--color-heading)">7-day free trial</span> : null}
+            </div>
+            <p className="mt-6">
+              <span className="mk-display text-[56px] leading-none">{formatPrice(plan.monthlyCents)}</span>
+              <span className="text-[15px] text-muted"> / month</span>
+            </p>
+            <p className="mt-2 min-h-[22px] text-[14px] text-muted">{id === "free" ? "No card required" : `or ${formatPrice(plan.yearlyCents)} a year`}</p>
+            <p className="mt-4 text-[15px] leading-relaxed text-ink">{plan.blurb}</p>
+            <ul className="mt-5 flex-1 space-y-3">
+              {plan.features.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-[15px] leading-snug text-ink">
+                  <span aria-hidden="true" className="mk-tone--moss mt-[-1px] flex size-[22px] shrink-0 items-center justify-center rounded-full bg-(--color-moss-soft) text-(--color-moss-ink) shadow-[inset_0_1px_0_var(--mk-rim)]">
+                    <Icon name="check" size={13} strokeWidth={2.2} />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <ButtonLink href={SIGN_UP_URL} className="mt-8 w-full" icon="arrow-right" size="lg" variant={pro ? undefined : "secondary"}>
+              {id === "free" ? "Start free" : pro ? "Try Pro free for 7 days" : "Start with Basic"}
             </ButtonLink>
           </div>
-        </div>
-        <div className="border-t mk-hair p-7 sm:p-10 md:border-l md:border-t-0">
-          <p className="text-[15px] font-semibold text-(--color-heading)">Everything in Folevi today</p>
-          <ul className="mt-5 space-y-3">
-            {PREVIEW_INCLUDES.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-[15px] leading-snug text-ink">
-                <span aria-hidden="true" className="mk-tone--moss mt-[-1px] flex size-[22px] shrink-0 items-center justify-center rounded-full bg-(--color-moss-soft) text-(--color-moss-ink) shadow-[inset_0_1px_0_var(--mk-rim)]">
-                  <Icon name="check" size={13} strokeWidth={2.2} />
-                </span>
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-7 border-t mk-hair pt-5 text-[14px] leading-relaxed text-muted">
-            There are no paid plans yet. Paid plans may come later; if they do, preview accounts will be told well in
-            advance, before anything changes.
-          </p>
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -141,8 +133,8 @@ export function PricingSection() {
           align="center"
           id="pricing-title"
           eyebrow="Pricing"
-          title="Free during the preview."
-          lede="One plan, no tiers, no card required."
+          title="Start free. Upgrade when you need room or AI."
+          lede="Every new account gets Pro free for 7 days. Every plan includes web, Mac and iOS."
         />
         <div className="mt-12">
           <PricingCard />
@@ -167,9 +159,7 @@ export function FinalCta() {
           <div aria-hidden="true" className="mk-glow mk-glow--center" />
           <Bubbles items={CTA_BUBBLES} />
           <div className="relative">
-            <span aria-hidden="true" className="mk-mini-raised mx-auto flex size-14 items-center justify-center rounded-[18px] text-(--color-heading)">
-              <FoleviMark size={28} accent="var(--color-ember)" />
-            </span>
+            <FoleviMark size={56} className="mx-auto block drop-shadow-[0_6px_16px_rgb(0_0_0/0.08)]" />
             <h2 id="cta-title" className="mk-display mx-auto mt-8 max-w-[14ch] text-[42px] sm:text-[64px]">
               Start with one loose thought.
             </h2>

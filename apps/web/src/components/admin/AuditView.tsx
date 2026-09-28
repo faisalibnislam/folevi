@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/format";
 import { useAdmin } from "./AdminApp";
 import { ROLE_LABEL, type AdminRole } from "./permissions";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, LoadingRows, Mono, PageHeader, ShortId, Pager, Time, inputCls, selectCls, td, th } from "./ui";
+import { Select } from "@/components/ui/Select";
 
 const TARGET_TYPES = ["profile", "workspace", "users", "email_attempts", "email_attempt", "flag", "setting", "rate_limit", "template"];
 
@@ -95,16 +96,16 @@ export function AuditView() {
       <DocTitle>Audit log</DocTitle>
       <PageHeader
         title="Audit log"
-        description="Append-only record of every admin view and change. Entries can't be edited or deleted by anyone, including super admins."
+        description="Append-only record of every admin view and change. Entries can't be edited or deleted by anyone, including owners."
       />
       {!seesAll ? (
         <div className="mb-4">
-          <Callout>You see your own actions. Filter by a specific target to see everyone&apos;s actions on it. Super admins see the full log.</Callout>
+          <Callout>You see your own actions. Filter by a specific target to see everyone&apos;s actions on it. Owners see the full log.</Callout>
         </div>
       ) : null}
 
       <form
-        className="mb-4 flex flex-wrap items-end gap-3 ui-card rounded-[18px] p-4"
+        className="mb-4 flex flex-wrap items-end gap-3 ui-card rounded-[8px] p-4"
         aria-label="Filter audit log"
         noValidate
         onSubmit={(e) => {
@@ -124,14 +125,14 @@ export function AuditView() {
           <label htmlFor={`${uid}-type`} className="mb-1 block font-medium">
             Target type
           </label>
-          <select id={`${uid}-type`} value={draftType} onChange={(e) => setDraftType(e.target.value)} className={`${selectCls} w-48`}>
+          <Select id={`${uid}-type`} value={draftType} onChange={(e) => setDraftType(e.target.value)} className={`${selectCls} w-48`}>
             <option value="">Any target</option>
             {TARGET_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="min-w-[260px] flex-1 text-sm">
           <label htmlFor={`${uid}-id`} className="mb-1 block font-medium">
@@ -171,7 +172,7 @@ export function AuditView() {
         ) : null}
       </form>
 
-      <div className="overflow-hidden ui-card rounded-[18px]">
+      <div className="overflow-hidden ui-card rounded-[8px]">
         <DataTable caption={filter ? `Audit entries for ${filter.targetType} ${filter.targetId}` : "Audit entries, newest first"} minWidth={1100}>
           <thead>
             <tr>
@@ -205,7 +206,7 @@ export function AuditView() {
                           aria-controls={detailId}
                           aria-label={`${expanded ? "Hide" : "Show"} details for ${e.action} at ${formatDateTime(e.createdAt)}`}
                           onClick={() => toggle(e.id)}
-                          className="grid h-6 w-6 place-items-center rounded-[8px] text-muted hover:bg-sunken hover:text-ink"
+                          className="grid h-6 w-6 place-items-center rounded-[6px] text-muted hover:bg-sunken hover:text-ink"
                         >
                           {expanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
                         </button>

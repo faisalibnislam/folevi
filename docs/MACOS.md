@@ -4,6 +4,14 @@ The native macOS client: Swift 6 (strict concurrency) + SwiftUI, with AppKit whe
 deliver: `NSTextView` block editing, Quick Look, save/open panels, PDF rendering, the Finder drag-out.
 It is not a web view, Electron or Catalyst app.
 
+> **Sign-in status (Sept 2026):** the web app and backend have moved from Auth0 to Folevi's built-in
+> accounts (Better Auth inside Convex, `docs/AUTH_DECISION.md`). This Mac app still contains the Auth0
+> and developer-sign-in code described below, and **it cannot sign in against the current backend**:
+> Convex no longer trusts Auth0 or the old development token issuer, and `/api/dev-auth/token` no
+> longer exists. The plan is to move the Mac app to Authorization Code + PKCE against Folevi's own
+> accounts once the web app is finalized. Until then, treat the auth sections of this document as a
+> description of the old code, not of a working setup.
+
 - Bundle id `com.folevi.mac`, deployment target macOS 15.0, App Sandbox (network client,
   user-selected files read/write, Downloads), hardened runtime.
 - Swift packages: `convex-swift` 0.8.1 (`ConvexMobile`), `Auth0.swift` 3.1.0.
@@ -22,8 +30,9 @@ script/build_and_run_macos.sh -- -FoleviForceOffline YES          # extra launch
 # Unit tests (no host app, no network)
 xcodebuild -project apps/macos/Folevi.xcodeproj -scheme Folevi -destination 'platform=macOS' build test
 
-# UI tests: need the local backend (npx convex dev on :3210) and a dev token; they skip otherwise.
-TEST_RUNNER_FOLEVI_UITEST_TOKEN=$(node scripts/dev-token.mjs --email uitest@example.com --name "UI Tester") \
+# UI tests: need the local backend (npx convex dev on :3210) and a token; they skip otherwise. The old
+# dev-token script was removed with the move to built-in accounts; a replacement comes with the PKCE work.
+TEST_RUNNER_FOLEVI_UITEST_TOKEN=<token> \
   xcodebuild -project apps/macos/Folevi.xcodeproj -scheme FoleviUITests -destination 'platform=macOS' test
 ```
 

@@ -199,6 +199,22 @@
       "if": {
         "properties": {
           "type": {
+            "const": "pageBreak"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/PageBreakProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "code"
           }
         }
@@ -306,6 +322,38 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "formula"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/FormulaProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "whiteboard"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/WhiteboardProps"
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -361,7 +409,8 @@
       "enum": [
         "sans",
         "serif",
-        "mono"
+        "mono",
+        "rounded"
       ]
     },
     "DocumentWidth": {
@@ -411,6 +460,92 @@
         "daily",
         "template",
         "collectionRow"
+      ]
+    },
+    "DocumentSheet": {
+      "enum": [
+        "white",
+        "paper",
+        "ivory",
+        "mist",
+        "sage",
+        "blush",
+        "night"
+      ]
+    },
+    "DocumentText": {
+      "enum": [
+        "ink",
+        "slate",
+        "navy",
+        "forest",
+        "plum",
+        "brown",
+        "white"
+      ]
+    },
+    "SeparatorStyle": {
+      "enum": [
+        "line",
+        "dots",
+        "doodle"
+      ]
+    },
+    "BlockTextStyle": {
+      "enum": [
+        "strong",
+        "caption"
+      ]
+    },
+    "BlockDecoration": {
+      "enum": [
+        "focus",
+        "block"
+      ]
+    },
+    "BlockColor": {
+      "enum": [
+        "black",
+        "slate",
+        "gray",
+        "navy",
+        "blue",
+        "sky",
+        "green",
+        "purple",
+        "red",
+        "orange",
+        "brown"
+      ]
+    },
+    "BlockAlign": {
+      "enum": [
+        "left",
+        "center",
+        "right",
+        "justify"
+      ]
+    },
+    "BlockFont": {
+      "enum": [
+        "system",
+        "serif",
+        "mono",
+        "rounded"
+      ]
+    },
+    "BlockGroup": {
+      "enum": [
+        "page",
+        "card"
+      ]
+    },
+    "DividerStyle": {
+      "enum": [
+        "extralight",
+        "light",
+        "regular",
+        "strong"
       ]
     },
     "Mark": {
@@ -624,6 +759,18 @@
         },
         "card": {
           "$ref": "#/$defs/CardStyle"
+        },
+        "backdrop": {
+          "type": "string"
+        },
+        "sheet": {
+          "$ref": "#/$defs/DocumentSheet"
+        },
+        "text": {
+          "$ref": "#/$defs/DocumentText"
+        },
+        "separator": {
+          "$ref": "#/$defs/SeparatorStyle"
         }
       },
       "required": [
@@ -652,7 +799,26 @@
     },
     "ParagraphProps": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "textStyle": {
+          "$ref": "#/$defs/BlockTextStyle"
+        },
+        "decoration": {
+          "$ref": "#/$defs/BlockDecoration"
+        },
+        "color": {
+          "$ref": "#/$defs/BlockColor"
+        },
+        "align": {
+          "$ref": "#/$defs/BlockAlign"
+        },
+        "font": {
+          "$ref": "#/$defs/BlockFont"
+        },
+        "group": {
+          "$ref": "#/$defs/BlockGroup"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -661,6 +827,21 @@
       "properties": {
         "level": {
           "$ref": "#/$defs/HeadingLevel"
+        },
+        "decoration": {
+          "$ref": "#/$defs/BlockDecoration"
+        },
+        "color": {
+          "$ref": "#/$defs/BlockColor"
+        },
+        "align": {
+          "$ref": "#/$defs/BlockAlign"
+        },
+        "font": {
+          "$ref": "#/$defs/BlockFont"
+        },
+        "group": {
+          "$ref": "#/$defs/BlockGroup"
         }
       },
       "required": [
@@ -670,13 +851,45 @@
     },
     "BulletedProps": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "decoration": {
+          "$ref": "#/$defs/BlockDecoration"
+        },
+        "color": {
+          "$ref": "#/$defs/BlockColor"
+        },
+        "align": {
+          "$ref": "#/$defs/BlockAlign"
+        },
+        "font": {
+          "$ref": "#/$defs/BlockFont"
+        },
+        "group": {
+          "$ref": "#/$defs/BlockGroup"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
     "NumberedProps": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "decoration": {
+          "$ref": "#/$defs/BlockDecoration"
+        },
+        "color": {
+          "$ref": "#/$defs/BlockColor"
+        },
+        "align": {
+          "$ref": "#/$defs/BlockAlign"
+        },
+        "font": {
+          "$ref": "#/$defs/BlockFont"
+        },
+        "group": {
+          "$ref": "#/$defs/BlockGroup"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -706,6 +919,21 @@
         },
         "completedAt": {
           "type": "number"
+        },
+        "decoration": {
+          "$ref": "#/$defs/BlockDecoration"
+        },
+        "color": {
+          "$ref": "#/$defs/BlockColor"
+        },
+        "align": {
+          "$ref": "#/$defs/BlockAlign"
+        },
+        "font": {
+          "$ref": "#/$defs/BlockFont"
+        },
+        "group": {
+          "$ref": "#/$defs/BlockGroup"
         }
       },
       "required": [
@@ -718,6 +946,21 @@
       "properties": {
         "collapsed": {
           "type": "boolean"
+        },
+        "decoration": {
+          "$ref": "#/$defs/BlockDecoration"
+        },
+        "color": {
+          "$ref": "#/$defs/BlockColor"
+        },
+        "align": {
+          "$ref": "#/$defs/BlockAlign"
+        },
+        "font": {
+          "$ref": "#/$defs/BlockFont"
+        },
+        "group": {
+          "$ref": "#/$defs/BlockGroup"
         }
       },
       "required": [
@@ -727,7 +970,23 @@
     },
     "QuoteProps": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "decoration": {
+          "$ref": "#/$defs/BlockDecoration"
+        },
+        "color": {
+          "$ref": "#/$defs/BlockColor"
+        },
+        "align": {
+          "$ref": "#/$defs/BlockAlign"
+        },
+        "font": {
+          "$ref": "#/$defs/BlockFont"
+        },
+        "group": {
+          "$ref": "#/$defs/BlockGroup"
+        }
+      },
       "required": [],
       "additionalProperties": false
     },
@@ -747,6 +1006,16 @@
       "additionalProperties": false
     },
     "DividerProps": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "$ref": "#/$defs/DividerStyle"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "PageBreakProps": {
       "type": "object",
       "properties": {},
       "required": [],
@@ -903,6 +1172,34 @@
       },
       "required": [
         "collectionId"
+      ],
+      "additionalProperties": false
+    },
+    "FormulaProps": {
+      "type": "object",
+      "properties": {
+        "latex": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "latex"
+      ],
+      "additionalProperties": false
+    },
+    "WhiteboardProps": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "data",
+        "height"
       ],
       "additionalProperties": false
     }

@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { requestMeta } from "./request";
 import { inputCls, selectCls } from "./ui";
+import { Select } from "@/components/ui/Select";
 
 export const REASON_MIN = 8;
 export const REASON_MAX = 500;
@@ -178,13 +179,13 @@ export function ActionDialog({
                 {f.label}
               </label>
               {f.type === "select" ? (
-                <select {...common} className={selectCls} onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}>
+                <Select {...common} className={selectCls} onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}>
                   {f.options?.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : f.type === "textarea" ? (
                 <textarea
                   {...common}
@@ -293,7 +294,7 @@ export function ActionDialog({
           ) : null}
         </div>
         {formError ? (
-          <div role="alert" className="rounded-[11px] border border-danger/40 bg-danger-soft px-3 py-2 text-[13px]">
+          <div role="alert" className="rounded-[6px] border border-danger/40 bg-danger-soft px-3 py-2 text-[13px]">
             {formError}
           </div>
         ) : null}

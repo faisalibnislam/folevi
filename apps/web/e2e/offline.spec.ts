@@ -3,7 +3,7 @@ import { newPersonWithWorkspace, waitForSaved } from "./helpers";
 
 test("offline edits are kept, shown as pending, and sync on reconnect", async ({ browser }) => {
   const { page, context } = await newPersonWithWorkspace(browser, "Offline Tester");
-  await page.getByRole("button", { name: /New document/ }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.getByRole("textbox", { name: "Title" }).fill("Written on a train");
@@ -17,7 +17,7 @@ test("offline edits are kept, shown as pending, and sync on reconnect", async ({
   await page.keyboard.type("Inside the tunnel, no signal.");
   const status = page.getByTestId("sync-status");
   await expect(status).toHaveAttribute("data-status", "offline", { timeout: 15_000 });
-  await expect(status).toContainText("Offline");
+  await expect(status).toHaveAttribute("aria-label", /Offline/);
 
   // Nothing is lost if the tab closes while offline: the operation log is durable (IndexedDB).
   await page.waitForTimeout(600);
@@ -35,7 +35,7 @@ test("offline edits are kept, shown as pending, and sync on reconnect", async ({
 
 test("unsent edits survive a reload (durable local queue)", async ({ browser }) => {
   const { page, context } = await newPersonWithWorkspace(browser, "Reload Tester");
-  await page.getByRole("button", { name: /New document/ }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.getByRole("textbox", { name: "Title" }).fill("Queue");
@@ -51,4 +51,21 @@ test("unsent edits survive a reload (durable local queue)", async ({ browser }) 
   await page.reload();
   await waitForSaved(page);
   await expect(page.getByRole("textbox", { name: "Document body" })).toContainText("Typed offline then reloaded.");
+});
+
+test("opening Folevi while the server is unreachable shows the last-known folio, not a dead end", async ({ browser }) => {
+  const { page } = await newPersonWithWorkspace(browser, "Cold Start Tester");
+  await page.goto("/documents");
+  await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
+  // The account snapshot is written once the workspace list has loaded.
+  await page.waitForFunction(() => Boolean(localStorage.getItem("folevi:last-account")));
+
+  // Cut the page off from the auth server and the Convex backend (the app shell itself still loads,
+  // as it would from the service worker in production), then start the app again.
+  await page.route("**/api/auth/**", (route) => route.abort("internetdisconnected"));
+  await page.routeWebSocket(/127\.0\.0\.1:3210|convex\.cloud/, (ws) => ws.close());
+  await page.reload();
+  await expect(page.getByRole("navigation", { name: "Workspace" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: /workspace and account$/ })).toContainText("Personal");
+  await expect(page.getByText("You're offline", { exact: true })).toHaveCount(0);
 });

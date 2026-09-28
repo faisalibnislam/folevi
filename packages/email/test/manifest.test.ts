@@ -3,7 +3,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  AUTH0_MESSAGE_TYPE_TO_TEMPLATE,
   TEMPLATE_KEYS,
   emailManifest,
   validateDataVariables,
@@ -29,9 +28,6 @@ function placeholders(s: string): Set<string> {
 const ALL_KEYS: TemplateKey[] = [
   "auth_verify_email",
   "auth_password_reset",
-  "auth_blocked_account",
-  "auth_breached_password",
-  "auth_verification_code",
   "security_new_device",
   "account_deletion_scheduled",
   "account_deletion_completed",
@@ -40,6 +36,7 @@ const ALL_KEYS: TemplateKey[] = [
   "comment_notification",
   "comment_digest",
   "share_notification",
+  "access_changed",
 ];
 
 describe("manifest contract", () => {
@@ -159,9 +156,4 @@ describe("manifest contract", () => {
     for (const [rel, contents] of renderAll()) expect(read(rel), rel).toBe(contents);
   });
 
-  it("Auth0 mapping only targets identity templates", () => {
-    for (const target of Object.values(AUTH0_MESSAGE_TYPE_TO_TEMPLATE)) {
-      if (target !== null) expect(emailManifest[target].category).toBe("identity");
-    }
-  });
 });

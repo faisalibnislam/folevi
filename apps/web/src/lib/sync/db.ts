@@ -42,6 +42,9 @@ export interface PendingUpload {
   nextAttemptAt: number;
 }
 
+/** Key of the single, account-wide sync state (older builds keyed one state per workspace id). */
+export const ACCOUNT_SYNC_KEY = "account";
+
 const dbs = new Map<string, Promise<IDBPDatabase<FoleviDB>>>();
 
 export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {
@@ -75,6 +78,11 @@ export async function deviceId(accountKey: string): Promise<string> {
 }
 
 export async function clearAllLocalData(): Promise<void> {
+  try {
+    localStorage.removeItem("folevi:last-account");
+  } catch {
+    /* storage unavailable */
+  }
   for (const [name, db] of dbs) {
     (await db).close();
     dbs.delete(name);

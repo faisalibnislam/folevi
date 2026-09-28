@@ -8,6 +8,7 @@ import {
 } from "../src/index";
 
 const mention = () => ({ ...emailManifest.mention_notification.fixture });
+const device = () => ({ ...emailManifest.security_new_device.fixture });
 
 function errorsOf(result: ReturnType<typeof validateDataVariables>): string[] {
   return result.ok ? [] : result.errors;
@@ -15,11 +16,18 @@ function errorsOf(result: ReturnType<typeof validateDataVariables>): string[] {
 
 describe("validateDataVariables", () => {
   it("accepts the fixture and fills optional variables with empty strings", () => {
-    const vars = mention();
-    delete (vars as Record<string, unknown>).excerpt;
-    const result = validateDataVariables("mention_notification", vars);
+    const vars = device();
+    delete (vars as Record<string, unknown>).approximateLocation;
+    const result = validateDataVariables("security_new_device", vars);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.dataVariables.excerpt).toBe("");
+    if (result.ok) expect(result.dataVariables.approximateLocation).toBe("");
+  });
+
+  it("notification emails cannot carry note or comment text", () => {
+    for (const key of ["mention_notification", "comment_notification", "access_changed"] as const) {
+      const result = validateDataVariables(key, { ...emailManifest[key].fixture, excerpt: "private words" });
+      expect(errorsOf(result).join()).toMatch(/excerpt: unknown variable/);
+    }
   });
 
   it("rejects unknown variables", () => {
@@ -43,11 +51,11 @@ describe("validateDataVariables", () => {
 
   it("rejects booleans and null", () => {
     expect(
-      errorsOf(validateDataVariables("mention_notification", { ...mention(), excerpt: true })),
-    ).toEqual(["excerpt: booleans are not allowed"]);
+      errorsOf(validateDataVariables("security_new_device", { ...device(), approximateLocation: true })),
+    ).toEqual(["approximateLocation: booleans are not allowed"]);
     expect(
-      errorsOf(validateDataVariables("mention_notification", { ...mention(), excerpt: null })),
-    ).toEqual(["excerpt: null is not allowed"]);
+      errorsOf(validateDataVariables("security_new_device", { ...device(), approximateLocation: null })),
+    ).toEqual(["approximateLocation: null is not allowed"]);
   });
 
   it("rejects wrong types", () => {
@@ -75,9 +83,9 @@ describe("validateDataVariables", () => {
     if (ok.ok) expect(ok.dataVariables.documentTitle).toBe("é".repeat(120));
     const tooLong = validateDataVariables("mention_notification", {
       ...mention(),
-      excerpt: "x".repeat(141),
+      documentTitle: "x".repeat(121),
     });
-    expect(errorsOf(tooLong)).toEqual(["excerpt: exceeds maxLength 140"]);
+    expect(errorsOf(tooLong)).toEqual(["documentTitle: exceeds maxLength 120"]);
   });
 
   it("rejects an empty required string", () => {
@@ -123,15 +131,6 @@ describe("validateDataVariables", () => {
       actorName: "Maya\u0007",
     });
     expect(errorsOf(r)).toEqual(["actorName: contains control characters"]);
-  });
-
-  it("validates code format", () => {
-    expect(
-      validateDataVariables("auth_verification_code", { code: "12 34", expiresInMinutes: 10 }).ok,
-    ).toBe(false);
-    expect(
-      validateDataVariables("auth_verification_code", { code: "123456", expiresInMinutes: 10 }).ok,
-    ).toBe(true);
   });
 
   it("rejects non-object input", () => {

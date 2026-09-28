@@ -1,9 +1,9 @@
 "use client";
 
 import { Component, createContext, useContext, type ErrorInfo, type ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
-import { ConvexClientProvider } from "@/lib/convex/provider";
+import { ConvexClientProvider, useAuthPhase } from "@/lib/convex/provider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { can, type AdminRole, type Capability } from "./permissions";
 import { AdminShell } from "./AdminShell";
@@ -54,7 +54,12 @@ class GateBoundary extends Component<{ children: ReactNode }, { failed: boolean 
 }
 
 function Gate({ children }: { children: ReactNode }) {
-  const me = useQuery(api.admin.whoami, {});
+  const phase = useAuthPhase();
+  const { isAuthenticated } = useConvexAuth();
+  // Ask for the admin identity only once the Convex connection carries the session token; asking
+  // earlier would be rejected as unauthenticated and render the 404.
+  const me = useQuery(api.admin.whoami, isAuthenticated ? {} : "skip");
+  if (phase === "signed_out") return <AdminNotFound />;
   if (me === undefined) {
     return (
       <div className="grid min-h-dvh place-items-center bg-canvas" aria-busy="true">
@@ -75,7 +80,7 @@ function Gate({ children }: { children: ReactNode }) {
 
 export function AdminApp({ children }: { children: ReactNode }) {
   return (
-    <ConvexClientProvider signedIn>
+    <ConvexClientProvider>
       <ToastProvider>
         <GateBoundary>
           <Gate>{children}</Gate>

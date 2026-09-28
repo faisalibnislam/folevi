@@ -2,7 +2,9 @@
 
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Editor as TiptapEditor } from "@tiptap/react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import {
   Archive,
   ArchiveRestore,
@@ -11,11 +13,15 @@ import {
   FileCode,
   FileText,
   Folder,
+  FolderInput,
   History,
   LayoutTemplate,
   MessageSquare,
   MoreHorizontal,
-  PanelRight,
+  Plus,
+  Type,
+  Paintbrush,
+  Info,
   Printer,
   Share2,
   Star,
@@ -31,24 +37,32 @@ import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineState } from "@/lib/hooks/useEngine";
 import { localDb } from "@/lib/sync/db";
 import { Button, IconButton } from "@/components/ui/Button";
-import { MenuButton } from "@/components/ui/Menu";
+import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome, useShell } from "@/components/app/Shell";
-import { SyncStatus } from "@/components/app/SyncStatus";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
+import { CollectionRowProperties } from "@/components/editor/CollectionEmbed";
 import type { DecorationInputs } from "@/components/editor/plugins";
-import { coverBackground } from "@/lib/cover";
+import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
+import { NotePaletteProvider } from "@/components/editor/notePalette";
+import { useCoverImage } from "@/lib/app/coverImage";
 import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
+import { AI_OPEN_EVENT, AI_RUN_EVENT, useAi, useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
+import { DocumentSidebar, type Crumb } from "./DocumentSidebar";
+import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
 import { VersionHistory } from "./VersionHistory";
+import { MovePageDialog } from "./MovePageDialog";
 import { exportHtml, exportMarkdown, exportPdf } from "./export";
 import "@/components/editor/editor.css";
+import "@/components/editor/insert-blocks.css";
+import { Select } from "@/components/ui/Select";
 
 const IDLE_SNAPSHOT_MS = 2 * 60_000;
 
 export function DocumentView({ documentId }: { documentId: string }) {
-  const { engine, profile, online } = useAppState();
+  const { engine, profile, online, workspace } = useAppState();
   const convex = useConvex();
   const meta = useQuery(api.documents.get, { documentId });
   const server = useQuery(api.blocks.list, { documentId });
@@ -58,13 +72,17 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
-  const { inspectorOpen, setInspectorOpen, isNarrow } = useShell();
+  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode } = useShell();
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("format");
   const [commentBlock, setCommentBlock] = useState<string | null>(null);
   const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const inspectorRef = useRef<HTMLDivElement>(null);
+  // Below 1200px the inspector folds into an icon rail on the note, and opens as a floating panel.
+  const dockButtons = useRef<Partial<Record<InspectorTab, HTMLButtonElement | null>>>({});
   const recordView = useMutation(api.documents.recordView);
   const createSnapshot = useMutation(api.documents.createSnapshot);
   const heartbeat = useMutation(api.presence.heartbeat);
@@ -145,8 +163,38 @@ export function DocumentView({ documentId }: { documentId: string }) {
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [createSnapshot, documentId]);
 
+  // Leaving the page inside the app (another page, Home…) also saves a "close" version — after the
+  // page's queued edits have reached the server, so the version includes them.
+  const canSnapshot = Boolean(meta && meta.access !== "read" && meta.access !== "comment");
+  const canSnapshotRef = useRef(canSnapshot);
+  canSnapshotRef.current = canSnapshot;
+  useEffect(() => {
+    return () => {
+      if (!lastEditAt.current || !canSnapshotRef.current) return;
+      lastEditAt.current = null;
+      const snap = () => void createSnapshot({ documentId, reason: "close" }).catch(() => undefined);
+      // Let the editor flush its last keystrokes into the queue first (its cleanup may run after ours).
+      setTimeout(() => {
+        if (!engine || !engine.hasLocalWork(documentId)) return snap();
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          unsubscribe();
+          clearTimeout(timer);
+          snap();
+        };
+        const unsubscribe = engine.subscribe(() => {
+          if (!engine.hasLocalWork(documentId)) finish();
+        });
+        const timer = setTimeout(finish, 30_000);
+      }, 0);
+    };
+  }, [documentId, engine, createSnapshot]);
+
   const threads = useQuery(api.comments.threads, meta ? { documentId } : "skip");
-  const conflicts = engineState.conflicts.filter((c) => c.documentId === documentId);
+  // Memoized so the editor's decorations aren't re-sent on every render of this view.
+  const conflicts = useMemo(() => engineState.conflicts.filter((c) => c.documentId === documentId), [engineState.conflicts, documentId]);
   const decorations: DecorationInputs = useMemo(
     () => ({
       presence: (presence ?? []).filter((p) => p.focusedBlockId).map((p) => ({ blockId: p.focusedBlockId!, color: p.color, name: p.name })),
@@ -164,9 +212,37 @@ export function DocumentView({ documentId }: { documentId: string }) {
     if (m) setTimeout(() => editorRef.current?.focusBlock(m[1]!), 150);
   }, [editor]);
 
+  // A folder inside another folder shows its parent in the breadcrumb too (folders nest one level).
+  const org = useQuery(api.organization.sidebar, meta?.folder && meta.isMember ? { workspaceId: workspace.id } : "skip");
+  const folderInfo = meta?.folder ? org?.folders.find((f) => f.id === meta.folder!.id) : undefined;
+  const parentFolder = folderInfo?.parentFolderId ? (org?.folders.find((f) => f.id === folderInfo.parentFolderId) ?? null) : null;
+
   const summary = meta?.document ?? null;
   const localTitle = pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : "";
   const style: DocumentStyle = summary?.style ?? DEFAULT_DOCUMENT_STYLE;
+  useDocTab(
+    documentId,
+    summary?.title || localTitle || "",
+    meta === undefined ? (pendingCreate?.kind === "document.create" && !pendingCreate.document.parentDocumentId ? null : undefined) : meta?.breadcrumbs[0] ? { id: meta.breadcrumbs[0].id, title: meta.breadcrumbs[0].title || "Untitled" } : null,
+  );
+  // Page and text colours: the chosen ones, or on Auto, taken from the note's artwork.
+  // A note style can be the person's own image: its signed URL comes from the server, and its page and
+  // text colours are picked from it.
+  const { url: coverImageUrl, palette: coverPalette } = useCoverImage(summary?.cover);
+  const sheetAttrs = sheetProps(style, summary?.cover ?? DEFAULT_COVER, coverPalette);
+  // The note's style lights the glass chrome around it (a small image: it's heavily blurred anyway).
+  const { setAmbient } = useShell();
+  const ambientCover = summary?.cover ?? DEFAULT_COVER;
+  const ambientArt = coverArtOf(ambientCover);
+  const ambient = ambientArt
+    ? `url(${coverArtThumbUrl(ambientArt.id)}) center / cover no-repeat`
+    : ambientCover.kind === "image"
+      ? (coverImageUrl ? `url(${JSON.stringify(coverImageUrl)}) center / cover no-repeat` : null)
+      : (pageBackdrop(style, ambientCover, coverImageUrl) ?? null);
+  useEffect(() => {
+    setAmbient(ambient);
+  }, [ambient, setAmbient]);
+  useEffect(() => () => setAmbient(null), [setAmbient]);
   const readOnly = Boolean(meta && (meta.access === "read" || meta.access === "comment" || meta.inTrash)) || Boolean(settings?.readOnly && !profile.platformRole);
 
   // Move focus from the title into the body synchronously (Tiptap's focus() waits a frame, and keystrokes
@@ -189,6 +265,58 @@ export function DocumentView({ documentId }: { documentId: string }) {
     }
   }, [editor]);
 
+  // The page tools open as a floating panel above the bottom dock: focus moves into it when it opens,
+  // Escape closes it and returns focus to the dock button that opened it.
+  const wasOpen = useRef(inspectorOpen);
+  const inspectorOpener = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const opened = inspectorOpen && !wasOpen.current;
+    wasOpen.current = inspectorOpen;
+    if (opened && document.activeElement instanceof HTMLElement) inspectorOpener.current = document.activeElement;
+    if (!opened) return;
+    const id = requestAnimationFrame(() => {
+      const aside = inspectorRef.current;
+      if (aside && !aside.contains(document.activeElement)) aside.querySelector<HTMLElement>('[role="tab"][aria-selected="true"], button, input, select')?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [inspectorOpen]);
+  const closeInspector = useCallback(() => {
+    setInspectorOpen(false);
+    // Back to whatever had focus when it opened (the editor after a click, the dock button from the
+    // keyboard), or the dock button for this tab.
+    requestAnimationFrame(() => {
+      const opener = inspectorOpener.current;
+      (opener?.isConnected && opener !== document.body && !inspectorRef.current?.contains(opener) ? opener : (dockButtons.current[inspectorTab] ?? dockButtons.current.format))?.focus();
+    });
+  }, [setInspectorOpen, inspectorTab]);
+
+  // AI: a selection rewrite from the editor's toolbar, or "ask AI to write" from the slash menu, opens the
+  // AI panel (and runs the rewrite there).
+  const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
+  const aiOn = useAiEnabled();
+  // AI turned off while its panel is open: show another tool instead.
+  useEffect(() => {
+    if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
+  }, [aiOn, inspectorTab]);
+  useEffect(() => {
+    if (!aiOn) return;
+    const onRun = (e: Event) => {
+      setAiRun({ ...(e as CustomEvent<AiRunDetail>).detail, id: Date.now() });
+      setInspectorTab("ai");
+      setInspectorOpen(true);
+    };
+    const onOpen = () => {
+      setInspectorTab("ai");
+      setInspectorOpen(true);
+    };
+    window.addEventListener(AI_RUN_EVENT, onRun);
+    window.addEventListener(AI_OPEN_EVENT, onOpen);
+    return () => {
+      window.removeEventListener(AI_RUN_EVENT, onRun);
+      window.removeEventListener(AI_OPEN_EVENT, onOpen);
+    };
+  }, [setInspectorOpen, aiOn]);
+
   const openComments = useCallback(
     (blockId?: string) => {
       setCommentBlock(blockId ?? null);
@@ -198,10 +326,32 @@ export function DocumentView({ documentId }: { documentId: string }) {
     [setInspectorOpen],
   );
 
+  const actions = useDocumentActions({
+    documentId,
+    title: meta?.document.title ?? "",
+    starred: meta?.document.starred ?? false,
+    archived: Boolean(meta?.document.archivedAt),
+    inTrash: meta?.inTrash ?? false,
+    kind: meta?.document.kind ?? "document",
+    canManage: meta?.access === "manage" || meta?.access === "write",
+    blocks: () => engine?.documentBlocks(documentId) ?? [],
+    onHistory: () => setHistoryOpen(true),
+    onShare: () => setShareOpen(true),
+    onDelete: () => setDeleteOpen(true),
+    onMove: () => setMoveOpen(true),
+    client: convex,
+  });
+
   if (meta === null && !pendingCreate && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {
       return (
         <ViewChrome title="Unavailable">
+          {sidebarSlot
+            ? createPortal(
+                <DocumentSidebar documentId={documentId} title="Unavailable page" trail={[{ href: "/documents", label: "Home" }]} editor={null} readOnly onJump={() => undefined} onHide={toggleSidebar} onNavigate={drawerMode ? toggleSidebar : undefined} />,
+                sidebarSlot,
+              )
+            : null}
           <div className="mx-auto max-w-lg px-6 py-24 text-center">
             <h1 className="ui-display text-4xl">This page isn’t available</h1>
             <p className="mt-3 text-muted">It may have been deleted, or you don’t have access. If someone shared it with you, ask them to check the sharing settings.</p>
@@ -223,12 +373,32 @@ export function DocumentView({ documentId }: { documentId: string }) {
   if (readyNow) everReady.current = true;
   const ready = everReady.current;
 
+  const trail: Crumb[] = [
+    ...(parentFolder ? [{ href: `/folders/${parentFolder.id}`, label: parentFolder.name }] : []),
+    meta?.folder ? { href: `/folders/${meta.folder.id}`, label: meta.folder.name } : { href: "/drafts", label: "Drafts" },
+    ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
+  ];
+  const pageTitle = summary?.title || localTitle || "Untitled";
+
   return (
+    <NotePaletteProvider colors={styleColorsOf(summary?.cover ?? DEFAULT_COVER, coverPalette)} active={sheetAttrs["data-palette"] !== undefined}>
     <ViewChrome
-      tabTitle={summary?.title || localTitle || "Untitled"}
+      tabTitle={pageTitle}
       title={
+        sidebarOpen ? (
+          readOnly ? <span className="ui-chip h-6 bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null
+        ) : (
         <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-[13.5px]">
-          <AppLink href={meta?.folder ? `/folders/${meta.folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-full px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+          {parentFolder ? (
+            <>
+              <AppLink href={`/folders/${parentFolder.id}`} className="flex min-w-0 max-w-[10rem] items-center gap-1.5 truncate rounded-[6px] px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+                <Folder size={14} className="flex-none" aria-hidden />
+                <span className="truncate">{parentFolder.name}</span>
+              </AppLink>
+              <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
+            </>
+          ) : null}
+          <AppLink href={meta?.folder ? `/folders/${meta.folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-[6px] px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
             {meta?.folder ? (
               <>
                 <Folder size={14} className="flex-none" aria-hidden />
@@ -244,85 +414,75 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
           {meta?.breadcrumbs.map((b) => (
             <span key={b.id} className="flex min-w-0 items-center gap-0.5">
-              <AppLink href={`/d/${b.id}`} className="max-w-[12rem] truncate rounded-full px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-                {b.icon ? `${b.icon} ` : ""}
+              <AppLink href={`/d/${b.id}`} className="max-w-[12rem] truncate rounded-[6px] px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                 {b.title || "Untitled"}
               </AppLink>
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </span>
           ))}
-          <span className="truncate rounded-full px-2 py-1 font-semibold text-heading" aria-current="page">
-            {summary?.icon ? `${summary.icon} ` : ""}
+          <span className="truncate rounded-[6px] px-2 py-1 font-semibold text-heading" aria-current="page">
             {summary?.title || localTitle || "Untitled"}
           </span>
           {readOnly ? <span className="ui-chip ml-1 h-6 flex-none bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
         </nav>
-      }
-      actions={
-        <>
-          <PresenceAvatars people={presence ?? []} />
-          <SyncStatus documentId={documentId} />
-          <IconButton label={`Comments${threads?.threads.some((t) => t.unread) ? " (unread)" : ""}`} onClick={() => openComments()}>
-            <span className="relative">
-              <MessageSquare size={16} aria-hidden />
-              {threads?.threads.some((t) => t.unread && t.status === "open") ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-ember ring-2 ring-canvas" aria-hidden /> : null}
-            </span>
-          </IconButton>
-          {meta ? (
-            <Button size="sm" variant="primary" onClick={() => setShareOpen(true)} className="hidden sm:inline-flex">
-              <Share2 size={14} aria-hidden /> Share
-            </Button>
-          ) : null}
-          {summary ? (
-            <DocumentMenu
-              documentId={documentId}
-              title={summary.title}
-              starred={summary.starred}
-              archived={Boolean(summary.archivedAt)}
-              inTrash={meta?.inTrash ?? false}
-              kind={summary.kind}
-              canManage={meta?.access === "manage" || meta?.access === "write"}
-              blocks={() => engine?.documentBlocks(documentId) ?? []}
-              onHistory={() => setHistoryOpen(true)}
-              onShare={() => setShareOpen(true)}
-              onDelete={() => setDeleteOpen(true)}
-              client={convex}
-            />
-          ) : null}
-          <IconButton label={inspectorOpen ? "Hide inspector" : "Show inspector"} shortcut="⌘⌥I" onClick={() => setInspectorOpen(!inspectorOpen)} aria-pressed={inspectorOpen}>
-            <PanelRight size={16} aria-hidden />
-          </IconButton>
-        </>
+        )
       }
     >
-      <div className="flex min-h-full">
+      {sidebarSlot
+        ? createPortal(
+            <DocumentSidebar
+              documentId={documentId}
+              title={pageTitle}
+              trail={trail}
+              editor={editor}
+              readOnly={readOnly}
+              onJump={(id) => {
+                editorRef.current?.focusBlock(id);
+                if (drawerMode) toggleSidebar();
+              }}
+              onHide={toggleSidebar}
+              onNavigate={drawerMode ? toggleSidebar : undefined}
+            />,
+            sidebarSlot,
+          )
+        : null}
+      {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind. */}
+      <div className="flex h-full min-h-0">
+        <div className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
+
         <div
-          className="fb-page min-w-0 flex-1 px-3 pb-16 pt-3 sm:px-8"
+          id="doc-scroll"
+          className={`fb-page h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
+          data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "on" : undefined}
           data-font={style.font}
           data-width={style.width}
           style={{
             ["--doc-accent" as string]: style.accent === "accent" ? "var(--color-ember)" : `var(--color-${style.accent})`,
             ["--doc-accent-ink" as string]: style.accent === "accent" ? "var(--color-ember-ink)" : `var(--color-${style.accent}-ink)`,
             ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-ember-soft)" : `var(--color-${style.accent}-soft)`,
+            background: pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)",
           }}
         >
           <article
             className="fb-sheet ui-sheet relative mx-auto animate-[folio-settle_240ms_var(--ease-folio)]"
             data-background={style.background}
-            style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}
+            {...sheetAttrs}
+            data-separator={style.separator}
+            style={{ ...sheetAttrs.style, maxWidth: "calc(var(--editor-width) + 8rem)" }}
           >
             <DocumentHeader
               documentId={documentId}
               title={summary?.title ?? localTitle}
-              icon={summary?.icon ?? null}
               cover={summary?.cover ?? DEFAULT_COVER}
               style={style}
               revision={summary?.revision ?? null}
               readOnly={readOnly}
               onEnter={focusEditorStart}
+              hasContent={Boolean(summary?.excerpt?.trim())}
             />
             {conflicts.length ? <ConflictBanner documentId={documentId} /> : null}
             <div className="px-5 sm:px-16">
+              <CollectionRowProperties documentId={documentId} editable={!readOnly} />
               {ready && engine ? (
                 <Editor
                   ref={editorRef}
@@ -346,12 +506,59 @@ export function DocumentView({ documentId }: { documentId: string }) {
           </article>
           <Backlinks documentId={documentId} />
         </div>
+        <PageDock
+          ai={aiOn}
+          tab={inspectorTab}
+          open={inspectorOpen}
+          onPick={(t) => {
+            if (inspectorOpen && inspectorTab === t) closeInspector();
+            else {
+              setInspectorTab(t);
+              setInspectorOpen(true);
+            }
+          }}
+          buttonRef={(t, el) => {
+            dockButtons.current[t] = el;
+          }}
+          extra={
+            <div role="group" aria-label="Page" className="flex items-center gap-0.5">
+              <PresenceAvatars people={presence ?? []} />
+              <IconButton label={`Comments${threads?.threads.some((t) => t.unread) ? " (unread)" : ""}`} onClick={() => openComments()} aria-pressed={inspectorOpen && inspectorTab === "comments"} className="!h-10 !w-10 !text-ink hover:!text-heading">
+                <span className="relative">
+                  <MessageSquare size={16} aria-hidden />
+                  {threads?.threads.some((t) => t.unread && t.status === "open") ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-heading ring-2 ring-canvas" aria-hidden /> : null}
+                </span>
+              </IconButton>
+              {meta ? (
+                <IconButton label="Share" onClick={() => setShareOpen(true)} className="!h-10 !w-10 !text-ink hover:!text-heading">
+                  <Share2 size={16} aria-hidden />
+                </IconButton>
+              ) : null}
+              {summary ? (
+                <MenuButton
+                  label="Document actions"
+                  side="top"
+                  align="end"
+                  triggerClassName="grid h-10 w-10 place-items-center rounded-[6px] text-ink transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  trigger={<MoreHorizontal size={16} aria-hidden />}
+                  items={actions}
+                />
+              ) : null}
+            </div>
+          }
+        />
         {inspectorOpen ? (
-          <aside
-            aria-label="Inspector"
-            className={`${isNarrow ? "fixed inset-y-0 right-0 z-40 w-[min(92vw,344px)] p-2" : "sticky top-0 h-[calc(100dvh-52px)] w-[344px] flex-none pb-3 pl-1 pr-3"} animate-[folio-rise_180ms_var(--ease-folio)]`}
+          <div
+            ref={inspectorRef}
+            id="document-inspector"
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && !e.defaultPrevented) {
+                e.preventDefault();
+                closeInspector();
+              }
+            }}
+            className="ui-pop absolute bottom-[84px] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col min-[1400px]:left-auto min-[1400px]:right-6 min-[1400px]:translate-x-0 overflow-hidden rounded-[14px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
           >
-            <div className="ui-card ui-glass h-full overflow-hidden rounded-[20px]">
             <Inspector
               documentId={documentId}
               editor={editor}
@@ -361,18 +568,76 @@ export function DocumentView({ documentId }: { documentId: string }) {
               commentBlock={commentBlock}
               onClearCommentBlock={() => setCommentBlock(null)}
               onJumpToBlock={(id) => editorRef.current?.focusBlock(id)}
-              onClose={() => setInspectorOpen(false)}
+              onClose={closeInspector}
               onHistory={() => setHistoryOpen(true)}
+              actions={actions}
               readOnly={readOnly}
+              hideTabs
+              aiRun={aiRun}
+              onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
             />
-            </div>
-          </aside>
+          </div>
         ) : null}
+        </div>
       </div>
       {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} /> : null}
       <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} canRestore={!readOnly} />
+      {meta && !readOnly ? (
+        <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={summary?.title ?? ""} currentParentId={meta.breadcrumbs[meta.breadcrumbs.length - 1]?.id ?? null} />
+      ) : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
     </ViewChrome>
+    </NotePaletteProvider>
+  );
+}
+
+const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
+  { id: "ai", label: "AI", icon: <AiIcon size={16} /> },
+  { id: "insert", label: "Insert", icon: <Plus size={17} /> },
+  { id: "format", label: "Format", icon: <Type size={16} /> },
+  { id: "style", label: "Style", icon: <Paintbrush size={16} /> },
+  { id: "info", label: "Info", icon: <Info size={16} /> },
+];
+
+/**
+ * The page tools, docked at the bottom of the note: Insert, Format, Style and Info. Each opens its panel
+ * floating above the dock (on very wide windows, in the free margin at the bottom right so it never
+ * covers the text column) (pressing it again, Escape or × closes it), so the note keeps the full
+ * width. ⌘⌥I toggles the last panel.
+ */
+function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { tab: InspectorTab; open: boolean; onPick: (t: InspectorTab) => void; buttonRef: (t: InspectorTab, el: HTMLButtonElement | null) => void; /** The page's own actions (comments, share, more), after a divider. */ extra?: React.ReactNode; /** Show the AI tool (off when the person turned the assistant off). */ ai?: boolean }) {
+  return (
+    <div
+      role="toolbar"
+      aria-label="Page tools"
+      className="ui-pop absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-[14px] p-1.5"
+    >
+      {DOCK.filter((d) => ai || d.id !== "ai").map((d) => {
+        const on = open && tab === d.id;
+        return (
+          <button
+            key={d.id}
+            ref={(el) => buttonRef(d.id, el)}
+            type="button"
+            aria-pressed={on}
+            aria-controls={on ? "document-inspector" : undefined}
+            // Keep the editor's selection when opening Format or Insert.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onPick(d.id)}
+            className={`inline-flex h-10 items-center gap-2 rounded-[6px] px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus sm:px-4 ${on ? "bg-heading text-canvas" : "text-ink hover:bg-accent-soft hover:text-heading"}`}
+          >
+            <span aria-hidden>{d.icon}</span>
+            <span className="max-sm:sr-only">{d.label}</span>
+          </button>
+        );
+      })}
+      {extra ? (
+        <>
+          <span aria-hidden className="mx-1 h-6 w-px bg-line" />
+          {extra}
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -389,21 +654,22 @@ function PresenceAvatars({ people }: { people: { profileId: string; name: string
   );
 }
 
-const ICONS = ["📄", "🌿", "✳︎", "☕️", "🧭", "📚", "⛴", "🔁", "🗒", "💡", "🎯", "🌙", "🪴", "🗺", "✏️", "📌", "🧪", "🎨", "🏡", "📷"];
+
 
 function DocumentHeader({
   documentId,
   title,
-  icon,
   cover,
   style,
   revision,
   readOnly,
   onEnter,
+  hasContent = false,
 }: {
   documentId: string;
+  /** The note has body text (so the AI has something to title). */
+  hasContent?: boolean;
   title: string;
-  icon: string | null;
   cover: { kind: string; value?: string };
   style: DocumentStyle;
   revision: number | null;
@@ -413,7 +679,6 @@ function DocumentHeader({
   const { engine } = useAppState();
   const { search } = useAppRouter();
   const [value, setValue] = useState(title);
-  const [iconOpen, setIconOpen] = useState(false);
   // The title we last saved locally; the server value is ignored until it catches up to it.
   const pendingTitle = useRef<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -451,6 +716,10 @@ function DocumentHeader({
   }, [value]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushTitle = useRef<(() => void) | null>(null);
+  const aiOn = useAiEnabled();
+  const { write } = useAi();
+  const toast = useToast();
+  const [suggesting, setSuggesting] = useState(false);
   const save = (next: string) => {
     pendingTitle.current = next;
     if (timer.current) clearTimeout(timer.current);
@@ -477,38 +746,24 @@ function DocumentHeader({
       onHide();
     };
   }, [documentId]);
-  const bg = coverBackground(cover as never, style);
-  return (
-    <header>
-      {bg ? <div className="h-36 rounded-t-[14px] border-b border-line/60 sm:h-44" style={{ background: bg }} aria-hidden /> : <div className="h-10" aria-hidden />}
-      <div className="px-5 sm:px-16">
-        <div className={`relative ${bg ? "-mt-9" : ""}`}>
-          <button
-            type="button"
-            disabled={readOnly}
-            onClick={() => setIconOpen((o) => !o)}
-            aria-label={icon ? `Page icon ${icon}. Change icon` : "Add page icon"}
-            aria-expanded={iconOpen}
-            className={`grid h-[72px] w-[72px] place-items-center rounded-[20px] text-[42px] leading-none transition-transform ${icon ? "ui-raised hover:-translate-y-px" : "ui-btn-secondary text-faint hover:text-heading"} disabled:cursor-default disabled:hover:translate-y-0`}
-          >
-            {icon ?? <span className="text-sm">＋ Icon</span>}
-          </button>
-          {iconOpen ? (
-            <div role="dialog" aria-label="Choose an icon" className="ui-pop absolute left-0 top-full z-30 mt-2 grid w-80 grid-cols-8 gap-1 p-2.5 animate-[folio-rise_160ms_var(--ease-folio)]">
-              {ICONS.map((i) => (
-                <button key={i} type="button" className="grid h-8 w-8 place-items-center rounded-[9px] text-xl transition-transform hover:scale-110 hover:bg-accent-soft" onClick={() => { engine?.updateDocument(documentId, { icon: i }, revision); setIconOpen(false); }} aria-label={`Use ${i}`}>
-                  {i}
-                </button>
-              ))}
-              <button type="button" className="ui-btn ui-btn-quiet col-span-8 mt-1 h-8 text-xs" onClick={() => { engine?.updateDocument(documentId, { icon: null }, revision); setIconOpen(false); }}>
-                Remove icon
-              </button>
-            </div>
-          ) : null}
-        </div>
-        <label htmlFor={`title-${documentId}`} className="sr-only">
-          Title
-        </label>
+  const { url: imageUrl, palette } = useCoverImage(cover as never);
+  const bg = coverBackground(cover as never, style, imageUrl);
+  // With a cover, the title sits on it over a soft shade: white on deep covers, the style's dark ink on
+  // light ones — from how light the band behind the title reads (a person's image: white until known).
+  const art = coverArtOf(cover as never);
+  const onCover = Boolean(bg);
+  const ownImage = (cover as { kind?: string }).kind === "image";
+  const tone = art ? art.tone : ownImage ? (palette?.tone ?? "deep") : null;
+  const lightImage = tone === "light";
+  const whiteTitle = tone === "deep";
+  const titleColor = !onCover || !tone ? undefined : whiteTitle ? "#ffffff" : (art?.ink ?? palette?.ink);
+  const titleField = (
+    <>
+      <label htmlFor={`title-${documentId}`} className="sr-only">
+        Title
+      </label>
+      {/* The page title is the page's h1 (content headings start at h2); editing stays a textarea. */}
+      <h1 aria-label={value || "Untitled"} className="m-0 p-0 font-[inherit] text-[length:inherit]">
         <textarea
           id={`title-${documentId}`}
           ref={titleRef}
@@ -527,15 +782,64 @@ function DocumentHeader({
               onEnter();
             }
           }}
-          className={`mt-4 block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] text-heading outline-none placeholder:text-[var(--color-ink-faint)] ${style.font === "sans" ? "font-sans tracking-[-0.028em]" : style.font === "mono" ? "font-mono text-[34px] tracking-[-0.02em]" : "font-serif tracking-[-0.018em]"}`}
+          style={titleColor ? { color: titleColor, textShadow: whiteTitle ? "0 1px 14px rgb(0 0 0 / 0.4)" : "0 1px 12px rgb(255 255 255 / 0.5)" } : undefined}
+          className={`block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] outline-none ${titleColor ? "placeholder:text-current placeholder:opacity-55" : "text-heading placeholder:text-[var(--color-ink-faint)]"} ${onCover ? "" : "mt-4"} ${style.font === "mono" ? "font-mono text-[34px] tracking-[-0.02em]" : style.font === "rounded" ? "font-rounded tracking-[-0.02em]" : "font-serif tracking-[-0.012em]"}`}
           aria-describedby={readOnly ? `ro-${documentId}` : undefined}
         />
-        {readOnly ? (
-          <p id={`ro-${documentId}`} className="sr-only">
-            This document is read-only for you.
-          </p>
-        ) : null}
-        <div className="mb-4 mt-1" />
+      </h1>
+      {readOnly ? (
+        <p id={`ro-${documentId}`} className="sr-only">
+          This document is read-only for you.
+        </p>
+      ) : null}
+      {/* An untitled note with some writing: the AI can name it. */}
+      {!readOnly && aiOn && hasContent && !value.trim() ? (
+        <button
+          type="button"
+          disabled={suggesting}
+          onClick={async () => {
+            setSuggesting(true);
+            try {
+              const { text } = await write("title", { documentId });
+              if (text && !pendingTitle.current?.trim()) {
+                setValue(text);
+                save(text);
+              }
+            } catch (e) {
+              toast.show(errorMessage(e), { tone: "error" });
+            } finally {
+              setSuggesting(false);
+            }
+          }}
+          className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium backdrop-blur-md transition-colors disabled:opacity-60 ${titleColor ? "bg-black/20 text-white hover:bg-black/30" : "bg-[var(--glass-hover)] text-ink hover:bg-[var(--glass-active)]"}`}
+        >
+          <AiIcon size={13} aria-hidden className={suggesting ? "animate-pulse motion-reduce:animate-none" : ""} />
+          {suggesting ? "Thinking of a title…" : "Suggest a title"}
+        </button>
+      ) : null}
+    </>
+  );
+  return (
+    <header>
+      {onCover ? (
+        <div className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-[6px] border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
+          {/* The style's image under a film grain — dark specks on covers that read deep, white on light ones —
+              with a shade under the title. */}
+          <div aria-hidden data-cover-image="" className="absolute inset-0 -z-10" style={{ background: bg }} />
+          <div aria-hidden data-tone={tone ?? "deep"} className="fb-cover-grain absolute inset-0 -z-10" />
+          {tone ? (
+            <div aria-hidden className="absolute inset-0 -z-10" style={{ background: `linear-gradient(180deg, transparent 35%, ${lightImage ? "rgb(255 255 255 / 0.45)" : "rgb(0 0 0 / 0.4)"})` }} />
+          ) : null}
+          <div className="w-full">{titleField}</div>
+        </div>
+      ) : (
+        <>
+          <div className="h-10" aria-hidden />
+          <div className="px-5 sm:px-16">{titleField}</div>
+        </>
+      )}
+      <div className="px-5 sm:px-16">
+        <div className={onCover ? "mb-2 mt-4" : "mb-4 mt-1"} />
       </div>
     </header>
   );
@@ -557,17 +861,17 @@ function ConflictBanner({ documentId }: { documentId: string }) {
     engine.resolveConflict(c.id, "both", rank);
   };
   return (
-    <section role="alert" aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-[18px] bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
+    <section role="alert" aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-[6px] bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
       <h2 id={`conflict-${c.id}`} className="text-sm font-semibold text-plum-ink">
         {conflicts.length === 1 ? "This block was changed in two places" : `${conflicts.length} blocks were changed in two places`}
       </h2>
       <p className="mt-1 text-sm text-ink">Both versions are kept. Nothing is lost until you choose.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="ui-card rounded-[16px] p-3">
+        <div className="ui-card rounded-[8px] p-3">
           <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : "Version from elsewhere"}</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(c.server)}</p>
         </div>
-        <div className="ui-card rounded-[16px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
+        <div className="ui-card rounded-[8px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
           <p className="ui-caps">Your version</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{text(c.client)}</p>
         </div>
@@ -585,13 +889,13 @@ function ConflictBanner({ documentId }: { documentId: string }) {
           </Button>
         ) : null}
         {conflicts.length > 1 ? (
-          <select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 ui-raised rounded-full px-2 text-xs">
+          <Select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 ui-raised rounded-[6px] px-3 text-xs">
             {conflicts.map((x, i) => (
               <option key={x.id} value={x.id}>
                 Conflict {i + 1}
               </option>
             ))}
-          </select>
+          </Select>
         ) : null}
       </div>
     </section>
@@ -609,8 +913,8 @@ function Backlinks({ documentId }: { documentId: string }) {
       <ul className="mt-2 space-y-1">
         {data.linked.map((l) => (
           <li key={l.id}>
-            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[9px] px-2 py-1 hover:bg-surface">
-              <span aria-hidden>{l.icon ?? "📄"}</span>
+            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[6px] px-2 py-1 hover:bg-surface">
+              <FileText size={14} aria-hidden className="flex-none text-muted" />
               <span className="font-medium">{l.title || "Untitled"}</span>
               <span className="truncate text-xs text-muted">{l.excerpt}</span>
             </AppLink>
@@ -624,8 +928,8 @@ function Backlinks({ documentId }: { documentId: string }) {
           <ul className="mt-2 space-y-1">
             {data.unlinked.map((l) => (
               <li key={l.id}>
-                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[9px] px-2 py-1 hover:bg-surface">
-                  <span aria-hidden>{l.icon ?? "📄"}</span>
+                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[6px] px-2 py-1 hover:bg-surface">
+                  <FileText size={14} aria-hidden className="flex-none text-muted" />
                   <span className="font-medium">{l.title || "Untitled"}</span>
                 </AppLink>
               </li>
@@ -637,7 +941,8 @@ function Backlinks({ documentId }: { documentId: string }) {
   );
 }
 
-function DocumentMenu({
+/** The page's actions — shown in the "…" menu and in Info → Actions. */
+function useDocumentActions({
   documentId,
   title,
   starred,
@@ -649,6 +954,7 @@ function DocumentMenu({
   onHistory,
   onShare,
   onDelete,
+  onMove,
   client,
 }: {
   documentId: string;
@@ -662,8 +968,9 @@ function DocumentMenu({
   onHistory: () => void;
   onShare: () => void;
   onDelete: () => void;
+  onMove: () => void;
   client: ReturnType<typeof useConvex>;
-}) {
+}): (MenuItem | "separator")[] {
   const setStarred = useMutation(api.documents.setStarred);
   const setArchived = useMutation(api.documents.setArchived);
   const trash = useMutation(api.documents.moveToTrash);
@@ -675,7 +982,15 @@ function DocumentMenu({
     p.then(() => toast.show(msg, undo ? { action: { label: "Undo", onClick: undo } } : undefined), (e) => toast.show(errorMessage(e), { tone: "error" }));
   const exportWith = (fn: typeof exportMarkdown, label: string) =>
     fn(client, title, blocks()).then(
-      () => toast.show(`${label} export ready`),
+      (r) => {
+        const n = r.missingAssets.length;
+        if (!n) toast.show(`${label} export ready`);
+        else
+          toast.show(
+            `${label} export ready, but ${n === 1 ? `“${r.missingAssets[0]}” couldn’t be included` : `${n} attachments couldn’t be included`} (not available or not uploaded yet).`,
+            { tone: "error", duration: 10_000 },
+          );
+      },
       (e) => toast.show(errorMessage(e), { tone: "error" }),
     );
   const items = inTrash
@@ -689,6 +1004,7 @@ function DocumentMenu({
           : { label: "Star", icon: <Star size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Starred") },
         { label: "Share…", icon: <Share2 size={14} />, onSelect: onShare },
         { label: "Version history…", icon: <History size={14} />, onSelect: onHistory },
+        { label: "Move to page…", icon: <FolderInput size={14} />, disabled: !canManage, onSelect: onMove },
         "separator" as const,
         { label: "Export as Markdown", icon: <FileText size={14} />, onSelect: () => void exportWith(exportMarkdown, "Markdown") },
         { label: "Export as HTML", icon: <FileCode size={14} />, onSelect: () => void exportWith(exportHtml, "HTML") },
@@ -707,6 +1023,6 @@ function DocumentMenu({
           onSelect: () => void act(trash({ documentId }), "Moved to Trash", () => void restore({ documentId })),
         },
       ];
-  return <MenuButton label="Document actions" trigger={<MoreHorizontal size={16} aria-hidden />} items={items} />;
+  return items;
 }
 

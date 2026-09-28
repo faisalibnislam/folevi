@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 109 109">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2c33"/><stop offset="1" stop-color="#0b0b0e"/></linearGradient>
+    <radialGradient id="glow" cx="0.2" cy="0.1" r="0.8"><stop offset="0" stop-color="#fff" stop-opacity="0.12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="body" gradientUnits="userSpaceOnUse" x1="22" y1="18" x2="78" y2="104"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c6c8d1"/></linearGradient>
+    <linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="20" y1="19" x2="74" y2="104">
+      <stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="0.3" stop-color="#fff" stop-opacity="0.12"/>
+      <stop offset="0.75" stop-color="#fff" stop-opacity="0.04"/><stop offset="1" stop-color="#fff" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="glossTop" gradientUnits="userSpaceOnUse" x1="0" y1="19.4" x2="0" y2="29"><stop offset="0" stop-color="#fff" stop-opacity="0.9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="glossBar" gradientUnits="userSpaceOnUse" x1="0" y1="53.6" x2="0" y2="61"><stop offset="0" stop-color="#fff" stop-opacity="0.9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="glossStem" gradientUnits="userSpaceOnUse" x1="20.4" y1="0" x2="27" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0.63"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="glyph"><path d="M118 19.4648V34.9625H40.1279C37.8455 34.9625 35.9952 36.8127 35.9952 39.0952V118H20.4976V25.6639C20.4976 22.2402 23.273 19.4648 26.6966 19.4648H118Z"/><path d="M69.8391 53.6592C71.5509 53.6592 72.9386 55.0469 72.9386 56.7587V66.0573C72.9386 67.7691 71.5509 69.1568 69.8391 69.1568H51.4931C49.7813 69.1568 48.3936 67.7691 48.3936 66.0573V56.7587C48.3936 55.0469 49.7813 53.6592 51.4931 53.6592L69.8391 53.6592Z"/></clipPath>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur stdDeviation="2.6"/></filter>
+    <filter id="contact" x="-10%" y="-10%" width="120%" height="130%"><feGaussianBlur stdDeviation="0.8"/></filter>
+  </defs>
+  <rect width="109" height="109" fill="url(#bg)"/>
+  <rect width="109" height="109" fill="url(#glow)"/>
+  <g fill="#000" opacity="0.6" transform="translate(0 3.2)" filter="url(#soft)"><path d="M118 19.4648V34.9625H40.1279C37.8455 34.9625 35.9952 36.8127 35.9952 39.0952V118H20.4976V25.6639C20.4976 22.2402 23.273 19.4648 26.6966 19.4648H118Z"/><path d="M69.8391 53.6592C71.5509 53.6592 72.9386 55.0469 72.9386 56.7587V66.0573C72.9386 67.7691 71.5509 69.1568 69.8391 69.1568H51.4931C49.7813 69.1568 48.3936 67.7691 48.3936 66.0573V56.7587C48.3936 55.0469 49.7813 53.6592 51.4931 53.6592L69.8391 53.6592Z"/></g>
+  <g fill="#000" opacity="0.7" transform="translate(0 0.9)" filter="url(#contact)"><path d="M118 19.4648V34.9625H40.1279C37.8455 34.9625 35.9952 36.8127 35.9952 39.0952V118H20.4976V25.6639C20.4976 22.2402 23.273 19.4648 26.6966 19.4648H118Z"/><path d="M69.8391 53.6592C71.5509 53.6592 72.9386 55.0469 72.9386 56.7587V66.0573C72.9386 67.7691 71.5509 69.1568 69.8391 69.1568H51.4931C49.7813 69.1568 48.3936 67.7691 48.3936 66.0573V56.7587C48.3936 55.0469 49.7813 53.6592 51.4931 53.6592L69.8391 53.6592Z"/></g>
+  <g fill="url(#body)"><path d="M118 19.4648V34.9625H40.1279C37.8455 34.9625 35.9952 36.8127 35.9952 39.0952V118H20.4976V25.6639C20.4976 22.2402 23.273 19.4648 26.6966 19.4648H118Z"/><path d="M69.8391 53.6592C71.5509 53.6592 72.9386 55.0469 72.9386 56.7587V66.0573C72.9386 67.7691 71.5509 69.1568 69.8391 69.1568H51.4931C49.7813 69.1568 48.3936 67.7691 48.3936 66.0573V56.7587C48.3936 55.0469 49.7813 53.6592 51.4931 53.6592L69.8391 53.6592Z"/></g>
+  <g clip-path="url(#glyph)">
+    <rect x="0" y="19.4" width="109" height="10" fill="url(#glossTop)"/>
+    <rect x="48" y="53.6" width="26" height="8" fill="url(#glossBar)"/>
+    <rect x="20.4" y="19" width="7" height="90" fill="url(#glossStem)"/>
+    <g fill="none" stroke="url(#rim)" stroke-width="2"><path d="M118 19.4648V34.9625H40.1279C37.8455 34.9625 35.9952 36.8127 35.9952 39.0952V118H20.4976V25.6639C20.4976 22.2402 23.273 19.4648 26.6966 19.4648H118Z"/><path d="M69.8391 53.6592C71.5509 53.6592 72.9386 55.0469 72.9386 56.7587V66.0573C72.9386 67.7691 71.5509 69.1568 69.8391 69.1568H51.4931C49.7813 69.1568 48.3936 67.7691 48.3936 66.0573V56.7587C48.3936 55.0469 49.7813 53.6592 51.4931 53.6592L69.8391 53.6592Z"/></g>
+  </g></svg>

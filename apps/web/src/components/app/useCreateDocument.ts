@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback } from "react";
-import { ulid, DEFAULT_DOCUMENT_STYLE, DEFAULT_COVER } from "@folevi/editor-schema";
+import { ulid, DEFAULT_DOCUMENT_STYLE, DEFAULT_COVER, randomNoteCover } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
+import { openNextInNewTab } from "@/lib/app/tabs";
 
 /**
  * Creates a document through the sync engine (works offline: the create is queued durably and the
@@ -24,11 +25,16 @@ export function useCreateDocument() {
         title: opts.title ?? "",
         icon: null,
         style: DEFAULT_DOCUMENT_STYLE,
-        cover: DEFAULT_COVER,
+        // Every new note starts with a random note style (templates stay plain).
+        cover: (opts.kind ?? "document") === "document" ? randomNoteCover() : DEFAULT_COVER,
         templateId: opts.templateId ?? null,
       });
       await engine.persisted();
-      if (opts.navigateTo !== false) navigate(`/d/${id}?new=1`);
+      if (opts.navigateTo !== false) {
+        // A new top-level page opens in its own tab; a nested one stays in the note's tab.
+        if (!opts.parentDocumentId) openNextInNewTab();
+        navigate(`/d/${id}?new=1`);
+      }
       return id;
     },
     [engine, navigate],

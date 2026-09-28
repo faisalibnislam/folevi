@@ -8,7 +8,10 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { randomToken, sha256Hex } from "./lib/crypto";
 import { vWorkspaceRole } from "./lib/validators";
-import { createWorkspace } from "./seed";
+import { createWorkspace, PERSONAL_WORKSPACE_NAME } from "./seed";
+import { claimIdentityImage, deleteIdentityImage, workspaceLabel, workspaceLogoUrl } from "./lib/identityImages";
+import { isFeatureEnabled } from "./lib/flags";
+import { notifyAccessChange } from "./lib/notify";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[a-z]{2,}$/i;
@@ -25,11 +28,16 @@ export const mine = query({
     for (const m of memberships) {
       const w = await ctx.db.get(m.workspaceId);
       if (!w || w.status === "deleting") continue;
+      // Someone else's personal workspace is told apart by its owner's name ("Personal · Ada").
+      const owner = w.kind === "personal" && w.ownerId !== profile._id ? await ctx.db.get(w.ownerId) : null;
       out.push({
         id: w.publicId,
         name: w.name,
         kind: w.kind,
         icon: w.icon ?? null,
+        ownerName: owner?.displayName ?? null,
+        /** Team: the workspace logo. Personal: the owner's profile picture. */
+        logoUrl: await workspaceLogoUrl(ctx, w),
         role: m.role,
         status: w.status,
         isDefault: profile.defaultWorkspaceId === w._id,
@@ -95,7 +103,42 @@ export const rename = mutation({
     const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "admin");
     const name = args.name.trim().slice(0, 80);
     if (!name) fail("invalid_argument", "Give the workspace a name.");
+    // Everyone's personal workspace has the same fixed name (the icon can still change).
+    if (workspace.kind === "personal" && name !== PERSONAL_WORKSPACE_NAME) fail("invalid_argument", "Your personal workspace is always called Personal.");
     await ctx.db.patch(workspace._id, { name, icon: args.icon?.slice(0, 16) ?? workspace.icon, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+/**
+ * Sets a team workspace's logo to an image just uploaded with `files.generateUploadUrl` (kind "logo").
+ * Owners and admins only; the previous logo is deleted. Personal workspaces use the owner's avatar.
+ */
+export const setLogo = mutation({
+  args: { workspaceId: v.string(), fileId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "admin");
+    if (workspace.kind !== "team") fail("invalid_argument", "Your personal workspace uses your profile picture.");
+    const file = await claimIdentityImage(ctx, profile, args.fileId, "logo", workspace._id);
+    const previous = workspace.logoFileId;
+    await ctx.db.patch(workspace._id, { logoFileId: file._id, updatedAt: Date.now() });
+    if (previous && previous !== file._id) await deleteIdentityImage(ctx, previous);
+    return null;
+  },
+});
+
+export const removeLogo = mutation({
+  args: { workspaceId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "admin");
+    if (!workspace.logoFileId) return null;
+    const previous = workspace.logoFileId;
+    await ctx.db.patch(workspace._id, { logoFileId: undefined, updatedAt: Date.now() });
+    await deleteIdentityImage(ctx, previous);
     return null;
   },
 });
@@ -107,11 +150,15 @@ export const invite = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { workspace, member } = await requireWorkspace(ctx, profile, args.workspaceId, "admin");
+    // Platform switch (admin console → Feature flags → workspace_invites).
+    if (!(await isFeatureEnabled(ctx, "workspace_invites"))) fail("forbidden", "Inviting people is turned off for now. Try again later.");
     await consume(ctx, "invite", profile._id);
     const email = args.email.trim().toLowerCase();
     if (!EMAIL_RE.test(email) || email.length > 254) fail("invalid_argument", "Enter a valid email address.");
-    if (args.role === "owner") fail("invalid_argument", "Transfer ownership instead of inviting an owner.");
+    if (args.role === "owner") fail("invalid_argument", "Invite them first, then transfer ownership from the member list.");
     if (args.role === "admin" && member.role !== "owner") fail("forbidden", "Only the owner can invite admins.");
+    if (email === profile.email) fail("invalid_argument", "You’re already in this workspace.");
+    const label = await workspaceLabel(ctx, workspace);
     const count = await ctx.db
       .query("workspaceMembers")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
@@ -122,7 +169,7 @@ export const invite = mutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
     if (existingProfile && (await membership(ctx, existingProfile._id, workspace._id))) {
-      fail("invalid_argument", "That person is already a member.");
+      fail("invalid_argument", `${existingProfile.displayName || email} is already a member of ${label}.`);
     }
     const prior = await ctx.db
       .query("workspaceInvites")
@@ -150,17 +197,18 @@ export const invite = mutation({
         kind: "invite",
         actorId: profile._id,
         inviteId,
-        title: `${profile.displayName} invited you to ${workspace.name}`,
+        title: `${profile.displayName} invited you to ${label}`,
         createdAt: now,
       });
     }
     await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
       key: "workspace_invite",
-      to: email,
+      // Existing accounts get the mail through their profile so the "Invitations" email preference is honored.
+      ...(existingProfile ? { profileId: existingProfile._id } : { to: email }),
       idempotencyKey: `invite:${publicId}`,
       dataVariables: {
         inviterName: profile.displayName,
-        workspaceName: workspace.name,
+        workspaceName: label,
         role: args.role,
         acceptUrl: `${process.env.FOLEVI_APP_URL ?? "https://app.folevi.com"}/invite/${token}`,
         expiresInDays: 7,
@@ -201,7 +249,7 @@ export const previewInvite = query({
     const inviter = await ctx.db.get(found.invitedBy);
     return {
       valid: true as const,
-      workspaceName: workspace?.name ?? "a workspace",
+      workspaceName: workspace ? await workspaceLabel(ctx, workspace) : "a workspace",
       inviterName: inviter?.displayName ?? "Someone",
       role: found.role,
       emailMatches: found.email === profile.email,
@@ -261,6 +309,7 @@ export const changeRole = mutation({
     if (target.role === "owner" || args.role === "owner") fail("forbidden", "Ownership can't be changed here.");
     if ((args.role === "admin" || target.role === "admin") && member.role !== "owner") fail("forbidden", "Only the owner can change admins.");
     await ctx.db.patch(target._id, { role: args.role });
+    await notifyAccessChange(ctx, { recipientId: target.profileId, actor: profile, change: { type: "workspace_role", workspace, role: args.role } });
     return null;
   },
 });
@@ -283,6 +332,36 @@ export const removeMember = mutation({
       .withIndex("by_profile", (q) => q.eq("profileId", target.profileId))
       .collect();
     for (const g of grants) if (g.workspaceId === workspace._id) await ctx.db.delete(g._id);
+    if (!leaving) await notifyAccessChange(ctx, { recipientId: target.profileId, actor: profile, change: { type: "workspace_removed", workspace } });
+    return null;
+  },
+});
+
+/**
+ * Hands a team workspace to another member. The new owner must already be a member; the previous
+ * owner stays on as an admin. Personal workspaces can't change hands.
+ */
+export const transferOwnership = mutation({
+  args: { workspaceId: v.string(), profileId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { workspace, member } = await requireWorkspace(ctx, profile, args.workspaceId, "owner");
+    if (workspace.kind === "personal") fail("invalid_argument", "A personal workspace can't be transferred.");
+    const targetId = ctx.db.normalizeId("profiles", args.profileId);
+    if (!targetId || targetId === profile._id) fail("invalid_argument", "Choose another member.");
+    const target = await membership(ctx, targetId, workspace._id);
+    const targetProfile = await ctx.db.get(targetId);
+    if (!target || !targetProfile || targetProfile.status !== "active") fail("not_found", "Member not found.");
+    const owned = await ctx.db
+      .query("workspaces")
+      .withIndex("by_owner", (q) => q.eq("ownerId", targetId))
+      .collect();
+    if (owned.filter((w) => w.status !== "deleting").length >= 10) fail("limit_exceeded", `${targetProfile.displayName} already owns 10 workspaces.`);
+    await ctx.db.patch(target._id, { role: "owner" });
+    await ctx.db.patch(member._id, { role: "admin" });
+    await ctx.db.patch(workspace._id, { ownerId: targetId, updatedAt: Date.now() });
+    await notifyAccessChange(ctx, { recipientId: targetId, actor: profile, change: { type: "workspace_role", workspace, role: "owner" } });
     return null;
   },
 });

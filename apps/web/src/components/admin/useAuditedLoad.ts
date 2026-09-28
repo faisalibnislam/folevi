@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { newRequestId } from "./request";
+import { requestMeta } from "./request";
 
 /**
- * Runs an audited read (a Convex *mutation* such as `admin.viewUser`) once per `key`. Each call is
+ * Runs an audited read (a Convex *mutation* such as `admin.viewUser`) once per `key`, passing the
+ * request id and client hint recorded in the audit entry. Each call is
  * one audit entry, so the hook deliberately de-duplicates React's development double effects and
  * only re-runs when the key changes or `refresh()` is called (e.g. after an action).
  */
-export function useAuditedLoad<T>(key: string | null, run: (requestId: string) => Promise<T>) {
+export function useAuditedLoad<T>(key: string | null, run: (meta: { requestId: string; clientHash?: string }) => Promise<T>) {
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ export function useAuditedLoad<T>(key: string | null, run: (requestId: string) =
     setLoading(true);
     setError(null);
     try {
-      const result = await runRef.current(newRequestId());
+      const result = await runRef.current(await requestMeta());
       if (mine === seq.current) setData(result);
     } catch (err) {
       if (mine === seq.current) setError(err);

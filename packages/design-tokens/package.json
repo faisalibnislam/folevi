@@ -7,13 +7,16 @@
     "./tokens.json": "./src/tokens.json",
     "./tokens.css": "./generated/tokens.css",
     ".": "./generated/tokens.ts",
-    "./covers.json": "./covers/covers.json"
+    "./covers.json": "./covers/covers.json",
+    "./palette": "./src/palette.ts",
+    "./folder-colors.json": "./covers/folder-colors.json"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node scripts/build.mjs --check && node scripts/contrast.mjs",
     "typecheck": "node scripts/build.mjs --check",
     "lint": "node scripts/contrast.mjs",
-    "covers": "node scripts/covers.mjs"
+    "covers": "node scripts/covers.mjs",
+    "brand-icons": "node scripts/brand-icons.mjs"
   }
 }

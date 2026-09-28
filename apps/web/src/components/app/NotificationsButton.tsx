@@ -1,18 +1,21 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
+import { useTopLayer } from "@/components/ui/topLayer";
 import { Bell } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
+import { t } from "@/i18n";
 
 export function NotificationsButton() {
   const unread = useQuery(api.notifications.unreadCount, {});
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelStyle = useTopLayer(open, panelRef, buttonRef, { align: "start" });
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -36,16 +39,16 @@ export function NotificationsButton() {
       <button
         ref={buttonRef}
         type="button"
-        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={t("notifications.button.label", { count: unread ?? 0 })}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="relative grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:w-11"
+        className="relative grid h-8 w-8 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:w-11"
       >
         <Bell size={16} aria-hidden />
         {unread ? <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-coral" aria-hidden /> : null}
       </button>
       {open ? (
-        <div ref={panelRef} className="absolute left-0 z-50 mt-1 w-80">
+        <div ref={panelRef} popover="manual" style={panelStyle} className="z-[100] w-80 max-w-[calc(100vw-1rem)] border-0 bg-transparent p-0 text-ink">
           <NotificationPanel onClose={() => setOpen(false)} />
         </div>
       ) : null}
@@ -60,7 +63,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
   const { navigate } = useAppRouter();
   const toast = useToast();
   return (
-    <section role="dialog" aria-label="Notifications" className="ui-card rounded-[18px] shadow-[var(--shadow-pop)]">
+    <section role="dialog" aria-label="Notifications" className="ui-card rounded-[8px] shadow-[var(--shadow-pop)]">
       <header className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <h2 className="text-sm font-semibold">Notifications</h2>
         <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => void markRead({})}>
@@ -90,6 +93,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
                 </button>
                 {n.body ? <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.body}</p> : null}
                 <p className="mt-0.5 text-[11px] text-faint">{formatRelative(n.createdAt)}</p>
+                {n.fileId ? <DownloadFile fileId={n.fileId} /> : null}
                 {n.kind === "invite" && n.inviteId ? (
                   <button
                     type="button"
@@ -111,5 +115,29 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+/** A download for a file delivered to you (an export prepared at your request). Signed link fetched on click. */
+function DownloadFile({ fileId }: { fileId: string }) {
+  const convex = useConvex();
+  const toast = useToast();
+  return (
+    <button
+      type="button"
+      className="mt-1.5 ui-btn ui-btn-secondary px-2.5 py-1 text-xs font-medium"
+      onClick={async () => {
+        try {
+          const urls = await convex.query(api.files.urls, { fileIds: [fileId], now: Math.floor(Date.now() / 3_600_000) * 3_600_000 });
+          const url = urls[fileId]?.url;
+          if (!url) return toast.show("That download has expired.", { tone: "error" });
+          window.location.assign(url);
+        } catch (e) {
+          toast.show(errorMessage(e), { tone: "error" });
+        }
+      }}
+    >
+      Download
+    </button>
   );
 }

@@ -57,13 +57,41 @@ type SyncOp =
 ```
 
 `fields` states what the client changed relative to `baseRevision`. `baseRevision: null` means "create".
+`WireDocumentCreate` may carry an optional `workspaceId` (see *Routing*).
+
+## Routing
+
+A batch is sent as `sync.push({ workspaceId, deviceId, ops })`. The `workspaceId` is only the batch's
+**routing workspace**; it does not scope the batch:
+
+- `block.*` and `document.update` ops are authorized against **the document they touch** (its
+  workspace role or an explicit grant — see `documentAccess`). One batch may mix documents from several
+  workspaces, so a person editing a page shared from another workspace ("Can edit" grant, no
+  membership) or opened from a deep link while another workspace is selected uses the same queue.
+  Every accepted change stamps the **document's** workspace `changeSeq`.
+- `document.create` goes, in order of precedence: under `parentDocumentId` (a nested page always lives
+  in its parent's workspace; the caller needs write access to the parent), else into
+  `document.workspaceId`, else into the routing workspace. In every case the caller must be an editor
+  (or higher) **member** of that workspace — a grant on one page never lets a guest add pages to
+  someone else's workspace (`forbidden`). An unknown workspace or one the caller doesn't belong to →
+  `not_found` (existence isn't revealed).
+- `document.update` may only re-parent a page under a page of the same workspace.
+- If the caller isn't a member of the routing workspace (e.g. removed since the ops were queued), the
+  batch still runs: each op succeeds or is rejected on its own merits. Nothing is thrown for the batch.
+
+Clients keep **one durable queue per account**, not per workspace. The web client stamps each queued
+`document.create` without a parent with the workspace selected when it was queued, so switching
+workspaces before the op syncs can't change where the page lands. (Older web builds kept one queue per
+workspace id; on first open they are folded into the account queue in a single IndexedDB transaction,
+preserving per-queue order and stamping their creates with their workspace.)
 
 ## Server rules (`convex/sync.ts#applyOperations`)
 
 For each operation, in order, inside one mutation per batch (max 100 ops):
 
-1. **Authorize** the caller for write access on the document (derived server-side from the JWT
-   subject; client-supplied user/workspace ids are never trusted).
+1. **Authorize** the caller for write access on the document the op touches (derived server-side from
+   the JWT subject and the document's own workspace/grants; client-supplied user/workspace ids are never
+   trusted — see *Routing*).
 2. **Idempotency**: if `syncOperations` already contains `opId` for this user, return the stored result
    with status `duplicate` and the current entity state. No other effect.
 3. **Validate** the block against the canonical schema (known types) and the limits. Unknown types from
@@ -100,7 +128,17 @@ type OpResult = {
 ```
 
 Errors that apply to the whole batch (unauthenticated, suspended account, maintenance mode) are thrown
-as `ConvexError({ code })` and the client keeps every op pending.
+as `ConvexError({ code })` and the client keeps every op pending. Workspace-level problems (not a
+member, workspace suspended, template disabled by an admin) are per-op `rejected` results.
+
+### Derived label caches
+
+Pages that link to a document cache its title: page blocks in `props.titleCache`/`props.iconCache`,
+inline links in the `pageLink` node's `label` (including table cells). When a `document.update`
+changes the title or icon, the server rewrites those caches in every linking block (found through the
+backlink index) in the same mutation. The rewrite bumps the block's `revision` and `seq` — clients
+receive it like any remote change — but **not** `contentRev`, because it is derived data: it never
+turns someone's concurrent edit of that block into a conflict.
 
 ## Client rules (`packages/editor-schema/src/sync.ts`)
 
@@ -142,7 +180,7 @@ The client state is `{ entities, pending, inflight, conflicts, status }`, persis
 
 ## Pull
 
-`sync.pull({ workspaceId, cursor, limit })` returns rows (documents and blocks, including tombstones)
+`sync.pull({ workspaceId, cursor, limit })` is per workspace (members only) and returns rows (documents and blocks, including tombstones)
 with `seq > cursor` ordered by `seq`, plus `nextCursor` and `hasMore`. Because each accepted mutation
 reads and writes the workspace `changeSeq`, Convex's serializable transactions guarantee sequence
 numbers are assigned in commit order; a cursor can never skip a committed change. The Mac app

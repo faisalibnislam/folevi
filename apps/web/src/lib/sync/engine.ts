@@ -2,9 +2,9 @@
 
 import type { ConvexReactClient } from "convex/react";
 import { ConvexError } from "convex/values";
-import { sync, type ChangedField, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, ulid } from "@folevi/editor-schema";
+import { randomNoteEmoji, sync, type ChangedField, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
-import { localDb } from "./db";
+import { ACCOUNT_SYNC_KEY, localDb } from "./db";
 
 export type EngineEvent =
   | { type: "state" }
@@ -15,9 +15,15 @@ export type EngineEvent =
 type Listener = (e: EngineEvent) => void;
 
 /**
- * One engine per (account, workspace). Implements the client side of docs/SYNC_PROTOCOL.md on top of
- * the shared reducer: every local change is applied optimistically and persisted to IndexedDB before
- * any network call; batches go to `sync.push` in order; results are reconciled; failures keep ops.
+ * One engine per account. Implements the client side of docs/SYNC_PROTOCOL.md on top of the shared
+ * reducer: every local change is applied optimistically and persisted to IndexedDB before any network
+ * call; batches go to `sync.push` in order; results are reconciled; failures keep ops.
+ *
+ * The queue is account-wide, not per workspace: a page shared from another workspace (or opened from a
+ * deep link while a different workspace is selected) is edited through the same durable queue, and the
+ * server authorizes every op against the document it touches (§Routing). The selected workspace only
+ * routes new top-level pages, and each `document.create` is stamped with it when queued so switching
+ * workspaces before it syncs can't move it.
  */
 export class SyncEngine {
   state: SyncState = sync.emptySyncState();
@@ -29,17 +35,29 @@ export class SyncEngine {
   lastError: string | null = null;
   private editing = new Set<string>();
 
+  private _workspaceId: string;
+
   private constructor(
     private client: ConvexReactClient,
     private accountKey: string,
-    readonly workspaceId: string,
+    workspaceId: string,
     readonly deviceId: string,
-  ) {}
+  ) {
+    this._workspaceId = workspaceId;
+  }
+
+  /** The selected workspace: where new top-level pages are created (the batch's routing workspace). */
+  get workspaceId(): string {
+    return this._workspaceId;
+  }
+
+  setWorkspace(workspaceId: string) {
+    this._workspaceId = workspaceId;
+  }
 
   static async open(client: ConvexReactClient, accountKey: string, workspaceId: string, deviceId: string): Promise<SyncEngine> {
     const engine = new SyncEngine(client, accountKey, workspaceId, deviceId);
-    const db = await localDb(accountKey);
-    const saved = await db.get("syncState", workspaceId);
+    const saved = await loadAccountState(accountKey);
     if (saved) {
       // Anything in flight when the page closed may or may not have landed: resend (ops are idempotent).
       engine.state = { ...sync.emptySyncState(), ...saved, pending: [...saved.inflight, ...saved.pending], inflight: [] };
@@ -63,7 +81,7 @@ export class SyncEngine {
     this.persistChain = this.persistChain
       .then(async () => {
         const db = await localDb(this.accountKey);
-        await db.put("syncState", snapshot, this.workspaceId);
+        await db.put("syncState", snapshot, ACCOUNT_SYNC_KEY);
       })
       .catch(() => undefined);
     this.emit({ type: "state" });
@@ -136,7 +154,11 @@ export class SyncEngine {
 
   createDocument(document: WireDocumentCreate): string {
     const opId = ulid();
-    this.commit({ ...this.state, pending: [...this.state.pending, { opId, kind: "document.create", document }] });
+    // Pin the target workspace now; a nested page always follows its parent (server-side).
+    // Every note has an icon: a new one starts with a random emoji (shown right away, even offline).
+    const withIcon: WireDocumentCreate = document.icon ? document : { ...document, icon: randomNoteEmoji() };
+    const routed: WireDocumentCreate = withIcon.parentDocumentId || withIcon.workspaceId ? withIcon : { ...withIcon, workspaceId: this._workspaceId };
+    this.commit({ ...this.state, pending: [...this.state.pending, { opId, kind: "document.create", document: routed }] });
     this.scheduleFlush();
     return opId;
   }
@@ -218,6 +240,35 @@ export class SyncEngine {
     return this.state.blocks[blockId]?.serverRevision ?? null;
   }
 
+  /**
+   * Resolves once a document created on this device exists on the server (its queued `document.create`
+   * has been acknowledged). Server-only features on a brand-new page — e.g. creating a collection hosted
+   * by it — await this instead of failing with "Document not found". Rejects when offline, when the create
+   * is rejected, or after `timeoutMs`.
+   */
+  whenDocumentOnServer(documentId: string, timeoutMs = 20_000): Promise<void> {
+    const queued = () => [...this.state.inflight, ...this.state.pending].find((op) => op.kind === "document.create" && op.document.id === documentId);
+    const op = queued();
+    if (!op) return Promise.resolve();
+    if (this.state.connection === "offline") return Promise.reject(new Error("You’re offline. This page needs to sync before you can add that here."));
+    return new Promise<void>((resolve, reject) => {
+      const done = (error?: Error) => {
+        clearTimeout(timer);
+        unsubscribe();
+        if (error) reject(error);
+        else resolve();
+      };
+      const timer = setTimeout(() => done(new Error("This page hasn’t synced yet. Try again in a moment.")), timeoutMs);
+      const unsubscribe = this.subscribe((e) => {
+        if (e.type === "document-result" && e.opId === op.opId) {
+          if (e.result.status === "applied" || e.result.status === "duplicate") done();
+          else done(new Error(e.result.error?.message ?? "This page couldn’t be saved."));
+        } else if (e.type === "state" && !queued()) done();
+      });
+      this.scheduleFlush(0);
+    });
+  }
+
   hasLocalWork(documentId: string): boolean {
     return [...this.state.pending, ...this.state.inflight].some((op) => ("documentId" in op ? op.documentId === documentId : false));
   }
@@ -252,7 +303,7 @@ export class SyncEngine {
         let results: (OpResult & { document?: unknown })[];
         try {
           results = (await withTimeout(
-            this.client.mutation(api.sync.push, { workspaceId: this.workspaceId, deviceId: this.deviceId, ops: batched.inflight as never }),
+            this.client.mutation(api.sync.push, { workspaceId: this._workspaceId, deviceId: this.deviceId, ops: batched.inflight as never }),
             45_000,
           )) as (OpResult & { document?: unknown })[];
         } catch (error) {
@@ -303,4 +354,49 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       },
     );
   });
+}
+
+/**
+ * Reads the account-wide sync state, first folding in any per-workspace states written by older builds
+ * (they were keyed by workspace id). The fold happens in one IndexedDB transaction, so a crash leaves
+ * either the old keys or the merged state — never neither. Legacy `document.create` ops are stamped
+ * with the workspace they were queued in, preserving where they land.
+ */
+async function loadAccountState(accountKey: string): Promise<SyncState | undefined> {
+  const db = await localDb(accountKey);
+  const tx = db.transaction("syncState", "readwrite");
+  const keys = (await tx.store.getAllKeys()).filter((k) => k !== ACCOUNT_SYNC_KEY);
+  let merged = await tx.store.get(ACCOUNT_SYNC_KEY);
+  for (const key of keys) {
+    const legacy = await tx.store.get(key);
+    if (legacy) merged = mergeSyncStates(merged, legacy, key);
+    await tx.store.delete(key);
+  }
+  if (keys.length && merged) await tx.store.put(merged, ACCOUNT_SYNC_KEY);
+  await tx.done;
+  return merged;
+}
+
+/** Folds a legacy per-workspace state into the account state. Exported for tests. */
+export function mergeSyncStates(base: SyncState | undefined, legacy: SyncState, legacyWorkspaceId: string): SyncState {
+  const stamp = (op: SyncOp): SyncOp =>
+    op.kind === "document.create" && !op.document.parentDocumentId && !op.document.workspaceId
+      ? { ...op, document: { ...op.document, workspaceId: legacyWorkspaceId } }
+      : op;
+  const into = base ?? sync.emptySyncState();
+  const blocks = { ...legacy.blocks, ...into.blocks };
+  const seenConflicts = new Set(into.conflicts.map((c) => c.id));
+  const seenUploads = new Set(into.uploads.map((u) => u.uploadId));
+  const seenErrors = new Set(into.errors.map((e) => e.opId));
+  return {
+    ...into,
+    blocks,
+    // In-flight ops of either state are resent first (idempotent); per-document order is preserved.
+    pending: [...into.inflight, ...into.pending, ...[...legacy.inflight, ...legacy.pending].map(stamp)],
+    inflight: [],
+    conflicts: [...into.conflicts, ...legacy.conflicts.filter((c) => !seenConflicts.has(c.id))],
+    errors: [...into.errors, ...legacy.errors.filter((e) => !seenErrors.has(e.opId))],
+    uploads: [...into.uploads, ...legacy.uploads.filter((u) => !seenUploads.has(u.uploadId))],
+    authRequired: into.authRequired || legacy.authRequired,
+  };
 }

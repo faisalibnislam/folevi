@@ -6,7 +6,7 @@ import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Terms",
-  description: "A plain-language draft of the terms for using Folevi during the preview. Pending legal review.",
+  description: "A plain-language draft of the terms for using Folevi. Pending legal review.",
   path: "/terms",
 });
 
@@ -80,8 +80,10 @@ export default function TermsPage() {
 
         <h2 id="price">Price</h2>
         <p>
-          Folevi is free during the preview. If we introduce paid plans, we’ll tell preview accounts well in advance, and
-          nothing you’ve created will be held back behind a payment — you’ll always be able to export it.
+          Folevi has a Free plan and paid plans (Basic and Pro), billed monthly or yearly in advance; prices are on the{" "}
+          <Link href="/pricing">pricing page</Link>. New accounts get a free Pro trial that ends without charge. You can cancel
+          a paid plan at any time; it keeps working until the end of the period you paid for. Nothing you’ve created is
+          ever held back behind a payment — you can always export it.
         </p>
 
         <h2 id="ending">Ending</h2>

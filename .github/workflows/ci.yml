@@ -94,6 +94,90 @@ jobs:
             convex.log
             web.log
 
+  e2e-production:
+    name: End-to-end against a production build (service worker, headers)
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start a local, account-free Convex backend
+        run: |
+          CONVEX_AGENT_MODE=anonymous npx convex dev --once --typecheck=disable
+          (CONVEX_AGENT_MODE=anonymous npx convex dev --typecheck=disable > convex.log 2>&1 &)
+          sleep 10
+          node scripts/setup-local.mjs
+      - run: pnpm --filter @folevi/web exec playwright install --with-deps chromium
+      - name: Build and start the production web app
+        # `next build` reads apps/web/.env.local written by setup-local, so the build talks to the local backend.
+        run: |
+          pnpm --filter @folevi/web build
+          (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
+          npx wait-on http://localhost:3000 --timeout 120000
+      - name: Playwright (production-only checks + offline flows)
+        run: pnpm --filter @folevi/web exec playwright test production.spec.ts offline.spec.ts
+        env:
+          E2E_NO_SERVER: "1"
+          E2E_PRODUCTION: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-production
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            convex.log
+            web.log
+
+  record-deployment:
+    name: Record deployment in the admin console
+    # Runs for pushes to main after checks pass. Skipped (successfully) when no deploy key is configured.
+    # Set the CONVEX_DEPLOY_KEY repository secret (Convex dashboard → Settings → Deploy keys) for the
+    # deployment this branch ships to; see docs/DEPLOYMENT.md.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [checks, e2e]
+    timeout-minutes: 10
+    env:
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+      FOLEVI_DEPLOY_ENVIRONMENT: ${{ vars.FOLEVI_DEPLOY_ENVIRONMENT || 'production' }}
+    steps:
+      - name: Check for a deploy key
+        id: key
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "No CONVEX_DEPLOY_KEY secret; skipping deployment record."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.present == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.key.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.present == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: steps.key.outputs.present == 'true'
+      - name: Record deployment
+        if: steps.key.outputs.present == 'true'
+        # The commit message is passed through the environment and JSON-encoded by Node, never
+        # interpolated into the shell command.
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          ARGS=$(node -e 'const m=(process.env.COMMIT_MESSAGE||"").split("\n")[0].slice(0,200); process.stdout.write(JSON.stringify({environment:process.env.FOLEVI_DEPLOY_ENVIRONMENT,commitSha:process.env.GITHUB_SHA,commitMessage:m,source:"github-actions"}))')
+          npx convex run admin:recordDeployment "$ARGS"
+
   macos:
     name: macOS app build & tests
     runs-on: macos-15

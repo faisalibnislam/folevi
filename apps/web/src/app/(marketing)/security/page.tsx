@@ -35,11 +35,6 @@ const subprocessors = [
     data: "Serves folevi.com and the web app. Processes requests to our servers, including IP addresses and standard request logs.",
   },
   {
-    name: "Auth0 (Okta)",
-    role: "Sign-in and two-step verification",
-    data: "Your email address, sign-in credentials, authenticator (TOTP) enrollment and sign-in events.",
-  },
-  {
     name: "Loops",
     role: "Transactional email",
     data: "Your email address and the content of the emails we send you, such as verification, security notices and share invitations.",

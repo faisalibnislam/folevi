@@ -20,26 +20,31 @@ export const nodeNameFor = (type: string) => (type === "code" ? "codeBlock" : ty
 export const blockTypeFor = (nodeName: string) => (nodeName === "codeBlock" ? "code" : nodeName);
 
 export const TEXT_NODES = new Set(["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote", "callout"]);
-export const ATOM_NODES = new Set(["divider", "image", "file", "table", "page", "bookmark", "collection", "unknownBlock"]);
+export const ATOM_NODES = new Set(["divider", "pageBreak", "image", "file", "table", "page", "bookmark", "collection", "formula", "whiteboard", "unknownBlock"]);
 
 /** Props each node stores as attributes (besides id/depth). */
+const FORMAT = ["decoration", "color", "align", "font", "group"];
+
 export const NODE_PROPS: Record<string, string[]> = {
-  paragraph: [],
-  heading: ["level"],
-  bulleted: [],
-  numbered: [],
-  todo: ["checked", "canceled", "dueDate", "dueTime", "priority", "assigneeId", "reminderAt", "completedAt"],
-  toggle: ["collapsed"],
-  quote: [],
+  paragraph: ["textStyle", ...FORMAT],
+  heading: ["level", ...FORMAT],
+  bulleted: [...FORMAT],
+  numbered: [...FORMAT],
+  todo: ["checked", "canceled", "dueDate", "dueTime", "priority", "assigneeId", "reminderAt", "completedAt", ...FORMAT],
+  toggle: ["collapsed", ...FORMAT],
+  quote: [...FORMAT],
   callout: ["tone", "icon"],
   code: ["language"],
-  divider: [],
+  divider: ["style"],
+  pageBreak: [],
   image: ["fileId", "url", "alt", "caption", "width", "naturalWidth", "naturalHeight"],
   file: ["fileId", "name", "size", "mimeType"],
   table: ["rows", "headerRow"],
   page: ["documentId", "display", "titleCache", "iconCache"],
   bookmark: ["url", "title", "description", "siteName"],
   collection: ["collectionId", "viewId"],
+  formula: ["latex"],
+  whiteboard: ["data", "height"],
 };
 
 function markToPM(m: Mark): { type: string; attrs?: Record<string, unknown> } {
@@ -159,6 +164,11 @@ export function nodeToFlat(node: PMNode): FlatBlock | null {
   if (type === "heading") props.level = Number(props.level ?? 1);
   if (type === "callout" && !props.tone) props.tone = "note";
   if (type === "table" && props.headerRow === undefined) props.headerRow = true;
+  if (type === "formula") props.latex = String(props.latex ?? "");
+  if (type === "whiteboard") {
+    props.data = String(props.data ?? "");
+    props.height = Number(props.height ?? 420) || 420;
+  }
   return { id, depth, type, schemaVersion: SCHEMA_VERSION, text: TEXT_NODES.has(type) ? pmInline(node) : [], props };
 }
 

@@ -2,6 +2,7 @@
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
 import { Extension, Mark, Node, mergeAttributes, type Attributes } from "@tiptap/core";
 import { sanitizeHref } from "@folevi/editor-schema";
+import { codeBlockNodeView } from "./codeView";
 
 const blockAttrs = (extra: Attributes = {}): Attributes => ({
   id: { default: null, keepOnSplit: false, parseHTML: (el) => el.getAttribute("data-block-id"), renderHTML: (a) => (a.id ? { "data-block-id": a.id } : {}) },
@@ -12,6 +13,21 @@ const blockAttrs = (extra: Attributes = {}): Attributes => ({
   },
   ...extra,
 });
+
+/** Node views build their own DOM, so they copy the Format panel's block styling onto it here. */
+function applyBlockFormat(dom: HTMLElement, attrs: Record<string, unknown>) {
+  for (const [prop, attr] of [
+    ["decoration", "data-decoration"],
+    ["color", "data-color"],
+    ["align", "data-align"],
+    ["font", "data-font"],
+    ["group", "data-group"],
+  ] as const) {
+    const v = attrs[prop];
+    if (v === null || v === undefined) dom.removeAttribute(attr);
+    else dom.setAttribute(attr, String(v));
+  }
+}
 
 const plain = (name: string) => ({ default: null, parseHTML: (el: HTMLElement) => el.getAttribute(`data-${name}`), renderHTML: (a: Record<string, unknown>) => (a[name] !== null && a[name] !== undefined ? { [`data-${name}`]: String(a[name]) } : {}) });
 const hidden = { default: null, rendered: false };
@@ -98,6 +114,7 @@ export const Todo = Node.create({
         dom.dataset.depth = String(current.attrs.depth ?? 0);
         dom.style.setProperty("--depth", String(current.attrs.depth ?? 0));
         dom.dataset.checked = current.attrs.checked ? "true" : "false";
+        applyBlockFormat(dom, current.attrs);
         box.setAttribute("aria-checked", current.attrs.checked ? "true" : "false");
         box.setAttribute("aria-label", current.attrs.checked ? "Mark as not done" : "Mark as done");
         const parts: string[] = [];
@@ -186,6 +203,7 @@ export const Toggle = Node.create({
         dom.dataset.depth = String(current.attrs.depth ?? 0);
         dom.style.setProperty("--depth", String(current.attrs.depth ?? 0));
         dom.dataset.collapsed = current.attrs.collapsed ? "true" : "false";
+        applyBlockFormat(dom, current.attrs);
         btn.setAttribute("aria-expanded", current.attrs.collapsed ? "false" : "true");
         btn.setAttribute("aria-label", current.attrs.collapsed ? "Expand" : "Collapse");
       };
@@ -217,10 +235,11 @@ export const Callout = Node.create({
   content: "inline*",
   defining: true,
   addAttributes: () => blockAttrs({ tone: { ...plain("tone"), default: "note" }, icon: plain("icon") }),
-  parseHTML: () => [{ tag: 'aside[data-block="callout"]' }, { tag: "aside" }],
+  parseHTML: () => [{ tag: 'div[data-block="callout"]' }, { tag: 'aside[data-block="callout"]' }, { tag: "aside" }],
+  // A note, not a complementary landmark (an <aside> per callout would clutter landmark navigation).
   renderHTML: ({ node, HTMLAttributes }) => [
-    "aside",
-    mergeAttributes(HTMLAttributes, { "data-block": "callout", class: `fb fb-callout fb-tone-${node.attrs.tone ?? "note"}` }),
+    "div",
+    mergeAttributes(HTMLAttributes, { "data-block": "callout", role: "note", class: `fb fb-callout fb-tone-${node.attrs.tone ?? "note"}` }),
     ["span", { class: "fb-callout-icon", contenteditable: "false", "aria-hidden": "true" }, node.attrs.icon ?? calloutIcon(node.attrs.tone)],
     ["div", { class: "fb-content" }, 0],
   ],
@@ -251,6 +270,8 @@ export const Code = Node.create({
   addAttributes: () => blockAttrs({ language: { default: "plaintext", parseHTML: (el) => el.getAttribute("data-language") ?? el.querySelector("code")?.className.replace(/^language-/, "") ?? "plaintext", renderHTML: (a) => ({ "data-language": a.language }) } }),
   parseHTML: () => [{ tag: "pre", preserveWhitespace: "full" }],
   renderHTML: ({ HTMLAttributes }) => ["pre", mergeAttributes(HTMLAttributes, { "data-block": "code", class: "fb fb-code" }), ["code", {}, 0]],
+  // Same DOM as renderHTML, plus a live diagram preview for Mermaid blocks (codeView.ts).
+  addNodeView: () => codeBlockNodeView,
   addKeyboardShortcuts() {
     return {
       Tab: () => (this.editor.isActive("codeBlock") ? this.editor.commands.insertContent("  ") : false),
@@ -279,14 +300,37 @@ function atom(name: string, attrs: Attributes) {
 
 const r = (name: string) => ({ default: null, rendered: false, parseHTML: (el: HTMLElement) => el.getAttribute(`data-${name}`) });
 
+/** Divider line; `style` (extralight · light · regular · strong) overrides the page's separator style. */
 export const Divider = Node.create({
   name: "divider",
   group: "block",
   atom: true,
   selectable: true,
-  addAttributes: () => blockAttrs(),
-  parseHTML: () => [{ tag: "hr" }],
+  addAttributes: () =>
+    blockAttrs({
+      style: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-style"),
+        renderHTML: (a) => (a.style ? { "data-style": String(a.style) } : {}),
+      },
+    }),
+  parseHTML: () => [{ tag: 'div[data-block="divider"]' }, { tag: "hr" }],
   renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes(HTMLAttributes, { "data-block": "divider", class: "fb fb-divider", role: "separator" }), ["hr"]],
+});
+
+/** A page break: a visible gap between two "sheets" in the editor, `break-after: page` in print/PDF. */
+export const PageBreak = Node.create({
+  name: "pageBreak",
+  group: "block",
+  atom: true,
+  selectable: true,
+  addAttributes: () => blockAttrs(),
+  parseHTML: () => [{ tag: 'div[data-block="pageBreak"]' }],
+  renderHTML: ({ HTMLAttributes }) => [
+    "div",
+    mergeAttributes(HTMLAttributes, { "data-block": "pageBreak", class: "fb fb-page-break", role: "separator", "aria-label": "Page break" }),
+    ["span", { class: "fb-page-break-label", "aria-hidden": "true" }, "Page break"],
+  ],
 });
 export const ImageBlock = atom("image", { fileId: r("fileId"), url: r("url"), alt: { ...r("alt"), default: "" }, caption: { ...r("caption"), default: "" }, width: r("width"), naturalWidth: r("naturalWidth"), naturalHeight: r("naturalHeight"), uploadId: hidden });
 export const FileBlock = atom("file", { fileId: r("fileId"), name: r("name"), size: r("size"), mimeType: r("mimeType"), uploadId: hidden });
@@ -294,6 +338,17 @@ export const TableBlock = atom("table", { rows: { default: [[[], []], [[], []]],
 export const PageBlock = atom("page", { documentId: r("documentId"), display: { ...r("display"), default: "card" }, titleCache: r("titleCache"), iconCache: r("iconCache") });
 export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName") });
 export const CollectionBlock = atom("collection", { collectionId: r("collectionId"), viewId: r("viewId") });
+// Formula and whiteboard content is written to data-* attributes so copy & paste inside Folevi keeps it.
+const kept = (name: string, fallback: string | number) => ({
+  default: fallback,
+  parseHTML: (el: HTMLElement) => {
+    const v = el.getAttribute(`data-${name}`);
+    return v === null ? fallback : typeof fallback === "number" ? Number(v) || fallback : v;
+  },
+  renderHTML: (a: Record<string, unknown>) => ({ [`data-${name}`]: String(a[name] ?? fallback) }),
+});
+export const FormulaBlock = atom("formula", { latex: kept("latex", "") });
+export const WhiteboardBlock = atom("whiteboard", { data: kept("data", ""), height: kept("height", 420) });
 export const UnknownBlock = atom("unknownBlock", { wire: { default: null, rendered: false } });
 
 // ------------------------------------------------------------------ inline atoms
@@ -412,12 +467,15 @@ export const ALL_NODES = [
   Callout,
   Code,
   Divider,
+  PageBreak,
   ImageBlock,
   FileBlock,
   TableBlock,
   PageBlock,
   BookmarkBlock,
   CollectionBlock,
+  FormulaBlock,
+  WhiteboardBlock,
   UnknownBlock,
   Mention,
   DateMention,
@@ -426,3 +484,36 @@ export const ALL_NODES = [
 export const ALL_MARKS = [Bold, Italic, Underline, Strike, InlineCode, Link, TextColor, Highlight];
 
 export const FoleviMarker = Extension.create({ name: "foleviMarker" });
+
+/** Text blocks that carry the Format panel's block styling (decoration, colour, alignment, font, group). */
+export const FORMATTABLE_NODES = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"] as const;
+export const BLOCK_FORMAT_PROPS = ["decoration", "color", "align", "font", "group"] as const;
+
+const dataAttr = (prop: string, attr: string) => ({
+  default: null,
+  keepOnSplit: true,
+  parseHTML: (el: HTMLElement) => el.getAttribute(attr),
+  renderHTML: (a: Record<string, unknown>) => (a[prop] !== null && a[prop] !== undefined ? { [attr]: String(a[prop]) } : {}),
+});
+
+/**
+ * Block styling from the Format panel, stored as optional block props and drawn with data-* attributes
+ * (editor.css): text style (Strong / Caption), decoration (Focus bar / Block background), colour,
+ * alignment, font, and group (Card).
+ */
+export const BlockFormat = Extension.create({
+  name: "blockFormat",
+  addGlobalAttributes: () => [
+    {
+      types: [...FORMATTABLE_NODES],
+      attributes: {
+        decoration: dataAttr("decoration", "data-decoration"),
+        color: dataAttr("color", "data-color"),
+        align: dataAttr("align", "data-align"),
+        font: dataAttr("font", "data-font"),
+        group: dataAttr("group", "data-group"),
+      },
+    },
+    { types: ["paragraph"], attributes: { textStyle: dataAttr("textStyle", "data-text-style") } },
+  ],
+});

@@ -1,12 +1,15 @@
 import { Fragment } from "react";
 import { flattenTree, sanitizeHref, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { formatCalendarDate } from "@/i18n";
+import { ReadOnlyCollection, type ReadOnlyCollectionData } from "@/components/views/ReadOnlyCollection";
+import { FormulaRender, MermaidDiagram, WhiteboardStatic } from "@/components/editor/RichBlocks";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
   return (
     <>
       {nodes.map((n, i) => {
         if (n.type === "mention") return <span key={i} className="fb-mention">@{n.label}</span>;
-        if (n.type === "date") return <time key={i} className="fb-date" dateTime={n.date}>{new Date(`${n.date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</time>;
+        if (n.type === "date") return <time key={i} className="fb-date" dateTime={n.date}>{formatCalendarDate(n.date)}</time>;
         if (n.type === "pageLink") return <span key={i} className="fb-page-link">{n.label}</span>;
         let el: React.ReactNode = n.text.split("\n").map((part, j, arr) => (
           <Fragment key={j}>
@@ -34,7 +37,16 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
 }
 
 /** Server-rendered read-only document body (public share pages). Uses the editor stylesheet classes. */
-export function ReadOnlyBlocks({ blocks, fileUrls }: { blocks: WireBlock[]; fileUrls: Record<string, string> }) {
+export function ReadOnlyBlocks({
+  blocks,
+  fileUrls,
+  collections,
+}: {
+  blocks: WireBlock[];
+  fileUrls: Record<string, string>;
+  /** Read-only data for collection blocks, keyed by collection id (from the share-link response). */
+  collections?: Record<string, ReadOnlyCollectionData>;
+}) {
   const flat = flattenTree(blocks);
   const counters: number[] = [];
   let hideBelow: number | null = null;
@@ -45,6 +57,11 @@ export function ReadOnlyBlocks({ blocks, fileUrls }: { blocks: WireBlock[]; file
         if (hideBelow !== null) return null;
         const p = block.props as Record<string, unknown>;
         const style = { ["--depth" as string]: depth } as React.CSSProperties;
+        // Format panel styling (decoration, colour, alignment, font, group, text style) — see editor.css.
+        const fa: Record<string, string> = {};
+        for (const [prop, attr] of [["decoration", "data-decoration"], ["color", "data-color"], ["align", "data-align"], ["font", "data-font"], ["group", "data-group"], ["textStyle", "data-text-style"]] as const) {
+          if (typeof p[prop] === "string") fa[attr] = p[prop] as string;
+        }
         if (block.type === "numbered") {
           counters.length = depth + 1;
           counters[depth] = (counters[depth] ?? 0) + 1;
@@ -53,17 +70,17 @@ export function ReadOnlyBlocks({ blocks, fileUrls }: { blocks: WireBlock[]; file
           case "heading": {
             const level = Math.min(3, Number(p.level) || 1);
             const Tag = (["h2", "h3", "h4"] as const)[level - 1]!;
-            return <Tag key={block.id} className={`fb fb-heading fb-h${level}`} style={style}><Inline nodes={block.text} /></Tag>;
+            return <Tag key={block.id} className={`fb fb-heading fb-h${level}`} style={style} {...fa}><Inline nodes={block.text} /></Tag>;
           }
           case "paragraph":
-            return <p key={block.id} className="fb fb-paragraph" style={style}><Inline nodes={block.text} /></p>;
+            return <p key={block.id} className="fb fb-paragraph" style={style} {...fa}><Inline nodes={block.text} /></p>;
           case "bulleted":
-            return <div key={block.id} className="fb fb-bulleted" data-depth={depth} style={style}><Inline nodes={block.text} /></div>;
+            return <div key={block.id} className="fb fb-bulleted" data-depth={depth} style={style} {...fa}><Inline nodes={block.text} /></div>;
           case "numbered":
-            return <div key={block.id} className="fb fb-numbered" data-index={counters[depth]} style={style}><Inline nodes={block.text} /></div>;
+            return <div key={block.id} className="fb fb-numbered" data-index={counters[depth]} style={style} {...fa}><Inline nodes={block.text} /></div>;
           case "todo":
             return (
-              <div key={block.id} className="fb fb-todo" data-checked={p.checked ? "true" : "false"} style={style}>
+              <div key={block.id} className="fb fb-todo" data-checked={p.checked ? "true" : "false"} style={style} {...fa}>
                 <span className="fb-check" role="img" aria-label={p.checked ? "Done" : "Not done"} />
                 <div className="fb-content"><Inline nodes={block.text} /></div>
               </div>
@@ -71,29 +88,58 @@ export function ReadOnlyBlocks({ blocks, fileUrls }: { blocks: WireBlock[]; file
           case "toggle":
             if (p.collapsed) hideBelow = depth;
             return (
-              <details key={block.id} className="fb" style={style} open={!p.collapsed}>
+              <details key={block.id} className="fb" style={style} {...fa} open={!p.collapsed}>
                 <summary className="font-medium"><Inline nodes={block.text} /></summary>
               </details>
             );
           case "quote":
-            return <blockquote key={block.id} className="fb fb-quote" style={style}><Inline nodes={block.text} /></blockquote>;
+            return <blockquote key={block.id} className="fb fb-quote" style={style} {...fa}><Inline nodes={block.text} /></blockquote>;
           case "callout":
             return (
-              <aside key={block.id} className={`fb fb-callout fb-tone-${String(p.tone ?? "note")}`} style={style}>
+              <div key={block.id} role="note" className={`fb fb-callout fb-tone-${String(p.tone ?? "note")}`} style={style} {...fa}>
                 <span className="fb-callout-icon" aria-hidden>{String(p.icon ?? "✳︎")}</span>
                 <div className="fb-content"><Inline nodes={block.text} /></div>
-              </aside>
+              </div>
             );
           case "code":
-            return <pre key={block.id} className="fb fb-code" data-language={String(p.language)} style={style}><code>{String(p.code ?? "")}</code></pre>;
+            if (p.language === "mermaid" && String(p.code ?? "").trim()) {
+              return (
+                <figure key={block.id} className="fb-readonly-mermaid" style={{ marginLeft: `${depth * 1.6}em` }}>
+                  <MermaidDiagram code={String(p.code)} label="Mermaid diagram" />
+                  <details>
+                    <summary>Diagram source</summary>
+                    <pre><code>{String(p.code)}</code></pre>
+                  </details>
+                </figure>
+              );
+            }
+            return <pre key={block.id} className="fb fb-code" data-language={String(p.language)} style={style} {...fa}><code>{String(p.code ?? "")}</code></pre>;
           case "divider":
-            return <div key={block.id} className="fb fb-divider" role="separator"><hr /></div>;
+            return <div key={block.id} className="fb fb-divider" data-style={p.style ? String(p.style) : undefined} role="separator"><hr /></div>;
+          case "pageBreak":
+            return (
+              <div key={block.id} className="fb fb-page-break" role="separator" aria-label="Page break">
+                <span className="fb-page-break-label" aria-hidden>Page break</span>
+              </div>
+            );
+          case "formula":
+            return (
+              <div key={block.id} className="fb-readonly-formula" style={{ marginLeft: `${depth * 1.6}em` }}>
+                <FormulaRender latex={String(p.latex ?? "")} />
+              </div>
+            );
+          case "whiteboard":
+            return (
+              <div key={block.id} className="fb-readonly-whiteboard" style={{ marginLeft: `${depth * 1.6}em` }}>
+                <WhiteboardStatic data={String(p.data ?? "")} height={Number(p.height)} />
+              </div>
+            );
           case "image": {
             const src = p.fileId ? fileUrls[String(p.fileId)] : sanitizeHref(String(p.url ?? ""));
             return src ? (
               <figure key={block.id} className="my-3" style={{ width: `${Math.round(Number(p.width ?? 1) * 100)}%` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={String(p.alt ?? "")} className="w-full rounded-[14px] border border-line" />
+                <img src={src} alt={String(p.alt ?? "")} className="w-full rounded-[6px] border border-line" />
                 {p.caption ? <figcaption className="mt-1 text-center text-sm text-muted">{String(p.caption)}</figcaption> : null}
               </figure>
             ) : null;
@@ -130,6 +176,8 @@ export function ReadOnlyBlocks({ blocks, fileUrls }: { blocks: WireBlock[]; file
           }
           case "page":
             return <p key={block.id} className="fb text-muted">📄 {String(p.titleCache ?? "Nested page")} <span className="text-xs">(not included in this shared page)</span></p>;
+          case "collection":
+            return <ReadOnlyCollection key={block.id} data={collections?.[String(p.collectionId)]} />;
           case "bookmark": {
             const href = sanitizeHref(String(p.url ?? ""));
             return (

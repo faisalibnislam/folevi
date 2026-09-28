@@ -1,6 +1,0 @@
-{
-  "name": "folevi-auth0-infra",
-  "private": true,
-  "description": "Auth0 Actions (CommonJS, pasted into the Auth0 dashboard). Not a workspace package; tested from packages/email/test/auth0-actions.test.ts.",
-  "type": "commonjs"
-}

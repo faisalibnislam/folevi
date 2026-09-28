@@ -36,3 +36,9 @@ apps/macos/Folevi.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configurati
 .vscode/*
 !.vscode/extensions.json
 artifacts/
+
+# local visual QA account (scripts only)
+apps/web/e2e/.visual-account.json
+
+# Local Claude Code preview config
+.claude/

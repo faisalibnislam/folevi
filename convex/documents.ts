@@ -17,8 +17,8 @@ import {
   requireWorkspace,
   roleAtLeast,
 } from "./lib/auth";
-import { IdResolver, liveBlocks, refreshDerived, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary } from "./lib/documents";
-import { SyncEngine, syncLinks } from "./lib/syncEngine";
+import { HomeFolders, IdResolver, liveBlocks, refreshDerived, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary, type HomeFolder } from "./lib/documents";
+import { SyncEngine, refreshLinkLabels, syncLinks } from "./lib/syncEngine";
 import { cloneBlocks, createDocument } from "./lib/create";
 import { fail } from "./lib/errors";
 import { SeqAllocator, nextSeq } from "./lib/seq";
@@ -29,7 +29,8 @@ export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 type ListView = "all" | "starred" | "archive" | "trash" | "templates" | "daily" | "unsorted" | "folder" | "tag";
 
 async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolver, docs: Doc<"documents">[]) {
-  const out: (DocumentSummary & { starred: boolean; tags: { id: string; name: string; color: string }[] })[] = [];
+  const out: (DocumentSummary & { starred: boolean; tags: { id: string; name: string; color: string }[]; homeFolder: HomeFolder | null })[] = [];
+  const homes = new HomeFolders(ctx);
   for (const d of docs) {
     const star = await ctx.db
       .query("stars")
@@ -44,7 +45,7 @@ async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolv
       const t = await ctx.db.get(l.tagId);
       if (t) tags.push({ id: t.publicId, name: t.name, color: t.color });
     }
-    out.push({ ...(await toSummary(ids, d)), starred: Boolean(star), tags });
+    out.push({ ...(await toSummary(ids, d)), starred: Boolean(star), tags, homeFolder: await homes.of(d) });
   }
   return out;
 }
@@ -55,7 +56,7 @@ async function filterReadable(ctx: QueryCtx, profile: Doc<"profiles">, docs: Doc
   return out;
 }
 
-/** Document lists for the browser (All, Starred, Archive, Trash, Templates, Daily, Unsorted, folder, tag). */
+/** Document lists for the browser (All, Starred, Archive, Trash, Templates, Daily, Drafts (no folder), folder, tag). */
 export const list = query({
   args: {
     workspaceId: v.string(),
@@ -139,10 +140,18 @@ export const list = query({
     }
 
     const inTrash = view === "trash";
-    const result = await ctx.db
-      .query("documents")
-      .withIndex("by_workspace_trash", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash))
-      .order("desc")
+    // Each sort has its own index so pagination walks the whole list in the requested order (sorting
+    // one page at a time would only order within that page).
+    const base = ctx.db.query("documents");
+    const ordered =
+      sort === "created"
+        ? base.withIndex("by_workspace_trash_created", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("desc")
+        : sort === "title"
+          ? base.withIndex("by_workspace_trash_title", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("asc")
+          : sort === "manual"
+            ? base.withIndex("by_workspace_trash_rank", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("asc")
+            : base.withIndex("by_workspace_trash", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("desc");
+    const result = await ordered
       .filter((q) => {
         switch (view) {
           case "archive":
@@ -170,8 +179,10 @@ export const list = query({
         }
       })
       .paginate(args.paginationOpts);
+    // Titles are indexed byte-wise (capitals first). When the whole list fits in one page, order it
+    // case-insensitively; across pages the index order is kept so pages never overlap or skip.
     let page = await filterReadable(ctx, profile, result.page);
-    if (sort !== "updated") page = [...page].sort(sorter(sort));
+    if (sort === "title" && result.isDone && !args.paginationOpts.cursor) page = [...page].sort(sorter(sort));
     return { ...result, page: await withExtras(ctx, profile, ids, page) };
   },
 });
@@ -345,13 +356,14 @@ export const recent = query({
       .order("desc")
       .take(60);
     const ids = new IdResolver(ctx);
-    const out: DocumentSummary[] = [];
+    const homes = new HomeFolders(ctx);
+    const out: (DocumentSummary & { homeFolder: HomeFolder | null })[] = [];
     for (const r of rows) {
       if (r.workspaceId !== workspace._id) continue;
       const d = await ctx.db.get(r.documentId);
       if (!d || d.inTrash) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      out.push(await toSummary(ids, d));
+      out.push({ ...(await toSummary(ids, d)), homeFolder: await homes.of(d) });
       if (out.length >= Math.min(args.limit ?? 8, 30)) break;
     }
     return out;
@@ -611,7 +623,7 @@ export const move = mutation({
 export const reorder = mutation({
   args: { documentId: v.string(), afterDocumentId: v.union(v.string(), v.null()), beforeDocumentId: v.union(v.string(), v.null()) },
   handler: async (ctx, args) => {
-    const { profile, doc } = await writableDoc(ctx, args.documentId);
+    const { doc } = await writableDoc(ctx, args.documentId);
     const after = args.afterDocumentId ? await getDocumentByPublicId(ctx, args.afterDocumentId) : null;
     const before = args.beforeDocumentId ? await getDocumentByPublicId(ctx, args.beforeDocumentId) : null;
     let rank: string;
@@ -620,7 +632,8 @@ export const reorder = mutation({
     } catch {
       rank = rankBetween(after?.rank ?? null, null);
     }
-    await touchDoc(ctx, doc, { rank }, profile._id);
+    // Arranging pages is not an edit: bump revision/seq so clients refresh, but keep "last edited" as is.
+    await ctx.db.patch(doc._id, { rank, seq: await nextSeq(ctx, doc.workspaceId), revision: doc.revision + 1 });
     return { rank };
   },
 });
@@ -871,6 +884,7 @@ export const restoreSnapshot = mutation({
       await syncLinks(ctx, fresh, r);
     }
     await refreshDerived(ctx, fresh);
+    if (fresh.title !== writable.title || (fresh.icon ?? null) !== (writable.icon ?? null)) await refreshLinkLabels(ctx, fresh, profile._id);
     return null;
   },
 });

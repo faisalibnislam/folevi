@@ -1,10 +1,11 @@
 import type { InlineNode, Mark } from "./generated/schema";
-import { CODE_LANGUAGES, SCHEMA_VERSION } from "./generated/schema";
+import { CODE_LANGUAGES, LIMITS, SCHEMA_VERSION } from "./generated/schema";
 import type { WireBlock } from "./types";
 import { ulid } from "./ids";
 import { rankSequence } from "./rank";
 import { flattenTree } from "./tree";
 import { normalizeInline, plainText, sanitizeHref } from "./richtext";
+import { whiteboardToSvg } from "./whiteboard";
 
 // ---------------------------------------------------------------- export
 
@@ -13,6 +14,8 @@ export interface MarkdownExportOptions {
   resolveFile?: (fileId: string) => string | null;
   /** Resolves a document id to a relative link target (e.g. `Project Atlas.md`). */
   resolveDocument?: (documentId: string) => string | null;
+  /** The linked page's current title (page cards and [[links]] otherwise use the title cached when linked). */
+  resolveDocumentTitle?: (documentId: string) => string | null;
 }
 
 function escapeMd(value: string): string {
@@ -29,7 +32,8 @@ export function inlineToMarkdown(nodes: readonly InlineNode[], opts: MarkdownExp
           return n.date;
         case "pageLink": {
           const target = opts.resolveDocument?.(n.documentId);
-          return target ? `[${escapeMd(n.label)}](${encodeURI(target)})` : `[[${n.label}]]`;
+          const label = opts.resolveDocumentTitle?.(n.documentId) || n.label || "Untitled";
+          return target ? `[${escapeMd(label)}](${encodeURI(target)})` : `[[${label}]]`;
         }
         case "text": {
           const marks = n.marks ?? [];
@@ -106,6 +110,21 @@ export function blocksToMarkdown(
       case "divider":
         lines.push("---", "");
         break;
+      case "pageBreak":
+        lines.push(PAGE_BREAK_HTML, "");
+        break;
+      case "formula": {
+        const latex = String(p.latex ?? "").trim();
+        if (latex) lines.push("$$", latex, "$$", "");
+        break;
+      }
+      case "whiteboard": {
+        // An inline SVG image, so the drawing survives in any Markdown viewer.
+        const svg = whiteboardToSvg(String(p.data ?? ""), Number(p.height));
+        const uri = `data:image/svg+xml;utf8,${encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29")}`;
+        lines.push(`${indent}![Whiteboard](${uri})`, "");
+        break;
+      }
       case "code": {
         const code = String(p.code ?? "");
         const fence = code.includes("```") ? "~~~~" : "```";
@@ -139,7 +158,7 @@ export function blocksToMarkdown(
       }
       case "page": {
         const target = opts.resolveDocument?.(String(p.documentId));
-        const label = String(p.titleCache ?? "Untitled");
+        const label = opts.resolveDocumentTitle?.(String(p.documentId)) || String(p.titleCache || "Untitled");
         lines.push(`${indent}${target ? `[${escapeMd(label)}](${encodeURI(target)})` : `[[${label}]]`}`, "");
         break;
       }
@@ -157,11 +176,14 @@ export function blocksToMarkdown(
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
 }
 
+/** How a page break is written to Markdown (the common convention understood by Markdown→PDF tools). */
+export const PAGE_BREAK_HTML = '<div style="page-break-after: always"></div>';
+
 // ---------------------------------------------------------------- import
 
 export interface ImportWarning {
   line: number;
-  code: "html_block" | "footnote" | "reference_link" | "unresolved_image" | "nested_quote" | "unsupported";
+  code: "html_block" | "footnote" | "reference_link" | "unresolved_image" | "nested_quote" | "math" | "front_matter" | "unsupported";
   message: string;
 }
 
@@ -373,6 +395,43 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       flushParagraph();
       continue;
     }
+    // Page break (the `<div style="page-break-after: always"></div>` convention).
+    if (/^\s*<div\s+style=["']\s*(page-break-after|break-after)\s*:\s*(always|page)\s*;?\s*["']\s*>\s*<\/div>\s*$/i.test(line)) {
+      flushParagraph();
+      drafts.push({ id: newId(), type: "pageBreak", depth: 0, text: [], props: {} });
+      continue;
+    }
+    // Display math ($$ … $$) becomes a formula block.
+    const math = /^\s*\$\$(.*)$/.exec(line);
+    if (math) {
+      flushParagraph();
+      const startLine = i;
+      const body: string[] = [];
+      let rest = math[1]!;
+      const closedInline = /^(.*?)\$\$\s*$/.exec(rest);
+      if (closedInline && rest.trim()) {
+        body.push(closedInline[1]!.trim());
+      } else {
+        if (rest.trim()) body.push(rest);
+        i++;
+        while (i < lines.length && !/\$\$\s*$/.test(lines[i]!)) {
+          body.push(lines[i]!);
+          i++;
+        }
+        if (i < lines.length) {
+          rest = lines[i]!.replace(/\$\$\s*$/, "");
+          if (rest.trim()) body.push(rest);
+        }
+      }
+      const latex = body.join("\n").trim();
+      if (latex.length > LIMITS.maxFormulaLength) {
+        drafts.push({ id: newId(), type: "code", depth: 0, text: [], props: { language: "latex", code: latex } });
+        warnings.push({ line: lineNo(startLine), code: "math", message: "A very long formula was kept as a LaTeX code block" });
+      } else if (latex) {
+        drafts.push({ id: newId(), type: "formula", depth: 0, text: [], props: { latex } });
+      }
+      continue;
+    }
     // Fenced code
     const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/.exec(line);
     if (fence) {
@@ -538,9 +597,22 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     } else if (/^\s{0,3}\[[^\]]+\]:\s+\S+/.test(line)) {
       warnings.push({ line: lineNo(i), code: "reference_link", message: "Reference-style link definition imported as text" });
     }
+    if (/\$\$[^$]+\$\$/.test(line)) {
+      warnings.push({ line: lineNo(i), code: "math", message: "Inline math ($$…$$) isn’t rendered yet; it was kept as text" });
+    }
     paragraph.push(line.trim());
   }
   flushParagraph();
+
+  // Front matter: only `title` becomes part of the document; say which fields were left out.
+  const dropped = Object.keys(frontMatter).filter((k) => k !== "title");
+  if (dropped.length) {
+    warnings.unshift({
+      line: 1,
+      code: "front_matter",
+      message: `Front matter ${dropped.length === 1 ? "field" : "fields"} not imported: ${dropped.join(", ")} (only “title” is used)`,
+    });
+  }
 
   // Convert depth annotations into parent/rank assignments.
   const blocks: WireBlock[] = [];

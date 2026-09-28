@@ -1,7 +1,8 @@
 # Email operations
 
-This is the runbook for Folevi's transactional email. It uses Loops, plus Auth0 through the
-custom email provider. For why it is built this way, see [EMAIL_DECISION.md](./EMAIL_DECISION.md).
+This is the runbook for Folevi's transactional email. Everything, including identity email (email
+confirmation and password reset from Folevi's built-in accounts), is sent by the Convex backend through
+Loops. For why it is built this way, see [EMAIL_DECISION.md](./EMAIL_DECISION.md).
 
 ## 1. Sending domain
 
@@ -51,8 +52,11 @@ Set the From name, From address and Reply-To on **each** Loops template. They mu
   - `sendTransactional(…, { policy: { environment, allowlist } })` only sends to `@example.com`,
     `@test.com` or exact allowlisted addresses. Any other address returns
     `skipped / recipient_not_allowed`.
-  - The Auth0 Action applies the same rule when `FOLEVI_EMAIL_ALLOWLIST_MODE` is `test-domains`,
-    or when it is unset.
+  - Identity email uses the same path (`convex/authEmails.ts` → `internal.email.sendTemplate`), so
+    the same rule applies to it. Outside production it is also captured in the development mailbox
+    (`/dev/mailbox`, needs `FOLEVI_DEV_MAILBOX_SECRET`), which is how local and test runs follow
+    confirmation and reset links. The mailbox is off in production and the production build fails if
+    `FOLEVI_DEV_MAILBOX_SECRET` is set.
 
 ## 4. Template lifecycle
 
@@ -90,11 +94,11 @@ The templates live in `packages/email/templates/<key>.mjml` and `.txt`. They are
 7. **Publish** the template in Loops. Unpublished templates return **400**.
 8. **Record the id.** Put the `transactionalId` in the env var named by
    `emailManifest[key].envVar`, in every place that sends it:
-   - **Convex** (`npx convex env set …`) for security and product templates.
-   - **Auth0 Action secrets** for the `auth_*` templates. Then redeploy the Action.
+   - **Convex** (`npx convex env set …`) for every template, including the `auth_*` ones.
    - **Vercel** only if `apps/web` ever sends directly (it should not).
-9. **Verify.** Trigger the real flow once (see the smoke test in `infra/auth0/tenant-checklist.md`).
-   Confirm `accepted` in the logs and `email.delivered` through the webhook.
+9. **Verify.** Trigger the real flow once (sign up, "resend confirmation", "forgot password"; see the
+   release checklist in `docs/DEPLOYMENT.md`). Confirm `accepted` in the logs and `email.delivered`
+   through the webhook.
 
 ### Rollback and id rotation
 
@@ -114,11 +118,25 @@ The templates live in `packages/email/templates/<key>.mjml` and `.txt`. They are
   template change.
 - **Folevi logs:** `sendTransactional` outcomes (`status`, `errorCode`, `attempts`,
   `httpStatus`), with no payload and no address. Log `redactEmail()` or `hashRecipient()` only.
-- **Auth0 logs:** the custom-email-provider Action writes JSON lines with
-  `src: "folevi.custom-email-provider"`. Alert on any `drop` with reason `link_not_found`,
-  `code_not_found`, `template_not_configured` or `loops_http_4xx`.
+- **Identity email:** failures of `auth_verify_email` or `auth_password_reset` mean people can't
+  finish signing up or recover their account. Alert on `template_not_configured`,
+  `template_not_found`, `provider_not_configured` or any 4xx for these two templates.
 - **Rate limit:** Loops allows 10 requests/s per team (headers `x-ratelimit-limit` and
   `x-ratelimit-remaining`). Send digests from a queue at 5/s or less.
+
+### Notification content and the daily digest
+
+- Product notification emails carry who, where (document or workspace name) and a link — **never note
+  or comment text**, not even an excerpt. The excerpt is shown in the in-app bell only. The
+  `excerpt` variable was removed from `mention_notification` and `comment_notification`; re-import
+  those templates in Loops so they no longer reference it.
+- People who choose the daily digest get mentions, comments and replies in one `comment_digest` email
+  instead of one email each (never both). Every notification that was emailed, immediately or in a
+  digest, is stamped `emailedAt` so it is never sent twice. Both rules are enforced in
+  `convex/lib/notify.ts` and again in `email.sendTemplate`.
+- Identity emails (from Better Auth via `convex/authEmails.ts`) go through `internal.email.sendTemplate`
+  like every other template, so they appear in the admin email log; they are linked to the account by address
+  when one exists, so they also show on the user's page.
 
 ## 6. Webhooks (delivery state)
 
@@ -133,13 +151,19 @@ The templates live in `packages/email/templates/<key>.mjml` and `.txt`. They are
      If it fails, return 401.
   3. Dedupe on `Webhook-Id`. If already stored, return 200.
   4. Call `parseLoopsWebhook(rawBody)` and store `{eventName, eventTime, transactionalId, emailId, recipientHash: hashRecipient(recipient, FOLEVI_EMAIL_HASH_SALT)}`.
-     Never store the raw address in event rows.
+     Never store the raw address in event rows. `eventTime` arrives in seconds and is stored in milliseconds.
+  4a. Link the event to exactly one send attempt (`emailProviderEvents.attemptId`): first by provider
+     message id (`emailSendAttempts.providerMessageId`, recorded when Loops returns an id with the 200
+     response), otherwise the most recent *accepted* attempt to the same hashed recipient with the same
+     Loops transactional id, sent at most 3 days before the event. Unmatched events are kept but not
+     shown against any attempt. The admin email log only shows linked events.
   5. Return 2xx quickly. Loops retries up to 8 times over about 28 h, and disables the endpoint
      after 5 days of failures.
 - **Policy on events:**
   - `email.hardBounced` or `email.spamReported`: stop product notifications to that address
     (Folevi-side). Show an in-app banner asking the user to check their address.
-  - Identity mail is still attempted, since Auth0 triggers it.
+  - Identity mail is still attempted: people must always be able to confirm an address or reset a
+    password.
 - **Rotating the secret:** rotate in Loops, then update `LOOPS_WEBHOOK_SECRET` within 24 h. The
   old secret stays valid for 24 h.
 
@@ -147,14 +171,11 @@ The templates live in `packages/email/templates/<key>.mjml` and `.txt`. They are
 
 | Name                                                | Where                                   | Purpose                                                                                                                                         |
 | --------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LOOPS_API_KEY`                                     | Convex, Auth0 Action secret             | Bearer key for the transactional API. Test it with `GET https://app.loops.so/api/v1/api-key`. Keep a separate key per environment.              |
+| `LOOPS_API_KEY`                                     | Convex                                  | Bearer key for the transactional API. Test it with `GET https://app.loops.so/api/v1/api-key`. Keep a separate key per environment.              |
 | `LOOPS_SENDING_DOMAIN`                              | docs / Loops settings (Convex optional) | `mail.folevi.com` or `mail-staging.folevi.com`. Informational: the From address is set per template in Loops.                                   |
 | `LOOPS_WEBHOOK_SECRET`                              | Convex                                  | `whsec_…` signing secret for `/webhooks/loops`.                                                                                                 |
-| `LOOPS_TRANSACTIONAL_AUTH_VERIFY_EMAIL_ID`          | Auth0 Action secret                     | `auth_verify_email`                                                                                                                             |
-| `LOOPS_TRANSACTIONAL_AUTH_PASSWORD_RESET_ID`        | Auth0 Action secret                     | `auth_password_reset`                                                                                                                           |
-| `LOOPS_TRANSACTIONAL_AUTH_BLOCKED_ACCOUNT_ID`       | Auth0 Action secret                     | `auth_blocked_account`                                                                                                                          |
-| `LOOPS_TRANSACTIONAL_AUTH_BREACHED_PASSWORD_ID`     | Auth0 Action secret                     | `auth_breached_password`                                                                                                                        |
-| `LOOPS_TRANSACTIONAL_AUTH_VERIFICATION_CODE_ID`     | Auth0 Action secret                     | `auth_verification_code` (code flows)                                                                                                           |
+| `LOOPS_TRANSACTIONAL_AUTH_VERIFY_EMAIL_ID`          | Convex                                  | `auth_verify_email`                                                                                                                             |
+| `LOOPS_TRANSACTIONAL_AUTH_PASSWORD_RESET_ID`        | Convex                                  | `auth_password_reset`                                                                                                                           |
 | `LOOPS_TRANSACTIONAL_SECURITY_NEW_DEVICE_ID`        | Convex                                  | `security_new_device`                                                                                                                           |
 | `LOOPS_TRANSACTIONAL_ACCOUNT_DELETION_SCHEDULED_ID` | Convex                                  | `account_deletion_scheduled`                                                                                                                    |
 | `LOOPS_TRANSACTIONAL_ACCOUNT_DELETION_COMPLETED_ID` | Convex                                  | `account_deletion_completed`                                                                                                                    |
@@ -163,18 +184,12 @@ The templates live in `packages/email/templates/<key>.mjml` and `.txt`. They are
 | `LOOPS_TRANSACTIONAL_COMMENT_NOTIFICATION_ID`       | Convex                                  | `comment_notification`                                                                                                                          |
 | `LOOPS_TRANSACTIONAL_COMMENT_DIGEST_ID`             | Convex                                  | `comment_digest`                                                                                                                                |
 | `LOOPS_TRANSACTIONAL_SHARE_NOTIFICATION_ID`         | Convex                                  | `share_notification`                                                                                                                            |
+| `LOOPS_TRANSACTIONAL_ACCESS_CHANGED_ID`             | Convex                                  | `access_changed` (role changed, access removed, page restricted, workspace role changed or removed)                                            |
 | `FOLEVI_EMAIL_ENVIRONMENT`                          | Convex (suggested name)                 | `production`, `preview`, `development` or `test`, which becomes `SendPolicy.environment`. Treat anything other than `production` as restricted. |
-| `FOLEVI_EMAIL_ALLOWLIST`                            | Convex, Auth0 Action secret             | Comma-separated exact addresses allowed outside production.                                                                                     |
+| `FOLEVI_EMAIL_ALLOWLIST`                            | Convex                                  | Comma-separated exact addresses allowed outside production.                                                                                     |
 | `FOLEVI_EMAIL_HASH_SALT`                            | Convex (suggested name)                 | Salt for `hashRecipient()`. It is secret, random, and never rotated without a migration.                                                        |
-| `FOLEVI_EMAIL_ALLOWLIST_MODE`                       | Auth0 Action secret                     | `off` (production tenant only) or `test-domains`. If unset, it behaves as `test-domains`.                                                       |
-| `AUTH0_LINK_HOSTS`                                  | Auth0 Action secret                     | Accepted link hosts, for example `auth.folevi.com,folevi.us.auth0.com`.                                                                         |
-| `AUTH0_VERIFY_EMAIL_TTL_HOURS`                      | Auth0 Action secret                     | Default `24`. Must equal the Auth0 Verification Email URL lifetime.                                                                             |
-| `AUTH0_RESET_PASSWORD_TTL_HOURS`                    | Auth0 Action secret                     | Default `1`. Must equal the Change Password URL lifetime.                                                                                       |
-| `AUTH0_BLOCKED_ACCOUNT_TTL_HOURS`                   | Auth0 Action secret                     | Default `24`.                                                                                                                                   |
-| `AUTH0_BREACHED_PASSWORD_TTL_HOURS`                 | Auth0 Action secret                     | Default `24`.                                                                                                                                   |
-| `AUTH0_CODE_TTL_MINUTES`                            | Auth0 Action secret                     | Default `10`.                                                                                                                                   |
-| `FOLEVI_PASSWORD_RESET_URL`                         | Auth0 Action secret                     | First-party https URL, used only for breached-password notices that have no Auth0 link.                                                         |
 
-The Management API M2M credentials used by the backend (resend verification, tickets,
-suspension) are named by the backend owners. The required scopes are listed in
-`infra/auth0/README.md`.
+| `FOLEVI_DEV_MAILBOX_SECRET`                         | Convex and `apps/web/.env.local` (non-production only) | Enables the development mailbox for identity email. Never set in production; the build check fails if it is. |
+
+Identity email needs no other configuration: there are no identity-provider secrets. Previously an
+Auth0 Action held its own copies of the Loops key, allowlist and link settings; those no longer exist.

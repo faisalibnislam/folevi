@@ -10,13 +10,17 @@ import { SharedView } from "@/components/views/SharedView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { HelpView } from "@/components/views/HelpView";
 import { InviteView } from "@/components/views/InviteView";
+import { FoldersIndex, TagsIndex } from "@/components/views/OrganizeIndex";
+import { HomeDashboard } from "@/components/views/HomeDashboard";
 import { ViewChrome } from "./Shell";
 
 export function RouteView() {
   const { route } = useAppRouter();
   switch (route.name) {
     case "documents":
-      return <DocumentBrowser view="all" />;
+      return <HomeDashboard />;
+    case "notes":
+      return <DocumentBrowser view="all" title="All notes" />;
     case "starred":
     case "archive":
     case "trash":
@@ -27,6 +31,10 @@ export function RouteView() {
       return <DocumentBrowser key={route.id} view="folder" folderId={route.id} />;
     case "tag":
       return <DocumentBrowser key={route.id} view="tag" tagId={route.id} />;
+    case "folders":
+      return <FoldersIndex />;
+    case "tags":
+      return <TagsIndex />;
     case "doc":
       return <DocumentView key={route.id} documentId={route.id} />;
     case "tasks":

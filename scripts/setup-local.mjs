@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// One-time local setup: generates the development-only token signing key, configures the local
-// Convex deployment and writes apps/web/.env.local. Safe to re-run (keeps an existing key).
+// One-time local setup: configures the local Convex deployment for Folevi's built-in accounts and
+// writes apps/web/.env.local. Safe to re-run (keeps existing secrets).
 //
-// The dev issuer lets you exercise every workflow locally without an Auth0 tenant. It is disabled
-// unless FOLEVI_DEV_AUTH=1 on the web app and FOLEVI_DEV_AUTH_JWKS on Convex — never set either in production.
-import { generateKeyPairSync, createPublicKey, randomBytes } from "node:crypto";
+// Locally, identity emails (verification, password reset) are captured in the development mailbox at
+// http://app.localhost:3000/dev/mailbox instead of being sent. That mailbox never works in production.
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -24,16 +24,9 @@ function parseEnv(text) {
   return out;
 }
 
+const RETIRED = ["FOLEVI_DEV_AUTH", "FOLEVI_DEV_AUTH_ISSUER", "FOLEVI_DEV_AUTH_KID", "FOLEVI_DEV_AUTH_PRIVATE_KEY", "FOLEVI_SESSION_SECRET", "FOLEVI_ALLOW_DEV_AUTH_BUILD"];
 const existing = existsSync(webEnvPath) ? parseEnv(readFileSync(webEnvPath, "utf8")) : {};
-let privatePem = existing.FOLEVI_DEV_AUTH_PRIVATE_KEY ? Buffer.from(existing.FOLEVI_DEV_AUTH_PRIVATE_KEY, "base64").toString("utf8") : null;
-if (!privatePem) {
-  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  privatePem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
-}
-const jwk = createPublicKey(privatePem).export({ format: "jwk" });
-const kid = "folevi-dev-1";
-const jwks = JSON.stringify({ keys: [{ ...jwk, kid, alg: "RS256", use: "sig" }] });
-const issuer = "http://localhost:3000/dev-auth";
+for (const k of RETIRED) delete existing[k];
 
 const env = {
   ...existing,
@@ -41,12 +34,8 @@ const env = {
   NEXT_PUBLIC_CONVEX_SITE_URL: convexSite,
   NEXT_PUBLIC_APP_URL: existing.NEXT_PUBLIC_APP_URL ?? "http://app.localhost:3000",
   NEXT_PUBLIC_MARKETING_URL: existing.NEXT_PUBLIC_MARKETING_URL ?? "http://localhost:3000",
-  FOLEVI_DEV_AUTH: "1",
-  FOLEVI_DEV_AUTH_ISSUER: issuer,
-  FOLEVI_DEV_AUTH_KID: kid,
-  FOLEVI_DEV_AUTH_PRIVATE_KEY: Buffer.from(privatePem).toString("base64"),
   FOLEVI_SERVER_SECRET: existing.FOLEVI_SERVER_SECRET ?? randomBytes(32).toString("hex"),
-  FOLEVI_SESSION_SECRET: existing.FOLEVI_SESSION_SECRET ?? randomBytes(32).toString("hex"),
+  FOLEVI_DEV_MAILBOX_SECRET: existing.FOLEVI_DEV_MAILBOX_SECRET ?? randomBytes(24).toString("hex"),
 };
 writeFileSync(
   webEnvPath,
@@ -56,27 +45,25 @@ writeFileSync(
 );
 console.log(`wrote ${webEnvPath}`);
 
+function convexGet(key) {
+  try {
+    return execFileSync("npx", ["convex", "env", "get", key], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return "";
+  }
+}
+
 const convexEnv = {
   FOLEVI_ENV: "development",
-  FOLEVI_DEV_AUTH_JWKS: jwks,
-  FOLEVI_DEV_AUTH_ISSUER: issuer,
   FOLEVI_APP_URL: env.NEXT_PUBLIC_APP_URL,
+  SITE_URL: env.NEXT_PUBLIC_APP_URL,
   FOLEVI_SERVER_SECRET: env.FOLEVI_SERVER_SECRET,
-  FOLEVI_HASH_SALT: randomBytes(16).toString("hex"),
-  // Referenced by convex/auth.config.ts; "none" keeps Auth0 disabled until a tenant is configured.
-  AUTH0_DOMAIN: "none",
-  AUTH0_WEB_CLIENT_ID: "none",
-  AUTH0_MAC_CLIENT_ID: "none",
+  FOLEVI_DEV_MAILBOX_SECRET: env.FOLEVI_DEV_MAILBOX_SECRET,
 };
-for (const [key, value] of Object.entries(convexEnv)) {
-  if (key === "FOLEVI_HASH_SALT" || key.startsWith("AUTH0_")) {
-    try {
-      const current = execFileSync("npx", ["convex", "env", "get", key], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
-      if (current) continue;
-    } catch {
-      /* not set yet */
-    }
-  }
-  execFileSync("npx", ["convex", "env", "set", key, value], { cwd: root, stdio: "inherit" });
+const KEEP_IF_SET = { FOLEVI_HASH_SALT: () => randomBytes(16).toString("hex"), BETTER_AUTH_SECRET: () => randomBytes(32).toString("base64") };
+for (const [key, make] of Object.entries(KEEP_IF_SET)) if (!convexGet(key)) convexEnv[key] = make();
+for (const [key, value] of Object.entries(convexEnv)) execFileSync("npx", ["convex", "env", "set", key, value], { cwd: root, stdio: "inherit" });
+for (const key of ["AUTH0_DOMAIN", "AUTH0_WEB_CLIENT_ID", "AUTH0_MAC_CLIENT_ID", "FOLEVI_DEV_AUTH_JWKS", "FOLEVI_DEV_AUTH_ISSUER"]) {
+  if (convexGet(key)) execFileSync("npx", ["convex", "env", "remove", key], { cwd: root, stdio: "ignore" });
 }
-console.log("Local Convex deployment configured for development sign-in.");
+console.log("Local Convex deployment configured. Create an account at http://app.localhost:3000/signup — confirmation links appear at /dev/mailbox.");

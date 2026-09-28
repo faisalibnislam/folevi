@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { newPersonWithWorkspace, waitForSaved, showFolders, pick } from "./helpers";
 
 test("share a page with another person, comment, and publish a revocable public link", async ({ browser }) => {
   const owner = await newPersonWithWorkspace(browser, "Owner Person");
+  await showFolders(owner.page);
   const guest = await newPersonWithWorkspace(browser, "Guest Person");
+  await showFolders(guest.page);
 
   // Owner opens the brief and shares it with the guest as a commenter.
   await owner.page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Home" }).click();
@@ -11,7 +13,7 @@ test("share a page with another person, comment, and publish a revocable public 
   await owner.page.getByRole("button", { name: "Share" }).click();
   const share = owner.page.getByRole("dialog", { name: /Share/ });
   await share.getByLabel("Email address").fill(guest.email);
-  await share.getByLabel("Role").selectOption("commenter");
+  await pick(share.getByLabel("Role"), "Can comment");
   await share.getByRole("button", { name: "Share", exact: true }).click();
   await expect(share.getByText("Guest Person")).toBeVisible();
 
@@ -23,8 +25,9 @@ test("share a page with another person, comment, and publish a revocable public 
   const anonPage = await anon.newPage();
   await anonPage.goto(link);
   await expect(anonPage.getByRole("heading", { name: "Project Atlas Brief" })).toBeVisible();
-  const robots = (await anonPage.request.get(link)).headers()["x-robots-tag"];
-  expect(robots).toContain("noindex");
+  // Not indexed unless the owner allows it for this link (robots meta; the page sets it per link).
+  await expect(anonPage.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  expect((await anonPage.request.get(link)).headers()["referrer-policy"]).toBe("no-referrer");
   await share.getByRole("button", { name: "Revoke" }).first().click();
   await anonPage.reload();
   await expect(anonPage.getByRole("heading", { name: "Page unavailable" })).toBeVisible();

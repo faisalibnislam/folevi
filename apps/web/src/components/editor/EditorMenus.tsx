@@ -1,9 +1,11 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import { beginPointerDrag, isDragging } from "./blockDrag";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import {
   Bold,
   CalendarDays,
@@ -19,6 +21,8 @@ import {
   Heading3,
   Highlighter,
   Image as ImageIcon,
+  IndentDecrease,
+  IndentIncrease,
   Italic,
   Link as LinkIcon,
   Link2,
@@ -39,16 +43,52 @@ import {
   StickyNote,
   LayoutList,
   Palette,
+  SeparatorHorizontal,
+  Sigma,
+  Workflow,
+  PenTool,
+  SquareStack,
+  ImagePlus,
+  LayoutGrid,
+  Columns3,
 } from "lucide-react";
-import { addDays, sanitizeHref, ulid } from "@folevi/editor-schema";
+import { WHITEBOARD_DEFAULT_HEIGHT, addDays, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { useToast, errorMessage } from "@/components/ui/Toast";
+import { Dialog } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/format";
-import { deleteBlocks, duplicateBlocks, insertBlockAfterCurrent, moveBlock, turnInto } from "./commands";
+import {
+  HIGHLIGHT_COLORS,
+  TEXT_COLORS,
+  applyLink,
+  blocksInSelection,
+  changeDepth,
+  clearFormatting,
+  deleteBlocks,
+  duplicateBlocks,
+  emptyTableRows,
+  insertBlockAfterCurrent,
+  moveBlock,
+  removeLink,
+  setHighlight,
+  setTextColor,
+  turnInto,
+} from "./commands";
+import { blockSelectionRange, clearBlockSelection, extendBlockSelectionTo, setBlockSelection } from "./blockSelection";
+import { syncDomSelection } from "./blockSelectionState";
 import type { TriggerState } from "./plugins";
+import { UnsplashDialog, unsplashCredit } from "./UnsplashDialog";
+import { colorName, useNotePalette } from "./notePalette";
+import { useShowInTopLayer } from "@/components/ui/topLayer";
+import { INLINE_AI_EVENT, openInlineAi, useAiEnabled, type InlineAiOpen } from "@/components/ai/useAi";
+import { InlineAi, type InlineAiRequest } from "@/components/ai/InlineAi";
+import { newFormulaAttrs } from "./FormulaView";
+import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
+import { Select } from "@/components/ui/Select";
 
 interface MenuItem {
   id: string;
@@ -59,38 +99,83 @@ interface MenuItem {
   run: () => void | Promise<void>;
 }
 
-function Popover({ anchor, children, label, width = 300 }: { anchor: { left: number; top: number; bottom: number } | null; children: React.ReactNode; label: string; width?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
+/** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
+export type SpecialInsert = "image" | "unsplash" | "file" | "page" | "card" | "bookmark" | "collection" | "gallery" | "board" | "date" | "pickDate";
+
+/** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
+export function requestSpecialInsert(editor: Editor, kind: SpecialInsert) {
+  editor.view.dom.dispatchEvent(new CustomEvent("folevi:insert", { detail: { kind } }));
+}
+
+type Anchor = { left: number; top: number; bottom: number };
+
+function Popover({
+  anchor,
+  children,
+  label,
+  width = 300,
+  role = "dialog",
+  scroll = true,
+  onKeyDown,
+  popRef,
+}: {
+  anchor: Anchor | null;
+  children: React.ReactNode;
+  label: string;
+  width?: number;
+  role?: "dialog" | "presentation";
+  scroll?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  popRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const ownRef = useRef<HTMLDivElement>(null);
+  const ref = popRef ?? ownRef;
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  // In the top layer, so no panel or stacking order can clip or cover it (it stays in the editor's DOM).
+  useShowInTopLayer(Boolean(anchor), ref);
+  // A field marked data-autofocus takes focus once the popover is showing (React's autoFocus fires earlier,
+  // while it's still hidden, and is lost).
+  useLayoutEffect(() => {
+    if (!anchor) return;
+    const field = ref.current?.querySelector<HTMLElement>("[data-autofocus]");
+    if (field && !ref.current?.contains(document.activeElement)) field.focus();
+  }, [anchor, ref]);
   useLayoutEffect(() => {
     if (!anchor || !ref.current) return;
     const h = ref.current.offsetHeight;
     const below = anchor.bottom + 6;
     const top = below + h > window.innerHeight - 8 ? Math.max(8, anchor.top - h - 6) : below;
     setPos({ left: Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8)), top });
-  }, [anchor, width, children]);
+  }, [anchor, width, children, ref]);
   if (!anchor) return null;
   return (
     <div
       ref={ref}
-      role="dialog"
-      aria-label={label}
-      style={{ left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, visibility: pos ? "visible" : "hidden" }}
-      className="fixed z-50 max-h-[min(420px,70vh)] overflow-y-auto ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]"
-      onMouseDown={(e) => e.preventDefault()}
+      role={role}
+      aria-label={role === "dialog" ? label : undefined}
+      popover="manual"
+      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, visibility: pos ? "visible" : "hidden" }}
+      className={`z-[100] border-0 text-ink ${scroll ? "max-h-[min(420px,70vh)] overflow-y-auto" : ""} ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
+      onMouseDown={(e) => {
+        // Keep focus in the editor, except for real form controls inside the popover.
+        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement)) e.preventDefault();
+      }}
+      onKeyDown={onKeyDown}
     >
       {children}
     </div>
   );
 }
 
-function ListMenu({ items, active, setActive, onRun, emptyLabel, listId }: { items: MenuItem[]; active: number; setActive: (i: number) => void; onRun: (i: MenuItem) => void; emptyLabel: string; listId: string }) {
+function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }: { items: MenuItem[]; active: number; setActive: (i: number) => void; onRun: (i: MenuItem) => void; emptyLabel: string; listId: string; label: string }) {
   useEffect(() => {
     document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
   }, [active, listId]);
   if (!items.length) return <p className="px-3 py-2 text-sm text-muted">{emptyLabel}</p>;
   return (
-    <ul role="listbox" id={listId} aria-label="Suggestions">
+    // The list is the scroll container. It is focusable (axe: scrollable-region-focusable) but focus
+    // normally stays in the editor, which points at the active option with aria-activedescendant.
+    <ul role="listbox" id={listId} aria-label={label} tabIndex={0} className="max-h-[min(400px,65vh)] overflow-y-auto rounded-[6px] outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]">
       {items.map((item, i) => (
         <li
           key={item.id}
@@ -99,9 +184,9 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId }: { ite
           aria-selected={i === active}
           onMouseEnter={() => setActive(i)}
           onClick={() => onRun(item)}
-          className={`flex cursor-pointer items-center gap-2.5 rounded-[14px] px-2 py-1.5 text-sm transition-colors ${i === active ? "bg-accent-soft text-heading" : ""}`}
+          className={`flex cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 text-sm transition-colors ${i === active ? "bg-accent-soft text-heading" : ""}`}
         >
-          <span className="grid h-7 w-7 flex-none place-items-center rounded-[9px] bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
+          <span className="grid h-7 w-7 flex-none place-items-center rounded-[6px] bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
             {item.icon}
           </span>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -119,6 +204,11 @@ function useDebounced<T>(value: T, ms: number): T {
     return () => clearTimeout(t);
   }, [value, ms]);
   return v;
+}
+
+/** Top-level block index → its rendered element. */
+function blockDom(editor: Editor, index: number): HTMLElement | null {
+  return ((editor.view.dom as HTMLElement).children[index] as HTMLElement | undefined) ?? null;
 }
 
 export function EditorMenus({
@@ -150,10 +240,38 @@ export function EditorMenus({
   const imageInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [bookmarkPrompt, setBookmarkPrompt] = useState(false);
+  const [unsplashOpen, setUnsplashOpen] = useState(false);
+  const [datePicker, setDatePicker] = useState<{ mode: "insert" } | { mode: "edit"; pos: number } | null>(null);
+  const [datePickerAnchor, setDatePickerAnchor] = useState<Anchor | null>(null);
 
   const triggerKey = trigger ? `${trigger.kind}:${trigger.from}` : null;
   const open = trigger && editable && dismissed !== triggerKey ? trigger : null;
   useEffect(() => setActive(0), [trigger?.query, trigger?.kind]);
+  const aiOn = useAiEnabled();
+
+  // The inline AI composer: opened by ⌘J, the "/" AI commands, the toolbar's Ask AI and the block menu.
+  const [inlineAi, setInlineAi] = useState<InlineAiRequest | null>(null);
+  useEffect(() => {
+    if (!aiOn || !editable) return;
+    const dom = editor.view.dom as HTMLElement;
+    const onOpen = (e: Event) => setInlineAi({ id: Date.now(), ...(e as CustomEvent<InlineAiOpen>).detail });
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
+        // In a note, ⌘J writes here (the app-wide ⌘J opens Ask AI).
+        e.preventDefault();
+        e.stopPropagation();
+        const { from, to, empty } = editor.state.selection;
+        const text = empty ? "" : editor.state.doc.textBetween(from, to, "\n");
+        setInlineAi({ id: Date.now(), target: text.trim() ? { from, to, text } : null });
+      }
+    };
+    dom.addEventListener(INLINE_AI_EVENT, onOpen);
+    dom.addEventListener("keydown", onKey);
+    return () => {
+      dom.removeEventListener(INLINE_AI_EVENT, onOpen);
+      dom.removeEventListener("keydown", onKey);
+    };
+  }, [editor, aiOn, editable]);
 
   const anchor = useMemo(() => {
     if (!open) return null;
@@ -171,18 +289,148 @@ export function EditorMenus({
   }, [editor, trigger]);
 
   const createNestedPage = useCallback(
-    async (title: string, asLink: boolean) => {
+    async (title: string, asLink: boolean, display: "link" | "card" = "card") => {
       const childId = ulid();
       engine.createDocument({ id: childId, parentDocumentId: documentId, folderId: null, kind: "document", title, icon: null });
       if (asLink) {
         editor.chain().focus().insertContent({ type: "pageLink", attrs: { documentId: childId, label: title || "Untitled" } }).insertContent(" ").run();
       } else {
-        insertBlockAfterCurrent(editor, "page", { documentId: childId, display: "card", titleCache: title || "Untitled" });
+        insertBlockAfterCurrent(editor, "page", { documentId: childId, display, titleCache: title || "Untitled" });
       }
       return childId;
     },
     [engine, documentId, editor],
   );
+
+  const caretAnchor = useCallback((): Anchor => {
+    try {
+      const c = editor.view.coordsAtPos(editor.state.selection.from);
+      return { left: c.left, top: c.top, bottom: c.bottom };
+    } catch {
+      const r = (editor.view.dom as HTMLElement).getBoundingClientRect();
+      return { left: r.left, top: r.top, bottom: r.top + 24 };
+    }
+  }, [editor]);
+
+  /** Inline inserts need a caret in a text block (not a selected image, a code block…). */
+  const ensureTextCaret = useCallback(() => {
+    const { selection } = editor.state;
+    const parent = selection.$from.parent;
+    if (selection instanceof NodeSelection || !parent.isTextblock || parent.type.name === "codeBlock") insertBlockAfterCurrent(editor, "paragraph");
+  }, [editor]);
+
+  // ---------------------------------------------------------------- special inserts (slash menu + Insert panel)
+  const insertCollection = useCallback(
+    async (view: "table" | "gallery" | "board", name: string) => {
+      try {
+        // A brand-new page may still be on its way to the server; the collection needs it to exist.
+        await engine.whenDocumentOnServer(documentId);
+        const r = await createCollection({ documentId, name, view });
+        insertBlockAfterCurrent(editor, "collection", { collectionId: r.collectionId, viewId: r.viewId });
+      } catch (e) {
+        toast.show(errorMessage(e), { tone: "error" });
+      }
+    },
+    [engine, documentId, createCollection, editor, toast],
+  );
+
+  const special = useMemo<Record<SpecialInsert, () => void | Promise<void>>>(
+    () => ({
+      image: () => imageInput.current?.click(),
+      unsplash: () => setUnsplashOpen(true),
+      file: () => fileInput.current?.click(),
+      page: async () => navigate(`/d/${await createNestedPage("", false, "link")}?new=1`),
+      card: async () => navigate(`/d/${await createNestedPage("", false, "card")}?new=1`),
+      bookmark: () => setBookmarkPrompt(true),
+      collection: () => insertCollection("table", "Collection"),
+      gallery: () => insertCollection("gallery", "Gallery"),
+      board: () => insertCollection("board", "Kanban"),
+      date: () => {
+        ensureTextCaret();
+        editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: today } }).insertContent(" ").run();
+      },
+      pickDate: () => {
+        ensureTextCaret();
+        setDatePickerAnchor(caretAnchor());
+        setDatePicker({ mode: "insert" });
+      },
+    }),
+    [navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret],
+  );
+
+  useEffect(() => {
+    const dom = editor.view.dom as HTMLElement;
+    const on = (e: Event) => {
+      const kind = (e as CustomEvent<{ kind: SpecialInsert }>).detail?.kind;
+      if (kind && editable && special[kind]) void special[kind]();
+    };
+    dom.addEventListener("folevi:insert", on);
+    return () => dom.removeEventListener("folevi:insert", on);
+  }, [editor, special, editable]);
+
+  // ---------------------------------------------------------------- inline page links & dates
+  // Plain click opens a [[page link]] in the app; Alt/⌘/Ctrl/Shift-click or middle-click opens a new tab.
+  // Clicking a date (or Enter on a selected one) opens the date picker to change it.
+  useEffect(() => {
+    const dom = editor.view.dom as HTMLElement;
+    const openLink = (a: HTMLElement, newTab: boolean) => {
+      const id = a.getAttribute("data-page-link");
+      if (!id) return;
+      const href = `/d/${id}`;
+      if (newTab) window.open(href, "_blank", "noopener");
+      else navigate(href);
+    };
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const link = target?.closest<HTMLElement>("a[data-page-link]");
+      if (link && dom.contains(link)) {
+        e.preventDefault();
+        openLink(link, e.altKey || e.metaKey || e.ctrlKey || e.shiftKey);
+        return;
+      }
+      const time = target?.closest<HTMLElement>("time[data-date]");
+      if (time && dom.contains(time) && editable) {
+        const pos = editor.view.posAtDOM(time, 0);
+        const r = time.getBoundingClientRect();
+        setDatePickerAnchor({ left: r.left, top: r.top, bottom: r.bottom });
+        setDatePicker({ mode: "edit", pos });
+      }
+    };
+    const onAux = (e: MouseEvent) => {
+      if (e.button !== 1) return;
+      const link = (e.target as HTMLElement | null)?.closest<HTMLElement>("a[data-page-link]");
+      if (link && dom.contains(link)) {
+        e.preventDefault();
+        openLink(link, true);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      const sel = editor.state.selection;
+      if (!(sel instanceof NodeSelection)) return;
+      if (sel.node.type.name === "pageLink") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const id = String(sel.node.attrs.documentId);
+        if (e.altKey || e.metaKey || e.ctrlKey) window.open(`/d/${id}`, "_blank", "noopener");
+        else navigate(`/d/${id}`);
+      } else if (sel.node.type.name === "dateMention" && editable) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const c = editor.view.coordsAtPos(sel.from);
+        setDatePickerAnchor({ left: c.left, top: c.top, bottom: c.bottom });
+        setDatePicker({ mode: "edit", pos: sel.from });
+      }
+    };
+    dom.addEventListener("click", onClick);
+    dom.addEventListener("auxclick", onAux);
+    dom.addEventListener("keydown", onKey, true);
+    return () => {
+      dom.removeEventListener("click", onClick);
+      dom.removeEventListener("auxclick", onAux);
+      dom.removeEventListener("keydown", onKey, true);
+    };
+  }, [editor, navigate, editable]);
 
   // ---------------------------------------------------------------- slash menu
   const slashItems: MenuItem[] = useMemo(
@@ -199,35 +447,56 @@ export function EditorMenus({
       { id: "callout", label: "Callout", keywords: "callout note info warning tip", icon: <StickyNote size={15} />, run: () => void turnInto(editor, "callout", { tone: "note" }) },
       { id: "code", label: "Code", hint: "```", keywords: "code snippet programming", icon: <Code2 size={15} />, run: () => void turnInto(editor, "code", { language: "plaintext" }) },
       { id: "divider", label: "Divider", hint: "---", keywords: "divider rule separator line", icon: <Minus size={15} />, run: () => void insertBlockAfterCurrent(editor, "divider") },
+      ...DIVIDER_STYLES.map((d) => ({
+        id: `divider-${d.style}`,
+        label: `Divider: ${d.label}`,
+        keywords: `divider rule separator line ${d.label.toLowerCase()} ${d.style}`,
+        icon: <Minus size={15} />,
+        run: () => void insertBlockAfterCurrent(editor, "divider", { style: d.style }),
+      })),
+      // AI: opens the inline composer at the cursor (the "/" is already gone), some running a task at once.
+      ...(aiOn
+        ? ([
+            ["ai", "Ask AI…", "ai assistant write generate gemini ask"],
+            ["ai-continue", "AI · Continue writing", "ai continue write more next", "continue"],
+            ["ai-summarize", "AI · Summarize note", "ai summary summarize tldr", "summarize"],
+            ["ai-actions", "AI · Find action items", "ai tasks todo action items follow ups", "actions"],
+            ["ai-outline", "AI · Make an outline", "ai outline structure plan", "outline"],
+            ["ai-brainstorm", "AI · Brainstorm ideas", "ai ideas brainstorm", "brainstorm"],
+          ] as const).map(([id, label, keywords, task]) => ({
+            id,
+            label,
+            keywords,
+            hint: id === "ai" ? "⌘J" : undefined,
+            icon: <AiIcon size={15} className="text-[#7c6cf0]" />,
+            run: () => openInlineAi(editor.view.dom, { target: null, task: task as InlineAiOpen["task"] }),
+          }))
+        : []),
+      { id: "pagebreak", label: "Page break", keywords: "page break print pdf new sheet", icon: <SeparatorHorizontal size={15} />, run: () => void insertBlockAfterCurrent(editor, "pageBreak") },
       {
         id: "table",
         label: "Table",
         keywords: "table grid spreadsheet",
         icon: <Table2 size={15} />,
-        run: () => void insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: [[[], [], []], [[], [], []], [[], [], []]] }),
+        run: () => void insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(3, 3) }),
       },
-      { id: "page", label: "Page", keywords: "page nested subpage child", icon: <FileText size={15} />, run: async () => navigate(`/d/${await createNestedPage("", false)}?new=1`) },
+      { id: "formula", label: "TeX formula", keywords: "formula math latex tex equation katex", icon: <Sigma size={15} />, run: () => void insertBlockAfterCurrent(editor, "formula", newFormulaAttrs()) },
+      { id: "mermaid", label: "Mermaid diagram", keywords: "mermaid diagram flowchart chart graph sequence", icon: <Workflow size={15} />, run: () => void insertBlockAfterCurrent(editor, "code", { language: "mermaid" }, MERMAID_SAMPLE) },
+      { id: "whiteboard", label: "Whiteboard", keywords: "whiteboard drawing sketch draw pen canvas", icon: <PenTool size={15} />, run: () => void insertBlockAfterCurrent(editor, "whiteboard", { data: "", height: WHITEBOARD_DEFAULT_HEIGHT }) },
+      { id: "page", label: "Page", keywords: "page nested subpage child link", icon: <FileText size={15} />, run: special.page },
+      { id: "card", label: "Card", keywords: "card page nested subpage child", icon: <SquareStack size={15} />, run: special.card },
       { id: "link", label: "Link to page", hint: "[[", keywords: "link page reference backlink", icon: <Link2 size={15} />, run: () => void editor.chain().focus().insertContent("[[").run() },
-      { id: "image", label: "Image", keywords: "image picture photo upload", icon: <ImageIcon size={15} />, run: () => imageInput.current?.click() },
-      { id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: () => fileInput.current?.click() },
-      { id: "bookmark", label: "Bookmark", keywords: "bookmark web link url embed", icon: <LinkIcon size={15} />, run: () => setBookmarkPrompt(true) },
-      {
-        id: "collection",
-        label: "Collection",
-        keywords: "collection database table board gallery kanban",
-        icon: <LayoutList size={15} />,
-        run: async () => {
-          try {
-            const r = await createCollection({ documentId, name: "Collection" });
-            insertBlockAfterCurrent(editor, "collection", { collectionId: r.collectionId, viewId: r.viewId });
-          } catch (e) {
-            toast.show(errorMessage(e), { tone: "error" });
-          }
-        },
-      },
-      { id: "date", label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} />, run: () => void editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: today } }).insertContent(" ").run() },
+      { id: "image", label: "Image", keywords: "image picture photo upload", icon: <ImageIcon size={15} />, run: special.image },
+      { id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash },
+      { id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
+      { id: "bookmark", label: "Bookmark", keywords: "bookmark web link url embed", icon: <LinkIcon size={15} />, run: special.bookmark },
+      { id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
+      { id: "gallery", label: "Gallery", keywords: "gallery collection database cards grid", icon: <LayoutGrid size={15} />, run: special.gallery },
+      { id: "board", label: "Kanban", keywords: "kanban board collection database columns", icon: <Columns3 size={15} />, run: special.board },
+      { id: "date", label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} />, run: special.date },
+      { id: "pickdate", label: "Date…", keywords: "date pick choose calendar day", icon: <CalendarDays size={15} />, run: special.pickDate },
     ],
-    [editor, today, navigate, createNestedPage, createCollection, documentId, toast],
+    [editor, special, aiOn],
   );
 
   const q = open?.query.toLowerCase() ?? "";
@@ -246,7 +515,7 @@ export function EditorMenus({
         id: d.id,
         label: d.title || "Untitled",
         keywords: "",
-        icon: <span>{d.icon ?? "📄"}</span>,
+        icon: <FileText size={15} />,
         run: () => void editor.chain().focus().insertContent({ type: "pageLink", attrs: { documentId: d.id, label: d.title || "Untitled" } }).insertContent(" ").run(),
       }));
     if (debounced) {
@@ -256,7 +525,7 @@ export function EditorMenus({
   }, [open?.kind, debounced, searchResults, recent, editor, documentId, createNestedPage]);
 
   // ---------------------------------------------------------------- mentions & dates
-  const members = useQuery(api.workspaces.members, open?.kind === "mention" ? { workspaceId: workspace.id } : "skip");
+  const people = useQuery(api.comments.mentionable, open?.kind === "mention" ? { documentId } : "skip");
   const mentionItems: MenuItem[] = useMemo(() => {
     if (open?.kind !== "mention") return [];
     const mq = open.query.toLowerCase();
@@ -276,21 +545,25 @@ export function EditorMenus({
         icon: <CalendarDays size={15} />,
         run: () => void editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: d.date } }).insertContent(" ").run(),
       }));
-    const people: MenuItem[] = (members?.members ?? [])
+    if (!mq || "pick a date".includes(mq) || "date".startsWith(mq)) {
+      dateItems.push({ id: "date-pick", label: "Pick a date…", keywords: "", icon: <CalendarDays size={15} />, run: special.pickDate });
+    }
+    const peopleItems: MenuItem[] = (people ?? [])
       .filter((m) => !mq || m.displayName.toLowerCase().includes(mq))
       .slice(0, 8)
       .map((m) => ({
         id: m.profileId,
         label: m.displayName,
-        hint: m.isYou ? "you" : undefined,
+        hint: m.isYou ? "you" : m.guest ? "guest" : undefined,
         keywords: "",
         icon: <span className="text-xs font-semibold">{m.displayName.slice(0, 1)}</span>,
         run: () => void editor.chain().focus().insertContent({ type: "mention", attrs: { userId: m.profileId, label: m.displayName } }).insertContent(" ").run(),
       }));
-    return [...people, ...dateItems];
-  }, [open, members, today, editor]);
+    return [...peopleItems, ...dateItems];
+  }, [open, people, today, editor, special.pickDate]);
 
   const items = open?.kind === "slash" ? filteredSlash : open?.kind === "page" ? pageItems : mentionItems;
+  const menuLabel = open?.kind === "slash" ? "Insert block" : open?.kind === "page" ? "Link to page" : "Mention a person or date";
 
   const run = useCallback(
     (item: MenuItem) => {
@@ -327,10 +600,33 @@ export function EditorMenus({
     return () => dom.removeEventListener("keydown", onKey, true);
   }, [open, items, active, run, editor, triggerKey]);
 
+  // Combobox-style semantics on the editor while a suggestion list is open, so screen readers announce
+  // the active option as it changes (aria-expanded isn't allowed on role=textbox; the list is linked
+  // with aria-controls and the option with aria-activedescendant).
+  const menuShown = Boolean(open && anchor);
+  useEffect(() => {
+    const dom = editor.view.dom as HTMLElement;
+    if (!menuShown) {
+      for (const a of ["aria-activedescendant", "aria-controls", "aria-autocomplete", "aria-haspopup"]) dom.removeAttribute(a);
+      return;
+    }
+    dom.setAttribute("aria-autocomplete", "list");
+    dom.setAttribute("aria-haspopup", "listbox");
+    dom.setAttribute("aria-controls", listId);
+    if (items.length) dom.setAttribute("aria-activedescendant", `${listId}-${Math.min(active, items.length - 1)}`);
+    else dom.removeAttribute("aria-activedescendant");
+  }, [editor, menuShown, listId, active, items.length]);
+  useEffect(() => {
+    const dom = editor.view.dom as HTMLElement;
+    return () => {
+      for (const a of ["aria-activedescendant", "aria-controls", "aria-autocomplete", "aria-haspopup"]) dom.removeAttribute(a);
+    };
+  }, [editor]);
+
   return (
     <>
-      <Popover anchor={open ? anchor : null} label={open?.kind === "slash" ? "Insert block" : open?.kind === "page" ? "Link to page" : "Mention"}>
-        <ListMenu items={items} active={active} setActive={setActive} onRun={run} listId={listId} emptyLabel={open?.kind === "page" ? "Type to search pages" : "No matches"} />
+      <Popover anchor={open ? anchor : null} label={menuLabel} role="presentation" scroll={false}>
+        <ListMenu items={items} active={active} setActive={setActive} onRun={run} listId={listId} label={menuLabel} emptyLabel={open?.kind === "page" ? "Type to search pages" : "No matches"} />
         <p className="sr-only" aria-live="polite">
           {open ? `${items.length} suggestion${items.length === 1 ? "" : "s"}` : ""}
         </p>
@@ -358,21 +654,53 @@ export function EditorMenus({
           if (files.length) void onInsertFiles(files);
         }}
       />
-      {bookmarkPrompt ? (
-        <BookmarkPrompt
-          onClose={() => setBookmarkPrompt(false)}
-          onSubmit={(url) => {
-            let host = url;
-            try {
-              host = new URL(url).host;
-            } catch {
-              /* keep */
-            }
-            insertBlockAfterCurrent(editor, "bookmark", { url, title: host });
-            setBookmarkPrompt(false);
+      <UnsplashDialog
+        open={unsplashOpen}
+        onClose={() => {
+          setUnsplashOpen(false);
+          editor.view.focus();
+        }}
+        onPick={(photo) => {
+          setUnsplashOpen(false);
+          insertBlockAfterCurrent(editor, "image", {
+            url: photo.url,
+            alt: photo.alt || unsplashCredit(photo),
+            caption: unsplashCredit(photo),
+            naturalWidth: photo.width || null,
+            naturalHeight: photo.height || null,
+          });
+        }}
+      />
+      <BookmarkPrompt
+        open={bookmarkPrompt}
+        onClose={() => {
+          setBookmarkPrompt(false);
+          editor.view.focus();
+        }}
+        onSubmit={(url) => {
+          let host = url;
+          try {
+            host = new URL(url).host;
+          } catch {
+            /* keep */
+          }
+          setBookmarkPrompt(false);
+          insertBlockAfterCurrent(editor, "bookmark", { url, title: host });
+        }}
+      />
+      {datePicker && datePickerAnchor ? (
+        <DatePopover
+          editor={editor}
+          anchor={datePickerAnchor}
+          mode={datePicker}
+          today={today}
+          onClose={() => {
+            setDatePicker(null);
+            editor.view.focus();
           }}
         />
       ) : null}
+      {editable && aiOn && inlineAi ? <InlineAi key={inlineAi.id} editor={editor} documentId={documentId} request={inlineAi} onClose={() => setInlineAi(null)} /> : null}
       {editable ? <SelectionBubble editor={editor} onComment={onCommentBlock} /> : null}
       {editable ? <BlockHandle editor={editor} onDropBlock={onDropBlock} onCommentBlock={onCommentBlock} /> : null}
       {editable ? <TaskDetails editor={editor} /> : null}
@@ -380,14 +708,35 @@ export function EditorMenus({
   );
 }
 
-function BookmarkPrompt({ onClose, onSubmit }: { onClose: () => void; onSubmit: (url: string) => void }) {
+function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (url: string) => void }) {
   const [value, setValue] = useState("https://");
   const [error, setError] = useState<string | null>(null);
+  const formId = useId();
+  useEffect(() => {
+    if (open) {
+      setValue("https://");
+      setError(null);
+    }
+  }, [open]);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--color-scrim)]" onClick={onClose}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Add a bookmark"
+      size="sm"
+      footer={
+        <>
+          <Button variant="quiet" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form={formId}>
+            Add bookmark
+          </Button>
+        </>
+      }
+    >
       <form
-        className="w-[min(92vw,420px)] ui-pop rounded-[20px] p-5"
-        onClick={(e) => e.stopPropagation()}
+        id={formId}
         onSubmit={(e) => {
           e.preventDefault();
           const href = sanitizeHref(value);
@@ -398,123 +747,429 @@ function BookmarkPrompt({ onClose, onSubmit }: { onClose: () => void; onSubmit: 
           onSubmit(href);
         }}
       >
-        <label htmlFor="bm-url" className="text-sm font-medium">
-          Bookmark URL
+        <label htmlFor={`${formId}-url`} className="text-sm font-medium">
+          Web address
         </label>
-        <input id="bm-url" autoFocus value={value} onChange={(e) => setValue(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-full px-4" aria-invalid={Boolean(error)} aria-describedby={error ? "bm-err" : undefined} />
+        <input
+          id={`${formId}-url`}
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="mt-2 h-10 w-full ui-input rounded-[6px] px-4"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${formId}-err` : undefined}
+        />
         {error ? (
-          <p id="bm-err" className="mt-1 text-xs text-danger">
+          <p id={`${formId}-err`} className="mt-1 text-xs text-danger">
             {error}
           </p>
         ) : null}
-        <div className="mt-3 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="ui-btn ui-btn-quiet h-8 px-3.5 text-sm">
-            Cancel
-          </button>
-          <button type="submit" className="ui-btn ui-btn-primary h-8 px-4 text-sm">
-            Add bookmark
-          </button>
-        </div>
       </form>
-    </div>
+    </Dialog>
   );
 }
 
-const COLORS = ["muted", "accent", "moss", "marigold", "plum", "coral"] as const;
-const HIGHLIGHTS = ["yellow", "green", "blue", "pink"] as const;
+/** Picks a date to insert, or changes/removes an existing date mention. */
+function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor; anchor: Anchor; mode: { mode: "insert" } | { mode: "edit"; pos: number }; today: string; onClose: () => void }) {
+  const current = mode.mode === "edit" ? editor.state.doc.nodeAt(mode.pos) : null;
+  const initial = current?.type.name === "dateMention" ? String(current.attrs.date) : today;
+  const [value, setValue] = useState(initial);
+  const apply = () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+    if (mode.mode === "insert") {
+      editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: value } }).insertContent(" ").run();
+    } else {
+      const node = editor.state.doc.nodeAt(mode.pos);
+      if (node?.type.name === "dateMention") editor.view.dispatch(editor.state.tr.setNodeMarkup(mode.pos, undefined, { ...node.attrs, date: value }));
+      editor.view.focus();
+    }
+    onClose();
+  };
+  const remove = () => {
+    if (mode.mode !== "edit") return;
+    const node = editor.state.doc.nodeAt(mode.pos);
+    if (node?.type.name === "dateMention") editor.view.dispatch(editor.state.tr.delete(mode.pos, mode.pos + node.nodeSize));
+    onClose();
+  };
+  if (mode.mode === "edit" && current?.type.name !== "dateMention") return null;
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onMouseDown={onClose} aria-hidden />
+      <Popover anchor={anchor} label={mode.mode === "insert" ? "Insert a date" : "Change date"} width={260} scroll={false}>
+        <form
+          className="grid gap-3 p-2 text-sm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            apply();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+        >
+          <label className="grid gap-1">
+            <span className="text-xs text-muted">Date</span>
+            <input type="date" data-autofocus="" required value={value} onChange={(e) => setValue(e.target.value)} className="h-9 ui-input rounded-[6px] px-3" />
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              ["Today", today],
+              ["Tomorrow", addDays(today, 1)],
+              ["Next week", addDays(today, 7)],
+            ].map(([label, date]) => (
+              <button key={label} type="button" className="ui-chip ui-raised text-ink" onClick={() => setValue(date!)} aria-pressed={value === date}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            {mode.mode === "edit" ? (
+              <button type="button" className="ui-btn ui-btn-quiet h-8 px-3 text-xs text-danger" onClick={remove}>
+                Remove date
+              </button>
+            ) : (
+              <span />
+            )}
+            <button type="submit" className="ui-btn ui-btn-primary h-8 px-3.5 text-xs">
+              {mode.mode === "insert" ? "Insert" : "Done"}
+            </button>
+          </div>
+        </form>
+      </Popover>
+    </>
+  );
+}
 
+/**
+ * Floating formatting toolbar for a text selection. Reachable from the keyboard: Alt+F10 moves focus
+ * into it (←/→ between buttons, Escape back to the text); ⌘⇧K (Ctrl+Shift+K) edits the link directly,
+ * also with no selection (the address is inserted as a link).
+ */
 function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (blockId: string) => void }) {
+  // The note style's text colours and highlights (its own names), when it has them.
+  const palette = useNotePalette();
+  const aiOn = useAiEnabled();
   const [state, setState] = useState<{ left: number; top: number } | null>(null);
-  const [linkMode, setLinkMode] = useState(false);
-  const [colors, setColors] = useState(false);
+  const [mode, setMode] = useState<"marks" | "link" | "colors">("marks");
   const [href, setHref] = useState("");
-  useEffect(() => {
-    const update = () => {
-      const { selection } = editor.state;
-      if (selection.empty || !editor.isFocused || editor.state.selection.$from.parent.type.name === "codeBlock" || !selection.$from.parent.isTextblock) {
-        setState(null);
-        setLinkMode(false);
-        setColors(false);
-        return;
-      }
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const forced = useRef(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const focusFirst = useRef(false);
+  useShowInTopLayer(Boolean(state), ref);
+  // The link field takes focus once the toolbar is showing (autoFocus would fire while it's still hidden).
+  useLayoutEffect(() => {
+    if (mode !== "link" || !state) return;
+    const input = ref.current?.querySelector<HTMLInputElement>('input[aria-label="Link address"]');
+    if (input && document.activeElement !== input) input.focus();
+  }, [mode, state]);
+
+  const position = useCallback(() => {
+    const { selection } = editor.state;
+    try {
       const start = editor.view.coordsAtPos(selection.from);
       const end = editor.view.coordsAtPos(selection.to);
-      setState({ left: (start.left + end.left) / 2, top: Math.min(start.top, end.top) });
-    };
-    editor.on("selectionUpdate", update);
-    editor.on("blur", () => setTimeout(update, 120));
-    editor.on("focus", update);
-    return () => {
-      editor.off("selectionUpdate", update);
-      editor.off("focus", update);
-    };
+      return { left: (start.left + end.left) / 2, top: Math.min(start.top, end.top) };
+    } catch {
+      return null;
+    }
   }, [editor]);
+
+  const close = useCallback(() => {
+    forced.current = false;
+    setMode("marks");
+    setLinkError(null);
+    setState(null);
+  }, []);
+
+  const update = useCallback(() => {
+    // Keep the toolbar while focus is inside it (keyboard use, the link field).
+    if (ref.current?.contains(document.activeElement)) return;
+    const { selection } = editor.state;
+    const textSelection = !selection.empty && selection.$from.parent.isTextblock && selection.$from.parent.type.name !== "codeBlock";
+    if (!editor.isFocused || (!textSelection && !forced.current)) {
+      close();
+      return;
+    }
+    if (!forced.current) setMode((m) => (m === "link" && !textSelection ? "marks" : m));
+    setState(position());
+  }, [editor, position, close]);
+
+  useEffect(() => {
+    let blurTimer: ReturnType<typeof setTimeout> | null = null;
+    const onBlur = () => {
+      if (blurTimer) clearTimeout(blurTimer);
+      blurTimer = setTimeout(update, 120);
+    };
+    const onSelection = () => {
+      forced.current = false;
+      update();
+    };
+    editor.on("selectionUpdate", onSelection);
+    editor.on("focus", update);
+    editor.on("blur", onBlur);
+    return () => {
+      editor.off("selectionUpdate", onSelection);
+      editor.off("focus", update);
+      editor.off("blur", onBlur);
+      if (blurTimer) clearTimeout(blurTimer);
+    };
+  }, [editor, update]);
+
+  const openLink = useCallback(() => {
+    setHref(String(editor.getAttributes("link").href ?? ""));
+    setLinkError(null);
+    setMode("link");
+  }, [editor]);
+
+  // Keyboard entry points.
+  useEffect(() => {
+    const dom = editor.view.dom as HTMLElement;
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.shiftKey && !e.altKey && e.code === "KeyK") {
+        // Not the command palette (⌘K): stop it reaching the window-level shortcut handler.
+        e.preventDefault();
+        e.stopPropagation();
+        syncDomSelection(editor.view);
+        if (editor.state.selection.$from.parent.type.name === "codeBlock") return;
+        forced.current = true;
+        setState(position());
+        openLink();
+      } else if (e.altKey && e.key === "F10") {
+        syncDomSelection(editor.view);
+        const { selection } = editor.state;
+        if (selection.empty) return;
+        e.preventDefault();
+        e.stopPropagation();
+        forced.current = true;
+        focusFirst.current = true;
+        setMode("marks");
+        setState(position());
+      }
+    };
+    dom.addEventListener("keydown", onKey);
+    return () => dom.removeEventListener("keydown", onKey);
+  }, [editor, position, openLink]);
+
+  useEffect(() => {
+    if (focusFirst.current && state && ref.current) {
+      focusFirst.current = false;
+      ref.current.querySelector<HTMLElement>("button, input")?.focus();
+    }
+  }, [state, mode]);
+
   if (!state) return null;
-  const btn = (label: string, isActive: boolean, onClick: () => void, icon: React.ReactNode) => (
-    <button type="button" aria-label={label} title={label} aria-pressed={isActive} onMouseDown={(e) => e.preventDefault()} onClick={onClick} className={`grid h-8 w-8 place-items-center rounded-full transition-colors ${isActive ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_25%,transparent)]" : "text-muted hover:bg-accent-soft hover:text-heading"}`}>
+
+  const back = () => {
+    close();
+    editor.view.focus();
+  };
+  const roving = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (mode !== "marks" && !forced.current) {
+        focusFirst.current = true;
+        setMode("marks");
+      } else back();
+      return;
+    }
+    if (e.key === "Tab") {
+      // The toolbar floats outside the page flow: Tab returns to the text.
+      e.preventDefault();
+      back();
+      return;
+    }
+    if (e.target instanceof HTMLInputElement) return;
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+    const buttons = [...(ref.current?.querySelectorAll<HTMLElement>("button") ?? [])];
+    const i = buttons.indexOf(document.activeElement as HTMLElement);
+    if (!buttons.length) return;
+    e.preventDefault();
+    const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
+    buttons[next]!.focus();
+  };
+  const afterAction = () => {
+    // Keyboard users who came in with Alt+F10 go back to the text; pointer users keep the toolbar.
+    if (ref.current?.contains(document.activeElement)) back();
+  };
+  const btn = (label: string, isActive: boolean, onClick: () => void, icon: React.ReactNode, pressable = true) => (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={pressable ? isActive : undefined}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        onClick();
+        // Formatting applied from the keyboard (⌥F10) returns to the text; mode switches keep focus here.
+        if (pressable || label === "Clear formatting") afterAction();
+      }}
+      className={`grid h-8 w-8 place-items-center rounded-[6px] transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${isActive ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_25%,transparent)]" : "text-muted hover:bg-accent-soft hover:text-heading"}`}
+    >
       {icon}
     </button>
   );
   return (
-    <div role="toolbar" aria-label="Text formatting" className="fixed z-40 -translate-x-1/2 -translate-y-[calc(100%+8px)] ui-pop rounded-full p-1 animate-[folio-rise_120ms_var(--ease-folio)]" style={{ left: state.left, top: state.top }} onMouseDown={(e) => e.preventDefault()}>
-      {linkMode ? (
+    <div
+      ref={ref}
+      role="toolbar"
+      aria-label="Text formatting"
+      aria-orientation="horizontal"
+      popover="manual"
+      className="z-[100] -translate-x-1/2 -translate-y-[calc(100%+8px)] ui-pop rounded-[8px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
+      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: state.left, top: state.top }}
+      onMouseDown={(e) => {
+        if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+      }}
+      onKeyDown={roving}
+    >
+      {mode === "link" ? (
         <form
           className="flex items-center gap-1"
           onSubmit={(e) => {
             e.preventDefault();
-            const safe = sanitizeHref(href);
-            if (safe) editor.chain().focus().extendMarkRange("link").setMark("link", { href: safe }).run();
-            setLinkMode(false);
+            if (!href.trim()) {
+              if (editor.isActive("link")) removeLink(editor);
+              close();
+              return;
+            }
+            if (!applyLink(editor, href)) {
+              setLinkError("That doesn’t look like a web address.");
+              return;
+            }
+            close();
           }}
         >
-          <input autoFocus value={href} onChange={(e) => setHref(e.target.value)} placeholder="Paste or type a link" aria-label="Link address" className="ui-input h-8 w-60 rounded-full px-3 text-sm" onMouseDown={(e) => e.stopPropagation()} />
+          <input
+            value={href}
+            onChange={(e) => {
+              setHref(e.target.value);
+              setLinkError(null);
+            }}
+            placeholder="Paste or type a link"
+            aria-label="Link address"
+            aria-invalid={Boolean(linkError)}
+            title={linkError ?? undefined}
+            className={`ui-input h-8 w-60 rounded-[6px] px-3 text-sm ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+          />
           <button type="submit" className="ui-btn ui-btn-primary h-8 px-3 text-xs">
             Apply
           </button>
           {editor.isActive("link") ? (
-            <button type="button" className="ui-btn ui-btn-quiet h-8 px-2.5 text-xs" onClick={() => { editor.chain().focus().extendMarkRange("link").unsetMark("link").run(); setLinkMode(false); }}>
+            <button
+              type="button"
+              className="ui-btn ui-btn-quiet h-8 px-2.5 text-xs"
+              onClick={() => {
+                removeLink(editor);
+                close();
+              }}
+            >
               Remove
             </button>
           ) : null}
+          {linkError ? (
+            <span role="alert" className="sr-only">
+              {linkError}
+            </span>
+          ) : null}
         </form>
-      ) : colors ? (
-        <div className="flex items-center gap-1 p-0.5">
-          {COLORS.map((c) => (
-            <button key={c} type="button" aria-label={`Text color ${c}`} onClick={() => editor.chain().focus().setMark("textColor", { value: c }).run()} className="grid h-7 w-7 place-items-center rounded-full hover:bg-accent-soft">
-              <span className={`fb-color-${c} text-sm font-semibold`}>A</span>
+      ) : mode === "colors" ? (
+        <div className="flex items-center gap-1 p-0.5" {...palette?.attrs}>
+          {TEXT_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              aria-label={`Text color: ${colorName(palette, c)}`}
+              aria-pressed={editor.isActive("textColor", { value: c })}
+              onClick={() => {
+                setTextColor(editor, c);
+                afterAction();
+              }}
+              className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
+            >
+              <span className={`fb-color-${c} text-sm font-semibold`} aria-hidden>
+                A
+              </span>
             </button>
           ))}
           <span className="mx-1 h-5 w-px bg-line" aria-hidden />
-          {HIGHLIGHTS.map((h) => (
-            <button key={h} type="button" aria-label={`Highlight ${h}`} onClick={() => editor.chain().focus().setMark("highlight", { value: h }).run()} className="grid h-7 w-7 place-items-center rounded-full hover:bg-accent-soft">
-              <span className={`fb-hl-${h} h-4 w-4 rounded-[3px]`} />
+          {HIGHLIGHT_COLORS.map((h) => (
+            <button
+              key={h}
+              type="button"
+              aria-label={`Highlight: ${colorName(palette, h)}`}
+              aria-pressed={editor.isActive("highlight", { value: h })}
+              onClick={() => {
+                setHighlight(editor, h);
+                afterAction();
+              }}
+              className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
+            >
+              <span className={`fb-hl-${h} h-4 w-4 rounded-[3px]`} aria-hidden />
             </button>
           ))}
-          <button type="button" className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs" onClick={() => editor.chain().focus().unsetMark("textColor").unsetMark("highlight").run()}>
+          <button
+            type="button"
+            className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs"
+            onClick={() => {
+              editor.chain().unsetMark("textColor").unsetMark("highlight").run();
+              afterAction();
+            }}
+          >
             Reset
           </button>
         </div>
       ) : (
         <div className="flex items-center gap-0.5">
-          {btn("Bold (⌘B)", editor.isActive("bold"), () => editor.chain().focus().toggleMark("bold").run(), <Bold size={15} />)}
-          {btn("Italic (⌘I)", editor.isActive("italic"), () => editor.chain().focus().toggleMark("italic").run(), <Italic size={15} />)}
-          {btn("Underline (⌘U)", editor.isActive("underline"), () => editor.chain().focus().toggleMark("underline").run(), <Underline size={15} />)}
-          {btn("Strikethrough (⌘⇧X)", editor.isActive("strike"), () => editor.chain().focus().toggleMark("strike").run(), <Strikethrough size={15} />)}
-          {btn("Inline code (⌘E)", editor.isActive("code"), () => editor.chain().focus().toggleMark("code").run(), <Code2 size={15} />)}
-          {btn("Link", editor.isActive("link"), () => {
-            setHref(String(editor.getAttributes("link").href ?? ""));
-            setLinkMode(true);
-          }, <LinkIcon size={15} />)}
-          {btn("Color and highlight", false, () => setColors(true), <Palette size={15} />)}
-          {btn("Highlight (⌘⇧H)", editor.isActive("highlight"), () => editor.chain().focus().toggleMark("highlight", { value: "yellow" }).run(), <Highlighter size={15} />)}
-          {btn("Clear formatting", false, () => editor.chain().focus().unsetAllMarks().run(), <Eraser size={15} />)}
+          {btn("Bold (⌘B)", editor.isActive("bold"), () => editor.chain().toggleMark("bold").run(), <Bold size={15} />)}
+          {btn("Italic (⌘I)", editor.isActive("italic"), () => editor.chain().toggleMark("italic").run(), <Italic size={15} />)}
+          {btn("Underline (⌘U)", editor.isActive("underline"), () => editor.chain().toggleMark("underline").run(), <Underline size={15} />)}
+          {btn("Strikethrough (⌘⇧X)", editor.isActive("strike"), () => editor.chain().toggleMark("strike").run(), <Strikethrough size={15} />)}
+          {btn("Inline code (⌘E)", editor.isActive("code"), () => editor.chain().toggleMark("code").run(), <Code2 size={15} />)}
+          {btn("Link (⌘⇧K)", editor.isActive("link"), openLink, <LinkIcon size={15} />)}
+          {btn(
+            "Color and highlight",
+            false,
+            () => {
+              if (ref.current?.contains(document.activeElement)) focusFirst.current = true;
+              setMode("colors");
+            },
+            <Palette size={15} />,
+            false,
+          )}
+          {btn("Highlight (⌘⇧H)", editor.isActive("highlight"), () => editor.chain().toggleMark("highlight", { value: "yellow" }).run(), <Highlighter size={15} />)}
+          {btn("Clear formatting", false, () => clearFormatting(editor), <Eraser size={15} />, false)}
+          {aiOn ? <span className="mx-0.5 h-5 w-px bg-line" aria-hidden /> : null}
+          {aiOn && btn(
+            "Ask AI (⌘J)",
+            false,
+            () => {
+              const { from, to } = editor.state.selection;
+              const text = editor.state.doc.textBetween(from, to, "\n");
+              setState(null);
+              openInlineAi(editor.view.dom, { target: text.trim() ? { from, to, text } : null });
+            },
+            <AiIcon size={15} className="text-[#7c6cf0]" />,
+            false,
+          )}
           {onComment ? (
             <>
               <span className="mx-0.5 h-5 w-px bg-line" aria-hidden />
-              {btn("Comment on this block", false, () => {
-                const id = editor.state.selection.$from.node(1)?.attrs.id as string | undefined;
-                if (id) onComment(id);
-              }, <MessageSquare size={15} />)}
+              {btn(
+                "Comment on this block",
+                false,
+                () => {
+                  const id = editor.state.selection.$from.node(1)?.attrs.id as string | undefined;
+                  if (id) onComment(id);
+                },
+                <MessageSquare size={15} />,
+                false,
+              )}
             </>
           ) : null}
         </div>
@@ -523,21 +1178,34 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   );
 }
 
-/** Hover gutter with a drag handle and block menu; also reachable from the keyboard with ⌘. (Ctrl+.). */
-function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null; onCommentBlock?: (blockId: string) => void }) {
-  const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number } | null>(null);
-  const [menu, setMenu] = useState<{ index: number; left: number; top: number; bottom: number } | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const justDragged = useRef(false);
-  const toast = useToast();
+const TURN_INTO = [
+  ["paragraph", "Text", {}],
+  ["heading", "Heading 1", { level: 1 }],
+  ["heading", "Heading 2", { level: 2 }],
+  ["heading", "Heading 3", { level: 3 }],
+  ["todo", "To-do", { checked: false }],
+  ["bulleted", "Bulleted", {}],
+  ["numbered", "Numbered", {}],
+  ["toggle", "Toggle", { collapsed: false }],
+  ["quote", "Quote", {}],
+  ["callout", "Callout", { tone: "note" }],
+  ["code", "Code", { language: "plaintext" }],
+] as const;
 
-  const blockDomAt = useCallback(
-    (index: number): HTMLElement | null => {
-      const dom = editor.view.dom as HTMLElement;
-      return (dom.children[index] as HTMLElement | undefined) ?? null;
-    },
-    [editor],
-  );
+/**
+ * Hover gutter with a drag handle and block menu. The menu is also reachable from the keyboard with
+ * ⌘. (Ctrl+.): focus moves into it, ↑/↓ move between items, Escape returns to the text. With several
+ * blocks selected (Shift-click grips, Shift+↑/↓, Escape) its actions apply to all of them.
+ */
+function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null; onCommentBlock?: (blockId: string) => void }) {
+  const aiOn = useAiEnabled();
+  const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number } | null>(null);
+  const [menu, setMenu] = useState<{ from: number; to: number; left: number; top: number; bottom: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [selectedCount, setSelectedCount] = useState(0);
+  const justDragged = useRef(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
 
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
@@ -564,55 +1232,136 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     return () => window.removeEventListener("scroll", onScroll, true);
   }, []);
 
-  // Keyboard: ⌘. / Ctrl+. opens the block menu for the current block.
+  // Announce block selections to screen readers.
+  useEffect(() => {
+    const on = () => {
+      const range = blockSelectionRange(editor.state);
+      setSelectedCount(range ? range.to - range.from + 1 : 0);
+    };
+    editor.on("transaction", on);
+    return () => {
+      editor.off("transaction", on);
+    };
+  }, [editor]);
+
+  const openMenuFor = useCallback(
+    (from: number, to: number, left?: number) => {
+      const el = blockDom(editor, from);
+      const r = el?.getBoundingClientRect();
+      if (!r) return;
+      const depth = Number(el?.dataset.depth ?? 0);
+      setMenu({ from, to, left: left ?? r.left + depth * 24, top: r.top, bottom: r.top + 24 });
+    },
+    [editor],
+  );
+
+  // Keyboard: ⌘. / Ctrl+. opens the block menu for the current block (or every selected block).
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === ".") {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key === ".") {
         e.preventDefault();
-        const index = editor.state.selection.$from.index(0);
-        const el = blockDomAt(index);
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        setMenu({ index, left: r.left, top: r.top, bottom: r.top + 24 });
+        syncDomSelection(editor.view);
+        const refs = blocksInSelection(editor.state);
+        openMenuFor(refs[0]!.index, refs[refs.length - 1]!.index);
       }
     };
     dom.addEventListener("keydown", onKey);
     return () => dom.removeEventListener("keydown", onKey);
-  }, [editor, blockDomAt]);
+  }, [editor, openMenuFor]);
 
-  const selectBlock = (index: number) => {
+  // Focus moves into the menu when it opens.
+  useEffect(() => {
+    if (!menu) return;
+    const id = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [menu]);
+
+  const closeMenu = useCallback(
+    (refocus = true) => {
+      setMenu(null);
+      if (refocus) editor.view.focus();
+    },
+    [editor],
+  );
+
+  const selectTargets = (from: number, to: number) => {
+    if (from !== to) {
+      setBlockSelection(editor.view, from, to);
+      return;
+    }
+    clearBlockSelection(editor.view);
     let pos = 0;
-    for (let i = 0; i < index; i++) pos += editor.state.doc.child(i).nodeSize;
-    const node = editor.state.doc.child(index);
+    for (let i = 0; i < from; i++) pos += editor.state.doc.child(i).nodeSize;
+    const node = editor.state.doc.child(from);
     if (node.isTextblock) editor.chain().focus().setTextSelection({ from: pos + 1, to: pos + 1 + node.content.size }).run();
     else editor.chain().focus().setNodeSelection(pos).run();
   };
 
   const act = (fn: () => void) => {
     if (!menu) return;
-    selectBlock(menu.index);
+    editor.view.focus();
+    selectTargets(menu.from, menu.to);
     fn();
-    setMenu(null);
+    closeMenu();
   };
 
-  const node = menu ? editor.state.doc.maybeChild(menu.index) : null;
-  const isText = node?.isTextblock && node.type.name !== "codeBlock";
+  const count = menu ? menu.to - menu.from + 1 : 0;
+  const nodes = menu ? Array.from({ length: count }, (_, i) => editor.state.doc.maybeChild(menu.from + i)).filter((n): n is NonNullable<typeof n> => Boolean(n)) : [];
+  const single = count === 1 ? nodes[0] : null;
+  const anyText = nodes.some((n) => n.isTextblock);
+
+  const onMenuKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    const focus = (n: number) => items[(n + items.length) % items.length]?.focus();
+    switch (e.key) {
+      case "ArrowDown":
+      case "ArrowRight":
+        e.preventDefault();
+        focus(i + 1);
+        break;
+      case "ArrowUp":
+      case "ArrowLeft":
+        e.preventDefault();
+        focus(i - 1);
+        break;
+      case "Home":
+        e.preventDefault();
+        focus(0);
+        break;
+      case "End":
+        e.preventDefault();
+        focus(items.length - 1);
+        break;
+      case "Escape":
+      case "Tab":
+        e.preventDefault();
+        e.stopPropagation();
+        closeMenu();
+        break;
+    }
+  };
+
+  const itemClass = "flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left transition-colors hover:bg-accent-soft hover:text-heading focus:bg-accent-soft focus:text-heading focus:outline-none";
 
   return (
     <>
+      <p className="sr-only" aria-live="polite">
+        {selectedCount ? `${selectedCount} block${selectedCount === 1 ? "" : "s"} selected` : ""}
+      </p>
       {hover && !menu && !dragging ? (
         <div
-          className="ui-raised fixed z-30 flex items-center gap-px rounded-full p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
+          className="ui-raised fixed z-30 flex items-center gap-px rounded-[8px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
           style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 }}
           onMouseDown={(e) => e.preventDefault()}
         >
           <button
             type="button"
             aria-label="Insert block below"
-            className="grid h-6 w-6 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading"
+            className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {
-              selectBlock(hover.index);
+              clearBlockSelection(editor.view);
               const at = (() => {
                 let p = 0;
                 for (let i = 0; i <= hover.index; i++) p += editor.state.doc.child(i).nodeSize;
@@ -626,10 +1375,10 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
           </button>
           <button
             type="button"
-            aria-label="Drag to move, click for block options"
-            className="grid h-6 w-5 cursor-grab touch-none place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing"
+            aria-label="Drag to move, click for block options, Shift-click to select several blocks"
+            className="grid h-6 w-5 cursor-grab touch-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing"
             onPointerDown={(e) => {
-              if (e.button !== 0) return;
+              if (e.button !== 0 || e.shiftKey) return;
               e.preventDefault();
               const index = hover.index;
               beginPointerDrag({
@@ -638,6 +1387,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                 event: e,
                 onStart: () => {
                   justDragged.current = true;
+                  clearBlockSelection(editor.view);
                   setDragging(true);
                   setHover(null);
                 },
@@ -648,11 +1398,19 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                 },
               });
             }}
-            onClick={() => {
+            onClick={(e) => {
               if (justDragged.current) return;
-              const el = blockDomAt(hover.index);
-              const r = el?.getBoundingClientRect();
-              setMenu({ index: hover.index, left: hover.left - 40, top: r?.top ?? hover.top, bottom: (r?.top ?? hover.top) + 24 });
+              if (e.shiftKey) {
+                editor.view.focus();
+                extendBlockSelectionTo(editor.view, hover.index);
+                return;
+              }
+              const range = blockSelectionRange(editor.state);
+              if (range && hover.index >= range.from && hover.index <= range.to) openMenuFor(range.from, range.to, hover.left - 40);
+              else {
+                clearBlockSelection(editor.view);
+                openMenuFor(hover.index, hover.index, hover.left - 40);
+              }
             }}
           >
             <GripVertical size={14} aria-hidden />
@@ -661,54 +1419,99 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       ) : null}
       {menu ? (
         <>
-          <div className="fixed inset-0 z-40" onMouseDown={() => setMenu(null)} />
-          <Popover anchor={menu} label="Block options" width={240}>
-            <div className="p-1 text-sm" role="menu" aria-label="Block options" onKeyDown={(e) => e.key === "Escape" && setMenu(null)}>
-              {isText ? (
+          <div className="fixed inset-0 z-40" onMouseDown={() => closeMenu(false)} aria-hidden />
+          <Popover anchor={menu} label="Block options" width={240} popRef={menuRef}>
+            <div className="p-1 text-sm" role="menu" aria-label={count > 1 ? `Options for ${count} blocks` : "Block options"} onKeyDown={onMenuKey}>
+              {count > 1 ? <p className="px-2 pb-1 pt-0.5 text-xs text-muted">{count} blocks selected</p> : null}
+              {anyText ? (
                 <>
-                  <p className="ui-caps px-2 pb-1.5 pt-1">Turn into</p>
-                  <div className="grid grid-cols-2 gap-0.5">
-                    {(
-                      [
-                        ["paragraph", "Text", {}],
-                        ["heading", "Heading 1", { level: 1 }],
-                        ["heading", "Heading 2", { level: 2 }],
-                        ["heading", "Heading 3", { level: 3 }],
-                        ["todo", "To-do", { checked: false }],
-                        ["bulleted", "Bulleted", {}],
-                        ["numbered", "Numbered", {}],
-                        ["toggle", "Toggle", { collapsed: false }],
-                        ["quote", "Quote", {}],
-                        ["callout", "Callout", { tone: "note" }],
-                        ["code", "Code", { language: "plaintext" }],
-                      ] as const
-                    ).map(([type, label, attrs]) => (
-                      <button key={label} type="button" role="menuitem" className="rounded-[9px] px-2 py-1.5 text-left transition-colors hover:bg-accent-soft hover:text-heading focus:bg-accent-soft" onClick={() => act(() => turnInto(editor, type, attrs))}>
+                  <p className="ui-caps px-2 pb-1.5 pt-1" aria-hidden>
+                    Turn into
+                  </p>
+                  <div className="grid grid-cols-2 gap-0.5" role="group" aria-label="Turn into">
+                    {TURN_INTO.map(([type, label, attrs]) => (
+                      <button key={label} type="button" role="menuitem" tabIndex={-1} className={`${itemClass} !w-auto`} onClick={() => act(() => turnInto(editor, type, attrs))}>
                         {label}
                       </button>
                     ))}
                   </div>
-                  <div className="mx-2 my-1.5 h-px bg-line" />
+                  <div className="mx-2 my-1.5 h-px bg-line" role="separator" />
                 </>
               ) : null}
               {[
+                ...(aiOn && anyText
+                  ? [
+                      {
+                        label: "Ask AI…",
+                        hint: "⌘J",
+                        icon: <AiIcon size={14} className="text-[#7c6cf0]" />,
+                        run: () => {
+                          if (!menu) return;
+                          // The text of the chosen blocks, as one range.
+                          let from = 0;
+                          let to = 0;
+                          editor.state.doc.forEach((node, offset, index) => {
+                            if (index === menu.from) from = offset + 1;
+                            if (index === menu.from + count - 1) to = offset + node.nodeSize - 1;
+                          });
+                          const text = editor.state.doc.textBetween(from, to, "\n");
+                          clearBlockSelection(editor.view);
+                          closeMenu(false);
+                          if (text.trim()) openInlineAi(editor.view.dom, { target: { from, to, text } });
+                        },
+                      },
+                    ]
+                  : []),
                 { label: "Duplicate", hint: "⌘D", icon: <Copy size={14} />, run: () => act(() => duplicateBlocks(editor)) },
                 { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, run: () => act(() => moveBlock(editor, -1)) },
                 { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, run: () => act(() => moveBlock(editor, 1)) },
-                ...(onCommentBlock && node?.attrs.id ? [{ label: "Comment", hint: "", icon: <MessageSquare size={14} />, run: () => { onCommentBlock(node.attrs.id as string); setMenu(null); } }] : []),
+                { label: "Indent", hint: "Tab", icon: <IndentIncrease size={14} />, run: () => act(() => changeDepth(editor, 1)) },
+                { label: "Outdent", hint: "⇧Tab", icon: <IndentDecrease size={14} />, run: () => act(() => changeDepth(editor, -1)) },
+                ...(onCommentBlock && single?.attrs.id
+                  ? [
+                      {
+                        label: "Comment",
+                        hint: "",
+                        icon: <MessageSquare size={14} />,
+                        run: () => {
+                          onCommentBlock(single.attrs.id as string);
+                          closeMenu(false);
+                        },
+                      },
+                    ]
+                  : []),
+                ...(single
+                  ? [
+                      {
+                        label: "Copy link to block",
+                        hint: "",
+                        icon: <Link2 size={14} />,
+                        run: () => {
+                          const url = `${location.origin}${location.pathname}#block-${single.attrs.id}`;
+                          navigator.clipboard.writeText(url).then(
+                            () => toast.show("Link copied"),
+                            () => toast.show("Couldn’t copy the link — your browser blocked clipboard access.", { tone: "error" }),
+                          );
+                          closeMenu();
+                        },
+                      },
+                    ]
+                  : []),
                 {
-                  label: "Copy link to block",
-                  hint: "",
-                  icon: <Link2 size={14} />,
+                  label: count > 1 ? `Delete ${count} blocks` : "Delete",
+                  hint: "⌘⇧⌫",
+                  icon: <Trash2 size={14} />,
+                  danger: true,
                   run: () => {
-                    const url = `${location.origin}${location.pathname}#block-${node?.attrs.id}`;
-                    void navigator.clipboard.writeText(url).then(() => toast.show("Link copied"));
-                    setMenu(null);
+                    if (!menu) return;
+                    const indices = Array.from({ length: count }, (_, i) => menu.from + i);
+                    clearBlockSelection(editor.view);
+                    deleteBlocks(editor, indices);
+                    closeMenu();
                   },
                 },
-                { label: "Delete", hint: "⌘⇧⌫", icon: <Trash2 size={14} />, danger: true, run: () => act(() => deleteBlocks(editor, [menu.index])) },
               ].map((item) => (
-                <button key={item.label} type="button" role="menuitem" onClick={item.run} className={`flex w-full items-center gap-2 rounded-[9px] px-2 py-1.5 text-left transition-colors hover:bg-accent-soft hover:text-heading focus:bg-accent-soft ${"danger" in item && item.danger ? "text-danger" : ""}`}>
+                <button key={item.label} type="button" role="menuitem" tabIndex={-1} onClick={item.run} className={`${itemClass} ${"danger" in item && item.danger ? "text-danger" : ""}`}>
                   <span className="text-muted" aria-hidden>
                     {item.icon}
                   </span>
@@ -727,14 +1530,16 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
 /** Due date, time, priority, assignee and reminder for a task block. */
 function TaskDetails({ editor }: { editor: Editor }) {
   const { workspace } = useAppState();
-  const [target, setTarget] = useState<{ pos: number; left: number; top: number; bottom: number } | null>(null);
+  // Tracked by block id (not position) so edits elsewhere in the page can't retarget the popover.
+  const [target, setTarget] = useState<{ blockId: string; left: number; top: number; bottom: number } | null>(null);
+  const [, rerender] = useState(0);
   const members = useQuery(api.workspaces.members, target ? { workspaceId: workspace.id } : "skip");
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const on = (e: Event) => {
-      const detail = (e as CustomEvent<{ pos: number; anchor: HTMLElement }>).detail;
+      const detail = (e as CustomEvent<{ pos: number; blockId: string; anchor: HTMLElement }>).detail;
       const r = detail.anchor.getBoundingClientRect();
-      setTarget({ pos: detail.pos, left: r.left, top: r.top, bottom: r.bottom });
+      if (detail.blockId) setTarget({ blockId: detail.blockId, left: r.left, top: r.top, bottom: r.bottom });
     };
     dom.addEventListener("folevi:task-details", on);
     const onKey = (e: KeyboardEvent) => {
@@ -745,7 +1550,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           e.preventDefault();
           const pos = $from.before(1);
           const c = editor.view.coordsAtPos(pos + 1);
-          setTarget({ pos, left: c.left, top: c.top, bottom: c.bottom });
+          setTarget({ blockId: String($from.node(1).attrs.id), left: c.left, top: c.top, bottom: c.bottom });
         }
       }
     };
@@ -755,38 +1560,76 @@ function TaskDetails({ editor }: { editor: Editor }) {
       dom.removeEventListener("keydown", onKey);
     };
   }, [editor]);
+  // Re-render on every editor change so the fields always show the block's current values.
+  useEffect(() => {
+    if (!target) return;
+    const on = () => rerender((n) => n + 1);
+    editor.on("transaction", on);
+    return () => {
+      editor.off("transaction", on);
+    };
+  }, [editor, target]);
   if (!target) return null;
-  const node = editor.state.doc.nodeAt(target.pos);
-  if (!node || node.type.name !== "todo") return null;
-  const set = (patch: Record<string, unknown>) => editor.view.dispatch(editor.state.tr.setNodeMarkup(target.pos, undefined, { ...node.attrs, ...patch }));
+  const find = () => {
+    let found: { pos: number; node: NonNullable<ReturnType<typeof editor.state.doc.maybeChild>> } | null = null;
+    editor.state.doc.forEach((n, offset) => {
+      if (!found && n.attrs.id === target.blockId) found = { pos: offset, node: n };
+    });
+    return found as { pos: number; node: NonNullable<ReturnType<typeof editor.state.doc.maybeChild>> } | null;
+  };
+  const current = find();
+  if (!current || current.node.type.name !== "todo") return null;
+  const node = current.node;
+  // Always patch the latest attrs (rapid successive edits must not overwrite each other).
+  const set = (patch: Record<string, unknown>) => {
+    const latest = find();
+    if (!latest || latest.node.type.name !== "todo") return;
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(latest.pos, undefined, { ...latest.node.attrs, ...patch }));
+  };
+  const close = () => {
+    setTarget(null);
+    editor.commands.focus();
+  };
   const reminder = node.attrs.reminderAt ? new Date(node.attrs.reminderAt as number) : null;
   const reminderValue = reminder ? new Date(reminder.getTime() - reminder.getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
   return (
     <>
-      <div className="fixed inset-0 z-40" onMouseDown={() => setTarget(null)} />
+      <div className="fixed inset-0 z-40" onMouseDown={() => setTarget(null)} aria-hidden />
       <Popover anchor={target} label="Task details" width={300}>
-        <form className="grid gap-3 p-2 text-sm" onSubmit={(e) => { e.preventDefault(); setTarget(null); editor.commands.focus(); }} onKeyDown={(e) => e.key === "Escape" && (setTarget(null), editor.commands.focus())}>
+        <form
+          className="grid gap-3 p-2 text-sm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            close();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              close();
+            }
+          }}
+        >
           <label className="grid gap-1">
             <span className="text-xs text-muted">Due date</span>
-            <input type="date" autoFocus value={(node.attrs.dueDate as string) ?? ""} onChange={(e) => set({ dueDate: e.target.value || null, dueTime: e.target.value ? node.attrs.dueTime : null })} className="h-8 ui-input rounded-full px-3" />
+            <input type="date" data-autofocus="" value={(node.attrs.dueDate as string) ?? ""} onChange={(e) => set(e.target.value ? { dueDate: e.target.value } : { dueDate: null, dueTime: null })} className="h-8 ui-input rounded-[6px] px-3" />
           </label>
           <label className="grid gap-1">
             <span className="text-xs text-muted">Time (leave empty for all day)</span>
-            <input type="time" disabled={!node.attrs.dueDate} value={(node.attrs.dueTime as string) ?? ""} onChange={(e) => set({ dueTime: e.target.value || null })} className="h-8 ui-input rounded-full px-3 disabled:opacity-50" />
+            <input type="time" disabled={!node.attrs.dueDate} value={(node.attrs.dueTime as string) ?? ""} onChange={(e) => set({ dueTime: e.target.value || null })} className="h-8 ui-input rounded-[6px] px-3 disabled:opacity-50" />
           </label>
           <label className="grid gap-1">
             <span className="text-xs text-muted">Priority</span>
-            <select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-full px-3">
+            <Select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-[6px] px-3">
               <option value="none">None</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
-            </select>
+            </Select>
           </label>
           {members && members.members.length > 1 ? (
             <label className="grid gap-1">
               <span className="text-xs text-muted">Assignee</span>
-              <select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 ui-input rounded-full px-3">
+              <Select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 ui-input rounded-[6px] px-3">
                 <option value="">Unassigned</option>
                 {members.members.map((m) => (
                   <option key={m.profileId} value={m.profileId}>
@@ -794,12 +1637,12 @@ function TaskDetails({ editor }: { editor: Editor }) {
                     {m.isYou ? " (you)" : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           ) : null}
           <label className="grid gap-1">
             <span className="text-xs text-muted">Reminder</span>
-            <input type="datetime-local" value={reminderValue} onChange={(e) => set({ reminderAt: e.target.value ? new Date(e.target.value).getTime() : null })} className="h-8 ui-input rounded-full px-3" />
+            <input type="datetime-local" value={reminderValue} onChange={(e) => set({ reminderAt: e.target.value ? new Date(e.target.value).getTime() : null })} className="h-8 ui-input rounded-[6px] px-3" />
           </label>
           <div className="flex justify-between">
             <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null })}>
@@ -814,4 +1657,3 @@ function TaskDetails({ editor }: { editor: Editor }) {
     </>
   );
 }
-

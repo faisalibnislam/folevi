@@ -1,10 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { ChevronLeft, ChevronRight, PanelLeft } from "lucide-react";
+import { PanelLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
+import { useAppState } from "@/lib/app/state";
+import { TabsProvider } from "@/lib/app/tabs";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { IconButton } from "@/components/ui/Button";
@@ -12,6 +14,10 @@ import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { QuickAddTask } from "./QuickAddTask";
 import { RouteView } from "./RouteView";
+import { TabStrip } from "./TabStrip";
+import { AskAiChat } from "@/components/ai/AskAiChat";
+import { useAiAccess } from "@/components/ai/useAi";
+import { SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 
 interface ShellValue {
@@ -22,9 +28,94 @@ interface ShellValue {
   openPalette: () => void;
   openQuickAdd: () => void;
   isNarrow: boolean;
+  /** The sidebar is a modal drawer (phone widths) rather than a column. */
+  drawerMode: boolean;
+  /**
+   * On a document page the app navigation gives way to the page's own sidebar (contents, tasks,
+   * attachments, find). The page renders it into this element with a portal.
+   */
+  sidebarSlot: HTMLElement | null;
+  /** On a page, the left sidebar shows the page's tools ("document", default) or the app folders. */
+  docSidebarMode: "document" | "folders";
+  setDocSidebarMode: (mode: "document" | "folders") => void;
+  /** Focus mode hides both sidebars. */
+  focusMode: boolean;
+  setFocusMode: (on: boolean) => void;
+  /** The ambient light behind the glass chrome: a CSS background (a note's style image), or null for neutral. */
+  setAmbient: (css: string | null) => void;
+  /** Opens Ask AI (⌘J), optionally with a question typed in, or about one folder's notes. */
+  openAsk: (question?: string, folder?: { id: string; name: string }) => void;
 }
 
 const ShellContext = createContext<ShellValue | null>(null);
+
+/** Id of the narrow-screen navigation drawer (referenced by the toggle's aria-controls). */
+export const DRAWER_ID = "folevi-nav-drawer";
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+
+function focusables(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest("[inert]") && el.getClientRects().length > 0);
+}
+
+/**
+ * Narrow-screen navigation drawer: a modal dialog. Focus moves in on open, Tab/Shift+Tab stay inside,
+ * Escape (or the scrim) closes it, and focus returns to whatever opened it.
+ */
+function NavDrawer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    (focusables(root)[0] ?? root).focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables(root);
+      if (!items.length) {
+        e.preventDefault();
+        root.focus();
+        return;
+      }
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !root.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !root.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      // Return focus to the opener when it is still on screen, else to the (re-mounted) sidebar toggle,
+      // else to the main region.
+      const target =
+        opener && opener.isConnected && opener.getClientRects().length
+          ? opener
+          : (document.querySelector<HTMLElement>("[data-drawer-toggle]") ?? document.getElementById("main"));
+      target?.focus({ preventScroll: true });
+    };
+  }, [onClose]);
+  return (
+    <div ref={ref} id={DRAWER_ID} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="fixed inset-0 z-40 flex outline-none">
+      <div className="ui-pop h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] rounded-none motion-reduce:animate-none">
+        {children}
+      </div>
+      <button type="button" aria-label="Close sidebar" className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={onClose} />
+    </div>
+  );
+}
 export function useShell(): ShellValue {
   const ctx = useContext(ShellContext);
   if (!ctx) throw new Error("useShell outside Shell");
@@ -53,10 +144,21 @@ export function Shell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [ambient, setAmbient] = useState<string | null>(null);
+  const [askOpen, setAskOpen] = useState<{ q?: string; folder?: { id: string; name: string } } | null>(null);
+  const ai = useAiAccess();
+  const aiOn = ai.on;
+  const aiOnRef = useRef(aiOn);
+  aiOnRef.current = aiOn;
   const createDocument = useCreateDocument();
   const settings = useQuery(api.settings.status, {});
+  const { profile } = useAppState();
+  const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
+  const [docSidebarMode, setDocSidebarModePref] = useLocalStorage<"document" | "folders">("folevi:doc-sidebar-mode", "document");
+  const pageSidebar = route.name === "doc" && docSidebarMode === "document";
 
   useEffect(() => setDrawerOpen(false), [route]);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   const sidebarOpen = isNarrow ? drawerOpen : !collapsed;
   const toggleSidebar = useCallback(() => {
@@ -67,7 +169,7 @@ export function Shell() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && !e.altKey && e.key.toLowerCase() === "k") {
+      if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen(true);
       } else if (mod && e.key === "\\") {
@@ -82,6 +184,9 @@ export function Shell() {
       } else if (mod && e.shiftKey && e.code === "KeyA") {
         e.preventDefault();
         setQuickAddOpen(true);
+      } else if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j" && aiOnRef.current) {
+        e.preventDefault();
+        setAskOpen({});
       } else if (mod && e.altKey && e.code === "KeyT") {
         e.preventDefault();
         navigate("/tasks/today");
@@ -100,8 +205,26 @@ export function Shell() {
       openPalette: () => setPaletteOpen(true),
       openQuickAdd: () => setQuickAddOpen(true),
       isNarrow: isNarrow || isMedium,
+      drawerMode: isNarrow,
+      sidebarSlot: pageSidebar ? sidebarSlot : null,
+      docSidebarMode,
+      setDocSidebarMode: (mode) => {
+        setDocSidebarModePref(mode);
+        if (isNarrow) setDrawerOpen(true);
+        else setCollapsed(false);
+      },
+      focusMode: !sidebarOpen && !inspectorPref,
+      setFocusMode: (on) => {
+        if (on) {
+          setDrawerOpen(false);
+          setCollapsed(true);
+          setInspectorPref(false);
+        } else setCollapsed(false);
+      },
+      setAmbient,
+      openAsk: (q, folder) => setAskOpen({ q, folder }),
     }),
-    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium],
+    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed],
   );
 
   const startResize = (e: React.PointerEvent) => {
@@ -118,6 +241,7 @@ export function Shell() {
   };
 
   return (
+    <TabsProvider accountKey={profile.id}>
     <ShellContext.Provider value={value}>
       <a href="#main" className="sr-only-focusable ui-btn ui-btn-primary fixed left-2 top-2 z-[70] px-4 py-2">
         Skip to content
@@ -128,19 +252,18 @@ export function Shell() {
           {settings.readOnly ? " Folevi is read-only right now; your edits are kept on this device." : ""}
         </div>
       ) : null}
-      <div className="ui-canvas flex h-dvh min-h-0 text-ink">
+      {/* The app never scrolls as a page: each region scrolls on its own (and nothing can push the tab strip away). */}
+      <div className={`ui-canvas flex h-dvh min-h-0 overflow-hidden text-ink ${isNarrow ? "" : "gap-2 p-2"}`}>
+        {/* Ambient light behind the glass: on a note, its style image, heavily blurred and veiled. */}
+        <div aria-hidden className={`ui-ambient pointer-events-none fixed inset-0 -z-[1] transition-opacity duration-500 ${ambient ? "opacity-100" : "opacity-0"}`}>
+          {ambient ? <div className="absolute -inset-24 blur-[56px] saturate-[1.4]" style={{ background: ambient }} /> : null}
+          <div className="absolute inset-0" style={{ background: "var(--ambient-veil)" }} />
+        </div>
         {isNarrow ? (
-          drawerOpen ? (
-            <div className="fixed inset-0 z-40 flex">
-              <div className="h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] bg-sidebar shadow-[var(--shadow-pop)]">
-                <Sidebar onNavigate={() => setDrawerOpen(false)} />
-              </div>
-              <button type="button" aria-label="Close sidebar" className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={() => setDrawerOpen(false)} />
-            </div>
-          ) : null
+          drawerOpen ? <NavDrawer onClose={closeDrawer}>{pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar onNavigate={closeDrawer} />}</NavDrawer> : null
         ) : !collapsed ? (
-          <div className="relative flex-none bg-[color-mix(in_oklab,var(--color-sidebar)_82%,transparent)] shadow-[inset_-1px_0_0_var(--color-line)]" style={{ width }}>
-            <Sidebar />
+          <div className="relative z-20 flex-none" style={{ width }}>
+            {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
             <div
               role="separator"
               aria-orientation="vertical"
@@ -154,55 +277,75 @@ export function Shell() {
                 if (e.key === "ArrowLeft") setWidth(Math.max(248, width - 8));
                 if (e.key === "ArrowRight") setWidth(Math.min(320, width + 8));
               }}
-              className="absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize outline-none transition-colors hover:bg-ember/25 focus-visible:bg-ember/35"
+              className="absolute inset-y-3 -right-[6px] z-10 w-1 cursor-col-resize rounded-full outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
             />
           </div>
         ) : null}
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/* While the modal drawer is open, the page behind it is inert (not focusable, hidden from AT). */}
+        {/* The content panel. A note brings its own panel (its page on its backdrop), so it sits straight on the canvas. */}
+        <div className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-[14px]"}`} inert={isNarrow && drawerOpen}>
+          {/* The tab strip floats over the view: content scrolls behind it (views pad their top to clear it). */}
+          {!isNarrow ? <TabStrip /> : null}
           <RouteView />
         </div>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
+      {/* The floating Ask AI chat (bottom right). With AI switched on but not in their plan, it offers Pro. */}
+      {ai.setting ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} entitled={ai.entitled} onClose={() => setAskOpen(null)} /> : null}
     </ShellContext.Provider>
+    </TabsProvider>
   );
 }
 
 /** Top bar shared by all views: sidebar toggle, title/breadcrumbs, and actions. */
-export function ViewChrome({ title, leading, actions, children, tabTitle }: { title: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string }) {
-  const { sidebarOpen, toggleSidebar } = useShell();
+export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string }) {
+  const { sidebarOpen, toggleSidebar, drawerMode } = useShell();
+  const { route } = useAppRouter();
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
-  return (
-    <>
-      <header className="flex h-[52px] flex-none items-center gap-2 px-3 sm:px-4">
-        {!sidebarOpen ? (
-          <IconButton label="Show sidebar" shortcut="⌘\" onClick={toggleSidebar}>
+  // Save state lives in the sidebar; on phones (sidebar is a drawer) it shows here instead.
+  const sync = drawerMode ? <SyncStatus documentId={route.name === "doc" ? route.id : undefined} /> : null;
+  // No title bar: the page's name is in its tab and read to screen readers (a visually hidden h1). Only
+  // real content remains in a plain row (no box) — a view's facts and actions, a note's breadcrumb, and on
+  // phones the drawer toggle and save state.
+  const showTitle = route.name === "doc";
+  const drawerToggle = !sidebarOpen && drawerMode;
+  const visible = Boolean(subtitle || leading || actions || sync || drawerToggle || (showTitle && title));
+  const bar = !visible ? (
+    title ? <div className="sr-only">{title}</div> : null
+  ) : (
+      <header className={`mx-2 ${drawerMode ? "mt-2" : ""} flex min-h-11 flex-none items-center gap-2 px-3 sm:mx-3 sm:px-4`}>
+        {drawerToggle ? (
+          <IconButton label="Show sidebar" shortcut="⌘\" onClick={toggleSidebar} aria-expanded={sidebarOpen} aria-haspopup={drawerMode ? "dialog" : undefined} data-drawer-toggle="">
             <PanelLeft size={16} aria-hidden />
           </IconButton>
         ) : null}
-        <HistoryPills />
         {leading}
-        <div className="min-w-0 flex-1 truncate text-sm">{title}</div>
-        <div className="flex flex-none items-center gap-1.5">{actions}</div>
+        <div className="flex min-w-0 flex-1 items-baseline gap-2 truncate text-sm">
+          <div className={showTitle ? "min-w-0 truncate" : "sr-only"}>{title}</div>
+          {subtitle ? (
+            <span role="status" className="min-w-0 truncate text-[13px] text-muted">
+              {subtitle}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex flex-none items-center gap-1.5">
+          {sync}
+          {actions}
+        </div>
       </header>
-      <main id="main" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none">
+  );
+  // Phones keep it pinned: it holds the only way to open the navigation drawer.
+  const inFlow = route.name !== "doc" && !drawerMode;
+  // Room for the floating tab strip (desktop); list views scroll underneath it.
+  const clear = drawerMode ? "" : "pt-[60px] [scroll-padding-top:64px]";
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {inFlow ? null : <div className={drawerMode ? "" : "pt-[60px]"}>{bar}</div>}
+      <main id="main" tabIndex={-1} className={`min-h-0 flex-1 overflow-y-auto outline-none ${inFlow ? clear : ""}`}>
+        {inFlow ? bar : null}
         {children}
       </main>
-    </>
-  );
-}
-
-/** Back / forward as one raised pill pair (browser history drives the in-app router). */
-function HistoryPills() {
-  return (
-    <div className="ui-raised hidden flex-none items-center rounded-full p-0.5 sm:flex" role="group" aria-label="History">
-      <button type="button" aria-label="Back" title="Back (⌘[)" onClick={() => window.history.back()} className="grid h-7 w-7 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-        <ChevronLeft size={16} aria-hidden />
-      </button>
-      <span className="h-4 w-px bg-line" aria-hidden />
-      <button type="button" aria-label="Forward" title="Forward (⌘])" onClick={() => window.history.forward()} className="grid h-7 w-7 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-        <ChevronRight size={16} aria-hidden />
-      </button>
     </div>
   );
 }

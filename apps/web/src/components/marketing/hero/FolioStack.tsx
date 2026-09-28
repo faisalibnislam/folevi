@@ -42,10 +42,22 @@ export function FolioStack() {
 
   const running = !reduced && !hoverPaused && !userPaused;
 
+  // Screen readers hear a stage only when the visitor chose it; the auto-advancing carousel stays silent.
+  const [announcement, setAnnouncement] = useState("");
+
   const goTo = useCallback((index: number) => {
     if (index === 0) setTyped(0);
     setActive(index);
   }, []);
+
+  const choose = useCallback(
+    (index: number) => {
+      goTo(index);
+      const stage = STAGES[index];
+      if (stage) setAnnouncement(`Stage ${index + 1} of ${STAGES.length}, ${stage.label}: ${stage.caption}`);
+    },
+    [goTo],
+  );
 
   // Reset the remaining time whenever a new stage becomes active (runs after the timer cleanup).
   useEffect(() => {
@@ -86,7 +98,7 @@ export function FolioStack() {
     else if (event.key === "End") next = STAGES.length - 1;
     if (next < 0) return;
     event.preventDefault();
-    goTo(next);
+    choose(next);
     tabRefs.current[next]?.focus();
   };
 
@@ -131,6 +143,9 @@ export function FolioStack() {
       </div>
 
       <div className="mt-6 flex items-center gap-2 pr-7">
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </span>
         <div role="tablist" aria-label="Stages of a page" className="mk-seg grid flex-1 grid-cols-3">
           {STAGES.map((stage, index) => {
             const selected = index === active;
@@ -146,7 +161,7 @@ export function FolioStack() {
                 aria-selected={selected}
                 aria-controls={`${baseId}-panel-${index}`}
                 tabIndex={selected ? 0 : -1}
-                onClick={() => goTo(index)}
+                onClick={() => choose(index)}
                 onKeyDown={(event) => onTabKey(event, index)}
                 className="mk-seg-item flex h-11 items-center sm:h-10 justify-center gap-2 overflow-hidden px-2 text-[13.5px] font-medium"
               >
@@ -182,9 +197,7 @@ export function FolioStack() {
           </button>
         ) : null}
       </div>
-      <figcaption className="sr-only" aria-live="polite">
-        {`Stage ${active + 1} of 3, ${STAGES[active]?.label}: ${STAGES[active]?.caption}`}
-      </figcaption>
+      <figcaption className="sr-only">{`Stage ${active + 1} of ${STAGES.length}, ${STAGES[active]?.label}: ${STAGES[active]?.caption}`}</figcaption>
     </figure>
   );
 }
@@ -209,7 +222,7 @@ function CaptureLeaf({ typed, done }: { typed: number; done: boolean }) {
   const visible = Array.from(CAPTURED).slice(0, typed).join("");
   return (
     <>
-      <LeafBar crumbs={["Unsorted", "Quick note"]}>
+      <LeafBar crumbs={["Drafts", "Quick note"]}>
         <StatusPill status={done ? "Saved" : "Saving"} />
       </LeafBar>
       <div
@@ -234,7 +247,7 @@ function CaptureLeaf({ typed, done }: { typed: number; done: boolean }) {
         </p>
       </div>
       <div className="flex-1 border-t mk-hair bg-(--color-sidebar) px-5 pt-3.5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Earlier in Unsorted</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Earlier in Drafts</p>
         <ul className="mt-2 space-y-1.5">
           {[
             { text: "Printer on Alder St can do small runs on Fridays", when: "Yesterday" },

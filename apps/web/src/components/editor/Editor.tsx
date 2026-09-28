@@ -4,18 +4,22 @@ import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/r
 import { Placeholder, UndoRedo, Dropcursor, Gapcursor } from "@tiptap/extensions";
 import { TextSelection } from "@tiptap/pm/state";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { markdownToBlocks, plainTextToBlocks, ulid, type WireBlock } from "@folevi/editor-schema";
+import { LIMITS, markdownToBlocks, plainTextToBlocks, ulid, type WireBlock } from "@folevi/editor-schema";
+import { useMutation } from "convex/react";
+import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { enqueueUpload } from "@/lib/sync/uploads";
-import { ALL_MARKS, ALL_NODES } from "./extensions";
+import { ALL_MARKS, ALL_NODES, BlockFormat } from "./extensions";
 import { NODE_VIEW_EXTENSIONS } from "./NodeViews";
 import { BlockDecorations, BlockIdentity, BlockKeymap, MarkdownShortcuts, Triggers, decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { blockToNode, blocksToDoc, contentKey, diffBlocks, docToBlocks } from "./convert";
 import { flattenTree } from "@folevi/editor-schema";
 import { htmlToBlocks } from "./paste";
 import { EditorMenus } from "./EditorMenus";
+import { BlockSelectionExtension } from "./blockSelection";
 import { subtreeRange, normalizeDepths, moveSubtreeTo } from "./commands";
 import { closeHistory } from "@tiptap/pm/history";
+import { useAiEnabled } from "@/components/ai/useAi";
 
 export interface EditorHandle {
   /** Pushes pending local edits into the sync engine immediately. */
@@ -47,17 +51,37 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   const [trigger, setTrigger] = useState<TriggerState | null>(null);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
+  // The empty-line hint mentions ⌘J while the AI assistant is on (read by the placeholder at render time).
+  const aiHint = useRef(false);
+  aiHint.current = useAiEnabled() && editable;
   // Nothing is ever flushed until the editor shows the document's real content (prevents an empty,
   // not-yet-loaded editor from being mistaken for "the person deleted everything").
   const hydrated = useRef(false);
 
   const engineBlocksMap = useCallback(() => new Map(engine.documentBlocks(documentId).map((b) => [b.id, b])), [engine, documentId]);
 
+  // Fractional ranks grow when blocks are repeatedly inserted between the same neighbours. When one gets
+  // long, ask the server to re-space that sibling list — once our own queued changes have synced.
+  const rebalance = useMutation(api.blocks.rebalance);
+  const rebalanceParents = useRef(new Set<string | null>());
+  const runRebalance = useCallback(() => {
+    if (!rebalanceParents.current.size || engine.hasLocalWork(documentId) || !navigator.onLine) return;
+    const parents = [...rebalanceParents.current];
+    rebalanceParents.current.clear();
+    for (const parentId of parents) {
+      rebalance({ documentId, parentId }).catch(() => {
+        // Not fatal (e.g. read-only now): ranks stay valid, just long. Try again after the next edit.
+      });
+    }
+  }, [engine, documentId, rebalance]);
+  useEffect(() => engine.subscribe(() => runRebalance()), [engine, runRebalance]);
+
   const extensions = useMemo(
     () => [
-      ...ALL_NODES.filter((n) => !["image", "file", "table", "page", "bookmark", "collection", "unknownBlock"].includes(n.name)),
+      ...ALL_NODES.filter((n) => !NODE_VIEW_EXTENSIONS.some((v) => v.name === n.name)),
       ...NODE_VIEW_EXTENSIONS,
       ...ALL_MARKS,
+      BlockFormat,
       UndoRedo.configure({ depth: 200, newGroupDelay: 600 }),
       Dropcursor.configure({ color: "var(--color-accent)", width: 2 }),
       Gapcursor,
@@ -66,7 +90,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           if (node.type.name === "heading") return `Heading ${node.attrs.level}`;
           if (node.type.name === "todo") return "To-do";
           if (["bulleted", "numbered", "quote", "callout", "toggle"].includes(node.type.name)) return "List";
-          return pos === 0 && editor.state.doc.childCount === 1 ? (placeholder ?? "Start writing, or type / for blocks") : "Type / for blocks, [[ to link a page";
+          const ai = aiHint.current ? ", ⌘J for AI" : "";
+          return pos === 0 && editor.state.doc.childCount === 1 ? (placeholder ?? `Start writing, or type / for blocks${ai}`) : `Type / for blocks${ai}, [[ to link a page`;
         },
         showOnlyCurrent: true,
         includeChildren: false,
@@ -74,6 +99,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       BlockIdentity,
       BlockDecorations,
       BlockKeymap,
+      BlockSelectionExtension,
       MarkdownShortcuts,
       Triggers.configure({ onChange: (t) => setTrigger(t) }),
     ],
@@ -94,7 +120,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       const next = docToBlocks(editor.state.doc, previous);
       const diff = diffBlocks(previous, next);
       for (const d of diff.deletes) engine.deleteBlock(documentId, d);
-      for (const u of diff.upserts) engine.upsertBlock(documentId, u.block, u.fields);
+      for (const u of diff.upserts) {
+        engine.upsertBlock(documentId, u.block, u.fields);
+        if (u.fields.includes("position") && u.block.rank.length > LIMITS.maxRankLength / 2) rebalanceParents.current.add(u.block.parentId);
+      }
     },
     [engine, documentId, engineBlocksMap],
   );

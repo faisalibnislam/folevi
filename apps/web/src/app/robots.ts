@@ -17,6 +17,8 @@ const APP_PATHS = [
   "/starred",
   "/archive",
   "/trash",
+  "/drafts",
+  "/notes",
   "/unsorted",
   "/folders",
   "/tags",
@@ -29,7 +31,10 @@ const APP_PATHS = [
   "/verify-email",
   "/signout",
   "/auth/",
-  "/dev-auth",
+  "/dev/",
+  "/two-factor",
+  "/forgot-password",
+  "/reset-password",
   "/offline",
 ];
 

@@ -7,7 +7,7 @@
  */
 const STATIC = "folevi-static-v1";
 const SHELL = "folevi-shell-v1";
-const APP = /^\/(documents|d\/|tasks|calendar|daily|shared|templates|starred|archive|trash|unsorted|folders|tags|settings|help|onboarding|invite)/;
+const APP = /^\/(documents|notes|d\/|tasks|calendar|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite)/;
 const NEVER = /^\/(api|auth|admin|s\/|signin|signup|signout|verify-email|dev-auth)/;
 
 self.addEventListener("install", () => self.skipWaiting());

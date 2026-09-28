@@ -6,12 +6,14 @@ import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { Info, RotateCw, Send } from "lucide-react";
 import { api } from "@/lib/convex/api";
+import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, Mono, PageHeader, ShortId, StatusBadge, Time, humanize, selectCls, td, tdNum, th, thNum } from "./ui";
+import { Select } from "@/components/ui/Select";
 
 const STATUSES = ["queued", "accepted", "failed", "skipped"] as const;
 type EmailStatus = (typeof STATUSES)[number];
@@ -27,7 +29,7 @@ export function EmailsView() {
   });
   const list = useMutation(api.admin.listEmails);
   const resend = useMutation(api.admin.resendEmail);
-  const { data, error, loading, refresh } = useAuditedLoad(status || "all", (requestId) => list({ status: status || undefined, requestId }));
+  const { data, error, loading, refresh } = useAuditedLoad(status || "all", (meta) => list({ status: status || undefined, ...meta }));
   const [target, setTarget] = useState<Attempt | null>(null);
   const canResend = admin.can("emails.resend");
 
@@ -56,7 +58,10 @@ export function EmailsView() {
         </Callout>
         {data ? (
           data.webhooksConfigured ? (
-            <Callout title="Loops webhook configured">Provider events (delivered, bounced, complained…) from signature-verified webhooks are listed per attempt below.</Callout>
+            <Callout title="Loops webhook configured">
+              Provider events (delivered, bounced, complained…) from signature-verified webhooks are listed per attempt below. Each event is matched to one send: by the provider message id when
+              Loops returned one, otherwise by recipient, template and time.
+            </Callout>
           ) : (
             <Callout tone="warning" title="Loops webhook not configured">
               No delivery, bounce or complaint information is available in this environment. Set <Mono>LOOPS_WEBHOOK_SECRET</Mono> and register the webhook in Loops (see docs/EMAIL_OPERATIONS.md).
@@ -70,14 +75,14 @@ export function EmailsView() {
           <label htmlFor={`${uid}-status`} className="mb-1 block font-medium">
             Status
           </label>
-          <select id={`${uid}-status`} value={status} onChange={(e) => setStatus(e.target.value as EmailStatus | "")} className={`${selectCls} w-48`}>
+          <Select id={`${uid}-status`} value={status} onChange={(e) => setStatus(e.target.value as EmailStatus | "")} className={`${selectCls} w-48`}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {humanize(s)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         {!canResend ? <p className="pb-2 text-xs text-muted">Resending: {rolesFor("emails.resend")}</p> : null}
       </div>
@@ -88,7 +93,7 @@ export function EmailsView() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden ui-card rounded-[18px]">
+      <div className="overflow-hidden ui-card rounded-[8px]">
         <DataTable caption={`Email send attempts${status ? `, status ${status}` : ""}`} minWidth={1040}>
           <thead>
             <tr>
@@ -134,8 +139,12 @@ export function EmailsView() {
                       {a.providerEvents.length ? (
                         <span className="flex flex-wrap gap-1">
                           {a.providerEvents.map((e) => (
-                            <Badge key={`${e.eventName}-${e.eventTime}`} tone={/bounce|complain|fail/i.test(e.eventName) ? "danger" : /deliver/i.test(e.eventName) ? "success" : "neutral"}>
-                              {humanize(e.eventName)}
+                            <Badge
+                              key={`${e.eventName}-${e.eventTime}`}
+                              title={formatDateTime(e.eventTime)}
+                              tone={/bounce|complain|fail/i.test(e.eventName) ? "danger" : /deliver/i.test(e.eventName) ? "success" : "neutral"}
+                            >
+                              {humanize(e.eventName.replace(/^email\./, ""))}
                             </Badge>
                           ))}
                         </span>
@@ -147,7 +156,10 @@ export function EmailsView() {
                     </td>
                     <td className={td}>
                       <ShortId value={a.requestId} head={4} tail={6} />
-                      <div className="mt-0.5 text-xs text-muted">{a.environment}</div>
+                      <div className="mt-0.5 text-xs text-muted">
+                        {a.environment}
+                        {a.hasProviderId ? " · provider id" : ""}
+                      </div>
                     </td>
                     <td className={td}>
                       <Time ts={a.createdAt} />

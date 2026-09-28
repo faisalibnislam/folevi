@@ -56,9 +56,7 @@ function Sidebar({ lights = false }: { lights?: boolean }) {
     <div className="hidden w-[204px] shrink-0 flex-col gap-3 border-r mk-hair bg-(--color-sidebar) px-2.5 pb-3 @[640px]:flex">
       <div className={cx("flex items-center gap-2 px-1.5", lights ? "h-11" : "h-3")}>{lights ? <Lights /> : null}</div>
       <div className="flex items-center gap-2 px-1.5">
-        <span className="mk-mini-raised flex size-6 items-center justify-center rounded-[7px] text-(--color-heading)">
-          <FoleviMark size={13} accent="var(--color-ember)" />
-        </span>
+        <FoleviMark size={24} className="flex-none" />
         <span className="truncate text-[12.5px] font-semibold text-(--color-heading)">Garden club</span>
         <Icon name="chevron-right" size={11} className="ml-auto rotate-90 text-faint" />
       </div>
@@ -86,7 +84,7 @@ function Sidebar({ lights = false }: { lights?: boolean }) {
         </div>
       </div>
       <div className="mt-auto">
-        <SidebarRow icon={<Icon name="page" size={12} />} label="Unsorted" count="3" />
+        <SidebarRow icon={<Icon name="page" size={12} />} label="Drafts" count="3" />
       </div>
     </div>
   );

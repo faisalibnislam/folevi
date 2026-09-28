@@ -7,6 +7,7 @@ import { api } from "@/lib/convex/api";
 import { SyncEngine } from "@/lib/sync/engine";
 import { deviceId as loadDeviceId } from "@/lib/sync/db";
 import { Uploader } from "@/lib/sync/uploads";
+import { saveAccountSnapshot } from "./offlineSnapshot";
 
 export type Profile = NonNullable<Extract<NonNullable<ReturnType<typeof useMeQuery>>, { state: "ready" }>["profile"]>;
 export type Workspace = NonNullable<ReturnType<typeof useWorkspacesQuery>>[number];
@@ -78,9 +79,19 @@ function useToday(timeZone: string): string {
   return today;
 }
 
-export function AppStateProvider({ profile, children }: { profile: Profile; children: ReactNode }) {
+/**
+ * `offlineWorkspaces` is the last-known workspace list, used for an offline cold start (the server
+ * can't be reached and nothing has loaded yet); live data replaces it as soon as it arrives.
+ */
+export function AppStateProvider({ profile, offlineWorkspaces, children }: { profile: Profile; offlineWorkspaces?: Workspace[]; children: ReactNode }) {
   const convex = useConvex();
-  const workspaces = useWorkspacesQuery(true);
+  const liveWorkspaces = useWorkspacesQuery(true);
+  const workspaces = liveWorkspaces ?? offlineWorkspaces;
+
+  // Keep the snapshot fresh while online so the next offline start opens the same folio.
+  useEffect(() => {
+    if (liveWorkspaces?.length && !offlineWorkspaces) void saveAccountSnapshot(profile, liveWorkspaces);
+  }, [profile, liveWorkspaces, offlineWorkspaces]);
   const [selected, setSelected] = useState<string | null>(() => {
     try {
       return localStorage.getItem("folevi:workspace");
@@ -104,12 +115,20 @@ export function AppStateProvider({ profile, children }: { profile: Profile; chil
   const [appearance, setAppearanceState] = useState(profile.appearance);
 
   const workspaceId = workspace?.id ?? null;
+  // One sync engine per account (docs/SYNC_PROTOCOL.md §Routing): switching workspaces only changes where
+  // new top-level pages go, so edits to pages from any workspace share the same durable queue.
+  const workspaceRef = useRef(workspaceId);
   useEffect(() => {
-    if (!workspaceId) return;
+    workspaceRef.current = workspaceId;
+    if (workspaceId) engine?.setWorkspace(workspaceId);
+  }, [engine, workspaceId]);
+  const hasWorkspace = workspaceId !== null;
+  useEffect(() => {
+    if (!hasWorkspace) return;
     let cancelled = false;
     (async () => {
       const id = await loadDeviceId(profile.id);
-      const e = await SyncEngine.open(convex, profile.id, workspaceId, id);
+      const e = await SyncEngine.open(convex, profile.id, workspaceRef.current!, id);
       if (cancelled) return;
       setDevice(id);
       setEngine(e);
@@ -121,12 +140,20 @@ export function AppStateProvider({ profile, children }: { profile: Profile; chil
     return () => {
       cancelled = true;
     };
-  }, [convex, profile.id, workspaceId]);
+  }, [convex, profile.id, hasWorkspace]);
 
   useEffect(() => {
     engine?.setOnline(effectivelyOnline);
     if (effectivelyOnline) uploader?.kick(0);
   }, [engine, uploader, effectivelyOnline]);
+
+  // New attachments (Editor.insertFiles) start uploading right away, not on the next reload/reconnect.
+  useEffect(() => {
+    if (!uploader) return;
+    const onUploads = () => uploader.kick(0);
+    window.addEventListener("folevi:uploads-changed", onUploads);
+    return () => window.removeEventListener("folevi:uploads-changed", onUploads);
+  }, [uploader]);
 
   useEffect(() => {
     setAppearanceState(profile.appearance);
@@ -208,7 +235,7 @@ function browserLabel(): string {
 export function FullPageMessage({ title, body, busy, children }: { title: string; body?: ReactNode; busy?: boolean; children?: ReactNode }) {
   return (
     <main id="main" tabIndex={-1} className="grid min-h-dvh place-items-center bg-canvas px-6">
-      <div className="w-full max-w-md rounded-[14px] border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>
+      <div className="w-full max-w-md rounded-[6px] border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>
         <h1 className="font-display text-3xl leading-tight text-ink">{title}</h1>
         {body ? <div className="mt-3 text-muted">{body}</div> : null}
         {busy ? <div className="mt-6 h-1 overflow-hidden rounded-full bg-sunken"><div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-full bg-accent" /></div> : null}

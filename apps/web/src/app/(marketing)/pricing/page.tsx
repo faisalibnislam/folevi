@@ -1,25 +1,42 @@
 import Link from "next/link";
 import { PricingCard } from "@/components/marketing/home/Closing";
+import { PLANS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
 import { pageMetadata } from "@/components/marketing/seo";
 import { PageHeader, container, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Pricing",
-  description: "Folevi is free during the preview. There are no paid plans yet; preview accounts will be told well in advance if that changes.",
+  description: `Folevi is free to start, with 1 GB of storage on 2 devices. Basic adds 20 GB for ${formatPrice(PLANS.basic.monthlyCents)} a month; Pro adds unlimited AI and 100 GB for ${formatPrice(PLANS.pro.monthlyCents)} a month. Every new account gets Pro free for ${TRIAL_DAYS} days.`,
   path: "/pricing",
 });
 
 const faqs: Array<{ q: string; a: React.ReactNode }> = [
   {
-    q: "Is it really free?",
-    a: "Yes. During the preview, Folevi costs nothing and there’s nothing to buy. We don’t ask for a card when you sign up.",
+    q: "How does the free trial work?",
+    a: `Every new account gets Pro — AI included — free for ${TRIAL_DAYS} days, with no card. When the trial ends you stay on Free unless you choose a plan; nothing is charged automatically.`,
   },
   {
-    q: "Will Folevi always be free?",
-    a: "We don’t know yet, and we won’t pretend otherwise. Paid plans may come later. If they do, everyone with a preview account will hear from us well before anything changes.",
+    q: "What counts toward storage?",
+    a: "Files, images and attachments in every workspace you own — your personal workspace and any team workspaces you created. In a team workspace someone else owns, uploads count toward the owner’s storage.",
   },
   {
-    q: "What happens to my notes if pricing changes?",
+    q: "What counts as a device?",
+    a: `Each browser or app you're signed in to — say, your laptop's browser and the Mac app. Free works on ${PLANS.free.devices} devices at a time; Basic and Pro work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
+  },
+  {
+    q: "What happens if I run out of storage?",
+    a: "Your notes stay put and you can keep writing. New uploads pause until you free up room or move to a plan with more storage.",
+  },
+  {
+    q: "Can I switch plans or cancel?",
+    a: "Yes, any time from Settings → Plan & billing. If you cancel, your plan keeps working until the end of the period you paid for, then your account moves to Free.",
+  },
+  {
+    q: "Is yearly cheaper?",
+    a: `Yes. Basic is ${formatPrice(PLANS.basic.yearlyCents)} a year instead of ${formatPrice(PLANS.basic.monthlyCents * 12)}, and Pro is ${formatPrice(PLANS.pro.yearlyCents)} a year instead of ${formatPrice(PLANS.pro.monthlyCents * 12)}.`,
+  },
+  {
+    q: "What happens to my notes if I downgrade?",
     a: (
       <>
         They stay yours. You can export any page as Markdown, HTML or PDF, or your whole workspace as a ZIP, at any time —
@@ -28,11 +45,10 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
     ),
   },
   {
-    q: "Is the Mac app included?",
+    q: "Are the Mac and iOS apps included?",
     a: (
       <>
-        Yes. The Mac app is in private preview; preview accounts will get an email when builds are available. See{" "}
-        <Link href="/mac">Folevi for Mac</Link>.
+        Yes — every plan, including Free, works on the web, Mac and iOS. See <Link href="/mac">Folevi for Mac</Link>.
       </>
     ),
   },
@@ -41,7 +57,7 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
 export default function PricingPage() {
   return (
     <>
-      <PageHeader eyebrow="Pricing" title="Free during the preview." lede="One honest plan. No tiers, no trials, no card." />
+      <PageHeader eyebrow="Pricing" title="Start free. Pay for room, or for AI." lede={`Three simple plans, on the web, Mac and iOS. Try Pro free for ${TRIAL_DAYS} days — no card.`} />
       <div className={cx(container, "max-w-[1080px] pb-20 pt-4 sm:pb-28")}>
         <PricingCard headingLevel="h2" />
         <section aria-labelledby="faq-title" className="mt-20">

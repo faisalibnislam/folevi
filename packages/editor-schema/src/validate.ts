@@ -3,6 +3,7 @@ import type { WireBlock } from "./types";
 import { isValidId } from "./ids";
 import { isValidRank } from "./rank";
 import { plainText } from "./richtext";
+import { whiteboardDataIssue } from "./whiteboard";
 
 export interface ValidationIssue {
   path: string;
@@ -31,19 +32,19 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-function checkValue(value: unknown, base: string, arrays: number, path: string, issues: ValidationIssue[]): void {
+function checkValue(value: unknown, base: string, arrays: number, path: string, issues: ValidationIssue[], maxString: number = LIMITS.maxCodeLength): void {
   if (arrays > 0) {
     if (!Array.isArray(value)) {
       issues.push({ path, code: "type", message: "expected array" });
       return;
     }
-    value.forEach((v, i) => checkValue(v, base, arrays - 1, `${path}[${i}]`, issues));
+    value.forEach((v, i) => checkValue(v, base, arrays - 1, `${path}[${i}]`, issues, maxString));
     return;
   }
   switch (base) {
     case "string":
       if (typeof value !== "string") issues.push({ path, code: "type", message: "expected string" });
-      else if (value.length > LIMITS.maxCodeLength) issues.push({ path, code: "too_long", message: "string too long" });
+      else if (value.length > maxString) issues.push({ path, code: "too_long", message: "string too long" });
       return;
     case "int":
       if (typeof value !== "number" || !Number.isInteger(value)) issues.push({ path, code: "type", message: "expected integer" });
@@ -96,6 +97,7 @@ function checkFields(
   path: string,
   issues: ValidationIssue[],
   allowExtra: string[] = [],
+  stringLimits: Record<string, number> = {},
 ): void {
   for (const [key, t] of Object.entries(fields)) {
     const { base, arrays, optional } = parseType(t);
@@ -104,7 +106,7 @@ function checkFields(
       if (!optional) issues.push({ path: `${path}.${key}`, code: "required", message: "required" });
       continue;
     }
-    checkValue(v, base, arrays, `${path}.${key}`, issues);
+    checkValue(v, base, arrays, `${path}.${key}`, issues, stringLimits[key]);
   }
   for (const key of Object.keys(obj)) {
     if (!(key in fields) && !allowExtra.includes(key)) {
@@ -159,7 +161,9 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   if (issues.length === 0 && plainText(b.text as never).length > LIMITS.maxTextLength) {
     issues.push({ path: "text", code: "too_long", message: "text too long" });
   }
-  checkFields(b.props as Record<string, unknown>, def.props, "props", issues);
+  // Whiteboard drawings may be larger than other strings (see LIMITS.maxWhiteboardDataLength).
+  const stringLimits: Record<string, number> = b.type === "whiteboard" ? { data: LIMITS.maxWhiteboardDataLength } : {};
+  checkFields(b.props as Record<string, unknown>, def.props, "props", issues, [], stringLimits);
   if (issues.length) return issues;
 
   const p = b.props as Record<string, unknown>;
@@ -199,6 +203,18 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
     case "bookmark":
       if (!/^https?:\/\//i.test(p.url as string)) issues.push({ path: "props.url", code: "format", message: "http(s) url required" });
       break;
+    case "formula":
+      if ((p.latex as string).length > LIMITS.maxFormulaLength) issues.push({ path: "props.latex", code: "too_long", message: "formula too long" });
+      break;
+    case "whiteboard": {
+      const issue = whiteboardDataIssue(p.data as string);
+      if (issue) issues.push({ path: "props.data", code: issue === "drawing too large" ? "too_long" : "shape", message: issue });
+      const h = p.height as number;
+      if (h < LIMITS.minWhiteboardHeight || h > LIMITS.maxWhiteboardHeight) {
+        issues.push({ path: "props.height", code: "range", message: `height must be between ${LIMITS.minWhiteboardHeight} and ${LIMITS.maxWhiteboardHeight}` });
+      }
+      break;
+    }
     case "page":
       if (!isValidId(p.documentId)) issues.push({ path: "props.documentId", code: "id", message: "invalid document id" });
       break;

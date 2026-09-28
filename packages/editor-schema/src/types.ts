@@ -79,6 +79,11 @@ export interface WireDocumentCreate {
   dailyDate?: string | null;
   templateId?: string | null;
   collectionId?: string | null;
+  /**
+   * Workspace to create the page in (public id). Ignored when `parentDocumentId` is set (a nested page
+   * always lives in its parent's workspace). Absent → the batch's routing workspace (sync protocol §Routing).
+   */
+  workspaceId?: string | null;
 }
 
 export interface WireDocumentPatch {
@@ -92,10 +97,19 @@ export interface WireDocumentPatch {
 
 export const DEFAULT_DOCUMENT_STYLE: DocumentStyle = {
   font: "sans",
-  width: "default",
+  width: "wide",
   background: "paper",
   accent: "accent",
   card: "folio",
 };
 
 export const DEFAULT_COVER: DocumentCover = { kind: "none" };
+
+/** Number of note styles (artworks "art-01" … "art-57"; packages/design-tokens/covers). */
+export const NOTE_STYLE_COUNT = 57;
+
+/** A random note style for a new note (Plain is only ever chosen by hand). */
+export function randomNoteCover(random: () => number = Math.random): DocumentCover {
+  const n = 1 + Math.floor(random() * NOTE_STYLE_COUNT);
+  return { kind: "art", value: `art-${String(Math.min(n, NOTE_STYLE_COUNT)).padStart(2, "0")}` };
+}

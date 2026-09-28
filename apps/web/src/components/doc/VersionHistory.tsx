@@ -20,13 +20,17 @@ export function VersionHistory({ open, onClose, documentId, canRestore }: { open
   const createSnapshot = useMutation(api.documents.createSnapshot);
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
+  // "loading" while the query is in flight; otherwise either a preview or a reason it can't be shown.
   let preview: string | null = null;
-  if (content?.content) {
+  let previewError: string | null = null;
+  if (selected && content === null) previewError = "This version is no longer available.";
+  else if (content) {
     try {
-      const parsed = JSON.parse(content.content) as { title: string; blocks: WireBlock[] };
+      const parsed = JSON.parse(content.content ?? "") as { title?: string; blocks?: WireBlock[] };
+      if (!Array.isArray(parsed.blocks)) throw new Error("no blocks");
       preview = blocksToHtml(parsed.blocks, { title: parsed.title || "Untitled" });
     } catch {
-      preview = null;
+      previewError = "This version can’t be previewed. It may have been saved by a newer version of Folevi.";
     }
   }
   return (
@@ -43,7 +47,7 @@ export function VersionHistory({ open, onClose, documentId, canRestore }: { open
             {list?.length === 0 ? <li className="text-sm text-muted">No versions yet.</li> : null}
             {list?.map((s) => (
               <li key={s.id}>
-                <button type="button" role="option" aria-selected={selected === s.id} onClick={() => { setSelected(s.id); setConfirm(false); }} className={`w-full rounded-[11px] px-3 py-2 text-left text-sm ${selected === s.id ? "bg-accent-soft text-accent-soft-ink" : "hover:bg-surface"}`}>
+                <button type="button" role="option" aria-selected={selected === s.id} onClick={() => { setSelected(s.id); setConfirm(false); }} className={`w-full rounded-[6px] px-3 py-2 text-left text-sm ${selected === s.id ? "bg-accent-soft text-accent-soft-ink" : "hover:bg-surface"}`}>
                   <span className="block font-medium">{formatDateTime(s.createdAt)}</span>
                   <span className="block text-xs text-muted">
                     {REASONS[s.reason] ?? "Version"} · {s.createdBy}
@@ -53,14 +57,20 @@ export function VersionHistory({ open, onClose, documentId, canRestore }: { open
             ))}
           </ul>
         </div>
-        <div className="flex min-h-0 flex-col ui-card rounded-[18px]">
+        <div className="flex min-h-0 flex-col ui-card rounded-[8px]">
           {!selected ? (
             <p className="m-auto p-6 text-sm text-muted">Choose a version to preview it.</p>
+          ) : previewError ? (
+            <p role="alert" className="m-auto max-w-sm p-6 text-center text-sm text-muted">
+              {previewError}
+            </p>
           ) : !preview ? (
-            <p className="m-auto p-6 text-sm text-muted">Loading preview…</p>
+            <p className="m-auto p-6 text-sm text-muted" role="status">
+              Loading preview…
+            </p>
           ) : (
             <>
-              <iframe title="Version preview" srcDoc={preview} sandbox="" className="min-h-[45vh] w-full flex-1 rounded-t-[10px] bg-white" />
+              <iframe title="Version preview" srcDoc={preview} sandbox="" className="min-h-[45vh] w-full flex-1 rounded-t-[6px] bg-white" />
               {canRestore ? (
                 <div className="flex items-center justify-end gap-2 border-t border-line p-3">
                   {confirm ? (

@@ -21,6 +21,8 @@ export const DEFAULT_RATE_RULES = {
   export: { limit: 20, windowMs: 60 * 60_000 },
   search: { limit: 600, windowMs: 60_000 },
   deviceRegister: { limit: 60, windowMs: 60 * 60_000 },
+  unsplash: { limit: 60, windowMs: 60 * 60_000 },
+  ai: { limit: 150, windowMs: 60 * 60_000 },
 } satisfies Record<string, RateRule>;
 
 export type RateRuleName = keyof typeof DEFAULT_RATE_RULES;

@@ -13,7 +13,7 @@ export type {
   SendPolicy,
   LoopsWebhookEvent,
 } from "./types";
-export { emailManifest, TEMPLATE_KEYS, AUTH0_MESSAGE_TYPE_TO_TEMPLATE } from "./manifest";
+export { emailManifest, TEMPLATE_KEYS } from "./manifest";
 export { validateDataVariables } from "./validate";
 export { transactionalIdFor, sendTransactional } from "./send";
 export { redactEmail, hashRecipient } from "./privacy";

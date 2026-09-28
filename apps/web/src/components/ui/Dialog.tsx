@@ -48,13 +48,13 @@ export function Dialog({
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
-      className={`m-auto w-[calc(100%-2rem)] ${width} rounded-[22px] bg-raised p-0 text-ink shadow-[var(--shadow-pop)] backdrop:bg-[var(--color-scrim)] backdrop:backdrop-blur-[4px] open:animate-[folio-rise_180ms_var(--ease-folio)]`}
+      className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop rounded-[14px] p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_180ms_var(--ease-folio)]`}
     >
       {open ? (
         <div className="flex max-h-[85dvh] flex-col">
           <header className="flex items-start gap-3 px-6 pb-2 pt-5">
             <div className="min-w-0 flex-1">
-              <h2 id={titleId} className="text-[18px] font-semibold leading-snug tracking-[-0.015em] text-heading">
+              <h2 id={titleId} className="ui-display text-[21px] leading-snug">
                 {title}
               </h2>
               {description ? (

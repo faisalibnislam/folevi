@@ -20,8 +20,10 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@convex-dev/better-auth": "0.12.5",
     "@folevi/editor-schema": "workspace:*",
     "@folevi/email": "workspace:*",
+    "better-auth": "1.6.33",
     "convex": "1.46.0",
     "fflate": "0.8.3",
     "loops": "7.3.0"

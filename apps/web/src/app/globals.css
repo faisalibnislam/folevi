@@ -4,10 +4,11 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-spectral), ui-serif, Georgia, serif;
+  --font-serif: var(--font-spectral), ui-serif, Georgia, serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
+  --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito", var(--font-instrument-sans), system-ui, sans-serif;
 
   --color-canvas: var(--color-canvas);
   --color-surface: var(--color-surface);
@@ -139,6 +140,99 @@
 }
 
 /* ------------------------------------------------------------------------------------------------
+ * Neutral app chrome. Inside the product (not the marketing site) the interface stays neutral —
+ * white/grey in light, near-black in dark — so colour comes from the notes themselves: their covers,
+ * artwork and accent colours. AccountGate sets data-chrome="neutral" on <html> while the app is open.
+ * --------------------------------------------------------------------------------------------- */
+:root[data-chrome="neutral"] {
+  --color-canvas: #FFFFFF;
+  --color-sidebar: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-sunken: var(--glass-hover);
+  --color-ink: #18181B;
+  --color-heading: #0B0B0C;
+  --color-ink-muted: #56565E;
+  --color-ink-faint: #67676F;
+  --color-line: #E2E2E6;
+  --color-line-strong: #CFCFD5;
+  --color-accent: #1F1F22;
+  --color-accent-strong: #0B0B0C;
+  --color-accent-ink: #FFFFFF;
+  --color-accent-soft: var(--glass-hover);
+  --color-accent-soft-ink: #1F1F22;
+  --color-glow-peach: #FFFFFF;
+  --color-glow-rose: #FFFFFF;
+  --color-focus: #1F1F22;
+  --color-selection: #D9DEE8;
+  --shadow-hairline: 0 0 0 1px rgba(0, 0, 0, 0.07);
+  --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 14px 32px -14px rgba(0, 0, 0, 0.18);
+}
+:root[data-chrome="neutral"][data-theme="dark"] {
+  --color-canvas: #101011;
+  --color-sidebar: #18181A;
+  --color-surface: #1C1C1E;
+  --color-surface-raised: #29292C;
+  --color-surface-sunken: var(--glass-hover);
+  --color-ink: #F2F2F3;
+  --color-heading: #FAFAFA;
+  --color-ink-muted: #A6A6AE;
+  --color-ink-faint: #93939B;
+  --color-line: #2C2C2F;
+  --color-line-strong: #3E3E43;
+  --color-accent: #F2F2F3;
+  --color-accent-strong: #FFFFFF;
+  --color-accent-ink: #101011;
+  --color-accent-soft: var(--glass-hover);
+  --color-accent-soft-ink: #F2F2F3;
+  --color-glow-peach: #101011;
+  --color-glow-rose: #101011;
+  --color-focus: #F2F2F3;
+  --color-selection: #3A3F4B;
+  --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
+}
+
+
+/* ------------------------------------------------------------------------------------------------
+ * Glass: translucent, frosted chrome over an ambient canvas (docs/DESIGN_SYSTEM.md → Glass).
+ * --------------------------------------------------------------------------------------------- */
+:root {
+  --glass-canvas: #EEEEF1;
+  --glass-light-a: rgb(255 255 255 / 0.95);
+  --glass-light-b: rgb(226 230 240 / 0.9);
+  --glass-light-c: rgb(248 246 244 / 0.7);
+  --glass-panel: rgb(255 255 255 / 0.58);
+  --glass-sidebar: rgb(255 255 255 / 0.36);
+  --glass-content: rgb(255 255 255 / 0.9);
+  --glass-pop: rgb(255 255 255 / 0.8);
+  --glass-hover: rgb(0 0 0 / 0.05);
+  --glass-border: rgb(0 0 0 / 0.07);
+  --glass-active: rgb(255 255 255 / 0.85);
+  --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.6), 0 0 0 1px rgb(0 0 0 / 0.06);
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(20 20 40 / 0.14);
+  --ambient-veil: rgb(238 238 241 / 0.5);
+}
+:root[data-theme="dark"] {
+  --glass-canvas: #0C0C0E;
+  --glass-light-a: rgb(60 62 74 / 0.55);
+  --glass-light-b: rgb(40 44 58 / 0.6);
+  --glass-light-c: rgb(30 30 34 / 0.5);
+  --glass-panel: rgb(28 28 31 / 0.55);
+  --glass-sidebar: rgb(28 28 31 / 0.34);
+  --glass-content: rgb(24 24 27 / 0.88);
+  --glass-pop: rgb(36 36 40 / 0.78);
+  --glass-hover: rgb(255 255 255 / 0.07);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-active: rgb(255 255 255 / 0.12);
+  --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.4);
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -14px rgb(0 0 0 / 0.6);
+  --ambient-veil: rgb(12 12 14 / 0.55);
+}
+
+/* ------------------------------------------------------------------------------------------------
  * Warm Folio component recipes (docs/DESIGN_SYSTEM.md). Shared by every product surface.
  * --------------------------------------------------------------------------------------------- */
 :root { --cover-art-tint: transparent; }
@@ -146,23 +240,24 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cover-art-tint: rgb(0 0 0 / 0.18); } }
 
 @layer components {
-  /* Canvas with two very soft ambient glows (peach top-right, rose bottom-left). */
+  /* Canvas: a soft, neutral ambient light behind the floating glass panels. On a note, the note's own style
+     image shows through instead (Shell's ambient layer), so notes carry the colour and the chrome stays neutral. */
   .ui-canvas {
     position: relative;
     isolation: isolate;
-    background: var(--color-canvas);
+    background: var(--glass-canvas);
   }
   .ui-canvas::before {
     content: "";
     position: fixed;
     inset: 0;
-    z-index: -1;
+    z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(60vw 50vh at 100% -5%, color-mix(in oklab, var(--color-glow-peach) 38%, transparent), transparent 70%),
-      radial-gradient(55vw 55vh at -5% 105%, color-mix(in oklab, var(--color-glow-rose) 34%, transparent), transparent 70%);
+      radial-gradient(70vw 60vh at 85% -10%, var(--glass-light-a), transparent 70%),
+      radial-gradient(60vw 70vh at -10% 110%, var(--glass-light-b), transparent 70%),
+      radial-gradient(50vw 50vh at 50% 50%, var(--glass-light-c), transparent 75%);
   }
-  :root[data-theme="dark"] .ui-canvas::before { opacity: 0.9; }
 
   /* Pills and buttons */
   .ui-btn {
@@ -171,7 +266,7 @@
     justify-content: center;
     gap: 0.45rem;
     white-space: nowrap;
-    border-radius: 999px;
+    border-radius: 6px;
     font-weight: 550;
     letter-spacing: -0.005em;
     user-select: none;
@@ -180,22 +275,22 @@
   .ui-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .ui-btn-primary {
     color: var(--color-accent-ink);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--color-accent) 96%, white) 0%, var(--color-accent) 100%);
-    box-shadow: var(--shadow-primary);
+    background: var(--color-accent);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.12), 0 4px 12px -4px rgb(0 0 0 / 0.25);
   }
   .ui-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
   .ui-btn-primary:active:not(:disabled) { filter: brightness(0.96); }
   .ui-btn-secondary {
     color: var(--color-ink);
-    background: linear-gradient(180deg, var(--color-surface-raised) 0%, color-mix(in oklab, var(--color-surface-raised) 97%, var(--color-surface-sunken)) 100%);
-    box-shadow: var(--shadow-control);
+    background: color-mix(in oklab, var(--color-surface-raised) 72%, transparent);
+    box-shadow: var(--glass-edge), 0 1px 2px rgb(0 0 0 / 0.06);
   }
   .ui-btn-secondary:hover:not(:disabled) { background: var(--color-surface-raised); color: var(--color-heading); }
   .ui-btn-secondary:active:not(:disabled) { background: var(--color-surface-sunken); }
   .ui-btn-ghost { color: var(--color-ink); }
-  .ui-btn-ghost:hover:not(:disabled) { background: color-mix(in oklab, var(--color-accent-soft) 80%, transparent); color: var(--color-heading); }
+  .ui-btn-ghost:hover:not(:disabled) { background: var(--glass-hover); color: var(--color-heading); }
   .ui-btn-quiet { color: var(--color-ink-muted); }
-  .ui-btn-quiet:hover:not(:disabled) { background: color-mix(in oklab, var(--color-accent-soft) 80%, transparent); color: var(--color-heading); }
+  .ui-btn-quiet:hover:not(:disabled) { background: var(--glass-hover); color: var(--color-heading); }
   .ui-btn-quiet[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-heading); }
   .ui-btn-danger {
     color: #fff;
@@ -205,43 +300,65 @@
   :root[data-theme="dark"] .ui-btn-danger { color: #2a1714; }
 
   /* Wells: search fields, inputs, segmented tracks */
+  /* Wells are translucent: the glass behind them shows through. */
   .ui-well {
-    background: var(--color-surface-sunken);
-    box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 10%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent);
+    background: var(--glass-hover);
+    box-shadow: inset 0 0 0 1px var(--glass-border);
   }
-  :root[data-theme="dark"] .ui-well { box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.45), inset 0 0 0 1px rgb(255 240 230 / 0.06); }
   .ui-input {
     background: var(--color-surface);
-    border-radius: 12px;
+    border-radius: 6px;
     box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line);
     transition: box-shadow 140ms;
   }
-  .ui-input:focus, .ui-input:focus-within { outline: none; box-shadow: 0 0 0 1px var(--color-focus), 0 0 0 4px color-mix(in oklab, var(--color-focus) 20%, transparent); }
+  /* Focused or open: the same soft outline as the active tab (16.5% ink), never a dark ring. */
+  .ui-input:focus, .ui-input:focus-within, .ui-input[aria-expanded="true"] { outline: none; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
 
   /* Surfaces */
   .ui-card { background: var(--color-surface); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
   .ui-sheet { border-radius: var(--radius-sheet); box-shadow: var(--shadow-sheet); }
-  .ui-pop { background: var(--color-surface-raised); border-radius: 14px; box-shadow: var(--shadow-pop); }
-  .ui-raised { background: var(--color-surface-raised); box-shadow: var(--shadow-control); }
-  .ui-glass {
-    background: color-mix(in oklab, var(--color-surface) 86%, transparent);
-    backdrop-filter: blur(18px) saturate(1.2);
-    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  /* Popovers, menus, dialogs: strong glass — enough tint for text to read on anything behind. */
+  .ui-pop {
+    background: var(--glass-pop);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    backdrop-filter: blur(28px) saturate(1.8);
+    border-radius: 10px;
+    box-shadow: var(--glass-edge), var(--shadow-pop);
   }
-  @media (prefers-reduced-transparency: reduce) { .ui-glass { background: var(--color-surface); backdrop-filter: none; } }
+  .ui-raised { background: var(--color-surface-raised); box-shadow: var(--shadow-control); }
+  /* Panels (sidebar, tab bar, dock): frosted glass with a fine light edge. */
+  .ui-glass {
+    background: var(--glass-panel);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
+    box-shadow: var(--glass-edge), var(--glass-shadow);
+  }
+  /* The sidebar and the tab bar: the same lighter glass, so more of the ambient light comes through. */
+  .ui-glass.ui-glass-sidebar { background: var(--glass-sidebar); }
+  /* The content panel beside the sidebar: nearly opaque, so reading surfaces stay calm. */
+  .ui-content {
+    background: var(--glass-content);
+    -webkit-backdrop-filter: blur(30px) saturate(1.4);
+    backdrop-filter: blur(30px) saturate(1.4);
+    box-shadow: var(--glass-edge), var(--glass-shadow);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .ui-glass, .ui-pop, .ui-content { background: var(--color-surface-raised); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .ui-ambient { display: none; }
+  }
 
   /* Segmented control (track + raised thumb). The active item carries data-active. */
-  .ui-seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; }
+  .ui-seg { display: flex; gap: 2px; padding: 3px; border-radius: 6px; }
   .ui-seg > * {
     flex: 1;
     display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
-    min-height: 28px; padding: 0 0.6rem; border-radius: 999px;
+    min-height: 28px; padding: 0 0.6rem; border-radius: 4px;
     font-size: 12.5px; font-weight: 550; color: var(--color-ink-muted);
     transition: background-color 180ms var(--motion-easing), box-shadow 180ms var(--motion-easing), color 180ms;
   }
   .ui-seg > *:hover { color: var(--color-heading); }
   .ui-seg > [data-active="true"], .ui-seg > [aria-selected="true"], .ui-seg > [aria-pressed="true"] {
-    background: var(--color-surface-raised); color: var(--color-heading); box-shadow: var(--shadow-control);
+    background: var(--glass-active); color: var(--color-heading); box-shadow: var(--glass-edge), 0 1px 3px rgb(0 0 0 / 0.08);
   }
 
   /* Small caps section label */
@@ -255,19 +372,20 @@
   }
 
   /* Chips */
-  .ui-chip { display: inline-flex; align-items: center; gap: 0.3rem; height: 1.6rem; padding: 0 0.65rem; border-radius: 999px; font-size: 12.5px; font-weight: 550; }
+  .ui-chip { display: inline-flex; align-items: center; gap: 0.3rem; height: 1.6rem; padding: 0 0.65rem; border-radius: 6px; font-size: 12.5px; font-weight: 550; }
 
   /* Headings in views */
-  .ui-display { font-family: var(--font-sans); font-weight: 620; letter-spacing: -0.028em; color: var(--color-heading); }
+  /* Titles and larger UI text: Spectral. */
+  .ui-display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.012em; color: var(--color-heading); }
   .ui-title { font-size: var(--text-title); line-height: 1.1; font-weight: 650; letter-spacing: var(--tracking-tight); color: var(--color-heading); }
   .ui-h2 { font-size: var(--text-xl); line-height: 1.2; font-weight: 600; letter-spacing: var(--tracking-snug); color: var(--color-heading); }
 
   /* Menus */
   .ui-menu-item {
-    display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 32px; padding: 0 0.6rem; border-radius: 9px;
+    display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 32px; padding: 0 0.6rem; border-radius: 6px;
     font-size: 13.5px; text-align: left; color: var(--color-ink);
   }
-  .ui-menu-item:hover, .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"] { background: var(--color-accent-soft); color: var(--color-heading); outline: none; }
+  .ui-menu-item:hover, .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"] { background: var(--glass-hover); color: var(--color-heading); outline: none; }
 }
 
 @media (prefers-contrast: more) {

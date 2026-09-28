@@ -49,14 +49,23 @@ export const list = query({
     const profile = await requireProfile(ctx);
     const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(args.today)) fail("invalid_argument", "Invalid date.");
+    // In your own personal workspace unassigned tasks are yours; collaborators there only get what's assigned to them.
+    const personalWorkspace = workspace.kind === "personal" && workspace.ownerId === profile._id;
     let rows: Doc<"tasks">[];
     if (args.view === "completed") {
-      rows = await ctx.db
-        .query("tasks")
-        .withIndex("by_workspace_status_completed", (q) => q.eq("workspaceId", workspace._id).eq("status", "done"))
-        .order("desc")
-        .take(200);
-    } else if (args.view === "mine") {
+      // Closed tasks: done and canceled, most recently closed first.
+      const closed: Doc<"tasks">[] = [];
+      for (const status of ["done", "canceled"] as const) {
+        closed.push(
+          ...(await ctx.db
+            .query("tasks")
+            .withIndex("by_workspace_status_completed", (q) => q.eq("workspaceId", workspace._id).eq("status", status))
+            .order("desc")
+            .take(200)),
+        );
+      }
+      rows = closed.sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt)).slice(0, 200);
+    } else if (args.view === "mine" && !personalWorkspace) {
       rows = (
         await ctx.db
           .query("tasks")
@@ -68,7 +77,7 @@ export const list = query({
         .query("tasks")
         .withIndex("by_workspace_status_due", (q) => q.eq("workspaceId", workspace._id).eq("status", "open"))
         .take(1000);
-      rows = rows.filter((t) => taskViews({ status: t.status, dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id).includes(args.view));
+      rows = rows.filter((t) => taskViews({ status: t.status, dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personalWorkspace }).includes(args.view));
     }
     rows = rows.filter((t) => !t.documentInTrash);
     const presented = await present(ctx, profile, rows);
@@ -94,7 +103,9 @@ export const counts = query({
         .take(1000)
     ).filter((t) => !t.documentInTrash);
     const c = { inbox: 0, today: 0, upcoming: 0, all: 0, mine: 0 };
-    for (const t of open) for (const view of taskViews({ status: "open", dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id)) {
+    // In your own personal workspace unassigned tasks are yours; collaborators there only get what's assigned to them.
+    const personalWorkspace = workspace.kind === "personal" && workspace.ownerId === profile._id;
+    for (const t of open) for (const view of taskViews({ status: "open", dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personalWorkspace })) {
       if (view in c) c[view as keyof typeof c]++;
     }
     return c;
@@ -140,6 +151,7 @@ export const update = mutation({
   args: {
     blockId: v.string(),
     checked: v.optional(v.boolean()),
+    canceled: v.optional(v.boolean()),
     dueDate: v.optional(v.union(v.string(), v.null())),
     dueTime: v.optional(v.union(v.string(), v.null())),
     priority: v.optional(v.union(v.literal("none"), v.literal("low"), v.literal("medium"), v.literal("high"))),
@@ -155,9 +167,23 @@ export const update = mutation({
     const props = { ...(row.props as Record<string, unknown>) };
     if (args.checked !== undefined) {
       props.checked = args.checked;
-      if (args.checked) props.completedAt = Date.now();
-      else delete props.completedAt;
+      if (args.checked) {
+        props.completedAt = Date.now();
+        delete props.canceled;
+      } else delete props.completedAt;
     }
+    if (args.canceled !== undefined) {
+      if (args.canceled) {
+        props.canceled = true;
+        props.checked = false;
+        props.completedAt = Date.now(); // when it was closed (orders the Completed view)
+      } else {
+        delete props.canceled;
+        if (!props.checked) delete props.completedAt;
+      }
+    }
+    if (args.dueDate !== undefined && args.dueDate !== null && !/^\d{4}-\d{2}-\d{2}$/.test(args.dueDate)) fail("invalid_argument", "Invalid date.");
+    if (args.dueTime !== undefined && args.dueTime !== null && !/^\d{2}:\d{2}$/.test(args.dueTime)) fail("invalid_argument", "Invalid time.");
     if (args.dueDate !== undefined) {
       if (args.dueDate === null) {
         delete props.dueDate;
@@ -213,6 +239,7 @@ export const quickAdd = mutation({
     today: v.string(),
     dueDate: v.optional(v.string()),
     dueTime: v.optional(v.string()),
+    priority: v.optional(v.union(v.literal("none"), v.literal("low"), v.literal("medium"), v.literal("high"))),
     documentId: v.optional(v.string()),
     deviceId: v.optional(v.string()),
   },
@@ -246,6 +273,7 @@ export const quickAdd = mutation({
     const props: Record<string, unknown> = { checked: false };
     if (args.dueDate) props.dueDate = args.dueDate;
     if (args.dueDate && args.dueTime) props.dueTime = args.dueTime;
+    if (args.priority && args.priority !== "none") props.priority = args.priority;
     const block: WireBlock = {
       id: ulid(),
       type: "todo",

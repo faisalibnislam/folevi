@@ -95,55 +95,6 @@ const CONTENT: Record<TemplateKey, Content> = {
       },
     ],
   },
-  auth_blocked_account: {
-    eyebrow: "Account security",
-    heading: "We paused sign-in to your account",
-    blocks: [
-      {
-        kind: "p",
-        text: "There were several unsuccessful attempts to sign in to your Folevi account, so we paused sign-in from the device that made them.",
-      },
-      {
-        kind: "p",
-        text: "If those attempts were yours, you can unblock sign-in now. If they were not, unblock and then change your password.",
-      },
-      { kind: "button", label: "Unblock sign-in", urlVar: "actionUrl" },
-      {
-        kind: "p",
-        muted: true,
-        text: "This link expires in {{expiresInHours}} hour(s). Nothing in your notes has changed.",
-      },
-    ],
-  },
-  auth_breached_password: {
-    eyebrow: "Account security",
-    heading: "Please change your password",
-    blocks: [
-      {
-        kind: "p",
-        text: "The password used for your Folevi account appeared in a data breach on another service. Folevi was not breached, but anyone holding that list could try it here.",
-      },
-      { kind: "button", label: "Change your password", urlVar: "actionUrl" },
-      {
-        kind: "p",
-        muted: true,
-        text: "Choose a password you do not use anywhere else. This link expires in {{expiresInHours}} hour(s).",
-      },
-    ],
-  },
-  auth_verification_code: {
-    eyebrow: "Your account",
-    heading: "Your verification code",
-    blocks: [
-      { kind: "p", text: "Enter this code in Folevi to continue:" },
-      { kind: "code", variable: "code" },
-      {
-        kind: "p",
-        muted: true,
-        text: "The code expires in {{expiresInMinutes}} minute(s) and works once. Folevi will never ask you to read this code out or send it to anyone. If you did not request it, you can ignore this email.",
-      },
-    ],
-  },
   security_new_device: {
     eyebrow: "Account security",
     heading: "New sign-in to your account",
@@ -221,7 +172,7 @@ const CONTENT: Record<TemplateKey, Content> = {
     heading: "You were mentioned",
     blocks: [
       { kind: "p", text: "[[actorName]] mentioned you in [[documentTitle]]." },
-      { kind: "quote", variable: "excerpt" },
+      { kind: "p", muted: true, text: "Open the document to read it. Folevi never puts your notes or comments in email." },
       { kind: "button", label: "View the mention", urlVar: "documentUrl" },
     ],
     reason: "You received this because mention emails are turned on for your Folevi account.",
@@ -231,7 +182,7 @@ const CONTENT: Record<TemplateKey, Content> = {
     heading: "New comment on a document",
     blocks: [
       { kind: "p", text: "[[actorName]] commented on [[documentTitle]]." },
-      { kind: "quote", variable: "excerpt" },
+      { kind: "p", muted: true, text: "Open the document to read it. Folevi never puts your notes or comments in email." },
       { kind: "button", label: "View the comment", urlVar: "documentUrl" },
     ],
     reason: "You received this because comment emails are turned on for your Folevi account.",
@@ -253,6 +204,20 @@ const CONTENT: Record<TemplateKey, Content> = {
       { kind: "p", text: "[[actorName]] shared [[documentTitle]] with you." },
       { kind: "details", rows: [["Your access", "{{role}}"]] },
       { kind: "button", label: "Open the document", urlVar: "documentUrl" },
+    ],
+    reason: "You received this because share emails are turned on for your Folevi account.",
+  },
+  access_changed: {
+    eyebrow: "Access",
+    heading: "Your access changed",
+    blocks: [
+      { kind: "p", text: "[[actorName]] {{summary}}" },
+      { kind: "button", label: "Open Folevi", urlVar: "actionUrl" },
+      {
+        kind: "p",
+        muted: true,
+        text: "If you think this was a mistake, ask the person who made the change.",
+      },
     ],
     reason: "You received this because share emails are turned on for your Folevi account.",
   },

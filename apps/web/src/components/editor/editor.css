@@ -26,12 +26,16 @@
 .fb-editor > .fb {
   position: relative;
   margin: 0;
-  padding: 3px 2px 3px calc(var(--depth, 0) * 1.6em + 2px);
-  border-radius: 8px;
+  padding: 3px 2px 3px calc(var(--depth, 0) * 1.6em + 2px + var(--pad-extra, 0px));
+  border-radius: 6px;
   min-height: 1.6em;
 }
 .fb-editor > .fb.fb-hidden { display: none; }
-.fb-editor > .fb.fb-selected { background: var(--color-selection); }
+.fb-editor > .fb-selected { background: var(--color-selection); }
+/* Block selection: whole blocks are highlighted, the text caret and text highlight are hidden. */
+.fb-editor.fb-block-selecting { caret-color: transparent; }
+.fb-editor.fb-block-selecting ::selection { background: transparent; }
+.fb-editor.fb-block-selecting > .fb-selected { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent); }
 .fb-editor > .fb.fb-conflict { box-shadow: inset 3px 0 0 var(--color-plum); background: color-mix(in oklab, var(--color-plum-soft) 60%, transparent); }
 .fb-editor > .fb.fb-presence { box-shadow: inset 2px 0 0 var(--presence); }
 .fb-editor > .fb.fb-presence::after {
@@ -65,10 +69,10 @@
 .fb-page[data-font="serif"] .fb-editor .fb-h1 { font-size: 1.95em; }
 
 /* Lists */
-.fb-editor .fb-bulleted, .fb-editor .fb-numbered { padding-left: calc(var(--depth, 0) * 1.6em + 1.6em); }
+.fb-editor .fb-bulleted, .fb-editor .fb-numbered { padding-left: calc(var(--depth, 0) * 1.6em + 1.6em + var(--pad-extra, 0px)); }
 .fb-editor .fb-bulleted::before {
   content: "";
-  position: absolute; left: calc(var(--depth, 0) * 1.6em + 0.55em); top: 0.8em;
+  position: absolute; left: calc(var(--depth, 0) * 1.6em + 0.55em + var(--pad-extra, 0px)); top: 0.8em;
   width: 0.36em; height: 0.36em; border-radius: 50%;
   background: color-mix(in oklab, var(--doc-accent) 85%, var(--color-heading));
 }
@@ -76,7 +80,7 @@
 .fb-editor .fb-bulleted[data-depth="2"]::before, .fb-editor .fb-bulleted[data-depth="5"]::before { border-radius: 1px; }
 .fb-editor .fb-numbered::before {
   content: attr(data-index) ".";
-  position: absolute; left: calc(var(--depth, 0) * 1.6em); width: 1.35em; text-align: right;
+  position: absolute; left: calc(var(--depth, 0) * 1.6em + var(--pad-extra, 0px)); width: 1.35em; text-align: right;
   color: var(--color-ink-muted); font-variant-numeric: tabular-nums; font-weight: 550;
 }
 
@@ -89,7 +93,7 @@
   display: grid; place-items: center; border-radius: 6px; background: transparent;
 }
 .fb-check::before {
-  content: ""; width: 18px; height: 18px; border-radius: 6px; box-sizing: border-box;
+  content: ""; width: 18px; height: 18px; border-radius: 4px; box-sizing: border-box;
   border: 1.5px solid var(--color-line-strong);
   background: linear-gradient(180deg, var(--color-surface-raised), color-mix(in oklab, var(--color-surface-raised) 92%, var(--color-surface-sunken)));
   box-shadow: 0 1px 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
@@ -109,7 +113,7 @@
 .fb-todo[data-checked="true"] > .fb-content { color: var(--color-ink-muted); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--color-ink-muted) 60%, transparent); }
 .fb-task-meta { flex: none; }
 .fb-due-chip {
-  font: 550 12px/24px var(--font-sans); min-height: 24px; padding: 0 9px; border-radius: 999px;
+  font: 550 12px/24px var(--font-sans); min-height: 24px; padding: 0 9px; border-radius: 4px;
   background: var(--color-surface-sunken); color: var(--color-ink-muted); margin-top: 0.15em;
 }
 .fb-due-chip:hover { color: var(--color-ink); }
@@ -124,13 +128,13 @@
 .fb-disclosure:hover { background: var(--color-surface-sunken); color: var(--color-ink); }
 
 /* Quote & callout */
-.fb-editor .fb-quote { padding-left: calc(var(--depth, 0) * 1.6em + 1.05em); margin: 0.35em 0; color: color-mix(in oklab, var(--color-heading) 80%, var(--color-ink)); font-style: italic; }
+.fb-editor .fb-quote { padding-left: calc(var(--depth, 0) * 1.6em + 1.05em + var(--pad-extra, 0px)); margin: 0.35em 0; color: color-mix(in oklab, var(--color-heading) 80%, var(--color-ink)); font-style: italic; }
 .fb-editor .fb-quote::before { content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em + 2px); top: 0.3em; bottom: 0.3em; width: 3px; border-radius: 999px; background: var(--doc-accent); }
 .fb-page[data-font="serif"] .fb-editor .fb-quote { font-size: 1.08em; }
 .fb-editor .fb-callout {
   display: flex; gap: 0.6em; align-items: flex-start;
   margin: 0.5em 0 0.5em calc(var(--depth, 0) * 1.6em); padding: 0.8em 1em;
-  border-radius: 14px;
+  border-radius: 8px;
   background: var(--color-surface-sunken);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 6%, transparent);
 }
@@ -152,7 +156,7 @@
 .fb-editor pre.fb-code {
   margin: 0.5em 0 0.5em calc(var(--depth, 0) * 1.6em); padding: 0.85em 1em;
   background: var(--color-code-bg); color: var(--color-code-ink);
-  border-radius: 12px;
+  border-radius: 6px;
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
   font: 13.5px/1.65 var(--font-mono); white-space: pre-wrap; overflow-x: auto; tab-size: 2;
 }
@@ -168,7 +172,7 @@
 .fb-editor .fb-divider.ProseMirror-selectednode hr { border-top-color: var(--doc-accent); }
 
 /* Atoms */
-.fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: 12px; outline-offset: 3px; }
+.fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: 6px; outline-offset: 3px; }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { outline: 2px solid var(--doc-accent); }
 
 /* Inline */
@@ -181,7 +185,7 @@
 }
 .fb-page-link::before { content: "↗ "; color: var(--color-ember-ink); font-size: 0.85em; }
 .fb-mention, .fb-date {
-  display: inline-block; padding: 0 0.4em; border-radius: 999px; font-size: 0.92em; line-height: 1.5;
+  display: inline-block; padding: 0 0.4em; border-radius: 4px; font-size: 0.92em; line-height: 1.5;
   background: var(--color-ember-soft); color: var(--color-ember-ink); font-weight: 550;
 }
 .fb-date { background: var(--color-marigold-soft); color: var(--color-marigold-ink); }
@@ -223,7 +227,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Drag and drop (blockDrag.ts) */
 .fb-drag-ghost {
   position: fixed; left: 0; top: 0; z-index: 80; pointer-events: none;
-  background: var(--color-surface); border-radius: 14px; box-shadow: var(--shadow-lift);
+  background: var(--color-surface); border-radius: 8px; box-shadow: var(--shadow-lift);
   padding: 6px 14px; opacity: 0.92; max-height: 260px; overflow: hidden;
   -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent); mask-image: linear-gradient(to bottom, #000 78%, transparent);
   transform-origin: 24px 16px; will-change: transform;
@@ -232,7 +236,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-drag-ghost .fb-editor { padding-bottom: 0; }
 .fb-drag-ghost .fb-editor > .fb { background: transparent !important; }
 .fb-drag-chip {
-  padding: 9px 16px; border-radius: 999px; white-space: nowrap;
+  padding: 9px 16px; border-radius: 6px; white-space: nowrap;
   font: 600 13px/1.2 var(--font-sans); color: var(--color-heading);
   -webkit-mask-image: none; mask-image: none;
 }
@@ -253,3 +257,212 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   0% { background: var(--color-ember-soft); box-shadow: 0 0 0 4px var(--color-ember-soft); }
   100% { background: transparent; box-shadow: 0 0 0 4px transparent; }
 }
+
+/* Find in page (DocumentSidebar → Find): every match, and the current one. */
+::highlight(folevi-find) {
+  background-color: color-mix(in oklab, var(--color-marigold) 32%, transparent);
+}
+::highlight(folevi-find-current) {
+  background-color: color-mix(in oklab, var(--color-marigold) 78%, transparent);
+  color: var(--color-heading);
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Page style (Inspector → Style): document colour, text colour, separator style, Rounded font.
+ * An explicit document colour is an explicit appearance: light sheets keep dark text and a night sheet
+ * keeps light text whatever the app theme.
+ * --------------------------------------------------------------------------------------------- */
+.fb-page[data-font="rounded"] { --editor-font: ui-rounded, "SF Pro Rounded", "Nunito", var(--font-sans); }
+.fb-sheet[data-sheet] {
+  --color-ink: #1c1c1f; --color-heading: #0d0d0f; --color-ink-muted: #5c5c64; --color-ink-faint: #6b6b73;
+  --color-line: rgb(0 0 0 / 0.1); --color-line-strong: rgb(0 0 0 / 0.18); --color-surface-sunken: rgb(0 0 0 / 0.045);
+  --color-surface-raised: #ffffff; --color-selection: rgb(40 90 220 / 0.14);
+  color: var(--color-ink);
+}
+.fb-sheet[data-sheet="white"] { --color-surface: #ffffff; background: #ffffff; }
+.fb-sheet[data-sheet="paper"] { --color-surface: #fbf8f2; background: #fbf8f2; }
+.fb-sheet[data-sheet="ivory"] { --color-surface: #f4ecdb; background: #f4ecdb; }
+.fb-sheet[data-sheet="mist"] { --color-surface: #edf1f6; background: #edf1f6; }
+.fb-sheet[data-sheet="sage"] { --color-surface: #ecf2ea; background: #ecf2ea; }
+.fb-sheet[data-sheet="blush"] { --color-surface: #f8ecec; background: #f8ecec; }
+.fb-sheet[data-sheet="night"] {
+  --color-surface: #161618; --color-surface-raised: #232326; --color-surface-sunken: rgb(255 255 255 / 0.06);
+  --color-ink: #ececef; --color-heading: #ffffff; --color-ink-muted: #a9a9b1; --color-ink-faint: #93939b;
+  --color-line: rgb(255 255 255 / 0.12); --color-line-strong: rgb(255 255 255 / 0.2); --color-selection: rgb(120 160 255 / 0.25);
+  background: #161618;
+}
+.fb-sheet[data-text="slate"] { --color-ink: #3a4758; --color-heading: #273345; }
+.fb-sheet[data-text="navy"] { --color-ink: #23406f; --color-heading: #1b3561; }
+.fb-sheet[data-text="forest"] { --color-ink: #25543a; --color-heading: #1b432d; }
+.fb-sheet[data-text="plum"] { --color-ink: #5a2d66; --color-heading: #4a2155; }
+.fb-sheet[data-text="brown"] { --color-ink: #5b3b23; --color-heading: #4a2e19; }
+.fb-sheet[data-text="white"] { --color-ink: #f2f2f4; --color-heading: #ffffff; }
+.fb-sheet[data-text] .fb-editor, .fb-sheet[data-text] textarea { color: var(--color-ink); }
+/* Auto colours from the note's artwork: a very light page and dark, high-contrast text (dark theme: a deep
+   page and light text in the same hue). Set by sheetProps() in lib/cover.ts. */
+.fb-sheet[data-sheet="art"] { --color-surface: var(--art-paper); background: var(--art-paper); }
+.fb-sheet[data-text="art"] {
+  --color-ink: var(--art-ink); --color-heading: color-mix(in oklab, var(--art-ink) 88%, #000);
+  --color-ink-muted: color-mix(in oklab, var(--art-ink) 78%, var(--color-surface)); --color-ink-faint: color-mix(in oklab, var(--art-ink) 70%, var(--color-surface));
+}
+:root[data-theme="dark"] .fb-sheet[data-sheet="art"] {
+  --color-surface: var(--art-paper-dark); background: var(--art-paper-dark);
+  --color-surface-raised: color-mix(in oklab, var(--art-paper-dark) 88%, #fff); --color-surface-sunken: rgb(255 255 255 / 0.06);
+  --color-line: rgb(255 255 255 / 0.12); --color-line-strong: rgb(255 255 255 / 0.2); --color-selection: rgb(120 160 255 / 0.25);
+}
+:root[data-theme="dark"] .fb-sheet[data-sheet="art"]:not([data-text]),
+:root[data-theme="dark"] .fb-sheet[data-text="art"] {
+  --color-ink: var(--art-ink-dark); --color-heading: color-mix(in oklab, var(--art-ink-dark) 80%, #fff);
+  --color-ink-muted: color-mix(in oklab, var(--art-ink-dark) 84%, var(--color-surface)); --color-ink-faint: color-mix(in oklab, var(--art-ink-dark) 74%, var(--color-surface));
+}
+
+.fb-sheet[data-separator="dots"] .fb-divider hr { border-top: 2px dotted var(--color-line-strong); }
+.fb-sheet[data-separator="doodle"] .fb-divider hr {
+  border: 0; height: 10px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='10' viewBox='0 0 24 10'><path d='M0 5 Q6 0 12 5 T24 5' fill='none' stroke='%23999' stroke-width='1.6' stroke-linecap='round'/></svg>") repeat-x center / 24px 10px;
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Block styling (Inspector → Format): text style, decoration, colour, alignment, font, card group.
+ * --------------------------------------------------------------------------------------------- */
+.fb-editor > .fb[data-text-style="strong"] { font-weight: 650; color: var(--color-heading); }
+.fb-editor > .fb[data-text-style="caption"] { font-size: 0.84em; color: var(--color-ink-muted); line-height: 1.5; }
+
+.fb-editor > .fb[data-color] { --block-color: var(--doc-accent); color: var(--block-color); }
+.fb-editor > .fb[data-color="black"] { --block-color: var(--color-heading); }
+.fb-editor > .fb[data-color="slate"] { --block-color: #5b6878; }
+.fb-editor > .fb[data-color="gray"] { --block-color: #8b8e95; }
+.fb-editor > .fb[data-color="navy"] { --block-color: #1d33d6; }
+.fb-editor > .fb[data-color="blue"] { --block-color: #2d6cf0; }
+.fb-editor > .fb[data-color="sky"] { --block-color: #2f9fd4; }
+.fb-editor > .fb[data-color="green"] { --block-color: #2f9e62; }
+.fb-editor > .fb[data-color="purple"] { --block-color: #9b36d6; }
+.fb-editor > .fb[data-color="red"] { --block-color: #d63a3a; }
+.fb-editor > .fb[data-color="orange"] { --block-color: #d9801f; }
+.fb-editor > .fb[data-color="brown"] { --block-color: #7a4f24; }
+:root[data-theme="dark"] .fb-sheet:not([data-sheet]) .fb-editor > .fb[data-color="navy"],
+.fb-sheet[data-sheet="night"] .fb-editor > .fb[data-color="navy"] { --block-color: #7b8cff; }
+:root[data-theme="dark"] .fb-sheet:not([data-sheet]) .fb-editor > .fb[data-color="brown"],
+.fb-sheet[data-sheet="night"] .fb-editor > .fb[data-color="brown"] { --block-color: #c89565; }
+
+.fb-editor > .fb[data-align="center"] { text-align: center; }
+.fb-editor > .fb[data-align="right"] { text-align: right; }
+.fb-editor > .fb[data-align="justify"] { text-align: justify; }
+.fb-editor > .fb[data-font="system"] { font-family: var(--font-sans); }
+.fb-editor > .fb[data-font="serif"] { font-family: var(--font-serif); }
+.fb-editor > .fb[data-font="mono"] { font-family: var(--font-mono); font-size: 0.92em; }
+.fb-editor > .fb[data-font="rounded"] { font-family: ui-rounded, "SF Pro Rounded", "Nunito", var(--font-sans); }
+
+/* Focus: a bar in the block's colour with a soft tint. Block: a filled rounded background. */
+.fb-editor > .fb[data-decoration="focus"] {
+  margin: 0.35em 0;
+  --pad-extra: 0.9em;
+  background: color-mix(in oklab, var(--block-color, var(--doc-accent)) 7%, transparent);
+  border-radius: 3px 6px 6px 3px;
+}
+.fb-editor > .fb[data-decoration="focus"]::after {
+  content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em); top: 0.2em; bottom: 0.2em; width: 3px; border-radius: 999px;
+  background: var(--block-color, var(--doc-accent));
+}
+.fb-editor > .fb[data-decoration="block"] {
+  margin: 0.35em 0;
+  padding-top: 0.45em; padding-bottom: 0.45em; padding-right: 0.8em;
+  --pad-extra: 0.8em;
+  background: color-mix(in oklab, var(--block-color, var(--color-ink)) 9%, var(--color-surface));
+  border-radius: 6px;
+}
+
+/* Card group: consecutive blocks marked as a card share one raised card inside the page. */
+.fb-editor > .fb[data-group="card"] {
+  background: color-mix(in oklab, var(--color-surface-raised) 70%, var(--doc-accent-soft));
+  border-radius: 0;
+  padding-right: 1.1em;
+  --pad-extra: 1.1em;
+  box-shadow: inset 1px 0 0 var(--color-line), inset -1px 0 0 var(--color-line);
+}
+.fb-editor > .fb[data-group="card"]:first-child,
+.fb-editor > :not([data-group="card"]) + .fb[data-group="card"] {
+  margin-top: 0.8em; padding-top: 0.8em; border-top-left-radius: 8px; border-top-right-radius: 8px;
+  box-shadow: inset 1px 0 0 var(--color-line), inset -1px 0 0 var(--color-line), inset 0 1px 0 var(--color-line);
+}
+.fb-editor > .fb[data-group="card"]:not(:has(+ .fb[data-group="card"])) {
+  margin-bottom: 0.8em; padding-bottom: 0.8em; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+  box-shadow: inset 1px 0 0 var(--color-line), inset -1px 0 0 var(--color-line), inset 0 -1px 0 var(--color-line), 0 10px 24px -18px rgb(0 0 0 / 0.35);
+}
+.fb-editor > .fb[data-group="card"]:first-child:not(:has(+ .fb[data-group="card"])),
+.fb-editor > :not([data-group="card"]) + .fb[data-group="card"]:not(:has(+ .fb[data-group="card"])) {
+  box-shadow: inset 0 0 0 1px var(--color-line), 0 10px 24px -18px rgb(0 0 0 / 0.35);
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Note style palette (sheetProps → data-palette; packages/design-tokens/src/palette.ts). While the page
+ * colour is on Auto, the note's style colours the accents — bullets, checkboxes, quote bars, links,
+ * underlines, callouts and code — and the text colour and highlight choices. The mark ids stay the same
+ * (accent, moss, marigold, plum, coral / yellow, green, blue, pink): they're slots, filled per style.
+ * Scoped to [data-palette] so the Format panel's swatches can wear the same colours.
+ * --------------------------------------------------------------------------------------------- */
+[data-palette] {
+  --pal-accent: var(--pal-accent-l);
+  --pal-moss: var(--pal-moss-l); --pal-marigold: var(--pal-marigold-l); --pal-plum: var(--pal-plum-l); --pal-coral: var(--pal-coral-l);
+  --pal-hl-yellow: var(--pal-hl-yellow-l); --pal-hl-green: var(--pal-hl-green-l); --pal-hl-blue: var(--pal-hl-blue-l); --pal-hl-pink: var(--pal-hl-pink-l);
+}
+:root[data-theme="dark"] [data-palette] {
+  --pal-accent: var(--pal-accent-d);
+  --pal-moss: var(--pal-moss-d); --pal-marigold: var(--pal-marigold-d); --pal-plum: var(--pal-plum-d); --pal-coral: var(--pal-coral-d);
+  --pal-hl-yellow: var(--pal-hl-yellow-d); --pal-hl-green: var(--pal-hl-green-d); --pal-hl-blue: var(--pal-hl-blue-d); --pal-hl-pink: var(--pal-hl-pink-d);
+}
+.fb-sheet[data-palette] {
+  --doc-accent: var(--pal-accent);
+  --doc-accent-soft: color-mix(in oklab, var(--pal-accent) 14%, var(--color-surface));
+  --color-accent: var(--pal-accent);
+  --color-code-bg: color-mix(in oklab, var(--pal-accent) 6%, var(--color-surface));
+}
+[data-palette] .fb-color-accent { color: var(--pal-accent); }
+[data-palette] .fb-color-moss { color: var(--pal-moss); }
+[data-palette] .fb-color-marigold { color: var(--pal-marigold); }
+[data-palette] .fb-color-plum { color: var(--pal-plum); }
+[data-palette] .fb-color-coral { color: var(--pal-coral); }
+[data-palette] .fb-hl-yellow { background: var(--pal-hl-yellow); }
+[data-palette] .fb-hl-green { background: var(--pal-hl-green); }
+[data-palette] .fb-hl-blue { background: var(--pal-hl-blue); }
+[data-palette] .fb-hl-pink { background: var(--pal-hl-pink); }
+/* Checkboxes */
+.fb-sheet[data-palette] .fb-check:hover::before { border-color: var(--pal-accent); }
+.fb-sheet[data-palette] .fb-todo[data-checked="true"] .fb-check::before {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--pal-accent) 82%, white), var(--pal-accent));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px color-mix(in oklab, var(--pal-accent) 45%, transparent);
+}
+/* Underline, inline code */
+.fb-sheet[data-palette] .fb-editor u { text-decoration-color: color-mix(in oklab, var(--pal-accent) 70%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.fb-sheet[data-palette] .fb-inline-code { color: var(--pal-accent); }
+/* Callouts: the plain and "note" callouts take the style's key colour, "info" its second colour.
+   Success, warning and danger keep their meaning colours (green, amber, red). */
+.fb-sheet[data-palette] { --pal-callout-mix: 60%; }
+:root[data-theme="dark"] .fb-sheet[data-palette] { --pal-callout-mix: 40%; }
+.fb-sheet[data-palette] .fb-tone-note { background: color-mix(in oklab, var(--pal-hl-yellow) var(--pal-callout-mix), var(--color-surface)) !important; }
+.fb-sheet[data-palette] .fb-tone-note .fb-callout-icon, .fb-sheet[data-palette] .fb-callout:not([class*="fb-tone-"]) .fb-callout-icon { color: var(--pal-accent); }
+.fb-sheet[data-palette] .fb-tone-info { background: color-mix(in oklab, var(--pal-hl-green) var(--pal-callout-mix), var(--color-surface)) !important; }
+.fb-sheet[data-palette] .fb-tone-info .fb-callout-icon { color: var(--pal-moss); }
+
+/* Film grain over a note's cover image (DocumentHeader): fine specks from fractal noise, tiled — dark on
+   covers that read deep, white on covers that read light (data-tone). */
+.fb-cover-grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  background-size: 220px 220px;
+  opacity: 0.83;
+  mix-blend-mode: multiply;
+}
+.fb-cover-grain[data-tone="light"] {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  mix-blend-mode: screen;
+}
+
+/* AI text being written: a soft blinking caret after the last block's text (components/ai/AiMarkdown.tsx). */
+.fb-ai-streaming .fb-editor > .fb:last-child::after {
+  content: ""; display: inline-block; width: 0.5em; height: 1em; margin-left: 2px; vertical-align: -0.12em;
+  border-radius: 2px; background: color-mix(in oklab, #7c6cf0 70%, transparent);
+  animation: fb-ai-caret 1s steps(2, start) infinite;
+}
+@keyframes fb-ai-caret { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .fb-ai-streaming .fb-editor > .fb:last-child::after { animation: none; } }

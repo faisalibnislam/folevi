@@ -78,7 +78,30 @@ const x = 1;
     expect(intro.text).toContainEqual({ type: "text", text: "link", marks: [{ type: "link", href: "https://example.com" }] });
     const table = r.blocks.find((b) => b.type === "table")!;
     expect(plainText((table.props.rows as never[][])[1]![1] as never)).toBe("Walk | swim");
-    expect(r.warnings.map((w) => w.code).sort()).toEqual(["footnote", "html_block", "unresolved_image"]);
+    expect(r.warnings.map((w) => w.code).sort()).toEqual(["footnote", "front_matter", "html_block", "unresolved_image"]);
+    expect(r.warnings.find((w) => w.code === "front_matter")!.message).toContain("tags");
+  });
+
+  it("reports every front matter field it doesn't use, and nothing when only the title is set", () => {
+    const r = markdownToBlocks("---\ntitle: A\ndate: 2026-01-01\ntags:\n  - x\n---\nBody", { newId });
+    const w = r.warnings.filter((x) => x.code === "front_matter");
+    expect(w).toHaveLength(1);
+    expect(w[0]!.message).toContain("date, tags");
+    expect(markdownToBlocks("---\ntitle: A\n---\nBody", { newId }).warnings).toEqual([]);
+  });
+
+  it("imports display math as formula blocks and warns only about inline math", () => {
+    const r = markdownToBlocks("Before\n\n$$\nE = mc^2\n$$\n\n$$a+b$$\n\nInline $$x^2$$ here", { newId });
+    const formulas = r.blocks.filter((b) => b.type === "formula");
+    expect(formulas.map((b) => b.props)).toEqual([{ latex: "E = mc^2" }, { latex: "a+b" }]);
+    expect(r.blocks.map((b) => b.type)).toEqual(["paragraph", "formula", "formula", "paragraph"]);
+    expect(r.warnings.map((w) => w.code)).toEqual(["math"]);
+  });
+
+  it("resolves images through resolveImage (relative paths from a folder or ZIP import)", () => {
+    const r = markdownToBlocks("![Pic](img/a%20b.png)\n\n![Missing](img/none.png)", { newId, resolveImage: (src) => (src === "img/a%20b.png" ? { fileId: "f1" } : null) });
+    expect(r.blocks[0]!.props).toMatchObject({ fileId: "f1", alt: "Pic" });
+    expect(r.warnings.map((w) => w.code)).toEqual(["unresolved_image"]);
   });
 
   it("uses the first H1 as the title only when it leads the document", () => {
@@ -113,6 +136,23 @@ describe("markdown export", () => {
     for (const t of ["heading", "paragraph", "bulleted", "numbered", "todo", "quote", "callout", "divider", "code", "table"]) {
       expect(types).toContain(t);
     }
+  });
+
+  it("uses current page titles for page cards and [[links]] when a resolver is given", () => {
+    const blocks: WireBlock[] = [
+      { id: "a", type: "page", parentId: null, rank: "V", schemaVersion: 1, text: [], props: { documentId: "D1", display: "card", titleCache: "Untitled" } },
+      { id: "b", type: "paragraph", parentId: null, rank: "W", schemaVersion: 1, text: [{ type: "text", text: "See " }, { type: "pageLink", documentId: "D2", label: "Old" }], props: {} },
+    ];
+    const titles: Record<string, string> = { D1: "Harbor plan", D2: "Tide tables" };
+    const md = blocksToMarkdown(blocks, { resolveDocument: (id) => `https://app.example/d/${id}`, resolveDocumentTitle: (id) => titles[id] ?? null });
+    expect(md).toContain("[Harbor plan](https://app.example/d/D1)");
+    expect(md).toContain("See [Tide tables](https://app.example/d/D2)");
+    expect(md).not.toContain("Untitled");
+    const html = blocksToHtml(blocks, { title: "T", resolveDocument: (id) => `/d/${id}`, resolveDocumentTitle: (id) => titles[id] ?? null });
+    expect(html).toContain('<a href="/d/D1">Harbor plan</a>');
+    expect(html).toContain('<a href="/d/D2">Tide tables</a>');
+    // Without a resolver the cached label is kept.
+    expect(blocksToMarkdown(blocks)).toContain("[[Old]]");
   });
 
   it("escapes HTML in the HTML export", () => {

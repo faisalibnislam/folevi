@@ -1,0 +1,337 @@
+// Billing for the signed-in person: their plan, usage and history; upgrading through Stripe Checkout;
+// managing a subscription in Stripe's billing portal; and the Stripe webhook that keeps plans in step.
+// Stripe is optional: without STRIPE_* settings, upgrades explain that payments aren't set up, and
+// development builds offer test purchases instead (never in production).
+import { v } from "convex/values";
+import { action, httpAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import { requireIdentity, requireProfile } from "./lib/auth";
+import { fail } from "./lib/errors";
+import { ensureSubscription, entitlementsFor, storageUsedBy, subscriptionOf } from "./lib/billing";
+import { DAY_MS, PLANS, type BillingInterval, type PlanId } from "./lib/plans";
+import { timingSafeEqualHex } from "./lib/crypto";
+import { listUserSessions } from "./lib/authStore";
+
+const vPaidPlan = v.union(v.literal("basic"), v.literal("pro"));
+const vInterval = v.union(v.literal("month"), v.literal("year"));
+
+const stripeKey = () => process.env.STRIPE_SECRET_KEY ?? "";
+/** Stripe price ids for each paid plan and interval (Stripe dashboard → Products). */
+function priceIdFor(plan: "basic" | "pro", interval: BillingInterval): string | undefined {
+  return process.env[`STRIPE_PRICE_${plan.toUpperCase()}_${interval === "month" ? "MONTH" : "YEAR"}`];
+}
+function planForPrice(priceId: string): { plan: "basic" | "pro"; interval: BillingInterval } | null {
+  for (const plan of ["basic", "pro"] as const) for (const interval of ["month", "year"] as const) if (priceIdFor(plan, interval) === priceId) return { plan, interval };
+  return null;
+}
+const stripeReady = () => Boolean(stripeKey() && priceIdFor("basic", "month") && priceIdFor("pro", "month"));
+const testPurchasesAllowed = () => process.env.FOLEVI_ENV !== "production";
+const appUrl = () => (process.env.FOLEVI_APP_URL ?? "http://app.localhost:3000").replace(/\/$/, "");
+
+// ---------------------------------------------------------------------------------------------------
+// The person's own billing
+// ---------------------------------------------------------------------------------------------------
+
+/** Plan, what it includes, storage used, AI use this month and payment history. */
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
+    const sub = await subscriptionOf(ctx, profile._id);
+    const entitlements = await entitlementsFor(ctx, profile._id);
+    const payments = await ctx.db
+      .query("payments")
+      .withIndex("by_profile_created", (q) => q.eq("profileId", profile._id))
+      .order("desc")
+      .take(24);
+    const month = new Date().toISOString().slice(0, 7);
+    const usage = await ctx.db
+      .query("aiUsage")
+      .withIndex("by_profile_day", (q) => q.eq("profileId", profile._id).gte("day", `${month}-01`))
+      .collect();
+    return {
+      entitlements,
+      subscription: sub
+        ? {
+            plan: sub.plan,
+            interval: sub.interval ?? null,
+            status: sub.status,
+            provider: sub.provider,
+            currentPeriodEnd: sub.currentPeriodEnd ?? null,
+            cancelAtPeriodEnd: sub.cancelAtPeriodEnd ?? false,
+            aiGrant: Boolean(sub.aiGrant),
+            aiGrantUntil: sub.aiGrantUntil ?? null,
+          }
+        : null,
+      storageUsedBytes: await storageUsedBy(ctx, profile._id),
+      devicesActive: (await listUserSessions(ctx, profile.authSubject)).length,
+      aiRequestsThisMonth: usage.reduce((n, u) => n + u.count, 0),
+      payments: payments.map((p) => ({ id: p._id, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval, status: p.status, createdAt: p.createdAt })),
+      checkoutAvailable: stripeReady(),
+      testPurchases: testPurchasesAllowed(),
+    };
+  },
+});
+
+/** Development only: switch to a paid plan without paying (records a test payment). */
+export const testPurchase = mutation({
+  args: { plan: vPaidPlan, interval: vInterval },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
+    if (!testPurchasesAllowed()) fail("forbidden", "Test purchases are only available in development.");
+    const sub = await ensureSubscription(ctx, profile._id);
+    const now = Date.now();
+    await ctx.db.patch(sub._id, {
+      plan: args.plan,
+      interval: args.interval,
+      status: "active",
+      provider: "test",
+      currentPeriodEnd: now + (args.interval === "year" ? 365 : 30) * DAY_MS,
+      cancelAtPeriodEnd: false,
+      paidSince: sub.plan === args.plan && sub.paidSince ? sub.paidSince : now,
+      canceledAt: undefined,
+      // Choosing a plan ends a running trial: they get what they chose from now on.
+      trialEndsAt: sub.trialEndsAt && sub.trialEndsAt > now ? now : sub.trialEndsAt,
+      updatedAt: now,
+    });
+    const price = args.interval === "year" ? PLANS[args.plan].yearlyCents : PLANS[args.plan].monthlyCents;
+    await ctx.db.insert("payments", { profileId: profile._id, amountCents: price, currency: "usd", plan: args.plan, interval: args.interval, status: "paid", provider: "test", createdAt: now });
+    return null;
+  },
+});
+
+/** Cancel at the end of the paid period (test and admin-set plans; Stripe plans use the billing portal). */
+export const cancelPlan = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    const sub = await subscriptionOf(ctx, profile._id);
+    if (!sub || sub.plan === "free") fail("invalid_argument", "You're on the Free plan.");
+    if (sub.provider === "stripe") fail("invalid_argument", "Manage your subscription in the billing portal.");
+    await ctx.db.patch(sub._id, { cancelAtPeriodEnd: true, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+export const resumePlan = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    const sub = await subscriptionOf(ctx, profile._id);
+    if (!sub || sub.plan === "free" || sub.provider === "stripe") fail("invalid_argument", "Nothing to resume.");
+    await ctx.db.patch(sub._id, { cancelAtPeriodEnd: false, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+/** Plans set to cancel at period end, and plans whose period has ended: back to Free. Hourly. */
+export const settleExpiredPlans = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    let changed = 0;
+    for (const plan of ["basic", "pro"] as const) {
+      const subs = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_plan", (q) => q.eq("plan", plan))
+        .take(2000);
+      for (const s of subs) {
+        if (s.provider === "stripe" || s.currentPeriodEnd === undefined || s.currentPeriodEnd > now) continue;
+        if (s.provider === "test" && !s.cancelAtPeriodEnd) {
+          // Test plans renew by themselves (so development isn't interrupted).
+          await ctx.db.patch(s._id, { currentPeriodEnd: now + (s.interval === "year" ? 365 : 30) * DAY_MS, updatedAt: now });
+          continue;
+        }
+        await ctx.db.patch(s._id, { plan: "free", interval: undefined, status: "canceled", canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
+        changed++;
+      }
+    }
+    return { changed };
+  },
+});
+
+// ---------------------------------------------------------------------------------------------------
+// Stripe: Checkout, billing portal, webhook
+// ---------------------------------------------------------------------------------------------------
+
+async function stripe(path: string, params: Record<string, string>): Promise<Record<string, unknown>> {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${stripeKey()}`, "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(params).toString(),
+  });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) {
+    console.warn(JSON.stringify({ event: "billing.stripe_error", path, status: res.status }));
+    fail("maintenance", "Payments couldn't be started. Try again shortly.");
+  }
+  return data;
+}
+
+export const checkoutContext = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
+    const sub = await subscriptionOf(ctx, profile._id);
+    return { profileId: profile._id as string, email: profile.email, customerId: sub?.stripeCustomerId ?? null, provider: sub?.provider ?? "none" };
+  },
+});
+
+/** Starts Stripe Checkout for a plan; returns the page to send the person to. */
+export const checkout = action({
+  args: { plan: vPaidPlan, interval: vInterval },
+  handler: async (ctx, args): Promise<{ url: string }> => {
+    await requireIdentity(ctx);
+    if (!stripeReady()) fail("maintenance", "Payments aren't set up on this server yet.");
+    const price = priceIdFor(args.plan, args.interval);
+    if (!price) fail("maintenance", "That plan isn't available to buy yet.");
+    const me: { profileId: string; email: string; customerId: string | null } = await ctx.runQuery(internal.billing.checkoutContext, {});
+    const session = await stripe("checkout/sessions", {
+      mode: "subscription",
+      "line_items[0][price]": price,
+      "line_items[0][quantity]": "1",
+      client_reference_id: me.profileId,
+      "subscription_data[metadata][profileId]": me.profileId,
+      ...(me.customerId ? { customer: me.customerId } : { customer_email: me.email }),
+      allow_promotion_codes: "true",
+      success_url: `${appUrl()}/settings/billing?checkout=success`,
+      cancel_url: `${appUrl()}/settings/billing?checkout=canceled`,
+    });
+    return { url: String(session.url) };
+  },
+});
+
+/** Stripe's billing portal (change plan, update card, cancel, invoices). */
+export const portal = action({
+  args: {},
+  handler: async (ctx): Promise<{ url: string }> => {
+    await requireIdentity(ctx);
+    if (!stripeKey()) fail("maintenance", "Payments aren't set up on this server yet.");
+    const me: { customerId: string | null } = await ctx.runQuery(internal.billing.checkoutContext, {});
+    if (!me.customerId) fail("invalid_argument", "There's no paid subscription to manage yet.");
+    const session = await stripe("billing_portal/sessions", { customer: me.customerId, return_url: `${appUrl()}/settings/billing` });
+    return { url: String(session.url) };
+  },
+});
+
+const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+/** Verifies a Stripe-Signature header (HMAC-SHA256 of "timestamp.body", within 5 minutes). */
+export async function verifyStripeSignature(body: string, header: string | null, secret: string, now = Date.now()): Promise<boolean> {
+  if (!header || !secret) return false;
+  const parts = Object.fromEntries(header.split(",").map((kv) => kv.split("=", 2) as [string, string]));
+  const t = Number(parts.t);
+  const signatures = header
+    .split(",")
+    .filter((kv) => kv.startsWith("v1="))
+    .map((kv) => kv.slice(3));
+  if (!t || !signatures.length || Math.abs(now / 1000 - t) > 300) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const expected = hex(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${t}.${body}`)));
+  return signatures.some((s) => s.length === expected.length && timingSafeEqualHex(s, expected));
+}
+
+/** POST /webhooks/stripe — signature-checked, then applied. */
+export const stripeWebhook = httpAction(async (ctx, request) => {
+  const body = await request.text();
+  if (!(await verifyStripeSignature(body, request.headers.get("stripe-signature"), process.env.STRIPE_WEBHOOK_SECRET ?? ""))) {
+    return new Response("Invalid signature", { status: 400 });
+  }
+  const event = JSON.parse(body) as { id: string; type: string; data: { object: Record<string, unknown> } };
+  await ctx.runMutation(internal.billing.applyStripeEvent, { type: event.type, object: event.data.object });
+  return new Response(null, { status: 200 });
+});
+
+async function findStripeRow(ctx: MutationCtx, o: Record<string, unknown>): Promise<Doc<"subscriptions"> | null> {
+  const subId = typeof o.subscription === "string" ? o.subscription : typeof o.id === "string" && String(o.object) === "subscription" ? o.id : null;
+  if (subId) {
+    const bySub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_stripe_subscription", (q) => q.eq("stripeSubscriptionId", subId))
+      .unique();
+    if (bySub) return bySub;
+  }
+  const meta = (o.metadata as Record<string, string> | undefined)?.profileId ?? (typeof o.client_reference_id === "string" ? o.client_reference_id : null);
+  const profileId = meta ? ctx.db.normalizeId("profiles", meta) : null;
+  if (profileId) return await ensureSubscription(ctx, profileId);
+  if (typeof o.customer === "string") {
+    const customer = o.customer;
+    return await ctx.db
+      .query("subscriptions")
+      .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", customer))
+      .first();
+  }
+  return null;
+}
+
+const STATUS: Record<string, Doc<"subscriptions">["status"]> = { active: "active", trialing: "active", past_due: "past_due", unpaid: "past_due", incomplete: "past_due", canceled: "canceled", incomplete_expired: "canceled", paused: "canceled" };
+
+/** Applies one Stripe event to the matching person's plan (idempotent: payments are keyed by invoice). */
+export const applyStripeEvent = internalMutation({
+  args: { type: v.string(), object: v.any() },
+  handler: async (ctx, args) => {
+    const o = args.object as Record<string, unknown>;
+    const row = await findStripeRow(ctx, o);
+    if (!row) {
+      console.warn(JSON.stringify({ event: "billing.webhook_unmatched", type: args.type }));
+      return null;
+    }
+    const now = Date.now();
+    if (args.type === "checkout.session.completed") {
+      await ctx.db.patch(row._id, {
+        provider: "stripe",
+        stripeCustomerId: typeof o.customer === "string" ? o.customer : row.stripeCustomerId,
+        stripeSubscriptionId: typeof o.subscription === "string" ? o.subscription : row.stripeSubscriptionId,
+        updatedAt: now,
+      });
+    } else if (args.type === "customer.subscription.created" || args.type === "customer.subscription.updated" || args.type === "customer.subscription.deleted") {
+      const items = (o.items as { data?: { price?: { id?: string } }[] } | undefined)?.data ?? [];
+      const mapped = items.map((i) => planForPrice(i.price?.id ?? "")).find(Boolean) ?? null;
+      const status = args.type === "customer.subscription.deleted" ? "canceled" : (STATUS[String(o.status)] ?? "past_due");
+      const periodEnd = typeof o.current_period_end === "number" ? o.current_period_end * 1000 : row.currentPeriodEnd;
+      const plan: PlanId = mapped?.plan ?? (row.plan === "free" ? "free" : row.plan);
+      await ctx.db.patch(row._id, {
+        provider: "stripe",
+        plan,
+        interval: mapped?.interval ?? row.interval,
+        status,
+        currentPeriodEnd: status === "canceled" ? Math.min(periodEnd ?? now, now) : periodEnd,
+        cancelAtPeriodEnd: Boolean(o.cancel_at_period_end),
+        stripeCustomerId: typeof o.customer === "string" ? o.customer : row.stripeCustomerId,
+        stripeSubscriptionId: typeof o.id === "string" ? o.id : row.stripeSubscriptionId,
+        paidSince: row.paidSince && row.plan === plan ? row.paidSince : status === "active" ? now : row.paidSince,
+        canceledAt: status === "canceled" ? now : undefined,
+        trialEndsAt: status === "active" && row.trialEndsAt && row.trialEndsAt > now ? now : row.trialEndsAt,
+        updatedAt: now,
+      });
+    } else if (args.type === "invoice.paid" || args.type === "invoice.payment_failed") {
+      const ref = typeof o.id === "string" ? o.id : undefined;
+      const existing = ref
+        ? await ctx.db
+            .query("payments")
+            .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
+            .unique()
+        : null;
+      const paid = args.type === "invoice.paid";
+      const amount = Number(paid ? o.amount_paid : o.amount_due) || 0;
+      if (row.plan !== "free" && row.interval && amount > 0) {
+        if (existing) await ctx.db.patch(existing._id, { status: paid ? "paid" : "failed" });
+        else await ctx.db.insert("payments", { profileId: row.profileId, amountCents: amount, currency: String(o.currency ?? "usd"), plan: row.plan, interval: row.interval, status: paid ? "paid" : "failed", provider: "stripe", providerRef: ref, createdAt: now });
+      }
+      if (!paid) await ctx.db.patch(row._id, { status: "past_due", updatedAt: now });
+    } else if (args.type === "charge.refunded") {
+      const ref = typeof o.invoice === "string" ? o.invoice : undefined;
+      const payment = ref
+        ? await ctx.db
+            .query("payments")
+            .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
+            .unique()
+        : null;
+      if (payment) await ctx.db.patch(payment._id, { status: "refunded" });
+    }
+    return null;
+  },
+});
+

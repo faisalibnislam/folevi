@@ -9,6 +9,7 @@ import {
   projectTask,
   rankBetween,
   wordCount,
+  type InlineNode,
   type WireBlock,
 } from "@folevi/editor-schema";
 
@@ -36,6 +37,7 @@ export interface DocumentSummary {
   titleRev: number;
   seq: number;
   excerpt: string;
+  preview: PreviewLine[] | null;
   wordCount: number;
   charCount: number;
   blockCount: number;
@@ -68,6 +70,49 @@ export class IdResolver {
   }
 }
 
+/** The folder a page lives in: its own, or its nearest ancestor page's. null means it's a Draft. */
+export interface HomeFolder {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
+/**
+ * Resolves each page's home folder (nested pages have no folder of their own and inherit their parent
+ * page's). Cached per query, and bounded in depth, so a list of pages costs a handful of reads.
+ */
+export class HomeFolders {
+  private byDoc = new Map<string, HomeFolder | null>();
+  private byFolder = new Map<string, HomeFolder | null>();
+  constructor(private ctx: Ctx) {}
+  private async folder(id: Id<"folders">): Promise<HomeFolder | null> {
+    if (!this.byFolder.has(id)) {
+      const f = await this.ctx.db.get(id);
+      this.byFolder.set(id, f && !f.deletedAt ? { id: f.publicId, name: f.name, color: f.color ?? null } : null);
+    }
+    return this.byFolder.get(id) ?? null;
+  }
+  async of(doc: Doc<"documents">): Promise<HomeFolder | null> {
+    const chain: string[] = [];
+    let cur: Doc<"documents"> | null = doc;
+    let found: HomeFolder | null = null;
+    for (let depth = 0; cur && depth < 12; depth++) {
+      if (this.byDoc.has(cur._id)) {
+        found = this.byDoc.get(cur._id) ?? null;
+        break;
+      }
+      chain.push(cur._id);
+      if (cur.folderId) {
+        found = await this.folder(cur.folderId);
+        break;
+      }
+      cur = cur.parentDocumentId ? await this.ctx.db.get(cur.parentDocumentId) : null;
+    }
+    for (const id of chain) this.byDoc.set(id, found);
+    return found;
+  }
+}
+
 export async function toSummary(ids: IdResolver, doc: Doc<"documents">): Promise<DocumentSummary> {
   return {
     id: doc.publicId,
@@ -91,6 +136,7 @@ export async function toSummary(ids: IdResolver, doc: Doc<"documents">): Promise
     titleRev: doc.titleRev,
     seq: doc.seq,
     excerpt: doc.excerpt,
+    preview: doc.preview ?? null,
     wordCount: doc.wordCount,
     charCount: doc.charCount,
     blockCount: doc.blockCount,
@@ -118,19 +164,54 @@ export async function liveBlocks(ctx: Ctx, documentId: Id<"documents">): Promise
   return rows.filter((r) => r.deletedAt === undefined);
 }
 
-/** Recomputes search text, counts and excerpt from the canonical blocks. */
+/** One line of a page thumbnail: block type, trimmed text, and just enough shape to draw it. */
+export interface PreviewLine {
+  t: string;
+  x: string;
+  l?: number;
+  c?: boolean;
+  d?: number;
+  rows?: string[][];
+}
+
+const PREVIEW_LINES = 14;
+
+/** The first blocks of a page, trimmed, so document cards can show a miniature of the page itself. */
+export function buildPreview(entries: { block: WireBlock; depth: number }[]): PreviewLine[] {
+  const out: PreviewLine[] = [];
+  for (const { block: b, depth } of entries) {
+    if (out.length >= PREVIEW_LINES) break;
+    const p = b.props as { level?: number; checked?: boolean; rows?: InlineNode[][][]; name?: string; title?: string; url?: string; titleCache?: string };
+    const line: PreviewLine = { t: b.type, x: plainText(b.text).slice(0, 160) };
+    if (depth) line.d = Math.min(depth, 4);
+    if (b.type === "heading") line.l = Number(p.level ?? 1);
+    if (b.type === "todo") line.c = Boolean(p.checked);
+    if (b.type === "table") line.rows = (p.rows ?? []).slice(0, 6).map((r) => r.slice(0, 5).map((c) => plainText(c).slice(0, 24)));
+    if (b.type === "file") line.x = String(p.name ?? "File").slice(0, 80);
+    if (b.type === "bookmark") line.x = String(p.title ?? p.url ?? "").slice(0, 80);
+    if (b.type === "page") line.x = String(p.titleCache ?? "Page").slice(0, 80);
+    if (b.type === "formula") line.x = String((p as { latex?: string }).latex ?? "").slice(0, 160);
+    out.push(line);
+  }
+  return out;
+}
+
+/** Recomputes search text, counts, excerpt and card preview from the canonical blocks. */
 export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, rows?: Doc<"blocks">[]): Promise<void> {
   const blocks = (rows ?? (await liveBlocks(ctx, doc._id))).map(toWireBlock);
-  const ordered = flattenTree(blocks).map((e) => e.block);
+  const flat = flattenTree(blocks);
+  const ordered = flat.map((e) => e.block);
   const text = ordered.map((b) => plainText(b.text)).filter(Boolean);
   const joined = text.join("\n");
   const excerpt = text.join(" ").replace(/\s+/g, " ").slice(0, 240);
   await ctx.db.patch(doc._id, {
     searchText: documentSearchText(doc.title, ordered),
-    wordCount: wordCount(`${doc.title} ${joined}`),
+    // Body only, like charCount (the title isn't part of the page's word count).
+    wordCount: wordCount(joined),
     charCount: joined.length,
     blockCount: blocks.length,
     excerpt,
+    preview: buildPreview(flat),
   });
 }
 

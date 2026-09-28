@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ProductApp } from "@/components/app/ProductApp";
 import { APP_ROUTE_HEADS } from "@/lib/app/routes";
-import { getViewerSession } from "@/lib/auth/session";
+import { hasSessionCookie } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: { absolute: "Folevi" }, robots: { index: false, follow: false } };
@@ -16,8 +16,7 @@ export default async function ProductPage({ params }: { params: Promise<{ path: 
   const { path } = await params;
   const head = path[0] ?? "";
   if (!APP_ROUTE_HEADS.has(head)) notFound();
-  const session = await getViewerSession();
-  if (!session) {
+  if (!(await hasSessionCookie())) {
     const returnTo = `/${path.map(encodeURIComponent).join("/")}`;
     redirect(`/signin?returnTo=${encodeURIComponent(returnTo)}`);
   }

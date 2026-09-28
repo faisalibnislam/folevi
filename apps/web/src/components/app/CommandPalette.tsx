@@ -2,14 +2,20 @@
 
 import { useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, CheckSquare, FileText, House as Home, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
+import { openNextInNewTab } from "@/lib/app/tabs";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { Kbd } from "@/components/ui/Button";
 import { useCreateDocument } from "./useCreateDocument";
+import { useShell } from "./Shell";
+import { useAiEnabled } from "@/components/ai/useAi";
 import { Highlight } from "./Highlight";
 import { formatRelative } from "@/lib/format";
+import { t } from "@/i18n";
+import { Select } from "@/components/ui/Select";
 
 type Item =
   | { kind: "action"; id: string; label: string; hint?: string; icon: React.ReactNode; run: () => void }
@@ -56,6 +62,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (!open && d.open) d.close();
   }, [open]);
 
+  const { openAsk } = useShell();
+  const aiOn = useAiEnabled();
   const actions: Item[] = useMemo(
     () => [
       { kind: "action", id: "new", label: "New document", hint: "⌘⌥N", icon: <Plus size={16} />, run: () => void createDocument({}) },
@@ -81,15 +89,27 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const docs: Item[] = debounced
       ? (results ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, snippet: r.snippet, updatedAt: r.updatedAt }))
       : (recent ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, updatedAt: r.updatedAt }));
-    return [...docs, ...matchingActions];
-  }, [q, actions, debounced, results, recent]);
+    // Ask AI: with a query typed, "Ask AI: …" sends it straight to the assistant.
+    const askAi: Item = {
+      kind: "action",
+      id: "ask-ai",
+      label: query.trim() ? `Ask AI: “${query.trim()}”` : "Ask AI about your notes",
+      hint: "⌘J",
+      icon: <AiIcon size={16} />,
+      run: () => openAsk(query.trim() || undefined),
+    };
+    return [...docs, ...(aiOn ? [askAi] : []), ...matchingActions];
+  }, [q, query, actions, debounced, results, recent, openAsk, aiOn]);
 
   useEffect(() => setActive(0), [debounced]);
 
   const run = (item: Item) => {
     onClose();
     if (item.kind === "action") item.run();
-    else navigate(`/d/${item.id}`);
+    else {
+      openNextInNewTab();
+      navigate(`/d/${item.id}`);
+    }
   };
 
   // Enter pressed while the search for what was typed is still in flight opens the top result once
@@ -117,12 +137,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
-      className="m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-[22px] bg-raised p-0 text-ink shadow-[var(--shadow-pop)] backdrop:bg-[var(--color-scrim)] backdrop:backdrop-blur-[4px] open:animate-[folio-rise_160ms_var(--ease-folio)]"
+      className="m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop rounded-[14px] p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
     >
       {open ? (
         <div>
           <div className="flex items-center gap-3 px-5 shadow-[inset_0_-1px_0_var(--color-line)]">
-            <Search size={18} className="text-ember" aria-hidden />
+            <Search size={18} className="text-heading" aria-hidden />
             <input
               autoFocus
               role="combobox"
@@ -152,36 +172,36 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <Kbd>Esc</Kbd>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
-            <select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-full px-2.5 text-muted">
+            <Select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
               <option value="">Any folder</option>
               {org?.folders.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
                 </option>
               ))}
-            </select>
-            <select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="ui-well h-7 rounded-full px-2.5 text-muted">
+            </Select>
+            <Select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
               <option value="">Any tag</option>
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.id}>
                   #{t.name}
                 </option>
               ))}
-            </select>
-            <select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-full px-2.5 text-muted">
+            </Select>
+            <Select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
               <option value="">Anyone</option>
               {members?.members.map((m) => (
                 <option key={m.profileId} value={m.profileId}>
                   {m.isYou ? "Me" : m.displayName}
                 </option>
               ))}
-            </select>
-            <select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="ui-well h-7 rounded-full px-2.5 text-muted">
+            </Select>
+            <Select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
               <option value="">Any time</option>
               <option value="7">Past week</option>
               <option value="30">Past month</option>
               <option value="365">Past year</option>
-            </select>
+            </Select>
             <span className="ml-auto text-faint">{workspace.name}</span>
           </div>
           <div className="max-h-[55vh] overflow-y-auto p-2">
@@ -191,7 +211,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {
                 const selected = i === active;
-                const cls = `flex cursor-pointer items-start gap-3 rounded-[16px] px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
+                const cls = `flex cursor-pointer items-start gap-3 rounded-[6px] px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
                 const header =
                   i === docCount && item.kind === "action" ? (
                     <li role="presentation" className="ui-caps px-3 pb-1.5 pt-3">
@@ -204,7 +224,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       {item.kind === "doc" ? (
                         <>
                           <span className="mt-0.5 w-5 flex-none text-center" aria-hidden>
-                            {item.icon ?? <FileText size={16} className="inline text-muted" />}
+                            <FileText size={16} className="inline text-muted" />
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">
@@ -236,7 +256,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             </ul>
           </div>
           <p className="sr-only" aria-live="polite">
-            {debounced && results ? `${results.length} result${results.length === 1 ? "" : "s"}` : ""}
+            {debounced && results ? t("palette.results", { count: results.length }) : ""}
           </p>
         </div>
       ) : null}

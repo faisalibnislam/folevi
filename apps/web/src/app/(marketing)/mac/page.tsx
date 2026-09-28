@@ -42,7 +42,7 @@ const features: Array<{ icon: IconName; title: string; body: string }> = [
   {
     icon: "sparkle",
     title: "Quick Add from the menu bar",
-    body: "Catch a thought from anywhere with Quick Add in the menu bar. It lands in Unsorted, ready to be shaped later.",
+    body: "Catch a thought from anywhere with Quick Add in the menu bar. It lands in Drafts, ready to be shaped later.",
   },
 ];
 

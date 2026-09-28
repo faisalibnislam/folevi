@@ -9,8 +9,8 @@
 // - Identity/security templates are never unsubscribable and carry no marketing footer.
 // - Product notifications honor Folevi-side preferences (`preferenceKey`) and always link
 //   to `preferencesUrl`.
-// - Variables are deliberately minimal: never note bodies, TOTP secrets, backup codes,
-//   passwords or tokens beyond the single action link.
+// - Variables are deliberately minimal: never note bodies or comment text (not even excerpts),
+//   TOTP secrets, backup codes, passwords or tokens beyond the single action link.
 // - Subjects are static on purpose: user-controlled strings (names, titles) never appear
 //   in a subject line, which limits spoofing/phishing via crafted display names.
 //
@@ -28,7 +28,6 @@ const text = (description: string, maxLength: number, required = true) =>
 const num = (description: string) => ({ type: "number", required: true, description }) as const;
 
 const FIX_APP = "https://app.folevi.com";
-const FIX_AUTH = "https://auth.folevi.com";
 
 const definitions: Record<TemplateKey, TemplateDefinition> = {
   auth_verify_email: {
@@ -40,13 +39,15 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     sender: SECURITY_SENDER,
     unsubscribable: false,
     variables: {
-      actionUrl: url("Auth0 email-verification link (host-restricted by the Auth0 action)."),
+      actionUrl: url(
+        "Email-verification link from Folevi's own sign-in (Better Auth on Convex, served under the app host).",
+      ),
       expiresInHours: num(
-        "Hours until the link expires (matches the Auth0 template URL lifetime).",
+        "Hours until the link expires (matches the verification token lifetime).",
       ),
     },
     fixture: {
-      actionUrl: `${FIX_AUTH}/u/email-verification?ticket=EXAMPLEticket123#`,
+      actionUrl: `${FIX_APP}/api/auth/verify-email?token=EXAMPLEtoken123&callbackURL=%2Fonboarding`,
       expiresInHours: 24,
     },
     source: { kind: "mjml", path: "templates/auth_verify_email.mjml" },
@@ -60,71 +61,14 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     sender: SECURITY_SENDER,
     unsubscribable: false,
     variables: {
-      actionUrl: url("Auth0 password-reset link."),
+      actionUrl: url("Password-reset link from Folevi's own sign-in (single use)."),
       expiresInHours: num("Hours until the link expires."),
     },
     fixture: {
-      actionUrl: `${FIX_AUTH}/u/reset-verify?ticket=EXAMPLEticket456#`,
+      actionUrl: `${FIX_APP}/api/auth/reset-password/EXAMPLEtoken456?callbackURL=%2Freset-password`,
       expiresInHours: 1,
     },
     source: { kind: "mjml", path: "templates/auth_password_reset.mjml" },
-  },
-  auth_blocked_account: {
-    key: "auth_blocked_account",
-    category: "identity",
-    envVar: "LOOPS_TRANSACTIONAL_AUTH_BLOCKED_ACCOUNT_ID",
-    subject: "Sign-in to your Folevi account was paused",
-    previewText: "We paused sign-in after several failed attempts. You can unblock it here.",
-    sender: SECURITY_SENDER,
-    unsubscribable: false,
-    variables: {
-      actionUrl: url("Auth0 unblock link."),
-      expiresInHours: num("Hours until the link expires."),
-    },
-    fixture: {
-      actionUrl: `${FIX_AUTH}/lo/unblock?ticket=EXAMPLEticket789`,
-      expiresInHours: 24,
-    },
-    source: { kind: "mjml", path: "templates/auth_blocked_account.mjml" },
-  },
-  auth_breached_password: {
-    key: "auth_breached_password",
-    category: "identity",
-    envVar: "LOOPS_TRANSACTIONAL_AUTH_BREACHED_PASSWORD_ID",
-    subject: "Your Folevi password appeared in a data breach",
-    previewText: "Your password was found in a breach elsewhere. Please choose a new one.",
-    sender: SECURITY_SENDER,
-    unsubscribable: false,
-    variables: {
-      actionUrl: url("Auth0 password-change link included in the breached-password notice."),
-      expiresInHours: num("Hours until the link expires."),
-    },
-    fixture: {
-      actionUrl: `${FIX_AUTH}/u/reset-verify?ticket=EXAMPLEticket000#`,
-      expiresInHours: 24,
-    },
-    source: { kind: "mjml", path: "templates/auth_breached_password.mjml" },
-  },
-  auth_verification_code: {
-    key: "auth_verification_code",
-    category: "identity",
-    envVar: "LOOPS_TRANSACTIONAL_AUTH_VERIFICATION_CODE_ID",
-    subject: "Your Folevi verification code",
-    previewText: "Enter this one-time code to continue. It expires shortly.",
-    sender: SECURITY_SENDER,
-    unsubscribable: false,
-    variables: {
-      code: {
-        type: "string",
-        required: true,
-        format: "code",
-        maxLength: 12,
-        description: "One-time code issued by Auth0 (verify/reset by code flows).",
-      },
-      expiresInMinutes: num("Minutes until the code expires."),
-    },
-    fixture: { code: "482913", expiresInMinutes: 10 },
-    source: { kind: "mjml", path: "templates/auth_verification_code.mjml" },
   },
   security_new_device: {
     key: "security_new_device",
@@ -223,14 +167,12 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     variables: {
       actorName: text("Display name of the person who mentioned you.", 80),
       documentTitle: text("Document title (user-controlled).", 120),
-      excerpt: text("Minimal preview around the mention (user-controlled).", 140, false),
       documentUrl: url("Deep link to the mention."),
       preferencesUrl: url("Email preferences page."),
     },
     fixture: {
       actorName: "Maya Okafor",
       documentTitle: "Spring planting plan",
-      excerpt: "…could you check the soil notes before Friday?",
       documentUrl: `${FIX_APP}/d/EXAMPLEdoc#mention`,
       preferencesUrl: `${FIX_APP}/settings/notifications`,
     },
@@ -248,14 +190,12 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     variables: {
       actorName: text("Display name of the commenter.", 80),
       documentTitle: text("Document title (user-controlled).", 120),
-      excerpt: text("Minimal preview of the comment (user-controlled).", 140, false),
       documentUrl: url("Deep link to the comment thread."),
       preferencesUrl: url("Email preferences page."),
     },
     fixture: {
       actorName: "Jonas Lindqvist",
       documentTitle: "Q4 reading list",
-      excerpt: "Added two more titles to the shortlist.",
       documentUrl: `${FIX_APP}/d/EXAMPLEdoc#comment`,
       preferencesUrl: `${FIX_APP}/settings/notifications`,
     },
@@ -309,6 +249,32 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     },
     source: { kind: "mjml", path: "templates/share_notification.mjml" },
   },
+  access_changed: {
+    key: "access_changed",
+    category: "product",
+    envVar: "LOOPS_TRANSACTIONAL_ACCESS_CHANGED_ID",
+    subject: "Your access in Folevi changed",
+    previewText: "Someone changed what you can open or edit in Folevi.",
+    sender: PRODUCT_SENDER,
+    unsubscribable: true,
+    preferenceKey: "shares",
+    variables: {
+      actorName: text("Display name of the person who made the change.", 80),
+      summary: text(
+        'Server-composed sentence from fixed phrases, e.g. \'changed your access to "Plan" to Can comment.\' Contains a title (user-controlled), never content.',
+        240,
+      ),
+      actionUrl: url("Link to the document when still accessible, otherwise to the document list."),
+      preferencesUrl: url("Email preferences page."),
+    },
+    fixture: {
+      actorName: "Maya Okafor",
+      summary: "changed your access to “Spring planting plan” to Can comment.",
+      actionUrl: `${FIX_APP}/d/EXAMPLEdoc`,
+      preferencesUrl: `${FIX_APP}/settings/notifications`,
+    },
+    source: { kind: "mjml", path: "templates/access_changed.mjml" },
+  },
 };
 
 function deepFreeze<T>(value: T): T {
@@ -325,27 +291,3 @@ export const emailManifest: Readonly<Record<TemplateKey, TemplateDefinition>> =
 export const TEMPLATE_KEYS: readonly TemplateKey[] = Object.freeze(
   Object.keys(definitions) as TemplateKey[],
 );
-
-/**
- * Auth0 custom-email-provider `message_type` → Loops template.
- * `null` = intentionally dropped by the Auth0 action (see infra/auth0/actions/custom-email-provider.js,
- * which must carry the identical mapping; a test enforces this).
- * - welcome_email: Folevi does not send an Auth0 welcome email.
- * - mfa_oob_code / enrollment_email: email is not an MFA factor for Folevi (OTP only).
- * - verification_code / organization_invitation: passwordless and Organizations are disabled.
- * - try_provider_configuration_email: handled specially (configuration check, nothing sent).
- */
-export const AUTH0_MESSAGE_TYPE_TO_TEMPLATE: Record<string, TemplateKey | null> = Object.freeze({
-  verify_email: "auth_verify_email",
-  verify_email_by_code: "auth_verification_code",
-  reset_email: "auth_password_reset",
-  reset_email_by_code: "auth_verification_code",
-  blocked_account: "auth_blocked_account",
-  stolen_credentials: "auth_breached_password",
-  welcome_email: null,
-  verification_code: null,
-  mfa_oob_code: null,
-  enrollment_email: null,
-  organization_invitation: null,
-  try_provider_configuration_email: null,
-});

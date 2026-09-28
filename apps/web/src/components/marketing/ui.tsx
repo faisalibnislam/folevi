@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { FoleviMark } from "@/components/brand/FoleviMark";
+import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "./icons";
 
 export const container = "mx-auto w-full max-w-[1200px] px-5 sm:px-8";
@@ -53,9 +53,8 @@ export function ButtonLink({
 /** The Folevi wordmark as the brand guide describes it: the mark in heading colour with an ember middle leaf. */
 export function Wordmark({ className, markSize = 22 }: { className?: string; markSize?: number }) {
   return (
-    <span className={cx("inline-flex items-center gap-2 text-(--color-heading)", className)}>
-      <FoleviMark size={markSize} accent="var(--color-ember)" />
-      <span className="text-[1.2em] font-semibold leading-none tracking-[-0.03em]">Folevi</span>
+    <span className={cx("inline-flex items-center text-(--color-heading)", className)}>
+      <FoleviLogo height={markSize} title={null} />
     </span>
   );
 }

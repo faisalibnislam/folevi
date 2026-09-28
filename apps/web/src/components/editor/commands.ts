@@ -1,10 +1,11 @@
 // Block-level editing commands shared by the keymap, slash menu, block menu and inspector.
 import type { Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
-import { TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { LIMITS, ulid } from "@folevi/editor-schema";
+import { LIMITS, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { TEXT_NODES } from "./convert";
+import { blockSelectionRange } from "./blockSelectionState";
 
 export interface BlockRef {
   node: PMNode;
@@ -13,23 +14,39 @@ export interface BlockRef {
 }
 
 export function blocksInSelection(state: EditorState): BlockRef[] {
+  // A block selection (several whole blocks) wins over the text selection.
+  const range = blockSelectionRange(state);
+  if (range) {
+    const refs: BlockRef[] = [];
+    for (let i = range.from; i <= range.to; i++) refs.push(blockAt(state, i)!);
+    return refs;
+  }
   const { from, to } = state.selection;
   const out: BlockRef[] = [];
-  let pos = 0;
   state.doc.forEach((node, offset, index) => {
-    const start = offset;
     const end = offset + node.nodeSize;
-    if (end > from && start <= to) out.push({ node, pos: start, index });
-    pos = end;
+    if (end > from && offset <= to) out.push({ node, pos: offset, index });
   });
   if (!out.length) {
     const $from = state.selection.$from;
-    const index = $from.index(0);
-    const node = state.doc.child(Math.min(index, state.doc.childCount - 1));
-    out.push({ node, pos: $from.before(1), index });
+    const index = Math.min($from.index(0), state.doc.childCount - 1);
+    out.push(blockAt(state, index)!);
   }
-  void pos;
   return out;
+}
+
+/**
+ * The contiguous run of top-level blocks an action applies to: every selected block plus the blocks
+ * nested under the last one. `first`/`last` are inclusive indices; `start`/`end` are document positions.
+ */
+export function selectedSpan(state: EditorState): { first: number; last: number; start: number; end: number } {
+  const refs = blocksInSelection(state);
+  const first = refs[0]!.index;
+  let last = first;
+  for (const r of refs) last = Math.max(last, r.index + subtreeRange(state, r.index).count - 1);
+  const start = blockAt(state, first)!.pos;
+  const lastRef = blockAt(state, last)!;
+  return { first, last, start, end: lastRef.pos + lastRef.node.nodeSize };
 }
 
 export function blockAt(state: EditorState, index: number): BlockRef | null {
@@ -55,6 +72,42 @@ export function subtreeRange(state: EditorState, index: number): { start: number
 }
 
 /** Converts the selected text blocks to `type` (keeping inline content, id and depth). */
+/** Block styling carried across type changes (see BlockFormat in extensions.ts). */
+const FORMAT_ATTRS = ["decoration", "color", "align", "font", "group"] as const;
+const FORMATTABLE = new Set(["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"]);
+
+/**
+ * Sets block styling on every selected text block: decoration, colour, align, font, group, and for
+ * paragraphs the text style (Strong / Caption). A null value clears it.
+ */
+export function setBlockFormat(editor: Editor, attrs: Partial<Record<(typeof FORMAT_ATTRS)[number] | "textStyle", string | null>>): boolean {
+  const { state } = editor;
+  const tr = state.tr;
+  for (const b of blocksInSelection(state)) {
+    if (!FORMATTABLE.has(b.node.type.name)) continue;
+    const next: Record<string, unknown> = { ...b.node.attrs };
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "textStyle" && b.node.type.name !== "paragraph") continue;
+      next[k] = v;
+    }
+    tr.setNodeMarkup(tr.mapping.map(b.pos), undefined, next);
+  }
+  if (!tr.docChanged) return false;
+  editor.view.dispatch(closeHistory(tr));
+  return true;
+}
+
+/** The styling shared by the selected blocks (a value only when every block has it). */
+export function selectedBlockFormat(editor: Editor): Record<string, string | null> {
+  const refs = blocksInSelection(editor.state).filter((b) => FORMATTABLE.has(b.node.type.name));
+  const out: Record<string, string | null> = {};
+  for (const k of [...FORMAT_ATTRS, "textStyle"]) {
+    const values = new Set(refs.map((b) => (b.node.attrs[k] as string | null | undefined) ?? null));
+    out[k] = values.size === 1 ? [...values][0]! : null;
+  }
+  return out;
+}
+
 export function turnInto(editor: Editor, type: string, attrs: Record<string, unknown> = {}): boolean {
   const { state } = editor;
   const schemaType = state.schema.nodes[type === "code" ? "codeBlock" : type];
@@ -63,7 +116,13 @@ export function turnInto(editor: Editor, type: string, attrs: Record<string, unk
   for (const b of blocksInSelection(state)) {
     const isText = TEXT_NODES.has(b.node.type.name) || b.node.type.name === "codeBlock";
     if (!isText) continue;
-    const baseAttrs = { id: b.node.attrs.id, depth: b.node.attrs.depth, ...attrs };
+    // Keep the block's styling (colour, decoration, alignment…) when it changes type.
+    const kept: Record<string, unknown> = {};
+    if (FORMATTABLE.has(type) && FORMATTABLE.has(b.node.type.name)) {
+      for (const k of FORMAT_ATTRS) if (b.node.attrs[k] != null) kept[k] = b.node.attrs[k];
+      if (type === "paragraph" && b.node.type.name === "paragraph" && b.node.attrs.textStyle != null && !("textStyle" in attrs)) kept.textStyle = b.node.attrs.textStyle;
+    }
+    const baseAttrs = { id: b.node.attrs.id, depth: b.node.attrs.depth, ...kept, ...attrs };
     if (type === "code") {
       const code = schemaType.create(baseAttrs, b.node.textContent ? state.schema.text(b.node.textContent) : null);
       tr.replaceWith(tr.mapping.map(b.pos), tr.mapping.map(b.pos + b.node.nodeSize), code);
@@ -109,36 +168,43 @@ export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
   return true;
 }
 
-/** Moves the block at the cursor (with its nested blocks) up or down past the neighbouring block group. */
+/**
+ * Moves the selected blocks (with their nested blocks) up or down past the neighbouring block group.
+ * Works for a caret, a text selection spanning several blocks, and a block selection.
+ */
 export function moveBlock(editor: Editor, dir: -1 | 1): boolean {
   const { state } = editor;
-  const [first] = blocksInSelection(state);
-  if (!first) return false;
-  const range = subtreeRange(state, first.index);
-  const depth = Number(first.node.attrs.depth ?? 0);
-  const slice = state.doc.slice(range.start, range.end);
+  const span = selectedSpan(state);
+  const depth = Number(state.doc.child(span.first).attrs.depth ?? 0);
+  const slice = state.doc.slice(span.start, span.end);
+  const size = span.end - span.start;
   const tr = state.tr;
+  // Keep the text selection where it was relative to the moved blocks.
+  const relFrom = Math.max(0, Math.min(size, state.selection.from - span.start));
+  const relTo = Math.max(0, Math.min(size, state.selection.to - span.start));
+  let newStart: number;
   if (dir < 0) {
-    if (first.index === 0) return false;
+    if (span.first === 0) return false;
     // Find the start of the previous sibling group at the same or lower depth.
-    let target = first.index - 1;
+    let target = span.first - 1;
     while (target > 0 && Number(state.doc.child(target).attrs.depth ?? 0) > depth) target--;
     const targetRef = blockAt(state, target)!;
-    const offsetInBlock = state.selection.from - range.start;
-    tr.delete(range.start, range.end);
+    tr.delete(span.start, span.end);
     tr.insert(targetRef.pos, slice.content);
-    // Depth may need clamping when moving to the very top.
-    tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(tr.doc.content.size, targetRef.pos + offsetInBlock))));
+    newStart = targetRef.pos;
   } else {
-    const after = first.index + range.count;
+    const after = span.last + 1;
     if (after >= state.doc.childCount) return false;
     const nextRange = subtreeRange(state, after);
-    const offsetInBlock = state.selection.from - range.start;
-    tr.delete(range.start, range.end);
-    const insertAt = nextRange.end - (range.end - range.start);
-    tr.insert(insertAt, slice.content);
-    tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(tr.doc.content.size, insertAt + offsetInBlock))));
+    tr.delete(span.start, span.end);
+    newStart = nextRange.end - size;
+    tr.insert(newStart, slice.content);
   }
+  const max = tr.doc.content.size;
+  const $a = tr.doc.resolve(Math.min(max, newStart + relFrom));
+  const $b = tr.doc.resolve(Math.min(max, newStart + relTo));
+  if (state.selection instanceof NodeSelection && tr.doc.nodeAt($a.pos)) tr.setSelection(NodeSelection.create(tr.doc, $a.pos));
+  else tr.setSelection(relFrom === relTo ? TextSelection.near($a) : TextSelection.between($a, $b));
   normalizeDepths(tr);
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
   return true;
@@ -187,19 +253,16 @@ export function insertBlockAfterCurrent(editor: Editor, type: string, attrs: Rec
   return at;
 }
 
+/** Duplicates the selected blocks (and their nested blocks) right after them, with fresh ids. */
 export function duplicateBlocks(editor: Editor): boolean {
   const { state } = editor;
-  const [first] = blocksInSelection(state);
-  if (!first) return false;
-  const range = subtreeRange(state, first.index);
+  const span = selectedSpan(state);
   const nodes: PMNode[] = [];
-  state.doc.nodesBetween(range.start, range.end, (node, pos) => {
-    if (pos >= range.start && pos < range.end && node.isBlock && state.doc.resolve(pos).depth === 0) {
-      nodes.push(node.type.create({ ...node.attrs, id: ulid() }, node.content, node.marks));
-    }
-    return false;
-  });
-  editor.view.dispatch(state.tr.insert(range.end, nodes).scrollIntoView());
+  for (let i = span.first; i <= span.last; i++) {
+    const node = state.doc.child(i);
+    nodes.push(node.type.create({ ...node.attrs, id: ulid() }, node.content, node.marks));
+  }
+  editor.view.dispatch(closeHistory(state.tr.insert(span.end, nodes)).scrollIntoView());
   return true;
 }
 
@@ -250,12 +313,17 @@ export function moveSubtreeTo(state: EditorState, fromIndex: number, toIndex: nu
   return { tr, index: newIndex };
 }
 
+/** Rows × columns of empty cells for a new table block. */
+export function emptyTableRows(rows: number, cols: number): never[][][] {
+  return Array.from({ length: rows }, () => Array.from({ length: cols }, () => []));
+}
+
 /** Inserts a new block of `type` before the block at `index` (childCount = the end) at `depth`. */
-export function insertBlockAt(editor: Editor, index: number, depth: number, type: string, attrs: Record<string, unknown> = {}): number {
+export function insertBlockAt(editor: Editor, index: number, depth: number, type: string, attrs: Record<string, unknown> = {}, text?: string): number {
   const { state } = editor;
   const schemaType = state.schema.nodes[type === "code" ? "codeBlock" : type];
   if (!schemaType) return -1;
-  const node = schemaType.create({ id: ulid(), depth, ...attrs });
+  const node = schemaType.create({ id: ulid(), depth, ...attrs }, text ? state.schema.text(text) : null);
   const tr = state.tr;
   const at = posOfIndex(state.doc, index);
   tr.insert(at, node);
@@ -298,4 +366,60 @@ export function dropTarget(
   const above = [...visible].reverse().find((b) => b.i < index);
   const maxDepth = above ? Math.min(LIMITS.maxDepth, above.depth + 1) : 0;
   return { index, depth: Math.max(0, Math.min(maxDepth, desiredDepth)), lineY };
+}
+
+/**
+ * Links the selection (or the link under the caret) to `raw`. With a collapsed caret outside a link the
+ * address itself is inserted as linked text. Returns false when the address isn't a safe URL.
+ */
+export function applyLink(editor: Editor, raw: string): boolean {
+  const text = raw.trim();
+  const href = sanitizeHref(text);
+  if (!href) return false;
+  const { empty } = editor.state.selection;
+  if (empty && !editor.isActive("link")) {
+    editor.chain().insertContent({ type: "text", text, marks: [{ type: "link", attrs: { href } }] }).unsetMark("link").run();
+  } else {
+    // Link the text, then continue typing after it (not over it).
+    editor
+      .chain()
+      .extendMarkRange("link")
+      .setMark("link", { href })
+      .command(({ tr }) => {
+        tr.setSelection(TextSelection.create(tr.doc, tr.selection.to));
+        return true;
+      })
+      .run();
+  }
+  // Focus now (Tiptap's .focus() waits a frame), so keys typed right away land in the text.
+  editor.view.focus();
+  return true;
+}
+
+export function removeLink(editor: Editor): void {
+  editor.chain().extendMarkRange("link").unsetMark("link").run();
+  editor.view.focus();
+}
+
+export const TEXT_COLORS = ["muted", "accent", "moss", "marigold", "plum", "coral"] as const;
+export const HIGHLIGHT_COLORS = ["yellow", "green", "blue", "pink"] as const;
+export const COLOR_NAMES: Record<string, string> = { muted: "Gray", accent: "Ember", moss: "Moss", marigold: "Marigold", plum: "Plum", coral: "Coral", yellow: "Yellow", green: "Green", blue: "Blue", pink: "Pink" };
+
+// These focus the editor synchronously (not via Tiptap's next-frame focus), so a keyboard user who
+// moves on right away isn't pulled back into the text a frame later.
+export function setTextColor(editor: Editor, value: string | null): void {
+  if (value) editor.chain().setMark("textColor", { value }).run();
+  else editor.chain().unsetMark("textColor").run();
+  editor.view.focus();
+}
+
+export function setHighlight(editor: Editor, value: string | null): void {
+  if (value) editor.chain().setMark("highlight", { value }).run();
+  else editor.chain().unsetMark("highlight").run();
+  editor.view.focus();
+}
+
+export function clearFormatting(editor: Editor): void {
+  editor.chain().unsetAllMarks().run();
+  editor.view.focus();
 }

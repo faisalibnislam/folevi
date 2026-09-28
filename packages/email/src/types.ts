@@ -4,9 +4,6 @@
 export type TemplateKey =
   | "auth_verify_email"
   | "auth_password_reset"
-  | "auth_blocked_account"
-  | "auth_breached_password"
-  | "auth_verification_code"
   | "security_new_device"
   | "account_deletion_scheduled"
   | "account_deletion_completed"
@@ -14,7 +11,8 @@ export type TemplateKey =
   | "mention_notification"
   | "comment_notification"
   | "comment_digest"
-  | "share_notification";
+  | "share_notification"
+  | "access_changed";
 
 export type TemplateCategory = "identity" | "security" | "product";
 
@@ -64,6 +62,8 @@ export interface LoopsSendOutcome {
   errorCode?: string;
   retryable: boolean;
   attempts: number;
+  /** Provider message id, only when Loops returned one with the 200 response. */
+  providerMessageId?: string;
 }
 
 export interface SendPolicy {

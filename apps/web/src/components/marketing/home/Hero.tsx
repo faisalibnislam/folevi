@@ -20,7 +20,7 @@ export function Hero() {
         <div className="max-w-[600px]">
           <p className="mk-chip mk-chip--raised mk-tone--moss">
             <span aria-hidden="true" className="mk-dot" />
-            Free during the preview · Web and Mac
+            Free to start · Web, Mac and iOS
           </p>
           <h1 id="hero-title" className="mk-display mt-7 text-[46px] sm:text-[66px] lg:text-[74px]">
             A quieter place for ideas that keep growing.

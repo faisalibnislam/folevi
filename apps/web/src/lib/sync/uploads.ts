@@ -6,9 +6,32 @@ import { api } from "@/lib/convex/api";
 import { localDb, type PendingUpload } from "./db";
 import type { SyncEngine } from "./engine";
 
-async function sha256Hex(blob: Blob): Promise<string> {
+export async function sha256Hex(blob: Blob): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Uploads one file right away (online only) and returns its file id — for imports, where the file must
+ * exist before the document that references it is created. Errors carry the server's message.
+ */
+export async function uploadFileNow(
+  client: ConvexReactClient,
+  input: { workspaceId: string; blob: Blob; filename: string; mimeType: string; kind: "image" | "file" | "cover"; documentId?: string },
+): Promise<string> {
+  const { uploadUrl, intentId } = await client.mutation(api.files.generateUploadUrl, {
+    workspaceId: input.workspaceId,
+    documentId: input.documentId,
+    filename: input.filename,
+    size: input.blob.size,
+    mimeType: input.mimeType,
+    kind: input.kind,
+  });
+  const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": input.mimeType }, body: input.blob });
+  if (!res.ok) throw new Error(`The upload failed (${res.status}).`);
+  const { storageId } = (await res.json()) as { storageId: string };
+  const result = await client.action(api.files.finalize, { intentId, storageId: storageId as never, sha256: await sha256Hex(input.blob) });
+  return result.fileId;
 }
 
 const objectUrls = new Map<string, string>();
@@ -57,6 +80,8 @@ export async function enqueueUpload(
  */
 export class Uploader {
   private running = false;
+  /** A kick that arrived while a pass was running: run again right after it (new uploads aren't missed). */
+  private rerun = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   constructor(
     private client: ConvexReactClient,
@@ -75,11 +100,17 @@ export class Uploader {
   }
 
   private async run() {
-    if (this.running || !navigator.onLine) return;
+    if (!navigator.onLine) return;
+    if (this.running) {
+      this.rerun = true;
+      return;
+    }
     this.running = true;
+    this.rerun = false;
     try {
       const db = await localDb(this.accountKey);
-      const all = (await db.getAll("uploads")).filter((u) => u.workspaceId === this.engine.workspaceId);
+      // The engine (and its upload records) is account-wide: process every queued upload, whatever workspace is selected.
+      const all = await db.getAll("uploads");
       let soonest = Infinity;
       for (const u of all) {
         if (!this.engine.state.uploads.some((x) => x.uploadId === u.uploadId)) {
@@ -120,7 +151,8 @@ export class Uploader {
           }
         }
       }
-      if (soonest !== Infinity) this.kick(Math.max(1000, soonest - Date.now()));
+      if (this.rerun) this.kick(0);
+      else if (soonest !== Infinity) this.kick(Math.max(1000, soonest - Date.now()));
     } finally {
       this.running = false;
     }

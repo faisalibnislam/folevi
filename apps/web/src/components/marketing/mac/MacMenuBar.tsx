@@ -49,7 +49,7 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
     <div ref={root} className="relative z-20">
       <div className="mk-glass flex h-10 items-center gap-0.5 rounded-[14px] px-1.5 text-[13px] sm:px-2">
         <span className="flex h-7 shrink-0 items-center px-1.5 text-ink sm:px-2" aria-hidden="true">
-          <FoleviMark size={15} accent="var(--color-ember)" />
+          <FoleviMark size={18} />
         </span>
         <span className="hidden shrink-0 px-2 font-semibold text-(--color-heading) sm:inline">Folevi</span>
         <ul className="flex items-center" aria-label="Mac app menus">
@@ -102,9 +102,7 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
           })}
         </ul>
         <span className="ml-auto hidden shrink-0 items-center gap-2 pr-1.5 text-muted md:flex" title="Quick Add in the menu bar">
-          <span className="mk-mini-raised flex size-6 items-center justify-center rounded-[7px] text-(--color-heading)">
-            <FoleviMark size={13} accent="var(--color-ember)" />
-          </span>
+          <FoleviMark size={24} />
           <span className="text-[12px]">Quick Add</span>
         </span>
       </div>

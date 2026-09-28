@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace } from "./helpers";
+import { newPersonWithWorkspace, showFolders } from "./helpers";
 
 test("quick add a task with a due date, see it in Today and the calendar, complete it", async ({ browser }) => {
   const { page } = await newPersonWithWorkspace(browser, "Task Tester");
+  await showFolders(page);
   await page.getByRole("link", { name: /^Tasks/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });

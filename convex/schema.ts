@@ -5,6 +5,7 @@ import {
   vCollectionPropertyType,
   vCollectionViewType,
   vDocumentCover,
+  vImagePalette,
   vDocumentKind,
   vDocumentStyle,
   vPlatformRole,
@@ -29,6 +30,8 @@ export default defineSchema({
     displayName: v.string(),
     avatarFileId: v.optional(v.id("files")),
     appearance: vAppearance,
+    /** The AI assistant (Google Gemini). Unset = on; false = off, and the server refuses AI requests. */
+    aiEnabled: v.optional(v.boolean()),
     locale: v.string(),
     timeZone: v.string(),
     onboardingStep: v.union(v.literal("workspace"), v.literal("appearance"), v.literal("welcome"), v.literal("done")),
@@ -60,6 +63,8 @@ export default defineSchema({
     kind: v.union(v.literal("personal"), v.literal("team")),
     ownerId: v.id("profiles"),
     icon: v.optional(v.string()),
+    /** Square logo for team workspaces (a `files` row of kind "logo"). Personal workspaces show the owner's avatar. */
+    logoFileId: v.optional(v.id("files")),
     changeSeq: v.number(),
     status: v.union(v.literal("active"), v.literal("suspended"), v.literal("deleting")),
     storageUsedBytes: v.number(),
@@ -105,7 +110,10 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     parentFolderId: v.optional(v.id("folders")),
     name: v.string(),
+    /** Legacy: folders used to take an emoji. Folders now show a coloured folder (color). */
     icon: v.optional(v.string()),
+    /** One of FOLDER_COLORS (convex/lib/folderColors.ts); unset = the default colour. */
+    color: v.optional(v.string()),
     rank: v.string(),
     createdBy: v.id("profiles"),
     createdAt: v.number(),
@@ -171,14 +179,33 @@ export default defineSchema({
     charCount: v.number(),
     blockCount: v.number(),
     excerpt: v.string(),
+    /** First blocks, trimmed, for page-thumbnail cards (derived; see lib/documents.ts buildPreview). */
+    preview: v.optional(
+      v.array(
+        v.object({
+          t: v.string(),
+          x: v.string(),
+          l: v.optional(v.number()),
+          c: v.optional(v.boolean()),
+          d: v.optional(v.number()),
+          rows: v.optional(v.array(v.array(v.string()))),
+        }),
+      ),
+    ),
   })
     .index("by_public_id", ["publicId"])
     .index("by_workspace_updated", ["workspaceId", "updatedAt"])
     .index("by_workspace_created", ["workspaceId", "createdAt"])
     .index("by_workspace_seq", ["workspaceId", "seq"])
     .index("by_workspace_trash", ["workspaceId", "inTrash", "updatedAt"])
+    // Server-side ordering for document lists (documents.list sort = created / title / manual).
+    .index("by_workspace_trash_created", ["workspaceId", "inTrash", "createdAt"])
+    .index("by_workspace_trash_title", ["workspaceId", "inTrash", "title"])
+    .index("by_workspace_trash_rank", ["workspaceId", "inTrash", "rank"])
     .index("by_parent", ["parentDocumentId"])
     .index("by_folder", ["folderId"])
+    // Drafts (pages in no folder) per workspace, e.g. the sidebar's Drafts count.
+    .index("by_workspace_folder", ["workspaceId", "folderId"])
     .index("by_daily", ["workspaceId", "dailyOwnerId", "dailyDate"])
     .index("by_workspace_kind", ["workspaceId", "kind"])
     .index("by_collection", ["collectionId"])
@@ -261,13 +288,85 @@ export default defineSchema({
   })
     .index("by_document", ["documentId", "createdAt"])
     .index("by_public_id", ["publicId"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_storage", ["storageId"]),
 
   snapshotChunks: defineTable({
     snapshotId: v.id("documentSnapshots"),
     index: v.number(),
     data: v.string(),
   }).index("by_snapshot", ["snapshotId", "index"]),
+
+  /**
+   * Each person's plan (one row per profile; see convex/lib/plans.ts for what plans include). Created at
+   * sign-up with a 7-day Pro trial. Paid plans come from the payment provider (Stripe webhooks) or are set
+   * by an admin ("manual"); admins can also grant AI or override storage.
+   */
+  subscriptions: defineTable({
+    profileId: v.id("profiles"),
+    plan: v.union(v.literal("free"), v.literal("basic"), v.literal("pro")),
+    interval: v.optional(v.union(v.literal("month"), v.literal("year"))),
+    status: v.union(v.literal("active"), v.literal("past_due"), v.literal("canceled")),
+    provider: v.union(v.literal("none"), v.literal("stripe"), v.literal("manual"), v.literal("test")),
+    trialEndsAt: v.optional(v.number()),
+    currentPeriodEnd: v.optional(v.number()),
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    /** Admin-granted AI (on any plan); aiGrantUntil unset = no end date. */
+    aiGrant: v.optional(v.boolean()),
+    aiGrantUntil: v.optional(v.number()),
+    storageOverrideBytes: v.optional(v.number()),
+    /** Admin-set device limit (a number, or unlimited); unset = the plan's. */
+    deviceLimitOverride: v.optional(v.union(v.number(), v.literal("unlimited"))),
+    /** When the current paid plan started (for conversion and churn analytics). */
+    paidSince: v.optional(v.number()),
+    canceledAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_plan", ["plan"])
+    .index("by_stripe_customer", ["stripeCustomerId"])
+    .index("by_stripe_subscription", ["stripeSubscriptionId"]),
+
+  /** Money received (and refunds), for billing history and revenue analytics. Amounts in cents. */
+  payments: defineTable({
+    profileId: v.id("profiles"),
+    amountCents: v.number(),
+    currency: v.string(),
+    plan: v.union(v.literal("basic"), v.literal("pro")),
+    interval: v.union(v.literal("month"), v.literal("year")),
+    status: v.union(v.literal("paid"), v.literal("refunded"), v.literal("failed")),
+    provider: v.union(v.literal("stripe"), v.literal("manual"), v.literal("test")),
+    providerRef: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_profile_created", ["profileId", "createdAt"])
+    .index("by_created", ["createdAt"])
+    .index("by_provider_ref", ["providerRef"]),
+
+  /** AI requests per person per day (UTC), for usage limits and analytics. No content. */
+  aiUsage: defineTable({
+    profileId: v.id("profiles"),
+    day: v.string(),
+    count: v.number(),
+  })
+    .index("by_profile_day", ["profileId", "day"])
+    .index("by_day", ["day"]),
+
+  /**
+   * Live AI output while it's being written (convex/ai.ts), so the app can show it word by word. Holds only
+   * the AI's reply — never the prompt or the notes sent — readable only by its owner, and deleted shortly
+   * after it finishes (plus an hourly sweep for anything left behind).
+   */
+  aiStreams: defineTable({
+    profileId: v.id("profiles"),
+    text: v.string(),
+    status: v.union(v.literal("pending"), v.literal("streaming"), v.literal("done"), v.literal("error"), v.literal("cancelled")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_created", ["createdAt"]),
 
   tasks: defineTable({
     blockId: v.string(),
@@ -466,6 +565,8 @@ export default defineSchema({
     documentId: v.optional(v.id("documents")),
     threadId: v.optional(v.id("commentThreads")),
     inviteId: v.optional(v.id("workspaceInvites")),
+    /** A file for the person to download (an export prepared for them). */
+    fileId: v.optional(v.string()),
     title: v.string(),
     body: v.optional(v.string()),
     createdAt: v.number(),
@@ -486,9 +587,11 @@ export default defineSchema({
     mimeType: v.string(),
     size: v.number(),
     sha256: v.string(),
-    kind: v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("cover"), v.literal("export")),
+    kind: v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("logo"), v.literal("cover"), v.literal("export")),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
+    /** For a note style image: the page and text colours picked from it (apps/web/src/lib/palette.ts). */
+    palette: v.optional(vImagePalette),
     status: v.union(v.literal("ready"), v.literal("rejected"), v.literal("deleted")),
     createdAt: v.number(),
     deletedAt: v.optional(v.number()),
@@ -496,13 +599,14 @@ export default defineSchema({
     .index("by_public_id", ["publicId"])
     .index("by_workspace", ["workspaceId", "createdAt"])
     .index("by_document", ["documentId"])
-    .index("by_storage", ["storageId"]),
+    .index("by_storage", ["storageId"])
+    .index("by_kind_created", ["kind", "createdAt"]),
 
   uploadIntents: defineTable({
     profileId: v.id("profiles"),
     workspaceId: v.id("workspaces"),
     documentId: v.optional(v.id("documents")),
-    kind: v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("cover")),
+    kind: v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("logo"), v.literal("cover")),
     filename: v.string(),
     declaredSize: v.number(),
     declaredMime: v.string(),
@@ -538,9 +642,21 @@ export default defineSchema({
     lastSeenAt: v.number(),
     revokedAt: v.optional(v.number()),
     revokedReason: v.optional(v.string()),
+    /** Better Auth session id (not the secret token) so the session list can revoke the real session. */
+    authSessionId: v.optional(v.string()),
   })
     .index("by_profile", ["profileId", "lastSeenAt"])
     .index("by_profile_key", ["profileId", "sessionKey"]),
+
+  /** Development/preview only: identity emails captured locally (convex/authEmails.ts). Never written in production. */
+  devMailbox: defineTable({
+    to: v.string(),
+    key: v.string(),
+    actionUrl: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_to", ["to", "createdAt"])
+    .index("by_created", ["createdAt"]),
 
   emailSendAttempts: defineTable({
     templateKey: v.string(),
@@ -559,8 +675,13 @@ export default defineSchema({
     updatedAt: v.number(),
     resendOf: v.optional(v.id("emailSendAttempts")),
     resendPayload: v.optional(v.record(v.string(), v.union(v.string(), v.number()))),
+    /** Loops transactional id (template) used for this send; lets webhook events be matched. */
+    transactionalId: v.optional(v.string()),
+    /** Provider message id, when the provider returns one. */
+    providerMessageId: v.optional(v.string()),
   })
     .index("by_idempotency", ["idempotencyKey"])
+    .index("by_provider_message", ["providerMessageId"])
     .index("by_created", ["createdAt"])
     .index("by_status_created", ["status", "createdAt"])
     .index("by_profile", ["profileId", "createdAt"])
@@ -574,8 +695,11 @@ export default defineSchema({
     providerEmailId: v.optional(v.string()),
     recipientHash: v.optional(v.string()),
     receivedAt: v.number(),
+    /** The send attempt this event was matched to on receipt (provider id first, then recipient + template + time). */
+    attemptId: v.optional(v.id("emailSendAttempts")),
   })
     .index("by_webhook_id", ["webhookId"])
+    .index("by_attempt", ["attemptId", "eventTime"])
     .index("by_recipient", ["recipientHash", "eventTime"])
     .index("by_received", ["receivedAt"]),
 

@@ -9,8 +9,10 @@ added without changing the backend or the other clients.
 - **Backend API** — the native data path is platform-neutral: `users:me`, `users:bootstrap`,
   `users:registerSession({client})` (add `"ios"` to the validator), `sync:head`, `sync:pullJson`,
   `sync:pushJson`, and the task/document/search/comment functions used by the Mac app.
-- **Identity** — add an Auth0 Native Application for iOS (or reuse the native app with an iOS callback),
-  add its client id as a third `applicationID` entry in `convex/auth.config.ts`.
+- **Identity** — reuse whatever the Mac app adopts: Authorization Code + PKCE against Folevi's own
+  accounts (Better Auth in Convex, `docs/AUTH_DECISION.md`), with an iOS callback, so the backend keeps
+  trusting a single issuer and the same session-revocation checks apply. That native flow doesn't exist
+  yet (the Mac app is waiting on it too).
 - **Schema** — `BlockSchema.swift` is plain Foundation (no AppKit), generated from the same spec.
 - **Domain / Sync / Data** — the Mac app's `Domain/`, `Sync/` (reducer + engine) and `Data/` (SQLite
   store, Convex service, Keychain) layers are written against Foundation and the Convex Swift client

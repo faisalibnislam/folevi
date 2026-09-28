@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
-import { identity, para, person, setup, ulid } from "./helpers";
+import { authSession, identity, signedIn, para, person, setup, ulid } from "./helpers";
 
 async function newDoc(p: Awaited<ReturnType<typeof person>>, title = "Doc") {
   const id = ulid();
@@ -32,7 +32,7 @@ describe("accounts", () => {
 
   test("unverified email and missing MFA are rejected by every protected function", async () => {
     const t = setup();
-    const unverified = t.withIdentity(identity("u@example.com", { emailVerified: false }));
+    const unverified = t.withIdentity(identity("u@example.com", { emailVerified: false, "https://folevi.com/email_verified": false }));
     expect((await unverified.query(api.users.me, {})).state).toBe("email_unverified");
     await expect(unverified.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" })).rejects.toThrow(/email_unverified/);
     const noMfa = t.withIdentity(identity("m@example.com", { "https://folevi.com/mfa": false }));
@@ -46,19 +46,64 @@ describe("accounts", () => {
     await expect(t.query(api.workspaces.mine, {})).rejects.toThrow(/unauthenticated/);
   });
 
-  test("revoked sessions are reported as revoked", async () => {
+  test("a revoked session stops working immediately; the others keep working", async () => {
     const t = setup();
     const email = "s@example.com";
-    const base = t.withIdentity(identity(email, { sid: "sid-1" }));
-    await base.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" });
-    await base.mutation(api.users.registerSession, { client: "web", label: "Chrome", deviceId: "dev-1" });
-    const other = t.withIdentity(identity(email, { sid: "sid-2" }));
+    const a = await person(t, email);
+    await a.as.mutation(api.users.registerSession, { client: "web", label: "Chrome", deviceId: "dev-1" });
+    const otherSession = await authSession(t, a.userId, "Folevi/1.0 (Macintosh)");
+    const other = t.withIdentity(identity(email, { subject: a.userId, tokenIdentifier: `https://test.folevi.local|${a.userId}`, sessionId: otherSession }));
     await other.mutation(api.users.registerSession, { client: "mac", label: "Mac", deviceId: "dev-2" });
-    const sessions = await base.query(api.users.listSessions, {});
+    const sessions = await a.as.query(api.users.listSessions, {});
+    expect(sessions).toHaveLength(2);
+    expect(sessions.find((s) => s.current)?.label).toBe("Chrome");
     const mac = sessions.find((s) => !s.current)!;
-    await base.mutation(api.users.revokeSession, { sessionId: mac.id });
+    expect(mac.label).toBe("Mac");
+    await a.as.mutation(api.users.revokeSession, { sessionId: mac.id });
     expect((await other.query(api.users.me, {})).state).toBe("session_revoked");
-    expect((await base.query(api.users.me, {})).state).toBe("ready");
+    await expect(other.query(api.workspaces.mine, {})).rejects.toThrow(/unauthenticated/);
+    expect((await a.as.query(api.users.me, {})).state).toBe("ready");
+    // Someone else's session can't be revoked (same answer as "doesn't exist").
+    const b = await person(t, "b-sessions@example.com");
+    await expect(b.as.mutation(api.users.revokeSession, { sessionId: a.sessionId })).rejects.toThrow(/not_found/);
+    // "Sign out everywhere else" keeps only the current session.
+    await authSession(t, a.userId);
+    await authSession(t, a.userId);
+    const res = await a.as.mutation(api.users.revokeOtherSessions, {});
+    expect(res.ended).toBe(2);
+    expect(await a.as.query(api.users.listSessions, {})).toHaveLength(1);
+  });
+
+  test("a token without a live session is rejected, and a profile from an earlier sign-in system is re-linked by verified email", async () => {
+    const t = setup();
+    const noSession = t.withIdentity(identity("ns@example.com", { sessionId: "missing" }));
+    expect((await noSession.query(api.users.me, {})).state).toBe("session_revoked");
+    // Legacy profile (e.g. created by the retired Auth0 integration) → same person, new identity.
+    await t.run(async (ctx) => {
+      await ctx.db.insert("profiles", {
+        tokenIdentifier: "https://old.example|auth0|1",
+        authSubject: "auth0|1",
+        authIssuer: "https://old.example",
+        email: "legacy@example.com",
+        emailVerified: true,
+        mfaVerified: true,
+        displayName: "Legacy",
+        appearance: "system",
+        locale: "en",
+        timeZone: "UTC",
+        onboardingStep: "done",
+        status: "active",
+        notificationPrefs: { mentions: true, comments: true, shares: true, invites: true, digest: "off", productEmail: false },
+        createdAt: Date.now(),
+        lastActiveAt: Date.now(),
+      });
+    });
+    const now = await signedIn(t, "legacy@example.com");
+    const r = await now.as.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" });
+    expect(r.created).toBe(false);
+    const me = await now.as.query(api.users.me, {});
+    expect(me.state).toBe("ready");
+    if (me.state === "ready") expect(me.profile.displayName).toBe("Legacy");
   });
 });
 
@@ -249,6 +294,41 @@ describe("sync protocol", () => {
     expect((await push("Web title", 1))[0]!.status).toBe("applied");
     const r = (await push("Mac title", 1))[0]!;
     expect(r.status).toBe("conflict");
+  });
+});
+
+describe("note style images", () => {
+  test("a note's cover can only be an image uploaded into its own workspace", async () => {
+    const t = setup();
+    const a = await person(t, "cover-a@example.com");
+    const b = await person(t, "cover-b@example.com");
+    const docId = await newDoc(a, "Styled");
+    // One image in each person's personal workspace (as if uploaded and verified).
+    const addFile = (p: typeof a, publicId: string) =>
+      t.run(async (ctx) => {
+        const ws = (await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", p.workspaceId)).unique())!;
+        const storageId = await ctx.storage.store(new Blob(["x"], { type: "image/png" }));
+        await ctx.db.insert("files", {
+          publicId, storageId, workspaceId: ws._id, uploadedBy: ws.ownerId, filename: "c.png", mimeType: "image/png",
+          size: 1, sha256: "0".repeat(64), kind: "cover", status: "ready", createdAt: Date.now(),
+        });
+      });
+    await addFile(a, "file_mine");
+    await addFile(b, "file_theirs");
+    const setCover = (value: string) =>
+      a.as.mutation(api.sync.push, { workspaceId: a.workspaceId, deviceId: "device-cover", ops: [{ opId: ulid(), kind: "document.update", documentId: docId, patch: { cover: { kind: "image", value } }, baseRevision: null }] });
+    expect((await setCover("file_theirs"))[0]!.status).not.toBe("applied");
+    expect((await setCover("file_missing"))[0]!.status).not.toBe("applied");
+    const ok = (await setCover("file_mine"))[0]!;
+    expect(ok.status).toBe("applied");
+    expect((ok as { document?: { cover: unknown } }).document?.cover).toEqual({ kind: "image", value: "file_mine" });
+    // Colours picked from the image: only valid hex, only by someone who can edit, returned with the URL.
+    const palette = { paper: "#F0F6FF", ink: "#1a2e4c", paperDark: "#121a26", inkDark: "#d1dff5", tone: "deep" as const };
+    await expect(a.as.mutation(api.files.setPalette, { fileId: "file_mine", palette: { ...palette, ink: "red; background:url(x)" } })).rejects.toThrow();
+    await expect(b.as.mutation(api.files.setPalette, { fileId: "file_mine", palette })).rejects.toThrow();
+    await a.as.mutation(api.files.setPalette, { fileId: "file_mine", palette });
+    const urls = await a.as.query(api.files.urls, { fileIds: ["file_mine"], now: Date.now() });
+    expect(urls.file_mine?.palette).toEqual({ ...palette, paper: "#f0f6ff" });
   });
 });
 

@@ -11,6 +11,7 @@ import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
 import { useAuditedLoad } from "./useAuditedLoad";
+import { t } from "@/i18n";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, td, th } from "./ui";
 
 const GB = 1024 ** 3;
@@ -20,7 +21,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
   const view = useMutation(api.admin.viewWorkspace);
   const setSuspended = useMutation(api.admin.setWorkspaceSuspended);
   const setQuota = useMutation(api.admin.setWorkspaceQuota);
-  const { data: w, error, loading, refresh } = useAuditedLoad(id, (requestId) => view({ workspaceId: id, requestId }));
+  const { data: w, error, loading, refresh } = useAuditedLoad(id, (meta) => view({ workspaceId: id, ...meta }));
   const [action, setAction] = useState<"suspend" | "quota" | null>(null);
 
   if (error && !w) {
@@ -43,6 +44,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
 
   const suspended = w.status === "suspended";
   const canQuota = admin.can("workspaces.quota");
+  const canSuspend = admin.can("workspaces.suspend");
   const canSeeUsers = admin.can("users.view");
   const owners = w.members.filter((m) => m.role === "owner");
 
@@ -82,15 +84,15 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         </div>
       ) : null}
 
-      <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 ui-card rounded-[18px] p-3">
-        <Button size="sm" variant={suspended ? "secondary" : "danger"} onClick={() => setAction("suspend")} disabled={w.status === "deleting"}>
+      <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 ui-card rounded-[8px] p-3">
+        <Button size="sm" variant={suspended ? "secondary" : "danger"} onClick={() => setAction("suspend")} disabled={!canSuspend || w.status === "deleting"}>
           {suspended ? <Undo2 size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
           {suspended ? "Unsuspend…" : "Suspend…"}
         </Button>
         <Button size="sm" onClick={() => setAction("quota")} disabled={!canQuota}>
           <Gauge size={14} aria-hidden /> Set quota…
         </Button>
-        {!canQuota ? <span className="text-xs text-muted">Quotas: {rolesFor("workspaces.quota")}</span> : null}
+        {!canQuota ? <span className="text-xs text-muted">Suspending and quotas: {rolesFor("workspaces.quota")}</span> : null}
       </section>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[2fr_3fr]">
@@ -124,7 +126,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
           </div>
         </Panel>
 
-        <Panel title="Members" description={`${w.members.length} ${w.members.length === 1 ? "person" : "people"}`} flush>
+        <Panel title="Members" description={t("admin.workspace.members", { count: w.members.length })} flush>
           <DataTable caption="Workspace members" minWidth={520}>
             <thead>
               <tr>

@@ -1,0 +1,212 @@
+[
+  {
+    "id": "poppy-print",
+    "name": "Poppy print",
+    "hex": "#fff3ee"
+  },
+  {
+    "id": "studio-collage",
+    "name": "Studio collage",
+    "hex": "#fff3ef"
+  },
+  {
+    "id": "irises",
+    "name": "Irises",
+    "hex": "#eafaf4"
+  },
+  {
+    "id": "runners",
+    "name": "Runners",
+    "hex": "#fbf6e6"
+  },
+  {
+    "id": "watercolour-marsh",
+    "name": "Watercolour marsh",
+    "hex": "#f6f6f0"
+  },
+  {
+    "id": "procession",
+    "name": "Procession",
+    "hex": "#fcf5e6"
+  },
+  {
+    "id": "deco",
+    "name": "Deco",
+    "hex": "#fff2f3"
+  },
+  {
+    "id": "parchment",
+    "name": "Parchment",
+    "hex": "#faf5ee"
+  },
+  {
+    "id": "blossoms",
+    "name": "Blossoms",
+    "hex": "#fff3f0"
+  },
+  {
+    "id": "ripple-sketch",
+    "name": "Ripple sketch",
+    "hex": "#f6f6f6"
+  },
+  {
+    "id": "grey-sand",
+    "name": "Grey sand",
+    "hex": "#f9f5f0"
+  },
+  {
+    "id": "blue-haze",
+    "name": "Blue haze",
+    "hex": "#f0f7fb"
+  },
+  {
+    "id": "harbor-blue",
+    "name": "Harbor blue",
+    "hex": "#eff7ff"
+  },
+  {
+    "id": "winter-canvas",
+    "name": "Winter canvas",
+    "hex": "#f2f6fc"
+  },
+  {
+    "id": "plaster",
+    "name": "Plaster",
+    "hex": "#f4f6f6"
+  },
+  {
+    "id": "dusk-tiles",
+    "name": "Dusk tiles",
+    "hex": "#f0f7ff"
+  },
+  {
+    "id": "peeling-paint",
+    "name": "Peeling paint",
+    "hex": "#fef4e6"
+  },
+  {
+    "id": "red-lacquer",
+    "name": "Red lacquer",
+    "hex": "#fff2f1"
+  },
+  {
+    "id": "crackle-green",
+    "name": "Crackle green",
+    "hex": "#f0f8f1"
+  },
+  {
+    "id": "weathered-wood",
+    "name": "Weathered wood",
+    "hex": "#fbf5e9"
+  },
+  {
+    "id": "ultramarine",
+    "name": "Ultramarine",
+    "hex": "#f3f5ff"
+  },
+  {
+    "id": "summer-sky",
+    "name": "Summer sky",
+    "hex": "#ecf8ff"
+  },
+  {
+    "id": "rust",
+    "name": "Rust",
+    "hex": "#fff3ec"
+  },
+  {
+    "id": "tarp-blue",
+    "name": "Tarp blue",
+    "hex": "#eef7ff"
+  },
+  {
+    "id": "midnight-rose",
+    "name": "Midnight rose",
+    "hex": "#f0f6ff"
+  },
+  {
+    "id": "galvanized",
+    "name": "Galvanized",
+    "hex": "#f2f6f9"
+  },
+  {
+    "id": "navy-crackle",
+    "name": "Navy crackle",
+    "hex": "#f1f6ff"
+  },
+  {
+    "id": "old-street",
+    "name": "Old street",
+    "hex": "#fcf4ed"
+  },
+  {
+    "id": "cypresses",
+    "name": "Cypresses",
+    "hex": "#f5f7ee"
+  },
+  {
+    "id": "wood-thrush",
+    "name": "Wood thrush",
+    "hex": "#fef4e9"
+  },
+  {
+    "id": "amber-mint",
+    "name": "Amber mint",
+    "hex": "#f2f8ef"
+  },
+  {
+    "id": "seafoam-drift",
+    "name": "Seafoam drift",
+    "hex": "#eff9f2"
+  },
+  {
+    "id": "folded-mist",
+    "name": "Folded mist",
+    "hex": "#f5f6f6"
+  },
+  {
+    "id": "kraft",
+    "name": "Kraft",
+    "hex": "#f9f5ee"
+  },
+  {
+    "id": "ruled-page",
+    "name": "Ruled page",
+    "hex": "#f5f6f7"
+  },
+  {
+    "id": "night-feather",
+    "name": "Night feather",
+    "hex": "#f6f6f5"
+  },
+  {
+    "id": "ribbed-linen",
+    "name": "Ribbed linen",
+    "hex": "#faf5ef"
+  },
+  {
+    "id": "aurora",
+    "name": "Aurora",
+    "hex": "#edfaed"
+  },
+  {
+    "id": "peach-haze",
+    "name": "Peach haze",
+    "hex": "#fff4e7"
+  },
+  {
+    "id": "cold-press",
+    "name": "Cold press",
+    "hex": "#f6f5f5"
+  },
+  {
+    "id": "blue-plaster",
+    "name": "Blue plaster",
+    "hex": "#f2f6ff"
+  },
+  {
+    "id": "neon-silk",
+    "name": "Neon silk",
+    "hex": "#fff1f9"
+  }
+]

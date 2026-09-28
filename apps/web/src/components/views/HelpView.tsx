@@ -52,10 +52,10 @@ export function HelpView() {
           </p>
         </header>
         <section aria-labelledby="h-shortcuts">
-          <h3 id="h-shortcuts" className="mb-3 text-lg font-semibold">
+          <h3 id="h-shortcuts" className="ui-display mb-3 text-[20px]">
             Keyboard shortcuts
           </h3>
-          <table className="w-full overflow-hidden ui-card rounded-[18px] text-sm">
+          <table className="w-full overflow-hidden ui-card rounded-[8px] text-sm">
             <tbody>
               {SHORTCUTS.map(([label, keys]) => (
                 <tr key={label} className="border-b border-line last:border-0">
@@ -72,12 +72,12 @@ export function HelpView() {
           <p className="mt-2 text-xs text-muted">Type / on an empty line for every block type, [[ to link a page, and @ to mention someone or a date. Markdown shortcuts like “# ”, “- ”, “[] ” and “```” work at the start of a line.</p>
         </section>
         <section aria-labelledby="h-sync">
-          <h3 id="h-sync" className="mb-3 text-lg font-semibold">
+          <h3 id="h-sync" className="ui-display mb-3 text-[20px]">
             What the save status means
           </h3>
           <dl className="grid gap-3 sm:grid-cols-2">
             {STATUSES.map(([k, v]) => (
-              <div key={k} className="ui-card rounded-[18px] p-3">
+              <div key={k} className="ui-card rounded-[8px] p-3">
                 <dt className="font-medium">{k}</dt>
                 <dd className="text-sm text-muted">{v}</dd>
               </div>

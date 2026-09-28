@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { deviceStatus } from "./lib/devices";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { localDate } from "@folevi/editor-schema";
@@ -9,15 +10,20 @@ import {
   assertWritable,
   claimsOf,
   findProfile,
+  requireActiveSession,
   requireIdentity,
   requireProfile,
+  sessionIdOf,
 } from "./lib/auth";
+import { deleteSession, findActiveSession, listUserSessions } from "./lib/authStore";
 import { fail } from "./lib/errors";
+import { entitlementsFor, startTrial } from "./lib/billing";
 import { consume } from "./lib/rateLimit";
 import { bump } from "./lib/metrics";
 import { keyedHash } from "./lib/crypto";
 import { vAppearance } from "./lib/validators";
 import { seedPersonalWorkspace } from "./seed";
+import { claimIdentityImage, deleteIdentityImage, identityImageUrl, personalWorkspaceOf, workspaceLabel } from "./lib/identityImages";
 
 const DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -40,6 +46,7 @@ export function publicProfile(p: Doc<"profiles">) {
     email: p.email,
     displayName: p.displayName,
     appearance: p.appearance,
+    aiEnabled: p.aiEnabled !== false,
     locale: p.locale,
     timeZone: p.timeZone,
     onboardingStep: p.onboardingStep,
@@ -64,23 +71,25 @@ export const me = query({
       const code = (e as { data?: { code?: string } }).data?.code;
       return { state: (code === "mfa_required" ? "mfa_required" : "email_unverified") as "mfa_required" | "email_unverified" };
     }
+    const sessionId = sessionIdOf(identity);
+    if (!sessionId || !(await findActiveSession(ctx, sessionId))) return { state: "session_revoked" as const };
     const profile = await findProfile(ctx, identity);
     if (!profile) return { state: "needs_bootstrap" as const };
     if (profile.status === "suspended") return { state: "suspended" as const };
     if (profile.status === "deleted") return { state: "signed_out" as const };
-    const sid = (identity as unknown as Record<string, unknown>).sid;
-    if (typeof sid === "string") {
-      const key = await keyedHash(sid, "session");
-      const session = await ctx.db
-        .query("sessionsMirror")
-        .withIndex("by_profile_key", (q) => q.eq("profileId", profile._id).eq("sessionKey", key))
-        .unique();
-      if (session?.revokedAt) return { state: "session_revoked" as const };
-    }
+    // Over the plan's device limit: this device waits until another signs out or the plan is upgraded.
+    const devices = await deviceStatus(ctx, profile, sessionId);
+    if (!devices.allowed) return { state: "device_limit" as const, limit: devices.limit ?? 0, active: devices.active };
     const workspace = profile.defaultWorkspaceId ? await ctx.db.get(profile.defaultWorkspaceId) : null;
     return {
       state: "ready" as const,
-      profile: { ...publicProfile(profile), defaultWorkspaceId: workspace?.publicId ?? null },
+      profile: {
+        ...publicProfile(profile),
+        defaultWorkspaceId: workspace?.publicId ?? null,
+        avatarUrl: await identityImageUrl(ctx, profile.avatarFileId),
+        // What their plan includes right now (AI, storage, trial) — the server enforces it again.
+        entitlements: await entitlementsFor(ctx, profile._id),
+      },
     };
   },
 });
@@ -94,11 +103,28 @@ export const bootstrap = mutation({
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
     const claims = assertIdentityClaims(identity);
+    await requireActiveSession(ctx, identity);
     const existing = await findProfile(ctx, identity);
     if (existing) return { created: false, profileId: existing._id };
     await consume(ctx, "bootstrap", identity.subject);
     const email = (identity.email ?? "").toLowerCase();
     if (!email) fail("invalid_argument", "Your account has no email address.");
+    // A profile created under an earlier identity provider (Auth0 or the old local development
+    // sign-in) is re-linked to this account. Safe because the address is verified by this provider.
+    const legacy = await ctx.db
+      .query("profiles")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (legacy && legacy.status !== "deleted" && legacy.authIssuer !== identity.issuer) {
+      await ctx.db.patch(legacy._id, {
+        tokenIdentifier: identity.tokenIdentifier,
+        authSubject: identity.subject,
+        authIssuer: identity.issuer,
+        emailVerified: claims.emailVerified,
+        mfaVerified: claims.mfa,
+      });
+      return { created: false, profileId: legacy._id };
+    }
     const now = Date.now();
     const displayName = sanitizeName(identity.name ?? identity.nickname ?? email.split("@")[0] ?? "Friend") || "Friend";
     const timeZone = isValidTimeZone(args.timeZone) ? args.timeZone : "UTC";
@@ -122,6 +148,8 @@ export const bootstrap = mutation({
     const profile = (await ctx.db.get(profileId))!;
     const workspaceId = await seedPersonalWorkspace(ctx, profile, localDate(now, timeZone));
     await ctx.db.patch(profileId, { defaultWorkspaceId: workspaceId });
+    // Every new account starts with a Pro trial.
+    await startTrial(ctx, profileId);
     await bump(ctx, "users_total");
     await bump(ctx, "signups");
     if (claims.emailVerified) await bump(ctx, "users_verified");
@@ -145,7 +173,7 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
       kind: "invite",
       actorId: invite.invitedBy,
       inviteId: invite._id,
-      title: `You're invited to ${workspace.name}`,
+      title: `You're invited to ${await workspaceLabel(ctx, workspace)}`,
       createdAt: Date.now(),
     });
   }
@@ -161,9 +189,13 @@ export const completeOnboardingStep = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     if (args.step === "workspace") {
-      const name = sanitizeName(args.workspaceName ?? "");
-      if (!name) fail("invalid_argument", "Give your workspace a name.");
-      if (profile.defaultWorkspaceId) await ctx.db.patch(profile.defaultWorkspaceId, { name, updatedAt: Date.now() });
+      // A personal workspace keeps its fixed name ("Personal"); only a team workspace takes the name given here.
+      const workspace = profile.defaultWorkspaceId ? await ctx.db.get(profile.defaultWorkspaceId) : null;
+      if (workspace && workspace.kind === "team") {
+        const name = sanitizeName(args.workspaceName ?? "");
+        if (!name) fail("invalid_argument", "Give your workspace a name.");
+        await ctx.db.patch(workspace._id, { name, updatedAt: Date.now() });
+      }
       await ctx.db.patch(profile._id, { onboardingStep: "appearance" });
     } else if (args.step === "appearance") {
       await ctx.db.patch(profile._id, { appearance: args.appearance ?? "system", onboardingStep: "welcome" });
@@ -178,6 +210,7 @@ export const updateProfile = mutation({
   args: {
     displayName: v.optional(v.string()),
     appearance: v.optional(vAppearance),
+    aiEnabled: v.optional(v.boolean()),
     timeZone: v.optional(v.string()),
     notificationPrefs: v.optional(
       v.object({
@@ -200,12 +233,45 @@ export const updateProfile = mutation({
       patch.displayName = name;
     }
     if (args.appearance) patch.appearance = args.appearance;
+    if (args.aiEnabled !== undefined) patch.aiEnabled = args.aiEnabled;
     if (args.timeZone) {
       if (!isValidTimeZone(args.timeZone)) fail("invalid_argument", "Unknown time zone.");
       patch.timeZone = args.timeZone;
     }
     if (args.notificationPrefs) patch.notificationPrefs = args.notificationPrefs;
     await ctx.db.patch(profile._id, patch);
+    return null;
+  },
+});
+
+/**
+ * Sets your profile picture to an image just uploaded with `files.generateUploadUrl` (kind "avatar"),
+ * which stores it in your personal workspace. The previous picture is deleted.
+ */
+export const setAvatar = mutation({
+  args: { fileId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const personal = await personalWorkspaceOf(ctx, profile._id);
+    if (!personal) fail("not_found", "Workspace not found.");
+    const file = await claimIdentityImage(ctx, profile, args.fileId, "avatar", personal._id);
+    const previous = profile.avatarFileId;
+    await ctx.db.patch(profile._id, { avatarFileId: file._id });
+    if (previous && previous !== file._id) await deleteIdentityImage(ctx, previous);
+    return null;
+  },
+});
+
+export const removeAvatar = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    if (!profile.avatarFileId) return null;
+    const previous = profile.avatarFileId;
+    await ctx.db.patch(profile._id, { avatarFileId: undefined });
+    await deleteIdentityImage(ctx, previous);
     return null;
   },
 });
@@ -226,8 +292,7 @@ export const registerSession = mutation({
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
     const profile = await requireProfile(ctx);
-    const raw = identity as unknown as Record<string, unknown>;
-    const sid = typeof raw.sid === "string" ? raw.sid : (args.deviceId ?? identity.subject);
+    const sid = sessionIdOf(identity)!;
     const sessionKey = await keyedHash(sid, "session");
     const now = Date.now();
     const existing = await ctx.db
@@ -248,6 +313,7 @@ export const registerSession = mutation({
     await ctx.db.insert("sessionsMirror", {
       profileId: profile._id,
       sessionKey,
+      authSessionId: sid,
       client: args.client,
       label: sanitizeName(args.label) || (args.client === "mac" ? "Folevi for Mac" : "Web browser"),
       userAgentHash: args.userAgent ? await keyedHash(args.userAgent, "ua") : undefined,
@@ -271,61 +337,88 @@ export const registerSession = mutation({
   },
 });
 
+/** Live sessions of the signed-in person (from the identity store), with device labels where known. */
 export const listSessions = query({
   args: {},
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
-    const profile = await requireProfile(ctx);
-    const raw = identity as unknown as Record<string, unknown>;
-    const currentKey = typeof raw.sid === "string" ? await keyedHash(raw.sid, "session") : null;
-    const sessions = await ctx.db
+    const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
+    const current = sessionIdOf(identity);
+    const sessions = await listUserSessions(ctx, profile.authSubject);
+    const mirrors = await ctx.db
       .query("sessionsMirror")
       .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
       .order("desc")
-      .take(50);
-    return sessions.map((s) => ({
-      id: s._id as string,
-      client: s.client,
-      label: s.label,
-      createdAt: s.createdAt,
-      lastSeenAt: s.lastSeenAt,
-      revokedAt: s.revokedAt ?? null,
-      current: s.sessionKey === currentKey,
-    }));
+      .take(100);
+    const byAuthId = new Map(mirrors.filter((m) => m.authSessionId).map((m) => [m.authSessionId!, m]));
+    return sessions
+      .map((s) => {
+        const mirror = byAuthId.get(s._id);
+        return {
+          id: s._id,
+          client: mirror?.client ?? ("web" as const),
+          label: mirror?.label ?? browserLabel(s.userAgent ?? ""),
+          createdAt: s.createdAt,
+          lastSeenAt: Math.max(mirror?.lastSeenAt ?? 0, s.updatedAt),
+          expiresAt: s.expiresAt,
+          revokedAt: null as number | null,
+          current: s._id === current,
+        };
+      })
+      .sort((x, y) => Number(y.current) - Number(x.current) || y.lastSeenAt - x.lastSeenAt);
   },
 });
 
+/** Ends one of the signed-in person's sessions. It stops working on its very next request. */
 export const revokeSession = mutation({
   args: { sessionId: v.string() },
   handler: async (ctx, args) => {
-    const profile = await requireProfile(ctx);
-    const id = ctx.db.normalizeId("sessionsMirror", args.sessionId);
-    const session = id ? await ctx.db.get(id) : null;
-    if (!session || session.profileId !== profile._id) fail("not_found", "Session not found.");
-    if (!session.revokedAt) await ctx.db.patch(session._id, { revokedAt: Date.now(), revokedReason: "user" });
-    await ctx.scheduler.runAfter(0, internal.identity.revokeProviderSessions, { profileId: profile._id, scope: "one" });
+    const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
+    const session = await findActiveSession(ctx, args.sessionId);
+    if (!session || session.userId !== profile.authSubject) fail("not_found", "Session not found.");
+    await deleteSession(ctx, session._id);
+    await markMirrorRevoked(ctx, profile._id, [session._id], "user");
     return null;
   },
 });
 
+/** Ends every session except this one (also forgets nothing else — trusted devices re-ask for a code). */
 export const revokeOtherSessions = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
-    const profile = await requireProfile(ctx);
-    const raw = identity as unknown as Record<string, unknown>;
-    const currentKey = typeof raw.sid === "string" ? await keyedHash(raw.sid, "session") : null;
-    const sessions = await ctx.db
-      .query("sessionsMirror")
-      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
-      .collect();
-    const now = Date.now();
+    const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
+    const current = sessionIdOf(identity);
+    const sessions = await listUserSessions(ctx, profile.authSubject);
+    const ended: string[] = [];
     for (const s of sessions) {
-      if (!s.revokedAt && s.sessionKey !== currentKey) await ctx.db.patch(s._id, { revokedAt: now, revokedReason: "user_others" });
+      if (s._id === current) continue;
+      await deleteSession(ctx, s._id);
+      ended.push(s._id);
     }
-    return null;
+    await markMirrorRevoked(ctx, profile._id, ended, "user_others");
+    return { ended: ended.length };
   },
 });
+
+async function markMirrorRevoked(ctx: MutationCtx, profileId: Doc<"profiles">["_id"], authSessionIds: string[], reason: string) {
+  if (!authSessionIds.length) return;
+  const ids = new Set(authSessionIds);
+  const mirrors = await ctx.db
+    .query("sessionsMirror")
+    .withIndex("by_profile", (q) => q.eq("profileId", profileId))
+    .take(200);
+  const now = Date.now();
+  for (const m of mirrors) if (m.authSessionId && ids.has(m.authSessionId) && !m.revokedAt) await ctx.db.patch(m._id, { revokedAt: now, revokedReason: reason });
+}
+
+/** "Chrome on macOS"-style label from a user agent, for sessions created before a device registered. */
+function browserLabel(ua: string): string {
+  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Web browser";
+  // Phones and tablets first: iOS user agents also say "like Mac OS X".
+  const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Mac OS X|Macintosh/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "";
+  return os ? `${browser} on ${os}` : browser;
+}
 
 // ---------------------------------------------------------------- account deletion
 

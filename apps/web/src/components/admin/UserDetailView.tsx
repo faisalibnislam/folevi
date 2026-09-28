@@ -11,7 +11,9 @@ import { formatBytes, formatDateTime } from "@/lib/format";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { ROLE_LABEL, rolesFor, type AdminRole } from "./permissions";
+import { UserBillingPanel } from "./UserBillingPanel";
 import { useAuditedLoad } from "./useAuditedLoad";
+import { t } from "@/i18n";
 import { VerificationBadges } from "./UsersView";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, LoadingRows, Mono, ShortId, PageHeader, Panel, StatusBadge, Time, humanize, td, tdNum, th, thNum } from "./ui";
 
@@ -21,7 +23,7 @@ type ActionKind = "suspend" | "revoke" | "verify" | "reset" | "role" | "delete";
 export function UserDetailView({ id }: { id: string }) {
   const admin = useAdmin();
   const view = useMutation(api.admin.viewUser);
-  const { data: user, error, loading, refresh } = useAuditedLoad(id, (requestId) => view({ profileId: id, requestId }));
+  const { data: user, error, loading, refresh } = useAuditedLoad(id, (meta) => view({ profileId: id, ...meta }));
   const [action, setAction] = useState<ActionKind | null>(null);
 
   if (error && !user) {
@@ -84,7 +86,7 @@ export function UserDetailView({ id }: { id: string }) {
         </div>
       ) : null}
 
-      <UserActions user={user} role={admin.role} selfId={admin.id} onAction={setAction} />
+      <UserActions user={user} role={admin.role} canManage={admin.can("users.manage")} selfId={admin.id} onAction={setAction} />
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[3fr_2fr]">
         <Panel title="Identity" description="Account metadata only. There is no way to view someone's documents from the admin console.">
@@ -108,7 +110,7 @@ export function UserDetailView({ id }: { id: string }) {
               { label: "Documents", value: user.usage.documents.toLocaleString() },
               { label: "Storage", value: formatBytes(user.usage.storageBytes) },
             ].map((s) => (
-              <div key={s.label} className="ui-card rounded-[18px] px-3 py-2.5">
+              <div key={s.label} className="ui-card rounded-[8px] px-3 py-2.5">
                 <dt className="text-[12px] text-muted">{s.label}</dt>
                 <dd className="mt-0.5 ui-display text-[24px] leading-tight tabular-nums">{s.value}</dd>
               </div>
@@ -118,7 +120,8 @@ export function UserDetailView({ id }: { id: string }) {
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <Panel title="Sessions" description={`${user.sessions.filter((s) => !s.revokedAt).length} active of ${user.sessions.length} recorded`} flush>
+        <UserBillingPanel profileId={user.id} email={user.email} name={user.displayName} />
+        <Panel title="Sessions" description={t("admin.user.sessions", { active: user.sessions.filter((s) => !s.revokedAt).length, total: user.sessions.length })} flush>
           <DataTable caption="Sessions" minWidth={520}>
             <thead>
               <tr>
@@ -271,7 +274,7 @@ export function UserDetailView({ id }: { id: string }) {
   );
 }
 
-function UserActions({ user, role, selfId, onAction }: { user: UserDetail; role: AdminRole; selfId: string; onAction: (a: ActionKind) => void }) {
+function UserActions({ user, role, canManage, selfId, onAction }: { user: UserDetail; role: AdminRole; canManage: boolean; selfId: string; onAction: (a: ActionKind) => void }) {
   const isSelf = user.id === selfId;
   const deleted = user.status === "deleted";
   const suspended = user.status === "suspended";
@@ -282,18 +285,19 @@ function UserActions({ user, role, selfId, onAction }: { user: UserDetail; role:
   }
   const notes: string[] = [];
   if (isSelf) notes.push("You can't suspend your own account.");
-  if (protectedSuper) notes.push("Only a super admin can suspend another super admin.");
+  if (protectedSuper) notes.push("Only an owner can suspend another owner.");
+  if (!canManage) notes.push(`Suspending, signing out and deleting accounts: ${rolesFor("users.manage")}`);
   if (!canRole) notes.push(`Platform roles: ${rolesFor("users.setRole")}`);
   if (user.platformRole) notes.push("Remove the platform role before scheduling deletion.");
   if (user.emailVerified) notes.push("Resend verification is only offered while the email is unverified.");
   return (
-    <section aria-label="Account actions" className="ui-card rounded-[18px] p-3">
+    <section aria-label="Account actions" className="ui-card rounded-[8px] p-3">
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => onAction("suspend")} disabled={isSelf || protectedSuper}>
+        <Button size="sm" onClick={() => onAction("suspend")} disabled={!canManage || isSelf || protectedSuper}>
           {suspended ? <UserCheck size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
           {suspended ? "Unsuspend…" : "Suspend…"}
         </Button>
-        <Button size="sm" onClick={() => onAction("revoke")}>
+        <Button size="sm" onClick={() => onAction("revoke")} disabled={!canManage}>
           <LogOut size={14} aria-hidden /> Revoke all sessions…
         </Button>
         {!user.emailVerified ? (
@@ -307,7 +311,7 @@ function UserActions({ user, role, selfId, onAction }: { user: UserDetail; role:
         <Button size="sm" onClick={() => onAction("role")} disabled={!canRole} title={canRole ? undefined : rolesFor("users.setRole")}>
           <ShieldCheck size={14} aria-hidden /> Platform role…
         </Button>
-        <Button size="sm" variant="danger" className="ml-auto" onClick={() => onAction("delete")} disabled={Boolean(user.platformRole) || user.status === "pending_deletion"}>
+        <Button size="sm" variant="danger" className="ml-auto" onClick={() => onAction("delete")} disabled={!canManage || Boolean(user.platformRole) || user.status === "pending_deletion"}>
           <Trash2 size={14} aria-hidden /> Schedule deletion…
         </Button>
       </div>
@@ -392,7 +396,7 @@ function UserActionDialogs({ user, action, onClose, onDone }: { user: UserDetail
         open={action === "role"}
         onClose={onClose}
         title="Change platform role"
-        description="Platform roles grant access to this console. Granting one requires a verified email and two-step verification (TOTP). At least one super admin must remain."
+        description="Platform roles grant access to this console. Granting one requires a verified email and two-step verification (TOTP). At least one owner must remain."
         confirmLabel="Save role"
         confirm={confirmEmail}
         fields={[
@@ -403,9 +407,9 @@ function UserActionDialogs({ user, action, onClose, onDone }: { user: UserDetail
             initial: user.platformRole ?? "",
             options: [
               { value: "", label: "None (regular user)" },
-              { value: "support_admin", label: "Support admin — users, workspaces, emails" },
-              { value: "ops_admin", label: "Ops admin — configuration, quotas, workspaces" },
-              { value: "super_admin", label: "Super admin — everything, including roles" },
+              { value: "support_admin", label: "Support staff — look up people, resend emails, trials, exports" },
+              { value: "ops_admin", label: "Admin — plus plans, AI, suspensions, quotas, configuration, revenue" },
+              { value: "super_admin", label: "Owner — everything, including roles, refunds and maintenance" },
             ],
             validate: (v) => (v === (user.platformRole ?? "") ? "Choose a different role." : null),
           },

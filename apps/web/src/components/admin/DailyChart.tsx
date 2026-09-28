@@ -110,7 +110,7 @@ export function DailyChart({
   const hovered = hover !== null ? { date: dates[hover]!, value: values[hover] ?? null } : null;
 
   return (
-    <figure className="min-w-0 ui-card rounded-[18px]" aria-labelledby={`${id}-t`}>
+    <figure className="min-w-0 ui-card rounded-[8px]" aria-labelledby={`${id}-t`}>
       <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
         <figcaption id={`${id}-t`} className="text-[14px] font-semibold">
           {title}
@@ -181,7 +181,7 @@ export function DailyChart({
         {hovered ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-well rounded-[14px] px-2.5 py-1.5 text-[12px] shadow-[var(--shadow-pop)]"
+            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-well rounded-[6px] px-2.5 py-1.5 text-[12px] shadow-[var(--shadow-pop)]"
             style={{ left: Math.min(Math.max(x(hover!) + 8, 60), width - 50) }}
           >
             <div className="text-muted">{formatDate(hovered.date, { weekday: "short", month: "short", day: "numeric" })}</div>

@@ -17,6 +17,8 @@ import {
 } from "./lib/seedContent";
 
 export const DEFAULT_STORAGE_QUOTA = 5 * 1024 * 1024 * 1024;
+/** Every personal workspace has this fixed name (it can't be renamed). */
+export const PERSONAL_WORKSPACE_NAME = "Personal";
 
 export async function createWorkspace(
   ctx: MutationCtx,
@@ -44,10 +46,12 @@ export async function createWorkspace(
   return workspaceId;
 }
 
-/** Creates the personal workspace and its seed documents. `today` is the person's local date. */
+/**
+ * Creates the person's one personal workspace (always named "Personal") and its seed documents. Only
+ * `users.bootstrap` calls this, once per profile. `today` is the person's local date.
+ */
 export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profiles">, today: string): Promise<Id<"workspaces">> {
-  const first = owner.displayName.split(" ")[0] ?? owner.displayName;
-  const workspaceId = await createWorkspace(ctx, owner, `${first}'s Folio`, "personal");
+  const workspaceId = await createWorkspace(ctx, owner, PERSONAL_WORKSPACE_NAME, "personal");
   const now = Date.now();
 
   const folderRanks = rankSequence(2);
@@ -84,7 +88,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     title: "Field Notes: A Quiet Morning",
     icon: "☕️",
     folderId: personal,
-    style: { font: "serif", width: "narrow", background: "paper", accent: "moss", card: "folio" },
+    style: { font: "serif", width: "wide", background: "paper", accent: "moss", card: "folio" },
     blocks: specsToWireBlocks(fieldNotesBlocks()),
   });
 
@@ -94,8 +98,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     title: "Project Atlas Brief",
     icon: "🧭",
     folderId: projects,
-    style: { font: "sans", width: "default", background: "paper", accent: "accent", card: "folio" },
-    cover: { kind: "gradient", value: "accent" },
+    style: { font: "sans", width: "wide", background: "paper", accent: "accent", card: "folio" },
     blocks: specsToWireBlocks(atlasBriefBlocks(today)),
   });
   const questions = await createDocument(ctx, {
@@ -137,8 +140,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     title: "Trip Sketch: Coastal Weekend",
     icon: "⛴",
     folderId: personal,
-    style: { font: "sans", width: "default", background: "paper", accent: "coral", card: "tinted" },
-    cover: { kind: "gradient", value: "coral" },
+    style: { font: "sans", width: "wide", background: "paper", accent: "coral", card: "tinted" },
     blocks: specsToWireBlocks(tripSketchBlocks(today)),
   });
   await ctx.db.insert("documentTags", { workspaceId, documentId: trip._id, tagId: travel });
@@ -245,7 +247,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     title: "Weekly Reset",
     icon: "🔁",
     kind: "template",
-    style: { font: "sans", width: "default", background: "paper", accent: "marigold", card: "folio" },
+    style: { font: "sans", width: "wide", background: "paper", accent: "marigold", card: "folio" },
     blocks: specsToWireBlocks(weeklyResetBlocks()),
   });
 
@@ -255,8 +257,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     actor: owner,
     title: WELCOME_TITLE,
     icon: "🌿",
-    style: { font: "serif", width: "default", background: "paper", accent: "accent", card: "folio" },
-    cover: { kind: "gradient", value: "moss" },
+    style: { font: "serif", width: "wide", background: "paper", accent: "accent", card: "folio" },
     blocks: specsToWireBlocks(welcomeBlocks(today)),
   });
   return workspaceId;

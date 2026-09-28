@@ -32,6 +32,10 @@
     { "id": "01JAGOLD00000000000000000G", "type": "page", "parentId": null, "rank": "E", "schemaVersion": 1, "text": [], "props": { "documentId": "01JAGOLDDOC000000000000003", "display": "card", "titleCache": "Trip Sketch", "iconCache": "🧭" } },
     { "id": "01JAGOLD00000000000000000H", "type": "bookmark", "parentId": null, "rank": "F", "schemaVersion": 1, "text": [], "props": { "url": "https://example.com/tides", "title": "Tide almanac", "siteName": "Example" } },
     { "id": "01JAGOLD00000000000000000J", "type": "collection", "parentId": null, "rank": "G", "schemaVersion": 1, "text": [], "props": { "collectionId": "01JAGOLDCOL000000000000001", "viewId": "01JAGOLDVIEW00000000000001" } },
+    { "id": "01JAGOLD00000000000000000M", "type": "divider", "parentId": null, "rank": "G4", "schemaVersion": 1, "text": [], "props": { "style": "strong" } },
+    { "id": "01JAGOLD00000000000000000N", "type": "pageBreak", "parentId": null, "rank": "G8", "schemaVersion": 1, "text": [], "props": {} },
+    { "id": "01JAGOLD00000000000000000P", "type": "formula", "parentId": null, "rank": "GG", "schemaVersion": 1, "text": [], "props": { "latex": "h(t) = A \\cos(\\omega t)" } },
+    { "id": "01JAGOLD00000000000000000Q", "type": "whiteboard", "parentId": null, "rank": "GV", "schemaVersion": 1, "text": [], "props": { "data": "{\"v\":1,\"strokes\":[{\"points\":[[40,60],[120,90],[200,70]],\"color\":\"blue\",\"width\":3}]}", "height": 320 } },
     { "id": "01JAGOLD00000000000000000K", "type": "timeline", "parentId": null, "rank": "H", "schemaVersion": 2, "text": [], "props": { "events": [{ "at": "2026-10-01", "label": "Depart" }], "zoom": 2 } }
   ]
 }

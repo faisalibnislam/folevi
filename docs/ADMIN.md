@@ -27,31 +27,52 @@ does not do.
 
 ## 2. Roles and permission matrix
 
-Platform roles are stored on `profiles.platformRole`: `super_admin`, `support_admin` or
-`ops_admin`. They are separate from workspace roles (owner, admin, editor…).
+Platform roles are stored on `profiles.platformRole`. There are three tiers, each including
+everything below it. The stored names predate the labels and are kept so existing roles keep
+working:
 
-| Capability                                               | Function(s)                                                                   | Super | Support | Ops |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------- | :---: | :-----: | :-: |
-| Open the console, dashboard (aggregates only)            | `whoami`, `dashboard`                                                         |   ✓   |    ✓    |  ✓  |
-| Search and view users                                    | `searchUsers`, `viewUser`                                                     |   ✓   |    ✓    |     |
-| Suspend / unsuspend a user                               | `suspendUser`                                                                 |   ✓   |   ✓¹    |     |
-| Revoke all sessions                                      | `revokeAllSessions`                                                           |   ✓   |    ✓    |     |
-| Resend verification email                                | `resendVerification`                                                          |   ✓   |    ✓    |     |
-| Start a user-requested password reset                    | `initiatePasswordReset`                                                       |   ✓   |    ✓    |     |
-| Schedule account deletion                                | `scheduleAccountDeletion`                                                     |   ✓   |    ✓    |     |
-| Grant, change or remove platform roles                   | `setPlatformRole`                                                             |   ✓   |         |     |
-| List and view workspaces                                 | `listWorkspaces`, `viewWorkspace`                                             |   ✓   |    ✓    |  ✓  |
-| Suspend / unsuspend a workspace                          | `setWorkspaceSuspended`                                                       |   ✓   |    ✓    |  ✓  |
-| Set workspace storage quota and member limit             | `setWorkspaceQuota`                                                           |   ✓   |         |  ✓  |
-| View the email send log                                  | `listEmails`                                                                  |   ✓   |    ✓    |  ✓  |
-| Resend a failed email                                    | `resendEmail`                                                                 |   ✓   |    ✓    |     |
-| View configuration                                       | `configuration`                                                               |   ✓   |    ✓    |  ✓  |
-| Change flags, maintenance, rate limits, templates        | `setFlag`, `setMaintenance`, `setRateLimit`, `setTemplateEnabled`             |   ✓   |         |  ✓  |
-| Audit log: everyone's entries                            | `auditLog` (no filter)                                                        |   ✓   |         |     |
-| Audit log: own entries, or all entries for one target    | `auditLog` (default / `targetType`+`targetId`)                                |   ✓   |    ✓    |  ✓  |
-| Deletion jobs                                            | `deletionJobs`                                                                |   ✓   |    ✓    |  ✓  |
+| Label         | Stored value    | In short                                                                                  |
+| ------------- | --------------- | ----------------------------------------------------------------------------------------- |
+| Owner         | `super_admin`   | Everything, including platform roles, refunds, maintenance mode and the full audit log.   |
+| Admin         | `ops_admin`     | Account and workspace enforcement, plans, AI grants, storage, configuration and revenue.  |
+| Support staff | `support_admin` | Look people up, resend emails, user-requested password resets, short trials and exports.  |
 
-¹ Only a super admin can suspend another super admin. Nobody can suspend themselves.
+Platform roles are separate from workspace roles (owner, admin, editor…).
+
+| Capability                                               | Function(s)                                                                   | Owner | Admin | Support |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------- | :---: | :---: | :-----: |
+| Open the console, dashboard (aggregates only)            | `whoami`, `dashboard`                                                         |   ✓   |   ✓   |    ✓    |
+| Search and view users                                    | `searchUsers`, `viewUser`                                                     |   ✓   |   ✓   |    ✓    |
+| Resend verification email                                | `resendVerification`                                                          |   ✓   |   ✓   |    ✓    |
+| Start a user-requested password reset                    | `initiatePasswordReset`                                                       |   ✓   |   ✓   |    ✓    |
+| Suspend / unsuspend a user                               | `suspendUser`                                                                 |   ✓   |  ✓¹   |         |
+| Revoke all sessions                                      | `revokeAllSessions`                                                           |   ✓   |   ✓   |         |
+| Schedule account deletion                                | `scheduleAccountDeletion`                                                     |   ✓   |   ✓   |         |
+| Grant, change or remove platform roles                   | `setPlatformRole`                                                             |   ✓   |       |         |
+| View a person's plan, storage, AI use and payments       | `adminBilling.userBilling`                                                    |   ✓   |   ✓   |    ✓    |
+| Give or extend a Pro trial                               | `adminBilling.extendTrial`                                                    | ✓ (90 days) | ✓ (90 days) | ✓ (14 days) |
+| Prepare a workspace export for the person (delivered to them only) | `adminBilling.requestUserExport`                                    |   ✓   |   ✓   |    ✓    |
+| Set a plan by hand, grant AI, override storage or device limit | `adminBilling.setPlan`, `setAiGrant`, `setStorageOverride`, `setDeviceLimit` |   ✓   |   ✓   |         |
+| Mark a payment refunded                                  | `adminBilling.markRefunded`                                                   |   ✓   |       |         |
+| User analytics (aggregates)                              | `adminAnalytics.users`                                                        |   ✓   |   ✓   |    ✓    |
+| Revenue analytics                                        | `adminAnalytics.revenue`                                                      |   ✓   |   ✓   |         |
+| List and view workspaces                                 | `listWorkspaces`, `viewWorkspace`                                             |   ✓   |   ✓   |    ✓    |
+| Suspend / unsuspend a workspace                          | `setWorkspaceSuspended`                                                       |   ✓   |   ✓   |         |
+| Set workspace storage quota and member limit             | `setWorkspaceQuota`                                                           |   ✓   |   ✓   |         |
+| View the email send log                                  | `listEmails`                                                                  |   ✓   |   ✓   |    ✓    |
+| Resend a failed email                                    | `resendEmail`                                                                 |   ✓   |   ✓   |    ✓    |
+| View configuration                                       | `configuration`                                                               |   ✓   |   ✓   |    ✓    |
+| Change flags, rate limits, templates                     | `setFlag`, `setRateLimit`, `setTemplateEnabled`                               |   ✓   |   ✓   |         |
+| Maintenance banner and read-only mode                    | `setMaintenance`                                                              |   ✓   |       |         |
+| Audit log: everyone's entries                            | `auditLog` (no filter)                                                        |   ✓   |       |         |
+| Audit log: own entries, or all entries for one target    | `auditLog` (default / `targetType`+`targetId`)                                |   ✓   |   ✓   |    ✓    |
+| Deletion jobs                                            | `deletionJobs`                                                                |   ✓   |   ✓   |         |
+
+¹ Only an owner can suspend another owner. Nobody can suspend themselves.
+
+**Note content stays private.** No admin path returns note bodies. "Prepare export" builds the
+person's personal workspace as a ZIP and delivers it to *them* as a notification with a
+download link; staff never receive the file or its contents.
 
 The UI mirrors this matrix in `apps/web/src/components/admin/permissions.ts`: navigation
 items a role can't use are hidden, and actions it can't take are disabled with a one-line
@@ -67,11 +88,11 @@ success shows a toast, and detail pages reload their data by calling the audited
 
 | Action                        | Typed confirmation         | Other safeguards                                                                                                                                                                                                                                      |
 | ----------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Suspend / unsuspend user      | User's email               | Not yourself. Super admins can only be suspended by a super admin. Suspending revokes every session and blocks the user at the identity provider. Data is untouched.                                                                                   |
+| Suspend / unsuspend user      | User's email               | Not yourself. Owners can only be suspended by an owner. Suspending revokes every session and blocks the user at the identity provider. Data is untouched.                                                                                   |
 | Revoke all sessions           | —                          | Revokes mirrored sessions and asks the identity provider to end its sessions. Offline edits stay on the user's devices.                                                                                                                              |
 | Resend verification           | —                          | Offered only while the email is unverified; the server refuses otherwise. The link goes to the user, never to the admin.                                                                                                                              |
 | Password reset                | —                          | Checkbox "The user asked for this…" must be ticked. The API requires `userRequested: true`. Use it only after verifying the request came from the account holder. The reset link is emailed to the user; admins never see it.                          |
-| Platform role                 | User's email               | Super admin only. The target needs a verified email **and** TOTP to receive a role. At least one super admin must remain.                                                                                                                            |
+| Platform role                 | User's email               | Owner only. The target needs a verified email **and** TOTP to receive a role. At least one owner must remain.                                                                                                                                        |
 | Schedule account deletion     | User's email               | Refused while the user holds a platform role. Deletion runs after 7 days. The user is emailed and can cancel by signing in.                                                                                                                          |
 | Suspend / unsuspend workspace | Workspace name (exact)     | Everyone except owners becomes read-only. Nothing is deleted. Not available for workspaces that are already being deleted.                                                                                                                           |
 | Set quota                     | —                          | Storage in GB (1024³ bytes, ≥ 0) and member limit 1–10,000. Lowering a quota below usage blocks new uploads or invites; nothing is removed.                                                                                                          |
@@ -96,12 +117,12 @@ Records are written by `recordAudit` (`convex/lib/audit.ts`) into `adminAuditLog
     supplied, the server generates it. The console shows it next to each entry so an action
     can be traced across logs.
   - *Client hash*: the console sends a truncated SHA-256 of the admin's user agent,
-    language, time zone and screen size with every change. No raw values are stored. The
+    language, time zone and screen size with every change and every audited read. No raw values are stored. The
     client computes it, so treat it as a correlation hint, not proof of the device.
 - **What is audited:** every change listed above, plus these reads: `user.search` (the
   query is stored only as a keyed hash; "all" for an empty query), `user.view`,
-  `workspace.view` and `email.list`. Aggregate reads (dashboard, configuration, workspace
-  list, deletion jobs, the audit log itself) are not audited.
+  `workspace.list` (names are user content), `workspace.view` and `email.list`. Aggregate reads
+  (dashboard, configuration, deletion jobs, the audit log itself) are not audited.
 - **Who sees it:** super admins see the whole log. Other admins see their own entries, or
   every entry for one target when they filter by target type and id. The console shows
   before/after as a field-by-field diff.
@@ -161,7 +182,10 @@ attempts, quotas and the audit trail.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/admin`                     | Stat tiles, 30-day signups and DAU charts (SVG with a data-table fallback), retention cohorts, failed emails (7 d), sync errors (7 d), rate-limited events (24 h), deployments. |
 | `/admin/users`               | Exact-email search, or browse newest first with a name filter and status filter, 50 per page.                                                     |
-| `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above.              |
+| `/admin/analytics`           | User analytics: users, new signups, daily/weekly/monthly active, storage, signups and AI requests per day, plan mix, trials and conversion, AI use and grants (7–180 day window). Aggregates only. |
+| `/admin/revenue`             | Admins and owners: MRR, ARR, paying accounts, revenue per payer, last 30 days, at-risk (canceling/past due), revenue, new and canceled by month, subscribers per plan, recent payments (emails redacted). Test purchases are excluded unless switched on. |
+| `/admin/users`               | Plan column: Free/Basic/Pro, "· trial" while on the Pro trial, and an AI badge for grants.                                                        |
+| `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above. **Plan & billing**: plan, provider, renewal, AI access and 30-day use, storage across owned workspaces, payments, and the billing actions (set plan, trial, AI grant, storage limit, prepare export, mark refunded). Loading it is an audited read (`user.view_billing`). |
 | `/admin/workspaces`          | All workspaces, paginated.                                                                                                                        |
 | `/admin/workspaces/[id]`     | Members and roles, usage against quotas, redacted invites, admin history, suspend and quota.                                                      |
 | `/admin/emails`              | The last 100 send attempts, with a status filter, provider events, resend for eligible failures, and the delivery explainer.                     |
@@ -173,5 +197,6 @@ The daily active users figure, weekly active users figure and retention cohorts 
 `daily metrics` cron (00:15 UTC). Until it has run once, the dashboard shows "—" and says why.
 
 End-to-end coverage: `apps/web/e2e/admin.spec.ts` (non-admin 404, signed-out redirect,
-dashboard, audited search and view, suspend requires a reason, and axe checks in light and
-dark).
+dashboard, audited search and view, suspend requires a reason, plan/AI/export from the user page,
+analytics and revenue, support-staff limits, and axe checks in light and dark). Server rules:
+`tests/convex/billing.test.ts`.

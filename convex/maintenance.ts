@@ -252,6 +252,7 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     authSubject: `deleted:${profileId}`,
     platformRole: undefined,
     defaultWorkspaceId: undefined,
+    avatarFileId: undefined,
     deletionScheduledFor: undefined,
   });
   await bump(ctx, "users_total", -1);

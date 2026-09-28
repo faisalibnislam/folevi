@@ -3,6 +3,7 @@ import { query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { normalizeForSearch, searchSnippet } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, requireProfile, requireWorkspace } from "./lib/auth";
+import { HomeFolders } from "./lib/documents";
 
 /**
  * Full-text search over titles, text blocks (incl. code, captions, table cells), attachment names and
@@ -89,6 +90,7 @@ export const documents = query({
       ordered.push(d);
     }
     const out = [];
+    const homes = new HomeFolders(ctx);
     for (const d of ordered) {
       if (folderId && d.folderId !== folderId) continue;
       if (creator && d.createdBy !== creator) continue;
@@ -105,6 +107,7 @@ export const documents = query({
         updatedAt: d.updatedAt,
         snippet: searchSnippet(body, q, 70),
         archived: Boolean(d.archivedAt),
+        homeFolder: await homes.of(d),
       });
       if (out.length >= limit) break;
     }

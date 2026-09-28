@@ -26,7 +26,7 @@ describe("backend invariants", () => {
   });
 
   test("every public function authenticates (requireProfile/requirePlatformRole/optionalProfile) or is explicitly public", () => {
-    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "authSupport.ts:requestVerificationEmail", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions"]);
+    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "authEmails.ts:devMailbox", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions"]);
     for (const { p, s } of sources) {
       const name = p.split("/").pop()!;
       const re = /export const (\w+) = (query|mutation|action)\(\{[\s\S]*?handler: async \([^)]*\)[^{]*\{([\s\S]*?)\n {2}\},\n\}\);/g;
@@ -38,9 +38,22 @@ describe("backend invariants", () => {
     }
   });
 
-  test("the development issuer can never be trusted in production", () => {
+  test("only Folevi's own issuer is trusted, and development-only tools refuse production", () => {
     const cfg = readFileSync(join(root, "auth.config.ts"), "utf8");
-    expect(cfg).toMatch(/FOLEVI_ENV !== "production"/);
+    expect(cfg).toMatch(/providers: \[getAuthConfigProvider\(\)\]/);
+    expect(cfg).not.toMatch(/customJwt|auth0|FOLEVI_DEV_AUTH/i);
+    const mailbox = readFileSync(join(root, "authEmails.ts"), "utf8");
+    expect(mailbox).toMatch(/FOLEVI_ENV !== "production"/);
+    expect(mailbox).toMatch(/timingSafeEqualHex\(args\.secret, expected\)/);
+    const testSupport = readFileSync(join(root, "testSupport.ts"), "utf8");
+    expect(testSupport).toMatch(/FOLEVI_ENV === "production"\) throw/);
+    expect(testSupport).not.toMatch(/export const \w+ = (query|mutation|action)\(/);
+  });
+
+  test("identity cryptography is delegated to Better Auth (no hand-rolled password or TOTP code)", () => {
+    for (const { p, s } of sources) {
+      if (/bcrypt|scrypt|argon2|hmac-sha1|base32/i.test(s) && !p.includes("betterAuth")) throw new Error(`${p}: credential crypto should come from Better Auth`);
+    }
   });
 
   test("no module logs note content, tokens or raw emails", () => {

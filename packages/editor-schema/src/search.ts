@@ -37,6 +37,9 @@ export function blockSearchText(block: Pick<WireBlock, "type" | "text" | "props"
     case "page":
       parts.push(String(p.titleCache ?? ""));
       break;
+    case "formula":
+      parts.push(String(p.latex ?? ""));
+      break;
   }
   return parts.filter(Boolean).join(" ");
 }

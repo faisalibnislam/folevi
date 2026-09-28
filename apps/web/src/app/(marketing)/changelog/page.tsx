@@ -30,7 +30,7 @@ const releases = [
         items: [
           "Nested pages, shown as links or cards",
           "Links between pages with [[, and backlinks on the linked page",
-          "Unsorted for loose notes, folders, tags and starred pages",
+          "Drafts for loose notes, folders, tags and starred pages",
           "Templates",
           "Search across titles and text with ⌘K",
         ],

@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL ?? "";
 // HTTP actions live on *.convex.site; derive it from the deployment URL when not set explicitly.
 const convexSite = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? convexUrl.replace(".convex.cloud", ".convex.site");
-const auth0 = process.env.AUTH0_DOMAIN ? `https://${process.env.AUTH0_DOMAIN}` : "";
 const isDev = process.env.NODE_ENV !== "production";
 const appOrigin = (() => {
   try {
@@ -25,27 +24,32 @@ const convexOrigin = origin(convexUrl);
 const convexWs = convexOrigin.replace(/^http/, "ws");
 
 // Content Security Policy: no third-party scripts; Convex (https + websocket) and signed file URLs only.
-const csp = [
+// This is the static policy (no per-request nonce exists for prerendered pages). It must stay identical
+// to buildContentSecurityPolicy() without a nonce in src/lib/security/csp.ts, which the request proxy
+// uses for the nonce-based policy; test/csp.test.ts enforces that. (next.config.ts is loaded outside the
+// app bundler, so it can't import that module.)
+export const staticCsp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${origin(convexSite)} https:`,
   "font-src 'self'",
-  `connect-src 'self' ${convexOrigin} ${convexWs} ${origin(convexSite)} ${auth0}${isDev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
+  `connect-src 'self' ${convexOrigin} ${convexWs} ${origin(convexSite)}${isDev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
   `frame-src ${origin(convexSite)}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  `form-action 'self' ${appOrigin} ${auth0}`,
+  `form-action 'self' ${appOrigin}`,
   "object-src 'none'",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   ...(isDev ? [] : ["upgrade-insecure-requests"]),
 ]
+  .map((d) => d.replace(/\s+/g, " ").trim())
   .filter(Boolean)
   .join("; ");
 
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
+  { key: "Content-Security-Policy", value: staticCsp },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -58,6 +62,8 @@ const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite },
   reactStrictMode: true,
   poweredByHeader: false,
+  // Dev only: keep Next's badge out of the tab strip (top right) and the sidebar's account button (bottom left).
+  devIndicators: { position: "bottom-right" },
   transpilePackages: ["@folevi/editor-schema", "@folevi/design-tokens"],
   typedRoutes: false,
   allowedDevOrigins: ["app.localhost", "localhost", "127.0.0.1"],
@@ -69,10 +75,11 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: securityHeaders },
       {
         // Authenticated surfaces and share pages are never cached by shared caches.
-        source: "/:path(d|documents|tasks|calendar|daily|settings|admin|s|api|shared|templates|starred|archive|trash|folders|tags|onboarding|invite)/:rest*",
+        source: "/:path(d|documents|notes|tasks|calendar|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite)/:rest*",
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
-      { source: "/s/:token*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }, { key: "Referrer-Policy", value: "no-referrer" }] },
+      // Share pages set robots per link (noindex unless the owner allowed indexing) in their metadata.
+      { source: "/s/:token*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
     ];
   },

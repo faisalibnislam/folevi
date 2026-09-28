@@ -22,7 +22,10 @@ export const threads = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { doc, access } = await requireDocument(ctx, profile, args.documentId, "read");
+    // A page that hasn't reached the server yet simply has no comments (no error for the panel).
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    const access = doc ? await documentAccess(ctx, profile, doc) : "none";
+    if (!doc || !accessAtLeast(access, "read")) return { threads: [], canComment: false };
     const rows = await ctx.db
       .query("commentThreads")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id))
@@ -70,6 +73,63 @@ export const threads = query({
     return { threads: out, canComment: accessAtLeast(access, "comment") };
   },
 });
+
+/**
+ * People who can be @mentioned on a document: everyone who can read it — workspace members and
+ * people it (or a parent page) was shared with. Guests only see the people the page is shared with
+ * plus its author, never the whole member list. No emails are returned.
+ */
+export const mentionable = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    // Never throws for a page that isn't on the server yet (created offline / still syncing).
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return [];
+    const isMember = Boolean(
+      await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", doc.workspaceId).eq("profileId", profile._id))
+        .unique(),
+    );
+    const candidates = new Map<string, { guest: boolean }>();
+    if (isMember) {
+      const members = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", doc.workspaceId))
+        .take(300);
+      for (const m of members) candidates.set(m.profileId, { guest: false });
+    } else {
+      candidates.set(doc.createdBy, { guest: false });
+    }
+    // Explicit grants on the page and its ancestors.
+    let cursor: Doc<"documents"> | null = doc;
+    for (let depth = 0; cursor && depth < 12; depth++) {
+      const current: Doc<"documents"> = cursor;
+      const grants = await ctx.db
+        .query("documentPermissions")
+        .withIndex("by_document", (q) => q.eq("documentId", current._id))
+        .take(200);
+      for (const g of grants) if (!candidates.has(g.profileId)) candidates.set(g.profileId, { guest: true });
+      cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
+    }
+    const out: { profileId: string; displayName: string; isYou: boolean; guest: boolean }[] = [];
+    for (const [id, info] of candidates) {
+      const p = await ctx.db.get(id as Id<"profiles">);
+      if (!p || p.status === "deleted") continue;
+      if (p._id !== profile._id && !accessAtLeast(await documentAccess(ctx, p, doc), "read")) continue;
+      out.push({ profileId: p._id as string, displayName: p.displayName, isYou: p._id === profile._id, guest: info.guest });
+    }
+    out.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return out;
+  },
+});
+
+/** Mentions only notify people who can actually open the document. */
+async function canRead(ctx: MutationCtx, profileId: Id<"profiles">, doc: Doc<"documents">): Promise<boolean> {
+  const p = await ctx.db.get(profileId);
+  return Boolean(p && p.status !== "deleted" && accessAtLeast(await documentAccess(ctx, p, doc), "read"));
+}
 
 export const unreadCount = query({
   args: { documentId: v.string() },
@@ -137,7 +197,7 @@ export const create = mutation({
     const mentioned = new Set(mentionedIds(body));
     for (const id of mentioned) {
       const pid = ctx.db.normalizeId("profiles", id);
-      if (pid) await notify(ctx, { recipientId: pid, actor: profile, kind: "mention", doc, threadId, title: `${profile.displayName} mentioned you in ${doc.title || "Untitled"}`, excerpt, email: { key: "mention_notification" } });
+      if (pid && pid !== profile._id && (await canRead(ctx, pid, doc))) await notify(ctx, { recipientId: pid, actor: profile, kind: "mention", doc, threadId, title: `${profile.displayName} mentioned you in ${doc.title || "Untitled"}`, excerpt, email: { key: "mention_notification" } });
     }
     if (doc.createdBy !== profile._id && !mentioned.has(doc.createdBy)) {
       await notify(ctx, { recipientId: doc.createdBy, actor: profile, kind: "comment", doc, threadId, title: `${profile.displayName} commented on ${doc.title || "Untitled"}`, excerpt, email: { key: "comment_notification" } });
@@ -175,7 +235,7 @@ export const reply = mutation({
     const mentioned = new Set(mentionedIds(body));
     for (const id of mentioned) {
       const pid = ctx.db.normalizeId("profiles", id);
-      if (pid) await notify(ctx, { recipientId: pid, actor: profile, kind: "mention", doc, threadId: thread._id, title: `${profile.displayName} mentioned you in ${doc.title || "Untitled"}`, excerpt, email: { key: "mention_notification" } });
+      if (pid && pid !== profile._id && (await canRead(ctx, pid, doc))) await notify(ctx, { recipientId: pid, actor: profile, kind: "mention", doc, threadId: thread._id, title: `${profile.displayName} mentioned you in ${doc.title || "Untitled"}`, excerpt, email: { key: "mention_notification" } });
     }
     const participants = new Set<string>();
     const comments = await ctx.db
@@ -212,7 +272,20 @@ export const edit = mutation({
       .unique();
     if (!comment || comment.deletedAt) fail("not_found", "Comment not found.");
     if (comment.authorId !== profile._id) fail("forbidden", "You can only edit your own comments.");
-    await ctx.db.patch(comment._id, { body: cleanBody(args.body), editedAt: Date.now() });
+    const doc = (await ctx.db.get(comment.documentId))!;
+    if (!accessAtLeast(await documentAccess(ctx, profile, doc), "comment")) fail("forbidden", "You can't comment on this document.");
+    const body = cleanBody(args.body);
+    await ctx.db.patch(comment._id, { body, editedAt: Date.now() });
+    // People newly mentioned by the edit are notified once, like in a new comment.
+    const before = new Set(mentionedIds(comment.body));
+    const excerpt = plainText(body);
+    for (const id of new Set(mentionedIds(body))) {
+      if (before.has(id)) continue;
+      const pid = ctx.db.normalizeId("profiles", id);
+      if (pid && pid !== profile._id && (await canRead(ctx, pid, doc))) {
+        await notify(ctx, { recipientId: pid, actor: profile, kind: "mention", doc, threadId: comment.threadId, title: `${profile.displayName} mentioned you in ${doc.title || "Untitled"}`, excerpt, email: { key: "mention_notification" } });
+      }
+    }
     return null;
   },
 });

@@ -3,7 +3,7 @@
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import { useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { Download, ExternalLink, FileText, ImageOff, Link2, Minus, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Download, ExternalLink, FileText, ImageOff, Link2, Minus, Plus, Trash2 } from "lucide-react";
 import { plainText, sanitizeHref, type InlineNode } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -11,7 +11,9 @@ import { AppLink } from "@/lib/app/router";
 import { useEngineState } from "@/lib/hooks/useEngine";
 import { localPreviewUrl } from "@/lib/sync/uploads";
 import { formatBytes } from "@/lib/format";
-import { BookmarkBlock, CollectionBlock, FileBlock, ImageBlock, PageBlock, TableBlock, UnknownBlock } from "./extensions";
+import { BookmarkBlock, CollectionBlock, FileBlock, FormulaBlock, ImageBlock, PageBlock, TableBlock, UnknownBlock, WhiteboardBlock } from "./extensions";
+import { FormulaView } from "./FormulaView";
+import { WhiteboardView } from "./WhiteboardView";
 import { CollectionEmbed } from "./CollectionEmbed";
 
 function useNow(bucketMs: number): number {
@@ -60,9 +62,9 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
       <figure className="my-2" style={{ width: `${Math.round(width * 100)}%` }}>
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={a.alt || ""} className="w-full rounded-[14px] border border-line bg-sunken" draggable={false} />
+          <img src={src} alt={a.alt || ""} className="w-full rounded-[6px] border border-line bg-sunken" draggable={false} />
         ) : (
-          <div className="grid h-40 place-items-center rounded-[14px] border border-dashed border-line-strong text-sm text-muted">
+          <div className="grid h-40 place-items-center rounded-[6px] border border-dashed border-line-strong text-sm text-muted">
             {a.fileId ? "Loading image…" : <span className="flex items-center gap-2"><ImageOff size={16} aria-hidden /> Image unavailable</span>}
           </div>
         )}
@@ -89,11 +91,11 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted" contentEditable={false}>
           <label className="flex items-center gap-1">
             Alt text
-            <input value={a.alt ?? ""} onChange={(e) => updateAttributes({ alt: e.target.value })} placeholder="Describe the image" className="h-7 w-56 ui-input rounded-full px-2 text-ink" />
+            <input value={a.alt ?? ""} onChange={(e) => updateAttributes({ alt: e.target.value })} placeholder="Describe the image" className="h-7 w-56 ui-input rounded-[6px] px-2 text-ink" />
           </label>
           <span>Width</span>
           {[0.5, 0.75, 1].map((w) => (
-            <button key={w} type="button" onClick={() => updateAttributes({ width: w === 1 ? null : w })} aria-pressed={width === w} className={`h-7 rounded-[9px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}>
+            <button key={w} type="button" onClick={() => updateAttributes({ width: w === 1 ? null : w })} aria-pressed={width === w} className={`h-7 rounded-[6px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}>
               {w * 100}%
             </button>
           ))}
@@ -109,7 +111,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
   const upload = useUploadState(a.id);
   return (
     <Frame selected={selected} label={`Attachment ${a.name ?? ""}`}>
-      <div className="my-1.5 flex items-center gap-3 ui-card rounded-[18px] px-3 py-2.5">
+      <div className="my-1.5 flex items-center gap-3 ui-card rounded-[8px] px-3 py-2.5">
         <FileText size={20} className="text-muted" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{a.name ?? "Attachment"}</p>
@@ -119,7 +121,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
           </p>
         </div>
         {file ? (
-          <a href={file.url} className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-line px-2.5 text-xs hover:bg-surface" download={a.name ?? true} contentEditable={false}>
+          <a href={file.url} className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-line px-2.5 text-xs hover:bg-surface" download={a.name ?? true} contentEditable={false}>
             <Download size={14} aria-hidden /> Download
           </a>
         ) : null}
@@ -132,11 +134,22 @@ function cellText(cell: InlineNode[] | undefined): string {
   return cell ? plainText(cell) : "";
 }
 
+function move<T>(list: T[], from: number, to: number): T[] {
+  if (to < 0 || to >= list.length || from === to) return list;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item!);
+  return next;
+}
+
 function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewProps) {
   const rows = (node.attrs.rows as InlineNode[][][]) ?? [[[]]];
   const headerRow = Boolean(node.attrs.headerRow);
   const editable = editor.isEditable;
   const width = rows[0]?.length ?? 1;
+  const [focusWithin, setFocusWithin] = useState(false);
+  // Row/column tools show while the table is selected or being edited.
+  const tools = editable && (selected || focusWithin);
   const setCell = (r: number, c: number, value: string) => {
     const next = rows.map((row, ri) => row.map((cell, ci) => (ri === r && ci === c ? (value ? [{ type: "text" as const, text: value }] : []) : cell)));
     updateAttributes({ rows: next });
@@ -145,10 +158,42 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
   const addCol = () => width < 20 && updateAttributes({ rows: rows.map((r) => [...r, []]) });
   const removeRow = (i: number) => rows.length > 1 && updateAttributes({ rows: rows.filter((_, ri) => ri !== i) });
   const removeCol = (i: number) => width > 1 && updateAttributes({ rows: rows.map((r) => r.filter((_, ci) => ci !== i)) });
+  const moveRow = (i: number, dir: -1 | 1) => updateAttributes({ rows: move(rows, i, i + dir) });
+  const moveCol = (i: number, dir: -1 | 1) => updateAttributes({ rows: rows.map((r) => move(r, i, i + dir)) });
+  const tool = "grid h-6 w-6 place-items-center rounded-[6px] text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
   return (
     <Frame selected={selected} label="Table">
-      <div className="my-2 overflow-x-auto" contentEditable={false}>
+      <div
+        className="my-2 overflow-x-auto"
+        contentEditable={false}
+        onFocus={() => setFocusWithin(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
+        }}
+      >
         <table className="fb-table w-full border-collapse text-sm">
+          {tools ? (
+            <thead>
+              <tr>
+                {rows[0]!.map((_, c) => (
+                  <td key={c} className="border-0 px-1 pb-1">
+                    <span className="flex items-center justify-center gap-0.5" role="group" aria-label={`Column ${c + 1}`}>
+                      <button type="button" className={tool} disabled={c === 0} onClick={() => moveCol(c, -1)} aria-label={`Move column ${c + 1} left`} title="Move column left">
+                        <ArrowLeft size={12} aria-hidden />
+                      </button>
+                      <button type="button" className={tool} disabled={c === width - 1} onClick={() => moveCol(c, 1)} aria-label={`Move column ${c + 1} right`} title="Move column right">
+                        <ArrowRight size={12} aria-hidden />
+                      </button>
+                      <button type="button" className={`${tool} hover:!text-danger`} disabled={width <= 1} onClick={() => removeCol(c)} aria-label={`Delete column ${c + 1}`} title="Delete column">
+                        <Trash2 size={12} aria-hidden />
+                      </button>
+                    </span>
+                  </td>
+                ))}
+                <td className="border-0" />
+              </tr>
+            </thead>
+          ) : null}
           <tbody>
             {rows.map((row, r) => (
               <tr key={r} className="group/row">
@@ -169,11 +214,19 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
                     </Tag>
                   );
                 })}
-                {editable && selected ? (
-                  <td className="w-8 border-0 pl-1">
-                    <button type="button" onClick={() => removeRow(r)} aria-label={`Delete row ${r + 1}`} className="text-faint hover:text-danger">
-                      <Minus size={14} aria-hidden />
-                    </button>
+                {tools ? (
+                  <td className="w-[5.5rem] border-0 pl-1">
+                    <span className="flex items-center gap-0.5" role="group" aria-label={`Row ${r + 1}`}>
+                      <button type="button" className={tool} disabled={r === 0} onClick={() => moveRow(r, -1)} aria-label={`Move row ${r + 1} up`} title="Move row up">
+                        <ArrowUp size={12} aria-hidden />
+                      </button>
+                      <button type="button" className={tool} disabled={r === rows.length - 1} onClick={() => moveRow(r, 1)} aria-label={`Move row ${r + 1} down`} title="Move row down">
+                        <ArrowDown size={12} aria-hidden />
+                      </button>
+                      <button type="button" className={`${tool} hover:!text-danger`} disabled={rows.length <= 1} onClick={() => removeRow(r)} aria-label={`Delete row ${r + 1}`} title="Delete row">
+                        <Minus size={12} aria-hidden />
+                      </button>
+                    </span>
                   </td>
                 ) : null}
               </tr>
@@ -182,23 +235,16 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
         </table>
         {editable ? (
           <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-muted">
-            <button type="button" onClick={addRow} className="inline-flex items-center gap-1 rounded-[9px] px-2 py-1 hover:bg-surface">
+            <button type="button" onClick={addRow} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-accent-soft hover:text-heading">
               <Plus size={12} aria-hidden /> Row
             </button>
-            <button type="button" onClick={addCol} className="inline-flex items-center gap-1 rounded-[9px] px-2 py-1 hover:bg-surface">
+            <button type="button" onClick={addCol} disabled={width >= 20} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-accent-soft hover:text-heading disabled:opacity-40">
               <Plus size={12} aria-hidden /> Column
             </button>
-            {selected ? (
-              <>
-                <label className="inline-flex items-center gap-1 px-2 py-1">
-                  <input type="checkbox" checked={headerRow} onChange={(e) => updateAttributes({ headerRow: e.target.checked })} /> Header row
-                </label>
-                {width > 1 ? (
-                  <button type="button" onClick={() => removeCol(width - 1)} className="inline-flex items-center gap-1 rounded-[9px] px-2 py-1 hover:bg-surface">
-                    <Minus size={12} aria-hidden /> Last column
-                  </button>
-                ) : null}
-              </>
+            {tools ? (
+              <label className="inline-flex items-center gap-1 px-2 py-1">
+                <input type="checkbox" checked={headerRow} onChange={(e) => updateAttributes({ headerRow: e.target.checked })} /> Header row
+              </label>
             ) : null}
           </div>
         ) : null}
@@ -212,13 +258,12 @@ function PageView({ node, selected }: ReactNodeViewProps) {
   const titles = useQuery(api.documents.titles, a.documentId ? { documentIds: [a.documentId] } : "skip");
   const info = titles?.[a.documentId];
   const title = info?.title || a.titleCache || "Untitled";
-  const icon = info?.icon ?? a.iconCache ?? "📄";
   const missing = titles !== undefined && !info && !a.titleCache;
   if (a.display === "link") {
     return (
       <Frame selected={selected} label={`Page ${title}`}>
-        <AppLink href={`/d/${a.documentId}`} className="my-0.5 inline-flex items-center gap-2 rounded-[9px] px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent" contentEditable={false}>
-          <span aria-hidden>{icon}</span> {title}
+        <AppLink href={`/d/${a.documentId}`} className="my-0.5 inline-flex items-center gap-2 rounded-[6px] px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent" contentEditable={false}>
+          <FileText size={15} aria-hidden className="flex-none text-muted" /> {title}
         </AppLink>
       </Frame>
     );
@@ -228,12 +273,10 @@ function PageView({ node, selected }: ReactNodeViewProps) {
       <AppLink
         href={`/d/${a.documentId}`}
         contentEditable={false}
-        className="group my-2 flex items-start gap-3 ui-card rounded-[18px] p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+        className="group my-2 flex items-start gap-3 ui-card rounded-[8px] p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
         title="Open page (Alt-click opens a new tab)"
       >
-        <span className="text-2xl leading-none" aria-hidden>
-          {icon}
-        </span>
+        <FileText size={20} aria-hidden className="mt-0.5 flex-none text-muted" />
         <span className="min-w-0 flex-1">
           <span className="block font-semibold text-ink">{title}</span>
           <span className="line-clamp-2 block text-sm text-muted">{missing ? "This page is unavailable or you no longer have access." : info?.excerpt || "Nested page"}</span>
@@ -255,7 +298,7 @@ function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeVie
   }
   return (
     <Frame selected={selected} label={`Bookmark ${a.title ?? host}`}>
-      <div className="my-2 ui-card rounded-[18px] p-4" contentEditable={false}>
+      <div className="my-2 ui-card rounded-[8px] p-4" contentEditable={false}>
         <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="flex items-start gap-3 no-underline">
           <Link2 size={18} className="mt-0.5 text-muted" aria-hidden />
           <span className="min-w-0">
@@ -268,11 +311,11 @@ function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeVie
           <div className="mt-3 grid gap-2 text-xs">
             <label className="grid gap-1">
               Title
-              <input value={a.title ?? ""} onChange={(e) => updateAttributes({ title: e.target.value || null })} className="h-8 ui-input rounded-full px-2 text-sm text-ink" />
+              <input value={a.title ?? ""} onChange={(e) => updateAttributes({ title: e.target.value || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
             </label>
             <label className="grid gap-1">
               Description
-              <input value={a.description ?? ""} onChange={(e) => updateAttributes({ description: e.target.value || null })} className="h-8 ui-input rounded-full px-2 text-sm text-ink" />
+              <input value={a.description ?? ""} onChange={(e) => updateAttributes({ description: e.target.value || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
             </label>
           </div>
         ) : null}
@@ -296,7 +339,7 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
   const wire = node.attrs.wire as { type?: string } | null;
   return (
     <Frame selected={selected} label="Unsupported block">
-      <div contentEditable={false} className="my-2 flex items-center gap-3 rounded-[14px] border border-dashed border-line-strong bg-sunken px-4 py-3 text-sm text-muted">
+      <div contentEditable={false} className="my-2 flex items-center gap-3 rounded-[6px] border border-dashed border-line-strong bg-sunken px-4 py-3 text-sm text-muted">
         <span className="flex-1">
           This “{wire?.type ?? "unknown"}” block was created by a newer version of Folevi. It’s kept safely and will appear once you update.
         </span>
@@ -313,9 +356,15 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
 export const NODE_VIEW_EXTENSIONS = [
   ImageBlock.extend({ addNodeView: () => ReactNodeViewRenderer(ImageView, { stopEvent: ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement }) }),
   FileBlock.extend({ addNodeView: () => ReactNodeViewRenderer(FileView) }),
-  TableBlock.extend({ addNodeView: () => ReactNodeViewRenderer(TableView, { stopEvent: ({ event }) => event.target instanceof HTMLInputElement }) }),
+  TableBlock.extend({ addNodeView: () => ReactNodeViewRenderer(TableView, { stopEvent: ({ event }) => event.target instanceof HTMLInputElement || (event.target instanceof Element && Boolean(event.target.closest("button"))) }) }),
   PageBlock.extend({ addNodeView: () => ReactNodeViewRenderer(PageView) }),
   BookmarkBlock.extend({ addNodeView: () => ReactNodeViewRenderer(BookmarkView, { stopEvent: ({ event }) => event.target instanceof HTMLInputElement }) }),
   CollectionBlock.extend({ addNodeView: () => ReactNodeViewRenderer(CollectionView, { stopEvent: () => true }) }),
   UnknownBlock.extend({ addNodeView: () => ReactNodeViewRenderer(UnknownView) }),
+  FormulaBlock.extend({
+    addNodeView: () =>
+      ReactNodeViewRenderer(FormulaView, { stopEvent: ({ event }) => event.target instanceof HTMLTextAreaElement || (event.target instanceof Element && Boolean(event.target.closest("button"))) }),
+  }),
+  // Drawing needs every pointer event; the toolbar needs its clicks.
+  WhiteboardBlock.extend({ addNodeView: () => ReactNodeViewRenderer(WhiteboardView, { stopEvent: () => true }) }),
 ];

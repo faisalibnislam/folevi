@@ -8,13 +8,23 @@
     "HighlightColor": { "type": "string", "values": ["yellow", "green", "blue", "pink"] },
     "TaskPriority": { "type": "string", "values": ["none", "low", "medium", "high"] },
     "PageDisplay": { "type": "string", "values": ["link", "card"] },
-    "DocumentFont": { "type": "string", "values": ["sans", "serif", "mono"] },
+    "DocumentFont": { "type": "string", "values": ["sans", "serif", "mono", "rounded"] },
     "DocumentWidth": { "type": "string", "values": ["narrow", "default", "wide"] },
     "DocumentBackground": { "type": "string", "values": ["paper", "plain", "tinted", "grid"] },
     "DocumentAccent": { "type": "string", "values": ["accent", "moss", "marigold", "plum", "coral"] },
     "CardStyle": { "type": "string", "values": ["folio", "plain", "tinted", "outline"] },
     "CoverKind": { "type": "string", "values": ["none", "color", "gradient", "image", "art"] },
-    "DocumentKind": { "type": "string", "values": ["document", "daily", "template", "collectionRow"] }
+    "DocumentKind": { "type": "string", "values": ["document", "daily", "template", "collectionRow"] },
+    "DocumentSheet": { "type": "string", "values": ["white", "paper", "ivory", "mist", "sage", "blush", "night"] },
+    "DocumentText": { "type": "string", "values": ["ink", "slate", "navy", "forest", "plum", "brown", "white"] },
+    "SeparatorStyle": { "type": "string", "values": ["line", "dots", "doodle"] },
+    "BlockTextStyle": { "type": "string", "values": ["strong", "caption"] },
+    "BlockDecoration": { "type": "string", "values": ["focus", "block"] },
+    "BlockColor": { "type": "string", "values": ["black", "slate", "gray", "navy", "blue", "sky", "green", "purple", "red", "orange", "brown"] },
+    "BlockAlign": { "type": "string", "values": ["left", "center", "right", "justify"] },
+    "BlockFont": { "type": "string", "values": ["system", "serif", "mono", "rounded"] },
+    "BlockGroup": { "type": "string", "values": ["page", "card"] },
+    "DividerStyle": { "type": "string", "values": ["extralight", "light", "regular", "strong"] }
   },
   "unions": {
     "Mark": {
@@ -46,7 +56,11 @@
       "width": "DocumentWidth",
       "background": "DocumentBackground",
       "accent": "DocumentAccent",
-      "card": "CardStyle"
+      "card": "CardStyle",
+      "backdrop": "string?",
+      "sheet": "DocumentSheet?",
+      "text": "DocumentText?",
+      "separator": "SeparatorStyle?"
     },
     "DocumentCover": {
       "kind": "CoverKind",
@@ -54,10 +68,48 @@
     }
   },
   "blocks": {
-    "paragraph": { "text": true, "props": {} },
-    "heading": { "text": true, "props": { "level": "HeadingLevel" } },
-    "bulleted": { "text": true, "props": {} },
-    "numbered": { "text": true, "props": {} },
+    "paragraph": {
+      "text": true,
+      "props": {
+        "textStyle": "BlockTextStyle?",
+        "decoration": "BlockDecoration?",
+        "color": "BlockColor?",
+        "align": "BlockAlign?",
+        "font": "BlockFont?",
+        "group": "BlockGroup?"
+      }
+    },
+    "heading": {
+      "text": true,
+      "props": {
+        "level": "HeadingLevel",
+        "decoration": "BlockDecoration?",
+        "color": "BlockColor?",
+        "align": "BlockAlign?",
+        "font": "BlockFont?",
+        "group": "BlockGroup?"
+      }
+    },
+    "bulleted": {
+      "text": true,
+      "props": {
+        "decoration": "BlockDecoration?",
+        "color": "BlockColor?",
+        "align": "BlockAlign?",
+        "font": "BlockFont?",
+        "group": "BlockGroup?"
+      }
+    },
+    "numbered": {
+      "text": true,
+      "props": {
+        "decoration": "BlockDecoration?",
+        "color": "BlockColor?",
+        "align": "BlockAlign?",
+        "font": "BlockFont?",
+        "group": "BlockGroup?"
+      }
+    },
     "todo": {
       "text": true,
       "props": {
@@ -68,13 +120,38 @@
         "priority": "TaskPriority?",
         "assigneeId": "string?",
         "reminderAt": "number?",
-        "completedAt": "number?"
+        "completedAt": "number?",
+        "decoration": "BlockDecoration?",
+        "color": "BlockColor?",
+        "align": "BlockAlign?",
+        "font": "BlockFont?",
+        "group": "BlockGroup?"
       }
     },
-    "toggle": { "text": true, "props": { "collapsed": "bool" } },
-    "quote": { "text": true, "props": {} },
+    "toggle": {
+      "text": true,
+      "props": {
+        "collapsed": "bool",
+        "decoration": "BlockDecoration?",
+        "color": "BlockColor?",
+        "align": "BlockAlign?",
+        "font": "BlockFont?",
+        "group": "BlockGroup?"
+      }
+    },
+    "quote": {
+      "text": true,
+      "props": {
+        "decoration": "BlockDecoration?",
+        "color": "BlockColor?",
+        "align": "BlockAlign?",
+        "font": "BlockFont?",
+        "group": "BlockGroup?"
+      }
+    },
     "callout": { "text": true, "props": { "tone": "CalloutTone", "icon": "string?" } },
-    "divider": { "text": false, "props": {} },
+    "divider": { "text": false, "props": { "style": "DividerStyle?" } },
+    "pageBreak": { "text": false, "props": {} },
     "code": { "text": false, "props": { "language": "string", "code": "string" } },
     "image": {
       "text": false,
@@ -107,7 +184,9 @@
     "collection": {
       "text": false,
       "props": { "collectionId": "string", "viewId": "string?" }
-    }
+    },
+    "formula": { "text": false, "props": { "latex": "string" } },
+    "whiteboard": { "text": false, "props": { "data": "string", "height": "number" } }
   },
   "limits": {
     "maxTextLength": 20000,
@@ -116,7 +195,11 @@
     "maxTableRows": 200,
     "maxTableColumns": 20,
     "maxBlocksPerDocument": 5000,
-    "maxRankLength": 128
+    "maxRankLength": 128,
+    "maxFormulaLength": 10000,
+    "maxWhiteboardDataLength": 200000,
+    "minWhiteboardHeight": 120,
+    "maxWhiteboardHeight": 2400
   },
   "codeLanguages": [
     "plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java",

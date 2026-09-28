@@ -57,16 +57,32 @@ function classify(status: number): { errorCode: string; retryable: boolean } {
   return { errorCode: "loops_rejected", retryable: false };
 }
 
-async function readSuccessFlag(res: Response): Promise<boolean | undefined> {
+const PROVIDER_ID_RE = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/**
+ * Reads Loops' JSON response: the `success` flag and, when present, a provider message id
+ * (`id`, `emailId` or `messageId`, top level or under `data`). The id is only kept when it looks
+ * like an opaque identifier, so nothing else from the body is ever stored.
+ */
+async function readResponse(res: Response): Promise<{ success?: boolean; providerMessageId?: string }> {
   try {
     const body: unknown = await res.json();
-    if (body && typeof body === "object" && "success" in body) {
-      return (body as { success: unknown }).success === true;
+    if (!body || typeof body !== "object") return {};
+    const obj = body as Record<string, unknown>;
+    const out: { success?: boolean; providerMessageId?: string } = {};
+    if ("success" in obj) out.success = obj.success === true;
+    const nested = obj.data && typeof obj.data === "object" ? (obj.data as Record<string, unknown>) : {};
+    for (const candidate of [obj.id, obj.emailId, obj.messageId, nested.id, nested.emailId, nested.messageId]) {
+      if (typeof candidate === "string" && PROVIDER_ID_RE.test(candidate)) {
+        out.providerMessageId = candidate;
+        break;
+      }
     }
+    return out;
   } catch {
     // Non-JSON body: fall through.
+    return {};
   }
-  return undefined;
 }
 
 /**
@@ -151,7 +167,7 @@ export async function sendTransactional(
         signal: controller?.signal,
       });
       if (res.status === 200) {
-        const success = await readSuccessFlag(res);
+        const { success, providerMessageId } = await readResponse(res);
         if (success === false) {
           return {
             status: "failed",
@@ -161,7 +177,9 @@ export async function sendTransactional(
             attempts: attempt,
           };
         }
-        return { status: "accepted", httpStatus: 200, retryable: false, attempts: attempt };
+        return providerMessageId
+          ? { status: "accepted", httpStatus: 200, retryable: false, attempts: attempt, providerMessageId }
+          : { status: "accepted", httpStatus: 200, retryable: false, attempts: attempt };
       }
       const { errorCode, retryable } = classify(res.status);
       last = { status: "failed", httpStatus: res.status, errorCode, retryable, attempts: attempt };

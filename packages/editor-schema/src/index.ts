@@ -11,5 +11,7 @@ export * from "./markdown";
 export * from "./html";
 export * from "./search";
 export * from "./tasks";
+export * from "./whiteboard";
+export * from "./emoji";
 export * as sync from "./sync";
 export type { SyncOp, OpResult, SyncState, SyncStatus, ConflictRecord, ChangedField } from "./sync";

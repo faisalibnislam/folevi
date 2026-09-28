@@ -21,15 +21,18 @@ export type Route =
   | { name: "trash" }
   | { name: "unsorted" }
   | { name: "folder"; id: string }
+  | { name: "folders" }
+  | { name: "notes" }
+  | { name: "tags" }
   | { name: "tag"; id: string }
-  | { name: "settings"; section: "account" | "security" | "appearance" | "notifications" | "workspace" | "members" | "sync" | "data" }
+  | { name: "settings"; section: "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "sync" | "data" }
   | { name: "help" }
   | { name: "onboarding" }
   | { name: "invite"; token: string }
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
-const SETTINGS = ["account", "security", "appearance", "notifications", "workspace", "members", "sync", "data"] as const;
+const SETTINGS = ["account", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "sync", "data"] as const;
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -37,6 +40,8 @@ export function parseRoute(pathname: string): Route {
   switch (head) {
     case "documents":
       return { name: "documents" };
+    case "notes":
+      return { name: "notes" };
     case "d":
       return a ? { name: "doc", id: a } : { name: "not_found" };
     case "tasks":
@@ -50,14 +55,17 @@ export function parseRoute(pathname: string): Route {
     case "starred":
     case "archive":
     case "trash":
-    case "unsorted":
     case "help":
     case "onboarding":
       return { name: head };
+    // Drafts was called Unsorted; old /unsorted links keep working.
+    case "drafts":
+    case "unsorted":
+      return { name: "unsorted" };
     case "folders":
-      return a ? { name: "folder", id: a } : { name: "documents" };
+      return a ? { name: "folder", id: a } : { name: "folders" };
     case "tags":
-      return a ? { name: "tag", id: a } : { name: "documents" };
+      return a ? { name: "tag", id: a } : { name: "tags" };
     case "settings":
       return { name: "settings", section: (SETTINGS as readonly string[]).includes(a ?? "") ? (a as (typeof SETTINGS)[number]) : "account" };
     case "invite":

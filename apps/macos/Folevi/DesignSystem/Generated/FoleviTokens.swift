@@ -453,10 +453,10 @@ enum FoleviSpace {
 }
 
 enum FoleviRadius {
-    static let controlSmall: CGFloat = 8
-    static let control: CGFloat = 10
-    static let card: CGFloat = 16
-    static let sheet: CGFloat = 22
+    static let controlSmall: CGFloat = 4
+    static let control: CGFloat = 6
+    static let card: CGFloat = 8
+    static let sheet: CGFloat = 10
     static let round: CGFloat = 999
 }
 

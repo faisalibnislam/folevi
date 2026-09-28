@@ -44,7 +44,9 @@ vercel_set() { # name value — Production only, value on stdin (never on the co
   echo "Vercel $1 set."
 }
 
-convex_has() { npx convex env get "$1" >/dev/null 2>&1; }
+# `convex env get` exits 0 even when a variable is missing (it prints "not found" to stderr), so "has" means
+# it printed a value on stdout. The value itself is discarded.
+convex_has() { [[ -n "$(npx convex env get "$1" 2>/dev/null)" ]]; }
 convex_put() { # name value — always writes; stops the script if Convex refuses
   if ! npx convex env set "$1" "$2" >/dev/null 2>&1; then echo "Convex refused to set $1 — stopping." >&2; exit 1; fi
   echo "Convex $1 set."

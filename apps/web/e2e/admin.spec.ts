@@ -186,11 +186,13 @@ test("support staff see analytics but not revenue, and can't set plans", async (
 
 for (const scheme of ["light", "dark"] as const) {
   test(`admin pages have no serious accessibility violations (${scheme})`, async ({ browser }) => {
+    // Nine pages, each compiled on first visit in CI's dev server and scanned by axe.
+    test.setTimeout(240_000);
     const page = await adminPage(browser, "/admin");
     await page.evaluate((s) => localStorage.setItem("folevi:appearance", s), scheme);
     for (const path of ["/admin", "/admin/users?q=", "/admin/workspaces", "/admin/emails", "/admin/audit", "/admin/deletion-jobs", "/admin/configuration", "/admin/analytics", "/admin/revenue"]) {
       await page.goto(`${APP}${path}`);
-      await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible({ timeout: 30_000 });
       await page.waitForTimeout(1500);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");

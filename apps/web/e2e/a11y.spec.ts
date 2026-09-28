@@ -6,6 +6,8 @@ const VIEWS = ["/documents", "/tasks/today", "/calendar", "/settings/account", "
 
 for (const scheme of ["light", "dark"] as const) {
   test(`no serious accessibility violations in the app (${scheme})`, async ({ browser }) => {
+    // Eight pages, each scanned by axe: slower CI machines need more than the default minute.
+    test.setTimeout(180_000);
     const { context, page } = await newPersonWithWorkspace(browser, "A11y Tester");
     await page.evaluate((s) => localStorage.setItem("folevi:appearance", s), scheme);
     const pages = [...VIEWS, page.url().replace(/^https?:\/\/[^/]+/, "")];

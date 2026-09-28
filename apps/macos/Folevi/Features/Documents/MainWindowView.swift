@@ -8,6 +8,7 @@ struct MainWindowView: View {
     @State private var nav = NavigationModel()
     @State private var editor: EditorModel?
     @State private var aiOpen = false
+    @State private var noteAiOpen = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -22,6 +23,20 @@ struct MainWindowView: View {
                     detail
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped()
+                        .overlay(alignment: .bottom) {
+                            if let editor = editorIfOpen {
+                                VStack(spacing: 12) {
+                                    if noteAiOpen {
+                                        AskAiPanel(openDocument: { id in noteAiOpen = false; nav.open(id) }, close: { noteAiOpen = false },
+                                                   documentId: editor.documentId)
+                                            .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
+                                    }
+                                    NoteDock(nav: nav, aiOpen: $noteAiOpen, aiAvailable: app.profile?.aiEnabled != false)
+                                }
+                                .padding(.bottom, 18)
+                                .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: noteAiOpen)
+                            }
+                        }
                     if nav.showInspector {
                         InspectorCard {
                             if let editor = editorIfOpen {
@@ -63,7 +78,10 @@ struct MainWindowView: View {
         .navigationTitle(windowTitle)
         .focusedSceneValue(\.navigation, nav)
         .focusedSceneValue(\.editor, editor)
-        .onChange(of: nav.openDocumentId) { _, id in switchEditor(to: id) }
+        .onChange(of: nav.openDocumentId) { _, id in
+            noteAiOpen = false
+            switchEditor(to: id)
+        }
         .onChange(of: app.pendingOpenDocumentId, initial: true) { _, id in
             guard let id else { return }
             app.pendingOpenDocumentId = nil

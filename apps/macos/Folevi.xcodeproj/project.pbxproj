@@ -45,6 +45,7 @@
 		62E372AAE10CBD27824373E8 /* TasksAndSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */; };
 		63DD871E5BD5E8A2FACDB63B /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B1E829D3BC461A2BFA76C2 /* Components.swift */; };
 		670557090FE34E4F72D02DEF /* CoverArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42122FC37C2F0057901A6606 /* CoverArt.swift */; };
+		6A3CE3155F5163DDA607BBBC /* NoteDock.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45C9992BF3F3A94E983E937 /* NoteDock.swift */; };
 		70DB7DB4170ED10813FE68EF /* SQLiteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376035683CC3F41336F41070 /* SQLiteStore.swift */; };
 		713250803A20F82A4D87A671 /* Tree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E4AF08906F26C6AFA1053E /* Tree.swift */; };
 		7319025DADA60D6658EAA0AB /* BlockDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */; };
@@ -183,6 +184,7 @@
 		CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Whiteboard.swift; sourceTree = "<group>"; };
 		CACD826A2F5AD954969F8FF4 /* FoleviTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Templates.swift; sourceTree = "<group>"; };
+		D45C9992BF3F3A94E983E937 /* NoteDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDock.swift; sourceTree = "<group>"; };
 		D521EF350EAE4076E43AE4EB /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		DA763499A687D1E479FDAEC4 /* FoleviMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviMark.swift; sourceTree = "<group>"; };
 		DFAE0742A02D411799235409 /* RankTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankTests.swift; sourceTree = "<group>"; };
@@ -341,6 +343,7 @@
 				05445DDCFDEC1AEDBBD52FF2 /* InlineAttributedString.swift */,
 				7C50EB105B51116C77B54865 /* InspectorView.swift */,
 				27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */,
+				D45C9992BF3F3A94E983E937 /* NoteDock.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -729,6 +732,7 @@
 				8E9CFD203A2D756BF6E85C9A /* Markdown.swift in Sources */,
 				B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */,
 				74DA55791FDC4668604AA950 /* NonTextBlocks.swift in Sources */,
+				6A3CE3155F5163DDA607BBBC /* NoteDock.swift in Sources */,
 				AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */,
 				D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */,
 				8E9E7251154AF98B5ECB2103 /* Repositories.swift in Sources */,

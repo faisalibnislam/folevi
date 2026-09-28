@@ -125,6 +125,8 @@ struct AiLauncher: View {
 struct AskAiPanel: View {
     var openDocument: (String) -> Void
     var close: () -> Void
+    /// Ask about this note first (the note's AI); nil asks across all notes.
+    var documentId: String?
     @Environment(AppModel.self) private var app
     @State private var turns: [Turn] = []
     @State private var question = ""
@@ -143,7 +145,7 @@ struct AskAiPanel: View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 AiIcon(size: 14).foregroundStyle(FoleviColor.heading)
-                Text("Ask AI").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading)
+                Text(documentId == nil ? "Ask AI" : "Ask about this note").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading)
                 Spacer()
                 if !turns.isEmpty {
                     Button("New Chat") { turns = [] }.buttonStyle(.plain).font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
@@ -160,7 +162,8 @@ struct AskAiPanel: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 14) {
                             if turns.isEmpty {
-                                Text("Ask anything about your notes — Folevi answers from them and shows which notes it used.")
+                                Text(documentId == nil ? "Ask anything about your notes — Folevi answers from them and shows which notes it used."
+                                     : "Ask about this note — or anything in your notes. Folevi starts with this one and shows which notes it used.")
                                     .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             }
                             ForEach(turns) { turn in message(turn).id(turn.id) }
@@ -250,9 +253,11 @@ struct AskAiPanel: View {
         Task {
             defer { busy = false }
             do {
-                let answer: AiAnswer = try await session.convex.action("ai:ask", [
+                var args: [String: JSONValue] = [
                     "workspaceId": .string(session.workspaceId), "question": .string(q), "history": .array(Array(history)),
-                ], timeout: 90)
+                ]
+                if let documentId { args["documentId"] = .string(documentId) }
+                let answer: AiAnswer = try await session.convex.action("ai:ask", args, timeout: 90)
                 turns.append(Turn(role: "assistant", text: answer.answer, sources: answer.sources))
             } catch {
                 turns.append(Turn(role: "assistant", text: ConvexService.mapError(error).localizedDescription, failed: true))

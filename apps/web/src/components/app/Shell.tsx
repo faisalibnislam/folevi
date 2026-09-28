@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { PanelLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -71,10 +71,13 @@ function NavDrawer({ onClose, children }: { onClose: () => void; children: React
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
-  useEffect(() => {
+  // A layout effect: it runs before the browser's focus fix-up blurs the opener (the page behind the drawer
+  // turns inert in the same commit). A passive effect would see <body> as the opener in production builds.
+  useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const active = document.activeElement;
+    const opener = active instanceof HTMLElement && active !== document.body && !root.contains(active) ? active : null;
     (focusables(root)[0] ?? root).focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

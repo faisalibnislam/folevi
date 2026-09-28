@@ -116,7 +116,7 @@ function NoteCarousel({ docs, folders, label }: { docs: Summary[] | undefined; f
   };
   if (docs === undefined) {
     return (
-      <div className="flex gap-8 overflow-hidden pb-7 pt-1" aria-busy aria-label="Loading">
+      <div className="flex gap-8 overflow-hidden pb-7 pt-1" role="status" aria-busy aria-label="Loading">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-[2px] rounded-r-[12px] bg-sunken motion-reduce:animate-none`} />
         ))}

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace, showFolders, pick } from "./helpers";
+import { APP, newPersonWithWorkspace, showFolders, pick, settle } from "./helpers";
 
 test("tasks: quick add with priority, My Tasks in a personal workspace, edit/cancel from the list, schedule from the calendar", async ({ browser }) => {
   const { page } = await newPersonWithWorkspace(browser, "Planner");
@@ -109,6 +109,7 @@ test("organization views have no serious accessibility violations (light and dar
     for (const path of views) {
       await page.goto(`${APP}${path}`);
       await page.waitForTimeout(1200);
+      await settle(page);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).disableRules(["region"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
       expect(serious.map((v) => `${scheme} ${path}: ${v.id} — ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);

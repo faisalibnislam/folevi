@@ -175,3 +175,14 @@ export async function pick(combobox: Locator, option: string) {
   await list.getByRole("option", { name: option, exact: true }).click();
   await expect(combobox).toHaveAttribute("aria-expanded", "false");
 }
+
+/**
+ * Waits until nothing on the page is animating (CSS animations and colour transitions included), so an
+ * accessibility scan measures final colours, not a frame mid-fade. Slow CI machines need more than a
+ * fixed pause.
+ */
+export async function settle(page: Page, timeout = 10_000) {
+  await page
+    .waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity), undefined, { timeout })
+    .catch(() => undefined);
+}

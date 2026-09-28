@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace } from "./helpers";
+import { newPersonWithWorkspace, settle } from "./helpers";
 
 const VIEWS = ["/documents", "/tasks/today", "/calendar", "/settings/account", "/settings/security", "/settings/devices", "/help"];
 
@@ -14,6 +14,7 @@ for (const scheme of ["light", "dark"] as const) {
     for (const path of pages) {
       await page.goto(path);
       await page.waitForTimeout(1500);
+      await settle(page);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).disableRules(["region"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
       expect(serious.map((v) => `${path}: ${v.id} — ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);

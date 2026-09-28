@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { APP, completeOnboarding, createAccount, grantPlatformRole, newPersonWithWorkspace, pick } from "./helpers";
+import { APP, completeOnboarding, createAccount, grantPlatformRole, newPersonWithWorkspace, pick, settle } from "./helpers";
 
 // One fresh super admin per run (granted through the local-only testSupport function), reused by every
 // test through its saved browser session so nobody signs in twice in the same authenticator window.
@@ -194,6 +194,7 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto(`${APP}${path}`);
       await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible({ timeout: 30_000 });
       await page.waitForTimeout(1500);
+      await settle(page);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
       expect(serious.map((v) => `${path}: ${v.id} — ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);

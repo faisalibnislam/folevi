@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved, openTool } from "./helpers";
+import { newPersonWithWorkspace, waitForSaved, openTool, settle } from "./helpers";
 
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -163,7 +163,7 @@ test.describe("Insert panel", () => {
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await page.evaluate((t) => (document.documentElement.dataset.theme = t), scheme);
-      await page.waitForTimeout(500); // let colour transitions settle
+      await settle(page); // let colour transitions finish
       const results = await new AxeBuilder({ page })
         .include("#document-inspector")
         .include(".fb-whiteboard")

@@ -11,10 +11,14 @@ struct MeResponse: Decodable, Sendable {
         case needsBootstrap = "needs_bootstrap"
         case suspended
         case sessionRevoked = "session_revoked"
+        /// Over the plan's device limit (convex/lib/devices.ts): this Mac waits until another device signs out.
+        case deviceLimit = "device_limit"
         case ready
     }
     var state: State
     var profile: Profile?
+    var limit: Double?
+    var active: Double?
 }
 
 struct NotificationPrefs: Codable, Sendable, Hashable {

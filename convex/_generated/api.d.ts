@@ -45,6 +45,8 @@ import type * as lib_folderColors from "../lib/folderColors.js";
 import type * as lib_identityImages from "../lib/identityImages.js";
 import type * as lib_images from "../lib/images.js";
 import type * as lib_metrics from "../lib/metrics.js";
+import type * as lib_nativeAuth from "../lib/nativeAuth.js";
+import type * as lib_nativeClients from "../lib/nativeClients.js";
 import type * as lib_notify from "../lib/notify.js";
 import type * as lib_plans from "../lib/plans.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -113,6 +115,8 @@ declare const fullApi: ApiFromModules<{
   "lib/identityImages": typeof lib_identityImages;
   "lib/images": typeof lib_images;
   "lib/metrics": typeof lib_metrics;
+  "lib/nativeAuth": typeof lib_nativeAuth;
+  "lib/nativeClients": typeof lib_nativeClients;
   "lib/notify": typeof lib_notify;
   "lib/plans": typeof lib_plans;
   "lib/rateLimit": typeof lib_rateLimit;

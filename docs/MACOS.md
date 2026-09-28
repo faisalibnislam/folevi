@@ -4,17 +4,9 @@ The native macOS client: Swift 6 (strict concurrency) + SwiftUI, with AppKit whe
 deliver: `NSTextView` block editing, Quick Look, save/open panels, PDF rendering, the Finder drag-out.
 It is not a web view, Electron or Catalyst app.
 
-> **Sign-in status (Sept 2026):** the web app and backend have moved from Auth0 to Folevi's built-in
-> accounts (Better Auth inside Convex, `docs/AUTH_DECISION.md`). This Mac app still contains the Auth0
-> and developer-sign-in code described below, and **it cannot sign in against the current backend**:
-> Convex no longer trusts Auth0 or the old development token issuer, and `/api/dev-auth/token` no
-> longer exists. The plan is to move the Mac app to Authorization Code + PKCE against Folevi's own
-> accounts once the web app is finalized. Until then, treat the auth sections of this document as a
-> description of the old code, not of a working setup.
-
 - Bundle id `com.folevi.mac`, deployment target macOS 15.0, App Sandbox (network client,
   user-selected files read/write, Downloads), hardened runtime.
-- Swift packages: `convex-swift` 0.8.1 (`ConvexMobile`), `Auth0.swift` 3.1.0.
+- Swift package: `convex-swift` 0.8.1 (`ConvexMobile`). Sign-in uses the system's `AuthenticationServices`.
 - Project: `apps/macos/project.yml` (XcodeGen). The generated `Folevi.xcodeproj` is committed, so
   building doesn't need XcodeGen.
 
@@ -23,15 +15,14 @@ It is not a web view, Electron or Catalyst app.
 ```sh
 # Debug build → apps/macos/build/Folevi.app, then launch it
 script/build_and_run_macos.sh
-script/build_and_run_macos.sh --dev-login ada@example.com        # sign in with a local dev token
 script/build_and_run_macos.sh --release --no-launch               # Release build, staged only
 script/build_and_run_macos.sh -- -FoleviForceOffline YES          # extra launch arguments after --
 
 # Unit tests (no host app, no network)
 xcodebuild -project apps/macos/Folevi.xcodeproj -scheme Folevi -destination 'platform=macOS' build test
 
-# UI tests: need the local backend (npx convex dev on :3210) and a token; they skip otherwise. The old
-# dev-token script was removed with the move to built-in accounts; a replacement comes with the PKCE work.
+# UI tests: need the local backend (npx convex dev on :3210) and a Convex token for a test account; they
+# skip otherwise. They take over the keyboard and mouse while they run.
 TEST_RUNNER_FOLEVI_UITEST_TOKEN=<token> \
   xcodebuild -project apps/macos/Folevi.xcodeproj -scheme FoleviUITests -destination 'platform=macOS' test
 ```
@@ -53,10 +44,9 @@ Helper scripts (in `apps/macos/scripts/`):
 
 | Setting | Debug | Release |
 | --- | --- | --- |
-| `CONVEX_URL` | `http://127.0.0.1:3210` | `https://<prod>.convex.cloud` (placeholder) |
-| `FOLEVI_DEV_AUTH_URL` | `http://localhost:3000/api/dev-auth/token` | empty |
-| `AUTH0_DOMAIN` / `AUTH0_CLIENT_ID` | placeholders | `auth.folevi.com` / `set-me` |
-| ATS exception for `localhost`/`127.0.0.1` | yes (Info.plist preprocessing, `FOLEVI_LOCAL_ATS`) | no |
+| `FOLEVI_APP_URL` (sign-in pages and `/api/auth`) | `http://app.localhost:3000` (`pnpm dev`) | `https://app.folevi.com` |
+| `CONVEX_URL` | `http://127.0.0.1:3210` | `https://fastidious-clownfish-123.convex.cloud` |
+| ATS exception for `localhost` (and subdomains) / `127.0.0.1` | yes (Info.plist preprocessing, `FOLEVI_LOCAL_ATS`) | no |
 
 Placeholder values are detected at runtime. The app says so honestly ("Folevi isn't configured for
 sign-in yet" / "…isn't configured yet") instead of failing. URLs in xcconfig use `http:/$()/…`
@@ -64,38 +54,41 @@ because `//` starts a comment there.
 
 ## Auth
 
-`RoutingAuthProvider` is the single `AuthProvider` given to the one process-wide
-`ConvexClientWithAuth`. It routes to:
+Folevi accounts, signed in through the browser with **Authorization Code + PKCE** (RFC 7636, the
+native-app pattern of RFC 8252). The server side is `convex/lib/nativeAuth.ts`; see
+`docs/AUTH_DECISION.md` → "Native apps".
 
-- **Auth0 (Universal Login)**, `Features/Auth/AuthProviders.swift`: `ASWebAuthenticationSession` via
-  Auth0.swift with PKCE, scopes `openid profile email offline_access`. Credentials are kept by
-  `CredentialsManager` in our Keychain wrapper (`KeychainCredentialsStorage`), and the ID token is
-  renewed with the refresh token when fewer than 120 s remain. We don't use `convex-swift-auth0`
-  because it pins Auth0.swift 2.17.
-- **Developer sign-in** (DEBUG builds only, and only when `FOLEVI_DEV_AUTH_URL` is set): a small sheet
-  (email and name) that POSTs to the web app's `/api/dev-auth/token`. Automation can pass
-  `-FoleviDevToken <jwt>` or `FOLEVI_DEV_TOKEN`. All of this sits behind `#if DEBUG`; the Release
-  binary contains none of it (verified with `strings`).
+1. **Sign In or Create Account** opens `<FOLEVI_APP_URL>/connect?client_id=folevi-mac&redirect_uri=
+   com.folevi.mac://auth/callback&code_challenge=…&code_challenge_method=S256&state=…` in an
+   `ASWebAuthenticationSession` sheet (`Features/Auth/AuthProviders.swift`, `WebSignIn`). It shares
+   Safari's cookies, so someone already signed in there only presses **Continue**; otherwise they sign in
+   (password, then two-step verification) or create an account first.
+2. The page returns `com.folevi.mac://auth/callback?code=…&state=…`, which only the sheet receives (the
+   scheme isn't registered with Launch Services). `AuthCallback.parse` accepts nothing else, and the
+   `state` must match.
+3. `FoleviAccountAuth` posts the code and the PKCE verifier to `/api/auth/native/token` and receives a
+   **session of its own**: it's listed in Settings → Devices as "Folevi for Mac", counts toward the
+   plan's device limit, and can be signed out from any device.
+4. The session token is stored only in the Keychain (`folevi.session`). It's sent as
+   `Authorization: Bearer …` to `/api/auth/convex/token` for 15-minute Convex JWTs, kept in memory and
+   renewed when fewer than 120 s remain (ConvexMobile asks through `loginFromCache`). A 401 there means
+   the session ended (signed out elsewhere, revoked, expired, password reset) and the Mac signs out.
+5. **Sign Out** posts to `/api/auth/sign-out` with the bearer token and deletes it from the Keychain.
+
+`RoutingAuthProvider` is the single `AuthProvider` given to the one process-wide
+`ConvexClientWithAuth`. Besides Folevi accounts it has one DEBUG-only mode for UI tests
+(`-FoleviDevToken <jwt>`), compiled out of Release.
 
 Credentials live only in the Keychain (`Support/Keychain.swift`, legacy file keychain with the app's
 default access group, so no provisioning profile is needed). `UserDefaults` holds only the non-secret
 device id, the last profile id (which selects the local database) and view preferences.
 
 After a token is in place, `users:me` routes the app: `needs_bootstrap` calls `users:bootstrap`
-automatically, and `email_unverified`, `mfa_required`, `suspended` and `session_revoked` each get a
-dedicated screen. Onboarding has three steps (name the workspace, choose an appearance, open Welcome).
-`users:registerSession({client:"mac"})` runs after sign-in, and a live `users:me` subscription signs
-the Mac out if its session is revoked elsewhere.
-
-### Setting up Auth0 for the Mac
-
-1. In the Auth0 tenant, create a **Native** application ("Folevi for Mac"). Enable the Authorization
-   Code grant with PKCE and Refresh Token rotation.
-2. Allowed Callback URLs and Allowed Logout URLs:
-   `com.folevi.mac://auth.folevi.com/macos/com.folevi.mac/callback` (use your tenant/custom domain).
-3. Set `AUTH0_DOMAIN` / `AUTH0_CLIENT_ID` in `Config/Release.xcconfig` (and in Debug to test).
-4. On the Convex deployment, set `AUTH0_MAC_CLIENT_ID` to the new client id. `convex/auth.config.ts`
-   trusts ID tokens whose audience is either the web or the Mac client id.
+automatically, and `email_unverified`, `mfa_required`, `suspended`, `session_revoked` and
+`device_limit` each get a dedicated screen (the device-limit screen links to Settings → Devices and
+Plan & billing on the web). Onboarding has three steps (name the workspace, choose an appearance, open
+Welcome). `users:registerSession({client:"mac"})` runs after sign-in, and a live `users:me`
+subscription signs the Mac out if its session is revoked elsewhere.
 
 ## Architecture
 
@@ -283,14 +276,14 @@ shadows and layout vocabulary, drawn natively.
 
 ## Tests
 
-- **Unit** (`FoleviTests`, 67 tests; compiled against the Domain, Sync reducer, SQLite, Keychain and
+- **Unit** (`FoleviTests`, 68 tests; compiled against the Domain, Sync reducer, SQLite, Keychain and
   auth-callback sources, with no host app):
   - Rank golden cases and `sequence10`.
   - Document golden round-trip, byte-identical canonical JSON including the unknown `timeline` block.
   - All 9 sync scenarios with `expectedFinal` compared byte for byte.
   - SQLite CRUD and op-log durability across reopen.
   - Keychain wrapper.
-  - Auth callback URL parsing and config placeholder detection.
+  - Auth callback URL parsing, PKCE (RFC 7636 test vector), the /connect URL, config placeholder detection.
   - Tree flatten, `rankForPosition` and `assignTreePositions` against TypeScript outputs.
   - Markdown/HTML export and Markdown import against TypeScript outputs.
   - Flexible Int decoding, JS number formatting, Daily Note and Inbox page ids.
@@ -309,8 +302,8 @@ shadows and layout vocabulary, drawn natively.
 - **Signing**: builds are ad-hoc signed ("Sign to Run Locally"). Distribution needs a Developer ID
   and notarization. Credentials use the legacy keychain; with a team id, the data-protection keychain
   plus `keychain-access-groups` would be preferable.
-- **Auth0**: Auth0 isn't configured in this repo (placeholders). The Universal Login code path is
-  written against Auth0.swift 3.1.0 but has not been exercised end-to-end.
+- **Sign-in**: the server side and the /connect page are covered end to end (`apps/web/e2e/native-auth.spec.ts`);
+  the Mac's browser sheet needs a person at the keyboard and is tested by hand.
 - **Quick Add hotkey**: ⌃⌥Space is a menu shortcut, so it works only while Folevi is active (no
   global hotkey). The menu bar extra is always available.
 - **Undo**: typing undo is per block. Structural undo (split, merge, indent, move, delete, convert,

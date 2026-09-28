@@ -1,8 +1,9 @@
+import AppKit
+import AuthenticationServices
 import Foundation
 @preconcurrency import ConvexMobile
-@preconcurrency import Auth0
 
-/// What the Convex client needs from a sign-in: an OIDC ID token.
+/// What the Convex client needs from a sign-in: a short-lived Convex JWT.
 struct FoleviCredentials: Sendable {
     var idToken: String
     var expiresAt: Date?
@@ -10,8 +11,9 @@ struct FoleviCredentials: Sendable {
 }
 
 enum SignInMethod: String, Sendable, Codable {
-    case auth0
-    case developer
+    /// A Folevi account, signed in through the browser (Authorization Code + PKCE).
+    case folevi
+    /// DEBUG only: a token injected by UI tests.
     case developerToken
 }
 
@@ -32,115 +34,200 @@ enum JWT {
     }
 }
 
-// MARK: - Auth0 (Universal Login)
+// MARK: - Browser step
 
-/// Stores Auth0 credentials in the Keychain via our wrapper (never UserDefaults).
-struct KeychainCredentialsStorage: CredentialsStorage {
-    let keychain = Keychain(service: "com.folevi.mac.auth0")
-    func getEntry(forKey key: String) throws -> Data { try keychain.data(for: key) }
-    func setEntry(_ data: Data, forKey key: String) throws { try keychain.set(data, for: key) }
-    func deleteEntry(forKey key: String) throws { try keychain.delete(key) }
-    func deleteAllEntries() throws { try keychain.deleteAll() }
-}
+/// Shows Folevi's /connect page in a system browser sheet and returns the callback URL.
+/// Shares cookies with Safari, so someone already signed in there only has to press Continue.
+@MainActor
+final class WebSignIn: NSObject, ASWebAuthenticationPresentationContextProviding {
+    private var session: ASWebAuthenticationSession?
 
-/// Universal Login via ASWebAuthenticationSession (PKCE is Auth0.swift's default), scopes
-/// `openid profile email offline_access`, credentials persisted by CredentialsManager and renewed
-/// with the refresh token when the ID token is about to expire.
-final class Auth0AuthProvider: @unchecked Sendable {
-    let domain: String
-    let clientId: String
-    private let credentialsManager: CredentialsManager
-
-    init(domain: String, clientId: String) {
-        self.domain = domain
-        self.clientId = clientId
-        credentialsManager = CredentialsManager(authentication: Auth0.authentication(clientId: clientId, domain: domain),
-                                                storage: KeychainCredentialsStorage())
+    func run(_ url: URL) async throws -> URL {
+        defer { session = nil }
+        return try await withCheckedThrowingContinuation { continuation in
+            let session = ASWebAuthenticationSession(url: url, callback: .customScheme(AuthCallback.scheme)) { callbackURL, error in
+                if let callbackURL {
+                    continuation.resume(returning: callbackURL)
+                } else if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    continuation.resume(throwing: error ?? FoleviError.invalidResponse("no callback"))
+                }
+            }
+            session.presentationContextProvider = self
+            session.prefersEphemeralWebBrowserSession = false
+            self.session = session
+            if !session.start() {
+                self.session = nil
+                continuation.resume(throwing: FoleviError.server(code: "browser_unavailable", message: String(localized: "Folevi couldn't open the sign-in page.")))
+            }
+        }
     }
 
-    @MainActor
-    func login() async throws -> FoleviCredentials {
-        let credentials = try await Auth0.webAuth(clientId: clientId, domain: domain)
-            .scope("openid profile email offline_access")
-            .start()
-        try credentialsManager.store(credentials: credentials)
-        return FoleviCredentials(idToken: credentials.idToken, expiresAt: JWT.expiry(credentials.idToken) ?? credentials.expiresAt, method: .auth0)
-    }
-
-    func loginFromCache() async throws -> FoleviCredentials {
-        let credentials = try await credentialsManager.credentials(withScope: nil, minTTL: 120)
-        return FoleviCredentials(idToken: credentials.idToken, expiresAt: JWT.expiry(credentials.idToken) ?? credentials.expiresAt, method: .auth0)
-    }
-
-    var hasStoredCredentials: Bool { credentialsManager.canRenew() || credentialsManager.hasValid() }
-
-    @MainActor
-    func logout() async {
-        try? await Auth0.webAuth(clientId: clientId, domain: domain).logout(federated: false)
-        _ = try? credentialsManager.clear()
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        MainActor.assumeIsolated { NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first ?? ASPresentationAnchor() }
     }
 }
 
-// MARK: - Developer sign-in (DEBUG only)
+// MARK: - Folevi accounts
 
-#if DEBUG
-/// Development-only sign-in against the web app's `/api/dev-auth/token` endpoint (404 unless dev auth
-/// is enabled). Compiled only into DEBUG builds and only reachable when FOLEVI_DEV_AUTH_URL is set.
-enum DevAuthProvider {
-    struct TokenResponse: Decodable {
-        var token: String
-        var expiresAt: Double?
+/// Sign-in with a Folevi account (convex/lib/nativeAuth.ts):
+///
+/// 1. /connect in the browser, where the person signs in (password + two-step verification) and approves
+///    this Mac; the page returns a one-time code bound to our PKCE challenge.
+/// 2. The code and verifier are exchanged for a session of this Mac's own (Settings → Devices lists it).
+/// 3. That session token lives only in the Keychain. It buys 15-minute Convex JWTs from /convex/token,
+///    which also keeps the session rolling; a 401 there means it was signed out, revoked or expired.
+final class FoleviAccountAuth: @unchecked Sendable {
+    static let clientId = AuthCallback.clientId
+    private static let sessionKey = "folevi.session"
+
+    let origin: URL
+    private let keychain: Keychain
+    private let http: URLSession
+    private let lock = NSLock()
+    private var cached: FoleviCredentials?
+
+    init(origin: URL, keychain: Keychain = .app, http: URLSession = .shared) {
+        self.origin = origin
+        self.keychain = keychain
+        self.http = http
     }
 
-    static var endpoint: URL? {
-        guard let s = AppConfig.current.devAuthURL, !AppConfig.isPlaceholder(s) else { return nil }
-        return URL(string: s)
+    var hasSession: Bool { keychain.string(for: Self.sessionKey) != nil }
+
+    private var originHeader: String {
+        var comps = URLComponents()
+        comps.scheme = origin.scheme
+        comps.host = origin.host
+        comps.port = origin.port
+        return comps.string ?? origin.absoluteString
     }
 
-    static func fetchToken(email: String, name: String, deviceId: String) async throws -> FoleviCredentials {
-        guard let url = endpoint else { throw FoleviError.notConfigured }
-        var request = URLRequest(url: url, timeoutInterval: 15)
+    private func endpoint(_ path: String) -> URL { origin.appending(path: path) }
+
+    /// The interactive sign-in (browser sheet, then code exchange).
+    func signIn() async throws -> FoleviCredentials {
+        let pkce = PKCE.make()
+        let state = PKCE.randomURLSafe(16)
+        guard let url = AuthCallback.connectURL(origin: origin, pkce: pkce, state: state) else { throw FoleviError.notConfigured }
+        let browser = await WebSignIn()
+        let callback = try await browser.run(url)
+        switch AuthCallback.parse(callback) {
+        case .code(let code, let returnedState):
+            guard returnedState == state else {
+                throw FoleviError.server(code: "state_mismatch", message: String(localized: "Sign-in didn't complete. Try again."))
+            }
+            let token = try await exchange(code: code, verifier: pkce.verifier)
+            try keychain.setString(token, for: Self.sessionKey)
+            setCached(nil)
+            return try await credentials()
+        case .error(let code, _):
+            if code == "access_denied" { throw CancellationError() }
+            throw FoleviError.server(code: code, message: String(localized: "Sign-in didn't complete. Try again."))
+        case nil:
+            throw FoleviError.invalidResponse("callback")
+        }
+    }
+
+    private func exchange(code: String, verifier: String) async throws -> String {
+        var request = URLRequest(url: endpoint("api/auth/native/token"), timeoutInterval: 20)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(["email": email, "name": name, "deviceId": deviceId])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw FoleviError.invalidResponse("no http response") }
-        if http.statusCode == 404 {
-            throw FoleviError.server(code: "dev_auth_disabled", message: String(localized: "Developer sign-in isn't enabled on this server."))
+        request.httpBody = try JSONEncoder().encode([
+            "grant_type": "authorization_code", "code": code, "code_verifier": verifier,
+            "client_id": Self.clientId, "redirect_uri": AuthCallback.redirectURI, "device_name": DeviceIdentity.label,
+        ])
+        let (data, response) = try await http.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw Self.serverError(data, fallback: "Sign-in didn't complete. Try again.") }
+        struct TokenResponse: Decodable { let access_token: String }
+        return try JSONDecoder().decode(TokenResponse.self, from: data).access_token
+    }
+
+    /// A Convex JWT valid for at least `minTTL` more seconds, fetched with the stored session if needed.
+    /// Network failures are rethrown as they are (the app keeps working offline and retries).
+    func credentials(minTTL: TimeInterval = 120) async throws -> FoleviCredentials {
+        if let c = getCached(), let exp = c.expiresAt, exp.timeIntervalSinceNow > minTTL { return c }
+        guard let session = keychain.string(for: Self.sessionKey) else { throw FoleviError.notSignedIn }
+        var request = URLRequest(url: endpoint("api/auth/convex/token"), timeoutInterval: 20)
+        request.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await http.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if status == 401 {
+            // Signed out elsewhere, revoked, or expired: this Mac's session is gone for good.
+            forget()
+            throw FoleviError.notSignedIn
         }
-        guard (200..<300).contains(http.statusCode) else {
-            throw FoleviError.server(code: "dev_auth_failed", message: String(localized: "Developer sign-in failed (HTTP \(http.statusCode))."))
+        guard status == 200 else { throw Self.serverError(data, fallback: "Folevi couldn't refresh your sign-in. Try again.") }
+        struct ConvexToken: Decodable { let token: String }
+        let token = try JSONDecoder().decode(ConvexToken.self, from: data).token
+        let creds = FoleviCredentials(idToken: token, expiresAt: JWT.expiry(token), method: .folevi)
+        setCached(creds)
+        return creds
+    }
+
+    /// Ends this Mac's session on the server (best effort) and forgets it here.
+    func signOut() async {
+        if let session = keychain.string(for: Self.sessionKey) {
+            var request = URLRequest(url: endpoint("api/auth/sign-out"), timeoutInterval: 10)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            // Better Auth checks the origin of state-changing requests; this is the web app's own origin.
+            request.setValue(originHeader, forHTTPHeaderField: "Origin")
+            request.httpBody = Data("{}".utf8)
+            _ = try? await http.data(for: request)
         }
-        let decoded = try JSONDecoder().decode(TokenResponse.self, from: data)
-        let expiry = decoded.expiresAt.map { Date(timeIntervalSince1970: $0 > 10_000_000_000 ? $0 / 1000 : $0) } ?? JWT.expiry(decoded.token)
-        return FoleviCredentials(idToken: decoded.token, expiresAt: expiry, method: .developer)
+        forget()
+    }
+
+    func forget() {
+        try? keychain.delete(Self.sessionKey)
+        setCached(nil)
+    }
+
+    private func getCached() -> FoleviCredentials? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cached
+    }
+
+    private func setCached(_ value: FoleviCredentials?) {
+        lock.lock()
+        cached = value
+        lock.unlock()
+    }
+
+    private static func serverError(_ data: Data, fallback: String.LocalizationValue) -> FoleviError {
+        let body = try? JSONValue(jsonData: data)
+        let code = body?["error"]?.stringValue ?? body?["code"]?.stringValue ?? "auth_failed"
+        let message = body?["error_description"]?.stringValue ?? body?["message"]?.stringValue
+        return .server(code: code, message: message ?? String(localized: fallback))
     }
 }
-#endif
 
 // MARK: - Routing provider handed to the Convex client
 
-/// The Convex client takes one provider for its lifetime; this one routes to the method the person
-/// chose (Auth0, or in DEBUG builds the developer sign-in / injected token) and remembers it.
+/// The Convex client takes one provider for its lifetime; this one routes to the method in use (a
+/// Folevi account, or in DEBUG builds a token injected by UI tests) and remembers it.
 final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
     typealias T = FoleviCredentials
 
     enum Mode: Sendable {
         case none
-        case auth0
+        case folevi
         #if DEBUG
-        case developer(email: String, name: String)
         case token(String)
         #endif
     }
 
     private let lock = NSLock()
     private var mode: Mode = .none
-    let auth0: Auth0AuthProvider?
+    let account: FoleviAccountAuth?
     private let keychain = Keychain.app
 
     init(config: AppConfig) {
-        auth0 = config.isAuth0Configured ? Auth0AuthProvider(domain: config.auth0Domain, clientId: config.auth0ClientId) : nil
+        account = config.appOrigin.map { FoleviAccountAuth(origin: $0) }
     }
 
     func setMode(_ m: Mode) {
@@ -155,22 +242,13 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
         return mode
     }
 
-    /// Restores the last sign-in method from the Keychain (nil if none).
+    /// Restores the last sign-in method from the Keychain (false if there's nothing to restore).
     func restoreSavedMode() -> Bool {
-        guard let kind = keychain.string(for: "session.method"), let method = SignInMethod(rawValue: kind) else { return false }
-        switch method {
-        case .auth0:
-            guard auth0 != nil else { return false }
-            setMode(.auth0)
+        switch keychain.string(for: "session.method").flatMap(SignInMethod.init(rawValue:)) {
+        case .folevi:
+            guard account?.hasSession == true else { return false }
+            setMode(.folevi)
             return true
-        case .developer:
-            #if DEBUG
-            guard let email = keychain.string(for: "dev.email") else { return false }
-            setMode(.developer(email: email, name: keychain.string(for: "dev.name") ?? ""))
-            return true
-            #else
-            return false
-            #endif
         case .developerToken:
             #if DEBUG
             guard let token = keychain.string(for: "dev.token") else { return false }
@@ -179,22 +257,23 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
             #else
             return false
             #endif
+        case nil:
+            // Nothing saved, or an Auth0 sign-in from an older build (no longer accepted).
+            clearSaved()
+            return false
         }
     }
 
     private func remember(_ creds: FoleviCredentials) {
         try? keychain.setString(creds.method.rawValue, for: "session.method")
         #if DEBUG
-        if creds.method != .auth0 { try? keychain.setString(creds.idToken, for: "dev.token") }
-        if case .developer(let email, let name) = currentMode {
-            try? keychain.setString(email, for: "dev.email")
-            try? keychain.setString(name, for: "dev.name")
-        }
+        if creds.method == .developerToken { try? keychain.setString(creds.idToken, for: "dev.token") }
         #endif
     }
 
     func clearSaved() {
         for key in ["session.method", "dev.token", "dev.email", "dev.name"] { try? keychain.delete(key) }
+        account?.forget()
     }
 
     // AuthProvider
@@ -214,8 +293,7 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
     }
 
     func logout() async throws {
-        let m = currentMode
-        if case .auth0 = m { await auth0?.logout() }
+        if case .folevi = currentMode { await account?.signOut() }
         clearSaved()
         setMode(.none)
     }
@@ -228,19 +306,12 @@ final class RoutingAuthProvider: AuthProvider, @unchecked Sendable {
         switch currentMode {
         case .none:
             throw FoleviError.notSignedIn
-        case .auth0:
-            guard let auth0 else { throw FoleviError.notConfigured }
-            if interactive { return try await auth0.login() }
-            return try await auth0.loginFromCache()
+        case .folevi:
+            guard let account else { throw FoleviError.notConfigured }
+            return interactive ? try await account.signIn() : try await account.credentials()
         #if DEBUG
         case .token(let token):
             return FoleviCredentials(idToken: token, expiresAt: JWT.expiry(token), method: .developerToken)
-        case .developer(let email, let name):
-            // Reuse the cached token while it is valid for at least two more minutes.
-            if let cached = keychain.string(for: "dev.token"), let exp = JWT.expiry(cached), exp.timeIntervalSinceNow > 120 {
-                return FoleviCredentials(idToken: cached, expiresAt: exp, method: .developer)
-            }
-            return try await DevAuthProvider.fetchToken(email: email, name: name, deviceId: DeviceIdentity.deviceId)
         #endif
         }
     }

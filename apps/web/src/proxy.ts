@@ -11,7 +11,7 @@ const appHost = new URL(APP_URL).host;
 const MARKETING_ONLY = /^\/($|mac$|mac\/|security|pricing|changelog|privacy|terms|docs|status)/;
 // Paths that only exist on the product host (app + admin + auth + share pages).
 const APP_ONLY =
-  /^\/(documents|notes|d\/|tasks|calendar|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|admin|signin|signup|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/)/;
+  /^\/(documents|notes|d\/|tasks|calendar|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|admin|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/)/;
 
 function isAppPath(pathname: string): boolean {
   return APP_ONLY.test(pathname);
@@ -21,7 +21,7 @@ function isAppPath(pathname: string): boolean {
 // nonce-based CSP without 'unsafe-inline'. Statically prerendered pages keep next.config's static policy,
 // because they have no per-request nonce to put on Next's inline scripts.
 const NONCE_ROUTES =
-  /^\/(documents|notes|d\/|tasks|calendar|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|admin|signin|signup|verify-email|reset-password|two-factor|s\/)/;
+  /^\/(documents|notes|d\/|tasks|calendar|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|admin|signin|signup|connect|verify-email|reset-password|two-factor|s\/)/;
 
 /**
  * Redirects to another host. Next rewrites a redirect whose host equals the request URL's host into a

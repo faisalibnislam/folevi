@@ -4,7 +4,6 @@
 #   script/build_and_run_macos.sh                       # Debug build, launch
 #   script/build_and_run_macos.sh --release             # Release build, launch
 #   script/build_and_run_macos.sh --no-launch           # build + stage only
-#   script/build_and_run_macos.sh --dev-login EMAIL     # Debug: sign in with a local dev token (scripts/dev-token.mjs)
 #   script/build_and_run_macos.sh -- -FoleviForceOffline YES   # extra launch arguments after --
 #
 # Works from a clean checkout: the committed Folevi.xcodeproj is used as-is (XcodeGen is only needed
@@ -17,7 +16,6 @@ PROJECT="$MACOS/Folevi.xcodeproj"
 BUILD_DIR="$MACOS/build"
 CONFIG="Debug"
 LAUNCH=1
-DEV_EMAIL=""
 EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -25,17 +23,11 @@ while [[ $# -gt 0 ]]; do
     --release) CONFIG="Release"; shift ;;
     --debug) CONFIG="Debug"; shift ;;
     --no-launch) LAUNCH=0; shift ;;
-    --dev-login) DEV_EMAIL="${2:?--dev-login needs an email}"; shift 2 ;;
     --) shift; EXTRA_ARGS=("$@"); break ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
-
-if [[ -n "$DEV_EMAIL" && "$CONFIG" != "Debug" ]]; then
-  echo "--dev-login is only available for Debug builds." >&2
-  exit 2
-fi
 
 echo "==> Building Folevi ($CONFIG)"
 set -o pipefail
@@ -64,11 +56,6 @@ if [[ "$LAUNCH" -eq 0 ]]; then
 fi
 
 ARGS=()
-if [[ -n "$DEV_EMAIL" ]]; then
-  if ! command -v node >/dev/null; then echo "node is required for --dev-login" >&2; exit 2; fi
-  TOKEN="$(cd "$ROOT" && node scripts/dev-token.mjs --email "$DEV_EMAIL" --name "${DEV_NAME:-${DEV_EMAIL%@*}}" --device mac-dev --ttl 43200)"
-  ARGS+=(-FoleviDevToken "$TOKEN")
-fi
 if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then ARGS+=("${EXTRA_ARGS[@]}"); fi
 
 # Quit a running copy so the new build is the one in front.

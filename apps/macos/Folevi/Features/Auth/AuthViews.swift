@@ -15,6 +15,8 @@ struct RootView: View {
                 SignInView()
             case .emailUnverified, .mfaRequired, .suspended, .sessionRevoked:
                 AccountStateView(phase: app.phase)
+            case .deviceLimit(let limit, let active):
+                DeviceLimitView(limit: limit, active: active)
             case .onboarding:
                 OnboardingView()
             case .ready:
@@ -98,73 +100,30 @@ struct SignInView: View {
             } else {
                 VStack(spacing: 10) {
                     Button {
-                        Task { await app.signInWithAuth0() }
+                        Task { await app.signInWithFolevi() }
                     } label: {
                         Text("Sign In or Create Account")
                     }
                     .buttonStyle(.folevi(.primary, .large, fullWidth: true))
-                    .disabled(!app.config.isAuth0Configured)
-                    .accessibilityIdentifier("signIn.auth0")
-                    if !app.config.isAuth0Configured {
-                        Text("Folevi isn't configured for sign-in yet. Set AUTH0_DOMAIN and AUTH0_CLIENT_ID in the app configuration.")
-                            .font(.ui(11.5))
-                            .foregroundStyle(FoleviColor.inkMuted)
-                            .multilineTextAlignment(.center)
-                    }
+                    .disabled(!app.config.isSignInConfigured)
+                    .accessibilityIdentifier("signIn.folevi")
+                    Text(app.config.isSignInConfigured
+                         ? "You'll continue in your browser, where you can also create an account."
+                         : "Folevi isn't configured for sign-in yet. Set FOLEVI_APP_URL in the app configuration.")
+                        .font(.ui(11.5))
+                        .foregroundStyle(FoleviColor.inkMuted)
+                        .multilineTextAlignment(.center)
                     if let error = app.signInError {
                         Text(error).font(.ui(11.5)).foregroundStyle(FoleviColor.destructive)
                     }
-                    #if DEBUG
-                    if app.config.devAuthURL != nil {
-                        Divider().padding(.vertical, 4)
-                        Button("Developer Sign-In…") { app.showDevSignIn = true }
-                            .buttonStyle(.link)
-                            .accessibilityIdentifier("signIn.developer")
-                    }
-                    #endif
                 }
             }
             Text("By continuing you agree to Folevi's Terms and Privacy Policy.")
                 .font(.ui(10.5))
                 .foregroundStyle(FoleviColor.inkFaint)
         }
-        #if DEBUG
-        .sheet(isPresented: Binding(get: { app.showDevSignIn }, set: { app.showDevSignIn = $0 })) { DevSignInSheet() }
-        #endif
     }
 }
-
-#if DEBUG
-/// Development-only sign-in (DEBUG builds with FOLEVI_DEV_AUTH_URL set). Never compiled into Release.
-struct DevSignInSheet: View {
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
-    @AppStorage("dev.lastEmail") private var email = "ada@example.com"
-    @AppStorage("dev.lastName") private var name = "Ada Example"
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Label("Developer Sign-In", systemImage: "hammer").font(.ui(14, .semibold))
-            Text("Signs in against the local development identity issuer. Not available in release builds.")
-                .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
-            TextField("Email", text: $email).textFieldStyle(.folevi).accessibilityIdentifier("dev.email")
-            TextField("Name", text: $name).textFieldStyle(.folevi).accessibilityIdentifier("dev.name")
-            HStack {
-                Spacer()
-                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Sign In") {
-                    dismiss()
-                    Task { await app.signInAsDeveloper(email: email, name: name) }
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(!email.contains("@"))
-            }
-        }
-        .padding(22)
-        .frame(width: 360)
-    }
-}
-#endif
 
 struct AccountStateView: View {
     let phase: AppModel.Phase
@@ -199,6 +158,41 @@ struct AccountStateView: View {
                     Button("Sign In") { Task { await app.signOut() } }.buttonStyle(.folevi(.primary))
                 }
                 Button("Sign Out") { Task { await app.signOut() } }
+            }
+        }
+    }
+}
+
+/// Free plans work on a few devices at once. This Mac waits here until another device signs out or the
+/// plan is upgraded — both happen on the web (Settings → Devices / Plan & billing).
+struct DeviceLimitView: View {
+    let limit: Int
+    let active: Int
+    @Environment(AppModel.self) private var app
+    @Environment(\.openURL) private var openURL
+
+    private func openWeb(_ path: String) {
+        if let origin = app.config.appOrigin { openURL(origin.appending(path: path)) }
+    }
+
+    var body: some View {
+        AuthCard {
+            Image(systemName: "laptopcomputer.and.iphone").font(.ui(40, .light)).foregroundStyle(FoleviColor.accent).accessibilityHidden(true)
+            Text("You’re on \(limit) devices already").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+            Text("The Free plan works on \(limit) devices at a time, and \(active) are signed in. Sign one of them out, or upgrade to Basic or Pro for unlimited devices. Your notes on this Mac are safe.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(FoleviColor.inkMuted)
+            VStack(spacing: 10) {
+                Button("Manage Devices…") { openWeb("settings/devices") }
+                    .buttonStyle(.folevi(.primary, .large, fullWidth: true))
+                Button("See Plans…") { openWeb("settings/billing") }
+                    .buttonStyle(.folevi(.secondary, .large, fullWidth: true))
+                HStack {
+                    Button("Try Again") { Task { await app.signIn(interactive: false) } }
+                    Button("Sign Out") { Task { await app.signOut() } }
+                }
             }
         }
     }

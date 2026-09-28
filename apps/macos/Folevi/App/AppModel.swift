@@ -57,6 +57,7 @@ final class AppModel {
         case mfaRequired
         case suspended
         case sessionRevoked
+        case deviceLimit(limit: Int, active: Int)
         case onboarding
         case ready
     }
@@ -81,7 +82,6 @@ final class AppModel {
     var showCommandPalette = false
     var showHelp = false
     var showImporter = false
-    var showDevSignIn = false
     /// A document to open once the main window appears (onboarding, notifications, launch arguments).
     var pendingOpenDocumentId: String?
     var signInError: String?
@@ -179,7 +179,7 @@ final class AppModel {
 
     private func resetForUITests() {
         try? Keychain.app.deleteAll()
-        try? KeychainCredentialsStorage().deleteAllEntries()
+        try? Keychain(service: "com.folevi.mac.auth0").deleteAll()
         UserDefaults.standard.removeObject(forKey: "lastProfileId")
         if let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
             try? FileManager.default.removeItem(at: base.appendingPathComponent("Folevi", isDirectory: true))
@@ -232,21 +232,15 @@ final class AppModel {
 
     // MARK: Sign in / out
 
-    func signInWithAuth0() async {
-        guard config.isAuth0Configured else {
+    /// Opens Folevi's sign-in page in a browser sheet (Authorization Code + PKCE).
+    func signInWithFolevi() async {
+        guard config.isSignInConfigured else {
             signInError = String(localized: "Folevi isn't configured for sign-in yet.")
             return
         }
-        authProvider.setMode(.auth0)
+        authProvider.setMode(.folevi)
         await signIn(interactive: true)
     }
-
-    #if DEBUG
-    func signInAsDeveloper(email: String, name: String) async {
-        authProvider.setMode(.developer(email: email, name: name))
-        await signIn(interactive: true)
-    }
-    #endif
 
     func signIn(interactive: Bool) async {
         guard let convex else {
@@ -260,6 +254,11 @@ final class AppModel {
         case .success:
             await routeAfterAuth(silent: false)
         case .failure(let error):
+            if error is CancellationError {
+                // Closed the browser sheet or pressed Cancel there: back to the sign-in screen, no error.
+                phase = .signedOut(nil)
+                return
+            }
             let mapped = ConvexService.mapError(error)
             Log.auth.error("sign-in failed: \(mapped.code, privacy: .public)")
             let message: String?
@@ -302,6 +301,7 @@ final class AppModel {
             case .mfaRequired: phase = .mfaRequired
             case .suspended: phase = .suspended
             case .sessionRevoked: phase = .sessionRevoked
+            case .deviceLimit: phase = .deviceLimit(limit: Int(me.limit ?? 0), active: Int(me.active ?? 0))
             case .needsBootstrap: phase = .signedOut(String(localized: "We couldn't finish setting up your account. Try again."))
             }
         } catch {

@@ -1,22 +1,37 @@
+import CryptoKit
 import Foundation
 
-/// Auth0 native callback URLs: `com.folevi.mac://{domain}/macos/com.folevi.mac/callback`.
-/// Auth0.swift performs the exchange itself; this parser lets us validate/diagnose callbacks
-/// (and is unit tested) without trusting anything but the expected scheme, host and path.
+/// Where the web's /connect page sends the browser back: `com.folevi.mac://auth/callback?code=…&state=…`
+/// (convex/lib/nativeClients.ts registers exactly this URI). The parser trusts nothing but the expected
+/// scheme, host and path.
 public enum AuthCallback: Equatable, Sendable {
     case code(code: String, state: String?)
     case error(code: String, description: String?)
 
-    public static func callbackURL(bundleId: String, domain: String) -> URL? {
-        URL(string: "\(bundleId.lowercased())://\(domain)/macos/\(bundleId)/callback")
+    public static let scheme = "com.folevi.mac"
+    public static let redirectURI = "com.folevi.mac://auth/callback"
+    public static let clientId = "folevi-mac"
+
+    /// The web page that signs this Mac in: `<origin>/connect?client_id=…&code_challenge=…&state=…`.
+    /// The PKCE verifier itself never leaves the Mac.
+    public static func connectURL(origin: URL, pkce: PKCE, state: String) -> URL? {
+        var comps = URLComponents(url: origin.appending(path: "connect"), resolvingAgainstBaseURL: false)
+        comps?.queryItems = [
+            URLQueryItem(name: "client_id", value: clientId),
+            URLQueryItem(name: "redirect_uri", value: redirectURI),
+            URLQueryItem(name: "code_challenge", value: pkce.challenge),
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
+            URLQueryItem(name: "state", value: state),
+        ]
+        return comps?.url
     }
 
     /// Parses a callback URL. Returns nil unless scheme, host and path match exactly.
-    public static func parse(_ url: URL, bundleId: String, domain: String) -> AuthCallback? {
+    public static func parse(_ url: URL) -> AuthCallback? {
         guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              comps.scheme?.lowercased() == bundleId.lowercased(),
-              comps.host?.lowercased() == domain.lowercased(),
-              comps.path == "/macos/\(bundleId)/callback" else { return nil }
+              comps.scheme?.lowercased() == scheme,
+              comps.host?.lowercased() == "auth",
+              comps.path == "/callback" else { return nil }
         var items: [String: String] = [:]
         for item in comps.queryItems ?? [] { items[item.name] = item.value ?? "" }
         if let error = items["error"], !error.isEmpty {
@@ -29,27 +44,50 @@ public enum AuthCallback: Equatable, Sendable {
     }
 }
 
+/// Proof Key for Code Exchange (RFC 7636, S256): a random verifier kept on this Mac, and its hash sent
+/// with the sign-in request. Only the holder of the verifier can redeem the code the browser returns.
+public struct PKCE: Sendable, Equatable {
+    public let verifier: String
+    public let challenge: String
+
+    public init(verifier: String) {
+        self.verifier = verifier
+        challenge = PKCE.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
+    }
+
+    public static func make() -> PKCE { PKCE(verifier: randomURLSafe(32)) }
+
+    /// `bytes` of randomness, base64url without padding (32 bytes → 43 characters).
+    public static func randomURLSafe(_ bytes: Int) -> String {
+        var buffer = [UInt8](repeating: 0, count: bytes)
+        let status = SecRandomCopyBytes(kSecRandomDefault, bytes, &buffer)
+        precondition(status == errSecSuccess, "no system randomness")
+        return base64URL(Data(buffer))
+    }
+
+    static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+}
+
 /// Runtime configuration read from Info.plist (populated from Config/*.xcconfig).
 public struct AppConfig: Sendable, Equatable {
+    /// The Convex deployment (…convex.cloud) the app syncs with.
     public var convexURL: String
-    public var auth0Domain: String
-    public var auth0ClientId: String
-    public var devAuthURL: String?
+    /// The web app (https://app.folevi.com): sign-in pages and the /api/auth endpoints.
+    public var appURL: String
 
-    public init(convexURL: String, auth0Domain: String, auth0ClientId: String, devAuthURL: String?) {
+    public init(convexURL: String, appURL: String) {
         self.convexURL = convexURL
-        self.auth0Domain = auth0Domain
-        self.auth0ClientId = auth0ClientId
-        self.devAuthURL = devAuthURL
+        self.appURL = appURL
     }
 
     public static func from(info: [String: Any]) -> AppConfig {
         func value(_ key: String) -> String {
             (info[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         }
-        let dev = value("FoleviDevAuthURL")
-        return AppConfig(convexURL: value("FoleviConvexURL"), auth0Domain: value("FoleviAuth0Domain"),
-                         auth0ClientId: value("FoleviAuth0ClientID"), devAuthURL: dev.isEmpty ? nil : dev)
+        return AppConfig(convexURL: value("FoleviConvexURL"), appURL: value("FoleviAppURL"))
     }
 
     public static var current: AppConfig { from(info: Bundle.main.infoDictionary ?? [:]) }
@@ -59,10 +97,13 @@ public struct AppConfig: Sendable, Equatable {
         return v.isEmpty || v.contains("set-me") || v.contains("<") || v.contains("placeholder") || v.contains("$(")
     }
 
-    /// Auth0 Universal Login is available only with real values.
-    public var isAuth0Configured: Bool {
-        !AppConfig.isPlaceholder(auth0Domain) && !AppConfig.isPlaceholder(auth0ClientId)
+    /// The web app's origin, when configured with a real http(s) URL.
+    public var appOrigin: URL? {
+        guard !AppConfig.isPlaceholder(appURL), let url = URL(string: appURL), url.scheme == "https" || url.scheme == "http", url.host != nil else { return nil }
+        return url
     }
+
+    public var isSignInConfigured: Bool { appOrigin != nil }
 
     public var isBackendConfigured: Bool {
         !AppConfig.isPlaceholder(convexURL) && URL(string: convexURL)?.scheme != nil

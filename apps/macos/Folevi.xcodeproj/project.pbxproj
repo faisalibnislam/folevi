@@ -44,7 +44,6 @@
 		62E372AAE10CBD27824373E8 /* TasksAndSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */; };
 		63DD871E5BD5E8A2FACDB63B /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B1E829D3BC461A2BFA76C2 /* Components.swift */; };
 		670557090FE34E4F72D02DEF /* CoverArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42122FC37C2F0057901A6606 /* CoverArt.swift */; };
-		67B84DBCA2A23DE3F9827248 /* Auth0 in Frameworks */ = {isa = PBXBuildFile; productRef = A49ABCDAD17A5C013FA8579F /* Auth0 */; };
 		70DB7DB4170ED10813FE68EF /* SQLiteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376035683CC3F41336F41070 /* SQLiteStore.swift */; };
 		713250803A20F82A4D87A671 /* Tree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E4AF08906F26C6AFA1053E /* Tree.swift */; };
 		7319025DADA60D6658EAA0AB /* BlockDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */; };
@@ -197,7 +196,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				CE7AC193968D91C617574153 /* ConvexMobile in Frameworks */,
-				67B84DBCA2A23DE3F9827248 /* Auth0 in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -513,7 +511,6 @@
 			name = Folevi;
 			packageProductDependencies = (
 				F044F3544B6292154DF27C05 /* ConvexMobile */,
-				A49ABCDAD17A5C013FA8579F /* Auth0 */,
 			);
 			productName = Folevi;
 			productReference = C6BF1B7B39DD24E84C6B8C6B /* Folevi.app */;
@@ -589,7 +586,6 @@
 			mainGroup = 9398BBED4DA6F31029D52570;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0033F5C014F2049DB3975F1D /* XCRemoteSwiftPackageReference "Auth0.swift" */,
 				B2F3D76BE15781E1A5D1BB54 /* XCRemoteSwiftPackageReference "convex-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1034,14 +1030,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		0033F5C014F2049DB3975F1D /* XCRemoteSwiftPackageReference "Auth0.swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/auth0/Auth0.swift";
-			requirement = {
-				kind = exactVersion;
-				version = 3.1.0;
-			};
-		};
 		B2F3D76BE15781E1A5D1BB54 /* XCRemoteSwiftPackageReference "convex-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/get-convex/convex-swift";
@@ -1053,11 +1041,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		A49ABCDAD17A5C013FA8579F /* Auth0 */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 0033F5C014F2049DB3975F1D /* XCRemoteSwiftPackageReference "Auth0.swift" */;
-			productName = Auth0;
-		};
 		F044F3544B6292154DF27C05 /* ConvexMobile */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B2F3D76BE15781E1A5D1BB54 /* XCRemoteSwiftPackageReference "convex-swift" */;

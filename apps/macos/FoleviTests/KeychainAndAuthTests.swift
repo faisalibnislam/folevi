@@ -27,42 +27,56 @@ final class KeychainTests: XCTestCase {
 }
 
 final class AuthCallbackTests: XCTestCase {
-    let bundle = "com.folevi.mac"
-    let domain = "auth.folevi.com"
-
-    func testCallbackURLShape() {
-        XCTAssertEqual(AuthCallback.callbackURL(bundleId: bundle, domain: domain)?.absoluteString,
-                       "com.folevi.mac://auth.folevi.com/macos/com.folevi.mac/callback")
-    }
-
     func testParsesCode() throws {
-        let url = try XCTUnwrap(URL(string: "com.folevi.mac://auth.folevi.com/macos/com.folevi.mac/callback?code=abc123&state=xyz"))
-        XCTAssertEqual(AuthCallback.parse(url, bundleId: bundle, domain: domain), .code(code: "abc123", state: "xyz"))
+        let url = try XCTUnwrap(URL(string: "com.folevi.mac://auth/callback?code=abc123&state=xyz"))
+        XCTAssertEqual(AuthCallback.parse(url), .code(code: "abc123", state: "xyz"))
     }
 
     func testParsesError() throws {
-        let url = try XCTUnwrap(URL(string: "com.folevi.mac://auth.folevi.com/macos/com.folevi.mac/callback?error=access_denied&error_description=User%20cancelled"))
-        XCTAssertEqual(AuthCallback.parse(url, bundleId: bundle, domain: domain), .error(code: "access_denied", description: "User cancelled"))
+        let url = try XCTUnwrap(URL(string: "com.folevi.mac://auth/callback?error=access_denied&state=xyz"))
+        XCTAssertEqual(AuthCallback.parse(url), .error(code: "access_denied", description: nil))
     }
 
     func testRejectsForeignCallbacks() throws {
-        for s in ["com.evil.app://auth.folevi.com/macos/com.folevi.mac/callback?code=1",
-                  "com.folevi.mac://evil.com/macos/com.folevi.mac/callback?code=1",
-                  "com.folevi.mac://auth.folevi.com/macos/other/callback?code=1",
-                  "com.folevi.mac://auth.folevi.com/macos/com.folevi.mac/callback"] {
-            XCTAssertNil(AuthCallback.parse(try XCTUnwrap(URL(string: s)), bundleId: bundle, domain: domain), s)
+        for s in ["com.evil.app://auth/callback?code=1",
+                  "com.folevi.mac://evil/callback?code=1",
+                  "com.folevi.mac://auth/other?code=1",
+                  "com.folevi.mac://auth/callback"] {
+            XCTAssertNil(AuthCallback.parse(try XCTUnwrap(URL(string: s))), s)
         }
     }
 
+    func testPKCEMatchesRFC7636() {
+        // RFC 7636 Appendix B.
+        let pkce = PKCE(verifier: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")
+        XCTAssertEqual(pkce.challenge, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
+        let random = PKCE.make()
+        XCTAssertEqual(random.verifier.count, 43)
+        XCTAssertNotEqual(random, PKCE.make())
+    }
+
+    func testConnectURLCarriesTheChallenge() throws {
+        let pkce = PKCE.make()
+        let url = try XCTUnwrap(AuthCallback.connectURL(origin: try XCTUnwrap(URL(string: "https://app.folevi.com")), pkce: pkce, state: "st"))
+        let items = Dictionary(uniqueKeysWithValues: (URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+        XCTAssertEqual(url.host, "app.folevi.com")
+        XCTAssertEqual(url.path, "/connect")
+        XCTAssertEqual(items["client_id"], "folevi-mac")
+        XCTAssertEqual(items["redirect_uri"], "com.folevi.mac://auth/callback")
+        XCTAssertEqual(items["code_challenge"], pkce.challenge)
+        XCTAssertEqual(items["code_challenge_method"], "S256")
+        XCTAssertEqual(items["state"], "st")
+        XCTAssertNil(items["code_verifier"], "the verifier never leaves this Mac")
+    }
+
     func testConfigPlaceholderDetection() {
-        let placeholder = AppConfig.from(info: ["FoleviConvexURL": "https://<prod>.convex.cloud", "FoleviAuth0Domain": "auth.folevi.com", "FoleviAuth0ClientID": "set-me"])
-        XCTAssertFalse(placeholder.isAuth0Configured)
+        let placeholder = AppConfig.from(info: ["FoleviConvexURL": "https://<prod>.convex.cloud", "FoleviAppURL": "$(FOLEVI_APP_URL)"])
+        XCTAssertFalse(placeholder.isSignInConfigured)
         XCTAssertFalse(placeholder.isBackendConfigured)
-        XCTAssertNil(placeholder.devAuthURL)
-        let real = AppConfig.from(info: ["FoleviConvexURL": "http://127.0.0.1:3210", "FoleviAuth0Domain": "folevi.eu.auth0.com", "FoleviAuth0ClientID": "AbC123", "FoleviDevAuthURL": "http://localhost:3000/api/dev-auth/token"])
-        XCTAssertTrue(real.isAuth0Configured)
+        let real = AppConfig.from(info: ["FoleviConvexURL": "http://127.0.0.1:3210", "FoleviAppURL": "http://app.localhost:3000"])
+        XCTAssertTrue(real.isSignInConfigured)
         XCTAssertTrue(real.isBackendConfigured)
-        XCTAssertNotNil(real.devAuthURL)
+        XCTAssertFalse(AppConfig.from(info: ["FoleviAppURL": "javascript:alert(1)"]).isSignInConfigured)
     }
 
     func testULIDShape() {

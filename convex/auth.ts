@@ -11,12 +11,14 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
+import { bearer } from "better-auth/plugins/bearer";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import authSchema from "./betterAuth/schema";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./lib/claims";
 import { CLIENT_IP_HEADER } from "./lib/clientIp";
+import { nativeAuth } from "./lib/nativeAuth";
 
 export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
   local: { schema: authSchema },
@@ -49,6 +51,8 @@ function rateLimitRules() {
     "/reset-password": rule(60 * 60, 5),
     "/send-verification-email": rule(5 * 60, 3),
     "/change-password": rule(60 * 60, 5),
+    "/native/authorize": rule(60, 10),
+    "/native/token": rule(60, 10),
   };
 }
 
@@ -143,6 +147,9 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
         backupCodeOptions: { amount: 10, length: 10 },
         trustDeviceMaxAge: 60 * 60 * 24 * 30,
       }),
+      // The native apps' sign-in (lib/nativeAuth.ts) and their `Authorization: Bearer <session token>`.
+      nativeAuth(),
+      bearer(),
       convex({
         authConfig,
         jwt: {

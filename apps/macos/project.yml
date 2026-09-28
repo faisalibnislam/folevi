@@ -39,9 +39,6 @@ packages:
   ConvexMobile:
     url: https://github.com/get-convex/convex-swift
     exactVersion: 0.8.1
-  Auth0:
-    url: https://github.com/auth0/Auth0.swift
-    exactVersion: 3.1.0
 targets:
   Folevi:
     type: application
@@ -66,7 +63,6 @@ targets:
         buildPhase: resources
     dependencies:
       - package: ConvexMobile
-      - package: Auth0
     settings:
       base:
         PRODUCT_NAME: Folevi

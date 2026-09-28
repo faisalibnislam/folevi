@@ -3,8 +3,8 @@
 - **Status:** accepted, 25 Sept 2026. Replaces the earlier Auth0 integration (Universal Login, Post-Login
   and Custom Email Provider Actions, Management API), which has been removed together with `infra/auth0`.
 - **Scope:** sign-up, sign-in, email confirmation, password reset, two-step verification, sessions and
-  the admin identity actions for the web app and backend. The native Mac app is not yet covered (see
-  "Known gaps").
+  the admin identity actions for the web app and backend, and sign-in for the native Mac app (see
+  "Native apps").
 - **Versions:** `better-auth` 1.6.33, `@convex-dev/better-auth` 0.12.5 (local-install component).
 - **Code:** `convex/auth.ts` (all configuration), `convex/betterAuth/` (component schema and adapter),
   `convex/http.ts` (route registration), `convex/auth.config.ts` (the one trusted issuer),
@@ -64,6 +64,32 @@ Alternatives: keeping Auth0 (rejected for the reasons above) and writing the acc
 | Admin | `convex/identity.ts`: end all sessions, resend confirmation, send a password reset, block (suspension also ends sessions), delete credentials at the end of account deletion. Each writes an audit row when triggered from the console. |
 | Migration | `users.bootstrap` re-links a profile created under Auth0 (or the old local development sign-in) to the new account by **verified** email, so existing workspaces carry over. |
 | Development | No separate development identity. Identity emails are captured in the development mailbox (`/dev/mailbox`) outside production. |
+
+## Native apps
+
+Folevi for Mac (and later iOS) signs in with **Authorization Code + PKCE** (RFC 7636), the pattern
+RFC 8252 recommends for native apps. `convex/lib/nativeAuth.ts` adds two endpoints to Better Auth, and
+Better Auth's `bearer` plugin lets the app present its session token as `Authorization: Bearer …`.
+
+1. The app opens `/connect?client_id=folevi-mac&redirect_uri=com.folevi.mac://auth/callback&
+   code_challenge=…&code_challenge_method=S256&state=…` in the system browser. Signed-out visitors sign in
+   first (password, then two-step verification) and come back.
+2. The page shows which account the app will be signed in as. **Continue** calls
+   `POST /api/auth/native/authorize` with the browser's session; it refuses unless the email is verified
+   and two-step verification is on, and stores a one-time code (only its SHA-256) bound to the account,
+   client, redirect URI and challenge for 2 minutes in Better Auth's verification table.
+3. The browser is sent to `redirect_uri?code=…&state=…`. **Cancel** returns `error=access_denied`.
+4. The app calls `POST /api/auth/native/token` with the code and its PKCE verifier. The code is consumed
+   atomically (`consumeVerificationValue`), so it works once even when replayed concurrently, and a wrong
+   verifier uses it up. If everything matches, Better Auth creates a **new session** for the app.
+5. The app keeps that token in the Keychain and trades it for 15-minute Convex JWTs at
+   `/api/auth/convex/token` (which also keeps the session rolling), and ends it with `/api/auth/sign-out`.
+
+Clients and their exact redirect URIs are registered in `convex/lib/nativeClients.ts`; anything else is
+refused by the page and by the server. Both endpoints are rate limited (10 per minute per IP). Because
+the app has its own session, it appears in Settings → Devices, counts toward the plan's device limit,
+and is signed out by the same actions as any other device (sign out, revoke, password change or reset,
+suspension).
 
 ## Security properties
 
@@ -148,9 +174,6 @@ first, and check the Better Auth documentation for the version in use before doi
 - **No breached-password check yet** (Better Auth ships a `haveibeenpwned` plugin; it is not enabled).
 - **No passkeys** yet.
 - **No social sign-in, by design.**
-- **Mac app sign-in is pending:** `apps/macos` still contains Auth0 code and cannot sign in against the
-  current backend. It will move to Authorization Code + PKCE against Folevi's own accounts after the web
-  app is finalized (`docs/MACOS.md`).
 - **No admin or support procedure for a lost second factor** (see threat notes).
 - **Email address changes** are handled by support, not self-service.
 - **Not yet run in production:** everything above has been exercised locally and in the automated

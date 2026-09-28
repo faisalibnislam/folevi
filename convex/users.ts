@@ -414,6 +414,9 @@ async function markMirrorRevoked(ctx: MutationCtx, profileId: Doc<"profiles">["_
 
 /** "Chrome on macOS"-style label from a user agent, for sessions created before a device registered. */
 function browserLabel(ua: string): string {
+  // Native apps name themselves (lib/nativeAuth.ts): "Folevi for Mac (Studio iMac)".
+  const app = /^(Folevi for \w+)/.exec(ua);
+  if (app) return app[1]!;
   const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Web browser";
   // Phones and tablets first: iOS user agents also say "like Mac OS X".
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Mac OS X|Macintosh/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "";

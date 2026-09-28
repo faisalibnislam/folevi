@@ -1,9 +1,8 @@
-// Release configuration: production values (placeholders until the production deployment exists).
+// Release configuration: production (the same public URLs the web app ships).
 #include "Shared.xcconfig"
 
-CONVEX_URL = https:/$()/<prod>.convex.cloud
-FOLEVI_DEV_AUTH_URL =
-AUTH0_DOMAIN = auth.folevi.com
-AUTH0_CLIENT_ID = set-me
+// The web app: sign-in (/connect) and /api/auth.
+FOLEVI_APP_URL = https:/$()/app.folevi.com
+CONVEX_URL = https:/$()/fastidious-clownfish-123.convex.cloud
 
 INFOPLIST_PREPROCESSOR_DEFINITIONS =

@@ -39,7 +39,7 @@ struct MainWindowView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .ignoresSafeArea(.container, edges: .top)
-        .background(CanvasBackground())
+        .background(AmbientBackground(cover: editorIfOpen?.document?.cover))
         .background(WindowChrome())
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)

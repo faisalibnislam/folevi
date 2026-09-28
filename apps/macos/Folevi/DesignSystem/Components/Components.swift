@@ -39,6 +39,36 @@ struct CanvasBackground: View {
     }
 }
 
+/// Behind an open note: its style artwork, heavily blurred and saturated under a veil, so the note lights
+/// the chrome around it (the web's Shell ambient layer). The neutral canvas otherwise.
+struct AmbientBackground: View {
+    var cover: DocumentCover?
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        ZStack {
+            CanvasBackground()
+            if !reduceTransparency, cover?.kind == .art, let image = CoverArt.thumbnail(cover?.value) {
+                GeometryReader { geo in
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geo.size.width + 192, height: geo.size.height + 192)
+                        .offset(x: -96, y: -96)
+                        .blur(radius: 56)
+                        .saturation(1.4)
+                }
+                .clipped()
+                FoleviGlass.veil
+            }
+        }
+        .animation(.easeInOut(duration: 0.5), value: cover?.value)
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Buttons
 
 enum FoleviButtonKind { case primary, secondary, ghost, quiet, danger }
@@ -503,6 +533,14 @@ struct NoteCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
 
+    /// The note's page colours (the card is its cover), or the app's.
+    private var palette: SheetPalette? {
+        SheetPalette.resolve(style: document.style, cover: document.cover, dark: colorScheme == .dark)
+    }
+    private var heading: Color { palette?.heading ?? FoleviColor.heading }
+    private var faint: Color { palette?.faint ?? FoleviColor.inkFaint }
+    private var muted: Color { palette?.muted ?? FoleviColor.inkMuted }
+
     /// Portrait notebook proportions (25 : 27).
     static let aspect: CGFloat = 25 / 27
 
@@ -540,19 +578,19 @@ struct NoteCard: View {
                 Text(document.displayTitle)
                     .font(.serif(6.6 * u, .medium))
                     .tracking(0.005 * 6.6 * u)
-                    .foregroundStyle(FoleviColor.heading)
+                    .foregroundStyle(heading)
                     .lineLimit(2)
                     .padding(.trailing, 7 * u)
                 Text(Date(timeIntervalSince1970: document.createdAt / 1000), format: .dateTime.day().month(.wide).year())
                     .font(.ui(4.5 * u))
-                    .foregroundStyle(FoleviColor.inkFaint)
+                    .foregroundStyle(faint)
                     .lineLimit(1)
                     .padding(.top, u)
                 Text(document.excerpt.isEmpty ? String(localized: "Empty page") : document.excerpt)
                     .font(.ui(3.6 * u))
                     .italic(document.excerpt.isEmpty)
                     .lineSpacing(1.4 * u)
-                    .foregroundStyle(FoleviColor.inkFaint)
+                    .foregroundStyle(faint)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding(.top, 4.6 * u)
                     .clipped()
@@ -563,14 +601,14 @@ struct NoteCard: View {
             .padding(EdgeInsets(top: 8 * u, leading: 7 * u, bottom: 6 * u, trailing: 6 * u))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .background(FoleviColor.surface)
+        .background(palette?.surface ?? FoleviColor.surface)
         .clipShape(shape)
         .overlay(shape.strokeBorder(Color.black.opacity(0.05), lineWidth: 1))
         .overlay(alignment: .topTrailing) {
             if document.starred == true {
                 Image(systemName: "star.fill")
                     .font(.system(size: 5.6 * u))
-                    .foregroundStyle(FoleviColor.heading)
+                    .foregroundStyle(heading)
                     .frame(width: 12 * u, height: 12 * u)
                     .background(chip, in: UnevenRoundedRectangle(bottomLeadingRadius: 2 * u, style: .continuous))
                     .clipShape(shape)
@@ -588,12 +626,12 @@ struct NoteCard: View {
         }
     }
 
-    private var chip: Color { FoleviColor.line.opacity(0.75) }
+    private var chip: Color { (palette?.line ?? FoleviColor.line).opacity(palette == nil ? 0.75 : 0.9) }
 
     private func footer(u: CGFloat) -> some View {
         HStack(spacing: 2 * u) {
             Text(Date(timeIntervalSince1970: document.updatedAt / 1000), format: .relative(presentation: .named))
-                .foregroundStyle(FoleviColor.inkMuted)
+                .foregroundStyle(muted)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 1.8 * u) {
@@ -602,11 +640,11 @@ struct NoteCard: View {
                 } else {
                     Image(systemName: "pencil.line")
                         .font(.system(size: 3.8 * u, weight: .semibold))
-                        .foregroundStyle(FoleviColor.heading)
+                        .foregroundStyle(heading)
                 }
                 Text(folder?.name ?? String(localized: "Draft"))
                     .fontWeight(.semibold)
-                    .foregroundStyle(FoleviColor.heading)
+                    .foregroundStyle(heading)
                     .lineLimit(1)
             }
             .padding(.horizontal, 3 * u)

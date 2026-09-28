@@ -100,9 +100,16 @@ struct SidebarView: View {
         }
         .frame(width: FoleviLayout.sidebarDefault)
         .background {
-            FoleviColor.sidebar.opacity(reduceTransparency ? 1 : 0.84)
-                .overlay(alignment: .trailing) { FoleviColor.line.frame(width: 1) }
-                .ignoresSafeArea()
+            // Glass, as on the web: a note's artwork (AmbientBackground) shows through faintly.
+            Group {
+                if reduceTransparency {
+                    FoleviColor.sidebar
+                } else {
+                    FoleviGlass.sidebar.background(.ultraThinMaterial)
+                }
+            }
+            .overlay(alignment: .trailing) { FoleviGlass.border.frame(width: 1) }
+            .ignoresSafeArea()
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Sidebar"))

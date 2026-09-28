@@ -181,6 +181,9 @@ final class EditorModel {
 
     var style: DocumentStyle { document?.style ?? defaultDocumentStyle }
 
+    /// The page's colours (SheetPalette), set by the page view for the current appearance.
+    var sheetPalette: SheetPalette?
+
     var conflicts: [ConflictRecord] { app.sync.conflicts.filter { $0.documentId == documentId } }
 
     var liveWire: [WireBlock] { blocks.values.map(\.wire) }
@@ -1198,8 +1201,8 @@ final class EditorModel {
 
     func currentTextStyle(for blockId: String) -> TextRenderStyle {
         let scale = CGFloat(app.editorScale)
-        guard let block = blocks[blockId] else { return BlockStyles.paragraph(style: style, scale: scale) }
-        return BlockStyles.style(for: block, document: style, scale: scale)
+        guard let block = blocks[blockId] else { return BlockStyles.paragraph(style: style, scale: scale, palette: sheetPalette) }
+        return BlockStyles.style(for: block, document: style, scale: scale, palette: sheetPalette)
     }
 
     func performSlash(_ id: String, blockId: String, at location: Int) {

@@ -26,35 +26,41 @@ enum BlockStyles {
         max(0, (font.pointSize * lineHeight - NSLayoutManager().defaultLineHeight(for: font)).rounded())
     }
 
-    static func paragraph(style: DocumentStyle, scale: CGFloat) -> TextRenderStyle {
+    static func paragraph(style: DocumentStyle, scale: CGFloat, palette: SheetPalette? = nil) -> TextRenderStyle {
         let font = FoleviType.editorFont(size: bodySize(style.font), design: style.font, scale: scale)
-        return TextRenderStyle(font: font, color: .foleviInk, lineSpacing: spacing(for: font, lineHeight: 1.6),
+        return TextRenderStyle(font: font, color: palette.map { NSColor($0.ink) } ?? .foleviInk, lineSpacing: spacing(for: font, lineHeight: 1.6),
                               placeholder: String(localized: "Start writing, or type '/' for commands"),
                               kern: style.font == .mono ? 0 : FoleviTracking.normal * font.pointSize)
     }
 
-    /// Page title: 38pt semibold, heading color, tight tracking (mono 34).
-    static func title(style: DocumentStyle, scale: CGFloat) -> TextRenderStyle {
+    /// Page title, as on the web: 40pt semibold Spectral (the document's own family when it's mono or
+    /// rounded; mono 34), -0.012em tracking (-0.02em mono/rounded). `color` overrides the heading colour
+    /// (a title set on the style's artwork).
+    static func title(style: DocumentStyle, scale: CGFloat, palette: SheetPalette? = nil, color: NSColor? = nil) -> TextRenderStyle {
         let size: CGFloat = style.font == .mono ? 34 : 40
-        let font = FoleviType.editorFont(size: size, weight: .semibold, design: style.font, scale: scale)
-        return TextRenderStyle(font: font, color: .foleviHeading, lineSpacing: spacing(for: font, lineHeight: 1.12),
-                              placeholder: String(localized: "Untitled"), kern: FoleviTracking.tight * font.pointSize * (style.font == .mono ? 0.5 : 1.2))
+        let design: DocumentFont = style.font == .mono || style.font == .rounded ? style.font : .serif
+        let font = FoleviType.editorFont(size: size, weight: .semibold, design: design, scale: scale)
+        let tracking: CGFloat = design == .serif ? -0.012 : -0.02
+        return TextRenderStyle(font: font, color: color ?? palette.map { NSColor($0.heading) } ?? .foleviHeading, lineSpacing: spacing(for: font, lineHeight: 1.12),
+                              placeholder: String(localized: "Untitled"), kern: tracking * font.pointSize)
     }
 
-    static func style(for block: Block, document: DocumentStyle, scale: CGFloat) -> TextRenderStyle {
-        var s = paragraph(style: document, scale: scale)
+    static func style(for block: Block, document: DocumentStyle, scale: CGFloat, palette: SheetPalette? = nil) -> TextRenderStyle {
+        var s = paragraph(style: document, scale: scale, palette: palette)
+        let heading: NSColor = palette.map { NSColor($0.heading) } ?? .foleviHeading
+        let muted: NSColor = palette.map { NSColor($0.muted) } ?? .foleviInkMuted
         switch block.content {
         case .heading(let h):
             let size: CGFloat = h.level == .level1 ? FoleviFontSize.h1 : h.level == .level2 ? FoleviFontSize.h2 : FoleviFontSize.h3
             s.font = FoleviType.editorFont(size: size, weight: .semibold, design: document.font, scale: scale)
-            s.color = .foleviHeading
+            s.color = heading
             s.lineSpacing = spacing(for: s.font, lineHeight: 1.25)
             s.kern = document.font == .mono ? 0 : FoleviTracking.tight * s.font.pointSize
             s.placeholder = String(localized: "Heading \(h.level.rawValue)")
         case .todo(let p):
             s.placeholder = String(localized: "To-do")
             if p.checked {
-                s.color = .foleviInkMuted
+                s.color = muted
                 s.strikethrough = true
             }
         case .bulleted, .numbered:
@@ -64,7 +70,7 @@ enum BlockStyles {
             s.placeholder = String(localized: "Toggle")
         case .quote:
             s.font = FoleviFont.nsFont(FoleviFont.Family(document.font), size: s.font.pointSize * (document.font == .serif ? 1.08 : 1), italic: true)
-            s.color = NSColor(FoleviColor.ink.mix(with: FoleviColor.inkMuted, by: 0.15))
+            s.color = NSColor((palette?.ink ?? FoleviColor.ink).mix(with: palette?.muted ?? FoleviColor.inkMuted, by: 0.15))
             s.placeholder = String(localized: "Quote")
         case .callout:
             s.placeholder = String(localized: "Callout")
@@ -128,7 +134,7 @@ struct BlockRowView: View {
 
     private var block: Block { row.block }
     private var scale: CGFloat { CGFloat(app.editorScale) }
-    private var textStyle: TextRenderStyle { BlockStyles.style(for: block, document: model.style, scale: scale) }
+    private var textStyle: TextRenderStyle { BlockStyles.style(for: block, document: model.style, scale: scale, palette: model.sheetPalette) }
     private var isSelected: Bool { model.selectedBlockIds.contains(block.id) }
     private var isMatch: Bool { model.findMatches.contains(block.id) }
     private var isDragged: Bool { model.drag.draggedIds.contains(block.id) }

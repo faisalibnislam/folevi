@@ -8,6 +8,7 @@ struct EditorView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @FocusState private var containerFocused: Bool
     @FocusState private var findFocused: Bool
     var showFind: Binding<Bool>
@@ -46,6 +47,11 @@ struct EditorView: View {
         .onChange(of: app.blockRevision[model.documentId]) { _, _ in model.scheduleReload() }
         .onChange(of: app.documentsRevision) { _, _ in model.documentChanged() }
         .onChange(of: model.containerFocusToken) { _, _ in containerFocused = true }
+        .onChange(of: PaletteKey(style: model.style, cover: model.document?.cover, dark: colorScheme == .dark), initial: true) { _, key in
+            let palette = key.cover.flatMap { SheetPalette.resolve(style: key.style, cover: $0, dark: key.dark) }
+                ?? (key.style.sheet != nil ? SheetPalette.resolve(style: key.style, cover: DocumentCover(kind: .none, value: nil), dark: key.dark) : nil)
+            if model.sheetPalette != palette { model.sheetPalette = palette }
+        }
         .onChange(of: app.editorScale, initial: true) { _, s in model.drag.indentStep = BlockMetrics.indent(CGFloat(s)) }
         .sheet(isPresented: $model.showLinkPrompt) {
             LinkPromptView(initial: model.linkDraft) { model.applyLink($0) } onCancel: { model.showLinkPrompt = false }
@@ -178,15 +184,19 @@ struct EditorView: View {
         }
     }
 
-    /// The page sheet: surface (per page background), radius 22, sheet shadow.
+    /// The page sheet: the note's page colour (SheetPalette) or the surface per page background; sheet shadow.
     private var sheetBackground: some View {
         let accentSoft = Color.folevi(accentSoft: model.style.accent)
         let fill: SurfaceFill
-        switch model.style.background {
+        if let palette = model.sheetPalette {
+            fill = .color(palette.surface)
+        } else {
+            switch model.style.background {
         case .plain: fill = .color(FoleviColor.surfaceRaised)
         case .tinted: fill = .color(accentSoft.mix(with: FoleviColor.surface, by: 0.55))
         case .grid: fill = .color(FoleviColor.surface)
-        default: fill = .gradient([FoleviColor.surface, FoleviColor.surface.mix(with: FoleviColor.glowPeach, by: 0.04)])
+        default: fill = .color(FoleviColor.surface)
+        }
         }
         return Color.clear
             .foleviSurface(fill, shape: .rounded(FoleviRadius.sheet), shadow: FoleviShadow.sheet)
@@ -255,80 +265,82 @@ struct GridPaper: View {
 
 // MARK: - Header
 
+/// The page header, as on the web: with a style, the artwork band (about 192pt) with a soft shade and the
+/// serif title on it — white on deep artwork, the style's ink on light artwork; without one, the title on
+/// the page. Pages have no icon (as on the web).
 struct DocumentHeaderView: View {
     @Bindable var model: EditorModel
     var openDocument: (String, Bool) -> Void
     var sidePadding: CGFloat = 64
     @Environment(AppModel.self) private var app
-    @State private var showIconPicker = false
-    @State private var hovering = false
 
-    private var hasCover: Bool {
-        let kind = model.document?.cover.kind
+    private var cover: DocumentCover? { model.document?.cover }
+
+    private var onCover: Bool {
+        let kind = cover?.kind
         return kind == .color || kind == .gradient || kind == .art
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if hasCover {
-                CoverView(cover: model.document?.cover, style: model.style)
-                    .frame(height: 168)
-                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: FoleviRadius.sheet, topTrailingRadius: FoleviRadius.sheet, style: .continuous))
-                    .overlay(alignment: .bottom) { FoleviColor.line.opacity(0.6).frame(height: 1) }
-                    .accessibilityHidden(true)
-            } else {
-                Color.clear.frame(height: 48)
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                iconButton
-                    .padding(.top, hasCover ? -38 : 0)
-                BlockTextEditor(blockId: "__title__",
-                                text: model.titleDraft.isEmpty ? [] : [.text(text: model.titleDraft, marks: nil)],
-                                style: BlockStyles.title(style: model.style, scale: CGFloat(app.editorScale)),
-                                isEditable: !model.isReadOnly,
-                                accessibilityLabel: String(localized: "Title"),
-                                model: model,
-                                focusRequest: model.focus?.blockId == "__title__" ? model.focus : nil,
-                                isPlain: true,
-                                alwaysShowPlaceholder: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("documentTitle")
-                    .padding(.top, 18)
-                    .padding(.bottom, 18)
-            }
-            .padding(.horizontal, sidePadding)
-        }
-        .onHover { hovering = $0 }
+    private var art: CoverArt.Entry? { cover?.kind == .art ? CoverArt.entry(cover?.value) : nil }
+
+    /// The title's colour on the artwork (nil: the page's heading colour).
+    private var titleColor: NSColor? {
+        guard onCover, let art else { return nil }
+        if art.tone == "light", let ink = art.ink.flatMap(Color.init(hex:)) { return NSColor(ink) }
+        return .white
     }
 
-    @ViewBuilder private var iconButton: some View {
-        let icon = model.document?.icon.flatMap { $0.isEmpty ? nil : $0 }
-        if icon != nil || !model.isReadOnly {
-            Button {
-                if !model.isReadOnly { showIconPicker = true }
-            } label: {
-                if let icon {
-                    Text(icon)
-                        .font(.system(size: 42 * CGFloat(app.editorScale)))
-                        .frame(width: 76, height: 76)
-                        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(20), shadow: FoleviShadow.control)
-                } else {
-                    Label("Add Icon", systemImage: "face.smiling")
-                        .font(.ui(12.5, .semibold))
-                        .foregroundStyle(FoleviColor.inkMuted)
-                        .padding(.horizontal, 12)
-                        .frame(height: 28)
-                        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .capsule, shadow: FoleviShadow.control)
-                        .opacity(hovering || hasCover ? 1 : 0)
-                        .padding(.top, hasCover ? 48 : 0)
+    private var title: some View {
+        BlockTextEditor(blockId: "__title__",
+                        text: model.titleDraft.isEmpty ? [] : [.text(text: model.titleDraft, marks: nil)],
+                        style: BlockStyles.title(style: model.style, scale: CGFloat(app.editorScale), palette: model.sheetPalette, color: titleColor),
+                        isEditable: !model.isReadOnly,
+                        accessibilityLabel: String(localized: "Title"),
+                        model: model,
+                        focusRequest: model.focus?.blockId == "__title__" ? model.focus : nil,
+                        isPlain: true,
+                        alwaysShowPlaceholder: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("documentTitle")
+    }
+
+    var body: some View {
+        if onCover {
+            ZStack(alignment: .bottomLeading) {
+                CoverView(cover: cover, style: model.style)
+                    .accessibilityHidden(true)
+                if let art {
+                    LinearGradient(stops: [
+                        .init(color: .clear, location: 0.35),
+                        .init(color: art.tone == "light" ? .white.opacity(0.45) : .black.opacity(0.4), location: 1),
+                    ], startPoint: .top, endPoint: .bottom)
+                    .accessibilityHidden(true)
                 }
+                title
+                    .shadow(color: titleColor == .white ? .black.opacity(0.4) : .white.opacity(0.5), radius: titleColor == nil ? 0 : 7, y: 1)
+                    .padding(.horizontal, sidePadding)
+                    .padding(.top, 56)
+                    .padding(.bottom, 24)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(icon.map { "Page icon \($0). Change icon" } ?? "Add page icon"))
-            .popover(isPresented: $showIconPicker) { IconPicker { icon in model.setIcon(icon); showIconPicker = false } }
+            .frame(minHeight: 192)
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: FoleviRadius.sheet, topTrailingRadius: FoleviRadius.sheet, style: .continuous))
+            .overlay(alignment: .bottom) { FoleviColor.line.opacity(0.6).frame(height: 1) }
+            .padding(.bottom, 20)
+        } else {
+            title
+                .padding(.horizontal, sidePadding)
+                .padding(.top, 40 + 16)
+                .padding(.bottom, 20)
         }
     }
+}
+
+/// What the page's colours depend on.
+struct PaletteKey: Equatable {
+    var style: DocumentStyle
+    var cover: DocumentCover?
+    var dark: Bool
 }
 
 /// The cover band inside the sheet top (a cover's own color wins; "accent" is ember).

@@ -88,6 +88,7 @@
 		DF677EA35638172E5F904D20 /* ULID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51F373F3397161B4614F1000 /* ULID.swift */; };
 		E222C01E7C0582A11A181418 /* HTMLExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8944B20D5C21961BDA9306 /* HTMLExport.swift */; };
 		E2D2598A0526702F42EA5124 /* FoleviTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54868339AEA485B6D950B340 /* FoleviTokens.swift */; };
+		E3DDF988DD6B4739BC842433 /* SheetPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160F2F7A5055D14E027F9A6D /* SheetPalette.swift */; };
 		EB201F67A1CD86F52CD64FB2 /* BlockRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604CAFE235326740449F3E17 /* BlockRowView.swift */; };
 		EC4D4080B6E42A3125CF13E9 /* BlockTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1630F5696B3AD13E03D2D1 /* BlockTextView.swift */; };
 		ED87701E0C1C9DE98963A9B0 /* WireBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338F3C4CB476BCF3E8688E51 /* WireBlock.swift */; };
@@ -118,6 +119,7 @@
 		09123928534E4B78174DD3E7 /* Markdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Markdown.swift; sourceTree = "<group>"; };
 		0F3CD96AA81DFC63886DC50E /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		1537182453B34751A655E02B /* FlexibleDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlexibleDecoding.swift; sourceTree = "<group>"; };
+		160F2F7A5055D14E027F9A6D /* SheetPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetPalette.swift; sourceTree = "<group>"; };
 		190C86CC285A3AF163AA972F /* FoleviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviApp.swift; sourceTree = "<group>"; };
 		22AEE9F0D974540815E971F6 /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
 		232119F7184516D1E495B084 /* BlockDropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDropTests.swift; sourceTree = "<group>"; };
@@ -297,6 +299,7 @@
 				BCDC3E1DEB42D59731DDD1C3 /* Folders.swift */,
 				C56CB70FC209619CF7304013 /* FoleviFont.swift */,
 				DA763499A687D1E479FDAEC4 /* FoleviMark.swift */,
+				160F2F7A5055D14E027F9A6D /* SheetPalette.swift */,
 				002A90A0994B97E70A8FE249 /* Surfaces.swift */,
 				73B826C727C7B595B97B6567 /* Typography.swift */,
 				3910E7BCAD0DCAB13EDFE343 /* WindowChrome.swift */,
@@ -713,6 +716,7 @@
 				EE9EF0B72AEA3430B9B61776 /* RichText.swift in Sources */,
 				70DB7DB4170ED10813FE68EF /* SQLiteStore.swift in Sources */,
 				083E6CBC635BDDA358344BE3 /* SettingsView.swift in Sources */,
+				E3DDF988DD6B4739BC842433 /* SheetPalette.swift in Sources */,
 				F2F3CC2B3BDB6B92261BFB14 /* SidebarView.swift in Sources */,
 				D71AC08E27E4ACE8790C1554 /* Surfaces.swift in Sources */,
 				41203E06365B91E1168CFCFB /* SyncEngine.swift in Sources */,

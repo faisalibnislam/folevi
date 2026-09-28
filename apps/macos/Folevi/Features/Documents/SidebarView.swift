@@ -177,7 +177,7 @@ struct SidebarView: View {
                 openWebApp("settings/billing", config: app.config)
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "sparkles").font(.system(size: 12, weight: .medium)).foregroundStyle(FoleviColor.heading)
+                    AiIcon(size: 13).foregroundStyle(FoleviColor.heading)
                     Text(e.trialing ? String(localized: "Pro trial · \(e.trialDaysLeft) days left") : String(localized: "Upgrade to Pro"))
                         .font(.ui(12.5, .medium))
                         .foregroundStyle(FoleviColor.heading)

@@ -44,6 +44,22 @@ struct Profile: Codable, Sendable, Hashable {
     var createdAt: Double
     /// What their plan includes right now (users.me; the server enforces it again).
     var entitlements: Entitlements?
+    /// Whether they've left the AI Assistant on (Settings → Account on the web).
+    var aiEnabled: Bool?
+
+    /// AI is available: their plan includes it and they haven't turned it off (the server enforces it).
+    var aiOn: Bool { aiEnabled != false && (entitlements?.ai ?? true) }
+    var aiEntitled: Bool { entitlements?.ai ?? true }
+}
+
+/// ai:ask / ai:brief — Markdown with [n] citations, and the notes cited.
+struct AiAnswer: Decodable, Sendable {
+    struct Source: Decodable, Sendable, Hashable, Identifiable {
+        var id: String
+        var title: String
+    }
+    var answer: String
+    var sources: [Source]
 }
 
 /// A person's plan right now (convex/lib/plans.ts `entitlementsOf`).

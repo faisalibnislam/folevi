@@ -70,6 +70,7 @@
 		A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */; };
 		AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E496B814D8B72A36CF417C4F /* PlanSettings.swift */; };
 		ACDE0FA46D66C1FACF416B5D /* Covers in Resources */ = {isa = PBXBuildFile; fileRef = 267FDB9FA33CE6745D1F8769 /* Covers */; };
+		AE836FF563559894E7296E55 /* AiViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 254FC1B4800C33B010EDCF13 /* AiViews.swift */; };
 		B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04542070393D918E567E845 /* NavigationModel.swift */; };
 		B2CBA3AC45F70E9BC05916A4 /* WireBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338F3C4CB476BCF3E8688E51 /* WireBlock.swift */; };
 		B93D1674ED59DBFB4A9CEDDF /* AuthCallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D5C2CDE8D60DA93116A294 /* AuthCallback.swift */; };
@@ -124,6 +125,7 @@
 		190C86CC285A3AF163AA972F /* FoleviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviApp.swift; sourceTree = "<group>"; };
 		22AEE9F0D974540815E971F6 /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
 		232119F7184516D1E495B084 /* BlockDropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDropTests.swift; sourceTree = "<group>"; };
+		254FC1B4800C33B010EDCF13 /* AiViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiViews.swift; sourceTree = "<group>"; };
 		267FDB9FA33CE6745D1F8769 /* Covers */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Covers; path = Folevi/Resources/Covers; sourceTree = SOURCE_ROOT; };
 		27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonTextBlocks.swift; sourceTree = "<group>"; };
 		29B1E829D3BC461A2BFA76C2 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
@@ -234,6 +236,7 @@
 		1ABEC8E52DA92411B20EDF63 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				594763572D51DC5CA2EF6A50 /* AI */,
 				FE91B9F7709E3BC886C95FFB /* Auth */,
 				76AE2A0E0B23801FF6396630 /* Calendar */,
 				64DB3322F9E5ABC4D6639688 /* Documents */,
@@ -315,6 +318,14 @@
 				2C6C97E8048E4772C8AF3F8B /* FoleviUITests.swift */,
 			);
 			path = FoleviUITests;
+			sourceTree = "<group>";
+		};
+		594763572D51DC5CA2EF6A50 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				254FC1B4800C33B010EDCF13 /* AiViews.swift */,
+			);
+			path = AI;
 			sourceTree = "<group>";
 		};
 		5E9C3A27228FFC72B81F627D /* Editor */ = {
@@ -675,6 +686,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4B20ACE33F4565B40B76F862 /* APIModels.swift in Sources */,
+				AE836FF563559894E7296E55 /* AiViews.swift in Sources */,
 				3E2F40E7D0B1CD44901454BA /* AppModel.swift in Sources */,
 				8C7EAB8C3EF512C48C4EFD9E /* AuthCallback.swift in Sources */,
 				5F2232FDD4BF7B113532480D /* AuthProviders.swift in Sources */,

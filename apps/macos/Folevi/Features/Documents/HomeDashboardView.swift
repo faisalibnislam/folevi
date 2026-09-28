@@ -36,6 +36,10 @@ struct HomeDashboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                if app.profile?.aiOn == true {
+                    CatchUpView(openDocument: { openDocument($0, false) })
+                        .padding(.top, 16)
+                }
                 section(title: "Recent notes", systemImage: "clock", target: .notes, first: true) {
                     if recent.isEmpty {
                         emptyText("No notes yet. Press New to write your first one.")

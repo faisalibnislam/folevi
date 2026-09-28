@@ -7,6 +7,7 @@ struct MainWindowView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var nav = NavigationModel()
     @State private var editor: EditorModel?
+    @State private var aiOpen = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -44,6 +45,21 @@ struct MainWindowView: View {
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .overlay { BlockDragOverlay(controller: editorIfOpen?.drag) }
+        .overlay(alignment: .bottomTrailing) {
+            // The AI Assistant: a floating launcher and chat, everywhere but on a note (as on the web).
+            if app.profile?.aiEnabled != false, editorIfOpen == nil, app.phase == .ready {
+                VStack(alignment: .trailing, spacing: 12) {
+                    if aiOpen {
+                        AskAiPanel(openDocument: { id in aiOpen = false; nav.open(id) }, close: { aiOpen = false })
+                            .transition(.scale(scale: 0.96, anchor: .bottomTrailing).combined(with: .opacity))
+                    }
+                    AiLauncher(isOpen: $aiOpen)
+                }
+                .padding(.trailing, 36)
+                .padding(.bottom, 36)
+                .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: aiOpen)
+            }
+        }
         .navigationTitle(windowTitle)
         .focusedSceneValue(\.navigation, nav)
         .focusedSceneValue(\.editor, editor)

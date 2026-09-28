@@ -99,6 +99,8 @@ test("organization: tags, templates, missing folders, team workspaces from the s
 });
 
 test("organization views have no serious accessibility violations (light and dark)", async ({ browser }) => {
+  // Seven pages in two themes, each scanned by axe.
+  test.setTimeout(300_000);
   const { page } = await newPersonWithWorkspace(browser, "A11y Organizer");
   await showFolders(page);
   const views = ["/tasks/all", "/tasks/completed", "/settings/workspace", "/settings/members", "/templates", "/folders/01NOTAREALFOLDER0000000000", "/documents"];

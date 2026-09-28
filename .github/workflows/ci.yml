@@ -76,9 +76,13 @@ jobs:
           sleep 10
           node scripts/setup-local.mjs
       - run: pnpm --filter @folevi/web exec playwright install --with-deps chromium
-      - name: Start the web app
+      - name: Build and start the web app
+        # A production build, not `next dev`: compiling each page on first visit starved the runner's CPU,
+        # and the local Convex backend's 1-second query limit then tripped for every open query at once.
+        # `next build` reads apps/web/.env.local written by setup-local, so the build talks to the local backend.
         run: |
-          (cd apps/web && npx next dev --port 3000 > ../../web.log 2>&1 &)
+          pnpm --filter @folevi/web build
+          (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
           npx wait-on http://localhost:3000 --timeout 120000
       - name: Playwright
         run: pnpm --filter @folevi/web exec playwright test

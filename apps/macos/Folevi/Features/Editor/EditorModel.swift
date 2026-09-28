@@ -184,6 +184,70 @@ final class EditorModel {
     /// The page's colours (SheetPalette), set by the page view for the current appearance.
     var sheetPalette: SheetPalette?
 
+    /// An AI action on selected text, waiting for its result or for Replace / Insert below / Discard.
+    struct InlineAi: Identifiable {
+        let id = UUID()
+        var task: String
+        var blockId: String
+        var range: NSRange
+        var source: String
+        var result: String?
+        var error: String?
+        /// Explain and Summarize answer about the text rather than rewrite it: offer Insert below only.
+        var replaces: Bool { task != "explain" && task != "summarizeText" }
+    }
+    var inlineAi: InlineAi?
+
+    func runInlineAi(task: String, blockId: String, range: NSRange, text: String) {
+        guard let session = app.session else { return }
+        let request = InlineAi(task: task, blockId: blockId, range: range, source: text)
+        inlineAi = request
+        let docId = documentId
+        Task { @MainActor in
+            struct Written: Decodable { let text: String }
+            do {
+                let out: Written = try await session.convex.action("ai:write", [
+                    "workspaceId": .string(session.workspaceId), "task": .string(task), "text": .string(text), "documentId": .string(docId),
+                ], timeout: 90)
+                if inlineAi?.id == request.id { inlineAi?.result = out.text.trimmingCharacters(in: .whitespacesAndNewlines) }
+            } catch {
+                if inlineAi?.id == request.id { inlineAi?.error = ConvexService.mapError(error).localizedDescription }
+            }
+        }
+    }
+
+    /// Replaces the selected text with the result (through the text view, so the block's other formatting
+    /// stays), or inserts the result as blocks below it.
+    func applyInlineAi(replace: Bool) {
+        guard let ai = inlineAi, let result = ai.result, !result.isEmpty, !isReadOnly else { return }
+        inlineAi = nil
+        if replace, let tv = textView(ai.blockId), NSMaxRange(ai.range) <= (tv.string as NSString).length,
+           (tv.string as NSString).substring(with: ai.range) == ai.source {
+            let plain = result.replacingOccurrences(of: "\n\n", with: "\n")
+            if tv.shouldChangeText(in: ai.range, replacementString: plain) {
+                tv.textStorage?.replaceCharacters(in: ai.range, with: plain)
+                tv.didChangeText()
+                tv.setSelectedRange(NSRange(location: ai.range.location, length: (plain as NSString).length))
+            }
+            return
+        }
+        let imported = MarkdownCodec.markdownToBlocks(result, titleFromHeading: false).blocks
+        guard !imported.isEmpty, let anchor = blocks[ai.blockId] else { return }
+        var upserts: [Block] = []
+        var previous = anchor.id
+        for wire in imported {
+            var b = Block(wire: wire)
+            if wire.parentId == nil {
+                b.parentId = anchor.parentId
+                b.rank = rank(parentId: anchor.parentId, after: previous)
+                previous = b.id
+            }
+            blocks[b.id] = b
+            upserts.append(b)
+        }
+        commit(upserts: upserts, actionName: String(localized: "Insert AI Text"))
+    }
+
     var conflicts: [ConflictRecord] { app.sync.conflicts.filter { $0.documentId == documentId } }
 
     var liveWire: [WireBlock] { blocks.values.map(\.wire) }

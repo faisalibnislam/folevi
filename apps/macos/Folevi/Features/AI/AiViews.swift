@@ -386,3 +386,64 @@ struct FlowLayout: Layout {
         }
     }
 }
+
+/// The result of an AI action on selected text: Replace (or Insert below for Explain / Summarize) or Discard.
+struct InlineAiCard: View {
+    @Bindable var model: EditorModel
+
+    private var title: String {
+        guard let task = model.inlineAi?.task else { return "" }
+        return BlockTextView.aiTasks.first { $0.task == task }?.title ?? String(localized: "AI")
+    }
+
+    var body: some View {
+        if let ai = model.inlineAi {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    AiIcon(size: 13).foregroundStyle(FoleviColor.heading)
+                    Text(title).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading)
+                    Spacer()
+                    IconButton(systemImage: "xmark", label: "Discard", size: 24) { model.inlineAi = nil }
+                }
+                if let error = ai.error {
+                    Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive)
+                } else if let result = ai.result {
+                    ScrollView {
+                        AiMarkdownView(markdown: result).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 220)
+                    HStack(spacing: 8) {
+                        if ai.replaces {
+                            Button("Replace") { model.applyInlineAi(replace: true) }
+                                .buttonStyle(.folevi(.primary))
+                                .keyboardShortcut(.defaultAction)
+                        }
+                        Button("Insert Below") { model.applyInlineAi(replace: false) }
+                            .buttonStyle(.folevi(ai.replaces ? .secondary : .primary))
+                        Button("Copy") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(result, forType: .string)
+                        }
+                        .buttonStyle(.folevi(.quiet))
+                        Spacer()
+                        Button("Discard") { model.inlineAi = nil }
+                            .buttonStyle(.folevi(.quiet))
+                            .keyboardShortcut(.cancelAction)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Writing…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
+                    }
+                }
+            }
+            .padding(16)
+            .frame(width: 520)
+            .background(FoleviColor.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(FoleviGlass.border))
+            .shadow(color: .black.opacity(0.1), radius: 20, y: 8)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("AI result"))
+        }
+    }
+}

@@ -26,6 +26,10 @@ struct MainWindowView: View {
                         .overlay(alignment: .bottom) {
                             if let editor = editorIfOpen {
                                 VStack(spacing: 12) {
+                                    if editor.inlineAi != nil {
+                                        InlineAiCard(model: editor)
+                                            .transition(.scale(scale: 0.97, anchor: .bottom).combined(with: .opacity))
+                                    }
                                     if noteAiOpen {
                                         AskAiPanel(openDocument: { id in noteAiOpen = false; nav.open(id) }, close: { noteAiOpen = false },
                                                    documentId: editor.documentId)

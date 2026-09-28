@@ -90,6 +90,25 @@ Plan & billing on the web). Onboarding has three steps (name the workspace, choo
 Welcome). `users:registerSession({client:"mac"})` runs after sign-in, and a live `users:me`
 subscription signs the Mac out if its session is revoked elsewhere.
 
+## Following the web
+
+The Mac app follows the web app's design and features, natively:
+
+- **Look**: Instrument Sans and Spectral, the neutral product chrome and glass colours from
+  `tokens.chrome` / `tokens.glass`, the new logo and app icon (`packages/design-tokens/scripts/brand-icons.mjs`).
+- **Note styles**: the web's 57 artworks and palettes (`Resources/Covers`); `SheetPalette` ports the web's page
+  colours (paper, ink; light and dark). An open note's artwork glows behind the window.
+- **Home**: Catch me up, Recent notes and Starred rows, Recent folders; notebook note cards and folder cards
+  with the notes inside. Drafts, All notes and a Folders index.
+- **Shell**: the web's sidebar (logo, sections, plan pill), tabs across the top, and — on a note — the note
+  sidebar (contents, tasks, attachments and links, find) and the floating dock (AI, Insert, Format, Style,
+  Info, Comments).
+- **AI Assistant**: the floating launcher and Ask AI (ai:ask), the note's AI, Catch me up (ai:brief), and AI
+  on selected text from the right-click menu (ai:write) with Replace / Insert Below. Settings → Account
+  turns it off everywhere.
+- **Plans**: Settings → Plan & Billing and Devices; changing plans and payment open the web.
+- **Templates**: the 26 built-in templates (created online, filled in by the server).
+
 ## Architecture
 
 ```

@@ -35,6 +35,33 @@ final class BlockTextView: NSTextView {
     var isCode = false
     /// Plain single-field mode (document title): Return submits.
     var isPlain = false
+    /// Runs an AI action on the selected text (task, range, text); nil hides the AI menu.
+    var onAiTask: ((String, NSRange, String) -> Void)?
+
+    /// The AI actions on selected text, as on the web (ai:write tasks).
+    static let aiTasks: [(task: String, title: String)] = [
+        ("improve", String(localized: "Improve Writing")), ("fix", String(localized: "Fix Spelling & Grammar")),
+        ("shorter", String(localized: "Make Shorter")), ("longer", String(localized: "Make Longer")),
+        ("simplify", String(localized: "Simplify")), ("professional", String(localized: "More Professional")),
+        ("casual", String(localized: "More Casual")), ("summarizeText", String(localized: "Summarize")),
+        ("explain", String(localized: "Explain")),
+    ]
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = super.menu(for: event) ?? NSMenu()
+        let range = selectedRange()
+        guard let onAiTask, range.length > 0, !isCode else { return menu }
+        let text = (string as NSString).substring(with: range)
+        let ai = NSMenu(title: String(localized: "AI"))
+        for (task, title) in Self.aiTasks {
+            ai.addItem(ClosureMenuItem(title, enabled: true) { onAiTask(task, range, text) })
+        }
+        let item = NSMenuItem(title: String(localized: "AI"), action: nil, keyEquivalent: "")
+        item.submenu = ai
+        menu.insertItem(item, at: 0)
+        menu.insertItem(.separator(), at: 1)
+        return menu
+    }
 
     enum MenuKey { case up, down, commit, cancel }
 
@@ -371,6 +398,13 @@ struct BlockTextEditor: NSViewRepresentable {
         view.setAccessibilityIdentifier("block.\(blockId)")
         let coordinator = context.coordinator
         view.onCommand = { [weak coordinator] command in coordinator?.handle(command) ?? false }
+        if !isPlain {
+            let blockId = self.blockId
+            view.onAiTask = { [weak model] task, range, text in
+                guard let model, model.app.profile?.aiOn == true, !model.isReadOnly else { return }
+                model.runInlineAi(task: task, blockId: blockId, range: range, text: text)
+            }
+        }
         view.onFocusChange = { [weak coordinator] focused in coordinator?.focusChanged(focused) }
         view.forwardUndo = { [weak model] in model?.undoManager?.undo() }
         view.forwardRedo = { [weak model] in model?.undoManager?.redo() }

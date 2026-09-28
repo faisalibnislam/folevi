@@ -3,5 +3,18 @@
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "buildCommand": "cd ../.. && node scripts/check-prod-env.mjs && npx convex deploy --cmd 'pnpm --filter @folevi/web build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL",
-  "redirects": [{ "source": "/:path*", "has": [{ "type": "host", "value": "www.folevi.com" }], "destination": "https://folevi.com/:path*", "permanent": true }]
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../../packages ../../convex ../../scripts ../../package.json ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../turbo.json ../../tsconfig.base.json",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.folevi.com"
+        }
+      ],
+      "destination": "https://folevi.com/:path*",
+      "permanent": true
+    }
+  ]
 }

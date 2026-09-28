@@ -1,10 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Typography tokens: Inter for UI and headings, the document's family for editor text.
-/// See `FoleviFont` for the bundled faces.
+/// Typography tokens: Instrument Sans for UI and titles, Spectral for display headings (the web's
+/// `.ui-display`), the document's family for editor text. See `FoleviFont` for the bundled faces.
 enum FoleviType {
-    static func display(_ size: CGFloat = FoleviFontSize.title) -> Font { .ui(size, .semibold) }
+    /// Display headings (sign-in, empty states, section heroes): Spectral semibold, as on the web.
+    static func display(_ size: CGFloat = FoleviFontSize.title) -> Font { .serif(size, .semibold) }
+    /// The web's `.ui-display` letter spacing (-0.012em).
+    static func displayTracking(_ size: CGFloat) -> CGFloat { -0.012 * size }
     static let pageTitle = Font.ui(FoleviFontSize.title, .semibold)
     static let sectionTitle = Font.ui(FoleviFontSize.xl, .semibold)
     static let cardTitle = Font.ui(15, .semibold)

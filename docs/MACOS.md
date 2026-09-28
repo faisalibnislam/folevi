@@ -104,7 +104,7 @@ Folevi/
   Data/Remote/    ConvexService (wraps the single client), API DTOs, repositories
   Sync/           SyncReducer (exact port of sync.ts), SyncEngine (actor), ConnectionMonitor
   Features/       Auth, Documents (sidebar, browser, windows), Editor, Tasks, Calendar, Search, Settings
-  DesignSystem/   Generated tokens, FoleviFont (bundled Inter / Source Serif 4 / JetBrains Mono), Surfaces
+  DesignSystem/   Generated tokens, FoleviFont (bundled Instrument Sans / Spectral / JetBrains Mono), Surfaces
                   (token shadow stacks as Core Animation shadow paths), components (pill buttons,
                   segmented control, chips, keycaps, sync pill, cards), canvas glow, window chrome,
                   cover art, the Folevi mark
@@ -152,7 +152,7 @@ identical to `packages/editor-schema`, so offline devices converge on the same p
 The Mac follows the web app's design system (`docs/DESIGN_SYSTEM.md`): same fonts, colors, radii,
 shadows and layout vocabulary, drawn natively.
 
-- **Fonts**: Inter, Source Serif 4 and JetBrains Mono ship in `Resources/Fonts` (OFL licenses beside
+- **Fonts**: Instrument Sans (variable; weights set on its `wght` axis), Spectral and JetBrains Mono ship in `Resources/Fonts` (OFL licenses beside
   them), are registered at launch (`ATSApplicationFontsPath` + `FoleviFont.registerBundledFonts()`),
   and are used for every piece of product UI (`Font.ui/serif/mono`, `FoleviFont.nsFont` for the
   editor). The document font (sans/serif/mono) picks the family; editor zoom scales it.

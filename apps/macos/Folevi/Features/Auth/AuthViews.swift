@@ -79,7 +79,7 @@ struct SignInView: View {
         AuthCard {
             BrandTile(size: 60)
             VStack(spacing: 8) {
-                Text("Welcome to Folevi").font(.ui(30, .semibold)).tracking(FoleviTracking.tight * 30).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                Text("Welcome to Folevi").font(FoleviType.display(30)).tracking(FoleviType.displayTracking(30)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Text("Your living folio of notes, plans and tasks.")
                     .foregroundStyle(FoleviColor.inkMuted)
             }
@@ -142,7 +142,7 @@ struct AccountStateView: View {
     var body: some View {
         AuthCard {
             Image(systemName: content.icon).font(.ui(40, .light)).foregroundStyle(FoleviColor.accent).accessibilityHidden(true)
-            Text(content.title).font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+            Text(content.title).font(FoleviType.display(26)).tracking(FoleviType.displayTracking(26)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
             Text(content.message).multilineTextAlignment(.center).foregroundStyle(FoleviColor.inkMuted)
             HStack {
                 if phase == .emailUnverified || phase == .mfaRequired {
@@ -197,7 +197,7 @@ struct NotConfiguredView: View {
     var body: some View {
         AuthCard {
             BrandTile(size: 52)
-            Text("Folevi isn't configured yet").font(.ui(24, .semibold)).tracking(FoleviTracking.tight * 24).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+            Text("Folevi isn't configured yet").font(FoleviType.display(24)).tracking(FoleviType.displayTracking(24)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
             Text("This build doesn't have a Folevi server address. Set CONVEX_URL in Config/*.xcconfig and rebuild.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(FoleviColor.inkMuted)
@@ -229,19 +229,19 @@ struct OnboardingView: View {
             .accessibilityLabel(Text("Step \(step + 1) of 3"))
             switch step {
             case 0:
-                Text("Name your workspace").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                Text("Name your workspace").font(FoleviType.display(26)).tracking(FoleviType.displayTracking(26)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Text("This is where your documents live. You can change it later.").foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
                 TextField("Workspace name", text: $workspaceName)
                     .textFieldStyle(.folevi)
                     .onSubmit { next() }
                     .accessibilityIdentifier("onboarding.workspace")
             case 1:
-                Text("Choose an appearance").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                Text("Choose an appearance").font(FoleviType.display(26)).tracking(FoleviType.displayTracking(26)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 FoleviSegmented(selection: $appearance, items: AppearancePreference.allCases.map { .init(value: $0, title: $0.title) },
                                 height: 32, fontSize: 13, accessibilityLabel: "Appearance")
                 .onChange(of: appearance) { _, v in app.appearance = v }
             default:
-                Text("You're all set").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                Text("You're all set").font(FoleviType.display(26)).tracking(FoleviType.displayTracking(26)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Text("Start with the Welcome document — it's a quick tour of blocks, tasks and shortcuts.")
                     .foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
             }
@@ -302,7 +302,7 @@ struct HelpView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 BrandTile(size: 34)
-                Text("Folevi Help").font(.ui(26, .semibold)).tracking(FoleviTracking.tight * 26).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                Text("Folevi Help").font(FoleviType.display(26)).tracking(FoleviType.displayTracking(26)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                 Spacer()
             }
             Text("Everything you write is saved on this Mac first and synced when you're online. The status pill in the toolbar always tells you where things stand.")

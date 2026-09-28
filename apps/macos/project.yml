@@ -52,7 +52,7 @@ targets:
           - "Resources/Fonts/**"
           - "Resources/Covers"
           - "Resources/Covers/**"
-      # Inter, Source Serif 4 and JetBrains Mono (+ OFL licenses), copied to Contents/Resources/Fonts
+      # Instrument Sans, Spectral and JetBrains Mono (+ OFL licenses), copied to Contents/Resources/Fonts
       # and registered through ATSApplicationFontsPath (and FoleviFont.registerBundledFonts()).
       - path: Folevi/Resources/Fonts
         type: folder

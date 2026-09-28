@@ -7,7 +7,7 @@ struct FoleviApp: App {
     @State private var app = AppModel()
 
     init() {
-        // Inter, Source Serif 4 and JetBrains Mono before the first view renders.
+        // Instrument Sans, Spectral and JetBrains Mono before the first view renders.
         FoleviFont.registerBundledFonts()
     }
 

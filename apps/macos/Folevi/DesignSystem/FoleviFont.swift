@@ -2,10 +2,13 @@ import AppKit
 import CoreText
 import SwiftUI
 
-/// The product typefaces — the same families the web build loads from Google Fonts:
-/// Inter (UI, headings, default document text), Source Serif 4 (document "Serif") and
-/// JetBrains Mono (document "Mono", code). The TTFs ship in `Resources/Fonts` (SIL OFL 1.1) and are
-/// registered for this process at launch; San Francisco / New York are never used for product UI.
+/// The product typefaces — the same families the web loads: Instrument Sans (UI and default document
+/// text), Spectral (display headings and the document "Serif") and JetBrains Mono (document "Mono", code).
+/// The rounded document font is the system's rounded design, as the web's `ui-rounded` stack is. The TTFs
+/// ship in `Resources/Fonts` (SIL OFL 1.1) and are registered for this process at launch.
+///
+/// Instrument Sans is a variable font (weight 400–700): weights are set on its `wght` axis rather than
+/// picked by name.
 enum FoleviFont {
     enum Family: Sendable {
         /// `rounded` is the system's rounded design (SF Pro Rounded), as the web's `ui-rounded` stack is.
@@ -61,16 +64,16 @@ enum FoleviFont {
     static func postScriptName(_ family: Family, _ face: Face, italic: Bool = false) -> String {
         switch family {
         case .sans:
-            if italic && face == .regular { return "Inter-Italic" }
-            switch face {
-            case .regular: return "Inter-Regular"
-            case .medium: return "Inter-Medium"
-            case .semibold: return "Inter-SemiBold"
-            case .bold: return "Inter-Bold"
-            }
+            return italic ? "InstrumentSans-Italic" : "InstrumentSans-Regular"
         case .serif:
-            if italic && face < .semibold { return "SourceSerif4-Italic" }
-            return face >= .semibold ? "SourceSerif4-SemiBold" : "SourceSerif4-Regular"
+            let weight = switch face {
+            case .regular: ""
+            case .medium: "Medium"
+            case .semibold: "SemiBold"
+            case .bold: "Bold"
+            }
+            if italic { return "Spectral-\(weight)Italic" }
+            return "Spectral-\(weight.isEmpty ? "Regular" : weight)"
         case .mono:
             return face >= .semibold ? "JetBrainsMono-SemiBold" : "JetBrainsMono-Regular"
         case .rounded:
@@ -81,11 +84,13 @@ enum FoleviFont {
     /// Whether the bundle has a true italic for this face (otherwise italic is a gentle oblique).
     static func hasItalic(_ family: Family, _ face: Face) -> Bool {
         switch family {
-        case .sans: return face == .regular
-        case .serif: return face < .semibold
+        case .sans, .serif: return true
         case .mono, .rounded: return false
         }
     }
+
+    /// The `wght` axis tag ('wght') for variable fonts.
+    private static let weightAxis = 0x7767_6874
 
     // MARK: AppKit
 
@@ -93,26 +98,35 @@ enum FoleviFont {
         registerBundledFonts()
         if family == .rounded { return rounded(size: size, weight: weight, italic: italic) }
         let name = postScriptName(family, weight, italic: italic)
-        guard let base = NSFont(name: name, size: size) else {
+        guard var font = NSFont(name: name, size: size) else {
             // Only if the bundle is damaged: keep the app usable.
             return family == .mono ? .monospacedSystemFont(ofSize: size, weight: .regular) : .systemFont(ofSize: size)
         }
-        if italic && !hasItalic(family, weight) { return oblique(base) }
-        return base
+        if family == .sans, weight != .regular {
+            let descriptor = font.fontDescriptor.addingAttributes([
+                NSFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [weightAxis: weight.rawValue],
+            ])
+            font = NSFont(descriptor: descriptor, size: size) ?? font
+        }
+        if italic && !hasItalic(family, weight) { return oblique(font) }
+        return font
     }
 
     static func nsFont(_ family: Family, size: CGFloat, weight: NSFont.Weight, italic: Bool = false) -> NSFont {
         nsFont(family, size: size, weight: Face(weight), italic: italic)
     }
 
-    /// Family and face of one of our fonts (by PostScript name).
+    /// Family and face of one of our fonts.
     static func describe(_ font: NSFont) -> (family: Family, face: Face, italic: Bool)? {
         let name = font.fontName
         let family: Family
-        if name.hasPrefix("Inter") { family = .sans } else if name.hasPrefix("SourceSerif4") { family = .serif } else if name.hasPrefix("JetBrainsMono") { family = .mono } else { return nil }
-        let face: Face
-        if name.hasSuffix("-Bold") { face = .bold } else if name.hasSuffix("-SemiBold") { face = .semibold } else if name.hasSuffix("-Medium") { face = .medium } else { face = .regular }
-        let italic = name.hasSuffix("-Italic") || font.fontDescriptor.symbolicTraits.contains(.italic) || font.matrix[2] != 0
+        if name.hasPrefix("InstrumentSans") { family = .sans } else if name.hasPrefix("Spectral") { family = .serif } else if name.hasPrefix("JetBrainsMono") { family = .mono } else { return nil }
+        var face: Face
+        if name.contains("Bold") && !name.contains("SemiBold") { face = .bold } else if name.contains("SemiBold") { face = .semibold } else if name.contains("Medium") { face = .medium } else { face = .regular }
+        if family == .sans, let variation = CTFontCopyVariation(font as CTFont) as? [Int: Double], let w = variation[weightAxis] {
+            face = w >= 650 ? .bold : w >= 550 ? .semibold : w >= 450 ? .medium : .regular
+        }
+        let italic = name.contains("Italic") || font.fontDescriptor.symbolicTraits.contains(.italic) || font.matrix[2] != 0
         return (family, face, italic)
     }
 
@@ -149,23 +163,17 @@ enum FoleviFont {
     // MARK: SwiftUI
 
     static func font(_ family: Family, size: CGFloat, weight: Font.Weight = .regular, italic: Bool = false) -> Font {
-        registerBundledFonts()
-        let face = Face(weight)
-        if family == .rounded { return Font(nsFont(.rounded, size: size, weight: face, italic: italic) as CTFont) }
-        if italic && !hasItalic(family, face) {
-            return Font(nsFont(family, size: size, weight: face, italic: true) as CTFont)
-        }
-        return Font.custom(postScriptName(family, face, italic: italic), fixedSize: size)
+        Font(nsFont(family, size: size, weight: Face(weight), italic: italic) as CTFont)
     }
 }
 
 extension Font {
-    /// Inter — every piece of product UI.
+    /// Instrument Sans — every piece of product UI.
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         FoleviFont.font(.sans, size: size, weight: weight)
     }
 
-    /// Source Serif 4.
+    /// Spectral (display headings, the document "Serif").
     static func serif(_ size: CGFloat, _ weight: Font.Weight = .regular, italic: Bool = false) -> Font {
         FoleviFont.font(.serif, size: size, weight: weight, italic: italic)
     }
@@ -175,7 +183,7 @@ extension Font {
         FoleviFont.font(.mono, size: size, weight: weight)
     }
 
-    /// The document's chosen family (sans = Inter, serif = Source Serif 4, mono = JetBrains Mono).
+    /// The document's chosen family (sans = Instrument Sans, serif = Spectral, mono = JetBrains Mono, rounded = system rounded).
     static func document(_ font: DocumentFont, _ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         FoleviFont.font(FoleviFont.Family(font), size: size, weight: weight)
     }
@@ -187,7 +195,7 @@ extension View {
         self.tracking(tracking * size)
     }
 
-    /// Product defaults for a scene: Inter 13 for every unstyled label/control, cocoa tint.
+    /// Product defaults for a scene: Instrument Sans 13 for every unstyled label/control.
     func foleviTypography() -> some View {
         self.font(.ui(13))
             .tint(FoleviColor.accent)

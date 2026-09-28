@@ -10,7 +10,8 @@
     "templates": "node scripts/build-templates.ts",
     "typecheck": "node scripts/build-templates.ts --check && tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "lint": "eslint src test scripts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "loops-kit": "node scripts/loops-kit.ts"
   },
   "devDependencies": {
     "typescript": "6.0.3",

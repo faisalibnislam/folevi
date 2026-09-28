@@ -73,7 +73,9 @@ The templates live in `packages/email/templates/<key>.mjml` and `.txt`. They are
    - the fixtures validate
    - the generated files are current
 3. **Review.** Open a PR. Security or identity copy needs a second reviewer.
-4. **Import into Loops.** Loops expects a zip with `index.mjml` at the root:
+4. **Import into Loops.** `pnpm --filter @folevi/email loops-kit <out-dir>` builds every zip plus a
+   SETUP.md with each template's subject, preview, sender, variables and env var. By hand, Loops expects
+   a zip with `index.mjml` at the root:
    ```sh
    tmp=$(mktemp -d) && cp packages/email/templates/auth_verify_email.mjml "$tmp/index.mjml" \
      && (cd "$tmp" && zip -q auth_verify_email.zip index.mjml) && open "$tmp"

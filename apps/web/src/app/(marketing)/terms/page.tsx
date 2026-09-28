@@ -6,18 +6,19 @@ import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Terms",
-  description: "A plain-language draft of the terms for using Folevi. Pending legal review.",
+  description: "The terms for using Folevi — plans and billing, device limits, the AI Assistant and your content — in plain language.",
   path: "/terms",
 });
 
 const toc = [
   { id: "agreement", label: "The agreement" },
-  { id: "preview", label: "A preview service" },
+  { id: "service", label: "The service" },
   { id: "account", label: "Your account" },
   { id: "content", label: "Your content" },
   { id: "use", label: "Acceptable use" },
   { id: "sharing", label: "Sharing" },
-  { id: "price", label: "Price" },
+  { id: "price", label: "Plans and billing" },
+  { id: "ai", label: "The AI Assistant" },
   { id: "ending", label: "Ending" },
   { id: "liability", label: "Warranties and liability" },
   { id: "changes", label: "Changes" },
@@ -28,21 +29,21 @@ export default function TermsPage() {
   return (
     <>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="25 September 2026" />
+        <DraftNotice updated="28 September 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
         <p>
-          By creating an account or using Folevi — the website, the web app and the Mac app — you agree to these terms and
+          By creating an account or using Folevi — the website, the web app and the Mac and iOS apps — you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organisation, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>
 
-        <h2 id="preview">A preview service</h2>
+        <h2 id="service">The service</h2>
         <p>
-          Folevi is in preview. Features will change, some will be added and a few may be removed. We work hard to keep your
-          content safe, but you should keep your own exports of anything you can’t afford to lose, especially during the
-          preview.
+          Folevi is actively developed: features will change, some will be added and a few may be removed. We work hard to
+          keep your content safe, and you can export it at any time — keep your own copy of anything you can’t afford to
+          lose.
         </p>
 
         <h2 id="account">Your account</h2>
@@ -78,12 +79,36 @@ export default function TermsPage() {
           you choose to share and with whom. You can revoke access or a link at any time.
         </p>
 
-        <h2 id="price">Price</h2>
+        <h2 id="price">Plans and billing</h2>
+        <ul>
+          <li>
+            Folevi has a Free plan and paid plans (Basic and Pro), billed monthly or yearly in advance through Stripe. Prices
+            and what each plan includes — storage, devices and the AI Assistant — are on the{" "}
+            <Link href="/pricing">pricing page</Link>.
+          </li>
+          <li>New accounts get a free Pro trial. It ends without charge; you choose whether to pay.</li>
+          <li>
+            Paid plans renew automatically until you cancel. You can cancel at any time in Settings → Plan & billing; your plan
+            keeps working until the end of the period you paid for, then moves to Free. Payments already made aren’t refunded
+            except where the law requires it.
+          </li>
+          <li>
+            Plan limits apply while you’re on a plan: storage (counted across the workspaces you own) and, on Free, the number
+            of devices signed in at once. Going over a limit pauses new uploads or holds a new device until you make room or
+            upgrade — nothing you’ve created is deleted.
+          </li>
+          <li>
+            If we change prices, we’ll tell you by email at least 30 days before the change applies to your plan.
+          </li>
+          <li>Nothing you’ve created is ever held back behind a payment — you can always export it.</li>
+        </ul>
+
+        <h2 id="ai">The AI Assistant</h2>
         <p>
-          Folevi has a Free plan and paid plans (Basic and Pro), billed monthly or yearly in advance; prices are on the{" "}
-          <Link href="/pricing">pricing page</Link>. New accounts get a free Pro trial that ends without charge. You can cancel
-          a paid plan at any time; it keeps working until the end of the period you paid for. Nothing you’ve created is
-          ever held back behind a payment — you can always export it.
+          On plans that include it, the AI Assistant can answer questions about your notes and help you write. It uses
+          Google’s Gemini API, as described in our <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off
+          in settings. AI can be wrong: check what it produces before relying on it. You’re responsible for how you use its
+          output, and you keep the same rights to it as to the rest of your content.
         </p>
 
         <h2 id="ending">Ending</h2>
@@ -95,21 +120,20 @@ export default function TermsPage() {
 
         <h2 id="liability">Warranties and liability</h2>
         <p>
-          Folevi is provided “as is” during the preview, without promises that it will be uninterrupted or error-free. To the
+          Folevi is provided “as is”, without promises that it will be uninterrupted or error-free. To the
           extent the law allows, we aren’t liable for indirect or consequential losses, or for loss of data you could have
           protected with an export. Nothing in these terms limits rights you have that can’t be limited by law.
         </p>
 
         <h2 id="changes">Changes to these terms</h2>
         <p>
-          This is a draft pending legal review, and the final version will differ. When we make meaningful changes, we’ll
-          update the date at the top and tell you by email before significant changes take effect.
+          When we make meaningful changes, we’ll update the date at the top and tell you by email before significant changes
+          take effect.
         </p>
 
         <h2 id="contact">Contact</h2>
         <p>
-          Questions about these terms can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a> during the
-          preview.
+          Questions about these terms can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>.
         </p>
       </DocShell>
     </>

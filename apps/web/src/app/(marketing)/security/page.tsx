@@ -39,6 +39,16 @@ const subprocessors = [
     role: "Transactional email",
     data: "Your email address and the content of the emails we send you, such as verification, security notices and share invitations.",
   },
+  {
+    name: "Google (Gemini API)",
+    role: "AI Assistant",
+    data: "Only when you use the AI Assistant: your request and the notes it needs to answer (the open note, or notes found by search that you can already read). Never sent while the AI Assistant is off.",
+  },
+  {
+    name: "Stripe",
+    role: "Payments",
+    data: "For paid plans: your email address, plan and billing details. Card numbers go straight to Stripe; Folevi never sees or stores them.",
+  },
 ];
 
 export default function SecurityPage() {

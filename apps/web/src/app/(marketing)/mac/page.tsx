@@ -9,7 +9,7 @@ import { Bubbles, ButtonLink, Eyebrow, SectionHeading, container, cx, type Bubbl
 export const metadata = pageMetadata({
   title: "Mac app",
   description:
-    "A native Mac app for Folevi: real menus and keyboard shortcuts, multiple windows, offline editing, Quick Look, drag from Finder and menu bar Quick Add. Requires macOS 15 or later. In private preview.",
+    "A native Mac app for Folevi: real menus and keyboard shortcuts, multiple windows, offline editing, Quick Look, drag from Finder and menu bar Quick Add. Requires macOS 15 or later. Coming soon.",
   path: "/mac",
 });
 
@@ -73,11 +73,11 @@ export default function MacPage() {
             <div className="mk-card rounded-[24px] p-6 sm:p-7">
               <p className="mk-chip mk-tone--marigold">
                 <span aria-hidden="true" className="mk-dot" />
-                In private preview
+                Coming soon
               </p>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
-                The Mac app isn’t available to download yet. Create a Folevi account and we’ll email you when preview builds
-                are ready. Until then, everything works on the web.
+                The Mac app isn’t available to download yet. Create a Folevi account and we’ll email you when it’s ready.
+                Until then, everything works on the web — and your account, plan and notes carry over.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <ButtonLink href={SIGN_UP_URL} icon="arrow-right">
@@ -146,7 +146,7 @@ export default function MacPage() {
                   ["macOS", "macOS 15 or later"],
                   ["Best on", "macOS 26, with Liquid Glass"],
                   ["Account", "A Folevi account with two-step verification"],
-                  ["Availability", "Private preview — builds are emailed to preview accounts"],
+                  ["Availability", "Coming soon — we’ll email your account when it’s ready"],
                 ].map(([term, detail], index) => (
                   <div key={term} className={cx("grid gap-1 py-4 sm:grid-cols-[110px_1fr] sm:gap-4", index > 0 && "border-t mk-hair")}>
                     <dt className="text-muted">{term}</dt>

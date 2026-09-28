@@ -6,7 +6,7 @@ import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Privacy",
-  description: "A plain-language draft of how Folevi collects, uses and protects your information. Pending legal review.",
+  description: "How Folevi collects, uses and protects your information — including the AI Assistant, payments and email — in plain language.",
   path: "/privacy",
 });
 
@@ -14,6 +14,8 @@ const toc = [
   { id: "short", label: "The short version" },
   { id: "collect", label: "What we collect" },
   { id: "use", label: "How we use it" },
+  { id: "ai", label: "The AI Assistant" },
+  { id: "payments", label: "Payments" },
   { id: "never", label: "What we don’t do" },
   { id: "share", label: "Who we share it with" },
   { id: "keep", label: "How long we keep it" },
@@ -27,7 +29,7 @@ export default function PrivacyPage() {
   return (
     <>
       <PageHeader eyebrow="Legal" title="Privacy policy" lede="How Folevi handles your information, written to be read.">
-        <DraftNotice updated="25 September 2026" />
+        <DraftNotice updated="28 September 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="short">The short version</h2>
@@ -35,15 +37,16 @@ export default function PrivacyPage() {
           <li>We collect what we need to run Folevi for you: your account details and the content you put in it.</li>
           <li>Your content is private by default. We don’t sell it, rent it, or use it for advertising.</li>
           <li>This website has no third-party trackers or advertising scripts.</li>
+          <li>The AI Assistant is optional. When you use it, your request and the notes it needs are sent to Google’s Gemini API to answer — nothing is sent while it’s off.</li>
           <li>You can export everything and delete your account whenever you like.</li>
         </ul>
 
         <h2 id="collect">What we collect</h2>
         <h3>Account information</h3>
         <p>
-          Your email address, a display name if you choose one, and what’s needed to sign you in securely — including your
-          two-step verification setup. Passwords and authenticator secrets are handled by our sign-in provider; we don’t
-          store your password.
+          Your email address, a display name and profile picture if you choose them, and what’s needed to sign you in
+          securely: a one-way hash of your password (never the password itself), your two-step verification setup and
+          recovery codes (stored protected), and the devices you’re signed in on.
         </p>
         <h3>Your content</h3>
         <p>
@@ -55,6 +58,11 @@ export default function PrivacyPage() {
           When you use Folevi, our servers and hosting providers process technical data such as IP addresses, browser or app
           version, and request logs. We use it to keep the service running, secure and fast.
         </p>
+        <h3>Plan and billing</h3>
+        <p>
+          Which plan you’re on, trial and renewal dates, storage and AI usage counts, and a record of payments (amount, date,
+          plan). Card details are handled by Stripe and never reach Folevi.
+        </p>
         <h3>Messages you send us</h3>
         <p>If you email us, we keep the conversation so we can help you and follow up.</p>
 
@@ -63,22 +71,57 @@ export default function PrivacyPage() {
           <li>To provide Folevi: store, sync, search, share and export your content as you ask.</li>
           <li>To keep your account secure: verify your email, require two-step verification, detect abuse.</li>
           <li>To send you service emails, such as verification, security notices and share invitations.</li>
+          <li>To run your plan: apply its storage, device and AI limits, and bill paid plans.</li>
+          <li>When you ask it to, to answer with the AI Assistant (below).</li>
           <li>To fix problems and improve Folevi, using technical data rather than the content of your notes.</li>
           <li>To meet legal obligations.</li>
         </ul>
+
+        <h2 id="ai">The AI Assistant</h2>
+        <p>
+          The AI Assistant (asking questions of your notes, writing and summarizing) is powered by Google’s Gemini API. It is
+          on by default for plans that include it, and you can turn it off in Settings → Account; while it’s off, nothing is
+          sent to Google.
+        </p>
+        <ul>
+          <li>
+            <strong>What is sent:</strong> only what a request needs — your question or instruction, and the text of the
+            note you’re in or of notes found by search that you can already read. Never notes you can’t open.
+          </li>
+          <li>
+            <strong>What isn’t:</strong> your password, two-step secrets, payment details, or anything while the AI Assistant
+            is off.
+          </li>
+          <li>
+            <strong>What we keep:</strong> the answer is shown to you and not stored beyond a few minutes; we keep only a count
+            of requests per day for your plan. Your prompts and notes are not logged.
+          </li>
+          <li>
+            We use Google’s paid Gemini API service, under which Google does not use your requests or notes to train or
+            improve its models. AI can make mistakes — check answers before relying on them.
+          </li>
+        </ul>
+
+        <h2 id="payments">Payments</h2>
+        <p>
+          Paid plans are billed by Stripe. Stripe receives your email address and handles your card; Folevi receives only
+          what it needs to run your plan (plan, status, dates and amounts). You can manage or cancel your plan in Settings →
+          Plan & billing.
+        </p>
 
         <h2 id="never">What we don’t do</h2>
         <ul>
           <li>We don’t sell or rent your personal information or your content.</li>
           <li>We don’t show ads, and we don’t use your content to target advertising.</li>
+          <li>We don’t use your notes to train AI models, and neither does our AI provider.</li>
           <li>We don’t make your pages public. Only you can create a public link.</li>
           <li>Our internal admin tools have no content viewer: they manage accounts, not notes.</li>
         </ul>
 
         <h2 id="share">Who we share it with</h2>
         <p>
-          We use a small number of service providers to run Folevi — for our database and backend, web hosting, sign-in, and
-          email. Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
+          We use a small number of service providers to run Folevi — for our database and backend, web hosting, email, the AI
+          Assistant (Google’s Gemini API) and payments (Stripe). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
           <Link href="/security#subprocessors">Security</Link> page.
         </p>
         <p>
@@ -120,14 +163,13 @@ export default function PrivacyPage() {
 
         <h2 id="changes">Changes to this policy</h2>
         <p>
-          This is a draft and will change after legal review. When we make meaningful changes, we’ll update the date at the
-          top and, for significant ones, tell you by email before they take effect.
+          When we make meaningful changes, we’ll update the date at the top and, for significant ones, tell you by email
+          before they take effect.
         </p>
 
         <h2 id="contact">Contact</h2>
         <p>
-          Questions about privacy can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a> during the
-          preview.
+          Questions about privacy can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>.
         </p>
       </DocShell>
     </>

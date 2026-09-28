@@ -27,7 +27,7 @@ export default function StatusPage() {
       <DocShell toc={toc}>
         <h2 id="dashboard">Public status</h2>
         <p>
-          We don’t publish a live status page during the preview. Rather than show a dashboard that isn’t connected to
+          We don’t publish a live status page yet. Rather than show a dashboard that isn’t connected to
           anything, we’d rather say so plainly. During planned maintenance the app tells you it can’t sync right now, and your
           edits wait safely on your device until it’s over.
         </p>
@@ -63,7 +63,7 @@ export default function StatusPage() {
 
         <h2 id="report">Reporting a problem</h2>
         <p>
-          During the preview, problem reports go to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>, which is
+          Problem reports go to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>, which is
           monitored. It helps to include:
         </p>
         <ul>

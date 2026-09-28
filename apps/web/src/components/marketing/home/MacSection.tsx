@@ -25,7 +25,7 @@ export function MacSection() {
           <div className="max-w-[52ch] lg:pb-1">
             <p className="mk-lede">
               The Mac app is a native application with real menus, multiple windows, a sidebar and an inspector — and it
-              keeps working when the Wi-Fi doesn’t. It’s in private preview now.
+              keeps working when the Wi-Fi doesn’t. It’s coming soon.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <ButtonLink href="/mac" variant="secondary" icon="arrow-right">

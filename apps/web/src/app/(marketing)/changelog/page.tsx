@@ -3,11 +3,48 @@ import { PageHeader, container, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Changelog",
-  description: "What’s new in Folevi. Version 0.1, the first preview, brings block documents, nested pages, tasks, calendar, offline editing, real-time sync, sharing and export to the web and the Mac.",
+  description: "What’s new in Folevi. Version 0.2 brings plans (Free, Basic, Pro), the AI Assistant, 57 note styles, 26 templates, a new look and a new Devices page.",
   path: "/changelog",
 });
 
 const releases = [
+  {
+    version: "0.2",
+    name: "Plans, AI and a new look",
+    date: "2026-09-28",
+    label: "28 September 2026",
+    intro: "Folevi gets plans, an AI Assistant and a lighter, glassier look — on the web, with the Mac app to follow.",
+    groups: [
+      {
+        title: "Plans",
+        items: [
+          "Free (1 GB, 2 devices), Basic (20 GB, unlimited devices) and Pro (100 GB, unlimited devices, the AI Assistant)",
+          "A 7-day Pro trial for every new account, with no card",
+          "Settings → Plan & billing: your plan, storage, devices and history in one place",
+          "Settings → Devices: every browser and app signed in, with one-click sign-out",
+        ],
+      },
+      {
+        title: "AI Assistant",
+        items: [
+          "Ask questions of your notes, with links to the notes it used",
+          "Write, rewrite, summarize and continue — from the slash menu, the selection toolbar or ⌘J",
+          "Catch me up: a short brief of your week on Home",
+          "Answers appear word by word; turn the assistant off anytime in settings",
+        ],
+      },
+      {
+        title: "Look and feel",
+        items: [
+          "A new logo and app icon",
+          "Translucent, glassy chrome with a calmer, neutral palette so your notes carry the colour",
+          "57 note styles, each colouring text, highlights and blocks from its image — or upload your own",
+          "26 built-in templates with their own icons",
+          "Folders that show the notes inside them",
+        ],
+      },
+    ],
+  },
   {
     version: "0.1",
     name: "Preview",

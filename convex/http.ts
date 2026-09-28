@@ -64,7 +64,7 @@ http.route({
 /** CORS for the app origin (FOLEVI_APP_URL), plus local dev hosts outside production. */
 function corsFor(origin: string | null): Record<string, string> {
   if (!origin) return {};
-  let allowed = false;
+  let allowed: boolean;
   try {
     const app = process.env.FOLEVI_APP_URL ? new URL(process.env.FOLEVI_APP_URL).origin : null;
     const host = new URL(origin).hostname;

@@ -62,7 +62,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <div aria-hidden className="fixed inset-x-0 top-0 z-50 h-[3px] bg-plum" />
       <aside className="flex flex-none flex-col border-b border-line bg-surface pt-[3px] md:sticky md:top-0 md:h-dvh md:w-[228px] md:border-b-0 md:border-r">
         <div className="flex items-center gap-2 px-4 pb-3 pt-4">
-          <FoleviLogo height={22} accent="var(--color-plum)" className="text-heading" />
+          <FoleviLogo height={22} className="text-heading" />
           <Badge tone="plum" className="ml-1 uppercase tracking-[0.08em]">
             Admin
           </Badge>

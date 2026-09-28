@@ -17,85 +17,86 @@ extension NSColor {
     }
 }
 
+/// Colors: `tokens.color` with the neutral product chrome (`tokens.chrome`) applied.
 enum FoleviColor {
     static let canvas = Color(nsColor: .folevi(
-        light: (0.9804, 0.9647, 0.9529, 1),
-        dark: (0.0824, 0.0667, 0.0588, 1),
+        light: (1.0000, 1.0000, 1.0000, 1),
+        dark: (0.0627, 0.0627, 0.0667, 1),
         name: "folevi.canvas"
     ))
     static let sidebar = Color(nsColor: .folevi(
-        light: (0.9608, 0.9333, 0.9176, 1),
-        dark: (0.1059, 0.0824, 0.0745, 1),
+        light: (1.0000, 1.0000, 1.0000, 1),
+        dark: (0.0941, 0.0941, 0.1020, 1),
         name: "folevi.sidebar"
     ))
     static let surface = Color(nsColor: .folevi(
         light: (1.0000, 1.0000, 1.0000, 1),
-        dark: (0.1294, 0.1020, 0.0941, 1),
+        dark: (0.1098, 0.1098, 0.1176, 1),
         name: "folevi.surface"
     ))
     static let surfaceRaised = Color(nsColor: .folevi(
         light: (1.0000, 1.0000, 1.0000, 1),
-        dark: (0.1647, 0.1333, 0.1216, 1),
+        dark: (0.1608, 0.1608, 0.1725, 1),
         name: "folevi.surfaceRaised"
     ))
     static let surfaceSunken = Color(nsColor: .folevi(
-        light: (0.9529, 0.9255, 0.9098, 1),
-        dark: (0.0706, 0.0549, 0.0510, 1),
+        light: (0.0000, 0.0000, 0.0000, 0.05),
+        dark: (1.0000, 1.0000, 1.0000, 0.07),
         name: "folevi.surfaceSunken"
     ))
     static let ink = Color(nsColor: .folevi(
-        light: (0.1137, 0.0941, 0.0784, 1),
-        dark: (0.9647, 0.9412, 0.9255, 1),
+        light: (0.0941, 0.0941, 0.1059, 1),
+        dark: (0.9490, 0.9490, 0.9529, 1),
         name: "folevi.ink"
     ))
     static let heading = Color(nsColor: .folevi(
-        light: (0.2902, 0.1843, 0.1725, 1),
-        dark: (0.9686, 0.8667, 0.8196, 1),
+        light: (0.0431, 0.0431, 0.0471, 1),
+        dark: (0.9804, 0.9804, 0.9804, 1),
         name: "folevi.heading"
     ))
     static let inkMuted = Color(nsColor: .folevi(
-        light: (0.4196, 0.3529, 0.3373, 1),
-        dark: (0.7373, 0.6588, 0.6353, 1),
+        light: (0.3373, 0.3373, 0.3686, 1),
+        dark: (0.6510, 0.6510, 0.6824, 1),
         name: "folevi.inkMuted"
     ))
     static let inkFaint = Color(nsColor: .folevi(
-        light: (0.4784, 0.4078, 0.3882, 1),
-        dark: (0.6588, 0.5843, 0.5647, 1),
+        light: (0.4039, 0.4039, 0.4353, 1),
+        dark: (0.5765, 0.5765, 0.6078, 1),
         name: "folevi.inkFaint"
     ))
     static let line = Color(nsColor: .folevi(
-        light: (0.9294, 0.8902, 0.8745, 1),
-        dark: (0.2078, 0.1686, 0.1569, 1),
+        light: (0.8863, 0.8863, 0.9020, 1),
+        dark: (0.1725, 0.1725, 0.1843, 1),
         name: "folevi.line"
     ))
     static let lineStrong = Color(nsColor: .folevi(
-        light: (0.8471, 0.7843, 0.7647, 1),
-        dark: (0.3020, 0.2510, 0.2353, 1),
+        light: (0.8118, 0.8118, 0.8353, 1),
+        dark: (0.2431, 0.2431, 0.2627, 1),
         name: "folevi.lineStrong"
     ))
     static let accent = Color(nsColor: .folevi(
-        light: (0.4706, 0.3255, 0.3059, 1),
-        dark: (0.9490, 0.7647, 0.6902, 1),
+        light: (0.1216, 0.1216, 0.1333, 1),
+        dark: (0.9490, 0.9490, 0.9529, 1),
         name: "folevi.accent"
     ))
     static let accentStrong = Color(nsColor: .folevi(
-        light: (0.2902, 0.1843, 0.1725, 1),
-        dark: (0.9804, 0.8510, 0.7961, 1),
+        light: (0.0431, 0.0431, 0.0471, 1),
+        dark: (1.0000, 1.0000, 1.0000, 1),
         name: "folevi.accentStrong"
     ))
     static let accentInk = Color(nsColor: .folevi(
         light: (1.0000, 1.0000, 1.0000, 1),
-        dark: (0.1647, 0.0902, 0.0784, 1),
+        dark: (0.0627, 0.0627, 0.0667, 1),
         name: "folevi.accentInk"
     ))
     static let accentSoft = Color(nsColor: .folevi(
-        light: (0.9647, 0.9137, 0.8980, 1),
-        dark: (0.2275, 0.1529, 0.1373, 1),
+        light: (0.0000, 0.0000, 0.0000, 0.05),
+        dark: (1.0000, 1.0000, 1.0000, 0.07),
         name: "folevi.accentSoft"
     ))
     static let accentSoftInk = Color(nsColor: .folevi(
-        light: (0.3686, 0.2275, 0.2078, 1),
-        dark: (0.9647, 0.8353, 0.7843, 1),
+        light: (0.1216, 0.1216, 0.1333, 1),
+        dark: (0.9490, 0.9490, 0.9529, 1),
         name: "folevi.accentSoftInk"
     ))
     static let ember = Color(nsColor: .folevi(
@@ -114,23 +115,23 @@ enum FoleviColor {
         name: "folevi.emberSoft"
     ))
     static let glowPeach = Color(nsColor: .folevi(
-        light: (1.0000, 0.8157, 0.6824, 1),
-        dark: (0.3529, 0.1961, 0.1333, 1),
+        light: (1.0000, 1.0000, 1.0000, 1),
+        dark: (0.0627, 0.0627, 0.0667, 1),
         name: "folevi.glowPeach"
     ))
     static let glowRose = Color(nsColor: .folevi(
-        light: (0.9176, 0.8275, 0.8902, 1),
-        dark: (0.2431, 0.1490, 0.2196, 1),
+        light: (1.0000, 1.0000, 1.0000, 1),
+        dark: (0.0627, 0.0627, 0.0667, 1),
         name: "folevi.glowRose"
     ))
     static let focus = Color(nsColor: .folevi(
-        light: (0.8941, 0.3412, 0.1804, 1),
-        dark: (1.0000, 0.5412, 0.3608, 1),
+        light: (0.1216, 0.1216, 0.1333, 1),
+        dark: (0.9490, 0.9490, 0.9529, 1),
         name: "folevi.focus"
     ))
     static let selection = Color(nsColor: .folevi(
-        light: (0.9843, 0.8510, 0.7843, 1),
-        dark: (0.3608, 0.2039, 0.1529, 1),
+        light: (0.8510, 0.8706, 0.9098, 1),
+        dark: (0.2275, 0.2471, 0.2941, 1),
         name: "folevi.selection"
     ))
     static let moss = Color(nsColor: .folevi(
@@ -257,6 +258,70 @@ enum FoleviColor {
         light: (0.1137, 0.0941, 0.0784, 0.28),
         dark: (0.0000, 0.0000, 0.0000, 0.55),
         name: "folevi.scrim"
+    ))
+}
+
+/// Translucent glass layers (`tokens.glass`), as the web's --glass-* variables.
+enum FoleviGlass {
+    static let canvas = Color(nsColor: .folevi(
+        light: (0.9333, 0.9333, 0.9451, 1),
+        dark: (0.0471, 0.0471, 0.0549, 1),
+        name: "folevi.glass.canvas"
+    ))
+    static let lightA = Color(nsColor: .folevi(
+        light: (1.0000, 1.0000, 1.0000, 0.95),
+        dark: (0.2353, 0.2431, 0.2902, 0.55),
+        name: "folevi.glass.lightA"
+    ))
+    static let lightB = Color(nsColor: .folevi(
+        light: (0.8863, 0.9020, 0.9412, 0.9),
+        dark: (0.1569, 0.1725, 0.2275, 0.6),
+        name: "folevi.glass.lightB"
+    ))
+    static let lightC = Color(nsColor: .folevi(
+        light: (0.9725, 0.9647, 0.9569, 0.7),
+        dark: (0.1176, 0.1176, 0.1333, 0.5),
+        name: "folevi.glass.lightC"
+    ))
+    static let panel = Color(nsColor: .folevi(
+        light: (1.0000, 1.0000, 1.0000, 0.58),
+        dark: (0.1098, 0.1098, 0.1216, 0.55),
+        name: "folevi.glass.panel"
+    ))
+    static let sidebar = Color(nsColor: .folevi(
+        light: (1.0000, 1.0000, 1.0000, 0.36),
+        dark: (0.1098, 0.1098, 0.1216, 0.34),
+        name: "folevi.glass.sidebar"
+    ))
+    static let content = Color(nsColor: .folevi(
+        light: (1.0000, 1.0000, 1.0000, 0.9),
+        dark: (0.0941, 0.0941, 0.1059, 0.88),
+        name: "folevi.glass.content"
+    ))
+    static let pop = Color(nsColor: .folevi(
+        light: (1.0000, 1.0000, 1.0000, 0.8),
+        dark: (0.1412, 0.1412, 0.1569, 0.78),
+        name: "folevi.glass.pop"
+    ))
+    static let hover = Color(nsColor: .folevi(
+        light: (0.0000, 0.0000, 0.0000, 0.05),
+        dark: (1.0000, 1.0000, 1.0000, 0.07),
+        name: "folevi.glass.hover"
+    ))
+    static let border = Color(nsColor: .folevi(
+        light: (0.0000, 0.0000, 0.0000, 0.07),
+        dark: (1.0000, 1.0000, 1.0000, 0.1),
+        name: "folevi.glass.border"
+    ))
+    static let active = Color(nsColor: .folevi(
+        light: (1.0000, 1.0000, 1.0000, 0.85),
+        dark: (1.0000, 1.0000, 1.0000, 0.12),
+        name: "folevi.glass.active"
+    ))
+    static let veil = Color(nsColor: .folevi(
+        light: (0.9333, 0.9333, 0.9451, 0.5),
+        dark: (0.0471, 0.0471, 0.0549, 0.55),
+        name: "folevi.glass.veil"
     ))
 }
 
@@ -409,9 +474,9 @@ enum FoleviShadow {
 }
 
 enum FoleviFontFamily {
-    static let ui = "Inter"
-    static let sans = "Inter"
-    static let serif = "Source Serif 4"
+    static let ui = "Instrument Sans"
+    static let sans = "Instrument Sans"
+    static let serif = "Spectral"
     static let mono = "JetBrains Mono"
 }
 

@@ -121,12 +121,7 @@ struct SidebarView: View {
 
     private var workspaceHeader: some View {
         HStack(spacing: 10) {
-            ZStack {
-                Color.clear.foleviSurface(.gradient([FoleviColor.accent.mix(with: .white, by: 0.06), FoleviColor.accentStrong]),
-                                          shape: .rounded(9), shadow: FoleviShadow.primary)
-                FoleviMark(size: 16).foregroundStyle(FoleviColor.accentInk)
-            }
-            .frame(width: 28, height: 28)
+            FoleviMark(size: 28)
             Text(app.workspace?.name ?? "Folevi")
                 .font(.ui(14, .semibold))
                 .tracking(-0.01 * 14)

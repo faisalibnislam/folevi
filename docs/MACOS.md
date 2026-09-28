@@ -34,7 +34,7 @@ Helper scripts (in `apps/macos/scripts/`):
 
 | Script | What it does |
 | --- | --- |
-| `make-app-icon.swift` | Renders the app icon (the leaf/folio "F" mark on a warm paper squircle with an ultramarine leaf and edge band) at every size into `Assets.xcassets/AppIcon.appiconset`. Pure CoreGraphics. Run: `swift apps/macos/scripts/make-app-icon.swift`. |
+| `packages/design-tokens/scripts/brand-icons.mjs` | Writes the app icon (`Assets.xcassets/AppIcon.appiconset`) and the in-app mark (`FoleviMark.imageset`) from the brand files in `packages/design-tokens/brand/source`, along with the web's icons. Run: `node packages/design-tokens/scripts/brand-icons.mjs`. |
 | `generate-test-fixtures.mjs` | Bundles `packages/editor-schema` with esbuild and writes `FoleviTests/Fixtures/reference-outputs.json`: expected Markdown/HTML export, Markdown import, inline parsing, tree and number-formatting outputs from the TypeScript reference. Run with `node`. |
 | `update-string-catalog.py` | Refreshes `Resources/Localizable.xcstrings` (English source strings) from the compiler's extracted `.stringsdata`. Run after a build. |
 

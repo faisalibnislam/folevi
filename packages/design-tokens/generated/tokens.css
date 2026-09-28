@@ -39,9 +39,9 @@
   --tracking-snug: -0.012em;
   --tracking-normal: -0.006em;
   --tracking-caps: 0.06em;
-  --font-family-ui: "Inter";
-  --font-family-sans: "Inter";
-  --font-family-serif: "Source Serif 4";
+  --font-family-ui: "Instrument Sans";
+  --font-family-sans: "Instrument Sans";
+  --font-family-serif: "Spectral";
   --font-family-mono: "JetBrains Mono";
   --layout-sidebar-min: 240px;
   --layout-sidebar-default: 264px;
@@ -235,6 +235,84 @@
   --shadow-sheet: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.05), 0px 0px 0px 1px rgba(255, 240, 230, 0.07), 0px 28px 64px -24px rgba(0, 0, 0, 0.7);
   --shadow-pop: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.07), 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 24px 48px -12px rgba(0, 0, 0, 0.7);
   --shadow-lift: 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 10px 24px -6px rgba(0, 0, 0, 0.6), 0px 30px 60px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* Neutral app chrome (tokens.chrome): inside the product; AccountGate sets data-chrome="neutral". */
+:root[data-chrome="neutral"] {
+  --color-canvas: #FFFFFF;
+  --color-sidebar: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-sunken: rgba(0, 0, 0, 0.05);
+  --color-ink: #18181B;
+  --color-heading: #0B0B0C;
+  --color-ink-muted: #56565E;
+  --color-ink-faint: #67676F;
+  --color-line: #E2E2E6;
+  --color-line-strong: #CFCFD5;
+  --color-accent: #1F1F22;
+  --color-accent-strong: #0B0B0C;
+  --color-accent-ink: #FFFFFF;
+  --color-accent-soft: rgba(0, 0, 0, 0.05);
+  --color-accent-soft-ink: #1F1F22;
+  --color-glow-peach: #FFFFFF;
+  --color-glow-rose: #FFFFFF;
+  --color-focus: #1F1F22;
+  --color-selection: #D9DEE8;
+}
+
+:root[data-chrome="neutral"][data-theme="dark"] {
+  --color-canvas: #101011;
+  --color-sidebar: #18181A;
+  --color-surface: #1C1C1E;
+  --color-surface-raised: #29292C;
+  --color-surface-sunken: rgba(255, 255, 255, 0.07);
+  --color-ink: #F2F2F3;
+  --color-heading: #FAFAFA;
+  --color-ink-muted: #A6A6AE;
+  --color-ink-faint: #93939B;
+  --color-line: #2C2C2F;
+  --color-line-strong: #3E3E43;
+  --color-accent: #F2F2F3;
+  --color-accent-strong: #FFFFFF;
+  --color-accent-ink: #101011;
+  --color-accent-soft: rgba(255, 255, 255, 0.07);
+  --color-accent-soft-ink: #F2F2F3;
+  --color-glow-peach: #101011;
+  --color-glow-rose: #101011;
+  --color-focus: #F2F2F3;
+  --color-selection: #3A3F4B;
+}
+
+/* Glass (tokens.glass). */
+:root {
+  --glass-canvas: #EEEEF1;
+  --glass-light-a: rgba(255, 255, 255, 0.95);
+  --glass-light-b: rgba(226, 230, 240, 0.9);
+  --glass-light-c: rgba(248, 246, 244, 0.7);
+  --glass-panel: rgba(255, 255, 255, 0.58);
+  --glass-sidebar: rgba(255, 255, 255, 0.36);
+  --glass-content: rgba(255, 255, 255, 0.9);
+  --glass-pop: rgba(255, 255, 255, 0.8);
+  --glass-hover: rgba(0, 0, 0, 0.05);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --glass-active: rgba(255, 255, 255, 0.85);
+  --glass-veil: rgba(238, 238, 241, 0.5);
+}
+
+:root[data-theme="dark"] {
+  --glass-canvas: #0C0C0E;
+  --glass-light-a: rgba(60, 62, 74, 0.55);
+  --glass-light-b: rgba(40, 44, 58, 0.6);
+  --glass-light-c: rgba(30, 30, 34, 0.5);
+  --glass-panel: rgba(28, 28, 31, 0.55);
+  --glass-sidebar: rgba(28, 28, 31, 0.34);
+  --glass-content: rgba(24, 24, 27, 0.88);
+  --glass-pop: rgba(36, 36, 40, 0.78);
+  --glass-hover: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-active: rgba(255, 255, 255, 0.12);
+  --glass-veil: rgba(12, 12, 14, 0.55);
 }
 
 @media (prefers-reduced-motion: reduce) {

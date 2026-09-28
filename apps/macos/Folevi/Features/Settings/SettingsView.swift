@@ -241,7 +241,7 @@ struct SyncSettings: View {
 struct AboutSettings: View {
     var body: some View {
         VStack(spacing: 12) {
-            FoleviMark(size: 56).foregroundStyle(FoleviColor.accent)
+            FoleviMark(size: 64)
             Text("Folevi").font(.ui(28, .semibold)).tracking(FoleviTracking.tight * 28).foregroundStyle(FoleviColor.heading)
             Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
                 .foregroundStyle(FoleviColor.inkMuted)

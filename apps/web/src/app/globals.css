@@ -145,51 +145,12 @@
  * artwork and accent colours. AccountGate sets data-chrome="neutral" on <html> while the app is open.
  * --------------------------------------------------------------------------------------------- */
 :root[data-chrome="neutral"] {
-  --color-canvas: #FFFFFF;
-  --color-sidebar: #FFFFFF;
-  --color-surface: #FFFFFF;
-  --color-surface-raised: #FFFFFF;
-  --color-surface-sunken: var(--glass-hover);
-  --color-ink: #18181B;
-  --color-heading: #0B0B0C;
-  --color-ink-muted: #56565E;
-  --color-ink-faint: #67676F;
-  --color-line: #E2E2E6;
-  --color-line-strong: #CFCFD5;
-  --color-accent: #1F1F22;
-  --color-accent-strong: #0B0B0C;
-  --color-accent-ink: #FFFFFF;
-  --color-accent-soft: var(--glass-hover);
-  --color-accent-soft-ink: #1F1F22;
-  --color-glow-peach: #FFFFFF;
-  --color-glow-rose: #FFFFFF;
-  --color-focus: #1F1F22;
-  --color-selection: #D9DEE8;
+  /* Colours: tokens.chrome (packages/design-tokens). Shadows stay here. */
   --shadow-hairline: 0 0 0 1px rgba(0, 0, 0, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
   --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 14px 32px -14px rgba(0, 0, 0, 0.18);
 }
 :root[data-chrome="neutral"][data-theme="dark"] {
-  --color-canvas: #101011;
-  --color-sidebar: #18181A;
-  --color-surface: #1C1C1E;
-  --color-surface-raised: #29292C;
-  --color-surface-sunken: var(--glass-hover);
-  --color-ink: #F2F2F3;
-  --color-heading: #FAFAFA;
-  --color-ink-muted: #A6A6AE;
-  --color-ink-faint: #93939B;
-  --color-line: #2C2C2F;
-  --color-line-strong: #3E3E43;
-  --color-accent: #F2F2F3;
-  --color-accent-strong: #FFFFFF;
-  --color-accent-ink: #101011;
-  --color-accent-soft: var(--glass-hover);
-  --color-accent-soft-ink: #F2F2F3;
-  --color-glow-peach: #101011;
-  --color-glow-rose: #101011;
-  --color-focus: #F2F2F3;
-  --color-selection: #3A3F4B;
   --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
   --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
@@ -198,38 +159,16 @@
 
 /* ------------------------------------------------------------------------------------------------
  * Glass: translucent, frosted chrome over an ambient canvas (docs/DESIGN_SYSTEM.md → Glass).
+ * The colours (--glass-*) come from tokens.glass; the edge and shadow recipes live here.
  * --------------------------------------------------------------------------------------------- */
 :root {
-  --glass-canvas: #EEEEF1;
-  --glass-light-a: rgb(255 255 255 / 0.95);
-  --glass-light-b: rgb(226 230 240 / 0.9);
-  --glass-light-c: rgb(248 246 244 / 0.7);
-  --glass-panel: rgb(255 255 255 / 0.58);
-  --glass-sidebar: rgb(255 255 255 / 0.36);
-  --glass-content: rgb(255 255 255 / 0.9);
-  --glass-pop: rgb(255 255 255 / 0.8);
-  --glass-hover: rgb(0 0 0 / 0.05);
-  --glass-border: rgb(0 0 0 / 0.07);
-  --glass-active: rgb(255 255 255 / 0.85);
   --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.6), 0 0 0 1px rgb(0 0 0 / 0.06);
   --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(20 20 40 / 0.14);
-  --ambient-veil: rgb(238 238 241 / 0.5);
+  --ambient-veil: var(--glass-veil);
 }
 :root[data-theme="dark"] {
-  --glass-canvas: #0C0C0E;
-  --glass-light-a: rgb(60 62 74 / 0.55);
-  --glass-light-b: rgb(40 44 58 / 0.6);
-  --glass-light-c: rgb(30 30 34 / 0.5);
-  --glass-panel: rgb(28 28 31 / 0.55);
-  --glass-sidebar: rgb(28 28 31 / 0.34);
-  --glass-content: rgb(24 24 27 / 0.88);
-  --glass-pop: rgb(36 36 40 / 0.78);
-  --glass-hover: rgb(255 255 255 / 0.07);
-  --glass-border: rgb(255 255 255 / 0.1);
-  --glass-active: rgb(255 255 255 / 0.12);
   --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.4);
   --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -14px rgb(0 0 0 / 0.6);
-  --ambient-veil: rgb(12 12 14 / 0.55);
 }
 
 /* ------------------------------------------------------------------------------------------------

@@ -27,10 +27,11 @@ const C = {
   muted: "#63636B",
   accent: "#111114",
   hairline: "#E4E4E7",
-  // The logo tile (brand files: white tile, #DFDFE2 edge, black F) stays the same in dark mode.
-  tile: "#FFFFFF",
-  tileEdge: "#DFDFE2",
-  mark: "#000000",
+  // The logo tile (brand files: black folio, white clasp, a lighter page edge) stays the same in dark mode.
+  tile: "#0B0B0C",
+  tileEdge: "#2A2A2E",
+  mark: "#FFFFFF",
+  markBand: "#BDBDC2",
   // Dark-mode counterparts (applied only by clients that honour prefers-color-scheme).
   darkCanvas: "#0B0B0C",
   darkCard: "#18181B",
@@ -278,25 +279,32 @@ function wrap(text: string, width = 72): string {
   return out.join("\n");
 }
 
-// The Folevi mark (packages/design-tokens/brand): a white rounded tile whose black "F" runs off its top-right
-// and bottom edges, with a short middle bar. Drawn with table cells — emails carry no images — on a 28px grid
-// that follows the brand file's proportions (109-unit tile). Hidden from assistive tech (the wordmark is text).
-const MARK_COLS = [5, 4, 3, 6, 10]; // px: margin, stem, gap, middle bar, rest (= 28)
-const MARK_ROWS: { h: number; fill: number[] }[] = [
-  { h: 5, fill: [] }, // above the F
-  { h: 4, fill: [1, 2, 3, 4] }, // top bar, running off the right edge
-  { h: 5, fill: [1] }, // stem
-  { h: 4, fill: [1, 3] }, // stem + middle bar
-  { h: 10, fill: [1] }, // stem, running off the bottom edge
+// The Folevi mark (packages/design-tokens/brand): a black folio on a rounded tile, its page edge running
+// down the right side and a white clasp across it. Drawn with table cells — emails carry no images — on a
+// 28px grid. Hidden from assistive tech (the wordmark is text).
+// Columns and rows (px) that follow the brand file's 236-unit drawing at 28 px: the page edge runs down the
+// right side (a white line at the top, stepping left into a light band) and the clasp crosses it, with its hole.
+const MARK_COLS = [15, 2, 2, 1, 3, 1, 4]; // margin, clasp, hole, clasp, band, edge, rest (= 28)
+type MarkCell = "on" | "band" | "hole";
+const MARK_ROWS: { h: number; cells: Partial<Record<number, MarkCell>> }[] = [
+  { h: 4, cells: { 5: "on" } }, // the page edge at the top
+  { h: 3, cells: { 4: "on", 5: "on" } }, // stepping left
+  { h: 6, cells: { 4: "band" } },
+  { h: 1, cells: { 1: "on", 2: "on", 3: "on", 4: "on", 5: "on" } }, // the clasp
+  { h: 2, cells: { 1: "on", 2: "hole", 3: "on", 4: "on", 5: "on" } },
+  { h: 1, cells: { 1: "on", 2: "on", 3: "on", 4: "on", 5: "on" } },
+  { h: 11, cells: { 4: "band" } }, // running off the bottom edge
 ];
 const LOGO_MARK = [
   `<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" border="0" class="fv-mark" style="border-collapse:separate;border:1px solid ${C.tileEdge};border-radius:7px;background-color:${C.tile};overflow:hidden;width:28px;height:28px;">`,
   ...MARK_ROWS.map(
-    (row, r) =>
+    (row) =>
       `<tr>${MARK_COLS.map((w, c) => {
-        const on = row.fill.includes(c);
-        const radius = on && r === 1 && c === 1 ? "border-radius:2px 0 0 0;" : on && r === 3 && c === 3 ? "border-radius:1px;" : "";
-        return `<td${on ? ' class="fv-mark-on"' : ""} style="width:${w}px;height:${row.h}px;${on ? `background-color:${C.mark};` : ""}${radius}font-size:0;line-height:0;">&nbsp;</td>`;
+        const cell = row.cells[c];
+        const color = cell === "on" ? C.mark : cell === "band" ? C.markBand : null;
+        const cls = cell === "on" ? ' class="fv-mark-on"' : cell === "band" ? ' class="fv-mark-band"' : "";
+        const radius = cell === "on" && row.h === 1 && (c === 1 || c === 5) ? `border-radius:${c === 1 ? "2px 0 0 2px" : "0 2px 2px 0"};` : "";
+        return `<td${cls} style="width:${w}px;height:${row.h}px;${color ? `background-color:${color};` : ""}${radius}font-size:0;line-height:0;">&nbsp;</td>`;
       }).join("")}</tr>`,
   ),
   `</table>`,
@@ -364,9 +372,10 @@ function renderMjml(def: TemplateDefinition, content: Content): string {
       .fv-link { color: ${C.accent}; text-decoration: underline; }
       @media (prefers-color-scheme: dark) {
         body, .fv-body, .fv-canvas, .fv-canvas table, .fv-canvas td { background-color: ${C.darkCanvas} !important; }
-        /* The logo tile keeps its brand colours: white tile, black F. */
+        /* The logo tile keeps its brand colours: black folio, white clasp. */
         .fv-canvas table.fv-mark, .fv-canvas table.fv-mark td { background-color: ${C.tile} !important; }
         .fv-canvas table.fv-mark td.fv-mark-on { background-color: ${C.mark} !important; }
+        .fv-canvas table.fv-mark td.fv-mark-band { background-color: ${C.markBand} !important; }
         .fv-card, .fv-card table, .fv-card td { background-color: ${C.darkCard} !important; border-color: ${C.darkHairline} !important; }
         .fv-card div, .fv-card td, .fv-card strong, .fv-wordmark div { color: ${C.darkInk} !important; }
         .fv-muted div, .fv-muted-cell, .fv-canvas .fv-muted div { color: ${C.darkMuted} !important; }

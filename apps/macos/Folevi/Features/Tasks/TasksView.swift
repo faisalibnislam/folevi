@@ -319,7 +319,7 @@ struct QuickAddView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                FoleviMark(size: 16).foregroundStyle(FoleviColor.ember)
+                FoleviMark(size: 18)
                 Text("Quick Add Task").font(.ui(15, .semibold)).foregroundStyle(FoleviColor.heading)
             }
             if app.phase != .ready {

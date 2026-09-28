@@ -59,16 +59,11 @@ private struct AuthCard<Content: View>: View {
     }
 }
 
-/// The brand tile: the mark on a cocoa gradient rounded square (as in the sidebar).
+/// The brand mark at sign-in and account screens.
 private struct BrandTile: View {
     var size: CGFloat = 64
     var body: some View {
-        ZStack {
-            Color.clear.foleviSurface(.gradient([FoleviColor.accent.mix(with: .white, by: 0.06), FoleviColor.accentStrong]),
-                                      shape: .rounded(size * 0.3), shadow: FoleviShadow.primary)
-            FoleviMark(size: size * 0.55).foregroundStyle(FoleviColor.accentInk)
-        }
-        .frame(width: size, height: size)
+        FoleviMark(size: size).shadow(color: .black.opacity(0.12), radius: size * 0.12, y: size * 0.06)
     }
 }
 

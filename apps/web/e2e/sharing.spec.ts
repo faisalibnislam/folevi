@@ -29,6 +29,8 @@ test("share a page with another person, comment, and publish a revocable public 
   await expect(anonPage.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   expect((await anonPage.request.get(link)).headers()["referrer-policy"]).toBe("no-referrer");
   await share.getByRole("button", { name: "Revoke" }).first().click();
+  // Wait for the revoke to land before reloading (on a slow runner the reload could beat it).
+  await expect(share.page().getByRole("status").filter({ hasText: "Link revoked" })).toBeVisible();
   await anonPage.reload();
   await expect(anonPage.getByRole("heading", { name: "Page unavailable" })).toBeVisible();
   await share.getByRole("button", { name: "Close" }).click();

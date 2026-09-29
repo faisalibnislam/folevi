@@ -46,7 +46,7 @@ export default function DocsPage() {
       <PageHeader
         eyebrow="Documentation"
         title="How Folevi works."
-        lede="The essentials in one place. If something here doesn’t match what you see in the app, tell us — the docs should never be wrong."
+        lede="The essentials in one place. If something here doesn’t match what you see in the app, tell us. The docs should never be wrong."
       />
       <DocShell toc={toc}>
         <h2 id="getting-started">Getting started</h2>
@@ -54,7 +54,7 @@ export default function DocsPage() {
           <li>
             <a href={SIGN_UP_URL}>Create an account</a> and confirm your email address.
           </li>
-          <li>Your Personal space opens — it’s just yours. Create a page with the New page button and start typing. To work with a team, create a workspace from the menu at the bottom of the sidebar and switch between Personal and your workspaces there.</li>
+          <li>Your Personal space opens. It’s just yours. Create a page with the New page button and start typing. To work with a team, create a workspace from the menu at the bottom of the sidebar and switch between Personal and your workspaces there.</li>
           <li>
             Type <code>/</code> on any line to turn it into a heading, checklist, quote or any other block.
           </li>
@@ -70,9 +70,9 @@ export default function DocsPage() {
         <h2 id="shortcuts">Keyboard shortcuts</h2>
         <p>
           These shortcuts are for the Mac app (coming soon). On the web, most work the same way; shortcuts your browser
-          reserves for itself — such as <code>⌘N</code> for a new browser window — are left to the browser.
+          reserves for itself (such as <code>⌘N</code> for a new browser window) are left to the browser.
         </p>
-        <div className="mk-card rounded-[22px] p-5 sm:p-6">
+        <div className="mk-card p-5 sm:p-6">
           <ShortcutTable caption="Folevi keyboard shortcuts" />
         </div>
 
@@ -114,7 +114,7 @@ export default function DocsPage() {
 
         <h2 id="tasks">Tasks & calendar</h2>
         <p>
-          Any checklist item is a task. Give it a due date — and optionally a time and a priority — and it appears in
+          Any checklist item is a task. Give it a due date (and optionally a time and a priority) and it appears in
           <strong> Today</strong> on that day, and in <strong>Tasks</strong> alongside every other open task in your
           Personal (or the workspace you’re in). Overdue tasks show up there too, so nothing slips quietly past.
         </p>
@@ -157,7 +157,7 @@ export default function DocsPage() {
               <tr>
                 <th scope="row">Conflict</th>
                 <td>
-                  The same block was changed in two places. Folevi keeps both versions — nothing is thrown away — and shows you
+                  The same block was changed in two places. Folevi keeps both versions, throws nothing away and shows you
                   the conflict so you can decide.
                 </td>
               </tr>
@@ -185,14 +185,14 @@ export default function DocsPage() {
           </li>
           <li>
             <strong>Create a public link</strong> for anyone with the URL. You can set an expiry date, require a password of
-            at least 8 characters, and revoke the link at any time — it stops working immediately.
+            at least 8 characters, and revoke the link at any time. It stops working immediately.
           </li>
         </ul>
 
         <h2 id="workspaces">Workspaces & plans</h2>
         <p>
           Your <strong>Personal</strong> is yours alone and isn’t a workspace: nobody can join it, and your personal plan (Free,
-          Basic or Pro) covers only it — its storage, your devices and, on Pro, the AI Assistant. A{" "}
+          Basic or Pro) covers only it: its storage, your devices and, on Pro, the AI Assistant. A{" "}
           <strong>workspace</strong> is shared with a team and has its own plan, storage and billing.
         </p>
         <ul>
@@ -202,14 +202,14 @@ export default function DocsPage() {
             shared with them.
           </li>
           <li>
-            <strong>Plans.</strong> Workspace Free, Team and Business. Paid plans are billed per member seat — the owner,
+            <strong>Plans.</strong> Workspace Free, Team and Business. Paid plans are billed per member seat. The owner,
             admins and members each take one; guests and pending invitations are free. The owner, and admins the owner
             allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
           </li>
           <li>
             <strong>Separate limits.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes
             your Personal. Storage is counted separately for your Personal and for each workspace; if a space goes over its
-            limit, nothing is deleted — new uploads wait until there’s room.
+            limit, nothing is deleted. New uploads wait until there’s room.
           </li>
           <li>
             <strong>Leaving and deleting.</strong> Content in a workspace belongs to the workspace and stays when someone
@@ -220,7 +220,7 @@ export default function DocsPage() {
 
         <h2 id="import-export">Import & export</h2>
         <h3>Import</h3>
-        <p>Bring in Markdown or plain text, and Folevi turns it into blocks — headings, lists, checklists and all.</p>
+        <p>Bring in Markdown or plain text, and Folevi turns it into blocks: headings, lists, checklists and all.</p>
         <h3>Export</h3>
         <ul>
           <li>Any page as Markdown, HTML or PDF.</li>
@@ -237,12 +237,12 @@ export default function DocsPage() {
             safe, away from your password.
           </li>
           <li>
-            You can delete your account at any time — if you own a workspace other people use, transfer it or delete it first.
+            You can delete your account at any time. If you own a workspace other people use, transfer it or delete it first.
             After a 7-day grace period, your account, your Personal and any workspace only you use are deleted permanently.
           </li>
         </ul>
         <p>
-          The full picture — encryption, what staff can and can’t see, and our subprocessors — is on the{" "}
+          The full picture (encryption, what staff can and can’t see, and our subprocessors) is on the{" "}
           <Link href="/security">Security</Link> page. To report a vulnerability, email{" "}
           <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>.
         </p>

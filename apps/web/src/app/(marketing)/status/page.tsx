@@ -39,22 +39,22 @@ export default function StatusPage() {
         </p>
         <ul>
           <li>
-            <strong>Saved</strong> — everything is on our servers.
+            <strong>Saved:</strong> everything is on our servers.
           </li>
           <li>
-            <strong>Saving</strong> — recent edits are on their way.
+            <strong>Saving:</strong> recent edits are on their way.
           </li>
           <li>
-            <strong>Offline</strong> — you’re not connected; edits are stored on this device and will sync later.
+            <strong>Offline:</strong> you’re not connected; edits are stored on this device and will sync later.
           </li>
           <li>
-            <strong>Syncing</strong> — reconnecting and catching up.
+            <strong>Syncing:</strong> reconnecting and catching up.
           </li>
           <li>
-            <strong>Conflict</strong> — the same block changed in two places; the app shows both versions.
+            <strong>Conflict:</strong> the same block changed in two places; the app shows both versions.
           </li>
           <li>
-            <strong>Error</strong> — something needs attention; open the status to see details and retry.
+            <strong>Error:</strong> something needs attention; open the status to see details and retry.
           </li>
         </ul>
         <p>

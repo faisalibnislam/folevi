@@ -1,6 +1,8 @@
 "use client";
 
+import { Asterisk } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { CheckMark } from "../product/Replica";
 import { StatusPill } from "../mini";
 import { cx } from "../ui";
 import { DemoCard, LiveRegion } from "./DemoCard";
@@ -13,10 +15,10 @@ const OPTIONS: Array<{ type: BlockType; label: string; glyph: string; keys?: str
   { type: "h1", label: "Heading 1", glyph: "H1", keys: "⌥⌘1", aliases: ["h1", "heading", "title"] },
   { type: "h2", label: "Heading 2", glyph: "H2", keys: "⌥⌘2", aliases: ["h2", "heading", "subheading"] },
   { type: "h3", label: "Heading 3", glyph: "H3", keys: "⌥⌘3", aliases: ["h3", "heading"] },
-  { type: "todo", label: "Checklist", glyph: "☐", keys: "⇧⌘8", aliases: ["todo", "task", "check", "checkbox"] },
+  { type: "todo", label: "Checklist", glyph: "[ ]", keys: "⇧⌘8", aliases: ["todo", "task", "check", "checkbox"] },
   { type: "bulleted", label: "Bulleted list", glyph: "•", aliases: ["bullet", "list", "ul"] },
-  { type: "quote", label: "Quote", glyph: "❝", aliases: ["quote", "blockquote"] },
-  { type: "callout", label: "Callout", glyph: "💡", aliases: ["callout", "note", "info"] },
+  { type: "quote", label: "Quote", glyph: "“", aliases: ["quote", "blockquote"] },
+  { type: "callout", label: "Callout", glyph: "*", aliases: ["callout", "note", "info"] },
 ];
 
 const LABEL: Record<BlockType, string> = Object.fromEntries(OPTIONS.map((o) => [o.type, o.label])) as Record<BlockType, string>;
@@ -137,7 +139,7 @@ export function CaptureDemo() {
   };
 
   return (
-    <DemoCard title="Train notes" icon="🚆" meta={<StatusPill status="Saved" />} onReset={reset} clip={false}>
+    <DemoCard title="Train notes" meta={<StatusPill status="Saved" />} onReset={reset} clip={false}>
       <div ref={scroller} className="max-h-[300px] min-h-[228px] space-y-2 overflow-y-auto px-5 pb-2 pt-5 sm:px-6">
         {blocks.map((block) => (
           <BlockView
@@ -152,10 +154,10 @@ export function CaptureDemo() {
       <div className="relative px-5 pb-5 sm:px-6">
         <div
           className={cx(
-            "flex min-h-11 items-center gap-2.5 rounded-[12px] border border-dashed px-3 transition-colors duration-150",
-            focused ? "border-moss bg-moss-soft/40" : "border-line-strong",
+            "flex min-h-11 items-center gap-2.5 rounded-[6px] border border-dashed px-3 transition-colors duration-150",
+            focused ? "border-(--color-ink-faint) bg-(--color-surface-sunken)" : "border-line-strong",
             draftType === "quote" && "border-l-2 border-l-ink",
-            draftType === "callout" && "bg-moss-soft",
+            draftType === "callout" && "bg-(--color-highlight-blue)",
           )}
         >
           <DraftPrefix type={draftType} />
@@ -191,7 +193,7 @@ export function CaptureDemo() {
               "leading-normal",
             )}
           />
-          <span id={`${baseId}-kind`} className="shrink-0 rounded-full bg-sunken px-2 py-0.5 text-[11px] font-medium text-muted">
+          <span id={`${baseId}-kind`} className="shrink-0 rounded-[5px] bg-sunken px-1.5 py-0.5 text-[11px] font-medium text-muted">
             {LABEL[draftType]}
           </span>
         </div>
@@ -201,7 +203,7 @@ export function CaptureDemo() {
           role="listbox"
           aria-label="Block types"
           hidden={!open}
-          className="mk-card mk-appear absolute left-5 z-10 mt-1.5 max-h-[248px] w-[min(280px,calc(100%-2.5rem))] overflow-y-auto rounded-[14px] p-1.5 shadow-(--shadow-pop) sm:left-6"
+          className="mk-card mk-appear absolute left-5 z-10 mt-1.5 max-h-[248px] w-[min(280px,calc(100%-2.5rem))] overflow-y-auto p-1.5 shadow-(--shadow-pop) sm:left-6"
         >
           {options.map((option) => {
             const selected = option.type === active?.type;
@@ -215,11 +217,11 @@ export function CaptureDemo() {
                 onClick={() => choose(option.type)}
                 onMouseMove={() => setActiveIndex(options.indexOf(option))}
                 className={cx(
-                  "flex h-10 cursor-pointer items-center gap-3 rounded-[9px] px-2 text-[14px]",
-                  selected ? "bg-moss-soft text-moss-ink" : "text-ink",
+                  "flex h-10 cursor-pointer items-center gap-3 rounded-[6px] px-2 text-[14px]",
+                  selected ? "bg-(--color-surface-sunken) text-(--color-heading)" : "text-ink",
                 )}
               >
-                <span aria-hidden="true" className="mk-mini-raised flex size-7 items-center justify-center rounded-[8px] text-[12px] font-semibold">
+                <span aria-hidden="true" className="mk-mini-raised flex size-7 items-center justify-center rounded-[6px] text-[12px] font-semibold">
                   {option.glyph}
                 </span>
                 <span className="flex-1">{option.label}</span>
@@ -235,9 +237,9 @@ export function CaptureDemo() {
 }
 
 function DraftPrefix({ type }: { type: BlockType }) {
-  if (type === "todo") return <span aria-hidden="true" className="size-[16px] shrink-0 rounded-[4px] border border-line-strong bg-raised" />;
+  if (type === "todo") return <span aria-hidden="true" className="mk-check" />;
   if (type === "bulleted") return <span aria-hidden="true" className="size-[6px] shrink-0 rounded-full bg-ink/70" />;
-  if (type === "callout") return <span aria-hidden="true">💡</span>;
+  if (type === "callout") return <Asterisk size={15} aria-hidden="true" className="shrink-0 text-muted" />;
   return null;
 }
 
@@ -251,12 +253,10 @@ function BlockView({ block, onToggle }: { block: Block; onToggle: () => void }) 
     case "todo":
       return (
         <label className="mk-appear flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            checked={Boolean(block.checked)}
-            onChange={onToggle}
-            className="mt-[5px] size-[16px] shrink-0 accent-[var(--color-moss-ink)]"
-          />
+          <input type="checkbox" checked={Boolean(block.checked)} onChange={onToggle} className="mk-check-input sr-only" />
+          <span aria-hidden="true" className="mk-check mt-[4px]" data-checked={block.checked ? "true" : undefined}>
+            {block.checked ? <CheckMark /> : null}
+          </span>
           <span className={cx(text, block.checked && "text-faint line-through")}>{block.text}</span>
         </label>
       );
@@ -268,11 +268,11 @@ function BlockView({ block, onToggle }: { block: Block; onToggle: () => void }) 
         </p>
       );
     case "quote":
-      return <blockquote className={cx(text, "mk-appear border-l-[3px] border-(--color-ember) pl-3")}>{block.text}</blockquote>;
+      return <blockquote className={cx(text, "mk-appear border-l-[3px] border-(--color-heading) pl-3")}>{block.text}</blockquote>;
     case "callout":
       return (
-        <p className={cx(text, "mk-appear flex gap-2 rounded-[12px] bg-moss-soft px-3 py-2 text-moss-ink")}>
-          <span aria-hidden="true">💡</span>
+        <p className={cx(text, "mk-appear flex gap-2 rounded-[8px] bg-(--color-highlight-blue) px-3 py-2")}>
+          <Asterisk size={15} aria-hidden="true" className="mt-[4px] shrink-0" />
           <span>{block.text}</span>
         </p>
       );

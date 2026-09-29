@@ -6,7 +6,7 @@ import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Privacy",
-  description: "How Folevi collects, uses and protects your information — including the AI Assistant, payments and email — in plain language.",
+  description: "How Folevi collects, uses and protects your information, including for the AI Assistant, payments and email. Written in plain language.",
   path: "/privacy",
 });
 
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
           <li>We collect what we need to run Folevi for you: your account details and the content you put in it.</li>
           <li>Your content is private by default. We don’t sell it, rent it, or use it for advertising.</li>
           <li>This website has no third-party trackers or advertising scripts.</li>
-          <li>The AI Assistant is optional. When you use it, your request and the notes it needs are sent to Google’s Gemini API to answer — nothing is sent while it’s off.</li>
+          <li>The AI Assistant is optional. When you use it, your request and the notes it needs are sent to Google’s Gemini API to answer. Nothing is sent while it’s off.</li>
           <li>You can export everything and delete your account at any time (if you own a workspace other people use, you transfer or delete it first).</li>
         </ul>
 
@@ -89,7 +89,7 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>
-            <strong>What is sent:</strong> only what a request needs — your question or instruction, and the text of the
+            <strong>What is sent:</strong> only what a request needs: your question or instruction, and the text of the
             note you’re in or of notes found by search that you can already read. Never notes you can’t open.
           </li>
           <li>
@@ -103,7 +103,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             We use Google’s paid Gemini API service, under which Google does not use your requests or notes to train or
-            improve its models. AI can make mistakes — check answers before relying on them.
+            improve its models. AI can make mistakes, so check answers before relying on them.
           </li>
         </ul>
 
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
 
         <h2 id="share">Who we share it with</h2>
         <p>
-          We use a small number of service providers to run Folevi — for our database and backend, web hosting, email, the AI
+          We use a small number of service providers to run Folevi. They cover our database and backend, web hosting, email, the AI
           Assistant (Google’s Gemini API) and payments (Stripe). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
           <Link href="/security#subprocessors">Security</Link> page.
         </p>
@@ -141,7 +141,7 @@ export default function PrivacyPage() {
           We keep your account and content for as long as your account exists. When you delete your account, there is a
           7-day grace period in case it was a mistake; after that, your account, your Personal and any workspace only you use
           are permanently deleted. What you added to a workspace other people use stays with that workspace (you can’t
-          delete your account while you own one — transfer it or delete it first). A deleted workspace is removed 7 days
+          delete your account while you own one, so transfer it or delete it first). A deleted workspace is removed 7 days
           after its owner deletes it. Some limited records, such as security logs, may be kept longer where needed to
           protect the service or meet legal obligations.
         </p>

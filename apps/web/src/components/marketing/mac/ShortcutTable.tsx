@@ -4,7 +4,7 @@ import { cx } from "../ui";
 export function ShortcutTable({ caption, className }: { caption: string; className?: string }) {
   return (
     <table className={cx("mk-table text-[14.5px]", className)}>
-      <caption className="pb-3 text-left text-[13px] text-muted">{caption}</caption>
+      <caption className="pb-2 text-left text-[13px] text-muted">{caption}</caption>
       <thead>
         <tr>
           <th scope="col">Action</th>
@@ -16,7 +16,7 @@ export function ShortcutTable({ caption, className }: { caption: string; classNa
       {SHORTCUT_GROUPS.map((group) => (
         <tbody key={group.group}>
           <tr>
-            <th scope="rowgroup" colSpan={2} className="pt-5 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-faint">
+            <th scope="rowgroup" colSpan={2} className="mk-caps pt-5">
               {group.group}
             </th>
           </tr>

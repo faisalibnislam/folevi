@@ -57,7 +57,7 @@ export default function SecurityPage() {
       <PageHeader
         eyebrow="Security"
         title="Private by default. Plain about the rest."
-        lede="What protects your account and your notes today — described precisely, without overstating it."
+        lede="What protects your account and your notes today, described precisely and without overstating it."
       />
       <DocShell toc={toc}>
         <h2 id="summary">In short</h2>
@@ -68,7 +68,7 @@ export default function SecurityPage() {
           <li>Nothing is public unless you create a link. Links can expire, require a password, and be revoked instantly.</li>
           <li>You can export everything, and you can delete your account.</li>
           <li>
-            Folevi is <strong>not</strong> end-to-end encrypted — and our admin tools cannot display your notes.
+            Folevi is <strong>not</strong> end-to-end encrypted, and our admin tools cannot display your notes.
           </li>
         </ul>
 
@@ -81,7 +81,7 @@ export default function SecurityPage() {
         <h3>Two-step verification</h3>
         <p>
           You can add a second step to signing in: a time-based one-time code (TOTP) from an authenticator app. It’s
-          optional, and we recommend it — with it on, a stolen password alone isn’t enough to get into your account. Turn
+          optional, and we recommend it. With it on, a stolen password alone isn’t enough to get into your account. Turn
           it on or off any time in Settings → Security.
         </p>
         <p>
@@ -91,7 +91,7 @@ export default function SecurityPage() {
 
         <h2 id="encryption">Encryption</h2>
         <p>
-          <strong>In transit.</strong> Every connection to Folevi — from your browser or the Mac app — uses TLS. Our sites
+          <strong>In transit.</strong> Every connection to Folevi, from your browser or the Mac app, uses TLS. Our sites
           send HTTP Strict Transport Security (HSTS) so browsers refuse to connect without encryption.
         </p>
         <p>
@@ -122,8 +122,8 @@ export default function SecurityPage() {
 
         <h2 id="access">Who can see your notes</h2>
         <p>
-          You, and the people you deliberately share with. Folevi’s internal admin tools are for managing accounts — for
-          example, account status — and they have <strong>no content viewer</strong>: there is no screen that displays your
+          You, and the people you deliberately share with. Folevi’s internal admin tools are for managing accounts (for
+          example, account status), and they have <strong>no content viewer</strong>: there is no screen that displays your
           pages or blocks.
         </p>
         <p>

@@ -47,7 +47,7 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
 
   return (
     <div ref={root} className="relative z-20">
-      <div className="mk-glass flex h-10 items-center gap-0.5 rounded-[14px] px-1.5 text-[13px] sm:px-2">
+      <div className="mk-glass mk-glass-bar flex h-10 items-center gap-0.5 rounded-[10px] px-1.5 text-[13px] sm:px-2">
         <span className="flex h-7 shrink-0 items-center px-1.5 text-ink sm:px-2" aria-hidden="true">
           <FoleviMark size={18} />
         </span>
@@ -73,8 +73,8 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
                     onKey(event, index);
                   }}
                   className={cx(
-                    "h-7 shrink-0 rounded-[8px] px-2 transition-colors duration-100 sm:px-2.5",
-                    isOpen ? "bg-accent text-accent-ink" : "text-ink hover:bg-ink/5",
+                    "h-7 shrink-0 rounded-[6px] px-2 transition-colors duration-100 sm:px-2.5",
+                    isOpen ? "bg-accent text-accent-ink" : "text-ink hover:bg-(--glass-hover)",
                   )}
                 >
                   {menu.name}
@@ -82,14 +82,14 @@ export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
                 <div
                   id={`${baseId}-${menu.name}`}
                   hidden={!isOpen}
-                  className={cx(!touched && "max-sm:hidden", "mk-glass mk-appear absolute inset-x-0 top-[46px] rounded-[14px] p-1.5 sm:left-0 sm:right-auto sm:top-[38px] sm:w-[248px]")}
+                  className={cx(!touched && "max-sm:hidden", "mk-glass mk-glass-menu mk-appear absolute inset-x-0 top-[46px] rounded-[10px] p-1.5 sm:left-0 sm:right-auto sm:top-[38px] sm:w-[248px]")}
                 >
                   <ul className="text-[13px]" aria-label={`${menu.name} menu`}>
                     {menu.items.map((item, i) =>
                       item === "separator" ? (
                         <li key={`sep-${i}`} aria-hidden="true" className="mx-2 my-1 h-px bg-line" />
                       ) : (
-                        <li key={item.label} className="flex h-8 items-center justify-between gap-4 rounded-[8px] px-2.5 text-ink">
+                        <li key={item.label} className="flex h-8 items-center justify-between gap-4 rounded-[6px] px-2.5 text-ink">
                           <span>{item.label}</span>
                           {item.keys ? <span className="tracking-[0.08em] text-muted">{item.keys}</span> : null}
                         </li>

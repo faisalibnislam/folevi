@@ -13,15 +13,15 @@ export const metadata = pageMetadata({
 const faqs: Array<{ q: string; a: React.ReactNode }> = [
   {
     q: "How does the free trial work?",
-    a: `Every new account gets Pro — AI included — free for ${TRIAL_DAYS} days, with no card. When the trial ends you stay on Free unless you choose a plan; nothing is charged automatically.`,
+    a: `Every new account gets Pro, AI included, free for ${TRIAL_DAYS} days, with no card. When the trial ends you stay on Free unless you choose a plan; nothing is charged automatically.`,
   },
   {
     q: "What counts toward storage?",
-    a: "Your personal plan’s storage holds the files, images and attachments in your Personal. Each team workspace has its own storage from its own workspace plan, so uploads there never use your personal storage — and your personal plan never changes a workspace’s.",
+    a: "Your personal plan’s storage holds the files, images and attachments in your Personal. Each team workspace has its own storage from its own workspace plan, so uploads there never use your personal storage, and your personal plan never changes a workspace’s.",
   },
   {
     q: "What counts as a device?",
-    a: `Each browser or app you're signed in to — say, the browser on your laptop and the one on your work computer. Free works on ${PLANS.free.devices} devices at a time; Basic and Pro work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
+    a: `Each browser or app you're signed in to. For example, the browser on your laptop and the one on your work computer. Free works on ${PLANS.free.devices} devices at a time; Basic and Pro work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
   },
   {
     q: "What happens if I run out of storage?",
@@ -39,14 +39,13 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
     q: "What happens to my notes if I downgrade?",
     a: (
       <>
-        They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time —
-        see <Link href="/docs#import-export">Import &amp; export</Link>.
+        They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time. See <Link href="/docs#import-export">Import &amp; export</Link>.
       </>
     ),
   },
   {
     q: "How do workspace plans work?",
-    a: "A workspace has its own plan, separate from anyone’s personal plan: a Pro personal plan doesn’t upgrade a workspace, and a workspace plan doesn’t change your Personal. Every workspace starts on Free. Team and Business are billed per member seat — the owner, admins and members each take one; guests and pending invitations are free — and aren’t on sale yet.",
+    a: "A workspace has its own plan, separate from anyone’s personal plan: a Pro personal plan doesn’t upgrade a workspace, and a workspace plan doesn’t change your Personal. Every workspace starts on Free. Team and Business are billed per member seat (the owner, admins and members each take one; guests and pending invitations are free). They aren’t on sale yet.",
   },
   {
     q: "Is the Mac app included?",
@@ -61,7 +60,7 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
 export default function PricingPage() {
   return (
     <>
-      <PageHeader eyebrow="Pricing" title="Start free. Pay for room, or for AI." lede={`Three simple personal plans, on the web, with the Mac app coming soon. Try Pro free for ${TRIAL_DAYS} days — no card.`} />
+      <PageHeader eyebrow="Pricing" title="Start free. Pay for room, or for AI." lede={`Three simple personal plans, on the web, with the Mac app coming soon. Try Pro free for ${TRIAL_DAYS} days, no card needed.`} />
       <div className={cx(container, "max-w-[1080px] pb-20 pt-4 sm:pb-28")}>
         <section aria-label="Personal plans">
           <PricingCard headingLevel="h2" />
@@ -79,10 +78,10 @@ export default function PricingPage() {
           <h2 id="faq-title" className="mk-h2">
             Questions
           </h2>
-          <dl className="mk-prose mk-card mt-8 max-w-none rounded-[24px] px-6 sm:px-8">
+          <dl className="mk-prose mk-card mt-8 max-w-none px-6 sm:px-8 [&>div]:mt-0">
             {faqs.map((item, index) => (
               <div key={item.q} className={cx("grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10", index > 0 && "border-t mk-hair")}>
-                <dt className="text-[17px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
+                <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
                 <dd className="text-muted">{item.a}</dd>
               </div>
             ))}

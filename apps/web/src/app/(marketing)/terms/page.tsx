@@ -6,7 +6,7 @@ import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Terms",
-  description: "The terms for using Folevi — Personal and workspaces, plans and billing, device limits, the AI Assistant and your content — in plain language.",
+  description: "The terms for using Folevi, in plain language. They cover Personal and workspaces, plans and billing, device limits, the AI Assistant and your content.",
   path: "/terms",
 });
 
@@ -35,7 +35,7 @@ export default function TermsPage() {
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
         <p>
-          By creating an account or using Folevi — the website, the web app and, once it’s released, the Mac app — you agree to these terms and
+          By creating an account or using Folevi (the website, the web app and, once it’s released, the Mac app), you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organisation, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>
@@ -43,7 +43,7 @@ export default function TermsPage() {
         <h2 id="service">The service</h2>
         <p>
           Folevi is actively developed: features will change, some will be added and a few may be removed. We work hard to
-          keep your content safe, and you can export it at any time — keep your own copy of anything you can’t afford to
+          keep your content safe, and you can export it at any time. Keep your own copy of anything you can’t afford to
           lose.
         </p>
 
@@ -57,7 +57,7 @@ export default function TermsPage() {
         <h2 id="content">Your content</h2>
         <p>
           <strong>What you write is yours.</strong> You keep all rights to your content. To run Folevi, you give us permission
-          to store, process, sync, back up and display your content — only as needed to provide the service to you and to
+          to store, process, sync, back up and display your content, only as needed to provide the service to you and to
           the people you share with. This permission ends when your content is deleted.
         </p>
         <p>
@@ -125,8 +125,8 @@ export default function TermsPage() {
           </li>
           <li>
             Personal and workspace plans never affect each other: a personal plan doesn’t change what a workspace includes, and
-            a workspace plan doesn’t change your personal plan. Prices and what each plan includes — storage, devices and the
-            AI Assistant — are on the <Link href="/pricing">pricing page</Link>.
+            a workspace plan doesn’t change your personal plan. Prices and what each plan includes (storage, devices and the
+            AI Assistant) are on the <Link href="/pricing">pricing page</Link>.
           </li>
           <li>New accounts get a free 7-day Pro trial. It ends without charge; you choose whether to pay.</li>
           <li>
@@ -137,21 +137,21 @@ export default function TermsPage() {
           <li>
             Plan limits apply while you’re on a plan: personal storage for your personal plan, workspace storage for a
             workspace’s plan (the two are never added together), and, on the Free personal plan, the number of devices
-            signed in at once — which being in a workspace doesn’t change. Going over a limit, for example after moving to a
-            smaller plan, pauses new uploads or holds a new device until you make room or upgrade — nothing already stored is
+            signed in at once, which being in a workspace doesn’t change. Going over a limit, for example after moving to a
+            smaller plan, pauses new uploads or holds a new device until you make room or upgrade. Nothing already stored is
             deleted, and you can still open, edit, organise, export and delete it.
           </li>
           <li>
             If we change prices, we’ll tell you by email at least 30 days before the change applies to your plan.
           </li>
-          <li>Nothing you’ve created is ever held back behind a payment — you can always export it.</li>
+          <li>Nothing you’ve created is ever held back behind a payment. You can always export it.</li>
         </ul>
 
         <h2 id="ai">The AI Assistant</h2>
         <p>
           On plans that include it, the AI Assistant can answer questions about your notes and help you write. In your
           Personal it comes with Pro (and the trial); in a workspace it comes with the workspace’s Team or Business plan, for
-          its members — a personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it
+          its members. A personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it
           available to everyone. It uses Google’s Gemini API, as described in our{" "}
           <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
           produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as

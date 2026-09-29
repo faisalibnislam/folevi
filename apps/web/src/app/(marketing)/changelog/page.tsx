@@ -13,7 +13,7 @@ const releases = [
     name: "Plans, AI and a new look",
     date: "2026-09-28",
     label: "28 September 2026",
-    intro: "Folevi gets plans, an AI Assistant and a lighter, glassier look — on the web, with the Mac app to follow.",
+    intro: "Folevi gets plans, an AI Assistant and a lighter, glassier look. They're on the web now, and the Mac app will follow.",
     groups: [
       {
         title: "Plans",
@@ -28,7 +28,7 @@ const releases = [
         title: "AI Assistant",
         items: [
           "Ask questions of your notes, with links to the notes it used",
-          "Write, rewrite, summarize and continue — from the slash menu, the selection toolbar or ⌘J",
+          "Write, rewrite, summarize and continue from the slash menu, the selection toolbar or ⌘J",
           "Catch me up: a short brief of your week on Home",
           "Answers appear word by word; turn the assistant off anytime in settings",
         ],
@@ -38,7 +38,7 @@ const releases = [
         items: [
           "A new logo and app icon",
           "Translucent, glassy chrome with a calmer, neutral palette so your notes carry the colour",
-          "57 note styles, each colouring text, highlights and blocks from its image — or upload your own",
+          "57 note styles, each colouring text, highlights and blocks from its image, or upload your own",
           "26 built-in templates with their own icons",
           "Folders that show the notes inside them",
         ],
@@ -54,7 +54,7 @@ const releases = [
     name: "Preview",
     date: "2026-09-25",
     label: "25 September 2026",
-    intro: "The first public preview of Folevi, on the web and — for preview accounts — on the Mac.",
+    intro: "The first public preview of Folevi, on the web and (for preview accounts) on the Mac.",
     groups: [
       {
         title: "Writing",
@@ -117,16 +117,15 @@ export default function ChangelogPage() {
         {releases.map((release) => (
           <article key={release.version} aria-labelledby={`v${release.version}`} className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
             <div className="flex flex-wrap items-center gap-3 lg:sticky lg:top-28 lg:block lg:self-start">
-              <p className="mk-chip mk-tone--ember">
-                <span aria-hidden="true" className="mk-dot" />
+              <p className="mk-chip">
                 Version {release.version}
               </p>
               <p className="text-[14px] text-muted lg:mt-3 lg:pl-1">
                 <time dateTime={release.date}>{release.label}</time>
               </p>
             </div>
-            <div className="mk-card max-w-[760px] rounded-[28px] p-6 sm:p-10">
-              <h2 id={`v${release.version}`} className="mk-h2 text-[34px] sm:text-[44px]">
+            <div className="mk-card max-w-[760px] p-6 sm:p-10">
+              <h2 id={`v${release.version}`} className="mk-h2 text-[32px] sm:text-[40px]">
                 {release.version} · {release.name}
               </h2>
               <p className="mk-lede mt-4">{release.intro}</p>

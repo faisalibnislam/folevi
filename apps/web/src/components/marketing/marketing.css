@@ -1,87 +1,143 @@
 /*
- * Folevi marketing — "Warm Folio".
- * Cream paper, cocoa ink, a touch of ember; soft glass bubbles and gently raised cards.
- * Plain CSS on top of the shared design tokens (packages/design-tokens). Scoped with `mk-` prefixes so
- * nothing leaks into the product surfaces that share this Next.js app.
+ * Folevi marketing.
+ * The same neutral chrome as the app (tokens.chrome in packages/design-tokens, data-chrome="neutral"):
+ * pure white in light mode, near-black in dark mode, Instrument Sans for text and Spectral for titles,
+ * 6 px controls, 8 to 14 px panels. Colour comes from the notes (their styles), never from the chrome.
+ * Scoped with `mk-` prefixes so nothing leaks into the product surfaces that share this Next.js app.
  */
+
+/* ------------------------------------------------------------------------------------------------
+ * Tokens. The marketing site uses the app's neutral chrome. These rules are unlayered on purpose: the
+ * design tokens they replace are unlayered too. `:root:has(.mk-root)` scopes them to marketing pages.
+ * --------------------------------------------------------------------------------------------- */
+:root:has(.mk-root) {
+  --color-canvas: #FFFFFF;
+  --color-sidebar: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-sunken: rgba(0, 0, 0, 0.05);
+  --color-ink: #18181B;
+  --color-heading: #0B0B0C;
+  --color-ink-muted: #56565E;
+  --color-ink-faint: #67676F;
+  --color-line: #E2E2E6;
+  --color-line-strong: #CFCFD5;
+  --color-accent: #1F1F22;
+  --color-accent-strong: #0B0B0C;
+  --color-accent-ink: #FFFFFF;
+  --color-accent-soft: rgba(0, 0, 0, 0.05);
+  --color-accent-soft-ink: #1F1F22;
+  --color-focus: #1F1F22;
+  --color-selection: #D9DEE8;
+  --color-code-bg: #F4F4F5;
+  --color-code-ink: #18181B;
+  --shadow-hairline: 0 0 0 1px rgba(0, 0, 0, 0.07);
+  --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --shadow-primary: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.12), 0 4px 12px -4px rgb(0 0 0 / 0.25);
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 14px 32px -14px rgba(0, 0, 0, 0.18);
+  --shadow-sheet: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 28px 64px -28px rgba(0, 0, 0, 0.24);
+  --shadow-pop: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.06), 0 24px 48px -12px rgba(0, 0, 0, 0.22);
+  --shadow-lift: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 10px 24px -6px rgba(0, 0, 0, 0.16), 0 40px 80px -30px rgba(0, 0, 0, 0.28);
+  /* Marketing-only surfaces, both neutral. */
+  --mk-well: #F5F5F7;
+  --mk-hair: var(--color-line);
+  --mk-hair-strong: var(--color-line-strong);
+  --mk-ease: var(--motion-easing, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --mk-title-shade-deep: rgb(0 0 0 / 0.42);
+  --mk-title-shade-light: rgb(255 255 255 / 0.5);
+  --cover-art-tint: transparent;
+}
+
+:root[data-theme="dark"]:has(.mk-root) {
+  color-scheme: dark;
+  --color-canvas: #101011;
+  --color-sidebar: #18181A;
+  --color-surface: #1C1C1E;
+  --color-surface-raised: #29292C;
+  --color-surface-sunken: rgba(255, 255, 255, 0.07);
+  --color-ink: #F2F2F3;
+  --color-heading: #FAFAFA;
+  --color-ink-muted: #A6A6AE;
+  --color-ink-faint: #93939B;
+  --color-line: #2C2C2F;
+  --color-line-strong: #3E3E43;
+  --color-accent: #F2F2F3;
+  --color-accent-strong: #FFFFFF;
+  --color-accent-ink: #101011;
+  --color-accent-soft: rgba(255, 255, 255, 0.07);
+  --color-accent-soft-ink: #F2F2F3;
+  --color-focus: #F2F2F3;
+  --color-selection: #3A3F4B;
+  --color-code-bg: #1C1C1E;
+  --color-code-ink: #F2F2F3;
+  --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
+  --shadow-primary: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px -4px rgb(0 0 0 / 0.5);
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
+  --shadow-sheet: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 28px 64px -24px rgba(0, 0, 0, 0.75);
+  --shadow-pop: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+  --shadow-lift: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 10px 24px -6px rgba(0, 0, 0, 0.6), 0 40px 80px -30px rgba(0, 0, 0, 0.8);
+  --mk-well: #17171A;
+  --cover-art-tint: rgb(0 0 0 / 0.18);
+}
+
+/* Without scripting the theme attribute is never set, so follow the system setting. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]):has(.mk-root) {
+    color-scheme: dark;
+    --color-canvas: #101011;
+    --color-surface: #1C1C1E;
+    --color-surface-raised: #29292C;
+    --color-surface-sunken: rgba(255, 255, 255, 0.07);
+    --color-ink: #F2F2F3;
+    --color-heading: #FAFAFA;
+    --color-ink-muted: #A6A6AE;
+    --color-ink-faint: #93939B;
+    --color-line: #2C2C2F;
+    --color-line-strong: #3E3E43;
+    --color-accent: #F2F2F3;
+    --color-accent-ink: #101011;
+    --color-accent-soft: rgba(255, 255, 255, 0.07);
+    --color-focus: #F2F2F3;
+    --mk-well: #17171A;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root:has(.mk-root) {
+    --mk-hair: var(--color-line-strong);
+    --mk-hair-strong: var(--color-ink-muted);
+  }
+}
 
 /* Keep Tailwind's layer order so utilities can refine these component styles. */
 @layer theme, base, components, utilities;
 
 @layer components {
 .mk-root {
-  /* Marketing-only atmosphere colours (the product never uses these). */
-  --mk-lilac: #E6DDF6;
-  --mk-blush: #FAEBE4;
-  --mk-cream: #FBFAF9;
-  --mk-rim: rgb(255 255 255 / 0.9);
-  --mk-rim-soft: rgb(255 255 255 / 0.65);
-  --mk-cast: 74 47 44;
-  --mk-hair: var(--color-line);
-  --mk-hair-strong: var(--color-line-strong);
-  --mk-glow-opacity: 1;
-  --mk-bubble-fill: rgb(255 255 255 / 0.42);
-  --mk-bubble-rim: rgb(255 255 255 / 0.95);
-  --mk-bubble-shine: rgb(255 255 255 / 0.9);
-  --mk-ease: var(--motion-easing, cubic-bezier(0.2, 0.7, 0.2, 1));
-  --mk-display-tracking: -0.035em;
   isolation: isolate;
   overflow-x: clip;
   background: var(--color-canvas);
-}
-
-:root[data-theme="dark"] .mk-root {
-  --mk-lilac: #2A2238;
-  --mk-blush: #231916;
-  --mk-cream: #1A1412;
-  --mk-rim: rgb(255 240 230 / 0.07);
-  --mk-rim-soft: rgb(255 240 230 / 0.05);
-  --mk-cast: 0 0 0;
-  --mk-glow-opacity: 0.9;
-  --mk-bubble-fill: rgb(255 240 230 / 0.06);
-  --mk-bubble-rim: rgb(255 240 230 / 0.22);
-  --mk-bubble-shine: rgb(255 240 230 / 0.35);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .mk-root {
-    --mk-lilac: #2A2238;
-    --mk-blush: #231916;
-    --mk-cream: #1A1412;
-    --mk-rim: rgb(255 240 230 / 0.07);
-    --mk-rim-soft: rgb(255 240 230 / 0.05);
-    --mk-cast: 0 0 0;
-    --mk-glow-opacity: 0.9;
-    --mk-bubble-fill: rgb(255 240 230 / 0.06);
-    --mk-bubble-rim: rgb(255 240 230 / 0.22);
-    --mk-bubble-shine: rgb(255 240 230 / 0.35);
-  }
-}
-
-@media (prefers-contrast: more) {
-  .mk-root {
-    --mk-hair: var(--color-line-strong);
-    --mk-hair-strong: var(--color-ink-muted);
-    --mk-glow-opacity: 0.5;
-  }
+  color: var(--color-ink);
 }
 
 /* Type ------------------------------------------------------------------------------------------ */
+/* Titles are Spectral, as in the app (.ui-display); everything else is Instrument Sans. */
 .mk-display {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: 600;
   color: var(--color-heading);
-  letter-spacing: var(--mk-display-tracking);
-  line-height: 1.02;
-  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.022em;
+  line-height: 1.04;
   text-wrap: balance;
 }
 .mk-h2 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: 600;
   color: var(--color-heading);
-  font-size: clamp(34px, 4.4vw, 52px);
-  line-height: 1.06;
-  letter-spacing: -0.03em;
+  font-size: clamp(32px, 4vw, 46px);
+  line-height: 1.08;
+  letter-spacing: -0.018em;
   text-wrap: balance;
 }
 .mk-h3 {
@@ -91,15 +147,22 @@
 }
 .mk-lede {
   color: var(--color-ink-muted);
-  font-size: clamp(17px, 1.5vw, 19px);
+  font-size: clamp(17px, 1.45vw, 19px);
   line-height: 1.6;
   letter-spacing: -0.006em;
 }
+/* Small caps label (the app's .ui-caps). */
+.mk-caps {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-caps, 0.06em);
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
 .mk-heading { color: var(--color-heading); }
-.mk-ember-ink { color: var(--color-ember-ink); }
 .mk-link {
-  color: var(--color-accent);
-  font-weight: 500;
+  color: var(--color-heading);
+  font-weight: 550;
   text-decoration: underline;
   text-decoration-color: color-mix(in oklab, currentColor 30%, transparent);
   text-underline-offset: 4px;
@@ -118,196 +181,106 @@
   z-index: 100;
   top: 12px;
   left: 12px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: var(--color-surface-raised);
-  color: var(--color-heading);
-  box-shadow: var(--shadow-pop);
-}
-
-/* Atmosphere ------------------------------------------------------------------------------------ */
-.mk-glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: var(--mk-glow-opacity);
-  background:
-    radial-gradient(42% 52% at 84% 14%, color-mix(in oklab, var(--color-glow-peach) 90%, transparent) 0%, transparent 72%),
-    radial-gradient(36% 46% at 8% 34%, color-mix(in oklab, var(--color-glow-rose) 85%, transparent) 0%, transparent 72%),
-    radial-gradient(40% 40% at 58% 78%, color-mix(in oklab, var(--mk-lilac) 80%, transparent) 0%, transparent 72%),
-    radial-gradient(30% 30% at 40% 8%, color-mix(in oklab, var(--mk-blush) 90%, transparent) 0%, transparent 70%);
-}
-.mk-glow--soft { opacity: calc(var(--mk-glow-opacity) * 0.7); }
-.mk-glow--center {
-  background:
-    radial-gradient(38% 55% at 30% 50%, color-mix(in oklab, var(--color-glow-peach) 85%, transparent) 0%, transparent 72%),
-    radial-gradient(36% 55% at 72% 45%, color-mix(in oklab, var(--color-glow-rose) 85%, transparent) 0%, transparent 72%),
-    radial-gradient(30% 40% at 52% 90%, color-mix(in oklab, var(--mk-lilac) 80%, transparent) 0%, transparent 72%);
-}
-/* A soft fade so glows melt into the canvas instead of ending on a line. */
-.mk-fade-bottom {
-  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
-  mask-image: linear-gradient(to bottom, #000 60%, transparent);
-}
-
-/* Glass bubbles: a white-rimmed sphere holding a small object. */
-.mk-bubble {
-  --s: 84px;
-  position: absolute;
-  width: var(--s);
-  height: var(--s);
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: calc(var(--s) * 0.44);
-  line-height: 1;
-  background:
-    radial-gradient(circle at 50% 120%, color-mix(in oklab, var(--color-glow-peach) 55%, transparent) 0%, transparent 60%),
-    radial-gradient(circle at 50% 45%, var(--mk-bubble-fill) 0%, color-mix(in oklab, var(--mk-bubble-fill) 60%, transparent) 70%);
-  box-shadow:
-    inset 0 0 0 1.5px var(--mk-bubble-rim),
-    inset 0 10px 18px -10px var(--mk-bubble-shine),
-    inset 0 -12px 20px -12px color-mix(in oklab, var(--color-glow-peach) 90%, transparent),
-    0 1px 2px rgb(var(--mk-cast) / 0.06),
-    0 22px 40px -18px rgb(var(--mk-cast) / 0.32);
-  -webkit-backdrop-filter: blur(10px) saturate(1.35);
-  backdrop-filter: blur(10px) saturate(1.35);
-  animation: mk-float var(--dur, 9s) ease-in-out var(--delay, 0s) infinite;
-  user-select: none;
-  pointer-events: none;
-}
-.mk-bubble::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 28% 20%, var(--mk-bubble-shine) 0%, transparent 11%),
-    radial-gradient(ellipse 56% 22% at 50% 6%, color-mix(in oklab, var(--mk-bubble-shine) 38%, transparent) 0%, transparent 70%);
-}
-.mk-bubble > span { filter: drop-shadow(0 4px 6px rgb(var(--mk-cast) / 0.18)); }
-@keyframes mk-float {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -9px; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .mk-bubble { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: var(--color-surface); }
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  box-shadow: var(--shadow-primary);
 }
 
 /* Navigation ------------------------------------------------------------------------------------ */
-.mk-rail-inner {
-  border-radius: 999px;
-  background: transparent;
-  box-shadow: 0 0 0 1px transparent;
-  transition: background-color var(--motion-slow, 220ms) var(--mk-ease), box-shadow var(--motion-slow, 220ms) var(--mk-ease);
+.mk-rail {
+  background: color-mix(in oklab, var(--color-canvas) 84%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: 0 1px 0 transparent;
+  transition: box-shadow var(--motion-slow, 220ms) var(--mk-ease);
 }
-.mk-rail[data-scrolled="true"] .mk-rail-inner,
-.mk-rail[data-open="true"] .mk-rail-inner {
-  background: color-mix(in oklab, var(--color-surface) 76%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  backdrop-filter: blur(18px) saturate(1.4);
-  box-shadow: var(--shadow-card);
-}
+.mk-rail[data-scrolled="true"],
+.mk-rail[data-open="true"] { box-shadow: 0 1px 0 var(--mk-hair); }
 @media (prefers-reduced-transparency: reduce) {
-  .mk-rail[data-scrolled="true"] .mk-rail-inner,
-  .mk-rail[data-open="true"] .mk-rail-inner {
-    background: var(--color-surface);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+  .mk-rail { background: var(--color-canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
-.mk-navtrack {
-  border-radius: 999px;
-  padding: 4px;
-  background: color-mix(in oklab, var(--color-surface-sunken) 70%, transparent);
-  box-shadow: inset 0 1px 2px rgb(var(--mk-cast) / 0.06), inset 0 0 0 1px rgb(var(--mk-cast) / 0.04);
-}
+/* Nav links behave like the app's tabs: quiet at rest, outlined and raised when current. */
 .mk-navlink {
   display: inline-flex;
   align-items: center;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 999px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   color: var(--color-ink-muted);
   transition: color var(--motion-fast, 140ms) var(--mk-ease), background-color var(--motion-fast, 140ms) var(--mk-ease), box-shadow var(--motion-fast, 140ms) var(--mk-ease);
 }
-.mk-navlink:hover { color: var(--color-heading); background: color-mix(in oklab, var(--color-surface-raised) 60%, transparent); }
+.mk-navlink:hover { color: var(--color-heading); background: var(--color-surface-sunken); }
 .mk-navlink[aria-current="page"] {
   color: var(--color-heading);
+  font-weight: 600;
   background: var(--color-surface-raised);
-  box-shadow: var(--shadow-control);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent);
 }
 .mk-sheet {
-  border-radius: 24px;
-  background: var(--color-surface);
+  border-radius: 10px;
+  background: var(--color-surface-raised);
   box-shadow: var(--shadow-pop);
   animation: mk-sheet-in var(--motion-slow, 220ms) var(--mk-ease);
 }
 @keyframes mk-sheet-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.99); }
+  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
   to { opacity: 1; transform: none; }
 }
 
-/* Buttons ----------------------------------------------------------------------------------------- */
+/* Buttons (the app's .ui-btn) ------------------------------------------------------------------ */
 .mk-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 999px;
-  font-weight: 600;
-  letter-spacing: -0.006em;
+  border-radius: 6px;
+  font-weight: 550;
+  letter-spacing: -0.005em;
   white-space: nowrap;
+  user-select: none;
   transition: background-color var(--motion-fast, 140ms) var(--mk-ease), box-shadow var(--motion-fast, 140ms) var(--mk-ease),
-    color var(--motion-fast, 140ms) var(--mk-ease), transform var(--motion-fast, 140ms) var(--mk-ease), filter var(--motion-fast, 140ms) var(--mk-ease);
+    color var(--motion-fast, 140ms) var(--mk-ease), filter var(--motion-fast, 140ms) var(--mk-ease);
 }
 .mk-btn svg { transition: transform var(--motion-base, 180ms) var(--mk-ease); }
 .mk-btn:hover svg { transform: translateX(2px); }
 .mk-btn-primary {
   color: var(--color-accent-ink);
-  background: linear-gradient(to bottom, color-mix(in oklab, var(--color-accent) 92%, white), var(--color-accent));
+  background: var(--color-accent);
   box-shadow: var(--shadow-primary);
 }
-.mk-btn-primary:hover {
-  background: linear-gradient(to bottom, color-mix(in oklab, var(--color-accent) 96%, white), color-mix(in oklab, var(--color-accent) 88%, var(--color-accent-strong)));
-  filter: saturate(1.05);
-}
-:root[data-theme="dark"] .mk-btn-primary:hover { filter: brightness(1.05); }
-.mk-btn-primary:active {
-  box-shadow: var(--shadow-control);
-  transform: translateY(0.5px);
-}
+.mk-btn-primary:hover { filter: brightness(1.18); }
+:root[data-theme="dark"] .mk-btn-primary:hover { filter: brightness(0.92); }
+.mk-btn-primary:active { filter: brightness(0.96); }
 .mk-btn-secondary {
   color: var(--color-heading);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-control);
 }
-.mk-btn-secondary:hover { background: color-mix(in oklab, var(--color-surface-raised) 80%, var(--color-accent-soft)); }
-.mk-btn-secondary:active { transform: translateY(0.5px); box-shadow: var(--shadow-hairline); }
+.mk-btn-secondary:hover { background: color-mix(in oklab, var(--color-surface-raised) 94%, var(--color-heading)); }
+.mk-btn-secondary:active { box-shadow: var(--shadow-hairline); }
 .mk-btn-ghost {
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   background: transparent;
   font-weight: 500;
 }
-.mk-btn-ghost:hover { color: var(--color-heading); background: color-mix(in oklab, var(--color-accent-soft) 70%, transparent); }
+.mk-btn-ghost:hover { color: var(--color-heading); background: var(--color-surface-sunken); }
 
 /* Chips ------------------------------------------------------------------------------------------- */
 .mk-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 30px;
-  padding: 0 13px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.003em;
-  color: var(--tone-ink, var(--color-heading));
-  background: var(--tone-soft, var(--color-surface-raised));
-  box-shadow: inset 0 1px 0 var(--mk-rim), 0 0 0 1px color-mix(in oklab, var(--tone-ink, var(--color-heading)) 10%, transparent);
+  gap: 7px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--color-ink);
+  background: var(--color-surface-sunken);
 }
 .mk-chip--raised {
   color: var(--color-heading);
@@ -316,104 +289,89 @@
 }
 .mk-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
-  background: var(--tone, var(--color-ember));
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tone, var(--color-ember)) 22%, transparent);
+  background: var(--tone, var(--color-heading));
 }
-
+/* Tones are for note content (the colours a note's style gives), never for chrome. */
 .mk-tone--moss { --tone: var(--color-moss); --tone-ink: var(--color-moss-ink); --tone-soft: var(--color-moss-soft); }
 .mk-tone--marigold { --tone: var(--color-marigold); --tone-ink: var(--color-marigold-ink); --tone-soft: var(--color-marigold-soft); }
 .mk-tone--plum { --tone: var(--color-plum); --tone-ink: var(--color-plum-ink); --tone-soft: var(--color-plum-soft); }
 .mk-tone--coral { --tone: var(--color-coral); --tone-ink: var(--color-coral-ink); --tone-soft: var(--color-coral-soft); }
 .mk-tone--ember { --tone: var(--color-ember); --tone-ink: var(--color-ember-ink); --tone-soft: var(--color-ember-soft); }
-.mk-tone--accent { --tone: var(--color-accent); --tone-ink: var(--color-accent-soft-ink); --tone-soft: var(--color-accent-soft); }
-.mk-tone-ink { color: var(--tone-ink); }
+.mk-tone--accent { --tone: var(--color-heading); --tone-ink: var(--color-heading); --tone-soft: var(--color-surface-sunken); }
+.mk-tone-ink { color: var(--tone-ink, var(--color-heading)); }
 
-/* Icon tile: a small raised rounded square holding a line icon. */
+/* Icon tile: the rounded square the app puts beside section titles on Home. */
 .mk-tile {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  color: var(--tone-ink, var(--color-accent));
-  background:
-    linear-gradient(to bottom, var(--mk-rim-soft), transparent 60%),
-    var(--tone-soft, var(--color-accent-soft));
-  box-shadow: inset 0 1px 0 var(--mk-rim), 0 0 0 1px color-mix(in oklab, var(--tone-ink, var(--color-accent)) 10%, transparent),
-    0 6px 14px -8px rgb(var(--mk-cast) / 0.3);
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--color-heading);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-control);
 }
 
-/* Keys -------------------------------------------------------------------------------------------- */
+/* Keys (the app's .ui-kbd, a little larger for reading) ------------------------------------------ */
 .mk-kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.75em;
-  height: 1.75em;
-  padding: 0 0.45em;
-  border-radius: 7px;
-  background: linear-gradient(to bottom, var(--color-surface-raised), color-mix(in oklab, var(--color-surface-raised) 88%, var(--color-surface-sunken)));
-  color: var(--color-heading);
-  box-shadow: inset 0 1px 0 var(--mk-rim), inset 0 -1.5px 0 color-mix(in oklab, var(--color-line-strong) 80%, transparent),
-    0 0 0 1px rgb(var(--mk-cast) / 0.1), 0 1px 2px rgb(var(--mk-cast) / 0.08);
-  font-family: var(--font-sans);
-  font-size: 0.78em;
-  font-weight: 500;
-  line-height: 1;
+  min-width: 1.7em;
+  height: 1.6em;
+  padding: 0 0.4em;
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  color: var(--color-ink-muted);
+  box-shadow: 0 0 0 1px var(--color-line), 0 1px 0 var(--color-line-strong);
+  font: 550 0.78em/1 var(--font-sans);
   letter-spacing: 0.02em;
   font-feature-settings: "tnum";
 }
-:root[data-theme="dark"] .mk-kbd { box-shadow: inset 0 1px 0 rgb(255 240 230 / 0.08), inset 0 -1.5px 0 rgb(0 0 0 / 0.35), 0 0 0 1px rgb(255 240 230 / 0.1); }
 
 /* Surfaces -------------------------------------------------------------------------------------- */
 .mk-card {
   background: var(--color-surface);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-sheet, 10px);
   box-shadow: var(--shadow-card);
 }
+/* A quiet grey well for grouped content (the app's canvas grey, without the glass). */
 .mk-panel {
   position: relative;
-  background: var(--color-surface);
-  border-radius: 28px;
-  box-shadow: var(--shadow-card), inset 0 0 0 1px var(--mk-rim-soft);
+  background: var(--mk-well);
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 70%, transparent);
 }
-.mk-panel--cream { background: color-mix(in oklab, var(--color-surface) 55%, var(--mk-cream)); }
-/* A calm peach → rose → lilac wash for feature panes. */
-.mk-wash {
-  background: linear-gradient(155deg,
-    color-mix(in oklab, var(--color-glow-peach) 42%, var(--color-surface)) 0%,
-    color-mix(in oklab, var(--color-glow-rose) 45%, var(--color-surface)) 55%,
-    color-mix(in oklab, var(--mk-lilac) 60%, var(--color-surface)) 100%);
-}
-.mk-wash--soft {
-  background: linear-gradient(150deg,
-    color-mix(in oklab, var(--color-glow-peach) 22%, var(--color-surface)) 0%,
-    var(--color-surface) 45%,
-    color-mix(in oklab, var(--mk-lilac) 30%, var(--color-surface)) 100%);
-}
-/* A tinted stage that holds a live demo: soft tone wash, inner white rim, diffuse drop. */
+
+/* A stage for a live demo: the app's glass canvas, lit by a note's style image, as behind a note. */
 .mk-stage {
   position: relative;
-  border-radius: 28px;
-  background:
-    radial-gradient(90% 70% at 0% 0%, color-mix(in oklab, var(--tone-soft, var(--color-accent-soft)) 100%, transparent) 0%, transparent 70%),
-    radial-gradient(80% 70% at 100% 100%, color-mix(in oklab, var(--color-glow-peach) 45%, transparent) 0%, transparent 70%),
-    color-mix(in oklab, var(--tone-soft, var(--color-accent-soft)) 45%, var(--color-canvas));
-  box-shadow:
-    inset 0 1px 0 var(--mk-rim),
-    inset 0 0 0 1px var(--mk-rim-soft),
-    0 0 0 1px rgb(var(--mk-cast) / 0.05),
-    0 30px 60px -34px rgb(var(--mk-cast) / 0.3);
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--glass-canvas);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 60%, transparent);
 }
-:root[data-theme="dark"] .mk-stage {
-  background:
-    radial-gradient(90% 70% at 0% 0%, color-mix(in oklab, var(--tone-soft, var(--color-accent-soft)) 100%, transparent) 0%, transparent 70%),
-    radial-gradient(80% 70% at 100% 100%, color-mix(in oklab, var(--color-glow-peach) 40%, transparent) 0%, transparent 70%),
-    var(--color-sidebar);
+.mk-stage::before {
+  content: "";
+  position: absolute;
+  inset: -64px;
+  z-index: -2;
+  background: var(--stage-art, none) center / cover no-repeat;
+  filter: blur(48px) saturate(1.3);
+  opacity: 0.9;
+}
+.mk-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--glass-veil);
 }
 
 .mk-appear { animation: mk-appear var(--motion-slow, 220ms) var(--mk-ease) both; }
@@ -423,248 +381,332 @@
 }
 .mk-flash { animation: mk-flash 1.2s var(--mk-ease) both; }
 @keyframes mk-flash {
-  0% { background-color: var(--color-ember-soft); }
+  0% { background-color: var(--color-highlight-yellow); }
   100% { background-color: transparent; }
 }
 
 /* Search highlights */
 .mk-root mark {
   background: var(--color-highlight-yellow);
-  color: var(--color-ink);
-  border-radius: 4px;
+  color: inherit;
+  border-radius: 3px;
   padding: 0 2px;
 }
 
-/* Segmented control ------------------------------------------------------------------------------ */
+/* Segmented control (the app's .ui-seg) ------------------------------------------------------------ */
 .mk-seg {
   display: flex;
   gap: 2px;
-  padding: 4px;
-  border-radius: 999px;
+  padding: 3px;
+  border-radius: 6px;
   background: var(--color-surface-sunken);
-  box-shadow: inset 0 1px 2px rgb(var(--mk-cast) / 0.07), inset 0 0 0 1px rgb(var(--mk-cast) / 0.04);
 }
 .mk-seg-item {
-  position: relative;
-  border-radius: 999px;
+  border-radius: 4px;
   color: var(--color-ink-muted);
   transition: color var(--motion-fast, 140ms) var(--mk-ease), background-color var(--motion-base, 180ms) var(--mk-ease), box-shadow var(--motion-base, 180ms) var(--mk-ease);
 }
 .mk-seg-item:hover { color: var(--color-heading); }
 .mk-seg-item[aria-selected="true"],
+.mk-seg-item[aria-checked="true"],
 .mk-seg-item[data-active="true"] {
   color: var(--color-heading);
   background: var(--color-surface-raised);
-  box-shadow: var(--shadow-control);
+  box-shadow: var(--shadow-control), 0 1px 3px rgb(0 0 0 / 0.06);
 }
 
-/* Folio stack (hero) ----------------------------------------------------------------------------- */
-.mk-leaf {
-  --d: 0;
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  top: 28px;
-  right: 28px;
-  border-radius: 22px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sheet);
-  transform-origin: 20% 100%;
-  transform: translate(calc(var(--d) * 14px), calc(var(--d) * -14px)) rotate(calc(var(--d) * 1.4deg));
-  transition: transform var(--motion-page, 320ms) var(--mk-ease), opacity var(--motion-page, 320ms) var(--mk-ease),
-    filter var(--motion-page, 320ms) var(--mk-ease);
-  overflow: hidden;
-}
-.mk-leaf[data-depth="1"] { background: color-mix(in oklab, var(--color-surface) 70%, var(--color-sidebar)); }
-.mk-leaf[data-depth="2"] { background: color-mix(in oklab, var(--color-surface) 40%, var(--color-sidebar)); }
-.mk-leaf[data-depth="1"] > .mk-leaf-body,
-.mk-leaf[data-depth="2"] > .mk-leaf-body { opacity: 0.3; filter: saturate(0.4); }
-.mk-leaf-body { transition: opacity var(--motion-page, 320ms) var(--mk-ease); }
-.mk-leaf[data-depth="0"][data-settle="true"] {
-  animation: mk-settle var(--motion-page, 320ms) var(--mk-ease) both;
-}
-@keyframes mk-settle {
-  0% { transform: translate(-14px, -22px) rotate(-2.2deg); box-shadow: var(--shadow-lift); }
-  100% { transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mk-leaf, .mk-leaf-body { transition: none; }
-  .mk-leaf[data-depth="0"][data-settle="true"] { animation: none; }
-}
-
-.mk-caret {
-  display: inline-block;
-  width: 2px;
-  height: 1.15em;
-  margin-left: 1px;
-  vertical-align: text-bottom;
-  border-radius: 2px;
-  background: var(--color-ember);
-  animation: mk-blink 1.05s steps(1) infinite;
-}
-@keyframes mk-blink { 50% { opacity: 0; } }
-
-/* Typed text: the full text is shown when scripting is off or motion is reduced. */
-.mk-typed-full { display: none; }
-@media (scripting: none) {
-  .mk-typed-live { display: none; }
-  .mk-typed-full { display: inline; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mk-typed-live { display: none; }
-  .mk-typed-full { display: inline; }
-  .mk-caret { animation: none; }
-}
-
-.mk-progress {
-  transform-origin: left center;
-  transform: scaleX(0);
-}
-.mk-progress[data-running="true"] { animation: mk-progress linear forwards; }
-.mk-progress[data-paused="true"] { animation-play-state: paused; }
-@keyframes mk-progress { to { transform: scaleX(1); } }
-
-/* Windows and product frames --------------------------------------------------------------------- */
-.mk-window {
-  border-radius: 16px;
-  background: var(--color-canvas);
-  box-shadow: var(--shadow-sheet), 0 0 0 1px rgb(var(--mk-cast) / 0.05);
-  overflow: hidden;
-}
-.mk-shot {
-  display: block;
-  /* Matches the ~34px window corner of a 2480px-wide Mac capture at any display size. */
-  border-radius: 1.37% / 2.07%;
-  box-shadow: var(--shadow-sheet), 0 0 0 1px rgb(var(--mk-cast) / 0.06), 0 60px 120px -60px rgb(var(--mk-cast) / 0.35);
-}
-.mk-browser-bar {
-  background: linear-gradient(to bottom, color-mix(in oklab, var(--color-surface) 70%, var(--color-sidebar)), var(--color-sidebar));
-  box-shadow: inset 0 1px 0 var(--mk-rim), inset 0 -1px 0 var(--mk-hair);
-}
+/* Glass (menus drawn in the Mac menu bar illustration) --------------------------------------------- */
 .mk-glass {
-  background: color-mix(in oklab, var(--color-surface-raised) 93%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  backdrop-filter: blur(20px) saturate(1.4);
-  box-shadow: var(--shadow-pop);
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: var(--glass-edge), var(--shadow-pop);
 }
 @media (prefers-reduced-transparency: reduce) {
-  .mk-glass {
-    background: var(--color-surface-raised);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+  .mk-glass { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+/* Menus open over busy content, so they stay nearly opaque (a menu inside the glass bar can't blur what's below it). */
+.mk-glass.mk-glass-bar { background: color-mix(in oklab, var(--color-surface-raised) 90%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.mk-glass.mk-glass-menu { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .mk-lights span { display: block; width: 11px; height: 11px; border-radius: 999px; }
 .mk-lights span:nth-child(1) { background: #EC6A5E; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
 .mk-lights span:nth-child(2) { background: #F4BF4F; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
 .mk-lights span:nth-child(3) { background: #61C554; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
-.mk-lights--inactive span:nth-child(n) { background: var(--color-line-strong); }
 
-/* Miniature app pieces (used by the HTML product miniatures). */
-.mk-mini-sheet {
-  background: var(--color-surface);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sheet);
-}
-.mk-mini-inspector {
-  background: color-mix(in oklab, var(--color-surface) 88%, transparent);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
-}
+/* Miniature app pieces used by the demos. */
 .mk-mini-raised {
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-control);
 }
-.mk-mini-sunken {
-  background: var(--color-surface-sunken);
-  box-shadow: inset 0 1px 2px rgb(var(--mk-cast) / 0.06);
+.mk-mini-sunken { background: var(--color-surface-sunken); }
+
+/* A checkbox as the editor draws it (never the OS control). */
+.mk-check {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  color: var(--check-ink, #fff);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1.5px var(--check-line, var(--color-line-strong));
+  transition: background-color var(--motion-fast, 140ms) var(--mk-ease), box-shadow var(--motion-fast, 140ms) var(--mk-ease);
 }
+.mk-check[data-checked="true"] {
+  background: var(--check-fill, var(--color-heading));
+  box-shadow: none;
+  color: var(--check-ink, var(--color-canvas));
+}
+.mk-check-input:focus-visible + .mk-check { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------------------------------------
+ * Product replicas: the app's own chrome (glass canvas, sidebar, tab strip, dock) around a note that
+ * carries its style's colours. Built in HTML so it follows the theme and never goes out of date.
+ * --------------------------------------------------------------------------------------------- */
+.mk-app {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--glass-canvas);
+  box-shadow: var(--shadow-lift);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-ink);
+  text-align: start;
+}
+/* The note's style image lights the canvas behind the glass, heavily blurred (Shell's ambient layer). */
+.mk-app-ambient {
+  position: absolute;
+  inset: -96px;
+  z-index: -2;
+  background: var(--app-art, none) center / cover no-repeat;
+  filter: blur(56px) saturate(1.4);
+  transition: opacity var(--motion-page, 320ms) var(--mk-ease);
+}
+.mk-app::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--glass-veil);
+}
+.mk-app-glass {
+  background: var(--glass-sidebar);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+}
+.mk-app-pop {
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: var(--glass-edge), var(--shadow-pop);
+}
+/* The dock floats over the note's text, so it is nearly opaque. */
+.mk-app-pop.mk-app-dock { background: color-mix(in oklab, var(--color-surface-raised) 94%, transparent); }
+.mk-app-content {
+  background: var(--glass-content);
+  -webkit-backdrop-filter: blur(30px) saturate(1.4);
+  backdrop-filter: blur(30px) saturate(1.4);
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mk-app-glass, .mk-app-pop, /* The dock floats over the note's text, so it is nearly opaque. */
+.mk-app-pop.mk-app-dock { background: color-mix(in oklab, var(--color-surface-raised) 94%, transparent); }
+.mk-app-content { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+.mk-app-well { background: var(--glass-hover); box-shadow: inset 0 0 0 1px var(--glass-border); }
+.mk-app-row-on {
+  background: var(--glass-active);
+  color: var(--color-heading);
+  font-weight: 600;
+  box-shadow: var(--glass-edge), 0 1px 3px rgb(0 0 0 / 0.06);
+}
+.mk-app-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  background: var(--glass-hover);
+}
+.mk-app-tab[data-on="true"] {
+  color: var(--color-heading);
+  font-weight: 600;
+  background: var(--color-surface-raised);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent);
+}
+.mk-app-dock-on {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  box-shadow: var(--shadow-primary);
+}
+
+/* The page behind a note: its style image, full bleed, inside the rounded content panel. */
+.mk-note-page {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--note-art, var(--color-surface-sunken)) center / cover no-repeat;
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+}
+/* A note's sheet, coloured by its style (editor.css: .fb-sheet[data-sheet="art"][data-text="art"]). */
+.mk-note {
+  --n-paper: var(--art-paper, var(--color-surface));
+  --n-ink: var(--art-ink, var(--color-ink));
+  --n-accent: var(--art-accent, var(--color-heading));
+  --n-hl: var(--art-hl, var(--color-highlight-blue));
+  --n-hl-2: var(--art-hl-2, var(--color-highlight-yellow));
+  --n-text-2: var(--art-text-2, var(--color-ink));
+  --n-heading: color-mix(in oklab, var(--n-ink) 88%, #000);
+  --n-muted: color-mix(in oklab, var(--n-ink) 76%, var(--n-paper));
+  background: var(--n-paper);
+  color: var(--n-ink);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sheet);
+  transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
+}
+:root[data-theme="dark"] .mk-note {
+  --n-paper: var(--art-paper-dark, var(--color-surface));
+  --n-ink: var(--art-ink-dark, var(--color-ink));
+  --n-accent: var(--art-accent-dark, var(--color-heading));
+  --n-hl: var(--art-hl-dark, var(--color-highlight-blue));
+  --n-hl-2: var(--art-hl-2-dark, var(--color-highlight-yellow));
+  --n-text-2: var(--art-text-2-dark, var(--color-ink));
+  --n-heading: color-mix(in oklab, var(--n-ink) 80%, #fff);
+  --n-muted: color-mix(in oklab, var(--n-ink) 80%, var(--n-paper));
+}
+.mk-note-title { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.012em; line-height: 1.1; }
+.mk-note-cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+  background: linear-gradient(var(--cover-art-tint), var(--cover-art-tint)), var(--note-art, none) center / cover no-repeat;
+}
+.mk-note-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, transparent 30%, var(--mk-title-shade-deep));
+}
+.mk-note-cover[data-tone="light"]::after { background: linear-gradient(180deg, transparent 30%, var(--mk-title-shade-light)); }
+.mk-note-cover[data-tone="deep"] .mk-note-title { color: #fff; text-shadow: 0 1px 12px rgb(0 0 0 / 0.25); }
+.mk-note-cover[data-tone="light"] .mk-note-title { color: var(--n-heading); }
+:root[data-theme="dark"] .mk-note-cover[data-tone="light"]::after { background: linear-gradient(180deg, transparent 30%, var(--mk-title-shade-deep)); }
+:root[data-theme="dark"] .mk-note-cover[data-tone="light"] .mk-note-title { color: #fff; }
+.mk-note-h { font-family: var(--font-display); font-weight: 600; color: var(--n-heading); letter-spacing: -0.01em; }
+.mk-note-callout { background: color-mix(in oklab, var(--n-hl) 70%, var(--n-paper)); border-radius: 8px; }
+.mk-note-accent { color: var(--n-accent); }
+.mk-note-muted { color: var(--n-muted); }
+.mk-note-chip { background: color-mix(in oklab, var(--n-hl-2) 75%, var(--n-paper)); color: var(--n-ink); }
+.mk-note .mk-check { --check-fill: var(--n-accent); --check-line: color-mix(in oklab, var(--n-ink) 40%, var(--n-paper)); --check-ink: var(--n-paper); background: transparent; }
+.mk-note .mk-check[data-checked="true"] { background: var(--n-accent); }
+@media (prefers-reduced-motion: reduce) {
+  .mk-note, .mk-app-ambient { transition: none; }
+}
+
+/* A note card as the app's Home shows it: a strip of the style image, then the page. */
+.mk-notecard {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--n-paper);
+  color: var(--n-ink);
+  box-shadow: var(--shadow-card);
+}
+.mk-notecard-spine { background: var(--note-art, none) center / cover no-repeat; }
 
 /* Long-form pages (docs, legal) ------------------------------------------------------------------ */
 .mk-prose { color: var(--color-ink); font-size: 16.5px; line-height: 1.7; letter-spacing: -0.006em; }
 .mk-prose > * + * { margin-top: 1em; }
 .mk-prose h2 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: 600;
   color: var(--color-heading);
-  font-size: clamp(25px, 2.6vw, 30px);
+  font-size: clamp(26px, 2.6vw, 31px);
   line-height: 1.2;
-  letter-spacing: -0.024em;
-  margin-top: 2.6em;
-  scroll-margin-top: 104px;
+  letter-spacing: -0.014em;
+  margin-top: 2.4em;
+  scroll-margin-top: 96px;
 }
 .mk-prose h2:first-child { margin-top: 0; }
 .mk-prose h3 {
-  font-size: 18px;
+  font-size: 17.5px;
   font-weight: 600;
   color: var(--color-heading);
   letter-spacing: -0.012em;
   margin-top: 1.8em;
-  scroll-margin-top: 104px;
+  scroll-margin-top: 96px;
 }
 .mk-prose h2 + *, .mk-prose h3 + * { margin-top: 0.6em; }
-.mk-prose p, .mk-prose li { color: color-mix(in oklab, var(--color-ink) 86%, var(--color-ink-muted)); }
+.mk-prose p, .mk-prose li { color: color-mix(in oklab, var(--color-ink) 88%, var(--color-ink-muted)); }
 .mk-prose ul { list-style: none; padding-left: 0; }
-.mk-prose ul > li { position: relative; padding-left: 1.4em; }
+.mk-prose ul > li { position: relative; padding-left: 1.35em; }
 .mk-prose ul > li + li { margin-top: 0.45em; }
 .mk-prose ul > li::before {
   content: "";
   position: absolute;
-  left: 0.25em;
-  top: 0.68em;
-  width: 6px;
-  height: 6px;
+  left: 0.3em;
+  top: 0.7em;
+  width: 5px;
+  height: 5px;
   border-radius: 999px;
-  background: var(--color-ember);
-  box-shadow: 0 0 0 3px var(--color-ember-soft);
+  background: var(--color-ink-muted);
 }
 .mk-prose ol { list-style: decimal; padding-left: 1.4em; }
 .mk-prose ol > li { padding-left: 0.3em; }
-.mk-prose ol > li::marker { color: var(--color-ember-ink); font-weight: 600; font-size: 0.92em; }
+.mk-prose ol > li::marker { color: var(--color-ink-muted); font-weight: 600; font-size: 0.92em; }
 .mk-prose ol > li + li { margin-top: 0.45em; }
 .mk-prose a {
-  color: var(--color-accent);
-  font-weight: 500;
+  color: var(--color-heading);
+  font-weight: 550;
   text-decoration: underline;
   text-decoration-color: color-mix(in oklab, currentColor 30%, transparent);
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
 .mk-prose a:hover { text-decoration-color: currentColor; }
-.mk-prose strong { font-weight: 600; color: var(--color-ink); }
+.mk-prose strong { font-weight: 600; color: var(--color-heading); }
 .mk-prose code {
   font-family: var(--font-mono);
   font-size: 0.86em;
-  background: var(--color-code-bg);
+  background: var(--color-surface-sunken);
   color: var(--color-code-ink);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 0.12em 0.4em;
-  box-shadow: inset 0 0 0 1px var(--mk-hair);
 }
 .mk-prose table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .mk-prose th { text-align: left; font-weight: 500; color: var(--color-ink); }
-.mk-prose thead th { font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-muted); }
+.mk-prose thead th { font-weight: 600; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
 .mk-prose th, .mk-prose td { padding: 12px 14px 12px 0; border-bottom: 1px solid var(--mk-hair); vertical-align: top; }
 .mk-prose tbody tr:last-child > * { border-bottom: 0; }
-/* Tables sit on a soft card so they read as one object. */
+/* Tables sit on a card so they read as one object. */
 .mk-prose .mk-table-card {
   padding: 6px 20px;
-  border-radius: 20px;
+  border-radius: 10px;
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
 }
 
 .mk-table { width: 100%; border-collapse: collapse; }
-.mk-table th, .mk-table td { border-bottom: 1px solid var(--mk-hair); padding: 11px 12px 11px 0; vertical-align: middle; }
+.mk-table th, .mk-table td { border-bottom: 1px solid var(--mk-hair); padding: 10px 12px 10px 0; vertical-align: middle; }
 .mk-table th { text-align: start; }
 .mk-table td { text-align: end; }
-.mk-table thead th { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-muted); }
+.mk-table thead th { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
 .mk-table tbody:last-child tr:last-child > * { border-bottom: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mk-appear, .mk-flash, .mk-sheet, .mk-bubble { animation: none; }
+  .mk-appear, .mk-flash, .mk-sheet { animation: none; }
   .mk-btn:hover svg { transform: none; }
 }
 }

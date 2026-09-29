@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight, FileText } from "lucide-react";
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "../icons";
 import { cx } from "../ui";
@@ -8,16 +9,16 @@ import { DemoCard, LiveRegion } from "./DemoCard";
 type PageId = "seed" | "reading" | "studio";
 type Segment = { kind: "text"; text: string } | { kind: "link"; page: PageId };
 
-const PAGES: Record<PageId, { title: string; icon: string; staticBacklinks: string[] }> = {
-  seed: { title: "Seed library", icon: "🌱", staticBacklinks: ["Planting calendar"] },
-  reading: { title: "Reading list", icon: "📚", staticBacklinks: [] },
-  studio: { title: "Studio move", icon: "📦", staticBacklinks: ["Weekly review"] },
+const PAGES: Record<PageId, { title: string; staticBacklinks: string[] }> = {
+  seed: { title: "Seed library", staticBacklinks: ["Planting calendar"] },
+  reading: { title: "Reading list", staticBacklinks: [] },
+  studio: { title: "Studio move", staticBacklinks: ["Weekly review"] },
 };
 const PAGE_IDS: PageId[] = ["seed", "reading", "studio"];
 const SOURCE = "Thursday notes";
 
 const INITIAL: Segment[][] = [
-  [{ kind: "text", text: "The printer can do the seed labels by Friday — details in " }, { kind: "link", page: "seed" }, { kind: "text", text: "." }],
+  [{ kind: "text", text: "The printer can do the seed labels by Friday. Details in " }, { kind: "link", page: "seed" }, { kind: "text", text: "." }],
 ];
 
 function linkedPages(paragraphs: Segment[][]): Set<PageId> {
@@ -118,7 +119,7 @@ export function ConnectDemo() {
 
   return (
     <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] md:gap-4">
-      <DemoCard title={SOURCE} icon="🗒️" onReset={reset} clip={false}>
+      <DemoCard title={SOURCE} onReset={reset} clip={false}>
         <div className="space-y-3 px-5 pb-5 pt-4 text-[15px] leading-[1.7] text-ink">
           {paragraphs.map((segments, i) => (
             <p key={i}>
@@ -128,8 +129,8 @@ export function ConnectDemo() {
           <div className="relative">
             <div
               className={cx(
-                "flex min-h-11 flex-wrap items-center gap-x-1 rounded-[12px] border border-dashed px-3 py-1 transition-colors duration-150",
-                focused ? "border-plum bg-plum-soft/40" : "border-line-strong",
+                "flex min-h-11 flex-wrap items-center gap-x-1 rounded-[6px] border border-dashed px-3 py-1 transition-colors duration-150",
+                focused ? "border-(--color-ink-faint) bg-(--color-surface-sunken)" : "border-line-strong",
               )}
               onClick={() => inputRef.current?.focus()}
             >
@@ -167,9 +168,9 @@ export function ConnectDemo() {
               role="listbox"
               aria-label="Pages"
               hidden={!open}
-              className="mk-card mk-appear absolute left-0 z-10 mt-1.5 w-[min(260px,100%)] rounded-[14px] p-1.5 shadow-(--shadow-pop)"
+              className="mk-card mk-appear absolute left-0 z-10 mt-1.5 w-[min(260px,100%)] p-1.5 shadow-(--shadow-pop)"
             >
-              <li role="presentation" className="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-faint">
+              <li role="presentation" className="mk-caps px-2 pb-1 pt-0.5">
                 Link to page
               </li>
               {options.map((id) => {
@@ -183,9 +184,9 @@ export function ConnectDemo() {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => choose(id)}
                     onMouseMove={() => setActiveIndex(options.indexOf(id))}
-                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-[9px] px-2 text-[14px]", selected ? "bg-plum-soft text-plum-ink" : "text-ink")}
+                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-[6px] px-2 text-[14px]", selected ? "bg-(--color-surface-sunken) text-(--color-heading)" : "text-ink")}
                   >
-                    <span aria-hidden="true">{PAGES[id].icon}</span>
+                    <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                     {PAGES[id].title}
                   </li>
                 );
@@ -201,9 +202,9 @@ export function ConnectDemo() {
           const linked = links.has(id);
           const count = page.staticBacklinks.length + (linked ? 1 : 0);
           return (
-            <li key={id} className={cx("mk-card px-4 py-3 transition-shadow duration-200", linked && "shadow-[var(--shadow-card),0_0_0_1.5px_color-mix(in_oklab,var(--color-plum)_45%,transparent)]")}>
+            <li key={id} className={cx("mk-card px-4 py-3 transition-shadow duration-200", linked && "shadow-[var(--shadow-card),0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_30%,transparent)]")}>
               <p className="flex items-center gap-2 text-[14px] font-medium text-ink">
-                <span aria-hidden="true">{page.icon}</span>
+                <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                 {page.title}
                 <span className="ml-auto text-[11.5px] font-normal text-muted">
                   {count} backlink{count === 1 ? "" : "s"}
@@ -212,8 +213,8 @@ export function ConnectDemo() {
               {count > 0 ? (
                 <ul className="mt-2 space-y-1 border-t mk-hair pt-2" aria-label={`Backlinks to ${page.title}`}>
                   {linked ? (
-                    <li key={`${id}-${fresh === id ? "fresh" : "static"}`} className={cx("rounded-[6px] px-1.5 py-1 text-[12.5px]", fresh === id && "mk-appear mk-flash")}>
-                      <span className="flex items-center gap-1.5 font-medium text-plum-ink">
+                    <li key={`${id}-${fresh === id ? "fresh" : "static"}`} className={cx("rounded-[4px] px-1.5 py-1 text-[12.5px]", fresh === id && "mk-appear mk-flash")}>
+                      <span className="flex items-center gap-1.5 font-medium text-(--color-heading)">
                         <Icon name="link" size={12} /> {SOURCE}
                       </span>
                       <span className="line-clamp-1 text-muted">{snippetFor(id)}</span>
@@ -248,9 +249,9 @@ function Segments({ segments }: { segments: Segment[] }) {
         ) : (
           <span
             key={i}
-            className="mx-0.5 inline-flex items-center gap-1 rounded-full bg-plum-soft px-1.5 align-baseline text-[14px] font-medium leading-[1.55] text-plum-ink underline decoration-plum/40 underline-offset-2"
+            className="mx-0.5 inline-flex items-center gap-0.5 align-baseline text-[15px] font-medium text-(--color-heading) underline decoration-(--color-line-strong) underline-offset-[3px]"
           >
-            <span aria-hidden="true">{PAGES[segment.page].icon}</span>
+            <ArrowUpRight size={13} aria-hidden="true" className="shrink-0 text-muted" />
             {PAGES[segment.page].title}
           </span>
         ),

@@ -32,44 +32,44 @@ const columns: Array<{ title: string; links: Array<{ label: string; href: string
 export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
-    <footer className={cx(container, "pb-5 pt-8 sm:pb-8")}>
-      <div className="mk-panel mk-panel--cream overflow-hidden">
-        <div className="relative grid gap-12 px-6 py-10 sm:px-10 sm:py-12 md:grid-cols-[1.2fr_2fr]">
-          <div>
-            <Wordmark markSize={24} className="text-[18px]" />
-            <p className="mt-4 max-w-[34ch] text-[15px] leading-relaxed text-muted">
-              A quieter place for ideas that keep growing. On the web and on the Mac.
-            </p>
-            <p className="mt-6 text-[14px] text-muted">
-              Security contact{" "}
-              <a className="mk-link" href={`mailto:${SECURITY_EMAIL}`}>
-                {SECURITY_EMAIL}
-              </a>
-            </p>
-          </div>
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-            {columns.map((column) => (
-              <div key={column.title}>
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{column.title}</h2>
-                <ul className="mt-3 space-y-0.5">
-                  {column.links.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        className="-ml-2.5 inline-flex min-h-11 items-center sm:min-h-10 rounded-full px-2.5 text-[15px] text-(--color-heading) transition-colors duration-150 hover:bg-accent-soft"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </nav>
+    <footer className="mt-8 border-t mk-hair">
+      <div className={cx(container, "grid gap-10 py-12 sm:py-14 md:grid-cols-[1.1fr_2fr]")}>
+        <div>
+          <Wordmark markSize={24} />
+          <p className="mt-4 max-w-[34ch] text-[14.5px] leading-relaxed text-muted">
+            Notes, documents and tasks on the web. The Mac app is coming soon.
+          </p>
+          <p className="mt-5 text-[14px] text-muted">
+            Security contact{" "}
+            <a className="mk-link" href={`mailto:${SECURITY_EMAIL}`}>
+              {SECURITY_EMAIL}
+            </a>
+          </p>
         </div>
-        <div className="relative flex flex-col gap-2 border-t mk-hair px-6 py-5 text-[13px] text-muted sm:flex-row sm:items-center sm:justify-between sm:px-10">
+        <nav aria-label="Footer" className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+          {columns.map((column) => (
+            <div key={column.title}>
+              <h2 className="mk-caps">{column.title}</h2>
+              <ul className="mt-3 space-y-0.5">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="-ml-2 inline-flex min-h-11 items-center rounded-[6px] px-2 text-[14.5px] text-ink transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) sm:min-h-9"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </div>
+      <div className={container}>
+        <div className="flex flex-col gap-1 border-t mk-hair py-5 text-[13px] text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>© {year} Folevi</p>
-          <p>Made with care for people who write things down.</p>
+          <p>Made for people who write things down.</p>
         </div>
       </div>
     </footer>

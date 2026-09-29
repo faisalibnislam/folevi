@@ -1,17 +1,19 @@
 "use client";
 
+import { FileText } from "lucide-react";
 import { useId, useMemo, useState, type ReactNode } from "react";
+import { CheckMark } from "../product/Replica";
 import { Icon } from "../icons";
 import { DateChip, type ChipTone } from "../mini";
 import { cx } from "../ui";
 import { LiveRegion } from "./DemoCard";
 
 const DOCS = [
-  { id: "seed", icon: "🌱", title: "Seed library", body: "Swap day is the first Saturday in April. Labels and glassine envelopes come from the printer on Alder Street." },
-  { id: "thursday", icon: "🗒️", title: "Thursday notes", body: "The printer can do the seed labels by Friday. Ask about recycled envelopes and a small run of sign-up cards." },
-  { id: "studio", icon: "📦", title: "Studio move", body: "Boxes for the plan chest, the reading lamp and the old printer. Keys from Ines on Friday morning." },
-  { id: "reading", icon: "📚", title: "Reading list", body: "The Overstory, Braiding Sweetgrass, and a short history of envelopes, stamps and the post." },
-  { id: "calendar", icon: "🗓️", title: "Planting calendar", body: "Sow sweet peas in March. Beans after the last frost, usually mid-April. Label every tray." },
+  { id: "seed", title: "Seed library", body: "Swap day is the first Saturday in April. Labels and glassine envelopes come from the printer on Alder Street." },
+  { id: "thursday", title: "Thursday notes", body: "The printer can do the seed labels by Friday. Ask about recycled envelopes and a small run of sign-up cards." },
+  { id: "studio", title: "Studio move", body: "Boxes for the plan chest, the reading lamp and the old printer. Keys from Ines on Friday morning." },
+  { id: "reading", title: "Reading list", body: "The Overstory, Braiding Sweetgrass, and a short history of envelopes, stamps and the post." },
+  { id: "calendar", title: "Planting calendar", body: "Sow sweet peas in March. Beans after the last frost, usually mid-April. Label every tray." },
 ];
 
 type Task = { id: string; text: string; page: string; when: string; tone: ChipTone; section: "today" | "next" };
@@ -102,9 +104,9 @@ export function ReturnDemo() {
             placeholder="Search pages…"
             autoComplete="off"
             spellCheck={false}
-            className="h-12 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-faint [&::-webkit-search-cancel-button]:hidden"
+            className="h-12 min-w-0 flex-1 appearance-none bg-transparent text-[15px] text-ink outline-none placeholder:text-faint [&::-webkit-search-cancel-button]:hidden"
           />
-          <span className="mk-kbd shrink-0">⌘K</span>
+          <kbd className="mk-kbd shrink-0">⌘K</kbd>
         </div>
         <p className="border-b mk-hair px-4 py-2 text-[12px] text-muted" aria-live="polite">
           {summary}
@@ -113,7 +115,7 @@ export function ReturnDemo() {
           {results.map(({ doc }) => (
             <li key={doc.id} className="px-4 py-3">
               <p className="flex items-center gap-2 text-[14px] font-medium text-ink">
-                <span aria-hidden="true">{doc.icon}</span>
+                <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                 {highlight(doc.title, terms)}
               </p>
               <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-muted">{highlight(snippet(doc.body, terms), terms)}</p>
@@ -127,7 +129,7 @@ export function ReturnDemo() {
 
       <div className="mk-card overflow-hidden">
         <div className="flex h-12 items-center gap-2 border-b mk-hair px-4">
-          <Icon name="calendar" size={16} className="mk-ember-ink" />
+          <Icon name="calendar" size={16} className="text-muted" />
           <h4 className="text-[14px] font-semibold text-(--color-heading)">Today</h4>
           <span className="ml-auto text-[12px] text-muted">{left === 0 ? "All done" : `${left} left`}</span>
         </div>
@@ -153,20 +155,18 @@ function TaskGroup({
   muted?: boolean;
 }) {
   return (
-    <div className={cx("px-2 py-2", muted && "border-t mk-hair bg-(--color-sidebar)")}>
-      <p className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-faint">{label}</p>
+    <div className={cx("px-2 py-2", muted && "border-t mk-hair bg-(--mk-well)")}>
+      <p className="mk-caps px-2 pb-1 pt-1">{label}</p>
       <ul>
         {tasks.map((task) => {
           const isDone = done.has(task.id);
           return (
             <li key={task.id}>
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[10px] px-2 py-2 hover:bg-sunken/70">
-                <input
-                  type="checkbox"
-                  checked={isDone}
-                  onChange={() => onToggle(task)}
-                  className="mt-[3px] size-[16px] shrink-0 accent-[var(--color-moss-ink)]"
-                />
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[6px] px-2 py-2 hover:bg-sunken">
+                <input type="checkbox" checked={isDone} onChange={() => onToggle(task)} className="mk-check-input sr-only" />
+                <span aria-hidden="true" className="mk-check mt-[2px]" data-checked={isDone ? "true" : undefined}>
+                  {isDone ? <CheckMark /> : null}
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className={cx("block text-[14px]", isDone ? "text-faint line-through" : "text-ink")}>{task.text}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted">

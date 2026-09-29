@@ -1,9 +1,10 @@
 import { PLANS, PLAN_ORDER, TRIAL_DAYS, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, formatPrice, isPaidPlan } from "@/lib/plans";
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
 import { SIGN_UP_URL } from "../site";
-import { Bubbles, ButtonLink, SectionHeading, container, cx, type BubbleSpec } from "../ui";
+import { ButtonLink, SectionHeading, container, cx } from "../ui";
 
 export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: string }> = [
   {
@@ -40,19 +41,19 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
 
 export function SecuritySection() {
   return (
-    <section id="security" aria-labelledby="security-title" className="scroll-mt-24 py-16 sm:py-24">
+    <section id="security" aria-labelledby="security-title" className="scroll-mt-20 border-t mk-hair py-16 sm:py-24">
       <div className={container}>
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
           <div>
             <SectionHeading
               id="security-title"
-              eyebrow="Privacy & security"
+              eyebrow="Privacy and security"
               title="Private by default. Plain about the rest."
-              lede="Your notes are yours. Here is exactly what protects them — and one thing Folevi deliberately doesn’t do."
+              lede="Your notes are yours. Here is what protects them, and one thing Folevi does not do."
             />
-            <div className="mk-tone--marigold mt-8 rounded-[22px] bg-(--color-marigold-soft) p-5 shadow-[inset_0_1px_0_var(--mk-rim),0_0_0_1px_color-mix(in_oklab,var(--color-marigold-ink)_14%,transparent)] sm:p-6">
-              <p className="flex items-center gap-2.5 text-[15px] font-semibold text-(--color-marigold-ink)">
-                <Icon name="shield" size={18} />
+            <div className="mk-panel mt-8 p-5 sm:p-6">
+              <p className="flex items-center gap-2.5 text-[15px] font-semibold text-(--color-heading)">
+                <Icon name="shield" size={17} />
                 Folevi is not end-to-end encrypted
               </p>
               <p className="mt-2 text-[14.5px] leading-relaxed text-ink">
@@ -65,13 +66,13 @@ export function SecuritySection() {
               Read the full security overview <Icon name="arrow-right" size={16} />
             </Link>
           </div>
-          <ul className="grid gap-4 self-start sm:grid-cols-2">
+          <ul className="grid gap-x-10 gap-y-9 self-start sm:grid-cols-2">
             {SECURITY_CONTROLS.map((control) => (
-              <li key={control.title} className="mk-card p-5 sm:p-6">
+              <li key={control.title}>
                 <span className="mk-tile">
-                  <Icon name={control.icon} size={20} />
+                  <Icon name={control.icon} size={17} />
                 </span>
-                <h3 className="mk-h3 mt-4 text-[16.5px]">{control.title}</h3>
+                <h3 className="mk-h3 mt-3.5 text-[15.5px]">{control.title}</h3>
                 <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">{control.body}</p>
               </li>
             ))}
@@ -79,6 +80,19 @@ export function SecuritySection() {
         </div>
       </div>
     </section>
+  );
+}
+
+function FeatureList({ items }: { items: string[] }) {
+  return (
+    <ul className="mt-5 flex-1 space-y-2.5 border-t mk-hair pt-5">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2.5 text-[14.5px] leading-snug text-ink">
+          <Check size={16} aria-hidden="true" className="mt-px flex-none text-(--color-heading)" />
+          {item}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -93,31 +107,25 @@ export function PricingCard({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3
         const pro = plan.ai;
         const paid = isPaidPlan(plan.monthly);
         return (
-          <div key={id} className={cx("mk-panel flex flex-col overflow-hidden p-7", pro && "mk-wash--soft")}>
-            <div className="flex items-center gap-2">
-              <Heading className="mk-chip mk-chip--raised w-fit">
-                <span aria-hidden="true" className="mk-dot" />
-                {plan.name}
-              </Heading>
-              {pro ? <span className="ml-auto text-[12.5px] font-semibold text-(--color-heading)">{TRIAL_DAYS}-day free trial</span> : null}
+          <div
+            key={id}
+            className={cx(
+              "mk-card flex flex-col p-6 sm:p-7",
+              pro && "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]",
+            )}
+          >
+            <div className="flex min-h-7 items-center gap-2">
+              <Heading className="text-[16px] font-semibold text-(--color-heading)">{plan.name}</Heading>
+              {pro ? <span className="mk-chip ml-auto">{TRIAL_DAYS}-day free trial</span> : null}
             </div>
-            <p className="mt-6">
-              <span className="mk-display text-[56px] leading-none">{formatPrice(plan.monthlyCents)}</span>
-              <span className="text-[15px] text-muted"> / month</span>
+            <p className="mt-5 flex items-baseline gap-1.5">
+              <span className="mk-display text-[48px] leading-none">{formatPrice(plan.monthlyCents)}</span>
+              <span className="text-[14.5px] text-muted">/ month</span>
             </p>
-            <p className="mt-2 min-h-[22px] text-[14px] text-muted">{!paid ? "No card required" : `or ${formatPrice(plan.yearlyCents)} a year`}</p>
-            <p className="mt-4 text-[15px] leading-relaxed text-ink">{plan.blurb}</p>
-            <ul className="mt-5 flex-1 space-y-3">
-              {plan.features.map((item) => (
-                <li key={item} className="flex items-start gap-3 text-[15px] leading-snug text-ink">
-                  <span aria-hidden="true" className="mk-tone--moss mt-[-1px] flex size-[22px] shrink-0 items-center justify-center rounded-full bg-(--color-moss-soft) text-(--color-moss-ink) shadow-[inset_0_1px_0_var(--mk-rim)]">
-                    <Icon name="check" size={13} strokeWidth={2.2} />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <ButtonLink href={SIGN_UP_URL} className="mt-8 w-full" icon="arrow-right" size="lg" variant={pro ? undefined : "secondary"}>
+            <p className="mt-2 min-h-[22px] text-[13.5px] text-muted">{!paid ? "No card required" : `or ${formatPrice(plan.yearlyCents)} a year`}</p>
+            <p className="mt-4 text-[14.5px] leading-relaxed text-ink">{plan.blurb}</p>
+            <FeatureList items={plan.features} />
+            <ButtonLink href={SIGN_UP_URL} className="mt-7 w-full" icon="arrow-right" size="lg" variant={pro ? undefined : "secondary"}>
               {!paid ? "Start free" : pro ? `Try ${plan.name} free for ${TRIAL_DAYS} days` : `Start with ${plan.name}`}
             </ButtonLink>
           </div>
@@ -138,30 +146,18 @@ export function WorkspacePlans({ headingLevel = "h3" }: { headingLevel?: "h2" | 
       {WORKSPACE_PLAN_ORDER.map((id) => {
         const plan = WORKSPACE_PLANS[id];
         return (
-          <div key={id} className="mk-panel flex flex-col overflow-hidden p-7">
-            <div className="flex items-center gap-2">
-              <Heading className="mk-chip mk-chip--raised w-fit">
-                <span aria-hidden="true" className="mk-dot" />
-                {plan.name}
-              </Heading>
-              {!plan.available ? <span className="ml-auto text-[12.5px] font-semibold text-muted">Coming soon</span> : null}
+          <div key={id} className="mk-card flex flex-col p-6 sm:p-7">
+            <div className="flex min-h-7 items-center gap-2">
+              <Heading className="text-[16px] font-semibold text-(--color-heading)">{plan.name}</Heading>
+              {!plan.available ? <span className="mk-chip ml-auto">Coming soon</span> : null}
             </div>
-            <p className="mt-6">
-              <span className="mk-display text-[44px] leading-none">{formatPrice(plan.monthlyCents)}</span>
-              <span className="text-[15px] text-muted">{plan.perSeat ? " per member / month" : " / month"}</span>
+            <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5">
+              <span className="mk-display text-[40px] leading-none">{formatPrice(plan.monthlyCents)}</span>
+              <span className="text-[14.5px] text-muted">{plan.perSeat ? "per member / month" : "/ month"}</span>
             </p>
-            <p className="mt-2 min-h-[22px] text-[14px] text-muted">{plan.perSeat ? `or ${formatPrice(plan.yearlyCents)} per member / year` : "No card required"}</p>
-            <p className="mt-4 text-[15px] leading-relaxed text-ink">{plan.blurb}</p>
-            <ul className="mt-5 flex-1 space-y-3">
-              {plan.features.map((item) => (
-                <li key={item} className="flex items-start gap-3 text-[15px] leading-snug text-ink">
-                  <span aria-hidden="true" className="mk-tone--moss mt-[-1px] flex size-[22px] shrink-0 items-center justify-center rounded-full bg-(--color-moss-soft) text-(--color-moss-ink) shadow-[inset_0_1px_0_var(--mk-rim)]">
-                    <Icon name="check" size={13} strokeWidth={2.2} />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
+            <p className="mt-2 min-h-[22px] text-[13.5px] text-muted">{plan.perSeat ? `or ${formatPrice(plan.yearlyCents)} per member / year` : "No card required"}</p>
+            <p className="mt-4 text-[14.5px] leading-relaxed text-ink">{plan.blurb}</p>
+            <FeatureList items={plan.features} />
           </div>
         );
       })}
@@ -171,53 +167,48 @@ export function WorkspacePlans({ headingLevel = "h3" }: { headingLevel?: "h2" | 
 
 export function PricingSection() {
   return (
-    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-24 py-16 sm:py-24">
-      <div className={cx(container, "max-w-[1080px]")}>
+    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 border-t mk-hair py-16 sm:py-24">
+      <div className={cx(container, "max-w-[1120px]")}>
         <SectionHeading
           align="center"
           id="pricing-title"
           eyebrow="Pricing"
           title="Start free. Upgrade when you need room or AI."
-          lede="Every new account gets Pro free for 7 days. Every plan works on the web, with the Mac app coming soon."
+          lede={`Every new account gets Pro free for ${TRIAL_DAYS} days. Every plan works on the web, and will include the Mac app when it arrives.`}
         />
         <div className="mt-12">
           <PricingCard />
         </div>
+        <p className="mt-6 text-center text-[14px] text-muted">
+          Workspaces for teams have their own plans.{" "}
+          <Link href="/pricing" className="mk-link">
+            See all pricing
+          </Link>
+        </p>
       </div>
     </section>
   );
 }
 
-const CTA_BUBBLES: BubbleSpec[] = [
-  { emoji: "🌱", size: 88, style: { top: "18%", left: "7%" }, className: "hidden md:grid", dur: 10 },
-  { emoji: "📝", size: 70, style: { bottom: "16%", left: "15%" }, className: "hidden lg:grid", dur: 8, delay: -3 },
-  { emoji: "📚", size: 76, style: { top: "22%", right: "8%" }, className: "hidden md:grid", dur: 11, delay: -6 },
-  { emoji: "✨", size: 58, style: { bottom: "18%", right: "15%" }, className: "hidden lg:grid", dur: 9, delay: -2 },
-];
-
 export function FinalCta() {
   return (
-    <section aria-labelledby="cta-title" className="pb-10 pt-4 sm:pb-16">
+    <section aria-labelledby="cta-title" className="pb-12 pt-4 sm:pb-20">
       <div className={container}>
-        <div className="mk-panel mk-panel--cream relative overflow-hidden px-6 py-20 text-center sm:px-10 sm:py-28">
-          <div aria-hidden="true" className="mk-glow mk-glow--center" />
-          <Bubbles items={CTA_BUBBLES} />
-          <div className="relative">
-            <FoleviMark size={56} className="mx-auto block drop-shadow-[0_6px_16px_rgb(0_0_0/0.08)]" />
-            <h2 id="cta-title" className="mk-display mx-auto mt-8 max-w-[14ch] text-[42px] sm:text-[64px]">
-              Start with one loose thought.
-            </h2>
-            <p className="mk-lede mx-auto mt-6 max-w-[40ch]">
-              Folevi will keep it safe while it grows into something worth returning to.
-            </p>
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
-                Start writing
-              </ButtonLink>
-              <ButtonLink href="/docs" variant="secondary" size="lg">
-                Read the docs
-              </ButtonLink>
-            </div>
+        <div className="mk-panel px-6 py-16 text-center sm:px-10 sm:py-24">
+          <FoleviMark size={48} className="mx-auto block" />
+          <h2 id="cta-title" className="mk-display mx-auto mt-7 max-w-[16ch] text-[38px] sm:text-[56px]">
+            Start with one note.
+          </h2>
+          <p className="mk-lede mx-auto mt-5 max-w-[46ch]">
+            The Free plan has no time limit, and you can export your notes to Markdown, HTML or PDF at any time.
+          </p>
+          <div className="mt-9 flex flex-wrap justify-center gap-2.5">
+            <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
+              Start writing
+            </ButtonLink>
+            <ButtonLink href="/docs" variant="secondary" size="lg">
+              Read the docs
+            </ButtonLink>
           </div>
         </div>
       </div>

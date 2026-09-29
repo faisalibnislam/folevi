@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { stripeWebhook } from "./billing";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { parseLoopsWebhook, verifyLoopsWebhook } from "@folevi/email";
+import { parseLoopsWebhook, parseMailtrapWebhook, verifyLoopsWebhook, verifyMailtrapSignature } from "@folevi/email";
 import { verifyFileSignature } from "./lib/fileUrls";
 import { createAuth } from "./auth";
 import { withTrustedClientIp } from "./lib/clientIp";
@@ -78,7 +78,42 @@ function corsFor(origin: string | null): Record<string, string> {
 /** Stripe events (subscriptions, invoices, refunds); signature-verified in billing.stripeWebhook. */
 http.route({ path: "/webhooks/stripe", method: "POST", handler: stripeWebhook });
 
-/** Loops delivery webhooks (only when LOOPS_WEBHOOK_SECRET is configured). Signature-verified. */
+/** Mailtrap sends at most 500 events per request; a few MB is plenty. */
+const MAX_WEBHOOK_BYTES = 5 * 1024 * 1024;
+const EVENTS_PER_MUTATION = 100;
+
+/**
+ * Mailtrap delivery webhooks: delivery, soft bounce, bounce, suspension, reject, spam complaint (and
+ * unsubscribe). `Mailtrap-Signature` must be the hex HMAC-SHA256 of the raw body under
+ * MAILTRAP_WEBHOOK_SECRET (constant-time compare); without a secret every request is refused. Accepts
+ * `{events: [...]}` JSON or JSON Lines. Events are deduplicated on event_id, so Mailtrap's retries are
+ * harmless. Responses never echo the payload.
+ */
+http.route({
+  path: "/webhooks/mailtrap",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = process.env.MAILTRAP_WEBHOOK_SECRET;
+    if (!secret || secret === "none") return new Response("Webhook not configured", { status: 401 });
+    const declared = Number(request.headers.get("content-length") ?? "0");
+    if (declared > MAX_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
+    const rawBody = await request.text();
+    if (rawBody.length > MAX_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
+    const ok = await verifyMailtrapSignature({ rawBody, signature: request.headers.get("mailtrap-signature"), secret });
+    if (!ok) return new Response("Invalid signature", { status: 401 });
+    const parsed = parseMailtrapWebhook(rawBody);
+    if (!parsed) return new Response("Malformed body", { status: 400 });
+    let stored = 0;
+    for (let i = 0; i < parsed.events.length; i += EVENTS_PER_MUTATION) {
+      const result = await ctx.runMutation(internal.email.recordMailtrapEvents, { events: parsed.events.slice(i, i + EVENTS_PER_MUTATION) });
+      stored += result.stored;
+    }
+    console.log(JSON.stringify({ event: "email.webhook", provider: "mailtrap", received: parsed.events.length, stored, ignored: parsed.ignored }));
+    return new Response("ok", { status: 200 });
+  }),
+});
+
+/** LEGACY (remove after the Mailtrap cutover): Loops delivery webhooks (only when LOOPS_WEBHOOK_SECRET is configured). */
 http.route({
   path: "/webhooks/loops",
   method: "POST",

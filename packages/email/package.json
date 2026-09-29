@@ -11,7 +11,7 @@
     "typecheck": "node scripts/build-templates.ts --check && tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "lint": "eslint src test scripts",
     "test": "vitest run",
-    "loops-kit": "node scripts/loops-kit.ts"
+    "preview": "node scripts/preview.ts"
   },
   "devDependencies": {
     "typescript": "6.0.3",

@@ -65,8 +65,8 @@ function checkString(name: string, spec: VariableSpec, raw: string, errors: stri
       if (!CODE_RE.test(value)) errors.push(`${name}: must be 4-12 letters, digits or dashes`);
       break;
     default:
-      // User-controlled text is rendered inside HTML by Loops. Whether Loops HTML-escapes data
-      // variables is not documented, so neutralise markup at the source: "<"/">" become
+      // renderEmail HTML-escapes every value; as defence in depth (and for the legacy Loops path,
+      // whose escaping is undocumented) markup is also neutralised at the source: "<"/">" become
       // single guillemets, which read naturally and cannot open a tag.
       return value.replace(/</g, "\u2039").replace(/>/g, "\u203A");
   }
@@ -76,7 +76,7 @@ function checkString(name: string, spec: VariableSpec, raw: string, errors: stri
 /**
  * Validates and normalises the data variables for a template.
  * - Names are case-sensitive; unknown names are rejected.
- * - Only strings and finite numbers are accepted (Loops rejects booleans/null).
+ * - Only strings and finite numbers are accepted (no booleans or null).
  * - Strings are trimmed; missing optional variables are sent as "" so that templates
  *   never render a raw placeholder.
  */

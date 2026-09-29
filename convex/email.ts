@@ -1,14 +1,14 @@
 import { v } from "convex/values";
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { emailManifest, hashRecipient, redactEmail, sendTransactional, transactionalIdFor, type TemplateKey } from "@folevi/email";
+import { emailManifest, hashRecipient, redactEmail, selectProvider, sendEmail, transactionalIdFor, type TemplateKey } from "@folevi/email";
 import { ulid } from "@folevi/editor-schema";
-import type { Id } from "./_generated/dataModel";
-import { bump } from "./lib/metrics";
+import type { Doc, Id } from "./_generated/dataModel";
+import { bump, type MetricKey } from "./lib/metrics";
 
 type Environment = "production" | "preview" | "development" | "test";
 
-function environment(): Environment {
+export function environment(): Environment {
   const env = process.env.FOLEVI_ENV;
   return env === "production" || env === "preview" || env === "test" ? env : "development";
 }
@@ -44,14 +44,18 @@ export function productEmailAllowed(key: string, preferenceKey: string, prefs: R
   return true;
 }
 
-/** Loops reports webhook `eventTime` in seconds; everything Folevi stores is milliseconds. */
+/** Providers report webhook times in seconds; everything Folevi stores is milliseconds. */
 export function eventTimeMs(t: number): number {
   return t < 1e12 ? Math.round(t * 1000) : t;
 }
 
 /**
- * Sends one transactional email through Loops. Records every attempt locally; a 200 from Loops is
- * recorded as "accepted" (accepted by provider), never as "delivered".
+ * Sends one transactional email (Mailtrap; Loops only as the legacy cutover fallback). Records every
+ * attempt locally; a 2xx from the provider is recorded as "accepted" (accepted by provider), never as
+ * "delivered" — delivery state only comes from signed webhooks.
+ *
+ * Mailtrap has no idempotency key, so the attempt row is the guard: `beginAttempt` refuses to start a
+ * second send for an idempotency key that was already accepted or is still in flight.
  */
 export const sendTemplate = internalAction({
   args: {
@@ -92,6 +96,8 @@ export const sendTemplate = internalAction({
     const salt = process.env.FOLEVI_HASH_SALT ?? "folevi-development-salt";
     const recipientHash = await hashRecipient(to, salt);
     const requestId = ulid();
+    const env = process.env as Record<string, string | undefined>;
+    const provider = selectProvider(env, environment());
     const attempt = await ctx.runMutation(internal.email.beginAttempt, {
       templateKey: key,
       category: def.category,
@@ -103,21 +109,29 @@ export const sendTemplate = internalAction({
       requestId,
       resendOf: args.resendOf,
       resendPayload: RESENDABLE.has(key) ? args.dataVariables : undefined,
-      transactionalId: transactionalIdFor(key, process.env as Record<string, string | undefined>) ?? undefined,
+      provider: provider.kind === "none" ? undefined : provider.kind,
+      // LEGACY (remove after cutover): only the Loops path matches webhook events by template id.
+      transactionalId: provider.kind === "loops" ? (transactionalIdFor(key, env) ?? undefined) : undefined,
     });
     if (attempt.alreadyAccepted) return { status: "accepted" as const, duplicate: true };
+    if (attempt.inFlight) return { status: "queued" as const, duplicate: true };
+    if (attempt.suppressed) {
+      console.log(JSON.stringify({ event: "email.suppressed", template: key, requestId }));
+      return { status: "skipped" as const };
+    }
 
-    const apiKey = process.env.LOOPS_API_KEY;
-    if (!apiKey) {
+    if (provider.kind === "none") {
       await ctx.runMutation(internal.email.finishAttempt, { attemptId: attempt.attemptId, status: "failed", attempts: 0, errorCode: "provider_not_configured" });
       console.warn(JSON.stringify({ event: "email.not_configured", template: key, requestId }));
       return { status: "failed" as const };
     }
-    const outcome = await sendTransactional(
-      { key, to, dataVariables: args.dataVariables, idempotencyKey: args.idempotencyKey.slice(0, 100) },
+    if (provider.kind === "loops") {
+      console.warn(JSON.stringify({ event: "email.legacy_provider", provider: "loops", template: key, requestId }));
+    }
+    const outcome = await sendEmail(
+      { key, to, dataVariables: args.dataVariables, attemptId: attempt.attemptId, idempotencyKey: args.idempotencyKey },
       {
-        apiKey,
-        env: process.env as Record<string, string | undefined>,
+        env,
         policy: {
           environment: environment(),
           allowlist: (process.env.FOLEVI_EMAIL_ALLOWLIST ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
@@ -133,7 +147,7 @@ export const sendTemplate = internalAction({
       providerMessageId: outcome.providerMessageId,
     });
     console.log(
-      JSON.stringify({ event: "email.send", template: key, status: outcome.status, attempts: outcome.attempts, code: outcome.errorCode, requestId }),
+      JSON.stringify({ event: "email.send", provider: outcome.provider, template: key, status: outcome.status, attempts: outcome.attempts, code: outcome.errorCode, requestId }),
     );
     return { status: outcome.status };
   },
@@ -151,15 +165,31 @@ export const beginAttempt = internalMutation({
     requestId: v.string(),
     resendOf: v.optional(v.id("emailSendAttempts")),
     resendPayload: v.optional(v.record(v.string(), v.union(v.string(), v.number()))),
+    provider: v.optional(v.string()),
     transactionalId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("emailSendAttempts")
-      .withIndex("by_idempotency", (q) => q.eq("idempotencyKey", args.idempotencyKey))
-      .first();
-    if (existing && existing.status === "accepted" && !args.resendOf) return { attemptId: existing._id, alreadyAccepted: true };
     const now = Date.now();
+    if (!args.resendOf) {
+      const previous = await ctx.db
+        .query("emailSendAttempts")
+        .withIndex("by_idempotency", (q) => q.eq("idempotencyKey", args.idempotencyKey))
+        .take(20);
+      // Mailtrap has no idempotency key: this row is what stops a retried or duplicated action from
+      // sending twice. Accepted → never again; queued and recent → another run is sending it right now.
+      const accepted = previous.find((p) => p.status === "accepted");
+      if (accepted) return { attemptId: accepted._id, alreadyAccepted: true, inFlight: false, suppressed: false };
+      const running = previous.find((p) => p.status === "queued" && now - p.updatedAt < IN_FLIGHT_MS);
+      if (running) return { attemptId: running._id, alreadyAccepted: false, inFlight: true, suppressed: false };
+      // A queued row older than that belongs to a run that died before recording an outcome.
+      for (const p of previous) {
+        if (p.status === "queued") await ctx.db.patch(p._id, { status: "failed", errorCode: "abandoned", updatedAt: now });
+      }
+    }
+    // Product email is never sent to an address that hard-bounced, complained or unsubscribed at the
+    // provider. Identity and security email still goes: people must always be able to confirm an
+    // address, reset a password or hear about a sign-in.
+    const suppressed = args.category === "product" && (await isSuppressed(ctx, args.recipientHash));
     const attemptId = await ctx.db.insert("emailSendAttempts", {
       templateKey: args.templateKey,
       category: args.category,
@@ -175,11 +205,46 @@ export const beginAttempt = internalMutation({
       updatedAt: now,
       resendOf: args.resendOf,
       resendPayload: args.resendPayload,
+      provider: args.provider,
       transactionalId: args.transactionalId,
+      ...(suppressed ? { status: "skipped" as const, errorCode: "recipient_suppressed" } : {}),
     });
-    return { attemptId, alreadyAccepted: false };
+    return { attemptId, alreadyAccepted: false, inFlight: false, suppressed };
   },
 });
+
+/** How long a "queued" attempt blocks another send with the same idempotency key (a send takes seconds). */
+const IN_FLIGHT_MS = 10 * 60 * 1000;
+
+async function isSuppressed(ctx: MutationCtx, recipientHash: string): Promise<boolean> {
+  const row = await ctx.db
+    .query("emailSuppressions")
+    .withIndex("by_recipient", (q) => q.eq("recipientHash", recipientHash))
+    .first();
+  return row !== null;
+}
+
+type SuppressionReason = Doc<"emailSuppressions">["reason"];
+
+/** Records (or refreshes) a suppression for a hashed address. */
+async function suppress(
+  ctx: MutationCtx,
+  input: { recipientHash: string; reason: SuppressionReason; provider: string; eventId?: string; attemptId?: Id<"emailSendAttempts"> },
+): Promise<void> {
+  const now = Date.now();
+  const existing = await ctx.db
+    .query("emailSuppressions")
+    .withIndex("by_recipient", (q) => q.eq("recipientHash", input.recipientHash))
+    .first();
+  if (existing) {
+    // A complaint outranks a bounce, which outranks an unsubscribe; keep the strongest reason.
+    const rank: Record<SuppressionReason, number> = { unsubscribe: 0, hard_bounce: 1, spam_complaint: 2 };
+    if (rank[input.reason] > rank[existing.reason]) await ctx.db.patch(existing._id, { reason: input.reason, eventId: input.eventId, updatedAt: now });
+    return;
+  }
+  await ctx.db.insert("emailSuppressions", { ...input, createdAt: now, updatedAt: now });
+  await bump(ctx, "email_suppressed");
+}
 
 export const finishAttempt = internalMutation({
   args: {
@@ -222,11 +287,11 @@ export const getAttempt = internalQuery({
   handler: async (ctx, { attemptId }) => await ctx.db.get(attemptId),
 });
 
-/** How far back a webhook event may be matched to a send by recipient + template (delivery can lag). */
+/** LEGACY (Loops): how far back a webhook event may be matched to a send by recipient + template (delivery can lag). */
 const MATCH_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
- * Stores a verified Loops webhook event (delivery/bounce/complaint), deduplicated on Webhook-Id, and
+ * LEGACY (remove after cutover). Stores a verified Loops webhook event (delivery/bounce/complaint), deduplicated on Webhook-Id, and
  * links it to the send attempt it belongs to: by provider message id when Loops gave us one, otherwise
  * the most recent accepted send to the same (hashed) recipient with the same template before the event.
  */
@@ -277,6 +342,127 @@ export const recordProviderEvent = internalMutation({
       receivedAt: Date.now(),
       attemptId,
     });
+    const reason = args.eventName === "email.hardBounced" ? "hard_bounce" : args.eventName === "email.spamReported" ? "spam_complaint" : null;
+    if (reason && recipientHash) await suppress(ctx, { recipientHash, reason, provider: "loops", eventId: args.webhookId, attemptId });
     return { duplicate: false, matched: Boolean(attemptId) };
+  },
+});
+
+// ---------------------------------------------------------------- Mailtrap webhooks
+
+/**
+ * How much each delivery state says about a send: a later, weaker event never hides a stronger one
+ * (a complaint after delivery stays a complaint; a delivery after a soft bounce shows as delivered).
+ */
+const DELIVERY_RANK: Record<string, number> = {
+  soft_bounced: 1,
+  delivered: 2,
+  suspended: 3,
+  rejected: 3,
+  bounced: 3,
+  spam_complaint: 4,
+};
+
+const SUPPRESSING: Record<string, SuppressionReason> = {
+  bounced: "hard_bounce",
+  spam_complaint: "spam_complaint",
+  unsubscribed: "unsubscribe",
+};
+
+const DELIVERY_METRICS: Record<string, MetricKey> = {
+  bounced: "email_bounced",
+  spam_complaint: "email_spam_complaint",
+  rejected: "email_rejected",
+};
+
+const vMailtrapEvent = v.object({
+  eventId: v.string(),
+  eventName: v.string(),
+  eventTime: v.number(),
+  messageId: v.optional(v.string()),
+  recipient: v.optional(v.string()),
+  category: v.optional(v.string()),
+  attemptId: v.optional(v.string()),
+  bounceCategory: v.optional(v.string()),
+  responseCode: v.optional(v.number()),
+});
+
+/**
+ * Stores a batch of signature-verified Mailtrap events (http.ts → /webhooks/mailtrap).
+ *
+ * - Deduplicated on Mailtrap's `event_id` (Mailtrap retries failed deliveries).
+ * - Matched to exactly one send: by the provider message id first, then by our attempt id (sent as the
+ *   custom variable `attempt`), which must agree with the event's hashed recipient and template.
+ * - The attempt's delivery state is updated; hard bounces, spam complaints and unsubscribes suppress
+ *   further product email to that (hashed) address.
+ * - Addresses are hashed before storage; nothing else from the event is kept.
+ */
+export const recordMailtrapEvents = internalMutation({
+  args: { events: v.array(vMailtrapEvent) },
+  handler: async (ctx, { events }) => {
+    if (events.length > 200) throw new Error("too many events in one batch");
+    const salt = process.env.FOLEVI_HASH_SALT ?? "folevi-development-salt";
+    let stored = 0;
+    let duplicates = 0;
+    let matched = 0;
+    for (const e of events) {
+      const webhookId = `mailtrap:${e.eventId}`.slice(0, 200);
+      const dup = await ctx.db
+        .query("emailProviderEvents")
+        .withIndex("by_webhook_id", (q) => q.eq("webhookId", webhookId))
+        .unique();
+      if (dup) {
+        duplicates++;
+        continue;
+      }
+      const recipientHash = e.recipient ? await hashRecipient(e.recipient, salt) : undefined;
+      let attempt: Doc<"emailSendAttempts"> | null = null;
+      if (e.messageId) {
+        attempt = await ctx.db
+          .query("emailSendAttempts")
+          .withIndex("by_provider_message", (q) => q.eq("providerMessageId", e.messageId))
+          .first();
+      }
+      if (!attempt && e.attemptId) {
+        const id = ctx.db.normalizeId("emailSendAttempts", e.attemptId);
+        const candidate = id ? await ctx.db.get(id) : null;
+        // The custom variable only links an event whose recipient and template agree with the send.
+        if (
+          candidate &&
+          (!recipientHash || candidate.recipientHash === recipientHash) &&
+          (!e.category || candidate.templateKey === e.category)
+        ) {
+          attempt = candidate;
+        }
+      }
+      await ctx.db.insert("emailProviderEvents", {
+        webhookId,
+        eventName: e.eventName,
+        eventTime: e.eventTime,
+        providerEmailId: e.messageId,
+        recipientHash,
+        receivedAt: Date.now(),
+        attemptId: attempt?._id,
+        provider: "mailtrap",
+        category: e.category,
+        bounceCategory: e.bounceCategory,
+        responseCode: e.responseCode,
+      });
+      stored++;
+      if (attempt) {
+        matched++;
+        const rank = DELIVERY_RANK[e.eventName];
+        const current = attempt.deliveryStatus ? (DELIVERY_RANK[attempt.deliveryStatus] ?? 0) : 0;
+        if (rank !== undefined && (rank > current || (rank === current && e.eventTime >= (attempt.deliveryUpdatedAt ?? 0)))) {
+          await ctx.db.patch(attempt._id, { deliveryStatus: e.eventName, deliveryUpdatedAt: e.eventTime });
+        }
+      }
+      const reason = SUPPRESSING[e.eventName];
+      const hash = recipientHash ?? attempt?.recipientHash;
+      if (reason && hash) await suppress(ctx, { recipientHash: hash, reason, provider: "mailtrap", eventId: e.eventId, attemptId: attempt?._id });
+      const metric = DELIVERY_METRICS[e.eventName];
+      if (metric) await bump(ctx, metric);
+    }
+    return { stored, duplicates, matched };
   },
 });

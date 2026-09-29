@@ -1,43 +1,43 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   emailManifest,
-  sendTransactional,
-  type LoopsSendInput,
+  loopsEnvVarFor,
+  mailtrapRequestBody,
+  selectProvider,
+  sendEmail,
+  sendingDomain,
+  type SendEmailInput,
   type SendPolicy,
 } from "../src/index";
 
-const ENV = {
-  [emailManifest.mention_notification.envVar]: "cltemplate123",
-  [emailManifest.security_new_device.envVar]: "cltemplate456",
-};
+const TOKEN = "mt_live_token_SECRET_1234567890";
+const SANDBOX_TOKEN = "mt_sandbox_token_SECRET_abcdef";
 const PROD: SendPolicy = { environment: "production" };
+const LIVE_ENV = { MAILTRAP_API_TOKEN: TOKEN };
 
-function input(overrides: Partial<LoopsSendInput> = {}): LoopsSendInput {
+function input(overrides: Partial<SendEmailInput> = {}): SendEmailInput {
   return {
     key: "mention_notification",
     to: "reader@example.com",
     dataVariables: { ...emailManifest.mention_notification.fixture },
+    attemptId: "j57abc123def456",
     idempotencyKey: "mention:evt_123",
     ...overrides,
   };
 }
 
-function res(
-  status: number,
-  body: unknown = status === 200 ? { success: true } : { success: false, message: "x" },
-  headers: Record<string, string> = {},
-) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json", ...headers },
-  });
+function res(status: number, body: unknown = status < 300 ? { success: true, message_ids: ["msg-0001-abc"] } : { success: false, errors: ["x"] }, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
 }
 
 function setup(responses: Array<Response | Error>) {
-  const fetchImpl = vi.fn(async () => {
+  const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
     const next = responses.shift();
     if (!next) throw new Error("no more responses");
-    if (next instanceof Error) throw next;
+    if (next instanceof Error) {
+      if (next.name === "AbortError" && init.signal) throw next;
+      throw next;
+    }
     return next;
   });
   const sleep = vi.fn(async () => {});
@@ -48,314 +48,204 @@ function setup(responses: Array<Response | Error>) {
   };
 }
 
-describe("sendTransactional", () => {
-  it("returns the provider message id when Loops includes one", async () => {
-    const opts = { apiKey: "k", env: ENV, policy: PROD, sleep: async () => {} };
-    const a = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true, id: "em_01HX9" })]).fetchImpl });
-    expect(a).toMatchObject({ status: "accepted", providerMessageId: "em_01HX9" });
-    const b = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true, data: { emailId: "abc-123" } })]).fetchImpl });
-    expect(b.providerMessageId).toBe("abc-123");
-    const c = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true })]).fetchImpl });
-    expect(c).not.toHaveProperty("providerMessageId");
-    // Anything that doesn't look like an opaque id is ignored rather than stored.
-    const d = await sendTransactional(input(), { ...opts, fetchImpl: setup([res(200, { success: true, id: "<script>" })]).fetchImpl });
-    expect(d).not.toHaveProperty("providerMessageId");
+afterEach(() => vi.restoreAllMocks());
+
+describe("selectProvider", () => {
+  it("prefers Mailtrap, falls back to Loops only during the cutover, else none", () => {
+    expect(selectProvider({ MAILTRAP_API_TOKEN: TOKEN, LOOPS_API_KEY: "k" }, "production")).toMatchObject({ kind: "mailtrap", endpoint: "https://send.api.mailtrap.io/api/send" });
+    expect(selectProvider({ LOOPS_API_KEY: "k" }, "production")).toMatchObject({ kind: "loops" });
+    expect(selectProvider({}, "production")).toEqual({ kind: "none" });
+    expect(selectProvider({ MAILTRAP_API_TOKEN: "none", LOOPS_API_KEY: " " }, "production")).toEqual({ kind: "none" });
   });
 
-  it("sends once and reports accepted", async () => {
+  it("uses the sandbox outside production when both sandbox values are set", () => {
+    const env = { MAILTRAP_API_TOKEN: TOKEN, MAILTRAP_SANDBOX_INBOX_ID: "4242", MAILTRAP_SANDBOX_TOKEN: SANDBOX_TOKEN };
+    expect(selectProvider(env, "preview")).toEqual({ kind: "mailtrap_sandbox", token: SANDBOX_TOKEN, endpoint: "https://sandbox.api.mailtrap.io/api/send/4242" });
+    expect(selectProvider(env, "development").kind).toBe("mailtrap_sandbox");
+    // Never in production.
+    expect(selectProvider(env, "production").kind).toBe("mailtrap");
+    // Both values are needed, and the inbox id must be numeric.
+    expect(selectProvider({ MAILTRAP_API_TOKEN: TOKEN, MAILTRAP_SANDBOX_INBOX_ID: "4242" }, "preview").kind).toBe("mailtrap");
+    expect(selectProvider({ MAILTRAP_SANDBOX_INBOX_ID: "../x", MAILTRAP_SANDBOX_TOKEN: SANDBOX_TOKEN }, "preview").kind).toBe("none");
+  });
+
+  it("sending domain comes from the manifest unless a valid override is set", () => {
+    expect(sendingDomain({})).toBe("mail.folevi.com");
+    expect(sendingDomain({ EMAIL_SENDING_DOMAIN: "mail-staging.folevi.com" })).toBe("mail-staging.folevi.com");
+    expect(sendingDomain({ EMAIL_SENDING_DOMAIN: "evil.com>\r\nBcc: x" })).toBe("mail.folevi.com");
+  });
+});
+
+describe("sendEmail via Mailtrap", () => {
+  it("posts the documented request body once and returns the message id", async () => {
     const { fetchImpl, calls, sleep } = setup([res(200)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "key_live",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep,
-    });
-    expect(out).toEqual({ status: "accepted", httpStatus: 200, retryable: false, attempts: 1 });
+    const out = await sendEmail(input(), { env: { ...LIVE_ENV, EMAIL_REPLY_TO: "support@folevi.com" }, policy: PROD, fetchImpl, sleep });
+    expect(out).toEqual({ status: "accepted", provider: "mailtrap", httpStatus: 200, retryable: false, attempts: 1, providerMessageId: "msg-0001-abc" });
     expect(calls).toHaveLength(1);
     const [url, init] = calls[0]!;
-    expect(url).toBe("https://app.loops.so/api/v1/transactional");
+    expect(url).toBe("https://send.api.mailtrap.io/api/send");
     expect(init.method).toBe("POST");
-    const headers = init.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer key_live");
-    expect(headers["Idempotency-Key"]).toBe("mention:evt_123");
+    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
     const body = JSON.parse(String(init.body));
-    expect(body).toMatchObject({
-      transactionalId: "cltemplate123",
-      email: "reader@example.com",
-      addToAudience: false,
-    });
+    expect(Object.keys(body).sort()).toEqual(["category", "custom_variables", "from", "html", "reply_to", "subject", "text", "to"]);
+    expect(body.from).toEqual({ email: "hello@mail.folevi.com", name: "Folevi" });
+    expect(body.to).toEqual([{ email: "reader@example.com" }]);
+    expect(body.reply_to).toEqual({ email: "support@folevi.com" });
+    expect(body.subject).toBe("You were mentioned in Folevi");
+    expect(body.category).toBe("mention_notification");
+    // Opaque ids only — no personal data in custom variables (they come back in webhooks).
+    expect(body.custom_variables).toEqual({ attempt: "j57abc123def456", template: "mention_notification" });
+    expect(body.html).toContain("Maya Okafor");
+    expect(body.text).toContain("Maya Okafor mentioned you on Spring planting plan.");
     expect(sleep).not.toHaveBeenCalled();
   });
 
-  it("never sends booleans or null in dataVariables; addToAudience is always false", async () => {
+  it("uses the security sender for identity/security mail and omits reply_to when unset", async () => {
     const { fetchImpl, calls } = setup([res(200)]);
-    const vars = { ...emailManifest.security_new_device.fixture } as Record<string, unknown>;
-    delete vars.approximateLocation;
-    await sendTransactional(input({ key: "security_new_device", dataVariables: vars }), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep: async () => {},
-    });
+    await sendEmail(input({ key: "auth_password_reset", dataVariables: { ...emailManifest.auth_password_reset.fixture } }), { env: LIVE_ENV, policy: PROD, fetchImpl });
     const body = JSON.parse(String(calls[0]![1].body));
-    expect(body.addToAudience).toBe(false);
-    for (const v of Object.values(body.dataVariables))
-      expect(["string", "number"]).toContain(typeof v);
-    expect(body.dataVariables.approximateLocation).toBe("");
+    expect(body.from).toEqual({ email: "security@mail.folevi.com", name: "Folevi" });
+    expect(body).not.toHaveProperty("reply_to");
+    expect(mailtrapRequestBody({ from: { email: "a@b.co", name: "F" }, to: "c@d.co", subject: "s", text: "t", html: "h", category: "k", customVariables: {} })).not.toHaveProperty("reply_to");
   });
 
-  it("rejects a boolean variable before calling Loops", async () => {
-    const { fetchImpl, calls } = setup([res(200)]);
-    const out = await sendTransactional(
-      input({ dataVariables: { ...emailManifest.mention_notification.fixture, actorName: false } }),
-      {
-        apiKey: "k",
-        env: ENV,
-        policy: PROD,
-        fetchImpl,
-      },
-    );
-    expect(out).toEqual({
-      status: "failed",
-      errorCode: "invalid_payload",
-      retryable: false,
-      attempts: 0,
-    });
-    expect(calls).toHaveLength(0);
-  });
-
-  it("retries 429 then succeeds, honouring Retry-After", async () => {
-    const { fetchImpl, calls, sleep } = setup([
-      res(429, { success: false }, { "retry-after": "2" }),
-      res(200),
-    ]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep,
-    });
-    expect(out).toMatchObject({ status: "accepted", attempts: 2 });
-    expect(calls).toHaveLength(2);
-    expect(sleep).toHaveBeenCalledWith(2000);
-    // Same idempotency key and body on the retry.
-    expect(calls[0]![1].body).toBe(calls[1]![1].body);
-    expect((calls[1]![1].headers as Record<string, string>)["Idempotency-Key"]).toBe(
-      "mention:evt_123",
-    );
-  });
-
-  it("stops after maxAttempts on persistent 5xx with bounded backoff", async () => {
-    const { fetchImpl, calls, sleep } = setup([res(503), res(502), res(500), res(500), res(500)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep,
-      maxAttempts: 3,
-    });
-    expect(out).toEqual({
-      status: "failed",
-      httpStatus: 500,
-      errorCode: "loops_server_error",
-      retryable: true,
-      attempts: 3,
-    });
+  it("retries 429 (honouring Retry-After) and 5xx with the same body", async () => {
+    const { fetchImpl, calls, sleep } = setup([res(429, { success: false }, { "retry-after": "2" }), res(503), res(200)]);
+    const out = await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl, sleep });
+    expect(out).toMatchObject({ status: "accepted", attempts: 3, providerMessageId: "msg-0001-abc" });
     expect(calls).toHaveLength(3);
-    expect(sleep).toHaveBeenCalledTimes(2);
-    for (const [ms] of sleep.mock.calls as unknown as Array<[number]>) {
-      expect(ms).toBeGreaterThan(0);
-      expect(ms).toBeLessThanOrEqual(8000);
-    }
+    expect(sleep).toHaveBeenNthCalledWith(1, 2000);
+    expect(calls[0]![1].body).toBe(calls[2]![1].body);
   });
 
-  it("defaults to 4 attempts", async () => {
-    const { fetchImpl, calls, sleep } = setup([res(500), res(500), res(500), res(500), res(500)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep,
-    });
-    expect(out.attempts).toBe(4);
-    expect(calls).toHaveLength(4);
+  it("stops after maxAttempts on persistent 5xx", async () => {
+    const { fetchImpl, calls, sleep } = setup([res(500), res(502), res(500), res(500)]);
+    const out = await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl, sleep, maxAttempts: 3 });
+    expect(out).toEqual({ status: "failed", provider: "mailtrap", httpStatus: 500, errorCode: "provider_server_error", retryable: true, attempts: 3 });
+    expect(calls).toHaveLength(3);
+    for (const [ms] of sleep.mock.calls as unknown as Array<[number]>) expect(ms).toBeLessThanOrEqual(8000);
   });
 
-  it("retries network errors", async () => {
-    const { fetchImpl, calls, sleep } = setup([new TypeError("fetch failed"), res(200)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep,
-    });
-    expect(out).toMatchObject({ status: "accepted", attempts: 2 });
-    expect(calls).toHaveLength(2);
-  });
-
-  it("does not retry 400", async () => {
-    const { fetchImpl, calls } = setup([res(400), res(200)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep: async () => {},
-    });
-    expect(out).toEqual({
-      status: "failed",
-      httpStatus: 400,
-      errorCode: "loops_rejected",
-      retryable: false,
-      attempts: 1,
-    });
+  it.each([
+    [400, "provider_rejected"],
+    [401, "unauthorized"],
+    [403, "unauthorized"],
+    [404, "provider_rejected"],
+    [422, "provider_rejected"],
+  ])("does not retry %s", async (status, code) => {
+    const { fetchImpl, calls } = setup([res(status), res(200)]);
+    const out = await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl, sleep: async () => {} });
+    expect(out).toMatchObject({ status: "failed", httpStatus: status, errorCode: code, retryable: false, attempts: 1 });
     expect(calls).toHaveLength(1);
   });
 
-  it("does not retry 404", async () => {
-    const { fetchImpl, calls } = setup([res(404), res(200)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep: async () => {},
-    });
-    expect(out).toMatchObject({
-      status: "failed",
-      errorCode: "template_not_found",
-      retryable: false,
-    });
-    expect(calls).toHaveLength(1);
+  it("treats a 200 with success:false as rejected", async () => {
+    const { fetchImpl } = setup([res(200, { success: false, errors: ["nope"] })]);
+    const out = await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl });
+    expect(out).toMatchObject({ status: "failed", errorCode: "provider_rejected" });
   });
 
-  it("treats 409 as a non-retryable idempotency conflict", async () => {
-    const { fetchImpl, calls } = setup([res(409), res(200)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-      sleep: async () => {},
-    });
-    expect(out).toEqual({
-      status: "failed",
-      httpStatus: 409,
-      errorCode: "idempotency_conflict",
-      retryable: false,
-      attempts: 1,
-    });
-    expect(calls).toHaveLength(1);
+  it("retries connection errors but never a timeout (it may have been accepted: no double send)", async () => {
+    const a = setup([new TypeError("fetch failed"), res(200)]);
+    expect(await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: a.fetchImpl, sleep: async () => {} })).toMatchObject({ status: "accepted", attempts: 2 });
+    const abort = Object.assign(new Error("aborted"), { name: "AbortError" });
+    const b = setup([abort, res(200)]);
+    expect(await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: b.fetchImpl, sleep: async () => {} })).toMatchObject({ status: "failed", errorCode: "timeout", retryable: false });
+    expect(b.calls).toHaveLength(1);
   });
 
-  it("fails with template_not_configured when the env var is missing", async () => {
+  it("aborts a hung request after the timeout", async () => {
+    const fetchImpl = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+        }),
+    );
+    const out = await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: fetchImpl as unknown as typeof fetch, timeoutMs: 5 });
+    expect(out).toMatchObject({ status: "failed", errorCode: "timeout" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects invalid variables before calling Mailtrap", async () => {
     const { fetchImpl, calls } = setup([res(200)]);
-    const out = await sendTransactional(input(), { apiKey: "k", env: {}, policy: PROD, fetchImpl });
-    expect(out).toEqual({
-      status: "failed",
-      errorCode: "template_not_configured",
-      retryable: false,
-      attempts: 0,
-    });
+    const out = await sendEmail(input({ dataVariables: { ...emailManifest.mention_notification.fixture, documentUrl: "javascript:alert(1)" } }), { env: LIVE_ENV, policy: PROD, fetchImpl });
+    expect(out).toEqual({ status: "failed", errorCode: "invalid_payload", retryable: false, attempts: 0, provider: "mailtrap" });
     expect(calls).toHaveLength(0);
   });
 
-  it("non-production policy skips real addresses", async () => {
-    const { fetchImpl, calls } = setup([res(200)]);
-    const out = await sendTransactional(input({ to: "someone@gmail.com" }), {
-      apiKey: "k",
-      env: ENV,
-      policy: { environment: "preview" },
-      fetchImpl,
-    });
-    expect(out).toEqual({
-      status: "skipped",
-      errorCode: "recipient_not_allowed",
-      retryable: false,
-      attempts: 0,
-    });
+  it("rejects bad recipients and attempt ids", async () => {
+    const { fetchImpl, calls } = setup([]);
+    expect((await sendEmail(input({ to: "not-an-email" }), { env: LIVE_ENV, policy: PROD, fetchImpl })).errorCode).toBe("invalid_recipient");
+    expect((await sendEmail(input({ attemptId: "has space" }), { env: LIVE_ENV, policy: PROD, fetchImpl })).errorCode).toBe("invalid_attempt_id");
     expect(calls).toHaveLength(0);
   });
 
-  it.each(["qa@example.com", "QA@Test.com"])("non-production policy allows %s", async (to) => {
+  it("reports provider_not_configured without calling anything", async () => {
     const { fetchImpl, calls } = setup([res(200)]);
-    const out = await sendTransactional(input({ to }), {
-      apiKey: "k",
-      env: ENV,
-      policy: { environment: "development" },
-      fetchImpl,
-    });
-    expect(out.status).toBe("accepted");
+    expect(await sendEmail(input(), { env: {}, policy: PROD, fetchImpl })).toEqual({ status: "failed", errorCode: "provider_not_configured", retryable: false, attempts: 0 });
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("non-production policy", () => {
+  it("skips real addresses on the live API outside production", async () => {
+    const { fetchImpl, calls } = setup([res(200)]);
+    const out = await sendEmail(input({ to: "someone@gmail.com" }), { env: LIVE_ENV, policy: { environment: "preview" }, fetchImpl });
+    expect(out).toEqual({ status: "skipped", errorCode: "recipient_not_allowed", retryable: false, attempts: 0, provider: "mailtrap" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it.each(["qa@example.com", "QA@Test.com"])("allows %s", async (to) => {
+    const { fetchImpl, calls } = setup([res(200)]);
+    expect((await sendEmail(input({ to }), { env: LIVE_ENV, policy: { environment: "development" }, fetchImpl })).status).toBe("accepted");
     expect(calls).toHaveLength(1);
   });
 
-  it("non-production policy allows exact allowlisted addresses only", async () => {
+  it("allows exact allowlisted addresses only", async () => {
     const policy: SendPolicy = { environment: "test", allowlist: ["founder@folevi.com"] };
-    const a = setup([res(200)]);
-    expect(
-      (
-        await sendTransactional(input({ to: "Founder@folevi.com" }), {
-          apiKey: "k",
-          env: ENV,
-          policy,
-          fetchImpl: a.fetchImpl,
-        })
-      ).status,
-    ).toBe("accepted");
-    const b = setup([res(200)]);
-    expect(
-      (
-        await sendTransactional(input({ to: "other@folevi.com" }), {
-          apiKey: "k",
-          env: ENV,
-          policy,
-          fetchImpl: b.fetchImpl,
-        })
-      ).status,
-    ).toBe("skipped");
-    const c = setup([res(200)]);
-    expect(
-      (
-        await sendTransactional(input({ to: "x@sub.example.com" }), {
-          apiKey: "k",
-          env: ENV,
-          policy,
-          fetchImpl: c.fetchImpl,
-        })
-      ).status,
-    ).toBe("skipped");
+    expect((await sendEmail(input({ to: "Founder@folevi.com" }), { env: LIVE_ENV, policy, fetchImpl: setup([res(200)]).fetchImpl })).status).toBe("accepted");
+    expect((await sendEmail(input({ to: "other@folevi.com" }), { env: LIVE_ENV, policy, fetchImpl: setup([res(200)]).fetchImpl })).status).toBe("skipped");
   });
 
-  it("rejects invalid idempotency keys and recipients", async () => {
-    const { fetchImpl } = setup([]);
-    const opts = { apiKey: "k", env: ENV, policy: PROD, fetchImpl };
-    expect(
-      (await sendTransactional(input({ idempotencyKey: "x".repeat(101) }), opts)).errorCode,
-    ).toBe("invalid_idempotency_key");
-    expect((await sendTransactional(input({ idempotencyKey: "" }), opts)).errorCode).toBe(
-      "invalid_idempotency_key",
-    );
-    expect((await sendTransactional(input({ to: "not-an-email" }), opts)).errorCode).toBe(
-      "invalid_recipient",
-    );
+  it("captures everything in the sandbox (never delivered), with the sandbox token", async () => {
+    const { fetchImpl, calls } = setup([res(200)]);
+    const env = { ...LIVE_ENV, MAILTRAP_SANDBOX_INBOX_ID: "4242", MAILTRAP_SANDBOX_TOKEN: SANDBOX_TOKEN };
+    const out = await sendEmail(input({ to: "someone@gmail.com" }), { env, policy: { environment: "preview" }, fetchImpl });
+    expect(out).toMatchObject({ status: "accepted", provider: "mailtrap_sandbox" });
+    expect(calls[0]![0]).toBe("https://sandbox.api.mailtrap.io/api/send/4242");
+    expect((calls[0]![1].headers as Record<string, string>).Authorization).toBe(`Bearer ${SANDBOX_TOKEN}`);
+    expect(JSON.stringify(calls[0]![1].headers)).not.toContain(TOKEN);
+  });
+});
+
+describe("legacy Loops fallback (cutover only)", () => {
+  it("is used when only Loops is configured, with its idempotency key", async () => {
+    const { fetchImpl, calls } = setup([res(200, { success: true })]);
+    const env = { LOOPS_API_KEY: "loops_key", [loopsEnvVarFor("mention_notification")]: "cltemplate123" };
+    const out = await sendEmail(input(), { env, policy: PROD, fetchImpl });
+    expect(out).toMatchObject({ status: "accepted", provider: "loops" });
+    expect(calls[0]![0]).toBe("https://app.loops.so/api/v1/transactional");
+    expect((calls[0]![1].headers as Record<string, string>)["Idempotency-Key"]).toBe("mention:evt_123");
   });
 
-  it("never returns the payload or recipient", async () => {
-    const { fetchImpl } = setup([res(400)]);
-    const out = await sendTransactional(input(), {
-      apiKey: "k",
-      env: ENV,
-      policy: PROD,
-      fetchImpl,
-    });
-    const serialised = JSON.stringify(out);
-    expect(serialised).not.toContain("reader@example.com");
-    expect(serialised).not.toContain("Spring planting plan");
+  it("is ignored once a Mailtrap token exists", async () => {
+    const { fetchImpl, calls } = setup([res(200)]);
+    await sendEmail(input(), { env: { ...LIVE_ENV, LOOPS_API_KEY: "loops_key" }, policy: PROD, fetchImpl });
+    expect(calls[0]![0]).toBe("https://send.api.mailtrap.io/api/send");
+  });
+});
+
+describe("secrets and personal data", () => {
+  it("never logs and never returns the token, recipient or content", async () => {
+    const spies = (["log", "info", "warn", "error", "debug"] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
+    const outcomes = [
+      await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: setup([res(200)]).fetchImpl }),
+      await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: setup([res(401)]).fetchImpl }),
+      await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: setup([new TypeError("x"), res(500), res(500), res(500)]).fetchImpl, sleep: async () => {} }),
+      await sendEmail(input({ dataVariables: {} }), { env: LIVE_ENV, policy: PROD, fetchImpl: setup([]).fetchImpl }),
+    ];
+    for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+    const serialised = JSON.stringify(outcomes);
+    for (const secret of [TOKEN, "reader@example.com", "Spring planting plan", "Maya"]) expect(serialised).not.toContain(secret);
   });
 });

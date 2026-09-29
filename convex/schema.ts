@@ -876,10 +876,15 @@ export default defineSchema({
     updatedAt: v.number(),
     resendOf: v.optional(v.id("emailSendAttempts")),
     resendPayload: v.optional(v.record(v.string(), v.union(v.string(), v.number()))),
-    /** Loops transactional id (template) used for this send; lets webhook events be matched. */
+    /** LEGACY (Loops, remove after cutover): the Loops transactional id used for this send, for webhook matching. */
     transactionalId: v.optional(v.string()),
-    /** Provider message id, when the provider returns one. */
+    /** Provider message id, when the provider returns one (Mailtrap: message_ids[0]). */
     providerMessageId: v.optional(v.string()),
+    /** Which provider handled the send: "mailtrap", "mailtrap_sandbox" or (legacy) "loops". */
+    provider: v.optional(v.string()),
+    /** Latest delivery state from signed provider webhooks (delivered, soft_bounced, bounced, spam_complaint, rejected, suspended). */
+    deliveryStatus: v.optional(v.string()),
+    deliveryUpdatedAt: v.optional(v.number()),
   })
     .index("by_idempotency", ["idempotencyKey"])
     .index("by_provider_message", ["providerMessageId"])
@@ -898,11 +903,32 @@ export default defineSchema({
     receivedAt: v.number(),
     /** The send attempt this event was matched to on receipt (provider id first, then recipient + template + time). */
     attemptId: v.optional(v.id("emailSendAttempts")),
+    /** "mailtrap" (webhookId is "mailtrap:<event_id>"); unset for legacy Loops events. */
+    provider: v.optional(v.string()),
+    /** Mailtrap category = our template key. */
+    category: v.optional(v.string()),
+    /** Bounce details kept for diagnosis: Mailtrap's bounce category and the SMTP code (never the SMTP text). */
+    bounceCategory: v.optional(v.string()),
+    responseCode: v.optional(v.number()),
   })
     .index("by_webhook_id", ["webhookId"])
     .index("by_attempt", ["attemptId", "eventTime"])
     .index("by_recipient", ["recipientHash", "eventTime"])
     .index("by_received", ["receivedAt"]),
+
+  /**
+   * Addresses that hard-bounced, complained or unsubscribed at the provider (keyed by hashRecipient, never
+   * the address). Product email is not sent to them; identity/security email still is.
+   */
+  emailSuppressions: defineTable({
+    recipientHash: v.string(),
+    reason: v.union(v.literal("hard_bounce"), v.literal("spam_complaint"), v.literal("unsubscribe")),
+    provider: v.string(),
+    eventId: v.optional(v.string()),
+    attemptId: v.optional(v.id("emailSendAttempts")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_recipient", ["recipientHash"]),
 
   featureFlags: defineTable({
     key: v.string(),

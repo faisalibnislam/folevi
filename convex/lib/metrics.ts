@@ -9,6 +9,10 @@ export type MetricKey =
   | "signups"
   | "email_failed"
   | "email_accepted"
+  | "email_suppressed"
+  | "email_bounced"
+  | "email_spam_complaint"
+  | "email_rejected"
   | "sync_rejected"
   | "sync_conflicts"
   | "rate_limited";

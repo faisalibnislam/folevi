@@ -1,196 +1,144 @@
-import { emailManifest } from "./manifest";
-import type { LoopsSendInput, LoopsSendOutcome, SendPolicy, TemplateKey } from "./types";
-import { isPlausibleEmail, validateDataVariables } from "./validate";
+// Provider selection and the one entry point Convex uses to send a template.
+import { EMAIL_SENDING_DOMAIN, emailManifest } from "./manifest";
+import { isRecipientAllowed } from "./policy";
+import { sendTransactional } from "./providers/loops";
+import { MAILTRAP_SANDBOX_ENDPOINT, MAILTRAP_SEND_ENDPOINT, postToMailtrap } from "./providers/mailtrap";
+import { EmailRenderError, renderEmail } from "./render";
+import type { EmailProviderKind, SendEmailInput, SendOutcome, SendPolicy } from "./types";
+import { isPlausibleEmail } from "./validate";
 
-export const LOOPS_TRANSACTIONAL_ENDPOINT = "https://app.loops.so/api/v1/transactional";
+type Env = Record<string, string | undefined>;
 
-const DEFAULT_MAX_ATTEMPTS = 4;
-const MAX_ATTEMPTS_CAP = 8;
-const BASE_DELAY_MS = 500;
-const MAX_DELAY_MS = 8_000;
-const REQUEST_TIMEOUT_MS = 15_000;
-const TEST_DOMAINS = new Set(["example.com", "test.com"]);
-const LOOPS_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-// Idempotency-Key: ≤100 chars (Loops limit), visible ASCII only.
-const IDEMPOTENCY_KEY_RE = /^[\x21-\x7E]{1,100}$/;
+export type ProviderSelection =
+  | { kind: "mailtrap"; token: string; endpoint: string }
+  | { kind: "mailtrap_sandbox"; token: string; endpoint: string }
+  /** LEGACY (remove after cutover). */
+  | { kind: "loops"; apiKey: string }
+  | { kind: "none" };
 
-export function transactionalIdFor(
-  key: TemplateKey,
-  env: Record<string, string | undefined>,
-): string | null {
-  const def = emailManifest[key];
-  if (!def) return null;
-  const value = env[def.envVar]?.trim();
-  return value && LOOPS_ID_RE.test(value) ? value : null;
-}
+const INBOX_ID_RE = /^\d{1,12}$/;
+const HOSTNAME_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+const ATTEMPT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** Non-production: only @example.com, @test.com, or exact allowlisted addresses. */
-export function isRecipientAllowed(email: string, policy: SendPolicy): boolean {
-  if (policy.environment === "production") return true;
-  const normalized = email.trim().toLowerCase();
-  const domain = normalized.slice(normalized.lastIndexOf("@") + 1);
-  if (TEST_DOMAINS.has(domain)) return true;
-  return (policy.allowlist ?? []).some((a) => a.trim().toLowerCase() === normalized);
-}
-
-function defaultSleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function backoffDelay(attempt: number, retryAfterHeader: string | null): number {
-  const retryAfter = retryAfterHeader ? Number(retryAfterHeader) : NaN;
-  if (Number.isFinite(retryAfter) && retryAfter > 0) {
-    return Math.min(retryAfter * 1000, MAX_DELAY_MS);
-  }
-  const exp = Math.min(BASE_DELAY_MS * 2 ** (attempt - 1), MAX_DELAY_MS);
-  // Full jitter on the upper half keeps concurrent senders from synchronising.
-  return Math.round(exp / 2 + Math.random() * (exp / 2));
-}
-
-function classify(status: number): { errorCode: string; retryable: boolean } {
-  if (status === 429) return { errorCode: "rate_limited", retryable: true };
-  if (status === 408) return { errorCode: "timeout", retryable: true };
-  if (status >= 500) return { errorCode: "loops_server_error", retryable: true };
-  if (status === 409) return { errorCode: "idempotency_conflict", retryable: false };
-  if (status === 404) return { errorCode: "template_not_found", retryable: false };
-  if (status === 401 || status === 403) return { errorCode: "unauthorized", retryable: false };
-  return { errorCode: "loops_rejected", retryable: false };
-}
-
-const PROVIDER_ID_RE = /^[A-Za-z0-9_.:-]{1,128}$/;
+const value = (env: Env, name: string): string | undefined => {
+  const v = env[name]?.trim();
+  return v && v !== "none" ? v : undefined;
+};
 
 /**
- * Reads Loops' JSON response: the `success` flag and, when present, a provider message id
- * (`id`, `emailId` or `messageId`, top level or under `data`). The id is only kept when it looks
- * like an opaque identifier, so nothing else from the body is ever stored.
+ * Which provider sends, in order:
+ * 1. Outside production, when MAILTRAP_SANDBOX_INBOX_ID + MAILTRAP_SANDBOX_TOKEN are set: the Mailtrap
+ *    sandbox (captured in a test inbox, never delivered). Ignored in production.
+ * 2. MAILTRAP_API_TOKEN: Mailtrap's sending API.
+ * 3. LEGACY, during the cutover only: LOOPS_API_KEY → Loops (remove after cutover).
+ * 4. Otherwise nothing is configured.
  */
-async function readResponse(res: Response): Promise<{ success?: boolean; providerMessageId?: string }> {
-  try {
-    const body: unknown = await res.json();
-    if (!body || typeof body !== "object") return {};
-    const obj = body as Record<string, unknown>;
-    const out: { success?: boolean; providerMessageId?: string } = {};
-    if ("success" in obj) out.success = obj.success === true;
-    const nested = obj.data && typeof obj.data === "object" ? (obj.data as Record<string, unknown>) : {};
-    for (const candidate of [obj.id, obj.emailId, obj.messageId, nested.id, nested.emailId, nested.messageId]) {
-      if (typeof candidate === "string" && PROVIDER_ID_RE.test(candidate)) {
-        out.providerMessageId = candidate;
-        break;
-      }
+export function selectProvider(env: Env, environment: SendPolicy["environment"]): ProviderSelection {
+  if (environment !== "production") {
+    const inbox = value(env, "MAILTRAP_SANDBOX_INBOX_ID");
+    const token = value(env, "MAILTRAP_SANDBOX_TOKEN");
+    if (inbox && token && INBOX_ID_RE.test(inbox)) {
+      return { kind: "mailtrap_sandbox", token, endpoint: `${MAILTRAP_SANDBOX_ENDPOINT}/${inbox}` };
     }
-    return out;
-  } catch {
-    // Non-JSON body: fall through.
-    return {};
   }
+  const token = value(env, "MAILTRAP_API_TOKEN");
+  if (token) return { kind: "mailtrap", token, endpoint: MAILTRAP_SEND_ENDPOINT };
+  const loopsKey = value(env, "LOOPS_API_KEY");
+  if (loopsKey) return { kind: "loops", apiKey: loopsKey };
+  return { kind: "none" };
+}
+
+/** The sending domain: EMAIL_SENDING_DOMAIN when it is a plain hostname, else the manifest default. */
+export function sendingDomain(env: Env): string {
+  const configured = value(env, "EMAIL_SENDING_DOMAIN")?.toLowerCase();
+  return configured && HOSTNAME_RE.test(configured) ? configured : EMAIL_SENDING_DOMAIN;
 }
 
 /**
- * Sends one Loops transactional email.
+ * Sends one template to one recipient.
  *
- * Semantics: `accepted` means Loops returned 200 (accepted for delivery) — NOT delivered.
- * Delivery/bounce/complaint state only comes from verified Loops webhooks.
- *
- * Never logs and never returns the payload or recipient.
+ * `accepted` means the provider accepted the message for delivery — NOT delivered. Delivery, bounces
+ * and complaints only arrive through signed webhooks. The outcome never contains the recipient, the
+ * rendered content or any credential, and nothing here logs.
  */
-export async function sendTransactional(
-  input: LoopsSendInput,
+export async function sendEmail(
+  input: SendEmailInput,
   opts: {
-    apiKey: string;
-    env: Record<string, string | undefined>;
+    env: Env;
     policy: SendPolicy;
     fetchImpl?: typeof fetch;
     sleep?: (ms: number) => Promise<void>;
     maxAttempts?: number;
+    timeoutMs?: number;
   },
-): Promise<LoopsSendOutcome> {
-  const fail = (errorCode: string, extra: Partial<LoopsSendOutcome> = {}): LoopsSendOutcome => ({
+): Promise<SendOutcome> {
+  const fail = (errorCode: string, provider?: EmailProviderKind): SendOutcome => ({
     status: "failed",
     errorCode,
     retryable: false,
     attempts: 0,
-    ...extra,
+    ...(provider ? { provider } : {}),
   });
 
   const def = emailManifest[input.key];
   if (!def) return fail("unknown_template");
-
-  const validation = validateDataVariables(input.key, input.dataVariables);
-  if (!validation.ok) return fail("invalid_payload");
-
   const to = typeof input.to === "string" ? input.to.trim() : "";
   if (!isPlausibleEmail(to)) return fail("invalid_recipient");
 
-  if (typeof input.idempotencyKey !== "string" || !IDEMPOTENCY_KEY_RE.test(input.idempotencyKey)) {
-    return fail("invalid_idempotency_key");
+  const provider = selectProvider(opts.env, opts.policy.environment);
+  if (provider.kind === "none") return fail("provider_not_configured");
+
+  if (provider.kind === "loops") {
+    // LEGACY (remove after cutover): Loops renders its own copy of the template.
+    const outcome = await sendTransactional(
+      { key: input.key, to, dataVariables: input.dataVariables, idempotencyKey: input.idempotencyKey.slice(0, 100) },
+      { apiKey: provider.apiKey, env: opts.env, policy: opts.policy, fetchImpl: opts.fetchImpl, sleep: opts.sleep, maxAttempts: opts.maxAttempts },
+    );
+    return { ...outcome, provider: "loops" };
   }
 
-  const transactionalId = transactionalIdFor(input.key, opts.env);
-  if (!transactionalId) return fail("template_not_configured");
-
-  if (!isRecipientAllowed(to, opts.policy)) {
-    return { status: "skipped", errorCode: "recipient_not_allowed", retryable: false, attempts: 0 };
+  if (typeof input.attemptId !== "string" || !ATTEMPT_ID_RE.test(input.attemptId)) {
+    return fail("invalid_attempt_id", provider.kind);
   }
 
-  if (!opts.apiKey) return fail("missing_api_key");
+  let rendered;
+  try {
+    const brand = value(opts.env, "EMAIL_BRAND_BASE_URL");
+    rendered = renderEmail(input.key, input.dataVariables, {
+      // A deployment may point the logo elsewhere (e.g. a staging host), but only over https.
+      ...(brand && brand.startsWith("https://") ? { brandBaseUrl: brand } : {}),
+    });
+  } catch (error) {
+    if (error instanceof EmailRenderError) return fail("invalid_payload", provider.kind);
+    throw error;
+  }
 
-  const fetchImpl = opts.fetchImpl ?? fetch;
-  const sleep = opts.sleep ?? defaultSleep;
-  const maxAttempts = Math.max(
-    1,
-    Math.min(MAX_ATTEMPTS_CAP, Math.floor(opts.maxAttempts ?? DEFAULT_MAX_ATTEMPTS)),
+  // The sandbox never delivers, so any recipient may be captured there; live sends outside production
+  // only go to test or allowlisted addresses.
+  if (provider.kind === "mailtrap" && !isRecipientAllowed(to, opts.policy)) {
+    return { status: "skipped", errorCode: "recipient_not_allowed", retryable: false, attempts: 0, provider: provider.kind };
+  }
+
+  const replyTo = value(opts.env, "EMAIL_REPLY_TO");
+  const outcome = await postToMailtrap(
+    {
+      from: { email: `${def.sender.localPart}@${sendingDomain(opts.env)}`, name: def.sender.name },
+      to,
+      ...(replyTo && isPlausibleEmail(replyTo) ? { replyTo } : {}),
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+      category: input.key,
+      customVariables: { attempt: input.attemptId, template: input.key },
+    },
+    {
+      token: provider.token,
+      endpoint: provider.endpoint,
+      fetchImpl: opts.fetchImpl,
+      sleep: opts.sleep,
+      maxAttempts: opts.maxAttempts,
+      timeoutMs: opts.timeoutMs,
+    },
   );
-
-  // addToAudience is always false: transactional sends must never create marketing contacts.
-  const body = JSON.stringify({
-    transactionalId,
-    email: to,
-    addToAudience: false,
-    dataVariables: validation.dataVariables,
-  });
-  const headers = {
-    Authorization: `Bearer ${opts.apiKey}`,
-    "Content-Type": "application/json",
-    "Idempotency-Key": input.idempotencyKey,
-  };
-
-  let last: LoopsSendOutcome = fail("network_error", { retryable: true });
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    let retryAfter: string | null = null;
-    const controller = typeof AbortController === "function" ? new AbortController() : undefined;
-    const timer = controller ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS) : undefined;
-    try {
-      const res = await fetchImpl(LOOPS_TRANSACTIONAL_ENDPOINT, {
-        method: "POST",
-        headers,
-        body,
-        signal: controller?.signal,
-      });
-      if (res.status === 200) {
-        const { success, providerMessageId } = await readResponse(res);
-        if (success === false) {
-          return {
-            status: "failed",
-            httpStatus: 200,
-            errorCode: "loops_rejected",
-            retryable: false,
-            attempts: attempt,
-          };
-        }
-        return providerMessageId
-          ? { status: "accepted", httpStatus: 200, retryable: false, attempts: attempt, providerMessageId }
-          : { status: "accepted", httpStatus: 200, retryable: false, attempts: attempt };
-      }
-      const { errorCode, retryable } = classify(res.status);
-      last = { status: "failed", httpStatus: res.status, errorCode, retryable, attempts: attempt };
-      if (!retryable) return last;
-      retryAfter = res.headers.get("retry-after");
-    } catch {
-      last = { status: "failed", errorCode: "network_error", retryable: true, attempts: attempt };
-    } finally {
-      if (timer !== undefined) clearTimeout(timer);
-    }
-    if (attempt < maxAttempts) await sleep(backoffDelay(attempt, retryAfter));
-  }
-  return last;
+  return { ...outcome, provider: provider.kind };
 }

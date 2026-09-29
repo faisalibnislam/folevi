@@ -35,9 +35,9 @@ const subprocessors = [
     data: "Serves folevi.com and the web app. Processes requests to our servers, including IP addresses and standard request logs.",
   },
   {
-    name: "Loops",
+    name: "Mailtrap",
     role: "Transactional email",
-    data: "Your email address and the content of the emails we send you, such as verification, security notices and share invitations.",
+    data: "Your email address and the content of the emails we send you, such as verification, security notices and share invitations. Open and click tracking is turned off.",
   },
   {
     name: "Google (Gemini API)",

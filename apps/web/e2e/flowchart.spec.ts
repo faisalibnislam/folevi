@@ -43,7 +43,9 @@ test.describe("Flowchart", () => {
     const start = canvas.getByRole("button", { name: "Start / end: Start" });
     const review = canvas.getByRole("button", { name: "Process: Review the draft" });
     await start.hover();
-    const handle = canvas.locator('[data-fc-handle][data-side="bottom"]');
+    // The start pill's own bottom handle (another selected shape can show handles too).
+    const startId = await start.getAttribute("data-fc-node");
+    const handle = canvas.locator(`[data-fc-handle][data-node="${startId}"][data-side="bottom"]`);
     const h = (await handle.boundingBox())!;
     const r = (await review.boundingBox())!;
     await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
@@ -101,6 +103,25 @@ test.describe("Flowchart", () => {
     await context.close();
   });
 
+  test("⌘Z while typing in a shape undoes the typing, never the flowchart block itself", async ({ browser }) => {
+    const { context, page } = await newPersonWithWorkspace(browser, "Undo Tester");
+    await newPage(page, "Undo in shapes");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/flowchart");
+    await page.getByRole("option", { name: /Flowchart/ }).first().click();
+    const canvas = page.getByRole("application", { name: /Flowchart/ });
+    await page.getByRole("toolbar", { name: "Flowchart tools" }).getByRole("button", { name: "Add process" }).click();
+    await page.keyboard.type("Draft");
+    await page.keyboard.press("Enter");
+    await expect(canvas.getByRole("button", { name: "Process: Draft" })).toBeVisible();
+    await canvas.getByRole("button", { name: "Process: Draft" }).dblclick();
+    await page.keyboard.type(" two");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvas).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Process: Draft" })).toBeVisible();
+    await context.close();
+  });
+
   test("a Mermaid diagram folds its source away and converts to a flowchart", async ({ browser }) => {
     const { context, page } = await newPersonWithWorkspace(browser, "Mermaid Tester");
     await newPage(page, "Mermaid");
@@ -110,6 +131,9 @@ test.describe("Flowchart", () => {
     await panel.getByRole("button", { name: "Mermaid Diagram" }).click();
     const card = page.locator(".fb-editor pre.fb-code-mermaid");
     await expect(card.locator("img.fb-mermaid-svg")).toBeVisible({ timeout: 30_000 });
+    // Close the Insert panel (it floats above the bottom bar, over the page).
+    await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Insert" }).click();
+    await expect(panel).toBeHidden();
     // Caret elsewhere: the source is folded away.
     await page.locator(".fb-editor > p.fb").first().click();
     await expect(card.locator("code")).toBeHidden();

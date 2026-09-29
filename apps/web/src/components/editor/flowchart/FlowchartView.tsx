@@ -559,6 +559,8 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     const src = fc.nodes.find((n) => n.id === d.from);
     if (!src) return;
     const hit = nodeAt(fc, p, 8);
+    // Dropped back on the shape it started from: nothing to connect.
+    if (hit && hit.id === d.from && !d.reconnect) return;
     const target = hit && hit.id !== d.from ? hit : null;
     if (d.reconnect) {
       if (!target) return;
@@ -707,6 +709,19 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     else setLive(updateEdges(fc, [ed.id], (x) => ({ ...x, label: value.replace(/\n+/g, " ").slice(0, FLOWCHART_LIMITS.maxLabel) })));
   };
 
+  // ⌘Z / ⇧⌘Z while typing: the text boxes are controlled, so the browser's own undo would reach the
+  // note's contenteditable instead (and could undo the whole block). Finish the edit as one step and
+  // use the chart's history instead.
+  const historyKey = (e: React.KeyboardEvent) => {
+    const key = e.key.toLowerCase();
+    if (!(e.metaKey || e.ctrlKey) || (key !== "z" && key !== "y")) return false;
+    e.preventDefault();
+    finishEdit();
+    if (key === "y" || e.shiftKey) redo();
+    else undo();
+    return true;
+  };
+
   let textEditor: React.ReactNode = null;
   if (editNode) {
     const k = view.k;
@@ -733,6 +748,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
         onBlur={() => finishEdit(false)}
         onKeyDown={(e) => {
           e.stopPropagation();
+          if (historyKey(e)) return;
           if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
             e.preventDefault();
             finishEdit();
@@ -759,6 +775,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
         onBlur={() => finishEdit(false)}
         onKeyDown={(e) => {
           e.stopPropagation();
+          if (historyKey(e)) return;
           if (e.key === "Enter" || e.key === "Escape") {
             e.preventDefault();
             finishEdit();
@@ -773,7 +790,9 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   const selNodes = sel.nodes.map((id) => byId.get(id)).filter((n): n is FlowNode => Boolean(n));
   const selEdges = sel.edges.map((id) => doc.edges.find((x) => x.id === id)).filter((x): x is NonNullable<typeof x> => Boolean(x));
   const single = selNodes.length === 1 && !selEdges.length && !editing ? selNodes[0]! : null;
-  const portNode = link ? null : (single ?? (hover && !editing ? byId.get(hover) ?? null : null));
+  // The hovered shape's handles, else the selected one's, so a connection can start from any shape.
+  const hovered = hover && !editing ? byId.get(hover) : undefined;
+  const portNode = link ? null : (hovered ?? single);
   const k = view.k;
   const sBox = boxOf([...selNodes, ...selEdges.flatMap((x) => {
     const r = routed.find((rr) => rr.edge.id === x.id);

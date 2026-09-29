@@ -502,7 +502,16 @@ export function EditorMenus({
   );
 
   const q = open?.query.toLowerCase() ?? "";
-  const filteredSlash = open?.kind === "slash" ? slashItems.filter((i) => !q || i.label.toLowerCase().includes(q) || i.keywords.includes(q)) : [];
+  // Label matches first (those starting with the query before the rest), then keyword-only matches, so
+  // "/flowchart" picks Flowchart rather than a block that merely lists it as a keyword.
+  const slashRank = (i: { label: string }) => {
+    const label = i.label.toLowerCase();
+    return label.startsWith(q) ? 0 : label.includes(q) ? 1 : 2;
+  };
+  const filteredSlash =
+    open?.kind === "slash"
+      ? slashItems.filter((i) => !q || i.label.toLowerCase().includes(q) || i.keywords.includes(q)).sort((a, b) => (q ? slashRank(a) - slashRank(b) : 0))
+      : [];
 
   // ---------------------------------------------------------------- page links
   const debounced = useDebounced(open?.kind === "page" ? open.query.trim() : "", 120);

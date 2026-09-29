@@ -42,3 +42,4 @@ apps/web/e2e/.visual-account.json
 
 # Local Claude Code preview config
 .claude/
+backups/

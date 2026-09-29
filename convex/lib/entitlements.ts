@@ -1,5 +1,5 @@
 // Entitlements: what a scope may do right now, resolved on the server from its own plan. Nothing here
-// merges the two scopes — a Personal plan never upgrades a workspace, and a workspace plan never upgrades
+// merges the two scopes: a Personal plan never upgrades a workspace, and a workspace plan never upgrades
 // anyone's Personal.
 //
 //   { kind: "personal", profileId }    a person's own notes, storage and AI (their Personal plan)
@@ -131,7 +131,7 @@ export const AI_WORKSPACE_UPSELL = "AI Assistant comes with the Team and Busines
 
 /**
  * Whether `profile` may use the AI Assistant in `scope`. Personal: their own Personal plan (Pro, the
- * trial or an admin grant) — and only in their own Personal. A team workspace: that workspace's plan.
+ * trial or an admin grant), and only in their own Personal. A team workspace: that workspace's plan.
  */
 export async function aiAccessIn(ctx: Ctx, profile: Doc<"profiles">, scope: Scope, now = Date.now()): Promise<AiAccess> {
   if (scope.kind === "personal") {

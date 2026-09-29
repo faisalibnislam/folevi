@@ -3,11 +3,11 @@
 The single source of truth is `packages/editor-schema/spec/folevi-blocks.v1.json`. From it,
 `pnpm schema:gen` generates:
 
-- `packages/editor-schema/src/generated/schema.ts` — TypeScript types, enum value lists, limits, the spec
+- `packages/editor-schema/src/generated/schema.ts`: TypeScript types, enum value lists, limits, the spec
   used by the runtime validator
-- `apps/macos/Folevi/Domain/Generated/BlockSchema.swift` — Swift `Codable` types, including a
+- `apps/macos/Folevi/Domain/Generated/BlockSchema.swift`: Swift `Codable` types, including a
   `BlockContent` enum with an `.unknown(type:props:)` case
-- `packages/editor-schema/generated/folevi-blocks.schema.json` — JSON Schema for documentation/tools
+- `packages/editor-schema/generated/folevi-blocks.schema.json`: JSON Schema for documentation/tools
 
 CI runs the generator with `--check` and fails if any output is stale.
 
@@ -26,20 +26,20 @@ interface WireBlock {
 }
 ```
 
-Inline content is a flat array of runs and atoms — `text` (with marks bold, italic, underline, strike,
+Inline content is a flat array of runs and atoms: `text` (with marks bold, italic, underline, strike,
 code, link, color, highlight), `mention`, `date`, `pageLink`.
 
 ## Block types (v1)
 
 | Type | Text | Props |
 | --- | --- | --- |
-| paragraph, bulleted, numbered, quote | yes | — |
+| paragraph, bulleted, numbered, quote | yes | none |
 | heading | yes | `level` 1–3 |
 | todo | yes | `checked`, `canceled?`, `dueDate?`, `dueTime?`, `priority?`, `assigneeId?`, `reminderAt?`, `completedAt?` |
 | toggle | yes | `collapsed` |
 | callout | yes | `tone` (note/info/success/warning/danger), `icon?` |
 | divider | no | `style?` (extralight/light/regular/strong; unset follows the page's separator style) |
-| pageBreak | no | — (a sheet break in the editor; `break-after: page` in print/PDF) |
+| pageBreak | no | none (a sheet break in the editor; `break-after: page` in print/PDF) |
 | code | no | `language`, `code` |
 | image | no | `fileId?` or `url?`, `alt`, `caption`, `width?`, `naturalWidth?`, `naturalHeight?` |
 | file | no | `fileId`, `name`, `size`, `mimeType` |
@@ -81,10 +81,10 @@ prototype format) → 1 is implemented as the template. To change the schema:
 
 ## Golden fixtures (shared by TypeScript and Swift)
 
-- `fixtures/document-golden.json` — every v1 block type plus an unknown `timeline` (schema v2) block;
+- `fixtures/document-golden.json`: every v1 block type plus an unknown `timeline` (schema v2) block;
   both clients must round-trip it to identical canonical (sorted-key) JSON.
-- `fixtures/ranks.json` — `rankBetween` cases and an evenly spread sequence.
-- `fixtures/sync-scenarios.json` — the nine offline/sync scenarios from `SYNC_PROTOCOL.md`, with the
+- `fixtures/ranks.json`: `rankBetween` cases and an evenly spread sequence.
+- `fixtures/sync-scenarios.json`: the nine offline/sync scenarios from `SYNC_PROTOCOL.md`, with the
   expected final canonical reducer state.
 
 ## Ranks

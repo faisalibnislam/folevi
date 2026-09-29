@@ -23,10 +23,10 @@ import { seatSummary, seatsChanged } from "./lib/seats";
 import { workspaceSubscriptionOf } from "./lib/billing";
 
 // Three tiers (stored names kept for existing admins and audit records):
-//   Owner (super_admin)      — everything, including admin roles and money matters
-//   Admin (ops_admin)        — users, plans, workspaces, configuration
-//   Support staff (support_admin) — look up users and help them (resend emails, password resets,
-//                               trial extensions, exports delivered to the user)
+//   Owner (super_admin):           everything, including admin roles and money matters
+//   Admin (ops_admin):             users, plans, workspaces, configuration
+//   Support staff (support_admin): look up users and help them (resend emails, password resets,
+//                                  trial extensions, exports delivered to the user)
 const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
 const ADMIN: PlatformRole[] = ["super_admin", "ops_admin"];
 const OWNER: PlatformRole[] = ["super_admin"];

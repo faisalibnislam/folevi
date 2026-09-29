@@ -223,7 +223,7 @@ describe("guests see only what was shared with them", () => {
     expect(got.isMember).toBe(false);
     expect(JSON.stringify(got)).not.toMatch(/Secret project|acquisition/);
 
-    // Collections: people relevant to the page only (its creator, the people it's shared with) — not the member list.
+    // Collections: people relevant to the page only (its creator, the people it's shared with), not the member list.
     const coll = await w.outsider.as.query(api.collections.get, { collectionId });
     const names = coll.people.map((p) => p.name);
     expect(names).toContain("leak-owner");

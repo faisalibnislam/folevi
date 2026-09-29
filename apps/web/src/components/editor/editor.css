@@ -427,8 +427,8 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 
 /* ------------------------------------------------------------------------------------------------
  * Note style palette (sheetProps → data-palette; packages/design-tokens/src/palette.ts). While the page
- * colour is on Auto, the note's style colours the accents — bullets, checkboxes, quote bars, links,
- * underlines, callouts and code — and the text colour and highlight choices. The mark ids stay the same
+ * colour is on Auto, the note's style colours the accents (bullets, checkboxes, quote bars, links,
+ * underlines, callouts and code) and the text colour and highlight choices. The mark ids stay the same
  * (accent, moss, marigold, plum, coral / yellow, green, blue, pink): they're slots, filled per style.
  * Scoped to [data-palette] so the Format panel's swatches can wear the same colours.
  * --------------------------------------------------------------------------------------------- */
@@ -475,7 +475,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-sheet[data-palette] .fb-tone-info { background: color-mix(in oklab, var(--pal-hl-green) var(--pal-callout-mix), var(--color-surface)) !important; }
 .fb-sheet[data-palette] .fb-tone-info .fb-callout-icon { color: var(--pal-moss); }
 
-/* Film grain over a note's cover image (DocumentHeader): fine specks from fractal noise, tiled — dark on
+/* Film grain over a note's cover image (DocumentHeader): fine specks from fractal noise, tiled. Dark on
    covers that read deep, white on covers that read light (data-tone). */
 .fb-cover-grain {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");

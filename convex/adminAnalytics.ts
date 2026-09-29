@@ -1,4 +1,4 @@
-// Admin analytics: aggregates only (counts, sums, series) — no note content, and no personal details
+// Admin analytics: aggregates only (counts, sums, series). No note content, and no personal details
 // beyond the recent-payments list admins need to follow up on. Computed on read from the source tables,
 // which is fine at Folevi's size; move to rollups (like metricsDaily) if these tables grow large.
 import { v } from "convex/values";

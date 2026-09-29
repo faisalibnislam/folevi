@@ -14,7 +14,7 @@ async function newPage(page: Page, title: string) {
 test.describe("Flowchart", () => {
   test.setTimeout(150_000);
 
-  test("draw shapes, connect them, write in them, undo, tidy up — it persists and publishes", async ({ browser }) => {
+  test("draw shapes, connect them, write in them, undo, tidy up: it persists and publishes", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Flowchart Tester");
     await newPage(page, "Flowchart");
 
@@ -78,7 +78,7 @@ test.describe("Flowchart", () => {
       await settle(page);
       const results = await new AxeBuilder({ page }).include(".fb-flowchart").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-      expect(serious.map((v) => `${v.id} — ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     }
     await page.emulateMedia({ colorScheme: "light" });
     await page.evaluate(() => (document.documentElement.dataset.theme = "light"));

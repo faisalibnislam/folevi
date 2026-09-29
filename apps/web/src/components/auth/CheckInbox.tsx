@@ -20,7 +20,7 @@ export function CheckInbox({ email: initialEmail }: { email?: string }) {
         lede={
           initialEmail ? (
             <>
-              We sent a confirmation link to <strong className="text-ink">{initialEmail}</strong>. Open it on this device to continue — it expires in 24 hours
+              We sent a confirmation link to <strong className="text-ink">{initialEmail}</strong>. Open it on this device to continue. It expires in 24 hours
               and works once.
             </>
           ) : (

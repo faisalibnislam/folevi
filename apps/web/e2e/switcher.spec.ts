@@ -5,7 +5,7 @@ import { APP, createWorkspace, newPerson, switcher, switchTo, waitForSaved } fro
 // Personal first, then your team workspaces, and everything in the app follows the current context.
 // Spec scenarios 24 (Personal → workspace → Personal, no leakage) and 26 (no workspaces: Personal works).
 
-const SWITCHER = /— Personal, workspaces and account$/;
+const SWITCHER = /: Personal, workspaces and account$/;
 
 async function searchFor(page: Page, query: string) {
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
@@ -22,12 +22,12 @@ test("a new account starts in Personal with no workspaces, and each context show
   const recent = page.getByRole("list", { name: "Recent notes" });
 
   // Personal: the default. The trigger shows you and "Personal".
-  await expect(switcher(page)).toHaveAccessibleName("Personal — Personal, workspaces and account");
+  await expect(switcher(page)).toHaveAccessibleName("Personal: Personal, workspaces and account");
   await expect(switcher(page)).toContainText("Switch Person");
   await expect(switcher(page)).toContainText("Personal");
   await expect(recent.getByRole("link", { name: /Welcome to Folevi/ })).toBeVisible();
 
-  // The menu: Personal first (checked, with your plan), then Workspaces — none yet — and "New workspace…".
+  // The menu: Personal first (checked, with your plan), then Workspaces (none yet) and "New workspace…".
   await switcher(page).click();
   const menu = page.getByRole("menu", { name: SWITCHER });
   const personal = menu.getByRole("menuitemradio", { name: "Personal", exact: true });
@@ -69,7 +69,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   await expect(menu.getByRole("menuitemradio", { name: "Personal", exact: true })).toHaveAttribute("aria-checked", "false");
   await page.keyboard.press("Escape");
 
-  // Back to Personal: its notes, and not the workspace's — on Home and in search.
+  // Back to Personal: its notes and not the workspace's, on Home and in search.
   await switchTo(page, "Personal");
   await expect(recent.getByRole("link", { name: /Welcome to Folevi/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Studio plans/ })).toHaveCount(0);
@@ -85,7 +85,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   await expect(palette.getByText("No documents match “Welcome to Folevi”.")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.reload();
-  await expect(switcher(page)).toHaveAccessibleName("Switch Studio — Personal, workspaces and account");
+  await expect(switcher(page)).toHaveAccessibleName("Switch Studio: Personal, workspaces and account");
   await expect(recent.getByRole("link", { name: /Studio plans/ })).toBeVisible();
 
   // Settings: the workspace's group appears only while it's open; Personal offers to create one instead.

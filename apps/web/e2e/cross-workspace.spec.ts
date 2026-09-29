@@ -88,6 +88,6 @@ test("an outsider with “Can edit” edits a page shared from a workspace they'
   await expect(guest.page.getByRole("textbox", { name: "Document body" })).toContainText("Edited from outside the workspace");
   await waitForSaved(guest.page);
   await showFolders(guest.page);
-  await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /— Personal, workspaces and account$/ }).click();
+  await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /: Personal, workspaces and account$/ }).click();
   await expect(guest.page.getByRole("menuitemradio", { name: "Harbor Studio" })).toHaveCount(0);
 });

@@ -1,4 +1,4 @@
-// Device limits. A device is one signed-in browser or app — one live session. Free allows a few at once
+// Device limits. A device is one signed-in browser or app (one live session). Free allows a few at once
 // (lib/plans.ts); Basic, Pro and the Pro trial have no limit.
 //
 // When someone is over the limit, the sessions that signed in first keep working and the newest ones are

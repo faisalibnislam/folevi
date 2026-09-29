@@ -28,7 +28,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Block editor with paragraphs, three heading levels, bulleted/numbered/to-do lists, toggles, quotes,
   callouts, code, dividers, images (including Unsplash, when configured), files, bookmarks, tables, cards,
   page links, collections, mentions, TeX formulas, Mermaid diagrams, whiteboards and flowcharts (a canvas of
-  shapes and connectors with auto-layout, AI create/update and Mermaid conversion; web only for now — the
+  shapes and connectors with auto-layout, AI create/update and Mermaid conversion; web only for now, and the
   Mac keeps them intact). Unknown future block types are preserved, never dropped.
 - Markdown shortcuts, a `/` menu, `[[` page links, `@` mentions, nesting with Tab, block moves with
   ⌥⇧↑/↓ and drag handles, undo/redo, paste normalization (HTML and Markdown).
@@ -46,7 +46,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 
 ### AI Assistant
 - Ask questions of your notes (with links to the notes used), write, rewrite, summarize, continue,
-  translate and find action items — from the slash menu, the selection toolbar or ⌘J — and “Catch me
+  translate and find action items (from the slash menu, the selection toolbar or ⌘J), and “Catch me
   up”, a brief of the week on Home. Answers stream in. Anyone can turn it off in Settings. Sent to
   Google Gemini. In Personal it comes with Pro and the Pro trial; in a workspace, with that workspace's
   Team or Business plan, for its members (not guests). A personal plan never adds AI to a workspace.
@@ -62,7 +62,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - **Personal plans** (per person): Free (1 GB, 2 devices), Basic (20 GB, unlimited devices) and Pro (100 GB,
   unlimited devices, AI), with a 7-day Pro trial for every new account and no card. Settings → Plan &
   billing and Settings → Devices.
-- **Workspace plans** (per workspace, billed per member seat — owner, admins and members; guests and pending
+- **Workspace plans** (per workspace, billed per member seat: owner, admins and members; guests and pending
   invitations are free): Workspace Free (5 GB, no AI), Team (100 GB, AI) and Business (1 TB, AI with higher
   fair use). Managed by the owner and admins they allow (Settings → workspace Plan & billing). Not on sale
   until Stripe is configured; admins can set a workspace's plan by hand.
@@ -77,7 +77,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Daily Notes were retired: existing daily notes remain as ordinary pages and old `/daily` links open Home.
 
 ### Working with others
-- Workspace roles (Owner, Admin, Member — optionally comment or view only) and guests (single pages,
+- Workspace roles (Owner, Admin, Member, each optionally comment or view only) and guests (single pages,
   not billed; invited by email even without an account; a Guests list with member ↔ guest conversion),
   restricted pages with explicit grants, invitations bound to the invited address, comments with threads
   and resolution, presence, notifications.
@@ -89,7 +89,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 ### Sync and offline
 - Every edit is written to a durable local queue first (IndexedDB on the web, SQLite on the Mac) and
   sent as idempotent operations. The status says **Saved** only after the server has acknowledged every
-  change — including edits still being typed (`docs/SYNC_PROTOCOL.md`).
+  change, including edits still being typed (`docs/SYNC_PROTOCOL.md`).
 - Offline editing on both clients; queued edits survive reloads and restarts. On the web, opening
   Folevi with no connection shows the last-known folio from this device (after one online visit).
 - Two devices editing the same block produce a visible conflict with Keep mine / Keep theirs /
@@ -104,7 +104,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   verification (turned on or off in Settings → Security, with 10 single-use backup codes and an optional
   30-day “trust this device”; required for the admin console), password reset by email, password
   change, new backup codes and moving to a new authenticator in Settings → Security, session list with instant revocation, account deletion
-  with a 7-day grace period — refused while you own a workspace other people use (transfer or delete it
+  with a 7-day grace period. It is refused while you own a workspace other people use (transfer or delete it
   first) (`docs/SECURITY.md`, `docs/AUTH_DECISION.md`).
 - No third-party analytics or trackers.
 

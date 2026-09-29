@@ -20,7 +20,7 @@ async function upsert(p: Awaited<ReturnType<typeof person>>, documentId: string,
 }
 
 describe("accounts", () => {
-  test("bootstrap creates a profile and seeds Personal — no workspace; is idempotent", async () => {
+  test("bootstrap creates a profile and seeds Personal (no workspace) and is idempotent", async () => {
     const t = setup();
     const a = await person(t, "ada@example.com");
     const again = await a.as.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" });

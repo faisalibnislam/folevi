@@ -77,7 +77,7 @@ export function EmailsView() {
         {data ? (
           data.activeProvider === "none" ? (
             <Callout tone="warning" title="No email provider configured">
-              Nothing can be sent from this environment. Set <Mono>MAILTRAP_API_TOKEN</Mono> (or the sandbox pair outside production) on the Convex deployment — see docs/EMAIL_OPERATIONS.md.
+              Nothing can be sent from this environment. Set <Mono>MAILTRAP_API_TOKEN</Mono> (or the sandbox pair outside production) on the Convex deployment. See docs/EMAIL_OPERATIONS.md.
             </Callout>
           ) : data.webhooksConfigured ? (
             <Callout title={`Sending through ${PROVIDER_LABELS[data.activeProvider] ?? data.activeProvider}; webhook configured`}>
@@ -156,7 +156,7 @@ export function EmailsView() {
                     </td>
                     <td className={tdNum}>{a.attempts}</td>
                     <td className={td}>
-                      {a.errorCode ? <Mono>{a.errorCode}</Mono> : <span className="text-muted">—</span>}
+                      {a.errorCode ? <Mono>{a.errorCode}</Mono> : <span className="text-muted">None</span>}
                       {a.httpStatus ? <div className="mt-0.5 text-xs text-muted">HTTP {a.httpStatus}</div> : null}
                       {a.providerError ? <div className="mt-0.5 max-w-[280px] text-xs text-muted">{a.providerError}</div> : null}
                     </td>
@@ -180,7 +180,7 @@ export function EmailsView() {
                         </span>
                       ) : (
                         <span className="text-muted" title={data.webhooksConfigured ? "No verified provider events" : "Webhook not configured"}>
-                          —
+                          None
                         </span>
                       )}
                     </td>

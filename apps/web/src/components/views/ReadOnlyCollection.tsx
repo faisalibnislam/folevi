@@ -17,7 +17,7 @@ function optionStyle(color: string) {
 }
 
 function Value({ prop, value }: { prop: ViewProperty; value: unknown }) {
-  if (isEmptyValue(value) || (prop.type === "relation" && value === 0)) return <span className="text-faint">—</span>;
+  if (isEmptyValue(value) || (prop.type === "relation" && value === 0)) return <span className="text-faint">-</span>;
   switch (prop.type) {
     case "checkbox":
       return <span>{value ? "✓" : ""}</span>;

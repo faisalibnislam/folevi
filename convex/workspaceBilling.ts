@@ -1,5 +1,5 @@
 // Workspace plans and billing: a team workspace's own plan (Free, Team or Business), billed per member seat.
-// The subscription belongs to the workspace — not to whoever owns it — so it stays put when ownership moves,
+// The subscription belongs to the workspace (not to whoever owns it), so it stays put when ownership moves,
 // and it never changes anyone's Personal plan (nor does a Personal plan change it).
 //
 // Who: the owner, and admins the owner allowed (lib/permissions.ts). Checked here on every function; the
@@ -338,8 +338,8 @@ export const recordSeatQuantity = internalMutation({
 const SYNC_RETRIES = 5;
 
 /**
- * Sets the Stripe subscription's quantity to the workspace's current billable seats, with proration —
- * only when Stripe's quantity differs, so running it twice (or for two changes at once) is harmless.
+ * Sets the Stripe subscription's quantity to the workspace's current billable seats, with proration.
+ * It does nothing when Stripe's quantity already matches, so running it twice (or for two changes at once) is harmless.
  */
 export const syncSeatQuantity = internalAction({
   args: { workspaceId: v.id("workspaces"), attempt: v.optional(v.number()) },

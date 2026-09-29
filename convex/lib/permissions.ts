@@ -72,7 +72,7 @@ export const canExportWorkspace = canManageWorkspace;
 
 /**
  * What the caller may do in a page's Share dialog:
- * - `manage`: everything — access mode, public links, anyone's grants. Page managers: in Personal its owner;
+ * - `manage`: everything (access mode, public links, anyone's grants). Page managers: in Personal its owner;
  *   in a workspace owners, admins and (on restricted pages) the page's creator.
  * - `share`: add people (grants up to their own access, i.e. at most "Can edit") and change or remove the
  *   grants and invitations they made. Page managers, and workspace members who can edit the page when it

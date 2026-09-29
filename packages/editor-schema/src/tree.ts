@@ -112,7 +112,7 @@ export function rankForPosition<T extends TreeNodeLike>(
   const prev = siblings[idx]!;
   const next = siblings[idx + 1];
   if (next && compareRank(prev.rank, next.rank) === 0) {
-    // Equal ranks (concurrent inserts) — place after both.
+    // Equal ranks (concurrent inserts): place after both.
     return rankBetween(next.rank, siblings[idx + 2]?.rank ?? null);
   }
   return rankBetween(prev.rank, next?.rank ?? null);

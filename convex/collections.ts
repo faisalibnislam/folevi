@@ -101,7 +101,7 @@ export const get = query({
     // Names for person values (display + picker). No emails.
     // - In the collection's scope (its Personal's owner, or a member of its workspace): the workspace's
     //   members, or in Personal its owner.
-    // - A guest: only people this page already involves — whoever created the host page, the people it's
+    // - A guest: only people this page already involves: whoever created the host page, the people it's
     //   shared with (on it or a page above), and the people named in the rows they can see. Never the
     //   workspace's member list.
     const scope = scopeOfRow(collection);

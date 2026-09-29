@@ -22,7 +22,7 @@ export function DashboardView() {
   return (
     <>
       <DocTitle>Dashboard</DocTitle>
-      <PageHeader title="Dashboard" description="Aggregate health of the platform. Counts only — no individual records or content are shown here." />
+      <PageHeader title="Dashboard" description="Aggregate health of the platform. Counts only. No individual records or content are shown here." />
 
       {metricsMissing ? (
         <div className="mb-5">
@@ -41,12 +41,12 @@ export function DashboardView() {
           <StatTile label="Storage used" value={t ? formatBytes(t.storageBytes) : "…"} />
           <StatTile
             label="Daily active users"
-            value={d ? (d.activeUsers.daily ?? "—") : "…"}
+            value={d ? (d.activeUsers.daily ?? "Pending") : "…"}
             hint={metricsMissing ? "Waiting for the daily metrics job" : "Active in the last 24 hours"}
           />
           <StatTile
             label="Weekly active users"
-            value={d ? (d.activeUsers.weekly ?? "—") : "…"}
+            value={d ? (d.activeUsers.weekly ?? "Pending") : "…"}
             hint={metricsMissing ? "Waiting for the daily metrics job" : "Active in the last 7 days"}
           />
           <StatTile label="Emails accepted" value={t ? n(t.emailsAccepted) : "…"} hint="Accepted by the email provider (not “delivered”)" />

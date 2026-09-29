@@ -2,9 +2,9 @@
 // Builds Folevi's note styles from the images in packages/design-tokens/covers/source/.
 //   NN-name-in-words.jpg  →  style art-NN, named "Name in words"
 // For each image it writes, into apps/web/public/covers/:
-//   art-NN.webp        up to 3200 px (never upscaled) — the cover and page background on Retina (2×) screens
-//   art-NN-1x.webp     up to 1600 px — the same on regular (1×) screens; picked by CSS image-set()
-//   art-NN-thumb.webp  640 px — picker tiles and note-card spines (sharp at 2× for their size)
+//   art-NN.webp        up to 3200 px (never upscaled): the cover and page background on Retina (2×) screens
+//   art-NN-1x.webp     up to 1600 px: the same on regular (1×) screens; picked by CSS image-set()
+//   art-NN-thumb.webp  640 px: picker tiles and note-card spines (sharp at 2× for their size)
 // and a manifest, packages/design-tokens/covers/covers.json, with each style's colours picked from the image
 // by the same engine that reads a person's uploaded image (src/palette.ts): page, text, accent, five text
 // colours, four highlights, and whether the cover reads deep or light behind the title.

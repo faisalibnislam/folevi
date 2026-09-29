@@ -1,7 +1,7 @@
 /* Folevi service worker.
  * - Hashed static assets (/_next/static, fonts, icons): cache-first (immutable).
  * - Product navigations: network-first; the last good app shell is kept so Folevi opens offline.
- *   The shell HTML contains no private data — documents load through the authenticated Convex
+ *   The shell HTML contains no private data. Documents load through the authenticated Convex
  *   connection and the per-account IndexedDB store.
  * - Never cached: /api, /auth, /admin, /s (public share pages), /signin, /signup, cross-origin requests.
  */
@@ -55,7 +55,7 @@ self.addEventListener("fetch", (event) => {
           const shell = await cache.match("/__shell");
           if (shell) return shell;
           return new Response(
-            "<!doctype html><meta charset=utf-8><title>Folevi — offline</title><body style='font:16px system-ui;padding:3rem;background:#F4F1E9;color:#18201C'><h1>You're offline</h1><p>Open Folevi once while online on this device, and it will open offline next time.</p>",
+            "<!doctype html><meta charset=utf-8><title>Folevi: offline</title><body style='font:16px system-ui;padding:3rem;background:#F4F1E9;color:#18201C'><h1>You're offline</h1><p>Open Folevi once while online on this device, and it will open offline next time.</p>",
             { headers: { "content-type": "text/html; charset=utf-8" } },
           );
         }

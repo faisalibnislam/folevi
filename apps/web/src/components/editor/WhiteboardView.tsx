@@ -236,7 +236,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor }: Rea
           viewBox={`0 0 ${WHITEBOARD_WIDTH} ${height}`}
           style={{ aspectRatio: `${WHITEBOARD_WIDTH} / ${height}` }}
           role="img"
-          aria-label={strokes.length ? `Whiteboard drawing with ${strokes.length} stroke${strokes.length === 1 ? "" : "s"}` : editable ? "Empty whiteboard — draw with a mouse, pen or finger" : "Empty whiteboard"}
+          aria-label={strokes.length ? `Whiteboard drawing with ${strokes.length} stroke${strokes.length === 1 ? "" : "s"}` : editable ? "Empty whiteboard. Draw with a mouse, pen or finger" : "Empty whiteboard"}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

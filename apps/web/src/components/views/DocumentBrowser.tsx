@@ -54,7 +54,7 @@ const TITLES: Record<View, string> = {
 };
 
 const EMPTY: Record<View, string> = {
-  all: "Nothing here yet. Start a document — it takes one keystroke.",
+  all: "Nothing here yet. Starting a document takes one keystroke.",
   starred: "Star a document to keep it one click away.",
   archive: "Archived documents rest here, out of your lists but never lost.",
   trash: "Trash is empty. Deleted documents stay here for 30 days.",
@@ -87,7 +87,7 @@ function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
       <div className="mx-auto max-w-lg px-6 py-24 text-center">
         <h2 className="ui-display text-4xl">{kind === "folder" ? "This folder isn’t here" : "This tag isn’t here"}</h2>
         <p className="mt-3 text-muted">
-          It may have been deleted{workspaces.length ? `, or it belongs somewhere other than ${here}` : ""}. Links to {kind === "folder" ? "folders" : "tags"} only work in their own Personal or workspace — switch there from the menu at the bottom of the sidebar.
+          It may have been deleted{workspaces.length ? `, or it belongs somewhere other than ${here}` : ""}. Links to {kind === "folder" ? "folders" : "tags"} only work in their own Personal or workspace. Switch there from the menu at the bottom of the sidebar.
         </p>
         <AppLink href="/documents" className="ui-btn ui-btn-primary mt-6 h-9 px-4 text-sm">
           Go to Home
@@ -567,7 +567,7 @@ interface DocMenuProps {
 }
 
 /**
- * A note's actions — shared by its "…" button and its right-click menu — with the dialogs they open.
+ * A note's actions (shared by its "…" button and its right-click menu), with the dialogs they open.
  * `dialogOpen` tells a context menu to stay mounted while one of its dialogs is showing.
  */
 function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { items: (MenuItem | "separator")[]; dialogs: ReactNode; dialogOpen: boolean } {

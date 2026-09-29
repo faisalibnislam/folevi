@@ -52,7 +52,7 @@ export function personalPlanLabel(profile: Profile, now = Date.now()): string | 
 
 /**
  * The bottom of the sidebar: where you are (Personal or a team workspace) and you. One menu holds
- * everything — Personal first, then your workspaces with your role in each, "New workspace…", the
+ * everything: Personal first, then your workspaces with your role in each, "New workspace…", the
  * current workspace's people and settings, your account, help, appearance and sign out.
  */
 export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
@@ -119,7 +119,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
   ];
 
   // Personal plan: trial days left, or an upgrade nudge on Free; nothing once they're paying. Only shown in
-  // Personal — a Personal plan doesn't change what a team workspace includes.
+  // Personal, since a Personal plan doesn't change what a team workspace includes.
   const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; paid?: boolean } }).entitlements;
   const trialDays = ent?.trialing && ent.trialEndsAt ? Math.max(1, Math.ceil((ent.trialEndsAt - Date.now()) / 86_400_000)) : 0;
   const pill = !ent || context.kind !== "personal" ? null : ent.trialing ? `Pro trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false ? "Upgrade to Pro" : null;
@@ -139,7 +139,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
         </button>
       ) : null}
       <MenuButton
-        label={`${workspace ? workspace.name : "Personal"} — Personal, workspaces and account`}
+        label={`${workspace ? workspace.name : "Personal"}: Personal, workspaces and account`}
         side="top"
         align="start"
         className="w-full"

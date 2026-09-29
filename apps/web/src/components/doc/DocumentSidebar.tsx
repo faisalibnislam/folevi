@@ -29,7 +29,7 @@ export interface Crumb {
 
 /**
  * The document page's own sidebar (it replaces the app navigation while a page is open): where the page
- * lives, then four tools for the page itself — contents, tasks, attachments & links, and find.
+ * lives, then four tools for the page itself: contents, tasks, attachments & links, and find.
  */
 export function DocumentSidebar({
   documentId,

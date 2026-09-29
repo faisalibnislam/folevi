@@ -158,7 +158,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const presenceNow = Math.floor(Date.now() / 15_000) * 15_000;
   const presence = useQuery(api.presence.list, meta ? { documentId, now: presenceNow } : "skip");
 
-  // Idle and close snapshots — meaningful versions, never one per keystroke.
+  // Idle and close snapshots: meaningful versions, never one per keystroke.
   const pendingForDoc = engineState.pending.some((op) => "documentId" in op && op.documentId === documentId) || engineState.inflight.length > 0;
   const lastEditAt = useRef<number | null>(null);
   useEffect(() => {
@@ -180,7 +180,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [createSnapshot, documentId]);
 
-  // Leaving the page inside the app (another page, Home…) also saves a "close" version — after the
+  // Leaving the page inside the app (another page, Home…) also saves a "close" version, after the
   // page's queued edits have reached the server, so the version includes them.
   const canSnapshot = Boolean(meta && meta.access !== "read" && meta.access !== "comment");
   const canSnapshotRef = useRef(canSnapshot);
@@ -891,7 +891,7 @@ function DocumentHeader({
   const { url: imageUrl, palette } = useCoverImage(cover as never);
   const bg = coverBackground(cover as never, style, imageUrl);
   // With a cover, the title sits on it over a soft shade: white on deep covers, the style's dark ink on
-  // light ones — from how light the band behind the title reads (a person's image: white until known).
+  // light ones, chosen by how light the band behind the title reads (a person's image: white until known).
   const art = coverArtOf(cover as never);
   const onCover = Boolean(bg);
   const ownImage = (cover as { kind?: string }).kind === "image";
@@ -1006,7 +1006,7 @@ function DocumentHeader({
     <header>
       {onCover ? (
         <div className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-[6px] border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
-          {/* The style's image under a film grain — dark specks on covers that read deep, white on light ones —
+          {/* The style's image under a film grain (dark specks on covers that read deep, white on light ones),
               with a shade under the title. */}
           <div aria-hidden data-cover-image="" className="absolute inset-0 -z-10" style={{ background: bg }} />
           <div aria-hidden data-tone={tone ?? "deep"} className="fb-cover-grain absolute inset-0 -z-10" />
@@ -1124,7 +1124,7 @@ function Backlinks({ documentId }: { documentId: string }) {
   );
 }
 
-/** The page's actions — shown in the "…" menu and in Info → Actions. */
+/** The page's actions, shown in the "…" menu and in Info → Actions. */
 function useDocumentActions({
   documentId,
   title,

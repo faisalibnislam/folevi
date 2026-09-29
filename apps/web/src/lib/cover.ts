@@ -4,7 +4,7 @@ import coverArt from "@folevi/design-tokens/covers.json";
 import type { StylePalette } from "@/lib/palette";
 
 /**
- * One note style: an image (packages/design-tokens/covers/source) and the colours it gives a note — page, text, accent, five text
+ * One note style: an image (packages/design-tokens/covers/source) and the colours it gives a note: page, text, accent, five text
  * colours and four highlights (packages/design-tokens/src/palette.ts, precomputed into covers.json).
  */
 export interface CoverArt extends Omit<StylePalette, "tone"> {
@@ -16,7 +16,7 @@ export interface CoverArt extends Omit<StylePalette, "tone"> {
 }
 
 /**
- * The note styles — images built by packages/design-tokens/scripts/covers.mjs and served from /covers: the
+ * The note styles: images built by packages/design-tokens/scripts/covers.mjs and served from /covers: the
  * cover and page background at 1600 px (1×) and 3200 px (2×, Retina), and a 640 px thumbnail (picker tiles,
  * note-card spines).
  */
@@ -147,8 +147,8 @@ export function paletteVars(colors: StyleColors | null): Record<string, string> 
 }
 
 /**
- * Attributes for a note's page (`.fb-sheet`): the chosen document and text colours, or — when they're on
- * Auto — a very light page and a dark, high-contrast text colour taken from the note's style (its artwork,
+ * Attributes for a note's page (`.fb-sheet`): the chosen document and text colours, or (when they're on
+ * Auto) a very light page and a dark, high-contrast text colour taken from the note's style (its artwork,
  * or the colours picked from its own image; with dark theme pairs). Plain notes use the theme's page and text.
  * While the page colour is on Auto, the style also colours the accents (checkboxes, quotes, links,
  * underlines, callouts, code) and the text colour and highlight choices (`data-palette`).

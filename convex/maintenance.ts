@@ -165,7 +165,7 @@ async function bumpChangeSeq(ctx: MutationCtx, scope: Scope): Promise<void> {
 
 /**
  * Deletes everything in someone's Personal: its pages (each with its blocks, versions, comments, grants
- * given on it — its guests' access — and public links), then folders, tags, files and anything else left
+ * given on it, which hold its guests' access, and public links), then folders, tags, files and anything else left
  * in it. Bounded per call; returns true when nothing is left.
  */
 async function purgePersonal(ctx: MutationCtx, profileId: Id<"profiles">, budget: Budget): Promise<boolean> {
@@ -289,7 +289,7 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
         .sort((a, b) => a.joinedAt - b.joinedAt);
       // Deleting an account never deletes other people's work. The owner had to hand on (or delete) every
       // workspace other people use before asking (users.requestAccountDeletion); if someone joined during
-      // the grace period — or support scheduled the deletion — the workspace passes to its longest-standing
+      // the grace period, or support scheduled the deletion, the workspace passes to its longest-standing
       // admin, else its longest-standing member, who is told. Only a workspace nobody else is in is purged.
       const heir = ws.deletionScheduledFor === undefined ? (others.find((x) => normalizeMembership(x).role === "admin") ?? others[0]) : undefined;
       if (heir) {
@@ -501,7 +501,7 @@ export const housekeeping = internalMutation({
   },
 });
 
-/** Daily aggregate snapshot (active users, retention cohorts) — counts only, no content or identities. */
+/** Daily aggregate snapshot (active users, retention cohorts). Counts only, no content or identities. */
 export const dailyMetrics = internalMutation({
   args: {},
   handler: async (ctx) => {

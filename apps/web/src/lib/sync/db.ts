@@ -8,7 +8,7 @@ import { ulid, type SyncState, type WireBlock } from "@folevi/editor-schema";
  * documents and blocks for offline reading, and the device id. Cleared on sign-out.
  *
  * Cached lists are keyed by a scope key (`scopeIdKey`: "personal" for your Personal, or the team
- * workspace's id) — never a workspace id standing in for Personal.
+ * workspace's id), never a workspace id standing in for Personal.
  */
 export interface CachedDocument {
   id: string;
@@ -67,7 +67,7 @@ export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {
         }
         if (oldVersion < 2) database.createObjectStore("uploads", { keyPath: "uploadId" });
         if (oldVersion < 3) {
-          // v3 — Personal is not a workspace. The document-list cache was indexed by workspace id (Personal's
+          // v3: Personal is not a workspace. The document-list cache was indexed by workspace id (Personal's
           // was the old personal workspace's id); it's only a cache, so it's rebuilt, keyed by scope. The sync
           // queue (syncState) and waiting uploads are never dropped: queued page creates get a scope when the
           // engine opens (engine.ts adoptLegacyCreates), and waiting uploads lose their workspace id (their

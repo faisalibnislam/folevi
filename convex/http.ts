@@ -13,8 +13,8 @@ const SAFE_INLINE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp
 
 /**
  * RFC 6266 Content-Disposition with an ASCII fallback and an RFC 5987 UTF-8 name. encodeURIComponent
- * leaves ' ( ) * unescaped, which are not valid attr-chars — a name like "Maya's Folio.zip" would make
- * browsers drop the header's filename entirely — so those are percent-encoded too.
+ * leaves ' ( ) * unescaped, which are not valid attr-chars. A name like "Maya's Folio.zip" would make
+ * browsers drop the header's filename entirely, so those are percent-encoded too.
  */
 export function contentDisposition(kind: "inline" | "attachment", filename: string): string {
   const fallback = filename.replace(/[^\x20-\x7e]|["\\%;]/g, "_").slice(0, 180) || "file";

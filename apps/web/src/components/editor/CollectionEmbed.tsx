@@ -320,7 +320,7 @@ function PropertyEditor({
     case "select":
       return (
         <Select aria-label={label} value={typeof value === "string" ? value : ""} onChange={(e) => void save(e.target.value || null)} className="w-full bg-transparent outline-none">
-          <option value="">—</option>
+          <option value="">None</option>
           {prop.options.map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
@@ -347,7 +347,7 @@ function PropertyEditor({
     case "person":
       return (
         <Select aria-label={label} value={typeof value === "string" ? value : ""} onChange={(e) => void save(e.target.value || null)} className="w-full bg-transparent outline-none">
-          <option value="">—</option>
+          <option value="">None</option>
           {collection.people.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
@@ -486,7 +486,7 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
 /** Read-only value. `inLink` renders URLs as text (never an <a> nested inside a card link). */
 function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: unknown; people: Person[]; inLink?: boolean }) {
   const titles = useQuery(api.documents.titles, prop.type === "relation" && Array.isArray(value) && value.length ? { documentIds: value as string[] } : "skip");
-  if (isEmptyValue(value)) return <span className="text-faint">—</span>;
+  if (isEmptyValue(value)) return <span className="text-faint">-</span>;
   if (prop.type === "checkbox") return <span>{value ? "✓" : ""}</span>;
   if (prop.type === "select") {
     const o = prop.options.find((x) => x.id === value);

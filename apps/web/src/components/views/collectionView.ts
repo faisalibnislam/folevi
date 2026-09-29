@@ -54,7 +54,7 @@ export function filterTargets(props: ViewProperty[]): FilterTarget[] {
   return [{ id: TITLE_ID, name: "Name", type: "title", options: [] }, ...props.map((p) => ({ id: p.id, name: p.name, type: p.type, options: p.options }))];
 }
 
-/** Select filters store an option id; older views stored the typed option name — map those to the id. */
+/** Select filters store an option id; older views stored the typed option name, so map those to the id. */
 export function resolveOption(target: FilterTarget, value: unknown): unknown {
   if (target.type !== "select" && target.type !== "multiSelect") return value;
   if (typeof value !== "string") return value;

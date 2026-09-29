@@ -27,7 +27,7 @@ const SHADOW = "shadow-[0_8px_24px_rgb(0_0_0/0.1),0_2px_6px_rgb(0_0_0/0.1),inset
 
 /**
  * Ask AI (⌘J): a chat with your notes that pops out from a floating button in the bottom-right corner.
- * It isn't modal — you can keep reading and writing while it's open. Each answer cites the notes it used;
+ * It isn't modal: you can keep reading and writing while it's open. Each answer cites the notes it used;
  * follow-ups keep the conversation. Also opened from the command palette, a folder's menu and the note's
  * AI panel. When AI isn't included where they are, the same button explains how to get it: in Personal,
  * the Pro plan; in a team workspace, that workspace's plan.
@@ -47,7 +47,7 @@ export function AskAiChat({
   initial?: string;
   /** Only this folder's notes. */
   folder?: { id: string; name: string };
-  /** False: AI is switched on but not included where they are — the panel explains how to get it instead. */
+  /** False: AI is switched on but not included where they are; the panel explains how to get it instead. */
   entitled: boolean;
   /** Where they are (useAiAccess): decides which plan the explanation points to. */
   context?: "personal" | "workspace" | "shared";

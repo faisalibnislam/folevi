@@ -26,7 +26,7 @@ const GROUPS: { id: number; name: string; icon: string }[] = [
 ];
 
 let cache: Promise<Emoji[]> | null = null;
-/** All standard emoji (loaded once, on first open — the list is ~570 KB). */
+/** All standard emoji (loaded once, on first open; the list is ~570 KB). */
 function loadEmoji(): Promise<Emoji[]> {
   cache ??= import("emojibase-data/en/compact.json").then((m) =>
     ((m.default ?? m) as unknown as Emoji[]).filter((e) => e.group !== undefined && e.group !== 2).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),

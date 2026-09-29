@@ -142,7 +142,7 @@ function InsertRow({ item, editor, disabled }: { item: InsertItem; editor: Edito
       type="button"
       disabled={disabled}
       aria-label={item.label}
-      title={`${item.label} — click to insert below the current block, or drag into the page`}
+      title={`${item.label}: click to insert below the current block, or drag into the page`}
       {...handlers}
       className="fb-insert-row group ui-raised"
     >
@@ -167,7 +167,7 @@ function DividerTile({ style, label, editor, disabled }: { style: string; label:
 function PageBreakTile({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
   const handlers = useInsertDrag(editor, disabled, { label: "Page break", type: "pageBreak" });
   return (
-    <button type="button" disabled={disabled} aria-label="Page break" title="Page break — starts a new page when printed" {...handlers} className="fb-insert-tile fb-insert-tile-wide ui-raised">
+    <button type="button" disabled={disabled} aria-label="Page break" title="Page break: starts a new page when printed" {...handlers} className="fb-insert-tile fb-insert-tile-wide ui-raised">
       <span className="fb-pagebreak-preview" aria-hidden>
         <span />
         <span />

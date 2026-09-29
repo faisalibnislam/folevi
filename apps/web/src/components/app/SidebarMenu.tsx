@@ -6,7 +6,7 @@ import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { useShell } from "./Shell";
 
 /**
- * The sidebar's own menu (panel icon): hide or show it, focus mode, and — on a note — whether the sidebar
+ * The sidebar's own menu (panel icon): hide or show it, focus mode, and (on a note) whether the sidebar
  * shows the folders or the note's tools. It lives in the sidebar next to notifications, and moves to the
  * tab strip while the sidebar is hidden so it's always one click away.
  */

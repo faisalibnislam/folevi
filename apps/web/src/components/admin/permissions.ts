@@ -1,6 +1,6 @@
 // Client-side mirror of the platform-role checks in convex/admin.ts, adminBilling.ts and adminAnalytics.ts.
 // It only decides what the UI offers; the server enforces every rule again (and answers `not_found` to anyone
-// without a role). Three tiers — the stored names predate the labels and are kept so existing roles still work:
+// without a role). Three tiers. The stored names predate the labels and are kept so existing roles still work:
 //   Owner (super_admin) ⊃ Admin (ops_admin) ⊃ Support staff (support_admin).
 
 export type AdminRole = "super_admin" | "support_admin" | "ops_admin";

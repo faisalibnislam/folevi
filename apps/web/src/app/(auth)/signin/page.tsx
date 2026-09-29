@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Sign in" };
 const NOTICES: Record<string, string> = {
   signed_out: "You're signed out.",
   password_changed: "Your password was changed. Sign in with the new one.",
-  session_ended: "Your session ended. Sign in again to keep writing — anything you wrote offline is still on this device.",
+  session_ended: "Your session ended. Sign in again to keep writing. Anything you wrote offline is still on this device.",
 };
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ returnTo?: string; notice?: string }> }) {

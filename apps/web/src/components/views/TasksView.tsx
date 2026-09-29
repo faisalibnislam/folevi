@@ -272,7 +272,7 @@ export function TasksView({ view }: { view: View }) {
       }
     >
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-3 sm:px-8">
-        <nav aria-label="Task views" className="ui-seg ui-well flex-wrap sm:flex-nowrap" title="Every task lives in a note — open its page to see the context it was written in.">
+        <nav aria-label="Task views" className="ui-seg ui-well flex-wrap sm:flex-nowrap" title="Every task lives in a note. Open its page to see the context it was written in.">
           {VIEWS.map((v) => {
             const count = counts && v.id !== "completed" ? counts[v.id as keyof typeof counts] : undefined;
             return (

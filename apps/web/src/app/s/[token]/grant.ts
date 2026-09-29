@@ -7,7 +7,7 @@ import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } f
  * The visitor's password is never stored in a cookie as-is. After they submit it, the server seals
  * `{ link fingerprint, password, expiry }` with AES-256-GCM under a key derived from
  * FOLEVI_SERVER_SECRET. The cookie is opaque, HTTP-only, SameSite=Strict, scoped to this link's path,
- * bound to this link (it can't unlock another one) and expires after GRANT_TTL_MS — even if the
+ * bound to this link (it can't unlock another one) and expires after GRANT_TTL_MS, even if the
  * browser keeps the cookie. Every page load still re-checks the password in Convex, so changing or
  * removing the link's password immediately invalidates old grants.
  */

@@ -11,7 +11,7 @@ import { ViewChrome } from "@/components/app/Shell";
 
 /**
  * /share-invite/<token>: a page someone shared with this email address before it had a Folevi account.
- * Accepting (signed in with that verified address) gives access to that page only — as a guest.
+ * Accepting (signed in with that verified address) gives access to that page only, as a guest.
  */
 export function ShareInviteView({ token }: { token: string }) {
   const preview = useQuery(api.sharing.previewPageInvite, { token });

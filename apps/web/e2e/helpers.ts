@@ -110,7 +110,7 @@ export async function completeOnboarding(page: Page) {
 
 /**
  * Signs up a brand-new person (verified email + 2FA), completes onboarding; lands on the Welcome document
- * in their Personal (no workspaces yet — Personal is not a workspace).
+ * in their Personal (no workspaces yet; Personal is not a workspace).
  */
 export async function newPerson(browser: Browser, name = "Test Person"): Promise<{ context: BrowserContext; page: Page; email: string; account: Account }> {
   const context = await browser.newContext();
@@ -121,7 +121,7 @@ export async function newPerson(browser: Browser, name = "Test Person"): Promise
 
 /** The switcher at the bottom of the sidebar (Personal, your workspaces, and account items). */
 export function switcher(page: Page): Locator {
-  return page.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /— Personal, workspaces and account$/ });
+  return page.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /: Personal, workspaces and account$/ });
 }
 
 /** Opens the switcher and picks Personal, or the workspace called `name`. */
@@ -129,7 +129,7 @@ export async function switchTo(page: Page, name: "Personal" | (string & {})) {
   await showFolders(page);
   await switcher(page).click();
   await page.getByRole("menuitemradio", { name, exact: true }).click();
-  await expect(switcher(page)).toHaveAccessibleName(`${name} — Personal, workspaces and account`);
+  await expect(switcher(page)).toHaveAccessibleName(`${name}: Personal, workspaces and account`);
 }
 
 /** Creates a team workspace from the switcher and switches to it. */
@@ -139,7 +139,7 @@ export async function createWorkspace(page: Page, name: string) {
   await page.getByRole("menuitem", { name: "New workspace…" }).click();
   await page.getByRole("dialog", { name: "New workspace" }).getByLabel("Workspace name").fill(name);
   await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(switcher(page)).toHaveAccessibleName(`${name} — Personal, workspaces and account`);
+  await expect(switcher(page)).toHaveAccessibleName(`${name}: Personal, workspaces and account`);
 }
 
 /** Grants a platform role on the local (non-production) deployment via the Convex CLI. */

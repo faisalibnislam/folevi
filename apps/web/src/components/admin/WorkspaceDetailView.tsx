@@ -97,7 +97,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         <Button size="sm" onClick={() => setAction("quota")} disabled={!canQuota}>
           <Gauge size={14} aria-hidden /> Set quota…
         </Button>
-        <Button size="sm" onClick={() => setAction("plan")} disabled={!canSetPlan || stripeLive || w.status === "deleting"} title={stripeLive ? "Billed through Stripe — change it there" : undefined}>
+        <Button size="sm" onClick={() => setAction("plan")} disabled={!canSetPlan || stripeLive || w.status === "deleting"} title={stripeLive ? "Billed through Stripe. Change it there" : undefined}>
           <CreditCard size={14} aria-hidden /> Set plan…
         </Button>
         {!canQuota ? <span className="text-xs text-muted">Suspending and quotas: {rolesFor("workspaces.quota")}</span> : null}
@@ -127,7 +127,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
             <KeyValues
               items={[
                 { label: "Documents", value: w.documentCount.toLocaleString() },
-                { label: "Owners", value: owners.length ? owners.map((o) => o.displayName || o.email).join(", ") : "—" },
+                { label: "Owners", value: owners.length ? owners.map((o) => o.displayName || o.email).join(", ") : "None" },
                 { label: "Pending invites", value: w.invites.filter((i) => i.status === "pending").length },
               ]}
             />
@@ -138,13 +138,13 @@ export function WorkspaceDetailView({ id }: { id: string }) {
           <KeyValues
             items={[
               { label: "Plan", value: <Badge tone={b.paid ? "plum" : "neutral"}>{planName(b.planId as WorkspacePlanId)}</Badge> },
-              { label: "Provider", value: b.subscription ? humanize(b.subscription.provider) : "—" },
-              { label: "Status", value: b.subscription ? <StatusBadge status={b.subscription.cancelAtPeriodEnd && b.paid ? "cancel_scheduled" : b.subscription.status} /> : "—" },
+              { label: "Provider", value: b.subscription ? humanize(b.subscription.provider) : "None" },
+              { label: "Status", value: b.subscription ? <StatusBadge status={b.subscription.cancelAtPeriodEnd && b.paid ? "cancel_scheduled" : b.subscription.status} /> : "None" },
               { label: "Billable seats", value: `${b.seats}${b.subscription?.quantity !== null && b.subscription?.quantity !== undefined && b.subscription.quantity !== b.seats ? ` (billed: ${b.subscription.quantity})` : ""}` },
               { label: "Guests (not billed)", value: b.guests },
-              { label: "Estimated charge", value: b.paid ? `${b.seats} × ${formatPrice(b.seatPriceCents)} = ${formatPrice(seatChargeCents(b.seatPriceCents, b.seats))}/${PLAN_CATALOG[b.planId as WorkspacePlanId].interval === "year" ? "year" : "month"}` : "—" },
-              { label: "Renews / ends", value: b.subscription?.currentPeriodEnd ? <Time ts={b.subscription.currentPeriodEnd} /> : "—" },
-              { label: "Stripe customer", value: b.subscription?.stripeCustomerId ? <Mono>{b.subscription.stripeCustomerId}</Mono> : "—" },
+              { label: "Estimated charge", value: b.paid ? `${b.seats} × ${formatPrice(b.seatPriceCents)} = ${formatPrice(seatChargeCents(b.seatPriceCents, b.seats))}/${PLAN_CATALOG[b.planId as WorkspacePlanId].interval === "year" ? "year" : "month"}` : "None" },
+              { label: "Renews / ends", value: b.subscription?.currentPeriodEnd ? <Time ts={b.subscription.currentPeriodEnd} /> : "Not set" },
+              { label: "Stripe customer", value: b.subscription?.stripeCustomerId ? <Mono>{b.subscription.stripeCustomerId}</Mono> : "None" },
             ]}
           />
         </Panel>
@@ -277,7 +277,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
                     <td className={td}>
                       <Mono>{h.action}</Mono>
                     </td>
-                    <td className={td}>{h.reason ?? <span className="text-muted">—</span>}</td>
+                    <td className={td}>{h.reason ?? <span className="text-muted">None</span>}</td>
                     <td className={td}>
                       <Time ts={h.createdAt} />
                     </td>

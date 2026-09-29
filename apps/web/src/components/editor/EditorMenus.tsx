@@ -1501,7 +1501,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                           const url = `${location.origin}${location.pathname}#block-${single.attrs.id}`;
                           navigator.clipboard.writeText(url).then(
                             () => toast.show("Link copied"),
-                            () => toast.show("Couldn’t copy the link — your browser blocked clipboard access.", { tone: "error" }),
+                            () => toast.show("Couldn’t copy the link. Your browser blocked clipboard access.", { tone: "error" }),
                           );
                           closeMenu();
                         },

@@ -291,8 +291,8 @@ export function svgDataUrl(svg: string): string {
 }
 
 /**
- * Calls `cb` when the app's light/dark theme changes (diagrams are re-rendered in the new theme), and —
- * with `el` — when the note around it changes style (page colour, text colour or palette).
+ * Calls `cb` when the app's light/dark theme changes (diagrams are re-rendered in the new theme), and,
+ * with `el`, when the note around it changes style (page colour, text colour or palette).
  */
 export function onThemeChange(cb: () => void, el?: Element | null): () => void {
   let dark = isDark();

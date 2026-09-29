@@ -177,7 +177,7 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <Card title="Delete workspace" description="Deletes this workspace and everything in it — pages, folders, tasks, files and comments — for everyone, after a 7-day grace period. Export it first if you want to keep a copy. Nobody’s Personal is affected.">
+      <Card title="Delete workspace" description="Deletes this workspace and everything in it (pages, folders, tasks, files and comments) for everyone, after a 7-day grace period. Export it first if you want to keep a copy. Nobody’s Personal is affected.">
         <Button variant="danger" onClick={() => setOpen(true)}>
           Delete {workspace.name}…
         </Button>

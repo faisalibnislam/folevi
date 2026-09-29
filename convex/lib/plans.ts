@@ -126,7 +126,7 @@ export const isPaidPlan = (id: CatalogPlanId) => PLAN_CATALOG[id].billingModel !
 
 /**
  * The quantity a paid per-seat plan is billed for, given the billable seats (counted only by
- * convex/lib/seats.ts): never fewer than one — a paid plan always bills at least its owner's seat, even
+ * convex/lib/seats.ts): never fewer than one. A paid plan always bills at least its owner's seat, even
  * while the owner's account is suspended. Every quantity sent to Stripe, stored or shown comes from here.
  */
 export const billedQuantity = (seats: number) => Math.max(1, seats);

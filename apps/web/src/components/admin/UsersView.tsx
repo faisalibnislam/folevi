@@ -96,7 +96,7 @@ export function UsersView() {
           <Search size={15} aria-hidden /> Search
         </Button>
         <p id={`${uid}-q-hint`} className="basis-full text-xs text-muted">
-          An address containing “@” is matched exactly (status is ignored). Otherwise results are 50 accounts per page, newest first, filtered by name on each page — use Next to keep looking. Leave empty to browse.
+          An address containing “@” is matched exactly (status is ignored). Otherwise results are 50 accounts per page, newest first, filtered by name on each page. Use Next to keep looking. Leave empty to browse.
         </p>
       </form>
 
@@ -150,7 +150,7 @@ export function UsersView() {
                       {u.aiSource === "grant" ? <Badge tone="plum">AI</Badge> : null}
                     </span>
                   </td>
-                  <td className={td}>{u.platformRole ? <Badge tone="plum">{ROLE_LABEL[u.platformRole]}</Badge> : <span className="text-muted">—</span>}</td>
+                  <td className={td}>{u.platformRole ? <Badge tone="plum">{ROLE_LABEL[u.platformRole]}</Badge> : <span className="text-muted">None</span>}</td>
                   <td className={td}>
                     <Time ts={u.createdAt} />
                   </td>

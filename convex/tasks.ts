@@ -212,7 +212,7 @@ export const update = mutation({
       else {
         const id = ctx.db.normalizeId("profiles", args.assigneeId);
         const assignee = id ? await ctx.db.get(id) : null;
-        // Someone who can see the note: a member of its workspace — or, in Personal, its owner or a guest on it.
+        // Someone who can see the note: a member of its workspace or, in Personal, its owner or a guest on it.
         const workspaceId = doc.workspaceId;
         const member = assignee && workspaceId ? await ctx.db.query("workspaceMembers").withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId).eq("profileId", assignee._id)).unique() : null;
         const canSee = workspaceId ? Boolean(member) : Boolean(assignee && assignee.status === "active" && accessAtLeast(await documentAccess(ctx, assignee, doc), "read"));

@@ -22,7 +22,7 @@ shows for **your** account and domain.
    is the part before `.folevi.com` (for `<selector>._domainkey.mail.folevi.com` enter
    `<selector>._domainkey.mail`).
    - **SPF: one TXT record per name.** If `mail.folevi.com` already has a `v=spf1 …` TXT record,
-     **merge** Mailtrap's `include:` into it instead of adding a second one — two SPF records on the same
+     **merge** Mailtrap's `include:` into it instead of adding a second one. Two SPF records on the same
      name make SPF fail. Example shape (use Mailtrap's include):
      `v=spf1 include:<mailtrap-include> include:<other-provider> ~all`.
    - **DMARC: keep ours.** `_dmarc.folevi.com` is Folevi's own policy (section 2). Don't replace it with a
@@ -104,7 +104,7 @@ in Mailtrap.
 
 ## 5. Templates
 
-All eleven templates are compiled in this repository — Mailtrap stores no templates.
+All eleven templates are compiled in this repository; Mailtrap stores no templates.
 
 - **Copy and layout:** `packages/email/scripts/build-templates.ts` (one shared, table-based layout: soft
   canvas, white rounded card, logo, serif heading, black button with the link repeated as text, muted
@@ -130,7 +130,7 @@ All eleven templates are compiled in this repository — Mailtrap stores no temp
    tests check that every placeholder is declared and every required variable used, that identity and
    security email has no unsubscribe or preferences link, that the only images are the two logos from the
    brand path, that every button has its link as text, and that each template has a text version.
-5. Open a PR. Security or identity copy needs a second reviewer. Deploying Convex ships the new copy — there
+5. Open a PR. Security or identity copy needs a second reviewer. Deploying Convex ships the new copy, so there
    is nothing to upload anywhere.
 6. Adding a **required** variable: update the callers in the same change (a send with a missing variable
    fails as `invalid_payload`).
@@ -147,7 +147,7 @@ All eleven templates are compiled in this repository — Mailtrap stores no temp
 - **Idempotency:** each send has an idempotency key (e.g. `auth-verify:…`, `notify:<id>`). `beginAttempt`
   refuses to send again when an attempt with that key was already accepted, or is still in flight (queued
   in the last 10 minutes). A failed attempt may be retried with the same key.
-- **Logs** contain the template, provider, status, attempts, error code and request id — never the
+- **Logs** contain the template, provider, status, attempts, error code and request id, never the
   address (only `recipientHint` like `j***@e***.com` or a salted hash), the content or any token.
 - **Error codes to alert on**, especially for `auth_verify_email` and `auth_password_reset` (without them
   people can't finish signing up or recover their account): `provider_not_configured`, `unauthorized`

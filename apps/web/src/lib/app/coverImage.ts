@@ -58,7 +58,7 @@ function useHour() {
 
 /**
  * A note's own style image: its signed URL and the colours picked from it (null while loading, or for the
- * built-in styles). An image saved before colours were picked gets them here, once, from its pixels — and
+ * built-in styles). An image saved before colours were picked gets them here, once, from its pixels, and
  * they're saved back when this person can edit the note.
  */
 export function useCoverImage(cover: DocumentCover | null | undefined): { url: string | null; palette: ImagePalette | null } {

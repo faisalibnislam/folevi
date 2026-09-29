@@ -1,7 +1,7 @@
 # Deployment
 
 Production is live (`folevi.com`, `app.folevi.com`; current status in `docs/PRODUCT.md`). These are the
-exact steps the account owner follows to set up or rebuild it. Every secret lives in a provider's secret store — never in Git.
+exact steps the account owner follows to set up or rebuild it. Every secret lives in a provider's secret store, never in Git.
 
 ## Environments
 
@@ -21,7 +21,7 @@ identity service to deploy.
 1. Create a Convex project (`npx convex login`, then `npx convex deploy` once from the repo root to create
    production).
 2. Dashboard → Settings → generate a **Production deploy key** and a **Preview deploy key**.
-3. Set production environment variables (`npx convex env set --deployment <prod-deployment> NAME value`) — the full list with
+3. Set production environment variables (`npx convex env set --deployment <prod-deployment> NAME value`). The full list with
    descriptions is in `.env.example` (Convex section). Required in production: `FOLEVI_ENV=production`,
    `FOLEVI_APP_URL`, `SITE_URL` (the https app origin, `https://app.folevi.com`; Better Auth runs under
    it and identity-email links point to it), `BETTER_AUTH_SECRET` (at least 32 random bytes, e.g.
@@ -43,7 +43,7 @@ identity service to deploy.
 
 Shortcut: with your Convex production deploy key exported as `CONVEX_DEPLOY_KEY`, run
 `bash scripts/setup-production-env.sh`. It sets the plain settings, generates the random secrets
-(server secret — the same value in Vercel and Convex — Better Auth secret, hash salt, file-URL secret)
+(server secret, with the same value in Vercel and Convex; Better Auth secret; hash salt; file-URL secret)
 straight into Vercel and Convex without printing them, adds the deploy key to Vercel, and asks for the
 Mailtrap sending token and webhook signing secret with hidden input. Existing values are kept unless you pass `--rotate`.
 
@@ -51,7 +51,7 @@ Mailtrap sending token and webhook signing secret with hidden input. Existing va
 
 1. Import the GitHub repository. Root directory: `apps/web`. Framework: Next.js. Keep "Include files outside
    the Root Directory" on (the build installs and deploys from the repository root). Vercel deploys only the
-   web app — the native macOS app in this monorepo (`apps/macos`) ships through Xcode — and the `ignoreCommand` in
+   web app (the native macOS app in this monorepo, `apps/macos`, ships through Xcode), and the `ignoreCommand` in
    `apps/web/vercel.json` skips builds for commits that change only them (or docs). `apps/web/vercel.json`
    sets install and build commands; the build runs `scripts/check-prod-env.mjs`, then
    `npx convex deploy --cmd 'pnpm --filter @folevi/web build'`, which deploys the backend first and injects
@@ -164,7 +164,7 @@ Folevi's own accounts, `docs/AUTH_DECISION.md`). To ship it: set the production 
    queued on devices and sync when lifted); feature flags can turn off public links, invites, exports or
    new sign-ups.
 2. **Contain access:** suspend affected accounts/workspaces (this also ends their sessions); revoke
-   sessions (Admin → user → Revoke all sessions — takes effect on the next backend call); pause new
+   sessions (Admin → user → Revoke all sessions; takes effect on the next backend call); pause new
    sign-ups with the `new_signups` flag; rotate `FOLEVI_SERVER_SECRET`, `FOLEVI_FILE_URL_SECRET`
    (invalidates signed file URLs), `MAILTRAP_API_TOKEN` / `MAILTRAP_WEBHOOK_SECRET` as needed. Do **not** simply replace
    `BETTER_AUTH_SECRET`: it also encrypts every stored TOTP secret (see `docs/AUTH_DECISION.md`,

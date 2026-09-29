@@ -6,7 +6,7 @@ export const COOKIE_PREFIX = "folevi";
 
 /**
  * Cheap, network-free check used to route signed-out visitors to /signin before rendering the app
- * shell. It only looks for the session cookie — every backend call still validates the real session.
+ * shell. It only looks for the session cookie; every backend call still validates the real session.
  */
 export async function hasSessionCookie(): Promise<boolean> {
   const h = new Headers(await headers());

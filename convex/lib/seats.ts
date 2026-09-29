@@ -1,7 +1,7 @@
 // Seats: who a paid workspace plan is billed for. One place decides it, and one hook keeps the payment
 // provider's quantity in step.
 //
-//   Billable (one seat each): active members — owner, admin and member roles, whatever a member's access
+//   Billable (one seat each): active members in the owner, admin and member roles, whatever a member's access
 //     (edit, comment or view only). Every membership role counts.
 //   Free (no seat): guests (page grants without a membership), pending invitations, removed people, and
 //     members whose account is suspended or deleted.

@@ -23,7 +23,7 @@ import { Card } from "./settings/Card";
 
 type Section = "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data";
 type Item = { id: Section; label: string; icon: LucideIcon };
-/** Things about you (your account and your Personal) — the same whichever context is open. */
+/** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
   { id: "account", label: "Account", icon: UserRound },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
@@ -35,7 +35,7 @@ const YOU: Item[] = [
   { id: "data", label: "Import & export", icon: ArrowDownUp },
 ];
 /**
- * The current team workspace's settings — only when a workspace is open. Personal has none of these.
+ * The current team workspace's settings, only when a workspace is open. Personal has none of these.
  * Each is listed only for the roles that may use it (the server checks every action again):
  *   General and Members: everyone in the workspace (members read; owners and admins change);
  *   Guests and Import & export: owners and admins;

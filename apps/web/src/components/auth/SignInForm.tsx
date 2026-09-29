@@ -55,7 +55,7 @@ export function SignInForm({ returnTo, notice }: { returnTo?: string; notice?: s
         {error ? <Alert>{error}</Alert> : null}
         {unverified ? (
           <Alert tone="info">
-            Verify your email address first — we&apos;ve sent a fresh link to <strong>{email.trim()}</strong>. Open it on this device to continue.
+            Verify your email address first. We&apos;ve sent a fresh link to <strong>{email.trim()}</strong>. Open it on this device to continue.
           </Alert>
         ) : null}
         <Field label="Email" type="email" name="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />

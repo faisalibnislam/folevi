@@ -8,7 +8,7 @@
 //
 // The macOS / iOS icon gets Apple's Liquid Glass treatment as an Icon Composer document (Folevi.icon):
 // a black background and the F as a glass layer (specular highlights, translucency, shadow), which the
-// system renders in every appearance — default, dark, clear and tinted. When Icon Composer's `ictool`
+// system renders in every appearance: default, dark, clear and tinted. When Icon Composer's `ictool`
 // is installed (Xcode 26+), flat PNG renders of it are written too. Writes:
 //
 //   apps/web/public/icon.svg                       favicon
@@ -66,7 +66,7 @@ const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 // ---------------------------------------------------------------- email
 
 // Emails show the logo as an image, served from https://folevi.com/brand/email/ (packages/email). It is
-// the logo file itself — the mark (black disc, white F, faint edge) and the letters — at 240 px wide,
+// the logo file itself, with the mark (black disc, white F, faint edge) and the letters, at 240 px wide,
 // shown at 120 px (2x for sharp text on high-density screens). Transparent, so it sits on the email's
 // canvas; the dark variant only changes the letters to the app's dark-mode ink (#F2F2F3), exactly as
 // FoleviLogo does in the app (the mark keeps its colours).
@@ -158,7 +158,7 @@ if (glass) {
     glassRender("macOS", "Default", size * 2, resolve(out, `macos.iconset/icon_${size}x${size}@2x.png`));
   }
 } else {
-  console.warn("Icon Composer's ictool isn't installed — wrote flat PNG icons (the .icon document is still complete).");
+  console.warn("Icon Composer's ictool isn't installed. Wrote flat PNG icons (the .icon document is still complete).");
   await save(await flatMacIcon(1024), resolve(out, "folevi-macos-1024.png"));
   await save(render(appIcon, 1024), resolve(out, "folevi-ios-1024.png"));
   for (const size of [16, 32, 128, 256, 512]) {
@@ -169,7 +169,7 @@ if (glass) {
 try {
   execFileSync("iconutil", ["-c", "icns", resolve(out, "macos.iconset"), "-o", resolve(out, "Folevi.icns")], { stdio: "ignore" });
 } catch {
-  console.warn("iconutil not available — skipped Folevi.icns (the .iconset has every size).");
+  console.warn("iconutil not available. Skipped Folevi.icns (the .iconset has every size).");
 }
 
 // ---------------------------------------------------------------- the Mac app's UI
@@ -201,7 +201,7 @@ for (const [file, h] of [["folevi-menubar.png", 16], ["folevi-menubar@2x.png", 3
 }
 
 // The logo's letters alone, on the logo's 2021 x 512 canvas (the mark's disc left empty), as a template
-// image so the Mac tints it with the text colour — the mark is drawn beside it (FoleviLogo in Swift).
+// image so the Mac tints it with the text colour. The mark is drawn beside it (FoleviLogo in Swift).
 const letters = logoSvg.match(/<path d="[^"]+" fill="black"\/>/g) ?? [];
 if (letters.length < 6) throw new Error("logo.svg: expected the six black letter paths.");
 const lettersSvg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="2021" height="512" viewBox="0 0 2021 512">${letters.join("")}</svg>`);

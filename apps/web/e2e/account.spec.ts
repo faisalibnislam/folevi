@@ -43,7 +43,7 @@ test("two-step verification is optional: use Folevi without it, turn it on and o
   await page.getByRole("button", { name: "Turn on two-step verification" }).click();
   await enrollTwoFactor(page, { onPage: true });
   await page.waitForURL(/\/settings\/security/);
-  await expect(page.getByText("On — authenticator app")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("On (authenticator app)")).toBeVisible({ timeout: 20_000 });
 
   await page.getByRole("button", { name: "Turn off" }).click();
   const dialog = page.getByRole("dialog", { name: "Turn off two-step verification?" });
@@ -160,7 +160,7 @@ test("forgotten password: reset by email, other sessions end, sign in with the n
 test("settings: change password, new backup codes, move to a new authenticator", async ({ browser }) => {
   const { page, account } = await newPerson(browser, "Settings Person");
   await page.goto(`${APP}/settings/security`);
-  await expect(page.getByText("On — authenticator app")).toBeVisible();
+  await expect(page.getByText("On (authenticator app)")).toBeVisible();
 
   await page.getByRole("button", { name: "Get new backup codes" }).click();
   await page.getByRole("dialog").getByLabel("Current password").fill(account.password);

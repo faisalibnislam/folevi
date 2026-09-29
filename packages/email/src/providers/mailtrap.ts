@@ -21,7 +21,7 @@ export interface MailtrapMessage {
   html: string;
   /** Our template key. */
   category: string;
-  /** Opaque ids only — never personal data (they come back in webhooks). */
+  /** Opaque ids only, never personal data (they come back in webhooks). */
   customVariables: Record<string, string>;
 }
 

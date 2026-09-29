@@ -10,9 +10,9 @@ import { DailyChart } from "./DailyChart";
 import { DocTitle, Meter, PageHeader, Panel, StatTile, selectCls } from "./ui";
 
 const n = (v: number) => v.toLocaleString();
-const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)}%`);
+const pct = (v: number | null) => (v === null ? "No data" : `${Math.round(v * 100)}%`);
 
-/** Growth, activity, plans, trials and AI use — aggregates only, never individual records or content. */
+/** Growth, activity, plans, trials and AI use: aggregates only, never individual records or content. */
 export function AnalyticsView() {
   const uid = useId();
   const [days, setDays] = useState(30);
@@ -25,7 +25,7 @@ export function AnalyticsView() {
       <DocTitle>User analytics</DocTitle>
       <PageHeader
         title="User analytics"
-        description="Growth, activity, plans and AI use across Folevi. Counts only — no individual records or content."
+        description="Growth, activity, plans and AI use across Folevi. Counts only. No individual records or content."
         actions={
           <div className="flex items-center gap-2">
             <label htmlFor={`${uid}-days`} className="text-[13px] text-muted">
@@ -104,7 +104,7 @@ export function AnalyticsView() {
           <dl className="grid grid-cols-2 gap-3">
             <StatTile label="Requests" value={d ? n(d.ai.requests) : "…"} />
             <StatTile label="People using AI" value={d ? n(d.ai.users) : "…"} />
-            <StatTile label="Per person" value={d && d.ai.users ? (d.ai.requests / d.ai.users).toFixed(1) : "—"} />
+            <StatTile label="Per person" value={d && d.ai.users ? (d.ai.requests / d.ai.users).toFixed(1) : "-"} />
             <StatTile label="Manual AI grants" value={d ? n(d.aiGrants) : "…"} />
           </dl>
         </Panel>

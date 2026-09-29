@@ -1,7 +1,7 @@
-# Personal, Workspaces, seats and billing — audit and plan
+# Personal, Workspaces, seats and billing: audit and plan
 
 Status: **Phase A shipped; Phases B–E implemented on the `account-model` branch** (the production
-migration run is next — see the runbook in §3a; the cleanups that follow it are in §3b). Written 2026-09-29 against
+migration run is next; see the runbook in §3a; the cleanups that follow it are in §3b). Written 2026-09-29 against
 commit `9d25368`. It answers the
 "account, subscription, workspace, seat, guest, storage, AI and billing" specification in two parts:
 what exists today (Phase 1) and how to get to the specified model (Phase 2 onwards).
@@ -115,14 +115,14 @@ what exists today (Phase 1) and how to get to the specified model (Phase 2 onwar
 Each phase ships on its own, green (typecheck, lint, Convex + web unit tests, full Playwright suite,
 production build) before the next starts.
 
-**Phase A — plans, storage and AI scoping, copy (no data move).** Central plan catalog with scopes and
+**Phase A: plans, storage and AI scoping, copy (no data move).** Central plan catalog with scopes and
 ids; capability checks instead of plan-name checks; personal quota counts only the personal workspace;
 team workspaces get their own plan (Workspace Free) and quota; AI in a team workspace follows the
 workspace plan; remove the pooled-storage copy everywhere; personal billing page shows only
 Free/Basic/Pro with the new heading and copy; webhook event dedupe. *Fixes most user-visible conflicts
 fast, before the risky part.*
 
-**Phase B — Personal is not a workspace (data migration).**
+**Phase B: Personal is not a workspace (data migration).**
 1. Widen schema: optional `ownerProfileId`, optional `workspaceId`, new `by_owner_*` indexes,
    `personalChangeSeq`, `personalStorageUsedBytes`. Deploy.
 2. Scope-aware server: every function takes a `scope` instead of `workspaceId`; reads work for both old
@@ -149,8 +149,8 @@ counters; `users.bootstrap` seeds Personal directly; `workspaces.mine` lists tea
 
 *As built (web, part 2):* step 6. The web app's active context is `{ kind: "personal" } | { kind:
 "workspace", … }` (`apps/web/src/lib/app/state.tsx`, remembered as `folevi:context`; an older
-`folevi:workspace` value becomes the setting if it's still one of your team workspaces, else Personal —
-the default). Every list, search, task, AI and export call passes the context's `scope`; documents open by
+`folevi:workspace` value becomes the setting if it's still one of your team workspaces, else Personal
+(the default). Every list, search, task, AI and export call passes the context's `scope`; documents open by
 id from any context, and folder actions show only for pages of the current context. Open tabs (and where the Home tab
 leads) are kept per context, and switching context from a page, folder or tag opens the new context's Home. The switcher lists
 Personal (your name and plan) first, then Workspaces with your role; Settings has a "You" group and, only
@@ -158,7 +158,7 @@ in a workspace, that workspace's group (General, Members, Import & export). The 
 pages by scope and re-stamps page creates queued by older builds (the old personal workspace → Personal);
 the local database (v3) keys its document cache by scope and keeps the queue and waiting uploads.
 
-**Phase C — Workspace plans, seats and billing.** Workspace plan & billing page (Free / Team /
+**Phase C: Workspace plans, seats and billing.** Workspace plan & billing page (Free / Team /
 Business, monthly/yearly, seats × price, guests "not billed", renewal, manage/cancel), Stripe per-seat
 checkout and quantity sync, billing permission for admins, end-of-period downgrade, over-limit state.
 
@@ -176,7 +176,7 @@ checkout and quantity sync, billing permission for admins, end-of-period downgra
   leave, role change, transfer, account suspension or deletion) calls `seatsChanged`: test/manual plans
   store the new count at once; Stripe plans set `seatSyncScheduledAt` and schedule one
   `workspaceBilling.syncSeatQuantity` (5 s later), which reads the current count and updates the Stripe
-  subscription item (`proration_behavior=create_prorations`) only when Stripe's quantity differs —
+  subscription item (`proration_behavior=create_prorations`) only when Stripe's quantity differs, so
   duplicates and races converge (a mark older than 15 minutes counts as lost). A subscription event whose quantity differs from the count schedules a
   sync too (e.g. members joined while Checkout was open, or a quantity edited in Stripe).
 - **Entitlements.** `workspaceEntitlements` reads the workspace's row: in force while active, past due
@@ -201,7 +201,7 @@ checkout and quantity sync, billing permission for admins, end-of-period downgra
   `WORKSPACE_PLANS[*].available` is flipped once Stripe is configured.
 
 *Stripe setup for workspace plans (account owner):* create a product per plan with recurring **per-unit**
-prices — Team $5/month and $49/year, Business $10/month and $99/year — and set
+prices (Team $5/month and $49/year, Business $10/month and $99/year) and set
 `STRIPE_PRICE_WS_TEAM_MONTH`, `STRIPE_PRICE_WS_TEAM_YEAR`, `STRIPE_PRICE_WS_BUSINESS_MONTH`,
 `STRIPE_PRICE_WS_BUSINESS_YEAR` on Convex. The webhook endpoint (`<convex-site>/webhooks/stripe`) must
 send `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`,
@@ -209,7 +209,7 @@ send `checkout.session.completed`, `customer.subscription.created|updated|delete
 create a customer-portal configuration for workspaces that lists only the workspace prices and doesn't
 allow quantity edits, and set its id as `STRIPE_PORTAL_CONFIG_WS`.
 
-**Phase D — Members vs guests.** Roles collapse to owner/admin/member (+ billing flag); Guests list;
+**Phase D: Members vs guests.** Roles collapse to owner/admin/member (+ billing flag); Guests list;
 guest email invites for people without an account (pending share → grant on sign-up/accept); member ↔
 guest conversion; fix the three guest metadata leaks; editors can share pages they can edit; role-based
 settings visibility; delete workspace; ownership rules for leaving and account deletion (require
@@ -217,7 +217,7 @@ transfer or deletion instead of purging other people's content).
 
 *As built (Phase D):*
 - **Roles.** Memberships are `owner | admin | member`; a member has `workspaceMembers.memberAccess`
-  (`edit` — unset — `comment` or `view`), admins keep `canManageBilling`. The role validator still accepts
+  (`edit` when unset, `comment` or `view`), admins keep `canManageBilling`. The role validator still accepts
   `editor | commenter | viewer`, and `normalizeMembership` (`convex/lib/auth.ts`) reads them as member +
   edit / comment / view, so the code is correct before and after `migrations:normalizeWorkspaceRoles`
   rewrites the rows (memberships and invitations; batched, idempotent). Nothing writes the old names;
@@ -234,7 +234,7 @@ transfer or deletion instead of purging other people's content).
   non-restricted page they can edit with anyone, up to "Can edit", and change or remove only the grants
   and invitations they made. Guests never share.
 - **Guest leaks fixed.** `collections.get` gives a guest only the people the page already involves (its
-  creator, the people it's shared with, people named in rows they can see) — never the member list;
+  creator, the people it's shared with, people named in rows they can see), never the member list;
   `documents.get` gives a guest no folder, tag or home-folder names and no parent they can't open;
   `sharing.get` shows a guest only their own access, the page's owner and who shared it. Workspace search
   refuses non-members: guests find shared pages in Shared with Me (no separate guest search).
@@ -251,7 +251,7 @@ transfer or deletion instead of purging other people's content).
   accept they're a member, one seat, and keep their grants), plus pending page invitations.
 - **Member → guest** (`workspaces.convertMemberToGuest`): the membership ends (one seat less); they keep
   every grant they already had, and get a grant at their former access (view → Can view, comment → Can
-  comment, else Can edit) on each page they created (up to 200, not in Trash) — except pages that are
+  comment, else Can edit) on each page they created (up to 200, not in Trash), except pages that are
   restricted, under a restricted page, or have a restricted page (or more than 200 pages) under them, since
   a grant there would open restricted content. Nobody gains access.
 - **Settings by role.** General and Members for everyone (members read); Guests and Import & export for
@@ -262,17 +262,17 @@ transfer or deletion instead of purging other people's content).
   of kind "workspace" 7 days out. Meanwhile it's hidden from members and guests (not found everywhere,
   including their grants) and read-only for the owner, who can cancel (`cancelDeletion`); members get an
   access-change notice (bell + `access_changed` email); pending member invitations are revoked; a paid plan
-  is set to end with its period (`workspaceClosing`; canceling the deletion doesn't resume it — resume in
+  is set to end with its period (`workspaceClosing`; canceling the deletion doesn't resume it; resume in
   Plan & billing). `maintenance.runDeletionJobs` then purges it (a job whose workspace is no longer
   scheduled is marked canceled).
 - **Leaving, account deletion.** The sole owner can't leave (the error and General explain: transfer or
   delete). `users.requestAccountDeletion` refuses while you own a workspace other people are in
   (`users.deletionBlockers` lists them in Settings → Security); owned workspaces nobody else is in are
   purged with the account. If someone joined during the grace period (or support scheduled the deletion),
-  the purge hands the workspace to its longest-standing admin, else member, and tells them — it never
+  the purge hands the workspace to its longest-standing admin, else member, and tells them. It never
   deletes other people's work. Removing a member never touches their Personal or subscription.
 
-**Phase E — tests and final audit** (the 35 scenarios in the spec, as Convex tests plus Playwright for
+**Phase E: tests and final audit** (the 35 scenarios in the spec, as Convex tests plus Playwright for
 the UI paths), then the codebase sweep listed in the spec.
 
 *As built (Phase E):*
@@ -385,8 +385,8 @@ unless noted):
 
 **Migration at any size.**
 - `migrations:verifyAccountModel` starts a background job and returns at once. Each run
-  (`verifyAccountModelRun`, an action) reads at most 10 pages of 500 rows through queries — so it never
-  conflicts with live writes — adds its counts to a `migrationReports` row and schedules the next run. A
+  (`verifyAccountModelRun`, an action) reads at most 10 pages of 500 rows through queries (so it never
+  conflicts with live writes), adds its counts to a `migrationReports` row and schedules the next run. A
   run only saves if the row is still at the stage and cursor it started from, so a duplicate run can't
   count a page twice. `migrations:accountModelReport` returns the latest report: `done`, `ok` (only when
   done and every count is 0), the counts, per-table details, and what it's reading while it runs.
@@ -397,11 +397,11 @@ unless noted):
   the workspace, so they move exactly once. `clearDefaultWorkspaces` (200 per batch) and
   `normalizeWorkspaceRoles` (200 per batch) were already bounded, resumable and idempotent.
 - Test: `migration` › "at scale every step runs in bounded batches, resumes, and the check needs many
-  runs" — a 301-page tree, 25 more top-level pages, 450 old-style memberships and 250 profiles with a
+  runs": a 301-page tree, 25 more top-level pages, 450 old-style memberships and 250 profiles with a
   default workspace: several grants steps (one resumed inside a batch), several move, role and profile
   batches, and a check over small pages that needs more than 10 runs and agrees with one over big pages.
 
-**Later — Mac app.** It syncs one workspace at a time and would stop seeing Personal after Phase B. It
+**Later: Mac app.** It syncs one workspace at a time and would stop seeing Personal after Phase B. It
 isn't distributed yet and Mac work is paused, so it's updated in the Mac catch-up.
 
 ## 3a. Phase B runbook (production migration)
@@ -418,13 +418,13 @@ What `migrations:migratePersonalWorkspaces` does, one personal workspace at a ti
 (`convex/migrations.ts`):
 
 1. **Guests.** Every collaborator (member other than the owner) gets page grants on what they could open
-   — editor/admin → editor, commenter → commenter, viewer → viewer. A grant reaches every page under its
+   (editor/admin → editor, commenter → commenter, viewer → viewer). A grant reaches every page under its
    page, so a page gets one only when nothing under it was less open to that person (restricted pages
    they couldn't open stay closed; a restricted page they created becomes an editor grant; grants they
    already had are kept). Nobody gains access; a page whose subtree holds something they couldn't open
    is left out (logged as `migration.personal_guest_gaps`, to re-share by hand if wanted).
 2. **Move.** Every row in every content table with that `workspaceId` moves to the owner's Personal
-   (`ownerProfileId` set, `workspaceId` removed) — `seq` values unchanged, so change order is kept. Its
+   (`ownerProfileId` set, `workspaceId` removed), with `seq` values unchanged, so change order is kept. Its
    notifications lose the workspace (invitation notices are deleted with the invitations), its AI usage
    rows become Personal.
 3. **Finish.** `changeSeq` → `profiles.personalChangeSeq`, `storageUsedBytes` →
@@ -478,7 +478,7 @@ profile with a default workspace, no personal workspace; every remaining workspa
 **Done (the clean-up commit after the migration).**
 - `profiles.defaultWorkspaceId` is gone from the schema (no production row held it), with the account
   purge's clearing of it and the test assertion.
-- `workspaces.kind`: nothing reads or writes it any more — every personal-workspace guard is gone
+- `workspaces.kind`: nothing reads or writes it any more; every personal-workspace guard is gone
   (`lib/auth.ts` requireWorkspace, `lib/permissions.ts`, `lib/syncEngine.ts` memberScope,
   `workspaces.ts`, `users.ts`, `admin.ts` (the list reads `by_created`; `kind` left the admin responses),
   `adminBilling.ts`, `billing.ts`, `maintenance.ts`), `seed.ts` no longer writes it, and the `by_kind`
@@ -487,7 +487,7 @@ profile with a default workspace, no personal workspace; every remaining workspa
 - Stored member roles are owner | admin | member only: `vWorkspaceRole` lost editor / commenter / viewer,
   `normalizeMembership` lost its legacy branch, `isLegacyRole` and the legacy `BILLABLE_ROLES` keys are
   gone. **Kept on purpose:** `vInviteRole` and `requestedRole` still accept editor / commenter / viewer as
-  *input* (stored as member + access) because the paused Mac app sends them — remove after the Mac
+  *input* (stored as member + access) because the paused Mac app sends them. Remove after the Mac
   catch-up.
 - The Phase B and D migrations (`migratePersonalWorkspaces`, `migratePersonalWorkspace`, the grants /
   move / finish steps, `clearDefaultWorkspaces`, `normalizeWorkspaceRoles`) and
@@ -499,8 +499,8 @@ profile with a default workspace, no personal workspace; every remaining workspa
   old names and still validate), and starting a check keeps only the latest 5 reports
   (`REPORTS_KEPT`).
 - One-off, batched, self-continuing migrations `migrations:dropWorkspaceKind` (unset `kind`) and
-  `migrations:backfillAccountDefaults` (wrote `subscriptions.ownerType` — "workspace" for a row with a
-  workspace and no person, else "user" — then `aiUsage.scope` — "workspace" with a workspace, else
+  `migrations:backfillAccountDefaults` (wrote `subscriptions.ownerType`, "workspace" for a row with a
+  workspace and no person, else "user"; then `aiUsage.scope`, "workspace" with a workspace, else
   "personal"), plus `migrations:refreshLinkingPages` (re-derives the excerpt, preview, search text and
   task titles of every page that links to another page, see §3d; kept). Tests:
   `tests/convex/account-cleanup.test.ts`.
@@ -558,8 +558,8 @@ guest):**
   outside any restriction is open, and only pages under a restricted page go through `documentAccess`
   (restriction walks and verdicts cached per call). Bounds are unchanged (`take(1000)` tasks, `take(2000)`
   per folder / tag, `take(5000)` drafts, 501 trashed pages).
-- *Ids.* `Placement` (`convex/lib/documents.ts`) gives every page summary — `documents.get` / `list` /
-  `children` / `recent` / `recentNotes` / `duplicate` / `daily`, sync push results and `sync.pull` — a
+- *Ids.* `Placement` (`convex/lib/documents.ts`) gives every page summary (`documents.get` / `list` /
+  `children` / `recent` / `recentNotes` / `duplicate` / `daily`, sync push results and `sync.pull`) a
   `folderId` only for someone in the page's scope (never a guest) and a `parentDocumentId` only when the
   reader can open that parent (so a member granted one page under a restricted page doesn't get its id
   either).
@@ -567,8 +567,8 @@ guest):**
   `blocks.deleted`, `sync.pull`, sync push results, version previews (`documents.snapshotContent`),
   exports and the AI's note text rewrite every page link (page blocks' `titleCache` / `iconCache`, inline
   and table-cell `pageLink` labels) to the target's current title and icon when the reader can open it,
-  and to "Page you can't open" (no icon) otherwise. Text everyone reading a page sees — its excerpt, card
-  preview, search text, task titles — and public links use a target's title only when it's in the same
+  and to "Page you can't open" (no icon) otherwise. Text everyone reading a page sees (its excerpt, card
+  preview, search text, task titles) and public links use a target's title only when it's in the same
   scope and not under a restricted page. The rename path (`refreshLinkLabels`) no longer writes a title
   into a page unless that holds (and the block's last writer can open the target).
   `migrations:refreshLinkingPages` recomputes text derived before this change (§3b).
@@ -622,7 +622,7 @@ guest):**
 - Phase B has no dual-read window: between deploying and migrating, Personal looks empty. The runbook
   keeps the site read-only through that window (minutes at production's size).
 - A Personal change stamps the owner's profile row (`personalChangeSeq`). Every query that reads the
-  profile (most do, through `requireProfile`) re-runs on each Personal edit — the same fan-out a workspace
+  profile (most do, through `requireProfile`) re-runs on each Personal edit, the same fan-out a workspace
   edit already had through the workspace row. If it shows up in costs, the counter can move to its own
   table without changing the protocol.
 - Collaborators in someone's Personal keep access only to pages whose whole subtree they could open;

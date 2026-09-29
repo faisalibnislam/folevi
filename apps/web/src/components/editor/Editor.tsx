@@ -62,7 +62,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   const engineBlocksMap = useCallback(() => new Map(engine.documentBlocks(documentId).map((b) => [b.id, b])), [engine, documentId]);
 
   // Fractional ranks grow when blocks are repeatedly inserted between the same neighbours. When one gets
-  // long, ask the server to re-space that sibling list — once our own queued changes have synced.
+  // long, ask the server to re-space that sibling list once our own queued changes have synced.
   const rebalance = useMutation(api.blocks.rebalance);
   const rebalanceParents = useRef(new Set<string | null>());
   const runRebalance = useCallback(() => {

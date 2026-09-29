@@ -52,7 +52,7 @@ export function authErrorMessage(error: AuthErrorLike, fallback = "Something wen
       return "New sign-ups are paused right now. Please try again later.";
     case "ACCOUNT_TEMPORARILY_LOCKED":
     case "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE":
-      return "Too many incorrect codes. For your security this account is locked for a while — try again later or reset your password.";
+      return "Too many incorrect codes. For your security this account is locked for a while. Try again later or reset your password.";
     default:
       return error.message && !/internal/i.test(error.message) ? error.message : fallback;
   }

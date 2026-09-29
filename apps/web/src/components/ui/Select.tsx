@@ -86,7 +86,7 @@ export function Select({
   const button = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const typed = useRef({ text: "", at: 0 });
-  // The list renders at the end of the enclosing modal dialog (so it isn't inert) or <body> — never
+  // The list renders at the end of the enclosing modal dialog (so it isn't inert) or <body>, never
   // inside a <label>, whose clicks would re-open it.
   const [host, setHost] = useState<HTMLElement | null>(null);
   const uid = useId();

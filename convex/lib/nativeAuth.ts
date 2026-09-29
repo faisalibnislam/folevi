@@ -8,7 +8,7 @@
 //      hash) bound to the person, the client, the redirect URI and the PKCE challenge, for two minutes.
 //   3. The page sends the browser to redirect_uri?code=…&state=…, which only the app receives.
 //   4. The app calls POST /native/token with the code and its PKCE verifier. The code is consumed
-//      atomically; if everything matches, Better Auth creates a brand-new session for the app — its own
+//      atomically; if everything matches, Better Auth creates a brand-new session for the app: its own
 //      device, listed and revocable in Settings → Devices, counted for the plan's device limit.
 //   5. The app keeps that session token in the Keychain and sends it as `Authorization: Bearer …` (the
 //      bearer plugin) to /convex/token for short-lived Convex JWTs, and to /sign-out.

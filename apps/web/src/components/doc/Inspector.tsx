@@ -738,10 +738,10 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           <p className="mt-1.5 px-0.5 text-[11.5px] text-faint">{COVER_IMAGE_HINT}</p>
           <p className="mt-2 px-0.5 text-xs text-muted">
             {art
-              ? `${art.name} — the cover and page background; Auto colours come from it.`
+              ? `${art.name}: the cover and page background. Auto colours come from it.`
               : ownImage
-                ? "Your image — the cover and page background; Auto colours are picked from it."
-                : "Plain — a very light grey page background, no cover."}
+                ? "Your image: the cover and page background. Auto colours are picked from it."
+                : "Plain: a very light grey page background, no cover."}
           </p>
         </StyleRow>
       </fieldset>
@@ -893,17 +893,17 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           <div className="flex items-center gap-2">
             <CalendarDays size={14} className="flex-none text-faint" aria-hidden />
             <dt className="text-muted">Created:</dt>
-            <dd className="min-w-0 truncate" title={info ? formatDateTime(info.createdAt) : undefined}>{info ? formatRelative(info.createdAt) : "—"}</dd>
+            <dd className="min-w-0 truncate" title={info ? formatDateTime(info.createdAt) : undefined}>{info ? formatRelative(info.createdAt) : "-"}</dd>
           </div>
           <div className="flex items-center gap-2">
             <Pencil size={14} className="flex-none text-faint" aria-hidden />
             <dt className="text-muted">Updated:</dt>
-            <dd className="min-w-0 truncate">{info ? `${formatRelative(info.updatedAt)} by ${info.lastEditedBy}` : "—"}</dd>
+            <dd className="min-w-0 truncate">{info ? `${formatRelative(info.updatedAt)} by ${info.lastEditedBy}` : "-"}</dd>
           </div>
           <div className="flex items-center gap-2">
             <UserRound size={14} className="flex-none text-faint" aria-hidden />
             <dt className="text-muted">Author:</dt>
-            <dd className="min-w-0 truncate">{info?.createdBy ?? "—"}</dd>
+            <dd className="min-w-0 truncate">{info?.createdBy ?? "-"}</dd>
           </div>
         </dl>
       </section>
@@ -917,7 +917,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           ].map(([label, value, title]) => (
             <div key={label} className="rounded-[6px] bg-sunken/70 px-2.5 py-2" title={title}>
               <dt className="text-[11px] text-muted">{label}</dt>
-              <dd className="text-[15px] font-semibold tabular-nums text-heading">{value ?? "—"}</dd>
+              <dd className="text-[15px] font-semibold tabular-nums text-heading">{value ?? "-"}</dd>
             </div>
           ))}
         </dl>
@@ -934,7 +934,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           <option value="">Drafts</option>
           {org?.folders.map((f) => (
             <option key={f.id} value={f.id}>
-              {f.parentFolderId ? "— " : ""}
+              {f.parentFolderId ? "- " : ""}
               {f.name}
             </option>
           ))}
@@ -950,7 +950,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
                 {parent.title || "Untitled"}
               </>
             ) : (
-              <span className="text-muted">None — top level</span>
+              <span className="text-muted">None (top level)</span>
             )}
           </p>
           {!disabled ? (

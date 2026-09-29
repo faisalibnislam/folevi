@@ -50,7 +50,7 @@ export interface NoteHome {
 }
 
 /**
- * AI where you are — the current context (Personal or a team workspace), or `note`'s home (a note may be
+ * AI where you are: the current context (Personal or a team workspace), or `note`'s home (a note may be
  * open from elsewhere: shared from someone's Personal or another workspace). The server decides again on
  * every request.
  */

@@ -1,5 +1,5 @@
-// The AI flowchart contract. Gemini is asked for strict JSON — nodes (id, shape, text, colour) and edges
-// (from, to, label, style, arrow), no coordinates — and whatever comes back is parsed and sanitised here
+// The AI flowchart contract. Gemini is asked for strict JSON: nodes (id, shape, text, colour) and edges
+// (from, to, label, style, arrow), no coordinates. Whatever comes back is parsed and sanitised here
 // before it leaves the server: unknown shapes become processes, strings are trimmed to their limits,
 // dangling or duplicate connectors dropped, and the size capped. The client validates it again, sizes the
 // shapes to their labels and lays the chart out.

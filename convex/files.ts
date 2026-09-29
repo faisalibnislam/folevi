@@ -33,7 +33,7 @@ export const generateUploadUrl = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    // Uploading into a page needs write access to that page, and the file belongs to the page's scope —
+    // Uploading into a page needs write access to that page, and the file belongs to the page's scope,
     // so someone a page was shared with ("Can edit") can add images to it without being in its
     // workspace (or being its Personal's owner). Uploads not tied to a page need to be able to edit there.
     let scope: Scope;
@@ -227,7 +227,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 
 /**
  * Saves the page and text colours picked (in the browser) from a note style image. Only colours are
- * accepted — six-digit hex values and a tone — and only by someone who can edit the note it belongs to.
+ * accepted (six-digit hex values and a tone), and only by someone who can edit the note it belongs to.
  */
 export const setPalette = mutation({
   args: { fileId: v.string(), palette: vImagePalette },

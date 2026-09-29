@@ -89,8 +89,8 @@ export function DailyChart({
   const latest = latestIndex >= 0 ? (values[latestIndex] ?? null) : null;
   const summary = hasData
     ? kind === "bar"
-      ? `${title}, last ${days} days: ${total} ${unit} in total, peak ${peak} on ${peakDate ? shortDate(peakDate) : "—"}.`
-      : `${title}, last ${days} days: ${present.length} days recorded, latest ${latest ?? "—"}, peak ${peak}.`
+      ? `${title}, last ${days} days: ${total} ${unit} in total, peak ${peak}${peakDate ? ` on ${shortDate(peakDate)}` : ""}.`
+      : `${title}, last ${days} days: ${present.length} days recorded, latest ${latest ?? "none"}, peak ${peak}.`
     : `${title}: ${emptyMessage}`;
 
   // Line segments broken at gaps.
@@ -210,7 +210,7 @@ export function DailyChart({
                   <th scope="row" className="py-0.5 text-left font-normal">
                     {shortDate(d)}
                   </th>
-                  <td className="py-0.5 text-right tabular-nums">{values[i] ?? "—"}</td>
+                  <td className="py-0.5 text-right tabular-nums">{values[i] ?? "No data"}</td>
                 </tr>
               ))}
             </tbody>

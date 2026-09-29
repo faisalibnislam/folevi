@@ -324,7 +324,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   // Save state lives in the sidebar; on phones (sidebar is a drawer) it shows here instead.
   const sync = drawerMode ? <SyncStatus documentId={route.name === "doc" ? route.id : undefined} /> : null;
   // No title bar: the page's name is in its tab and read to screen readers (a visually hidden h1). Only
-  // real content remains in a plain row (no box) — a view's facts and actions, a note's breadcrumb, and on
+  // real content remains in a plain row (no box): a view's facts and actions, a note's breadcrumb, and on
   // phones the drawer toggle and save state.
   const showTitle = route.name === "doc";
   const drawerToggle = !sidebarOpen && drawerMode;

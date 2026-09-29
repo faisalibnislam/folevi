@@ -41,8 +41,8 @@ export function BillingSection() {
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("checkout");
-    if (q === "success") toast.show("Thanks! Your plan is being activated — it can take a moment.", { tone: "success" });
-    if (q === "canceled") toast.show("Checkout canceled — nothing was charged.");
+    if (q === "success") toast.show("Thanks! Your plan is being activated. It can take a moment.", { tone: "success" });
+    if (q === "canceled") toast.show("Checkout canceled. Nothing was charged.");
     if (q) window.history.replaceState(null, "", window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,7 +98,7 @@ export function BillingSection() {
                   : e.paid && sub?.currentPeriodEnd
                     ? sub.cancelAtPeriodEnd
                       ? `Ends ${dateOnly(sub.currentPeriodEnd)}. Your ${current.name} features remain available until then.`
-                      : `${sub.provider === "manual" ? "Set by the Folevi team — runs until" : "Renews"} ${dateOnly(sub.currentPeriodEnd)}.`
+                      : `${sub.provider === "manual" ? "Set by the Folevi team until" : "Renews"} ${dateOnly(sub.currentPeriodEnd)}.`
                     : e.paid && sub?.provider === "manual"
                       ? "Set by the Folevi team."
                       : current.blurb}
@@ -145,7 +145,7 @@ export function BillingSection() {
                   : e.trialing
                     ? "Unlimited during your Pro trial."
                     : "Unlimited on Pro."
-                : "Part of Pro — write, summarize and ask your notes anything in Personal."}
+                : "Part of Pro: write, summarize and ask your notes anything in Personal."}
             </p>
             {e.ai ? <p className="mt-2 text-[12.5px] text-faint">{data.aiRequestsThisMonth.toLocaleString()} requests this month</p> : null}
           </div>
@@ -231,7 +231,7 @@ export function BillingSection() {
         </div>
         {!data.checkoutAvailable ? (
           <p className="mt-3 text-[12.5px] text-faint">
-            {data.testPurchases ? "Payments aren't connected yet, so upgrades here are test purchases (development only) — nothing is charged." : "Online payments are coming soon."}
+            {data.testPurchases ? "Payments aren't connected yet, so upgrades here are test purchases (development only), and nothing is charged." : "Online payments are coming soon."}
           </p>
         ) : null}
       </Card>

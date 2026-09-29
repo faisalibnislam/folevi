@@ -1,5 +1,5 @@
-// Test/development support. Internal functions only — callable with deployment credentials through the
-// Convex CLI (`npx convex run testSupport:…`), never from browsers — and they refuse to run on a
+// Test/development support. Internal functions only, callable with deployment credentials through the
+// Convex CLI (`npx convex run testSupport:…`), never from browsers. They also refuse to run on a
 // production deployment.
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
@@ -34,7 +34,7 @@ export const endTrial = internalMutation({
   },
 });
 
-/** Sets (or clears, with null) someone's device limit — for trying the device-limit screen locally. */
+/** Sets (or clears, with null) someone's device limit, for trying the device-limit screen locally. */
 export const setDeviceLimit = internalMutation({
   args: { email: v.string(), devices: v.union(v.number(), v.literal("unlimited"), v.null()) },
   handler: async (ctx, args) => {
@@ -55,7 +55,7 @@ export const setDeviceLimit = internalMutation({
 });
 
 /**
- * Adds another signed-in "device" (an auth session) for someone, dated before their other sessions — so the
+ * Adds another signed-in "device" (an auth session) for someone, dated before their other sessions, so the
  * browser they're using becomes the newest device, e.g. to see the device-limit screen locally.
  */
 export const addDemoDevice = internalMutation({
@@ -307,7 +307,7 @@ export const seedDemoNotes = internalMutation({
     const now = Date.now();
     for (let i = 0; i < batch; i++) {
       const topic = TOPICS[Math.floor(rand() * TOPICS.length)]!;
-      const title = `${topic} ${NOTE_KINDS[Math.floor(rand() * NOTE_KINDS.length)]!.toLowerCase()}${rand() < 0.4 ? ` — ${["spring", "week 12", "v2", "draft", "October", "Q3", "kickoff"][Math.floor(rand() * 7)]}` : ""}`;
+      const title = `${topic} ${NOTE_KINDS[Math.floor(rand() * NOTE_KINDS.length)]!.toLowerCase()}${rand() < 0.4 ? ` (${["spring", "week 12", "v2", "draft", "October", "Q3", "kickoff"][Math.floor(rand() * 7)]})` : ""}`;
       const daysAgo = Math.floor(rand() * 120);
       const updatedAt = now - daysAgo * 86_400_000 - Math.floor(rand() * 86_400_000);
       const nested = rand() < 0.08 && parents.length > 0;

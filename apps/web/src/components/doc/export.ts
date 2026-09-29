@@ -6,7 +6,7 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { loadKatex } from "@/components/editor/richRender";
 
-/** What an export left out (shown to the person — nothing is dropped silently). */
+/** What an export left out (shown to the person, so nothing is dropped silently). */
 export interface ExportReport {
   /** Attachments that couldn't be fetched (names), kept as links without a file. */
   missingAssets: string[];

@@ -97,7 +97,7 @@ function TwoStepCard() {
       description="Folevi asks for a code from your authenticator app every time you sign in on a new device."
     >
       <p className="flex items-center gap-2 text-sm font-medium text-success">
-        <ShieldCheck size={16} aria-hidden /> On — authenticator app
+        <ShieldCheck size={16} aria-hidden /> On (authenticator app)
       </p>
       <p className="mt-2 text-xs text-muted">
         When you tick “Trust this device for 30 days” while signing in, that browser skips the code for 30 days. Signing out, revoking the session below, or changing your

@@ -48,7 +48,7 @@ export const recordDevMail = internalMutation({
 });
 
 /**
- * Recent identity emails for one address — development and preview only. The caller must present the
+ * Recent identity emails for one address, for development and preview only. The caller must present the
  * deployment's FOLEVI_DEV_MAILBOX_SECRET (held server-side by the Next.js dev mailbox route), so the
  * links are not readable by arbitrary clients even outside production.
  */

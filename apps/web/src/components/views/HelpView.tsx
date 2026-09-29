@@ -30,7 +30,7 @@ const STATUSES: [string, string][] = [
   ["Saved", "Every change has been confirmed by the server."],
   ["Saving…", "Your latest changes are on their way."],
   ["Syncing…", "Waiting for the server to confirm."],
-  ["Offline", "Keep writing — changes are stored on this device and sync when you reconnect."],
+  ["Offline", "Keep writing. Changes are stored on this device and sync when you reconnect."],
   ["Conflict", "The same block changed in two places. Both versions are kept until you choose."],
   ["Not saved", "The server rejected a change, or you need to sign in again. Open the status for details."],
 ];

@@ -1,6 +1,6 @@
 // Image from Unsplash (Insert panel). Searches run on the server with the deployment's own access key
 // (UNSPLASH_ACCESS_KEY, never exposed to browsers), rate-limited per profile. Chosen photos are hotlinked
-// from images.unsplash.com and credited, and their download is reported to Unsplash — both required by
+// from images.unsplash.com and credited, and their download is reported to Unsplash. Both are required by
 // the Unsplash API guidelines (https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines).
 import { v } from "convex/values";
 import { action, internalMutation } from "./_generated/server";

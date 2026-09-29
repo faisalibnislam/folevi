@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: { absolute: "Folevi" }, robots: { ind
 /**
  * Every product URL (/documents, /d/:id, /tasks/today, /settings/security, …) renders the same client
  * shell; routing inside it is client-side so the app keeps working offline. The HTML carries no
- * private data — everything is loaded through the authenticated Convex connection.
+ * private data. Everything is loaded through the authenticated Convex connection.
  */
 export default async function ProductPage({ params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;

@@ -120,7 +120,7 @@ export const DEFAULT_COVER: DocumentCover = { kind: "none" };
 /** Number of note styles (artworks "art-01" … "art-57"; packages/design-tokens/covers). */
 export const NOTE_STYLE_COUNT = 57;
 
-/** A random note style for a new note (Plain is only ever chosen by hand). */
+/** A random note style (test and sample data; new notes start Plain). */
 export function randomNoteCover(random: () => number = Math.random): DocumentCover {
   const n = 1 + Math.floor(random() * NOTE_STYLE_COUNT);
   return { kind: "art", value: `art-${String(Math.min(n, NOTE_STYLE_COUNT)).padStart(2, "0")}` };

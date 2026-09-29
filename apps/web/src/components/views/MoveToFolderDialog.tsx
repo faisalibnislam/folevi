@@ -20,7 +20,7 @@ interface Option {
 
 /**
  * Picks a folder (or Drafts) to move notes into: a search field over the workspace's folders with the
- * results as a listbox — type to filter, ↑/↓ to choose, Enter to move. The folder the notes are already
+ * results as a listbox (type to filter, ↑/↓ to choose, Enter to move). The folder the notes are already
  * in (when they share one) is marked and can't be picked.
  */
 export function MoveToFolderDialog({

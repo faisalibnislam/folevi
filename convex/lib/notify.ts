@@ -104,7 +104,7 @@ export const BURST_WINDOW_MS = 10 * 60_000;
  *   the earlier notification instead of adding another, and sends no further email.
  * - A kind turned off for the bell is still recorded (hidden, `silent`) when email or the digest wants it.
  *
- * `excerpt` is shown in-app only. Emails never carry note or comment text — just who, where and a link.
+ * `excerpt` is shown in-app only. Emails never carry note or comment text. They carry who, where and a link.
  */
 export async function notify(
   ctx: MutationCtx,

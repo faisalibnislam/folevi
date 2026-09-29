@@ -668,7 +668,7 @@ const CONVERT_PAGE_LIMIT = 200;
 
 /**
  * Whether a grant on `root` reaches no restricted page (a grant would open it). A subtree bigger than we
- * check counts as "no" — never over-granted.
+ * check counts as "no", so nothing is over-granted.
  */
 async function subtreeUnrestricted(ctx: MutationCtx, root: Doc<"documents">): Promise<boolean> {
   const queue: Id<"documents">[] = [root._id];
@@ -702,7 +702,7 @@ async function underRestricted(ctx: MutationCtx, doc: Doc<"documents">): Promise
  * they keep, as page grants:
  *   - every grant they already had in this workspace;
  *   - a grant on each page they created (up to 200, not in the Trash) at their former access (view only →
- *     Can view, comment → Can comment, otherwise Can edit) — unless the page, a page above it or a page
+ *     Can view, comment → Can comment, otherwise Can edit), unless the page, a page above it or a page
  *     under it is restricted, since a grant there would reach restricted content. Those can be shared with
  *     them again from the page's Share dialog.
  * Nobody gains access they didn't have. Their Personal and subscription aren't touched.

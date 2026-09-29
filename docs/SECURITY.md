@@ -54,7 +54,7 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   it first; `users.deletionBlockers`). 7-day grace period (cancellable by signing in), then a bounded
   server-side cascade that deletes the Personal, owned workspaces nobody else is in, the credentials,
   sessions and two-step data. A workspace someone joined during the grace period (or when support
-  scheduled the deletion) passes to its longest-standing admin, else member — other people's work is never
+  scheduled the deletion) passes to its longest-standing admin, else member. Other people's work is never
   deleted. A confirmation email is sent.
 
 ## Authorization
@@ -76,7 +76,7 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   members (tasks, folders, tags, drafts, Trash) include only pages they can open (`PageReader` in
   `convex/lib/auth.ts`); guests get no folder ids and nobody gets the id of a parent page they can't open
   (`Placement` in `convex/lib/documents.ts`); and a link to a page is served with its current title only
-  to readers who can open it — everyone else sees "Page you can't open" — while text derived from a page
+  to readers who can open it (everyone else sees "Page you can't open"), while text derived from a page
   (excerpt, card preview, search text, task titles) and public links show only titles of unrestricted
   pages in the same Personal or workspace, never a restricted page's (`convex/lib/linkLabels.ts`;
   `tests/convex/privacy-gaps.test.ts`).
@@ -100,7 +100,7 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   `Referrer-Policy: no-referrer` and `no-store`, and are revocable instantly. After a visitor enters a
   link's password, the share page keeps only a sealed unlock grant (AES-256-GCM under a key derived from
   `FOLEVI_SERVER_SECRET`, bound to that link, expiring after 30 minutes) in an HTTP-only, SameSite=Strict
-  cookie scoped to the link — never the raw password, never in the URL. The password is re-checked by
+  cookie scoped to the link: never the raw password, never in the URL. The password is re-checked by
   Convex on every load, so changing it invalidates old grants.
 - Presence and notifications are only visible to people who can read the document.
 
@@ -136,7 +136,7 @@ Exhausted windows are recorded in `rateLimitEvents` and every rejection is logge
 
 ## Logging and privacy
 
-- Structured logs contain ids, statuses and codes only — never note text, titles, attachment contents,
+- Structured logs contain ids, statuses and codes only, never note text, titles, attachment contents,
   tokens, passwords, TOTP data or full email addresses (static test enforced). Next.js routes log through
   `apps/web/src/lib/server/log.ts`: one JSON line per request with a request id (from `x-request-id` /
   `x-vercel-id` or generated, echoed back as `x-request-id`), and an allow-list redactor that drops
@@ -151,7 +151,7 @@ Exhausted windows are recorded in `rateLimitEvents` and every rejection is logge
 ## Encryption
 
 Traffic is encrypted in transit (TLS/HSTS). Data at rest is encrypted by the infrastructure providers
-(Convex, Vercel, Mailtrap). Folevi is **not** end-to-end encrypted — server-side search, sharing,
+(Convex, Vercel, Mailtrap). Folevi is **not** end-to-end encrypted: server-side search, sharing,
 exports and abuse handling require the server to process content.
 
 ## Data retention
@@ -179,7 +179,7 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 | --- | --- | --- |
 | Convex | Database, backend functions, file storage, accounts (Better Auth runs here) | Account, workspace and document data, files, password hashes, encrypted two-step secrets, sessions |
 | Vercel | Web hosting | Request metadata, logs |
-| Mailtrap | Transactional email delivery (open/click tracking off) | Recipient email and the rendered email (names, titles, links — no note bodies) |
+| Mailtrap | Transactional email delivery (open/click tracking off) | Recipient email and the rendered email (names, titles, links; no note bodies) |
 | Google (Gemini API) | AI Assistant, only when used | The request and the notes it needs (not stored or used for training) |
 | Stripe | Payments for paid personal and workspace plans (not configured yet) | Billing email, plan, seat quantity, payment status; card details stay with Stripe |
 

@@ -1,4 +1,4 @@
-// Admin: people's plans, payments and AI access. Same rules as convex/admin.ts — platform roles checked on
+// Admin: people's plans, payments and AI access. Same rules as convex/admin.ts: platform roles checked on
 // the server, a reason for every change, and an audit record for every read and write. Money moves only
 // through the payment provider; here admins set plans by hand (e.g. comps, fixes) and record refunds.
 import { v } from "convex/values";
@@ -97,7 +97,7 @@ export const setPlan = mutation({
     const p = await targetProfile(ctx, args.profileId);
     const sub = await ensureSubscription(ctx, p._id);
     const paid = isPaidPlan(personalPlanId(args.plan, args.interval));
-    if (sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval))) fail("invalid_argument", "This plan is billed through Stripe — change or cancel it there, then set it here if needed.");
+    if (sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval))) fail("invalid_argument", "This plan is billed through Stripe. Change or cancel it there, then set it here if needed.");
     if (args.until !== undefined && args.until !== null && args.until <= Date.now()) fail("invalid_argument", "The end date must be in the future.");
     const before = snapshot(sub);
     const now = Date.now();
@@ -233,7 +233,7 @@ const workspaceSnapshot = (s: WorkspaceSubscription) => ({
 
 /**
  * Sets a team workspace's plan by hand (a comp, an offline purchase, or a plan before online payments are
- * set up). Nobody is charged; seats are counted but not billed. `until` (ms) ends it — after that the hourly
+ * set up). Nobody is charged; seats are counted but not billed. `until` (ms) ends it. After that the hourly
  * job moves the workspace to Workspace Free; without it the plan has no end date. Plans billed through
  * Stripe are changed in Stripe instead.
  */
@@ -250,7 +250,7 @@ export const setWorkspacePlan = mutation({
     const sub = await ensureWorkspaceSubscription(ctx, w._id);
     const now = Date.now();
     const stripeLive = sub.provider === "stripe" && isPaidPlan(sub.planId) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now);
-    if (stripeLive) fail("invalid_argument", "This workspace is billed through Stripe — change or cancel it there, then set it here if needed.");
+    if (stripeLive) fail("invalid_argument", "This workspace is billed through Stripe. Change or cancel it there, then set it here if needed.");
     if (args.until !== undefined && args.until !== null && args.until <= now) fail("invalid_argument", "The end date must be in the future.");
     const paid = isPaidPlan(args.planId);
     const before = workspaceSnapshot(sub);

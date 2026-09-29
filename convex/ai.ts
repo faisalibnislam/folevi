@@ -1,16 +1,16 @@
 // Folevi's AI assistant, backed by Google Gemini (server-side only: the key never reaches a browser).
 //
-//   ai.ask    — answer a question from the person's own notes (optionally focused on one note), with the
+//   ai.ask:     answer a question from the person's own notes (optionally focused on one note), with the
 //               notes it drew on as sources. Retrieval: Gemini turns the question into search terms, the
 //               scope's full-text index (Personal or a workspace) finds notes, and only notes this person
 //               can read are used.
-//   ai.write  — writing help: rewrite a selection (improve, fix, shorten, …), or write from a note (summary,
+//   ai.write:   writing help: rewrite a selection (improve, fix, shorten, …), or write from a note (summary,
 //               continuation, outline, action items, title) or from an instruction.
-//   ai.flowchart — a flowchart block from a description, or the current flowchart changed as asked (strict
+//   ai.flowchart: a flowchart block from a description, or the current flowchart changed as asked (strict
 //               JSON, sanitised before it's returned; the client lays it out).
 //
 // Privacy: note text goes to Google only when a person asks for AI help, and only the notes that request
-// needs. Prompts, note text and answers are never logged — only the event, model and status.
+// needs. Prompts, note text and answers are never logged. Only the event, model and status are.
 import { v } from "convex/values";
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -138,7 +138,7 @@ async function gemini(req: GeminiRequest, onDelta?: (textSoFar: string) => Promi
     console.warn(JSON.stringify({ event: "ai.error", model: m, status: res.status }));
     if (res.status !== 429 && res.status !== 503 && res.status !== 500) break;
   }
-  if (lastStatus === 429) fail("rate_limited", "The AI is busy right now — try again in a minute.");
+  if (lastStatus === 429) fail("rate_limited", "The AI is busy right now. Try again in a minute.");
   if (lastStatus === 400 || lastStatus === 403) fail("maintenance", "The AI Assistant isn't available right now (the server's AI key was refused).");
   fail("maintenance", "The AI Assistant couldn't be reached. Try again shortly.");
 }
@@ -260,7 +260,7 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
  * Auth, scope access, whether AI is included where it's asked for, and a per-person budget (the free
  * Gemini tier is shared by everyone). The scope decides: Personal follows the person's Personal plan; a
  * team workspace follows that workspace's plan, for its members only. A request about one note (`noteOnly`) is made in that
- * note's scope; otherwise in the scope given — and, when it also reads a note from elsewhere, AI must be
+ * note's scope; otherwise in the scope given. When it also reads a note from elsewhere, AI must be
  * included there too, so one scope's plan never covers another's content.
  */
 export const begin = internalMutation({
@@ -506,7 +506,7 @@ export const write = action({
       text && !SELECTION_TASKS.has(task) ? `<selected>\n${text}\n</selected>` : "",
       instruction ? `Request: ${instruction}` : "",
       `Task: ${job}`,
-      SELECTION_TASKS.has(task) && task !== "explain" && task !== "summarizeText" ? "Reply with the rewritten text only — no preamble, no quotes." : "Reply with the content only — no preamble.",
+      SELECTION_TASKS.has(task) && task !== "explain" && task !== "summarizeText" ? "Reply with the rewritten text only. No preamble, no quotes." : "Reply with the content only. No preamble.",
     ].filter(Boolean);
     const out = await streamed(ctx, args.streamId, {
       system: PERSONA,
@@ -520,8 +520,8 @@ export const write = action({
 
 /**
  * Flowchart help for a flowchart block: "create" draws one from a description, "update" applies an
- * instruction to the current chart (`current`, the block's data). Returns a sanitised draft — nodes and
- * connectors without positions — that the client lays out and applies as one undoable change.
+ * instruction to the current chart (`current`, the block's data). Returns a sanitised draft (nodes and
+ * connectors without positions) that the client lays out and applies as one undoable change.
  */
 export const flowchart = action({
   args: {
@@ -602,12 +602,12 @@ export const brief = action({
     const today = /^\d{4}-\d{2}-\d{2}$/.test(args.today) ? args.today : new Date().toISOString().slice(0, 10);
     const { notes, tasks } = await ctx.runQuery(internal.ai.recent, { scope: args.scope, today });
     if (!notes.length && !tasks.length) {
-      const answer = "Nothing new this week — no recently edited notes or open tasks yet.";
+      const answer = "Nothing new this week: no recently edited notes or open tasks yet.";
       if (args.streamId) await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: answer, status: "done" });
       return { answer, sources: [] };
     }
     const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
-    const taskList = tasks.map((t) => `- ${t.title}${t.due ? ` (due ${t.due})` : ""} — in "${t.note}"`).join("\n");
+    const taskList = tasks.map((t) => `- ${t.title}${t.due ? ` (due ${t.due})` : ""}, in "${t.note}"`).join("\n");
     const answer = await streamed(ctx, args.streamId, {
       system: `${PERSONA} You write a short, friendly catch-up brief for someone opening their notes app. Cite notes with [n].`,
       prompt: `Today is ${today}.\n\n<recent_notes>\n${sources || "(none)"}\n</recent_notes>\n\n<open_tasks>\n${taskList || "(none)"}\n</open_tasks>\n\nWrite the brief: "## This week" with 2-4 bullets on what they've been working on (cite notes), then "## Up next" with the most important open tasks (overdue or due soon first, say when), at most 5. Under 170 words. No greeting, no sign-off.`,

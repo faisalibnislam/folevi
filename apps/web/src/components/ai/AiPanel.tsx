@@ -333,7 +333,7 @@ export function AiPanel({
         </section>
       ) : null}
 
-      <p className="px-1 text-[11px] leading-snug text-faint">AI can make mistakes — check what it writes. Your request and the notes it needs are sent to Google Gemini.</p>
+      <p className="px-1 text-[11px] leading-snug text-faint">AI can make mistakes, so check what it writes. Your request and the notes it needs are sent to Google Gemini.</p>
     </div>
   );
 }

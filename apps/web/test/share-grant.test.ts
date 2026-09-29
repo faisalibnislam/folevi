@@ -5,7 +5,7 @@ vi.mock("server-only", () => ({}));
 const { openGrant, sealGrant, GRANT_TTL_MS } = await import("@/app/s/[token]/grant");
 
 const SECRET = "s".repeat(64);
-const TOKEN = "AbCdEfGhIjKlMnOpQrStUvWx123"; // gitleaks:allow — a made-up share-link token for this test
+const TOKEN = "AbCdEfGhIjKlMnOpQrStUvWx123"; // gitleaks:allow (a made-up share-link token for this test)
 
 describe("share unlock grant", () => {
   test("round-trips for the same link, never contains the password in the clear", () => {

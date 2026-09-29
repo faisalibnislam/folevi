@@ -3,7 +3,7 @@ import { EMAIL_BRAND_BASE_URL, emailManifest } from "./manifest";
 import type { RenderedEmail, TemplateKey, VariableSpec } from "./types";
 import { validateDataVariables } from "./validate";
 
-/** Thrown when a template can't be rendered. `errors` name variables and rules only — never values. */
+/** Thrown when a template can't be rendered. `errors` name variables and rules only, never values. */
 export class EmailRenderError extends Error {
   readonly errors: string[];
   constructor(errors: string[]) {
@@ -29,7 +29,7 @@ export function escapeHtml(value: string): string {
 
 /**
  * The logo base: an https URL (production, or EMAIL_BRAND_BASE_URL on a deployment) or, for local
- * previews only, a relative path. Anything else — other schemes, credentials, quotes — is refused.
+ * previews only, a relative path. Anything else (other schemes, credentials, quotes) is refused.
  */
 export function normaliseBrandBaseUrl(value: string): string {
   const trimmed = value.trim().replace(/\/+$/, "");

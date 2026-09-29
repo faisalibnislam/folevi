@@ -34,7 +34,7 @@ export function VersionHistory({ open, onClose, documentId, canRestore }: { open
     }
   }
   return (
-    <Dialog open={open} onClose={() => { setSelected(null); setConfirm(false); onClose(); }} title="Version history" description="Versions are saved after a pause in editing and when you close a page — not on every keystroke." size="lg">
+    <Dialog open={open} onClose={() => { setSelected(null); setConfirm(false); onClose(); }} title="Version history" description="Versions are saved after a pause in editing and when you close a page, not on every keystroke." size="lg">
       <div className="grid min-h-[50vh] gap-4 md:grid-cols-[220px_1fr]">
         <div>
           {canRestore ? (

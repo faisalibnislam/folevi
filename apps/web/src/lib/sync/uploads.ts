@@ -12,7 +12,7 @@ export async function sha256Hex(blob: Blob): Promise<string> {
 }
 
 /**
- * Uploads one file right away (online only) and returns its file id — for imports, where the file must
+ * Uploads one file right away (online only) and returns its file id, for imports where the file must
  * exist before the document that references it is created. With a `documentId` the page's scope decides
  * where it's stored; without one it goes to `scope`. Errors carry the server's message.
  */

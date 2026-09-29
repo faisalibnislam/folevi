@@ -119,7 +119,7 @@ export function replaceCurrent(editor: Editor, replacement: string): boolean {
   const m = s.matches[s.index];
   if (!m || !editor.isEditable) return false;
   const tr = replacement ? editor.state.tr.insertText(replacement, m.from, m.to) : editor.state.tr.delete(m.from, m.to);
-  // The replaced text is no longer a match, so the same index is now the next one — unless the
+  // The replaced text is no longer a match, so the same index is now the next one, unless the
   // replacement itself contains the query, in which case step past it.
   const stillMatches = s.caseSensitive ? replacement.includes(s.query) : replacement.toLocaleLowerCase().includes(s.query.toLocaleLowerCase());
   tr.setSelection(TextSelection.create(tr.doc, m.from + replacement.length));

@@ -1,11 +1,11 @@
-// Labels of links between pages. A page link stores the title its writer saw — page blocks in
+// Labels of links between pages. A page link stores the title its writer saw (page blocks in
 // `props.titleCache` / `iconCache`, inline links (also inside table cells) as the `pageLink` node's
-// `label` — but a stored label is never served as it is, because the people reading a page aren't
+// `label`), but a stored label is never served as it is, because the people reading a page aren't
 // necessarily allowed to open every page it links to (a restricted page's title must not reach a member
 // who can't open it, in its links or anywhere derived from them):
 //
 // - to a signed-in reader (blocks.list, sync, exports, versions, the AI): a page they can open shows its
-//   current title and icon; anything else — restricted, in a scope they aren't in, gone — shows
+//   current title and icon; anything else (restricted, in a scope they aren't in, gone) shows
 //   HIDDEN_PAGE_LABEL and no icon (readerLabels);
 // - to everyone who can read the linking page at once (a public link, and the text derived from a page:
 //   its excerpt, card preview, search text and task titles): only pages in the same scope that aren't

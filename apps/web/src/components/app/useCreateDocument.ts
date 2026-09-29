@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { ulid, DEFAULT_DOCUMENT_STYLE, DEFAULT_COVER, randomNoteCover } from "@folevi/editor-schema";
+import { ulid, DEFAULT_DOCUMENT_STYLE, DEFAULT_COVER } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { openNextInNewTab } from "@/lib/app/tabs";
@@ -30,8 +30,8 @@ export function useCreateDocument() {
         title: opts.title ?? "",
         icon: null,
         style: DEFAULT_DOCUMENT_STYLE,
-        // Every new note starts with a random note style (templates stay plain).
-        cover: (opts.kind ?? "document") === "document" ? randomNoteCover() : DEFAULT_COVER,
+        // New notes start Plain; the owner picks a note style later in Style.
+        cover: DEFAULT_COVER,
         templateId: opts.templateId ?? null,
       });
       await engine.persisted();

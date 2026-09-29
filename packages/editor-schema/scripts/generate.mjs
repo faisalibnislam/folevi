@@ -10,7 +10,7 @@ const pkg = resolve(here, "..");
 const repo = resolve(pkg, "../..");
 const spec = JSON.parse(readFileSync(resolve(pkg, "spec/folevi-blocks.v1.json"), "utf8"));
 const check = process.argv.includes("--check");
-const HEADER = "Generated from packages/editor-schema/spec/folevi-blocks.v1.json by scripts/generate.mjs — do not edit.";
+const HEADER = "Generated from packages/editor-schema/spec/folevi-blocks.v1.json by scripts/generate.mjs. Do not edit.";
 
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 const propsName = (t) => `${cap(t)}Props`;

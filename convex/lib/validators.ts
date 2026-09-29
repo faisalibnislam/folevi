@@ -15,8 +15,8 @@ export const vWorkspaceRole = v.union(v.literal("owner"), v.literal("admin"), v.
 export const vMemberAccess = v.union(v.literal("edit"), v.literal("comment"), v.literal("view"));
 /**
  * The role an invitation or role change asks for: "member" (with a memberAccess) or "admin". The old member
- * roles (editor / commenter / viewer) are still accepted as input from older clients — the paused Mac app
- * sends them — and stored as member + the matching access (lib/auth.ts requestedRole). Drop them after the
+ * roles (editor / commenter / viewer) are still accepted as input from older clients (the paused Mac app
+ * sends them) and stored as member + the matching access (lib/auth.ts requestedRole). Drop them after the
  * Mac catch-up (docs/ACCOUNT_MODEL_PLAN.md §3b).
  */
 export const vInviteRole = v.union(v.literal("admin"), v.literal("member"), v.literal("editor"), v.literal("commenter"), v.literal("viewer"));

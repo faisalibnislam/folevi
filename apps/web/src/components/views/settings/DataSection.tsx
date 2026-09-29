@@ -159,7 +159,7 @@ export function DataSection({ target }: { target: DataTarget }) {
                   ) : (
                     r.name
                   )}
-                  {r.error ? <span className="ml-2 text-danger">— {r.error}</span> : null}
+                  {r.error ? <span className="ml-2 text-danger">{r.error}</span> : null}
                 </p>
                 {r.images ? <p className="text-xs text-muted">{r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`}</p> : null}
                 {r.warnings.length ? (

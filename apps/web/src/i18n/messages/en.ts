@@ -1,5 +1,5 @@
 // English source catalog. Keys are namespaced by surface ("sync.*", "admin.*"); values are ICU-style
-// messages (see ../icu.ts). Never build sentences by concatenating translated fragments — put the
+// messages (see ../icu.ts). Never build sentences by concatenating translated fragments. Put the
 // whole sentence, with its plural/select branches, in one message. See docs/LOCALIZATION.md.
 export const en = {
   // Sync status (components/app/SyncStatus.tsx)
@@ -7,7 +7,7 @@ export const en = {
   "sync.offline.detail":
     "You can keep writing. {count, plural, =0 {Changes are} one {# change is} other {# changes are}} stored on this device and will sync when you reconnect.",
   "sync.conflict.detail":
-    "{count, plural, one {# block} other {# blocks}} changed in two places. Both versions are kept — choose which to keep in the document.",
+    "{count, plural, one {# block} other {# blocks}} changed in two places. Both versions are kept. Choose which to keep in the document.",
   "sync.pending.heading": "Waiting to sync",
   "sync.pending.changes": "{count, plural, one {# change} other {# changes}}",
   "sync.pending.more": "{count, plural, one {…and # more page} other {…and # more pages}}",

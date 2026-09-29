@@ -109,7 +109,7 @@ test("listing workspaces is audited, and identity emails appear in the email log
   await expect(page.getByRole("table", { name: "Audit entries, newest first" }).getByText("workspace.list").first()).toBeVisible();
 
   // The admin's own sign-up verification email went through Folevi's pipeline, so it is in the log
-  // (as a recipient hint only), with an honest status — never "delivered" without a webhook.
+  // (as a recipient hint only), with an honest status (never "delivered" without a webhook).
   await page.goto(`${APP}/admin/emails`);
   const table = page.getByRole("table", { name: "Email send attempts" });
   await expect(table.getByText("auth_verify_email").first()).toBeVisible();
@@ -131,7 +131,7 @@ test("an owner manages a person's plan and AI from their page; analytics and rev
   // Set Basic by hand (a comp), with a reason.
   await page.getByRole("button", { name: "Set plan…" }).click();
   let dialog = page.getByRole("dialog", { name: /Set .*plan/ });
-  await pick(dialog.getByRole("combobox", { name: "Plan" }), "Basic — 20 GB");
+  await pick(dialog.getByRole("combobox", { name: "Plan" }), "Basic (20 GB)");
   await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: comped for a support issue");
   await dialog.getByRole("button", { name: "Save plan" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Plan set to Basic" })).toBeVisible();
@@ -232,7 +232,7 @@ for (const scheme of ["light", "dark"] as const) {
       await settle(page);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-      expect(serious.map((v) => `${path}: ${v.id} — ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);
+      expect(serious.map((v) => `${path}: ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);
     }
     await page.context().close();
   });

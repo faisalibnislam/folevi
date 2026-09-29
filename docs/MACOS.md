@@ -34,7 +34,7 @@ Helper scripts (in `apps/macos/scripts/`):
 
 | Script | What it does |
 | --- | --- |
-| `packages/design-tokens/scripts/brand-icons.mjs` | Writes the app icon — a Liquid Glass Icon Composer document, `Resources/AppIcon.icon`, which Xcode compiles (with a flat `AppIcon.icns` for older macOS) — plus the in-app mark (`FoleviMark.imageset`), the menu-bar glyph (`FoleviMenuBar.imageset`) and the wordmark, from the brand files in `packages/design-tokens/brand/source`, along with the web's icons and the email mark. Run: `node packages/design-tokens/scripts/brand-icons.mjs`. |
+| `packages/design-tokens/scripts/brand-icons.mjs` | Writes the app icon (a Liquid Glass Icon Composer document, `Resources/AppIcon.icon`, which Xcode compiles, with a flat `AppIcon.icns` for older macOS) plus the in-app mark (`FoleviMark.imageset`), the menu-bar glyph (`FoleviMenuBar.imageset`) and the wordmark, from the brand files in `packages/design-tokens/brand/source`, along with the web's icons and the email mark. Run: `node packages/design-tokens/scripts/brand-icons.mjs`. |
 | `generate-test-fixtures.mjs` | Bundles `packages/editor-schema` with esbuild and writes `FoleviTests/Fixtures/reference-outputs.json`: expected Markdown/HTML export, Markdown import, inline parsing, tree and number-formatting outputs from the TypeScript reference. Run with `node`. |
 | `update-string-catalog.py` | Refreshes `Resources/Localizable.xcstrings` (English source strings) from the compiler's extracted `.stringsdata`. Run after a build. |
 
@@ -100,7 +100,7 @@ The Mac app follows the web app's design and features, natively:
   colours (paper, ink; light and dark). An open note's artwork glows behind the window.
 - **Home**: Catch me up, Recent notes and Starred rows, Recent folders; notebook note cards and folder cards
   with the notes inside. Drafts, All notes and a Folders index.
-- **Shell**: the web's sidebar (logo, sections, plan pill), tabs across the top, and — on a note — the note
+- **Shell**: the web's sidebar (logo, sections, plan pill), tabs across the top and, on a note, the note
   sidebar (contents, tasks, attachments and links, find) and the floating dock (AI, Insert, Format, Style,
   Info, Comments).
 - **AI Assistant**: the floating launcher and Ask AI (ai:ask), the note's AI, Catch me up (ai:brief), and AI
@@ -177,7 +177,7 @@ shadows and layout vocabulary, drawn natively.
   editor). The document font (sans/serif/mono) picks the family; editor zoom scales it.
 - **Depth**: `foleviSurface(_:shape:shadow:)` / `foleviShadow(_:radius:)` render the layered
   `FoleviShadow` tokens (outer drops with spread, 1pt rings, inset top highlights) with CALayer shadow
-  paths — CSS `box-shadow` semantics, cheap while scrolling. Increase Contrast adds a `lineStrong`
+  paths: CSS `box-shadow` semantics, cheap while scrolling. Increase Contrast adds a `lineStrong`
   ring.
 - **Window**: full-size content under a transparent unified title bar (an empty `NSToolbar` gives the
   52pt band so the traffic lights sit centred). The canvas has two soft radial glows (flat under
@@ -187,8 +187,8 @@ shadows and layout vocabulary, drawn natively.
 - **Sidebar**: 264pt, sidebar tint; 32pt rows, the active row a raised pill with an ember icon; search
   pill with ⌘K; "New Document" pill; caps section labels; account/help/settings card. ↑/↓ move the
   selection when the list has focus.
-- **Inspector**: a floating 320pt card (material unless Reduce Transparency) with six icon tabs —
-  Insert, Format, Style, Outline, Info, Comments — and a heading with a close button.
+- **Inspector**: a floating 320pt card (material unless Reduce Transparency) with six icon tabs
+  (Insert, Format, Style, Outline, Info, Comments) and a heading with a close button.
 - **Covers**: none, color, gradient (soft multi-glow in the page accent), or one of 20 abstract
   artworks (`Resources/Covers`, `cover.kind == .art`, value `art-01`…`art-20`; dimmed 18% in dark;
   unknown ids fall back to the gradient). The "Accent" page accent renders ember.
@@ -284,7 +284,7 @@ shadows and layout vocabulary, drawn natively.
 | Argument | Build | Purpose |
 | --- | --- | --- |
 | `-FoleviDevToken <jwt>` / `FOLEVI_DEV_TOKEN` | DEBUG | sign in with a development token |
-| `FOLEVI_DEV_SESSION=<session token>` (environment) | DEBUG | sign in with a Folevi session from the local web app (e.g. minted for a test account with the native-auth endpoints), kept in memory only — never in the Keychain — and renewed like a real sign-in |
+| `FOLEVI_DEV_SESSION=<session token>` (environment) | DEBUG | sign in with a Folevi session from the local web app (e.g. minted for a test account with the native-auth endpoints), kept in memory only (never in the Keychain) and renewed like a real sign-in |
 | `-FoleviUITestReset YES` | all | wipe local cache and saved credentials on launch (UI tests) |
 | `-FoleviForceOffline YES` | DEBUG | start with sync forced offline (also View ▸ Force Offline, ⌃⌥⌘O) |
 | `-FoleviAppearance light\|dark` | DEBUG | override appearance |

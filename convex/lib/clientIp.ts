@@ -5,7 +5,7 @@
 // URL could say anything. The web server therefore signs the visitor's IP (HMAC with
 // FOLEVI_SERVER_SECRET, 60-second freshness) and Convex trusts that header only when the signature checks
 // out. Every other forwarded-IP header is removed, so a request that skips the proxy has no client IP and
-// falls into one shared bucket — it can't pick a fresh IP per attempt to dodge the limits.
+// falls into one shared bucket, so it can't pick a fresh IP per attempt to dodge the limits.
 import { timingSafeEqualHex, toHex } from "./crypto";
 
 export const CLIENT_IP_HEADER = "x-folevi-client-ip";

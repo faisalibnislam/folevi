@@ -1,4 +1,4 @@
-// Generated from packages/editor-schema/spec/folevi-blocks.v1.json by scripts/generate.mjs — do not edit.
+// Generated from packages/editor-schema/spec/folevi-blocks.v1.json by scripts/generate.mjs. Do not edit.
 
 export const SCHEMA_VERSION = 1 as const;
 

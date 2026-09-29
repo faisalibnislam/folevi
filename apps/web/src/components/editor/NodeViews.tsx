@@ -71,7 +71,7 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
         )}
         {upload ? (
           <p className="mt-1 text-xs text-muted" role="status">
-            {upload.state === "failed" ? `Upload interrupted — retrying (attempt ${upload.attempts + 1})` : navigator.onLine ? "Uploading…" : "Waiting to upload (offline)"}
+            {upload.state === "failed" ? `Upload interrupted. Retrying (attempt ${upload.attempts + 1})` : navigator.onLine ? "Uploading…" : "Waiting to upload (offline)"}
           </p>
         ) : null}
         <figcaption className="mt-1.5">
@@ -118,7 +118,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
           <p className="truncate text-sm font-medium">{a.name ?? "Attachment"}</p>
           <p className="text-xs text-muted">
             {a.size ? formatBytes(a.size) : ""}
-            {upload ? (upload.state === "failed" ? " · Upload interrupted — retrying" : " · Uploading…") : ""}
+            {upload ? (upload.state === "failed" ? " · Upload interrupted, retrying" : " · Uploading…") : ""}
           </p>
         </div>
         {file ? (

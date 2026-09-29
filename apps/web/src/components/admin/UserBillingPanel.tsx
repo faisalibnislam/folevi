@@ -73,7 +73,7 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
     <>
       <Panel
         title="Plan & billing"
-        description="Personal plan, personal storage and AI access in Personal. Team workspaces have their own plans. Changes here don't charge or refund anyone — money only moves through the payment provider."
+        description="Personal plan, personal storage and AI access in Personal. Team workspaces have their own plans. Changes here don't charge or refund anyone. Money only moves through the payment provider."
         actions={
           <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload billing (writes an audit entry)">
             <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} />
@@ -94,11 +94,11 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
               { label: "Plan", value: `${PLANS[paidPlan].name}${sub.interval ? ` · ${sub.interval === "year" ? "yearly" : "monthly"}` : ""}` },
               { label: "Billed through", value: humanize(sub.provider === "none" ? "not billed" : sub.provider) },
               { label: "Status", value: <StatusBadge status={sub.status} /> },
-              { label: sub.cancelAtPeriodEnd ? "Ends" : "Renews / ends", value: sub.currentPeriodEnd ? formatDateTime(sub.currentPeriodEnd) : "—" },
-              { label: "Paying since", value: sub.paidSince ? day(sub.paidSince) : "—" },
+              { label: sub.cancelAtPeriodEnd ? "Ends" : "Renews / ends", value: sub.currentPeriodEnd ? formatDateTime(sub.currentPeriodEnd) : "Not set" },
+              { label: "Paying since", value: sub.paidSince ? day(sub.paidSince) : "Never" },
               {
                 label: "AI Assistant",
-                value: e.ai ? (e.aiSource === "grant" ? `On — granted${sub.aiGrantUntil ? ` until ${day(sub.aiGrantUntil)}` : ""}` : e.aiSource === "trial" ? "On — trial" : "On — Pro") : "Off",
+                value: e.ai ? (e.aiSource === "grant" ? `On (granted${sub.aiGrantUntil ? ` until ${day(sub.aiGrantUntil)}` : ""})` : e.aiSource === "trial" ? "On (trial)" : "On (Pro)") : "Off",
               },
               { label: "AI requests, 30 days", value: data.aiRequests30d.toLocaleString() },
               {
@@ -122,7 +122,7 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => setAction("plan")} disabled={!canManage || stripeBilled} title={!canManage ? rolesFor("billing.manage") : stripeBilled ? "Billed through Stripe — change it there." : undefined}>
+          <Button size="sm" onClick={() => setAction("plan")} disabled={!canManage || stripeBilled} title={!canManage ? rolesFor("billing.manage") : stripeBilled ? "Billed through Stripe. Change it there." : undefined}>
             <CreditCard size={14} aria-hidden /> Set plan…
           </Button>
           <Button size="sm" onClick={() => setAction("trial")}>
@@ -228,7 +228,7 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
             label: "Plan",
             type: "select",
             initial: sub.plan,
-            options: (["free", "basic", "pro"] as const).map((id) => ({ value: id, label: `${PLANS[id].name} — ${limit(PLANS[id].storageBytes)}${PLANS[id].ai ? ", AI" : ""}` })),
+            options: (["free", "basic", "pro"] as const).map((id) => ({ value: id, label: `${PLANS[id].name} (${limit(PLANS[id].storageBytes)}${PLANS[id].ai ? ", AI" : ""})` })),
           },
           {
             name: "interval",
@@ -253,7 +253,7 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
         open={action === "trial"}
         onClose={onClose}
         title={data.entitlements.trialing ? "Extend the Pro trial" : "Give a Pro trial"}
-        description={`Pro features, AI included, free for the days you choose — counted from ${day(trialFrom)}. Nothing is charged when it ends.`}
+        description={`Pro features, AI included, free for the days you choose, counted from ${day(trialFrom)}. Nothing is charged when it ends.`}
         confirmLabel="Save trial"
         fields={[{ name: "days", label: "Days", type: "number", initial: "7", min: 1, max: maxTrial, step: 1, suffix: "days", hint: `Up to ${maxTrial} days for your role.` }]}
         onSubmit={async ({ reason, fields, meta }) => {
@@ -340,12 +340,12 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
         open={action === "export"}
         onClose={onClose}
         title="Prepare an export for this person?"
-        description="Builds a ZIP of their Personal and sends it to them as a notification with a download link. Only they can download it — you never see their notes."
+        description="Builds a ZIP of their Personal and sends it to them as a notification with a download link. Only they can download it. You never see their notes."
         confirmLabel="Prepare export"
         acknowledge="The person asked for an export of their notes."
         onSubmit={async ({ reason, meta }) => {
           await requestExport({ profileId, reason, ...meta });
-          return done("Export started — they'll be notified when it's ready");
+          return done("Export started. They'll be notified when it's ready");
         }}
       >
         <Callout tone="plum">Admins can't open or download people's notes. This only delivers the export to the account owner.</Callout>
@@ -354,7 +354,7 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
         open={Boolean(refund)}
         onClose={onClose}
         title="Mark this payment refunded?"
-        description={refund ? `${formatPrice(refund.amountCents)} on ${day(refund.createdAt)}. This only updates Folevi's records — make the refund itself in the payment provider first.` : undefined}
+        description={refund ? `${formatPrice(refund.amountCents)} on ${day(refund.createdAt)}. This only updates Folevi's records. Make the refund itself in the payment provider first.` : undefined}
         confirmLabel="Mark refunded"
         tone="danger"
         onSubmit={async ({ reason, meta }) => {

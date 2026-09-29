@@ -28,15 +28,15 @@ export function welcomeBlocks(today: string): BlockSpec[] {
       props: { collapsed: true },
       md: "Keyboard shortcuts worth learning first",
       children: [
-        { type: "bulleted", md: "**⌘B**, **⌘I**, **⌘U** — bold, italic, underline" },
-        { type: "bulleted", md: "**⌘E** — inline code" },
-        { type: "bulleted", md: "**⌘⇧9** — turn a line into a checklist item" },
-        { type: "bulleted", md: "**⌘⌥1**, **⌘⌥2**, **⌘⌥3** — headings" },
-        { type: "bulleted", md: "**⌘⌥I** — open the inspector" },
+        { type: "bulleted", md: "**⌘B**, **⌘I**, **⌘U**: bold, italic, underline" },
+        { type: "bulleted", md: "**⌘E**: inline code" },
+        { type: "bulleted", md: "**⌘⇧9**: turn a line into a checklist item" },
+        { type: "bulleted", md: "**⌘⌥1**, **⌘⌥2**, **⌘⌥3**: headings" },
+        { type: "bulleted", md: "**⌘⌥I**: open the inspector" },
       ],
     },
     { type: "heading", props: { level: 2 }, md: "Try these" },
-    { type: "todo", props: { checked: false }, md: "Add a task with Quick Add (⇧⌘A) — it lands in your Inbox page" },
+    { type: "todo", props: { checked: false }, md: "Add a task with Quick Add (⇧⌘A). It lands in your Inbox page" },
     { type: "todo", props: { checked: false, dueDate: today }, md: "Give this task a due date and find it again under **Tasks → Today**" },
     { type: "todo", props: { checked: false }, md: "Open the inspector and change this page's accent color" },
     { type: "todo", props: { checked: true }, md: "Open Folevi for the first time" },
@@ -47,7 +47,7 @@ export function welcomeBlocks(today: string): BlockSpec[] {
     },
     { type: "quote", md: "Write it down loosely. Tidy it up later. Keep it for years." },
     { type: "divider" },
-    { type: "paragraph", md: "_You can delete this page whenever you like — it is yours._" },
+    { type: "paragraph", md: "_You can delete this page whenever you like. It is yours._" },
   ];
 }
 
@@ -101,7 +101,7 @@ export function atlasBriefBlocks(today: string): BlockSpec[] {
     { type: "todo", props: { checked: false, dueDate: addDays(today, 4) }, md: "Book the community hall for the kickoff" },
     { type: "todo", props: { checked: false }, md: "Collect three example plot maps" },
     { type: "heading", props: { level: 2 }, md: "Risks" },
-    { type: "bulleted", md: "Coordinators have little time in peak season — keep interviews to 20 minutes." },
+    { type: "bulleted", md: "Coordinators have little time in peak season, so keep interviews to 20 minutes." },
     { type: "bulleted", md: "Many volunteers share one phone; printable views matter as much as the app." },
   ];
 }

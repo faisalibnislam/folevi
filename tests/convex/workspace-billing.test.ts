@@ -182,7 +182,7 @@ describe("seats (10–17)", () => {
     const inviteId = await invite(t, owner, id, "seat-joiner@example.com");
     expect(await seats(owner, id)).toEqual({ seats: 1, guests: 1, pending: 1 });
     expect((await workspaceSub(t, id))!.quantity).toBe(1);
-    // 12: accepting takes one — and the billed quantity follows.
+    // 12: accepting takes one, and the billed quantity follows.
     await joiner.as.mutation(api.workspaces.acceptInvite, { inviteId });
     expect(await seats(owner, id)).toEqual({ seats: 2, guests: 1, pending: 0 });
     expect((await workspaceSub(t, id))!.quantity).toBe(2);
@@ -221,7 +221,7 @@ describe("seats (10–17)", () => {
     await owner.as.mutation(api.sharing.grant, { documentId: note, email: "conv-member@example.com", role: "commenter" });
     expect(await seats(owner, id)).toEqual({ seats: 1, guests: 1, pending: 0 });
     expect((await workspaceSub(t, id))!.quantity).toBe(1);
-    // 17: invite the guest back as a member — no seat while pending, one once accepted.
+    // 17: invite the guest back as a member: no seat while pending, one once accepted.
     const inviteId = await invite(t, owner, id, "conv-member@example.com");
     expect(await seats(owner, id)).toEqual({ seats: 1, guests: 1, pending: 1 });
     await m.as.mutation(api.workspaces.acceptInvite, { inviteId });

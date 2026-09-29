@@ -16,8 +16,8 @@
                 ▼                                                 ▼
           ┌──────────────────────────── Convex ─────────────────────────────┐
           │ auth.ts: Better Auth (component) · auth.config: own issuer only  │
-          │ lib/auth.ts — every read/write authorized server-side            │
-          │ sync.ts — push (idempotent ops), pull (by workspace seq), head   │
+          │ lib/auth.ts: every read/write authorized server-side             │
+          │ sync.ts: push (idempotent ops), pull (by workspace seq), head    │
           │ documents/blocks/tasks/comments/sharing/collections/search/files │
           │ admin.ts + adminAuditLogs (append-only)                          │
           │ email.ts / authEmails.ts → @folevi/email → Mailtrap · identity.ts│
@@ -83,13 +83,13 @@ Content tables all carry `workspaceId` and a `seq` stamped from the workspace ch
 
 - `profiles`, `workspaces`, `workspaceMembers`, `workspaceInvites`
 - `folders` (one level of nesting), `tags`, `documentTags`, `stars`, `recents`
-- `documents` — title, icon, cover, style, kind (`document | daily | template | collectionRow`; `daily` is a retired kind shown as an ordinary page), parent,
+- `documents`: title, icon, cover, style, kind (`document | daily | template | collectionRow`; `daily` is a retired kind shown as an ordinary page), parent,
   folder, access mode, revision/titleRev, derived search text and counts
-- `blocks` — the canonical block rows (`blockId`, `parentId`, `rank`, `type`, `schemaVersion`, `text`,
+- `blocks`: the canonical block rows (`blockId`, `parentId`, `rank`, `type`, `schemaVersion`, `text`,
   `props`, `revision`, `contentRev`, `positionRev`, `deletedAt`)
-- `documentSnapshots` (+ `snapshotChunks` for large pages) — version history
-- `tasks` — a projection of `todo` blocks (the block is canonical)
-- `documentLinks` — backlink index
+- `documentSnapshots` (+ `snapshotChunks` for large pages): version history
+- `tasks`: a projection of `todo` blocks (the block is canonical)
+- `documentLinks`: backlink index
 - `collections`, `collectionProperties`, `collectionRows` (each row is a page), `collectionValues`,
   `collectionViews`
 - `commentThreads`, `comments`, `readStates`, `notifications`

@@ -4,7 +4,7 @@ import { useLayoutEffect, useState, type CSSProperties, type RefObject } from "r
 
 /**
  * Floats a popup (menu, panel, suggestion list) in the browser's top layer (Popover API), fixed next to its
- * anchor. Nothing can clip or cover it then — not a panel with overflow hidden, not a stacking context, not a
+ * anchor. Nothing can clip or cover it then: not a panel with overflow hidden, not a stacking context, not a
  * sibling with a higher z-index. It flips above/below and shifts to stay in the window, and follows the
  * anchor on scroll and resize. The popup element needs `popover="manual"`, and spreads the returned style.
  */

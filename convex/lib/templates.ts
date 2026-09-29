@@ -22,7 +22,7 @@ function table(headers: string[], rows: number | string[] = 2): BlockSpec {
 
 /**
  * Built-in, immutable starter templates. Admins can enable/disable them (builtInTemplates table).
- * `icon` is an outlined icon name the clients draw (web: components/ui/TemplateIcon.tsx) — never an emoji.
+ * `icon` is an outlined icon name the clients draw (web: components/ui/TemplateIcon.tsx), never an emoji.
  */
 export const BUILT_IN_TEMPLATES: { key: string; name: string; description: string; icon: string; blocks: () => BlockSpec[] }[] = [
   // ---- Everyday
@@ -119,7 +119,7 @@ export const BUILT_IN_TEMPLATES: { key: string; name: string; description: strin
   {
     key: "standup",
     name: "Daily Standup",
-    description: "Yesterday, today and blockers — short enough to fill in two minutes.",
+    description: "Yesterday, today and blockers. Short enough to fill in two minutes.",
     icon: "timer",
     blocks: () => [h3("Yesterday"), b(), h3("Today"), todo(), h3("Blockers"), callout("warning", "Nothing blocking right now.")],
   },
@@ -164,7 +164,7 @@ export const BUILT_IN_TEMPLATES: { key: string; name: string; description: strin
   {
     key: "decision-record",
     name: "Decision Record",
-    description: "Context, options and the call you made — so future you knows why.",
+    description: "Context, options and the call you made, so future you knows why.",
     icon: "scale",
     blocks: () => [
       callout("note", "**Decided on:** · **Decided by:** · **Status:** Proposed"),
@@ -268,7 +268,7 @@ export const BUILT_IN_TEMPLATES: { key: string; name: string; description: strin
       h2("Concerns"),
       b(),
       h2("Recommendation"),
-      callout("info", "Hire · No hire — and why."),
+      callout("info", "Hire · No hire, and why."),
     ],
   },
   // ---- Thinking and learning
@@ -395,7 +395,7 @@ export const BUILT_IN_TEMPLATES: { key: string; name: string; description: strin
   {
     key: "workout-log",
     name: "Workout Log",
-    description: "Exercises, sets and how it felt — track progress over time.",
+    description: "Exercises, sets and how it felt. Track progress over time.",
     icon: "dumbbell",
     blocks: () => [
       callout("note", "**Date:** · **Focus:**"),

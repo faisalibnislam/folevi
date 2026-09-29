@@ -2,8 +2,8 @@
 //
 // Native HTML5 drag images are janky and fragile inside ProseMirror, so dragging is done by hand:
 // a lifted copy follows the pointer, an ember line glides between blocks, horizontal movement changes
-// nesting, and the page auto-scrolls near its edges. Nothing here mutates ProseMirror's DOM — the
-// source fade and the drop glow are injected CSS rules — so the editor never re-parses mid-drag.
+// nesting, and the page auto-scrolls near its edges. Nothing here mutates ProseMirror's DOM (the
+// source fade and the drop glow are injected CSS rules), so the editor never re-parses mid-drag.
 import type { Editor } from "@tiptap/core";
 import { dropTarget, subtreeRange } from "./commands";
 import { blockElements } from "./plugins";

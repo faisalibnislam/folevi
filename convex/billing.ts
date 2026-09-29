@@ -238,7 +238,7 @@ export async function verifyStripeSignature(body: string, header: string | null,
   return signatures.some((s) => s.length === expected.length && timingSafeEqualHex(s, expected));
 }
 
-/** POST /webhooks/stripe — signature-checked, then applied (once per event id). */
+/** POST /webhooks/stripe: signature-checked, then applied (once per event id). */
 export const stripeWebhook = httpAction(async (ctx, request) => {
   const body = await request.text();
   if (!(await verifyStripeSignature(body, request.headers.get("stripe-signature"), process.env.STRIPE_WEBHOOK_SECRET ?? ""))) {

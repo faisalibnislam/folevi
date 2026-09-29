@@ -168,7 +168,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
   );
 }
 
-/** Scannable QR (rendered on this device — the secret never goes to a third-party QR service) + manual key. */
+/** Scannable QR (rendered on this device, so the secret never goes to a third-party QR service) + manual key. */
 export function TotpEnrollment({ totpUri }: { totpUri: string }) {
   const [qr, setQr] = useState<string | null>(null);
   const secret = secretFromUri(totpUri);

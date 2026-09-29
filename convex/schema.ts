@@ -19,8 +19,8 @@ import {
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
- *   ownerProfileId — the row is in that person's Personal (Personal is not a workspace);
- *   workspaceId    — the row is in a team workspace.
+ *   ownerProfileId: the row is in that person's Personal (Personal is not a workspace);
+ *   workspaceId:    the row is in a team workspace.
  * Every insert into a scoped table goes through `insertScoped` (checked by tests/convex/static), and
  * `migrations.verifyAccountModel` reports any row with both or neither.
  */
@@ -480,7 +480,7 @@ export default defineSchema({
 
   /**
    * Live AI output while it's being written (convex/ai.ts), so the app can show it word by word. Holds only
-   * the AI's reply — never the prompt or the notes sent — readable only by its owner, and deleted shortly
+   * the AI's reply (never the prompt or the notes sent), readable only by its owner, and deleted shortly
    * after it finishes (plus an hourly sweep for anything left behind).
    */
   aiStreams: defineTable({

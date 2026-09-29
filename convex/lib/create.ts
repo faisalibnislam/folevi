@@ -6,7 +6,6 @@ import {
   rankSequence,
   ulid,
   randomNoteEmoji,
-  randomNoteCover,
   validateWireBlock,
   type InlineNode,
   type WireBlock,
@@ -89,8 +88,8 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
     title: sanitizeTitle(input.title),
     // Every note has an icon (templates and collection rows keep whatever they were given).
     icon: input.icon ?? ((input.kind ?? "document") === "document" ? randomNoteEmoji() : undefined),
-    // New notes get a random note style; templates stay plain unless they choose one.
-    cover: input.cover ?? ((input.kind ?? "document") === "document" ? randomNoteCover() : DEFAULTS.cover),
+    // New notes start Plain unless the caller gives a note style.
+    cover: input.cover ?? DEFAULTS.cover,
     style: input.style ?? DEFAULTS.style,
     dailyDate: input.dailyDate,
     dailyOwnerId: input.dailyOwnerId,

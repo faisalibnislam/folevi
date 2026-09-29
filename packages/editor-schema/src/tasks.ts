@@ -59,7 +59,7 @@ export function addDays(date: string, days: number): string {
  * - today: open and due today or overdue
  * - upcoming: open and due after today
  * - completed: done
- * - mine: open and assigned to the viewer — or, in the viewer's own Personal (where they're the only one
+ * - mine: open and assigned to the viewer or, in the viewer's own Personal (where they're the only one
  *   who plans work), open and unassigned, since every unassigned task there is theirs
  * - completed: done or canceled (closed tasks)
  */

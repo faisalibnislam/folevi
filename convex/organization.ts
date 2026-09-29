@@ -66,7 +66,7 @@ export const sidebar = query({
 /**
  * Every folder and tag with its page count and dates, for the All folders / All tags views (the
  * sidebar shows only the first few). Counts are pages the person can see in lists: not trashed, not
- * archived, top-level in the folder — and only pages they can open (a restricted page they can't open
+ * archived, top-level in the folder, and only pages they can open (a restricted page they can't open
  * is neither counted nor previewed).
  */
 export const index = query({

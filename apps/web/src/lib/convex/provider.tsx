@@ -17,7 +17,7 @@ export function getConvexClient(): ConvexReactClient {
  * Where the browser stands with its Folevi session:
  * - `signed_in`: Better Auth confirmed a live session;
  * - `signed_out`: the server answered and there is no session (signed out, revoked or expired);
- * - `offline`: the auth server couldn't be reached, so we genuinely don't know — the app keeps working
+ * - `offline`: the auth server couldn't be reached, so we genuinely don't know. The app keeps working
  *   from this device's copy instead of claiming the session ended.
  */
 export type AuthPhase = "loading" | "signed_in" | "signed_out" | "offline";

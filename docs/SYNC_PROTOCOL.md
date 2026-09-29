@@ -19,7 +19,7 @@ implementation lives in `apps/macos/Folevi/Sync/`. Both clients run the same gol
 
 | Thing | Format | Created by |
 | --- | --- | --- |
-| Device ID | 26-char ULID, stored once per install (IndexedDB `meta.deviceId` on web, Keychain-independent `UserDefaults` value on Mac — it is not a secret) | client |
+| Device ID | 26-char ULID, stored once per install (IndexedDB `meta.deviceId` on web, Keychain-independent `UserDefaults` value on Mac; it is not a secret) | client |
 | Operation ID (`opId`) | ULID, unique per operation, doubles as the idempotency key | client |
 | Block ID | ULID, stable for the life of the block (survives moves, edits, restore) | client |
 | Document ID | ULID ("public id"), stable across clients; Convex `_id` is never exposed as identity | client or server |
@@ -28,11 +28,11 @@ implementation lives in `apps/macos/Folevi/Sync/`. Both clients run the same gol
 
 Every block row on the server has:
 
-- `revision` — increments on every accepted change.
-- `contentRev` — the `revision` at which `type`, `text` or `props` last changed.
-- `positionRev` — the `revision` at which `parentId` or `rank` last changed.
-- `seq` — the change sequence number of the row's **scope** at which it last changed (see *Pull*).
-- `deletedAt` — tombstone timestamp or absent.
+- `revision`: increments on every accepted change.
+- `contentRev`: the `revision` at which `type`, `text` or `props` last changed.
+- `positionRev`: the `revision` at which `parentId` or `rank` last changed.
+- `seq`: the change sequence number of the row's **scope** at which it last changed (see *Pull*).
+- `deletedAt`: tombstone timestamp or absent.
 
 Documents carry the same fields; `titleRev` plays the role of `contentRev` for the title, and style/icon/
 cover changes are last-writer-wins (they are small, visible, and captured by version snapshots).
@@ -57,13 +57,13 @@ type SyncOp =
 ```
 
 `fields` states what the client changed relative to `baseRevision`. `baseRevision: null` means "create".
-`WireDocumentCreate` may carry an optional `scope` (or, from older clients, `workspaceId`) — see *Routing*.
+`WireDocumentCreate` may carry an optional `scope` (or, from older clients, `workspaceId`); see *Routing*.
 
 ## Scopes
 
 Content lives in exactly one **scope**: a person's **Personal** (rows carry `ownerProfileId`) or a team
 **workspace** (rows carry `workspaceId`). Personal is not a workspace. Clients name a scope as
-`{ kind: "personal" }` — always the caller's own Personal; a profile id is never accepted — or
+`{ kind: "personal" }` (always the caller's own Personal; a profile id is never accepted) or
 `{ kind: "workspace", workspaceId }` (the workspace's public id; membership required). Each scope has its
 own change counter: `profiles.personalChangeSeq` for Personal, `workspaces.changeSeq` for a workspace.
 
@@ -73,20 +73,20 @@ A batch is sent as `sync.push({ scope, deviceId, ops })`. The `scope` is only th
 scope**; it does not scope the batch:
 
 - `block.*` and `document.update` ops are authorized against **the document they touch** (its owner,
-  its workspace role, or an explicit grant — see `documentAccess`). One batch may mix documents from
+  its workspace role, or an explicit grant; see `documentAccess`). One batch may mix documents from
   several scopes, so a person editing a page shared with them from someone's Personal or another
   workspace ("Can edit" grant, no membership) or opened from a deep link while another scope is selected
   uses the same queue. Every accepted change stamps the **document's** scope counter.
 - `document.create` goes, in order of precedence: under `parentDocumentId` (a nested page always lives
   in its parent's scope; the caller needs write access to the parent), else into `document.scope` (or
   the older `document.workspaceId`), else into the routing scope. Personal takes new pages from its owner
-  only; a workspace from **members** who can edit (owner, admin, or member with edit access) — a grant on one page never lets a guest add pages
+  only; a workspace from **members** who can edit (owner, admin, or member with edit access). A grant on one page never lets a guest add pages
   to someone else's Personal or workspace (`forbidden`). An unknown workspace or one the caller doesn't
   belong to → `not_found` (existence isn't revealed); a malformed `scope` → `invalid_argument`.
 - `document.update` may only re-parent a page under a page of the same scope, and only move it into a
   folder of the same scope. Pages never move between Personal and a workspace this way. A guest (grant,
-  no membership) may only re-parent a page under another page they can edit — never to the top level or
-  into a folder — and taking a page out from under a restricted page needs manage access (`forbidden`).
+  no membership) may only re-parent a page under another page they can edit (never to the top level or
+  into a folder), and taking a page out from under a restricted page needs manage access (`forbidden`).
 - A resent op id is answered from the first delivery only when it names the same entity and kind; an op
   id reused for anything else is `rejected` (`invalid_op`), and a replay never returns a page or block the
   caller can no longer open.
@@ -99,8 +99,8 @@ Personal and workspaces before the op syncs can't change where the page lands. (
 workspace id; on first open they are folded into the account queue in a single IndexedDB transaction,
 preserving per-queue order and stamping their creates with their workspace.) Creates queued by builds from
 before Personal stopped being a workspace name a `workspaceId`; when the engine opens, each is re-stamped
-with a `scope` — a workspace the person still belongs to keeps it, anything else (the old personal
-workspace, or one they've left) becomes their Personal — so nothing is sent naming a workspace that no
+with a `scope`. A workspace the person still belongs to keeps it, and anything else (the old personal
+workspace, or one they've left) becomes their Personal, so nothing is sent naming a workspace that no
 longer exists. The web's local database (v3) keys its document cache by scope key (`scopeIdKey`) and never
 drops the queue or waiting uploads on upgrade.
 
@@ -110,7 +110,7 @@ For each operation, in order, inside one mutation per batch (max 100 ops):
 
 1. **Authorize** the caller for write access on the document the op touches (derived server-side from
    the JWT subject and the document's own scope/grants; client-supplied user/workspace ids are never
-   trusted — see *Routing*).
+   trusted; see *Routing*).
 2. **Idempotency**: if `syncOperations` already contains `opId` for this user, return the stored result
    with status `duplicate` and the current entity state. No other effect.
 3. **Validate** the block against the canonical schema (known types) and the limits. Unknown types from
@@ -155,8 +155,8 @@ member, workspace suspended, template disabled by an admin) are per-op `rejected
 Pages that link to a document cache its title: page blocks in `props.titleCache`/`props.iconCache`,
 inline links in the `pageLink` node's `label` (including table cells). When a `document.update`
 changes the title or icon, the server rewrites those caches in every linking block (found through the
-backlink index) in the same mutation. The rewrite bumps the block's `revision` and `seq` — clients
-receive it like any remote change — but **not** `contentRev`, because it is derived data: it never
+backlink index) in the same mutation. The rewrite bumps the block's `revision` and `seq` (clients
+receive it like any remote change) but **not** `contentRev`, because it is derived data: it never
 turns someone's concurrent edit of that block into a conflict.
 
 ## Client rules (`packages/editor-schema/src/sync.ts`)
@@ -164,16 +164,16 @@ turns someone's concurrent edit of that block into a conflict.
 The client state is `{ entities, pending, inflight, conflicts, status }`, persisted after every change
 (IndexedDB on web, SQLite on Mac). Pure reducer functions:
 
-- `localUpsert / localDelete / localRestore` — apply optimistically, append an op to `pending`. An op
+- `localUpsert / localDelete / localRestore`: apply optimistically, append an op to `pending`. An op
   that is not in flight is **coalesced** with a later op on the same block (create+update → create,
   update+update → one update with the union of `fields`, create+delete → both dropped).
-- `takeBatch` — moves up to 100 ops, in order, to `inflight`.
-- `applyResults` — `applied`/`duplicate` → record `revision` as the new base, drop the op;
+- `takeBatch`: moves up to 100 ops, in order, to `inflight`.
+- `applyResults`: `applied`/`duplicate` → record `revision` as the new base, drop the op;
   `conflict` → adopt the server version locally, store the client version in `conflicts`;
   `rejected` → drop the op, revert to the last acknowledged server state and surface the error.
-- `batchFailed(kind)` — network error or `unauthenticated`: move `inflight` back to the front of
+- `batchFailed(kind)`: network error or `unauthenticated`: move `inflight` back to the front of
   `pending` unchanged (same `opId`s, so replays are safe).
-- `remoteUpdate` — a subscribed/pulled server row replaces the local entity only when there is no
+- `remoteUpdate`: a subscribed/pulled server row replaces the local entity only when there is no
   pending or in-flight op for it; otherwise it only advances the known server revision for display.
 
 ### Status shown to people
@@ -230,5 +230,5 @@ expected client state; the TypeScript and Swift reducers must produce identical 
 
 ## Logging
 
-Sync logs contain op ids, kinds, entity ids, revisions and status codes only — never block text,
+Sync logs contain op ids, kinds, entity ids, revisions and status codes only, never block text,
 titles, attachment names or contents, tokens, or email addresses.

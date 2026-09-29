@@ -91,7 +91,7 @@ describe("sendEmail via Mailtrap", () => {
     expect(body.reply_to).toEqual({ email: "support@folevi.com" });
     expect(body.subject).toBe("You were mentioned in Folevi");
     expect(body.category).toBe("mention_notification");
-    // Opaque ids only — no personal data in custom variables (they come back in webhooks).
+    // Opaque ids only: no personal data in custom variables (they come back in webhooks).
     expect(body.custom_variables).toEqual({ attempt: "j57abc123def456", template: "mention_notification" });
     expect(body.html).toContain("Maya Okafor");
     expect(body.text).toContain("Maya Okafor mentioned you on Spring planting plan.");

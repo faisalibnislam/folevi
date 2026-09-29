@@ -35,9 +35,9 @@ fi
 random() { openssl rand -base64 32 | tr -d '\n'; }
 
 vercel_has() { vercel env ls production --scope "$SCOPE" --project "$PROJECT" 2>/dev/null | grep -q "^ *$1 "; }
-vercel_set() { # name value — Production only, value on stdin (never on the command line)
+vercel_set() { # name value: Production only, value on stdin (never on the command line)
   if vercel_has "$1"; then
-    [[ "$ROTATE" == "--rotate" ]] || { echo "Vercel $1 already set — kept."; return; }
+    [[ "$ROTATE" == "--rotate" ]] || { echo "Vercel $1 already set, kept."; return; }
     vercel env rm "$1" production --yes --scope "$SCOPE" --project "$PROJECT" >/dev/null
   fi
   printf '%s' "$2" | vercel env add "$1" production --sensitive --scope "$SCOPE" --project "$PROJECT" >/dev/null
@@ -47,12 +47,12 @@ vercel_set() { # name value — Production only, value on stdin (never on the co
 # `convex env get` exits 0 even when a variable is missing (it prints "not found" to stderr), so "has" means
 # it printed a value on stdout. The value itself is discarded.
 convex_has() { [[ -n "$(npx convex env get "$1" 2>/dev/null)" ]]; }
-convex_put() { # name value — always writes; stops the script if Convex refuses
-  if ! npx convex env set "$1" "$2" >/dev/null 2>&1; then echo "Convex refused to set $1 — stopping." >&2; exit 1; fi
+convex_put() { # name value: always writes; stops the script if Convex refuses
+  if ! npx convex env set "$1" "$2" >/dev/null 2>&1; then echo "Convex refused to set $1. Stopping." >&2; exit 1; fi
   echo "Convex $1 set."
 }
-convex_set() { # name value — keeps an existing value unless --rotate
-  if convex_has "$1" && [[ "$ROTATE" != "--rotate" ]]; then echo "Convex $1 already set — kept."; return; fi
+convex_set() { # name value: keeps an existing value unless --rotate
+  if convex_has "$1" && [[ "$ROTATE" != "--rotate" ]]; then echo "Convex $1 already set, kept."; return; fi
   convex_put "$1" "$2"
 }
 
@@ -65,7 +65,7 @@ convex_put SITE_URL "$APP_URL"
 
 # Shared between Vercel and Convex: one value, set on both.
 if vercel_has FOLEVI_SERVER_SECRET && convex_has FOLEVI_SERVER_SECRET && [[ "$ROTATE" != "--rotate" ]]; then
-  echo "FOLEVI_SERVER_SECRET already set on both — kept."
+  echo "FOLEVI_SERVER_SECRET already set on both, kept."
 else
   shared="$(random)"
   convex_put FOLEVI_SERVER_SECRET "$shared"

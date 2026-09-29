@@ -315,7 +315,7 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
 
 /**
  * The top of either sidebar (app navigation or a note's tools): the Folevi logo (goes Home), save state,
- * notifications and the sidebar menu — the same row in both, so it never jumps when you switch.
+ * notifications and the sidebar menu. It's the same row in both, so it never jumps when you switch.
  */
 export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
   const { drawerMode } = useShell();

@@ -1,6 +1,6 @@
 // Block-level (multi-block) selection: a contiguous run of top-level blocks, identified by the ids of
-// the block where the selection started (anchor) and the block it currently extends to (head). Ids —
-// not positions — so the selection survives moves, remote updates and re-renders. The plugin that
+// the block where the selection started (anchor) and the block it currently extends to (head). Ids
+// (not positions), so the selection survives moves, remote updates and re-renders. The plugin that
 // owns the state and its keyboard/clipboard behaviour lives in blockSelection.ts; this module only
 // holds the key and pure helpers so commands.ts can read it without an import cycle.
 import { PluginKey, type EditorState } from "@tiptap/pm/state";

@@ -165,7 +165,7 @@ export async function findProfile(ctx: Ctx, identity: UserIdentity): Promise<Doc
 
 /**
  * The signed-in person. Also enforces their plan's device limit: a device held at the limit (see
- * lib/devices.ts) is refused — except by the few functions that let it get unstuck (listing and signing out
+ * lib/devices.ts) is refused, except by the few functions that let it get unstuck (listing and signing out
  * devices, upgrading), which pass `allowOverDeviceLimit`.
  */
 export async function requireProfile(ctx: Ctx, opts: { allowOverDeviceLimit?: boolean } = {}): Promise<Doc<"profiles">> {

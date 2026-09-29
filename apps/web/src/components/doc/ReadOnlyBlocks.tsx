@@ -58,7 +58,7 @@ export function ReadOnlyBlocks({
         if (hideBelow !== null) return null;
         const p = block.props as Record<string, unknown>;
         const style = { ["--depth" as string]: depth } as React.CSSProperties;
-        // Format panel styling (decoration, colour, alignment, font, group, text style) — see editor.css.
+        // Format panel styling (decoration, colour, alignment, font, group, text style). See editor.css.
         const fa: Record<string, string> = {};
         for (const [prop, attr] of [["decoration", "data-decoration"], ["color", "data-color"], ["align", "data-align"], ["font", "data-font"], ["group", "data-group"], ["textStyle", "data-text-style"]] as const) {
           if (typeof p[prop] === "string") fa[attr] = p[prop] as string;

@@ -69,7 +69,7 @@ export interface FolderSummary {
   previews?: { cover: DocumentCover; title?: string; excerpt?: string }[];
 }
 
-/** "23 mins ago" / "1 hour ago" / "Sep 10" — the short age shown on folder covers. */
+/** "23 mins ago" / "1 hour ago" / "Sep 10": the short age shown on folder covers. */
 function shortAge(t: number): string {
   const mins = Math.max(0, Math.round((Date.now() - t) / 60_000));
   if (mins < 1) return "just now";

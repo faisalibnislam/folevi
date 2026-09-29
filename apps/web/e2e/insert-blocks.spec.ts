@@ -26,7 +26,7 @@ async function caretToEnd(page: Page) {
 test.describe("Insert panel", () => {
   test.setTimeout(150_000);
 
-  test("inserts lines, a page break, a picked table, a formula, a Mermaid diagram and a whiteboard — all persist and publish", async ({ browser }) => {
+  test("inserts lines, a page break, a picked table, a formula, a Mermaid diagram and a whiteboard that all persist and publish", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Insert Blocks Tester");
     await newPage(page, "Insert blocks");
     const panel = await openInsert(page);
@@ -170,7 +170,7 @@ test.describe("Insert panel", () => {
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-      expect(serious.map((v) => `${v.id} — ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     }
     await page.emulateMedia({ colorScheme: "light" });
     await page.evaluate(() => (document.documentElement.dataset.theme = "light"));

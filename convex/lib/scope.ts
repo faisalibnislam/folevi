@@ -6,7 +6,7 @@
 // Every content row has exactly one of `ownerProfileId` / `workspaceId`. Rows are written through
 // `insertScoped` (the one write path; tests/convex/static checks nothing inserts into a scoped table any
 // other way) and read back with `scopeOfRow`. Clients name a scope with `vScopeArg`; a Personal scope is
-// always the caller's own — a profile id is never taken from the client (see lib/auth.ts resolveScope).
+// always the caller's own: a profile id is never taken from the client (see lib/auth.ts resolveScope).
 import { v, type Infer } from "convex/values";
 import type { WithoutSystemFields } from "convex/server";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
@@ -156,7 +156,7 @@ interface LooseQuery {
 }
 
 /**
- * Up to `n` rows of any scoped table in a scope, through the table's scope index — for table-generic
+ * Up to `n` rows of any scoped table in a scope, through the table's scope index, for table-generic
  * sweeps (account purge, the account-model migration). Typed loosely because the table is a variable.
  */
 export async function scopedRows(ctx: QueryCtx, table: ScopedTable, scope: Scope, n: number): Promise<AnyScopedRow[]> {

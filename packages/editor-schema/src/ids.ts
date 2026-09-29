@@ -31,7 +31,7 @@ export function isValidId(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value);
 }
 
-/** FNV-1a (64-bit) — deterministic, non-cryptographic; used only to derive stable ids. */
+/** FNV-1a (64-bit): deterministic, non-cryptographic; used only to derive stable ids. */
 function fnv1a64(input: string): string {
   let h = 0xcbf29ce484222325n;
   const prime = 0x100000001b3n;
@@ -59,7 +59,7 @@ export function dailyDocumentId(profileId: string, scopeKey: string, date: strin
 }
 
 /**
- * The person's Inbox page in a scope (`scopeIdKey`) — where Quick Add puts tasks. Deterministic for the
+ * The person's Inbox page in a scope (`scopeIdKey`), where Quick Add puts tasks. Deterministic for the
  * same reason as daily ids: two offline devices adding a task create the same page instead of two Inboxes.
  */
 export function inboxDocumentId(profileId: string, scopeKey: string): string {

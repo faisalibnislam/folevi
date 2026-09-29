@@ -111,7 +111,7 @@ test("organization views have no serious accessibility violations (light and dar
       await settle(page);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).disableRules(["region"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-      expect(serious.map((v) => `${scheme} ${path}: ${v.id} — ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);
+      expect(serious.map((v) => `${scheme} ${path}: ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);
     }
   }
   // The task editor dialog.
@@ -122,5 +122,5 @@ test("organization views have no serious accessibility violations (light and dar
   await expect(page.getByRole("dialog", { name: "Edit task" })).toBeVisible();
   await page.waitForTimeout(500); // let the open animation finish before measuring contrast
   const dialog = await new AxeBuilder({ page }).include("dialog[open]").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
-  expect(dialog.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id} — ${v.nodes.map((n) => `${n.target.join(" ")} ${n.failureSummary ?? ""}`).slice(0, 4).join(" | ")}`)).toEqual([]);
+  expect(dialog.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.map((n) => `${n.target.join(" ")} ${n.failureSummary ?? ""}`).slice(0, 4).join(" | ")}`)).toEqual([]);
 });

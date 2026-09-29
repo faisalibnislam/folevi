@@ -86,7 +86,7 @@ export const me = query({
       profile: {
         ...publicProfile(profile),
         avatarUrl: await identityImageUrl(ctx, profile.avatarFileId),
-        // What their Personal plan includes right now (AI in Personal, storage, devices, trial) — the server
+        // What their Personal plan includes right now (AI in Personal, storage, devices, trial). The server
         // enforces it again. A team workspace's own plan is on workspaces.mine.
         entitlements: await personalEntitlements(ctx, profile._id),
       },
@@ -96,7 +96,7 @@ export const me = query({
 
 /**
  * First sign-in: creates the profile and seeds their Personal with example content (no workspace is
- * created: Personal is not a workspace). Idempotent — a second call returns the existing profile.
+ * created: Personal is not a workspace). Idempotent: a second call returns the existing profile.
  * Identity data comes only from the verified token.
  */
 export const bootstrap = mutation({
@@ -377,7 +377,7 @@ export const revokeSession = mutation({
   },
 });
 
-/** Ends every session except this one (also forgets nothing else — trusted devices re-ask for a code). */
+/** Ends every session except this one (also forgets nothing else; trusted devices re-ask for a code). */
 export const revokeOtherSessions = mutation({
   args: {},
   handler: async (ctx) => {

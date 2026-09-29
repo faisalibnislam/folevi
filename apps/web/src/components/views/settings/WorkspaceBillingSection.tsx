@@ -41,8 +41,8 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("checkout");
-    if (q === "success") toast.show("Thanks! The workspace plan is being activated — it can take a moment.", { tone: "success" });
-    if (q === "canceled") toast.show("Checkout canceled — nothing was charged.");
+    if (q === "success") toast.show("Thanks! The workspace plan is being activated. It can take a moment.", { tone: "success" });
+    if (q === "canceled") toast.show("Checkout canceled. Nothing was charged.");
     if (q) window.history.replaceState(null, "", window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,14 +98,14 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                 ? current.blurb
                 : sub?.status === "past_due"
                   ? stripeBilled
-                    ? "The last payment failed. Update the payment method to keep the plan — it stays on while payment is retried."
+                    ? "The last payment failed. Update the payment method to keep the plan. It stays on while payment is retried."
                     : "The last payment failed."
                   : cancelScheduled && sub?.currentPeriodEnd
                     ? `Ends ${dateOnly(sub.currentPeriodEnd)}. ${current.name} features remain available until then.`
                     : trialing && sub?.trialEndsAt
                       ? `Trial until ${dateOnly(sub.trialEndsAt)}.`
                       : sub?.currentPeriodEnd
-                        ? `${manual ? "Set by the Folevi team — runs until" : "Renews"} ${dateOnly(sub.currentPeriodEnd)}.`
+                        ? `${manual ? "Set by the Folevi team until" : "Renews"} ${dateOnly(sub.currentPeriodEnd)}.`
                         : manual
                           ? "Set by the Folevi team."
                           : current.blurb}
@@ -145,7 +145,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             <p className="mt-1 text-sm text-muted">
               Guests: {data.guests.toLocaleString()} · Not billed
             </p>
-            {data.pendingInvites ? <p className="mt-1 text-[12.5px] text-faint">{plural(data.pendingInvites, "pending invitation")} — billed once accepted.</p> : null}
+            {data.pendingInvites ? <p className="mt-1 text-[12.5px] text-faint">{plural(data.pendingInvites, "pending invitation")}, billed once accepted.</p> : null}
           </div>
           <div className="rounded-[10px] bg-[var(--glass-hover)] p-4">
             <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
@@ -154,7 +154,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             <p className="mt-1 text-sm text-muted">
               {e.paid && plan.interval
                 ? `${data.seats.toLocaleString()} × ${seatPrice} = ${formatPrice(data.estimatedChargeCents)}/${per(plan.interval)}`
-                : "Free — nothing is charged."}
+                : "Free. Nothing is charged."}
             </p>
             {e.paid && sub?.quantity !== null && sub?.quantity !== undefined && sub.quantity !== billedQuantity(data.seats) ? <p className="mt-1 text-[12.5px] text-faint">Updating the billed seats ({sub.quantity}) to match…</p> : null}
           </div>
@@ -252,7 +252,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
         </div>
         {!data.checkoutAvailable && !stripeLive ? (
           <p className="mt-3 text-[12.5px] text-faint">
-            {data.testPurchases ? "Payments aren't connected yet, so upgrades here are test purchases (development only) — nothing is charged." : "Online payments for workspaces are coming soon."}
+            {data.testPurchases ? "Payments aren't connected yet, so upgrades here are test purchases (development only), and nothing is charged." : "Online payments for workspaces are coming soon."}
           </p>
         ) : null}
       </Card>

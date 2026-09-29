@@ -21,7 +21,7 @@ export function SharedView() {
         ) : docs.length === 0 ? (
           <div className="mt-16 text-center">
             <p className="ui-display text-2xl text-muted">Nothing has been shared with you yet.</p>
-            <p className="mt-2 text-sm text-muted">Pages people share with you directly — from their Personal or from any workspace — show up here.</p>
+            <p className="mt-2 text-sm text-muted">Pages people share with you directly, from their Personal or from any workspace, show up here.</p>
           </div>
         ) : (
           <ul className="mt-6 divide-y divide-line overflow-hidden ui-card rounded-[8px]">

@@ -56,7 +56,7 @@ export function NotificationsSection() {
     <div className="space-y-4">
       <Card
         title="Notifications"
-        description="Choose what reaches you in the app (the bell) and by email. Emails say who did what and where, with a link — never your notes or comment text. Security emails (new sign-ins, account deletion) can't be turned off."
+        description="Choose what reaches you in the app (the bell) and by email. Emails say who did what and where, with a link. They never include your notes or comment text. Security emails (new sign-ins, account deletion) can't be turned off."
       >
         <div role="table" aria-label="Notification preferences" className="max-w-xl">
           <div role="row" className="grid grid-cols-[1fr_72px_72px] items-end gap-2 border-b border-line pb-2 text-xs font-medium text-muted">

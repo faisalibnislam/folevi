@@ -162,7 +162,7 @@ const personName = async (ctx: QueryCtx, id: Id<"profiles"> | undefined) => {
  * The Share dialog. What it shows depends on who's asking:
  * - people in the page's scope (its Personal's owner, or members of its workspace) see everyone the page
  *   was shared with, marked as guests when they aren't members; emails only for the page's managers;
- * - a guest sees only their own access, the page's owner and who shared it with them — never the other
+ * - a guest sees only their own access, the page's owner and who shared it with them, never the other
  *   people it's shared with.
  * Public links and the access mode are for the page's managers; pending email invitations for the people
  * who may see them (managers: all; members who share: their own).
@@ -304,7 +304,7 @@ export const grant = mutation({
     await consume(ctx, "invite", profile._id);
     const email = args.email.trim().toLowerCase();
     if (!EMAIL_RE.test(email) || email.length > 254) fail("invalid_argument", "Enter a valid email address.");
-    if (email === profile.email) fail("invalid_argument", "That's you — you already have access.");
+    if (email === profile.email) fail("invalid_argument", "That's you. You already have access.");
     const target = await ctx.db
       .query("profiles")
       .withIndex("by_email", (q) => q.eq("email", email))

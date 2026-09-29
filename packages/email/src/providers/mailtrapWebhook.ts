@@ -1,6 +1,6 @@
 // Mailtrap webhooks: signature verification and parsing.
 //
-// Mailtrap POSTs `{ "events": [...] }` (or JSON Lines, one event — or one `{events}` batch — per line),
+// Mailtrap POSTs `{ "events": [...] }` (or JSON Lines, with one event or one `{events}` batch per line),
 // up to 500 events per request, and retries on failure. `Mailtrap-Signature` is the hex HMAC-SHA256 of
 // the raw request body with the webhook's signing secret.
 import type { MailtrapEvent, MailtrapEventName } from "../types";

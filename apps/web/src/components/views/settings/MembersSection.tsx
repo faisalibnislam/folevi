@@ -172,7 +172,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
           confirm?.kind === "owner"
             ? `${confirm.name} will own ${workspace.name}, and be the only one who can manage admins, billing, or hand it on again. You’ll stay on as an admin. The workspace’s plan stays with the workspace.`
             : confirm?.kind === "guest"
-              ? `${confirm.name} leaves the workspace's members (one seat less) and keeps access only to pages they created or were given — except restricted ones. They won't see anything else here.`
+              ? `${confirm.name} leaves the workspace's members (one seat less) and keeps access only to pages they created or were given, except restricted ones. They won't see anything else here.`
               : `${confirm?.name ?? "They"} will lose access to ${workspace.name} and any pages shared with them here. Their pages stay in the workspace, and their Personal isn’t affected.`
         }
         size="sm"

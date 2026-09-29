@@ -497,7 +497,7 @@ export class SyncEngine {
   /**
    * Where a new page goes: under its parent (always the parent's scope), else the scope the op names,
    * else the batch's routing scope. Adding pages to Personal is for its owner only; to a workspace it
-   * needs editor membership — people who only hold a grant on a shared page (guests) can edit it but not
+   * needs editor membership. People who only hold a grant on a shared page (guests) can edit it but not
    * add pages to someone else's Personal or workspace.
    */
   private async createTarget(input: WireDocumentCreate): Promise<{ scope: Scope; parent: Doc<"documents"> | null }> {
@@ -532,7 +532,7 @@ export class SyncEngine {
     const input: WireDocumentCreate = op.document;
     const existing = await getDocumentByPublicId(this.ctx, input.id);
     if (existing) {
-      // A replay through another path (or after a lost ack) of our own create — if we can still open it.
+      // A replay through another path (or after a lost ack) of our own create, if we can still open it.
       if (existing.createdBy === this.profile._id && (await this.readable(existing))) {
         return { opId: op.opId, status: "applied", revision: existing.revision, document: await this.summary(existing) };
       }
@@ -646,7 +646,7 @@ export class SyncEngine {
     if (patch.cover !== undefined) update.cover = await this.checkedCover(patch.cover, scopeOfRow(doc));
     if (patch.style !== undefined) update.style = checkedStyle(patch.style);
     // Moving a page: guests (a page grant, no membership) may only rearrange pages among what was shared
-    // with them — never file pages in the scope's folders or put them at its top level — and taking a
+    // with them (never file pages in the scope's folders or put them at its top level), and taking a
     // page out from under a restricted page (which would open it up) needs manage access.
     const moving = patch.folderId !== undefined || patch.parentDocumentId !== undefined;
     const info = moving ? await documentAccessInfo(this.ctx, this.profile, doc) : null;
@@ -802,7 +802,7 @@ export async function builtInTemplateEnabled(ctx: MutationCtx, key: string): Pro
  * the `pageLink` label). When the title or icon changes, rewrite those caches so outlines, exports,
  * share views and search show the current name. The rewrite bumps `revision`/`seq` (clients pick it up
  * like any remote change) but not `contentRev`: it is derived data, so it never turns a concurrent edit
- * of the same block into a conflict — at worst that edit re-writes the old label, which the next rename
+ * of the same block into a conflict. At worst that edit re-writes the old label, which the next rename
  * refreshes again.
  */
 export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">): Promise<void> {

@@ -28,7 +28,7 @@ function useWorkspacesQuery(enabled: boolean) {
 }
 
 const CONTEXT_KEY = "folevi:context";
-/** Older builds remembered a workspace id here — possibly the old personal workspace's. */
+/** Older builds remembered a workspace id here, possibly the old personal workspace's. */
 const LEGACY_WORKSPACE_KEY = "folevi:workspace";
 
 /** The context as remembered on this device (a workspace id may no longer be one of yours). */
@@ -81,7 +81,7 @@ interface AppState {
   context: ActiveContext;
   /** The current context as the server's `scope` argument (stable between renders). */
   scope: WireScope;
-  /** `scopeIdKey(scope)`: "personal" or the workspace id — for local caches, deterministic ids and React keys. */
+  /** `scopeIdKey(scope)`: "personal" or the workspace id, for local caches, deterministic ids and React keys. */
   scopeKey: string;
   /** The current team workspace, or null in Personal. */
   workspace: Workspace | null;

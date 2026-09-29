@@ -47,7 +47,7 @@ export function productEmailAllowed(key: string, preferenceKey: string, prefs: R
 /**
  * Sends one transactional email through Mailtrap. Records every
  * attempt locally; a 2xx from the provider is recorded as "accepted" (accepted by provider), never as
- * "delivered" — delivery state only comes from signed webhooks.
+ * "delivered". Delivery state only comes from signed webhooks.
  *
  * Mailtrap has no idempotency key, so the attempt row is the guard: `beginAttempt` refuses to start a
  * second send for an idempotency key that was already accepted or is still in flight.

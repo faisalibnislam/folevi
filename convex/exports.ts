@@ -125,9 +125,9 @@ type ExportDoc = {
 };
 
 /**
- * Export of a scope — everything in your Personal, or a workspace (as you see it): a ZIP with one
+ * Export of a scope (everything in your Personal, or a workspace as you see it): a ZIP with one
  * Markdown file per document (in folders mirroring the sidebar, nested folders included), an assets folder
- * and a machine-readable manifest.json. The ZIP is streamed: each attachment is added (uncompressed —
+ * and a machine-readable manifest.json. The ZIP is streamed: each attachment is added (uncompressed, since
  * images and PDFs are compressed already) and released before the next is read, so memory holds the
  * archive plus one file, not every input twice. Attachments that are left out (over the 400 MB budget, or
  * unreadable) are listed in the manifest and returned.
@@ -286,7 +286,7 @@ async function buildExport(ctx: ActionCtx, prep: Prep): Promise<Built> {
 
 /**
  * An export prepared for someone at their request through support (admin → user → "Prepare export"). It's
- * built exactly as they'd see it and delivered only to them — a notification with a download — so staff
+ * built exactly as they'd see it and delivered only to them (a notification with a download), so staff
  * never receive note content.
  */
 export const exportForUser = internalAction({

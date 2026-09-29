@@ -52,7 +52,7 @@ export function tabsStorageKeys(accountKey: string, workspaceId: string | null):
 
 /**
  * Pages open in tabs: visiting a page adds its tab (or switches to it), tabs stay open until closed, and
- * they're remembered per account and per context (Personal, or each workspace) on this device — switching
+ * they're remembered per account and per context (Personal, or each workspace) on this device. Switching
  * context shows that context's tabs, so a page from one never sits in another's strip.
  */
 export function TabsProvider({ accountKey, workspaceId, children }: { accountKey: string; workspaceId: string | null; children: ReactNode }) {

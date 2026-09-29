@@ -56,8 +56,8 @@ counts, command palette results, calendar and task dates, collection filter/row/
 Settings › Sync). Remaining hand-built plurals and
 concatenations (owned by other areas, to migrate with the pattern above):
 
-- `components/editor/EditorMenus.tsx` — "`N suggestion(s)`"
-- `components/doc/ShareDialog.tsx` — "`N view(s)`"
-- `components/doc/ReadOnlyBlocks.tsx` — date mention formatted with a hard-coded `"en-US"` (use `formatCalendarDate`)
-- `components/views/settings/DataSection.tsx` — "`Imported X of Y file(s)`"
-- `components/marketing/demos/ConnectDemo.tsx` — "`N backlink(s)`"; `ReturnDemo.tsx` — "`N page(s) match(es)`"
+- `components/editor/EditorMenus.tsx`: "`N suggestion(s)`"
+- `components/doc/ShareDialog.tsx`: "`N view(s)`"
+- `components/doc/ReadOnlyBlocks.tsx`: date mention formatted with a hard-coded `"en-US"` (use `formatCalendarDate`)
+- `components/views/settings/DataSection.tsx`: "`Imported X of Y file(s)`"
+- `components/marketing/demos/ConnectDemo.tsx`: "`N backlink(s)`"; `ReturnDemo.tsx`: "`N page(s) match(es)`"

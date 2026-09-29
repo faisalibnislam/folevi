@@ -51,7 +51,7 @@ export function sendingDomain(env: Env): string {
 /**
  * Sends one template to one recipient.
  *
- * `accepted` means the provider accepted the message for delivery — NOT delivered. Delivery, bounces
+ * `accepted` means the provider accepted the message for delivery. It does NOT mean delivered. Delivery, bounces
  * and complaints only arrive through signed webhooks. The outcome never contains the recipient, the
  * rendered content or any credential, and nothing here logs.
  */

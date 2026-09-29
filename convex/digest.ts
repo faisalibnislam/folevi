@@ -10,7 +10,7 @@ import { appUrl, includedInDigest } from "./lib/notify";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Titles only (never comment bodies) — the minimum needed to be useful. */
+/** Titles only (never comment bodies): the minimum needed to be useful. */
 export function digestSummary(unread: Pick<Doc<"notifications">, "title">[]): string {
   const lines = unread.slice(0, 5).map((n) => `• ${n.title}`);
   if (unread.length > 5) lines.push(`…and ${unread.length - 5} more`);

@@ -133,7 +133,7 @@ describe("plans and entitlements", () => {
     expect(mine.storageLimitBytes).toBe(20 * GB);
   });
 
-  test("test purchases work in development, are recorded, can be canceled — and are refused in production", async () => {
+  test("test purchases work in development, are recorded, can be canceled, and are refused in production", async () => {
     const t = setup();
     const a = await person(t, "buyer@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "year" });

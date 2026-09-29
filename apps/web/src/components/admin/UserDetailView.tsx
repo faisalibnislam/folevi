@@ -220,7 +220,7 @@ export function UserDetailView({ id }: { id: string }) {
                       <StatusBadge status={e.status} />
                     </td>
                     <td className={tdNum}>{e.attempts}</td>
-                    <td className={td}>{e.errorCode ? <Mono>{e.errorCode}</Mono> : <span className="text-muted">—</span>}</td>
+                    <td className={td}>{e.errorCode ? <Mono>{e.errorCode}</Mono> : <span className="text-muted">None</span>}</td>
                     <td className={td}>
                       <Time ts={e.createdAt} />
                     </td>
@@ -254,7 +254,7 @@ export function UserDetailView({ id }: { id: string }) {
                       <Mono>{h.action}</Mono>
                     </td>
                     <td className={td}>{h.actor}</td>
-                    <td className={`${td} max-w-[260px]`}>{h.reason ?? <span className="text-muted">—</span>}</td>
+                    <td className={`${td} max-w-[260px]`}>{h.reason ?? <span className="text-muted">None</span>}</td>
                     <td className={td}>
                       <ShortId value={h.requestId} head={4} tail={6} />
                     </td>
@@ -407,9 +407,9 @@ function UserActionDialogs({ user, action, onClose, onDone }: { user: UserDetail
             initial: user.platformRole ?? "",
             options: [
               { value: "", label: "None (regular user)" },
-              { value: "support_admin", label: "Support staff — look up people, resend emails, trials, exports" },
-              { value: "ops_admin", label: "Admin — plus plans, AI, suspensions, quotas, configuration, revenue" },
-              { value: "super_admin", label: "Owner — everything, including roles, refunds and maintenance" },
+              { value: "support_admin", label: "Support staff: look up people, resend emails, trials, exports" },
+              { value: "ops_admin", label: "Admin: support access plus plans, AI, suspensions, quotas, configuration, revenue" },
+              { value: "super_admin", label: "Owner: everything, including roles, refunds and maintenance" },
             ],
             validate: (v) => (v === (user.platformRole ?? "") ? "Choose a different role." : null),
           },

@@ -454,7 +454,7 @@ export const recordView = mutation({
 
 /**
  * Home's "Recent notes": the scope's most recently edited notes, minus the ones this person removed
- * from the list (until they're edited again or reopened — see recentHidden in the schema).
+ * from the list (until they're edited again or reopened; see recentHidden in the schema).
  */
 export const recentNotes = query({
   args: { scope: vScopeArg, limit: v.optional(v.number()) },
@@ -546,7 +546,7 @@ async function touchDoc(ctx: MutationCtx, doc: Doc<"documents">, patch: Partial<
 }
 
 /**
- * Online document creation in a scope — the caller's Personal, or a workspace where they can edit (offline
+ * Online document creation in a scope: the caller's Personal, or a workspace where they can edit (offline
  * clients use sync.push with a document.create op). A nested page goes to its parent's scope.
  */
 export const create = mutation({

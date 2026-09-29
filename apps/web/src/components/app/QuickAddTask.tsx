@@ -16,7 +16,7 @@ type Priority = "none" | "low" | "medium" | "high";
 type Target = { id: string; title: string; icon: string | null } | null;
 
 /**
- * Quick Add Task (⇧⌘A). The task becomes a checklist block in the chosen document — the open page by
+ * Quick Add Task (⇧⌘A). The task becomes a checklist block in the chosen document: the open page by
  * default, or the person's Inbox page when none is chosen. Every task always lives in a document.
  */
 export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onClose: () => void; documentId?: string }) {
@@ -200,7 +200,7 @@ function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: T
             setActive(0);
           }}
           onKeyDown={onKey}
-          placeholder={value ? "Search another page…" : "Inbox — or search a page…"}
+          placeholder={value ? "Search another page…" : "Inbox, or search a page…"}
           className="h-9 min-w-0 flex-1 ui-input rounded-[6px] px-3"
         />
       </div>

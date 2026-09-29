@@ -220,7 +220,7 @@ export function ShortId({ value, head = 6, tail = 6 }: { value: string; head?: n
 }
 
 export function Time({ ts }: { ts: number | null | undefined }) {
-  if (!ts) return <span className="text-muted">—</span>;
+  if (!ts) return <span className="text-muted">-</span>;
   return (
     <time dateTime={new Date(ts).toISOString()} title={formatDateTime(ts)} className="whitespace-nowrap">
       {formatRelative(ts)}

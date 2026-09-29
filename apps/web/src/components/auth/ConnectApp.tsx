@@ -15,7 +15,7 @@ function returnToApp(redirectUri: string, params: Record<string, string>, state:
   window.location.assign(url.toString());
 }
 
-/** "Sign in to Folevi for Mac as …?" — issues a one-time code for the app after an explicit Continue. */
+/** "Sign in to Folevi for Mac as …?": issues a one-time code for the app after an explicit Continue. */
 export function ConnectApp({ clientId, redirectUri, codeChallenge, codeChallengeMethod, state }: Props) {
   const client = nativeClient(clientId, redirectUri);
   const { data: session, isPending } = authClient.useSession();
@@ -34,7 +34,7 @@ export function ConnectApp({ clientId, redirectUri, codeChallenge, codeChallenge
   if (done) {
     return (
       <>
-        <AuthHeading title={`Back to ${client.label}`} lede={`You're signed in. If ${client.label} didn't open by itself, switch back to it now — you can close this page.`} />
+        <AuthHeading title={`Back to ${client.label}`} lede={`You're signed in. If ${client.label} didn't open by itself, switch back to it now. You can close this page.`} />
       </>
     );
   }

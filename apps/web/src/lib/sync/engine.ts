@@ -57,8 +57,8 @@ export class SyncEngine {
 
   /**
    * Opens the account's engine. `teamWorkspaceIds` (the workspaces the person belongs to) lets page
-   * creates queued by older builds, which named a workspace id — possibly the old personal workspace,
-   * which no longer exists — be re-stamped with a scope before anything is sent (`adoptLegacyCreates`).
+   * creates queued by older builds, which named a workspace id (possibly the old personal workspace,
+   * which no longer exists), to be re-stamped with a scope before anything is sent (`adoptLegacyCreates`).
    */
   static async open(client: ConvexReactClient, accountKey: string, scope: WireScope, deviceId: string, teamWorkspaceIds?: readonly string[]): Promise<SyncEngine> {
     const engine = new SyncEngine(client, accountKey, scope, deviceId);
@@ -251,8 +251,8 @@ export class SyncEngine {
 
   /**
    * Resolves once a document created on this device exists on the server (its queued `document.create`
-   * has been acknowledged). Server-only features on a brand-new page — e.g. creating a collection hosted
-   * by it — await this instead of failing with "Document not found". Rejects when offline, when the create
+   * has been acknowledged). Server-only features on a brand-new page (e.g. creating a collection hosted
+   * by it) await this instead of failing with "Document not found". Rejects when offline, when the create
    * is rejected, or after `timeoutMs`.
    */
   whenDocumentOnServer(documentId: string, timeoutMs = 20_000): Promise<void> {
@@ -368,7 +368,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 /**
  * Reads the account-wide sync state, first folding in any per-workspace states written by older builds
  * (they were keyed by workspace id). The fold happens in one IndexedDB transaction, so a crash leaves
- * either the old keys or the merged state — never neither. Legacy `document.create` ops are stamped
+ * either the old keys or the merged state, never neither. Legacy `document.create` ops are stamped
  * with the workspace they were queued in, preserving where they land.
  */
 async function loadAccountState(accountKey: string): Promise<SyncState | undefined> {
@@ -390,7 +390,7 @@ async function loadAccountState(accountKey: string): Promise<SyncState | undefin
  * Page creates queued by older builds name a workspace id (`document.workspaceId`) instead of a scope.
  * Personal used to be a workspace, and that workspace no longer exists, so a create naming it would be
  * refused. Each such create is re-stamped: a workspace the person still belongs to stays
- * (`scope: workspace`); anything else lands in their own Personal — the only place a create naming a
+ * (`scope: workspace`); anything else lands in their own Personal, the only place a create naming a
  * vanished workspace can go without losing what they wrote. Returns `state` itself when there's nothing
  * to adopt. Exported for tests.
  */

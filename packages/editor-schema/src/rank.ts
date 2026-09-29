@@ -11,7 +11,7 @@ export function isValidRank(rank: string): boolean {
   return true;
 }
 
-/** Byte-wise comparison (not locale-aware) — identical to Swift's `String` UTF-8 ordering for this alphabet. */
+/** Byte-wise comparison (not locale-aware), identical to Swift's `String` UTF-8 ordering for this alphabet. */
 export function compareRank(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
@@ -44,7 +44,7 @@ export function rankBetween(before: string | null, after: string | null): string
   return midpoint(before ?? "", after);
 }
 
-/** `count` evenly spread ranks between two bounds — used for imports and rebalancing. */
+/** `count` evenly spread ranks between two bounds, used for imports and rebalancing. */
 export function rankSequence(count: number, before: string | null = null, after: string | null = null): string[] {
   if (count <= 0) return [];
   if (count === 1) return [rankBetween(before, after)];

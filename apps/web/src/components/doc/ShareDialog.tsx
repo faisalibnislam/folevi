@@ -10,7 +10,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
 
-/** `personal`: the page is in someone's Personal, which has no members — only the people added here (and its owner) can open it. */
+/** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
 export function ShareDialog({ open, onClose, documentId, title, personal = false }: { open: boolean; onClose: () => void; documentId: string; title: string; personal?: boolean }) {
   const data = useQuery(api.sharing.get, open ? { documentId } : "skip");
   const setMode = useMutation(api.sharing.setAccessMode);
@@ -117,7 +117,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   Share
                 </Button>
                 <p className="w-full text-xs text-muted">
-                  {personal ? "Anyone with an email address: people without a Folevi account get an invitation by email." : "People outside the workspace join as guests on this page only — they’re not billed. People without a Folevi account get an invitation by email."}
+                  {personal ? "Anyone with an email address: people without a Folevi account get an invitation by email." : "People outside the workspace join as guests on this page only and aren’t billed. People without a Folevi account get an invitation by email."}
                 </p>
               </form>
             ) : null}
@@ -171,7 +171,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               {!data.publicLinksAvailable ? <p className="mt-2 text-xs text-warning">Public links are temporarily turned off for Folevi.</p> : null}
               {freshLink ? (
                 <div className="mt-3 rounded-[6px] border border-success/40 bg-success-soft p-3">
-                  <p className="text-xs font-medium">Copy this link now — for your security it isn’t shown again.</p>
+                  <p className="text-xs font-medium">Copy this link now. For your security, it isn’t shown again.</p>
                   <div className="mt-2 flex gap-2">
                     <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 ui-well rounded-[6px] px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
                     <Button size="sm" onClick={() => void navigator.clipboard.writeText(freshLink).then(() => toast.show("Link copied"))}>

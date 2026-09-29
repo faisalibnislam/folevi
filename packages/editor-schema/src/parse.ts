@@ -73,7 +73,7 @@ export function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
   return out as T;
 }
 
-/** Stable JSON with sorted keys — used by contract tests and content equality checks. */
+/** Stable JSON with sorted keys, used by contract tests and content equality checks. */
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(sortKeys(value));
 }

@@ -133,7 +133,7 @@ export const threads = query({
 });
 
 /**
- * People who can be @mentioned on a document: everyone who can read it — workspace members and
+ * People who can be @mentioned on a document: everyone who can read it, which is workspace members and
  * people it (or a parent page) was shared with. Guests only see the people the page is shared with
  * plus its author, never the whole member list. No emails are returned.
  */

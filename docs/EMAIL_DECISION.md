@@ -18,7 +18,7 @@
    value and accepting only https (or app-relative) links. The provider receives finished HTML + text.
 2. **Mailtrap sends it** (Email API, transactional stream, `mail.folevi.com`): one `POST /api/send` per
    email with `from`, `to`, optional `reply_to`, `subject`, `html`, `text`, `category` (the template key)
-   and `custom_variables` (our attempt id and template key — no personal data).
+   and `custom_variables` (our attempt id and template key; no personal data).
 3. **Identity email** (confirmation, password reset) takes the same path: Better Auth (inside Convex,
    `convex/auth.ts`) creates the single-use link and hands it to Folevi's callback;
    `convex/authEmails.ts` sends it through `internal.email.sendTemplate` like every other email. The
@@ -36,7 +36,7 @@
 ## Why Mailtrap, and why templates in the repo
 
 - **Templates as code.** With Loops, each template had to be uploaded by hand as an MJML zip, published,
-  and its id copied into an env var — eleven manual steps per change, and nine templates never made it.
+  and its id copied into an env var: eleven manual steps per change, and nine templates never made it.
   Rendering in the repo means a template change is a reviewed PR, tested (placeholders, escaping, link
   rules, images, text version) and shipped with the Convex deploy, with nothing to configure per template.
 - **Plain-text part.** Loops documents no plain-text alternative for transactional mail; Mailtrap takes
@@ -54,7 +54,7 @@ the copy is only as good as our own client testing (Apple Mail, Gmail web and iO
 
 ## Evidence
 
-The facts this integration relies on (from Mailtrap's API documentation, Sept 2026 — re-check them there before changing the integration):
+The facts this integration relies on (from Mailtrap's API documentation, Sept 2026; re-check them there before changing the integration):
 
 | Fact | Source |
 | --- | --- |
@@ -72,7 +72,7 @@ The facts this integration relies on (from Mailtrap's API documentation, Sept 20
 3. **Idempotency.** Each send has a key derived from its cause (`auth-verify:<token hash>`,
    `notify:<notification id>`, `invite:<id>`…). `beginAttempt` refuses a second send when an attempt with
    that key was accepted or is still in flight; a failed attempt may be retried.
-4. **Minimal data.** Variables are names, titles, times and one link — never note bodies or comment
+4. **Minimal data.** Variables are names, titles, times and one link, never note bodies or comment
    text. Logs contain the template, provider, status and a redacted recipient, never the address, link
    or content.
 5. **Retries.** 429 / 408 / 5xx and connection errors are retried with backoff (4 tries); other 4xx are

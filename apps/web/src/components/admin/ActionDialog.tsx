@@ -281,7 +281,7 @@ export function ActionDialog({
             aria-required="true"
             aria-invalid={errors.reason ? true : undefined}
             aria-describedby={describedBy("reason", true)}
-            placeholder="e.g. Ticket #4821 — user reported a lost device"
+            placeholder="e.g. Ticket #4821: user reported a lost device"
             className={`${inputCls} h-auto py-2`}
           />
           <p id={`${uid}-reason-hint`} className="mt-1 text-xs text-muted">

@@ -140,8 +140,8 @@
 }
 
 /* ------------------------------------------------------------------------------------------------
- * Neutral app chrome. Inside the product (not the marketing site) the interface stays neutral —
- * white/grey in light, near-black in dark — so colour comes from the notes themselves: their covers,
+ * Neutral app chrome. Inside the product (not the marketing site) the interface stays neutral
+ * (white/grey in light, near-black in dark), so colour comes from the notes themselves: their covers,
  * artwork and accent colours. AccountGate sets data-chrome="neutral" on <html> while the app is open.
  * --------------------------------------------------------------------------------------------- */
 :root[data-chrome="neutral"] {
@@ -256,7 +256,7 @@
   /* Surfaces */
   .ui-card { background: var(--color-surface); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
   .ui-sheet { border-radius: var(--radius-sheet); box-shadow: var(--shadow-sheet); }
-  /* Popovers, menus, dialogs: strong glass — enough tint for text to read on anything behind. */
+  /* Popovers, menus, dialogs: strong glass, with enough tint for text to read on anything behind. */
   .ui-pop {
     background: var(--glass-pop);
     -webkit-backdrop-filter: blur(28px) saturate(1.8);

@@ -60,8 +60,8 @@ function Diff({ before, after }: { before: unknown; after: unknown }) {
                 {k}
                 {changed ? <span className="sr-only"> (changed)</span> : null}
               </th>
-              <td className={`py-1 pr-4 align-top ${changed ? "text-danger line-through decoration-danger/40" : "text-muted"}`}>{bv ?? "—"}</td>
-              <td className={`py-1 align-top ${changed ? "font-semibold text-success" : "text-muted"}`}>{av ?? "—"}</td>
+              <td className={`py-1 pr-4 align-top ${changed ? "text-danger line-through decoration-danger/40" : "text-muted"}`}>{bv ?? "Not set"}</td>
+              <td className={`py-1 align-top ${changed ? "font-semibold text-success" : "text-muted"}`}>{av ?? "Not set"}</td>
             </tr>
           );
         })}
@@ -233,7 +233,7 @@ export function AuditView() {
                           <ShortId value={e.targetId} />
                         )}
                       </td>
-                      <td className={`${td} max-w-[280px]`}>{e.reason ?? <span className="text-muted">—</span>}</td>
+                      <td className={`${td} max-w-[280px]`}>{e.reason ?? <span className="text-muted">None</span>}</td>
                       <td className={td}>
                         <ShortId value={e.requestId} head={4} tail={6} />
                       </td>

@@ -19,7 +19,7 @@ function DeviceIcon({ label, client }: { label: string; client: string }) {
 
 /**
  * Shown on a device that signed in over the plan's device limit (Free: 2). Nothing on this device can
- * reach the account until another device is signed out here, or the plan is upgraded — the server holds
+ * reach the account until another device is signed out here, or the plan is upgraded. The server holds
  * it either way (users.me → "device_limit"; every other call is refused).
  */
 export function DeviceLimitScreen({ limit }: { limit: number }) {

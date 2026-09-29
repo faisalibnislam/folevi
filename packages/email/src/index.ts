@@ -1,4 +1,4 @@
-// @folevi/email — Folevi's transactional email: templates (compiled in the repo), rendering, sending
+// @folevi/email is Folevi's transactional email: templates (compiled in the repo), rendering, sending
 // through Mailtrap, and webhook verification.
 // Runtime-agnostic: only Web APIs (fetch, crypto.subtle, TextEncoder, atob/btoa), so it runs
 // in the Convex V8 runtime, browsers and Node. No runtime dependencies.

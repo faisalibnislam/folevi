@@ -100,7 +100,7 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
             title={editable ? "Click to edit the formula (Enter when selected)" : undefined}
             onClick={() => editable && setEditing(true)}
           >
-            {latex.trim() ? <FormulaRender latex={latex} /> : <span className="fb-formula-empty">{editable ? "Empty formula — click to write LaTeX" : "Empty formula"}</span>}
+            {latex.trim() ? <FormulaRender latex={latex} /> : <span className="fb-formula-empty">{editable ? "Empty formula. Click to write LaTeX" : "Empty formula"}</span>}
           </div>
         )}
       </div>

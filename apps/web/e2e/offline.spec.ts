@@ -67,6 +67,6 @@ test("opening Folevi while the server is unreachable shows the last-known folio,
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 20_000 });
   // Personal (the default context) opens: the switcher shows it.
-  await expect(page.getByRole("button", { name: /— Personal, workspaces and account$/ })).toHaveAccessibleName("Personal — Personal, workspaces and account");
+  await expect(page.getByRole("button", { name: /: Personal, workspaces and account$/ })).toHaveAccessibleName("Personal: Personal, workspaces and account");
   await expect(page.getByText("You're offline", { exact: true })).toHaveCount(0);
 });

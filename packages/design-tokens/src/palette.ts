@@ -1,4 +1,4 @@
-// Picks a note's colours from its style — the person's own image, or a built-in style's swatches: the page
+// Picks a note's colours from its style (the person's own image, or a built-in style's swatches): the page
 // and text colours, an accent (checkboxes, quotes, links, underlines, callouts, code), five text colours
 // and four highlights, each for light and dark themes.
 //
@@ -8,12 +8,12 @@
 //    colourful it is" (a small vivid accent can win over a large grey, but not over a large colour field),
 //    skipping near-black and near-white clusters, which say little about the image's mood.
 // 3. The page and text colours are built in OKLCH from the key hue: a very light tinted page and a dark text
-//    in light mode, a deep page and light text in dark mode — each text colour pushed until it clears a
+//    in light mode, a deep page and light text in dark mode. Each text colour is pushed until it clears a
 //    high contrast ratio against its page, so muted and faint text mixed from it still read.
 // 4. The tone (deep or light) of the band where the title sits on the cover decides the title's colour.
 // 5. Five hues for text colours and highlights: the image's own distinct colours first (clusters at least
-//    40° apart on the colour wheel, most prominent first, the key colour always first), then — when the
-//    image has fewer — harmonies of the key hue (complement, triad, …) that sit furthest from those already
+//    40° apart on the colour wheel, most prominent first, the key colour always first), then, when the
+//    image has fewer, harmonies of the key hue (complement, triad, …) that sit furthest from those already
 //    chosen. Text colours clear 4.5:1 against the page; highlights are soft tints the text reads on.
 //
 // Pure functions: `paletteFromPixels` works on raw RGBA, `paletteFromSwatches` on weighted colours (the
@@ -244,7 +244,7 @@ export function hueName(h: number): string {
 }
 
 /**
- * A text colour in hue `h` that reads at better than 4.5:1 on every background given — the page, and its
+ * A text colour in hue `h` that reads at better than 4.5:1 on every background given: the page, and its
  * own highlight tint (callouts and highlighted text sit on those). Darker on light pages, lighter on dark.
  */
 function textOn(backgrounds: [number, number, number][], h: number, chroma: number, dark: boolean): [number, number, number] {
@@ -311,8 +311,8 @@ export function paletteFromPixels(data: Uint8ClampedArray | Uint8Array, width: n
 }
 
 /**
- * The palette for a set of weighted colours (a built-in style's ground and pools), with the tone given —
- * the built-in styles know how their covers read.
+ * The palette for a set of weighted colours (a built-in style's ground and pools), with the tone given.
+ * The built-in styles know how their covers read.
  */
 export function paletteFromSwatches(swatches: { hex: string; weight: number }[], tone: "deep" | "light"): StylePalette {
   const total = swatches.reduce((s, x) => s + x.weight, 0) || 1;

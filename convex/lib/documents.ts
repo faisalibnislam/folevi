@@ -79,7 +79,7 @@ export class IdResolver {
 
 /**
  * What one reader may see of where pages sit. A page's folder only when they're in the page's own scope
- * (its Personal's owner, or a member of its workspace) — never for a guest; its parent page only when they
+ * (its Personal's owner, or a member of its workspace), never for a guest; its parent page only when they
  * can open that page. Anything else is null: an id of a folder or page they can't open isn't theirs to
  * have, even an opaque one. Cached per call; `summary` is toSummary for this reader.
  */

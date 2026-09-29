@@ -1,4 +1,4 @@
-// A small, dependency-free subset of ICU MessageFormat — enough for Folevi's UI strings:
+// A small, dependency-free subset of ICU MessageFormat, enough for Folevi's UI strings:
 //
 //   Hello {name}                                   simple argument
 //   {count, plural, =0 {No pages} one {# page} other {# pages}}

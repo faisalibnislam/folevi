@@ -1,13 +1,25 @@
 /**
  * Folevi's brand marks, from the brand files (packages/design-tokens/brand/source).
  *
- * The mark is a white F on a black disc; the logo is the mark followed by the "Folevi" letterforms. The
- * mark is the designed file itself (public/brand/folevi-mark.svg, written by scripts/brand-icons.mjs) so
- * it stays exactly as drawn; the letters use currentColor, so they follow the text colour (and turn
- * light in dark mode).
+ * The mark is a white F on a black disc; the logo is the mark followed by the "Folevi" letterforms. In
+ * dark mode both follow logo-dark.svg: a black F on a white disc, and white letters. The marks are the
+ * designed files themselves (public/brand/folevi-mark.svg and folevi-mark-dark.svg, written by
+ * scripts/brand-icons.mjs) so they stay exactly as drawn. In light mode the letters use currentColor, so
+ * they follow the text colour.
  */
 
 export const MARK_SRC = "/brand/folevi-mark.svg";
+export const MARK_DARK_SRC = "/brand/folevi-mark-dark.svg";
+
+/** The mark's disc, as drawn for the current theme. */
+function MarkImage() {
+  return (
+    <>
+      <image href={MARK_SRC} width="512" height="512" className="dark:hidden" />
+      <image href={MARK_DARK_SRC} width="512" height="512" className="hidden dark:inline" />
+    </>
+  );
+}
 
 /** The logo's canvas: the 512-unit mark, then the letters, 2021 units wide in all. */
 export const LOGO_WIDTH = 2021;
@@ -17,7 +29,7 @@ export function FoleviMark({ size = 24, title, className }: { size?: number; tit
   return (
     <svg width={size} height={size} viewBox="0 0 512 512" role={title ? "img" : undefined} aria-hidden={title ? undefined : true} aria-label={title} className={className}>
       {title ? <title>{title}</title> : null}
-      <image href={MARK_SRC} width="512" height="512" />
+      <MarkImage />
     </svg>
   );
 }
@@ -36,7 +48,7 @@ export function FoleviLogo({ height = 24, title = "Folevi", className }: { heigh
       className={className}
     >
       {title ? <title>{title}</title> : null}
-      <g fill="currentColor">
+      <g fill="currentColor" className="dark:fill-white">
         <path d="M613.04 437.576V427.662L652.176 395.31V119.794L613.04 87.4418V77.5274H721.055V395.31L774.279 427.662V437.576H613.04ZM836.375 276.337L702.27 269.554V247.116L836.375 239.81V276.337ZM838.462 310.777L793.065 268.51V247.638L838.462 205.371H848.898V310.777H838.462ZM876.032 111.445L704.357 101.009V77.5274H876.032V111.445ZM878.641 157.886L812.372 101.009V77.5274L879.685 71.7875H886.99L889.078 157.886H878.641Z" />
         <path d="M1023.7 444.36C996.219 444.36 972.215 438.968 951.691 428.184C931.166 417.052 914.99 401.745 903.162 382.265C891.683 362.436 885.943 339.65 885.943 313.907C885.943 286.773 892.03 262.944 904.206 242.419C916.382 221.895 933.08 205.719 954.3 193.891C975.868 182.063 1000.39 176.149 1027.88 176.149C1055.36 176.149 1079.36 181.715 1099.88 192.847C1120.76 203.632 1136.93 218.938 1148.41 238.767C1159.89 258.248 1165.63 281.033 1165.63 307.124C1165.63 333.91 1159.55 357.739 1147.37 378.612C1135.19 399.136 1118.5 415.313 1097.28 427.14C1076.06 438.62 1051.53 444.36 1023.7 444.36ZM1029.96 413.573C1043.53 413.573 1055.36 409.747 1065.45 402.093C1075.88 394.092 1083.88 383.134 1089.45 369.219C1095.36 355.304 1098.32 339.128 1098.32 320.691C1098.32 297.036 1095.19 276.859 1088.93 260.161C1082.67 243.463 1073.79 230.592 1062.31 221.547C1050.83 212.154 1037.27 207.458 1021.61 207.458C1008.05 207.458 996.045 211.459 985.608 219.46C975.52 227.113 967.519 237.897 961.605 251.812C956.039 265.727 953.256 281.903 953.256 300.34C953.256 323.648 956.387 343.825 962.649 360.87C968.911 377.568 977.781 390.613 989.261 400.006C1000.74 409.051 1014.31 413.573 1029.96 413.573Z" />
         <path d="M1177.99 437.576V429.749L1222.34 390.614L1213.99 405.224V94.2253L1236.43 130.752L1176.42 80.6582V71.2657L1264.09 38.3916H1277.65V405.746L1269.83 391.135L1313.66 429.749V437.576H1177.99Z" />
@@ -44,7 +56,7 @@ export function FoleviLogo({ height = 24, title = "Folevi", className }: { heigh
         <path d="M1706.54 441.751L1588.61 204.327H1610V238.767L1567.21 191.282V183.455H1698.19V191.282L1661.66 235.636H1655.92V200.675L1746.72 383.308H1734.72L1792.64 193.891V230.94H1787.42L1753.5 191.282V183.455H1866.21V191.282L1823.42 238.767V204.327H1844.82L1726.37 441.751H1706.54Z" />
         <path d="M1884.34 437.576V429.749L1928.7 390.614L1920.35 405.224V235.636L1942.79 271.641L1882.78 221.025V211.633L1970.44 180.324H1984.01V405.746L1976.18 391.135L2020.01 429.749V437.576H1884.34ZM1953.22 144.841C1940.35 144.841 1929.74 141.014 1921.39 133.361C1913.39 125.708 1909.39 115.967 1909.39 104.14C1909.39 91.9641 1913.39 82.2237 1921.39 74.9183C1929.74 67.2651 1940.35 63.4385 1953.22 63.4385C1966.44 63.4385 1977.05 67.2651 1985.05 74.9183C1993.05 82.5715 1997.05 92.312 1997.05 104.14C1997.05 115.967 1993.05 125.708 1985.05 133.361C1977.05 141.014 1966.44 144.841 1953.22 144.841Z" />
       </g>
-      <image href={MARK_SRC} width="512" height="512" />
+      <MarkImage />
     </svg>
   );
 }

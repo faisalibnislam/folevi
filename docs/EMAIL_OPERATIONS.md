@@ -115,8 +115,8 @@ All eleven templates are compiled in this repository; Mailtrap stores no templat
   HTML-escapes every value, only accepts https (or app-relative) links, and throws on missing or unknown
   variables.
 - **The only image is the logo**, from `https://folevi.com/brand/email/` (`folevi-logo@2x.png`, and
-  `folevi-logo-dark@2x.png` for dark mode). They are rendered from `packages/design-tokens/brand/source/logo.svg`
-  by `node packages/design-tokens/scripts/brand-icons.mjs --only=email` and served from
+  `folevi-logo-dark@2x.png` for dark mode). They are rendered from `packages/design-tokens/brand/source/logo.svg` and `logo-dark.svg`
+  by `node packages/design-tokens/scripts/brand-icons.mjs --only=logos` and served from
   `apps/web/public/brand/email/`. A deployment can point elsewhere with `EMAIL_BRAND_BASE_URL` (https only).
 
 ### Changing a template

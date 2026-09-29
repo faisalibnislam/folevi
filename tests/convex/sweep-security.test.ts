@@ -1,7 +1,7 @@
 // Phase E sweep (docs/ACCOUNT_MODEL_PLAN.md, "Phase E"): what a guest, a stranger, a removed or view-only
 // member, or the owner of a workspace being deleted must not be able to do. Each test is a bug the sweep
 // found and fixed.
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { verifyFileSignature } from "../../convex/lib/fileUrls";
@@ -165,6 +165,9 @@ describe("files", () => {
   });
 
   test("a workspace export goes only to the person who made it", async () => {
+    // Background jobs queued while setting up (invite emails, notifications) must not run while the export
+    // action writes its file: convex-test would report that write as outside a transaction.
+    vi.useFakeTimers();
     const t = setup();
     const w = await world(t, "zip");
     await newPage(w.owner, w.scope, "Plans");
@@ -173,6 +176,7 @@ describe("files", () => {
     expect(Object.keys(await w.owner.as.query(api.files.urls, { fileIds: [fileId], now: Date.now() }))).toEqual([fileId]);
     expect(await w.member.as.query(api.files.urls, { fileIds: [fileId], now: Date.now() })).toEqual({});
     expect(await w.guest.as.query(api.files.urls, { fileIds: [fileId], now: Date.now() })).toEqual({});
+    vi.useRealTimers();
   });
 });
 

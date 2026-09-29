@@ -90,9 +90,14 @@ export function MovePageDialog({
     try {
       await move({ documentId, parentDocumentId: parentId });
       if (engine) {
-        syncPageCards(client, engine, { documentId, title, from: currentParentId, to: parentId }).catch(() => {
+        // Wait until the card edits are stored in the local queue: leaving or reloading right after the
+        // move must not lose the parent's card (the queue sends it whenever it can).
+        try {
+          await syncPageCards(client, engine, { documentId, title, from: currentParentId, to: parentId });
+          await engine.persisted();
+        } catch {
           toast.show("Moved, but the page card in the parent page couldn’t be updated.", { tone: "error" });
-        });
+        }
       }
       onClose();
       toast.show(parentId ? `Moved into “${parentTitle || "Untitled"}”` : "Moved to the top level", {

@@ -43,20 +43,20 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   await expect(page).toHaveURL(/\/tags\/[0-9A-Z]{26}$/);
 });
 
-test("new notes land in Drafts with no page icon; folders take a colour; Home has three sections", async ({ browser }) => {
+test("a new note on a folder page lands in that folder with no page icon; folders take a colour; Home has three sections", async ({ browser }) => {
   const { page } = await newPersonWithWorkspace(browser, "Home Person");
   await showFolders(page);
   const nav = page.getByRole("navigation", { name: "Workspace" });
   const drafts = nav.getByRole("link", { name: /^Drafts/ });
   const before = Number((await drafts.innerText()).replace(/\D/g, "") || 0);
 
-  // A new note starts in Drafts (even when created from a folder page); notes have no emoji icon.
+  // A new note made on a folder page starts in that folder (so Drafts doesn't grow); notes have no emoji icon.
   await nav.getByRole("link", { name: "Projects" }).click();
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Page icon|Add page icon/ })).toHaveCount(0);
-  await expect(drafts).toContainText(String(before + 1));
+  await expect(drafts).toHaveText(before ? new RegExp(`^Drafts\\s*${before}$`) : /^Drafts$/);
 
   // Folder colour from the folder menu (no emoji, no "Move into").
   await nav.getByRole("link", { name: "Projects" }).hover();

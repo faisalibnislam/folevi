@@ -45,10 +45,10 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
     ),
   },
   {
-    q: "Are the Mac and iOS apps included?",
+    q: "Is the Mac app included?",
     a: (
       <>
-        Yes — every plan, including Free, works on the web, Mac and iOS. See <Link href="/mac">Folevi for Mac</Link>.
+        Folevi runs on the web today, on every plan. The Mac app is coming soon, and every plan, including Free, will include it. See <Link href="/mac">Folevi for Mac</Link>.
       </>
     ),
   },
@@ -57,7 +57,7 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
 export default function PricingPage() {
   return (
     <>
-      <PageHeader eyebrow="Pricing" title="Start free. Pay for room, or for AI." lede={`Three simple plans, on the web, Mac and iOS. Try Pro free for ${TRIAL_DAYS} days — no card.`} />
+      <PageHeader eyebrow="Pricing" title="Start free. Pay for room, or for AI." lede={`Three simple plans, on the web, with the Mac app coming soon. Try Pro free for ${TRIAL_DAYS} days — no card.`} />
       <div className={cx(container, "max-w-[1080px] pb-20 pt-4 sm:pb-28")}>
         <PricingCard headingLevel="h2" />
         <section aria-labelledby="faq-title" className="mt-20">

@@ -152,7 +152,7 @@ export function BillingSection() {
         </div>
       </Card>
 
-      <Card title="Choose a plan" description="Every plan includes the web, Mac and iOS apps. Storage counts across your personal and team workspaces.">
+      <Card title="Choose a plan" description="Every plan works on the web, and will include the Mac app when it launches. Storage counts across your personal and team workspaces.">
         <div className="ui-seg ui-well mb-4 w-fit" role="group" aria-label="Billing period">
           <button type="button" aria-pressed={interval === "month"} onClick={() => setInterval("month")} className="h-8 whitespace-nowrap !px-4">
             Monthly

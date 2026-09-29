@@ -34,7 +34,7 @@ export default function TermsPage() {
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
         <p>
-          By creating an account or using Folevi — the website, the web app and the Mac and iOS apps — you agree to these terms and
+          By creating an account or using Folevi — the website, the web app and our native apps — you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organisation, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>

@@ -59,9 +59,9 @@ export function softwareLd(): Record<string, unknown> {
     name: "Folevi",
     url: absoluteUrl("/"),
     applicationCategory: "ProductivityApplication",
-    operatingSystem: "macOS, iOS, Web",
+    operatingSystem: "Web",
     description:
-      "A calm writing and notes workspace with block documents, nested pages, tasks, offline editing and real-time sync — on the web and as a native Mac app.",
+      "A calm writing and notes workspace with block documents, nested pages, tasks, offline editing and real-time sync — on the web, with a native Mac app coming soon.",
     offers: [
       { "@type": "Offer", name: "Free", price: 0, priceCurrency: "USD" },
       { "@type": "Offer", name: "Basic", price: 2, priceCurrency: "USD", description: "Per month, or $9 a year" },

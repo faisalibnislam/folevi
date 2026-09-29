@@ -134,7 +134,7 @@ export function PricingSection() {
           id="pricing-title"
           eyebrow="Pricing"
           title="Start free. Upgrade when you need room or AI."
-          lede="Every new account gets Pro free for 7 days. Every plan includes web, Mac and iOS."
+          lede="Every new account gets Pro free for 7 days. Every plan works on the web, with the Mac app coming soon."
         />
         <div className="mt-12">
           <PricingCard />

@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved, showFolders, openTool } from "./helpers";
+import { newPerson, waitForSaved, showFolders, openTool } from "./helpers";
 
 test("pick one of the note styles (or Plain) from the inspector; it persists", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Cover Picker");
+  const { page } = await newPerson(browser, "Cover Picker");
   await showFolders(page);
   await openTool(page, "Style");
   // "Note Style": one row, named after the current artwork; no accent colours, no style gallery.
@@ -31,13 +31,13 @@ test("pick one of the note styles (or Plain) from the inspector; it persists", a
   await page.reload();
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveAttribute("style", /\/covers\/art-03\.webp/);
   // The sidebar says Home, and there is no Daily Notes entry.
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const nav = page.getByRole("navigation", { name: "Folio" });
   await expect(nav.getByRole("link", { name: "Home" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Daily Notes" })).toHaveCount(0);
 });
 
 test("page styles and block formatting persist (Style and Format tabs)", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Style Person");
+  const { page } = await newPerson(browser, "Style Person");
 
   // Style: the note's artwork (cover and page background), then a dark document colour.
   await openTool(page, "Style");
@@ -88,7 +88,7 @@ test("page styles and block formatting persist (Style and Format tabs)", async (
 
 test("upload your own image as the note style; it persists and rejects non-images", async ({ browser }) => {
   const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
-  const { page } = await newPersonWithWorkspace(browser, "Cover Uploader");
+  const { page } = await newPerson(browser, "Cover Uploader");
   await openTool(page, "Style");
   const noteStyle = page.getByRole("group", { name: "Note Style" });
   await noteStyle.getByRole("button").first().click();

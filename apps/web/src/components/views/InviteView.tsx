@@ -12,7 +12,7 @@ import { ViewChrome } from "@/components/app/Shell";
 export function InviteView({ token }: { token: string }) {
   const preview = useQuery(api.workspaces.previewInvite, { token });
   const accept = useMutation(api.workspaces.acceptInvite);
-  const { setWorkspace, profile } = useAppState();
+  const { setContext, profile } = useAppState();
   const { navigate } = useAppRouter();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -42,7 +42,7 @@ export function InviteView({ token }: { token: string }) {
                 onClick={async () => {
                   try {
                     const r = await accept({ token });
-                    setWorkspace(r.workspaceId);
+                    setContext({ kind: "workspace", workspaceId: r.workspaceId });
                     navigate("/documents", { replace: true });
                   } catch (e) {
                     setError(errorMessage(e));

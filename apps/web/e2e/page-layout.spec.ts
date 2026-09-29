@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace, openTool } from "./helpers";
+import { APP, newPerson, openTool } from "./helpers";
 
 test("pages open in tabs with their own sidebar; the sidebar can switch to folders", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Tab Person");
+  const { page } = await newPerson(browser, "Tab Person");
   const tabs = page.getByRole("navigation", { name: "Open pages" });
   // Onboarding opened the Welcome page: it has a tab, and the page sidebar replaces the app navigation.
   await expect(tabs.getByRole("link", { name: "Welcome to Folevi" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("navigation", { name: "Workspace" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Folio" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Table of contents" })).toBeVisible();
 
   // Tasks and Find work on the page's own content.
@@ -30,7 +30,7 @@ test("pages open in tabs with their own sidebar; the sidebar can switch to folde
   // The left sidebar can show the app folders instead of the page tools.
   await page.getByRole("button", { name: "Sidebar", exact: true }).click();
   await page.getByRole("menuitemradio", { name: "Show folders" }).click();
-  await expect(page.getByRole("navigation", { name: "Workspace" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible();
   await page.getByRole("button", { name: "Sidebar", exact: true }).click();
   await page.getByRole("menuitemradio", { name: "Show document" }).click();
   // …and back to the page tools, on the tab that was last open.
@@ -38,7 +38,7 @@ test("pages open in tabs with their own sidebar; the sidebar can switch to folde
 });
 
 test("a nested page opens inside the note's tab; a new page opens its own tab; no back/forward pills", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Nested Tabs");
+  const { page } = await newPerson(browser, "Nested Tabs");
   const tabs = page.getByRole("navigation", { name: "Open pages" });
   await expect(tabs.getByRole("link", { name: "Welcome to Folevi" })).toHaveAttribute("aria-current", "page");
   const before = await tabs.getByRole("button", { name: /^Close / }).count();

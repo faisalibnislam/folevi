@@ -2,7 +2,7 @@
 
 import type { ConvexReactClient } from "convex/react";
 import { ConvexError } from "convex/values";
-import { randomNoteEmoji, sync, type ChangedField, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, ulid } from "@folevi/editor-schema";
+import { randomNoteEmoji, sync, type ChangedField, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { ACCOUNT_SYNC_KEY, localDb } from "./db";
 
@@ -19,11 +19,11 @@ type Listener = (e: EngineEvent) => void;
  * reducer: every local change is applied optimistically and persisted to IndexedDB before any network
  * call; batches go to `sync.push` in order; results are reconciled; failures keep ops.
  *
- * The queue is account-wide, not per workspace: a page shared from another workspace (or opened from a
- * deep link while a different workspace is selected) is edited through the same durable queue, and the
- * server authorizes every op against the document it touches (§Routing). The selected workspace only
- * routes new top-level pages, and each `document.create` is stamped with it when queued so switching
- * workspaces before it syncs can't move it.
+ * The queue is account-wide, not per scope: a page shared from someone's Personal or another workspace
+ * (or opened from a deep link while a different context is selected) is edited through the same durable
+ * queue, and the server authorizes every op against the document it touches (§Routing). The current
+ * context's scope (Personal or a team workspace) only routes new top-level pages, and each
+ * `document.create` is stamped with it when queued so switching contexts before it syncs can't move it.
  */
 export class SyncEngine {
   state: SyncState = sync.emptySyncState();
@@ -35,32 +35,41 @@ export class SyncEngine {
   lastError: string | null = null;
   private editing = new Set<string>();
 
-  private _workspaceId: string;
+  private _scope: WireScope;
 
   private constructor(
     private client: ConvexReactClient,
     private accountKey: string,
-    workspaceId: string,
+    scope: WireScope,
     readonly deviceId: string,
   ) {
-    this._workspaceId = workspaceId;
+    this._scope = scope;
   }
 
-  /** The selected workspace: where new top-level pages are created (the batch's routing workspace). */
-  get workspaceId(): string {
-    return this._workspaceId;
+  /** The current context's scope: where new top-level pages are created (the batch's routing scope). */
+  get scope(): WireScope {
+    return this._scope;
   }
 
-  setWorkspace(workspaceId: string) {
-    this._workspaceId = workspaceId;
+  setScope(scope: WireScope) {
+    this._scope = scope;
   }
 
-  static async open(client: ConvexReactClient, accountKey: string, workspaceId: string, deviceId: string): Promise<SyncEngine> {
-    const engine = new SyncEngine(client, accountKey, workspaceId, deviceId);
+  /**
+   * Opens the account's engine. `teamWorkspaceIds` (the workspaces the person belongs to) lets page
+   * creates queued by older builds, which named a workspace id — possibly the old personal workspace,
+   * which no longer exists — be re-stamped with a scope before anything is sent (`adoptLegacyCreates`).
+   */
+  static async open(client: ConvexReactClient, accountKey: string, scope: WireScope, deviceId: string, teamWorkspaceIds?: readonly string[]): Promise<SyncEngine> {
+    const engine = new SyncEngine(client, accountKey, scope, deviceId);
     const saved = await loadAccountState(accountKey);
     if (saved) {
       // Anything in flight when the page closed may or may not have landed: resend (ops are idempotent).
       engine.state = { ...sync.emptySyncState(), ...saved, pending: [...saved.inflight, ...saved.pending], inflight: [] };
+    }
+    if (teamWorkspaceIds) {
+      const adopted = adoptLegacyCreates(engine.state, teamWorkspaceIds);
+      if (adopted !== engine.state) engine.commit(adopted);
     }
     engine.state = sync.setConnection(engine.state, typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "online");
     return engine;
@@ -154,10 +163,10 @@ export class SyncEngine {
 
   createDocument(document: WireDocumentCreate): string {
     const opId = ulid();
-    // Pin the target workspace now; a nested page always follows its parent (server-side).
+    // Pin the target scope now; a nested page always follows its parent (server-side).
     // Every note has an icon: a new one starts with a random emoji (shown right away, even offline).
     const withIcon: WireDocumentCreate = document.icon ? document : { ...document, icon: randomNoteEmoji() };
-    const routed: WireDocumentCreate = withIcon.parentDocumentId || withIcon.workspaceId ? withIcon : { ...withIcon, workspaceId: this._workspaceId };
+    const routed: WireDocumentCreate = withIcon.parentDocumentId || withIcon.scope || withIcon.workspaceId ? withIcon : { ...withIcon, scope: this._scope };
     this.commit({ ...this.state, pending: [...this.state.pending, { opId, kind: "document.create", document: routed }] });
     this.scheduleFlush();
     return opId;
@@ -303,7 +312,7 @@ export class SyncEngine {
         let results: (OpResult & { document?: unknown })[];
         try {
           results = (await withTimeout(
-            this.client.mutation(api.sync.push, { workspaceId: this._workspaceId, deviceId: this.deviceId, ops: batched.inflight as never }),
+            this.client.mutation(api.sync.push, { scope: this._scope, deviceId: this.deviceId, ops: batched.inflight as never }),
             45_000,
           )) as (OpResult & { document?: unknown })[];
         } catch (error) {
@@ -377,10 +386,35 @@ async function loadAccountState(accountKey: string): Promise<SyncState | undefin
   return merged;
 }
 
+/**
+ * Page creates queued by older builds name a workspace id (`document.workspaceId`) instead of a scope.
+ * Personal used to be a workspace, and that workspace no longer exists, so a create naming it would be
+ * refused. Each such create is re-stamped: a workspace the person still belongs to stays
+ * (`scope: workspace`); anything else lands in their own Personal — the only place a create naming a
+ * vanished workspace can go without losing what they wrote. Returns `state` itself when there's nothing
+ * to adopt. Exported for tests.
+ */
+export function adoptLegacyCreates(state: SyncState, teamWorkspaceIds: readonly string[]): SyncState {
+  const teams = new Set(teamWorkspaceIds);
+  let changed = false;
+  const adopt = (op: SyncOp): SyncOp => {
+    if (op.kind !== "document.create" || op.document.scope || !op.document.workspaceId) return op;
+    changed = true;
+    const { workspaceId, ...document } = op.document;
+    if (document.parentDocumentId) return { ...op, document }; // a nested page follows its parent
+    const scope: WireScope = teams.has(workspaceId) ? { kind: "workspace", workspaceId } : { kind: "personal" };
+    return { ...op, document: { ...document, scope } };
+  };
+  const pending = state.pending.map(adopt);
+  const inflight = state.inflight.map(adopt);
+  return changed ? { ...state, pending, inflight } : state;
+}
+
 /** Folds a legacy per-workspace state into the account state. Exported for tests. */
 export function mergeSyncStates(base: SyncState | undefined, legacy: SyncState, legacyWorkspaceId: string): SyncState {
+  // Stamped with the legacy workspace id; `adoptLegacyCreates` turns it into a scope when the engine opens.
   const stamp = (op: SyncOp): SyncOp =>
-    op.kind === "document.create" && !op.document.parentDocumentId && !op.document.workspaceId
+    op.kind === "document.create" && !op.document.parentDocumentId && !op.document.workspaceId && !op.document.scope
       ? { ...op, document: { ...op.document, workspaceId: legacyWorkspaceId } }
       : op;
   const into = base ?? sync.emptySyncState();

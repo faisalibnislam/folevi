@@ -122,7 +122,7 @@ function Upsell({ context, onNavigate }: { context: "personal" | "workspace" | "
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
         <p className="ui-display text-[22px] text-heading">Ask your notes anything</p>
         <p className="text-[13.5px] text-muted">
-          {context === "workspace" ? "AI Assistant comes with the Team and Business workspace plans. They're coming soon." : "The AI Assistant isn't available on notes shared with you from another workspace."}
+          {context === "workspace" ? "AI Assistant comes with the Team and Business workspace plans. They're coming soon." : "The AI Assistant isn't available on notes shared with you from someone else's Personal or a workspace you're not in."}
         </p>
         <p className="text-[12.5px] text-faint">Your own Pro plan includes AI in Personal.</p>
       </div>

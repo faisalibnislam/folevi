@@ -67,10 +67,10 @@ const EMPTY: Record<View, string> = {
 export type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api.documents.list>>["results"]>[number];
 
 export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; folderId?: string; tagId?: string; title?: string }) {
-  const { workspace } = useAppState();
-  const org = useQuery(api.organization.sidebar, { workspaceId: workspace.id });
-  // A folder/tag link that doesn't resolve in this workspace (deleted, mistyped, or from another
-  // workspace) gets a real not-found page instead of a failing list query.
+  const { scope } = useAppState();
+  const org = useQuery(api.organization.sidebar, { scope });
+  // A folder/tag link that doesn't resolve in the current context (deleted, mistyped, or from Personal while a
+  // workspace is open, or the other way round) gets a real not-found page instead of a failing list query.
   const missing =
     org !== undefined &&
     ((view === "folder" && !org.folders.some((f) => f.id === folderId)) || (view === "tag" && !org.tags.some((t) => t.id === tagId)));
@@ -80,13 +80,14 @@ export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; 
 
 function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
   const { workspace, workspaces } = useAppState();
+  const here = workspace ? workspace.name : "Personal";
   const title = kind === "folder" ? "Folder not found" : "Tag not found";
   return (
     <ViewChrome title={<h1 className="truncate text-sm font-semibold">{title}</h1>} tabTitle={title}>
       <div className="mx-auto max-w-lg px-6 py-24 text-center">
         <h2 className="ui-display text-4xl">{kind === "folder" ? "This folder isn’t here" : "This tag isn’t here"}</h2>
         <p className="mt-3 text-muted">
-          It may have been deleted{workspaces.length > 1 ? `, or it belongs to a workspace other than ${workspace.name}` : ""}. Links to {kind === "folder" ? "folders" : "tags"} only work in their own workspace.
+          It may have been deleted{workspaces.length ? `, or it belongs somewhere other than ${here}` : ""}. Links to {kind === "folder" ? "folders" : "tags"} only work in their own Personal or workspace — switch there from the menu at the bottom of the sidebar.
         </p>
         <AppLink href="/documents" className="ui-btn ui-btn-primary mt-6 h-9 px-4 text-sm">
           Go to Home
@@ -106,12 +107,12 @@ export function contextPoint(e: React.MouseEvent): { x: number; y: number } {
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { workspace, profile, online } = useAppState();
+  const { scope, scopeKey, profile, online } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   const { results, status, loadMore } = usePaginatedQuery(
     api.documents.list,
-    { workspaceId: workspace.id, view, folderId, tagId, sort },
+    { scope, view, folderId, tagId, sort },
     { initialNumItems: 48 },
   );
   const builtIns = useQuery(api.settings.builtInTemplates, view === "templates" ? {} : "skip");
@@ -121,7 +122,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const notes = useNoteActions();
   const [cached, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
-  const trashSummary = useQuery(api.documents.trashSummary, confirmEmpty ? { workspaceId: workspace.id } : "skip");
+  const trashSummary = useQuery(api.documents.trashSummary, confirmEmpty ? { scope } : "skip");
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [ctx, setCtx] = useState<{ doc: Summary; at: { x: number; y: number } } | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
@@ -135,20 +136,20 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       const db = await localDb(profile.id);
       const tx = db.transaction("documents", "readwrite");
       for (const d of results) {
-        await tx.store.put({ id: d.id, workspaceId: workspace.id, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
+        await tx.store.put({ id: d.id, scopeKey, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
       }
       await tx.done;
     })();
-  }, [results, status, view, profile.id, workspace.id]);
+  }, [results, status, view, profile.id, scopeKey]);
 
   useEffect(() => {
     if (status !== "LoadingFirstPage" || online) return;
     void (async () => {
       const db = await localDb(profile.id);
-      const docs = await db.getAllFromIndex("documents", "by_workspace", workspace.id);
+      const docs = await db.getAllFromIndex("documents", "by_scope", scopeKey);
       setCached(docs.map((d) => d.summary as Summary).sort((a, b) => b.updatedAt - a.updatedAt));
     })();
-  }, [status, online, profile.id, workspace.id]);
+  }, [status, online, profile.id, scopeKey]);
 
   const title =
     titleOverride ?? (view === "folder" ? (org?.folders.find((f) => f.id === folderId)?.name ?? "Folder") : view === "tag" ? `#${org?.tags.find((t) => t.id === tagId)?.name ?? "tag"}` : TITLES[view]);
@@ -500,7 +501,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                 setConfirmEmpty(false);
                 selection.clear();
                 try {
-                  const r = await emptyTrash({ workspaceId: workspace.id });
+                  const r = await emptyTrash({ scope });
                   toast.show(t("documents.trash.scheduled", { count: Math.max(count, r.scheduled) }));
                 } catch (e) {
                   toast.show(errorMessage(e), { tone: "error" });

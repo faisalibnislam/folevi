@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved, pick } from "./helpers";
+import { newPerson, waitForSaved, pick } from "./helpers";
 
 test("collections: inline names, typed filters (option and date pickers), persistent view, confirmed deletes", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Collector");
+  const { page } = await newPerson(browser, "Collector");
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Library");
@@ -55,7 +55,7 @@ test("collections: inline names, typed filters (option and date pickers), persis
   await expect(coll.getByRole("textbox", { name: "Row name" })).toHaveCount(1);
   await expect(coll.getByRole("textbox", { name: "Row name" })).toHaveValue("Dune");
 
-  // Relations: pick linked pages by searching the workspace.
+  // Relations: pick linked pages by searching the collection's scope (here, Personal).
   await coll.getByRole("button", { name: /View settings/ }).click();
   await settings.getByLabel("New property").fill("Related");
   await pick(settings.getByLabel("Property type"), "Relation");

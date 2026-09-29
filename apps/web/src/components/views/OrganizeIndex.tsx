@@ -177,10 +177,10 @@ export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; p
   );
 }
 
-/** Every folder in the workspace, with search and sorting (the sidebar only lists the first few). */
+/** Every folder in the current context (Personal or a workspace), with search and sorting (the sidebar only lists the first few). */
 export function FoldersIndex() {
-  const { workspace } = useAppState();
-  const data = useQuery(api.organization.index, { workspaceId: workspace.id });
+  const { scope, role } = useAppState();
+  const data = useQuery(api.organization.index, { scope });
   const createFolder = useMutation(api.organization.createFolder);
   const { navigate } = useAppRouter();
   const toast = useToast();
@@ -188,7 +188,7 @@ export function FoldersIndex() {
   const [sort, setSort] = useLocalStorage<FolderSort>("folevi:folders-sort", "name");
   const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:folders-layout", "grid");
   const [creating, setCreating] = useState(false);
-  const canEdit = workspace.role !== "viewer" && workspace.role !== "commenter";
+  const canEdit = role !== "viewer" && role !== "commenter";
 
   const names = useMemo(() => new Map((data?.folders ?? []).map((f) => [f.id, f.name])), [data]);
   const list = useMemo(() => {
@@ -284,7 +284,7 @@ export function FoldersIndex() {
         onClose={() => setCreating(false)}
         onSubmit={async (name) => {
           try {
-            const r = await createFolder({ workspaceId: workspace.id, name });
+            const r = await createFolder({ scope, name });
             setCreating(false);
             navigate(`/folders/${r.id}`);
           } catch (e) {
@@ -296,10 +296,10 @@ export function FoldersIndex() {
   );
 }
 
-/** Every tag in the workspace, with search and sorting. */
+/** Every tag in the current context, with search and sorting. */
 export function TagsIndex() {
-  const { workspace } = useAppState();
-  const data = useQuery(api.organization.index, { workspaceId: workspace.id });
+  const { scope } = useAppState();
+  const data = useQuery(api.organization.index, { scope });
   const [q, setQ] = useState("");
   const [sort, setSort] = useLocalStorage<TagSort>("folevi:tags-sort", "name");
   const list = useMemo(() => {

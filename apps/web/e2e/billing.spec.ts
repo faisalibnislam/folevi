@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace } from "./helpers";
+import { APP, newPerson } from "./helpers";
 
 // Personal plans in Settings → Plan & billing. Locally payments aren't connected, so upgrades are test purchases.
 
 test("a new account is on a 7-day Pro trial, can take a test plan, and cancel it", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Plan Person");
-  // The workspace menu shows the trial.
+  const { page, context } = await newPerson(browser, "Plan Person");
+  // Settings → Plan & billing shows the trial.
   await page.goto(`${APP}/settings/billing`);
   await expect(page.getByRole("heading", { name: "Your plan" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Pro trial", { exact: true })).toBeVisible();

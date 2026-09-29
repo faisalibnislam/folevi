@@ -39,7 +39,7 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
     q: "What happens to my notes if I downgrade?",
     a: (
       <>
-        They stay yours. You can export any page as Markdown, HTML or PDF, or your whole workspace as a ZIP, at any time —
+        They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal or a workspace as a ZIP, at any time —
         see <Link href="/docs#import-export">Import &amp; export</Link>.
       </>
     ),

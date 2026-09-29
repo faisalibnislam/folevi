@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "@/lib/convex/api";
-import { useAppState } from "@/lib/app/state";
+import type { Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -17,8 +17,8 @@ type Confirm = { kind: "remove" | "owner"; profileId: string; name: string } | n
 
 const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", editor: "Editor", commenter: "Commenter", viewer: "Viewer" };
 
-export function MembersSection() {
-  const { workspace } = useAppState();
+/** Members of the current team workspace. Only shown when a workspace is open: Personal has no members. */
+export function MembersSection({ workspace }: { workspace: Workspace }) {
   const data = useQuery(api.workspaces.members, { workspaceId: workspace.id });
   const revokeInvite = useMutation(api.workspaces.revokeInvite);
   const changeRole = useMutation(api.workspaces.changeRole);
@@ -29,14 +29,13 @@ export function MembersSection() {
   const [busy, setBusy] = useState(false);
   const canAdmin = data?.yourRole === "owner" || data?.yourRole === "admin";
   const isOwner = data?.yourRole === "owner";
-  const personal = workspace.kind === "personal";
   const act = (p: Promise<unknown>, ok: string) => p.then(() => toast.show(ok, { tone: "success" }), (e) => toast.show(errorMessage(e), { tone: "error" }));
 
   return (
     <>
       {canAdmin ? (
-        <Card title="Invite people" description={personal ? "Invite collaborators to your personal workspace — they can work on its notes and folders. Invitations expire after 7 days." : "Invitations are tied to the email address you enter and expire after 7 days."}>
-          <InviteForm />
+        <Card title="Invite people" description="Invitations are tied to the email address you enter and expire after 7 days.">
+          <InviteForm workspace={workspace} />
         </Card>
       ) : null}
       <Card title="Members">
@@ -62,7 +61,7 @@ export function MembersSection() {
                     <option value="commenter">Commenter</option>
                     <option value="viewer">Viewer</option>
                   </Select>
-                  {isOwner && !personal ? (
+                  {isOwner ? (
                     <Button size="sm" variant="quiet" onClick={() => setConfirm({ kind: "owner", profileId: m.profileId, name: m.displayName })}>
                       Make owner
                     </Button>
@@ -95,7 +94,7 @@ export function MembersSection() {
             </ul>
           </>
         ) : null}
-        {!canAdmin && !personal ? <p className="mt-3 text-sm text-muted">Only owners and admins can invite people or change roles.</p> : null}
+        {!canAdmin ? <p className="mt-3 text-sm text-muted">Only owners and admins can invite people or change roles.</p> : null}
       </Card>
       <Dialog
         open={confirm !== null}

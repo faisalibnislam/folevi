@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText } from "lucide-react";
+import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -29,7 +30,7 @@ export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onC
 }
 
 function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc?: string }) {
-  const { workspace, today, deviceId } = useAppState();
+  const { scope, today, deviceId } = useAppState();
   const quickAdd = useMutation(api.tasks.quickAdd);
   const { navigate } = useAppRouter();
   const toast = useToast();
@@ -58,7 +59,7 @@ function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc
         setError(null);
         try {
           const r = await quickAdd({
-            workspaceId: workspace.id,
+            scope,
             title,
             today,
             dueDate: due || undefined,
@@ -113,7 +114,7 @@ function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc
           </Select>
         </label>
       </div>
-      <DocumentPicker workspaceId={workspace.id} value={effective} onChange={setTarget} />
+      <DocumentPicker scope={scope} value={effective} onChange={setTarget} />
       {error ? (
         <p role="alert" className="mt-3 text-sm text-danger">
           {error}
@@ -129,8 +130,8 @@ function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc
   );
 }
 
-/** "Add to" field: the Inbox, or any page in the workspace found by search. */
-function DocumentPicker({ workspaceId, value, onChange }: { workspaceId: string; value: Target; onChange: (t: Target) => void }) {
+/** "Add to" field: the Inbox, or any page in the current context (Personal or a workspace) found by search. */
+function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: Target; onChange: (t: Target) => void }) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
@@ -140,8 +141,8 @@ function DocumentPicker({ workspaceId, value, onChange }: { workspaceId: string;
     const t = setTimeout(() => setDebounced(query.trim()), 150);
     return () => clearTimeout(t);
   }, [query]);
-  const results = useQuery(api.search.documents, open && debounced ? { workspaceId, query: debounced, limit: 8 } : "skip");
-  const recent = useQuery(api.documents.recent, open && !debounced ? { workspaceId, limit: 6 } : "skip");
+  const results = useQuery(api.search.documents, open && debounced ? { scope, query: debounced, limit: 8 } : "skip");
+  const recent = useQuery(api.documents.recent, open && !debounced ? { scope, limit: 6 } : "skip");
   const docs = ((debounced ? results : recent) ?? []).filter((d) => d.kind !== "template");
   const options: Target[] = [null, ...docs.map((d) => ({ id: d.id, title: d.title, icon: d.icon }))];
   const choose = (t: Target) => {

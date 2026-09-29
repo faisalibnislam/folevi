@@ -231,7 +231,7 @@ export function EditorMenus({
   onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null;
   onCommentBlock?: (blockId: string) => void;
 }) {
-  const { workspace, today } = useAppState();
+  const { scope, today } = useAppState();
   const { navigate } = useAppRouter();
   const toast = useToast();
   const createCollection = useMutation(api.collections.create);
@@ -515,8 +515,8 @@ export function EditorMenus({
 
   // ---------------------------------------------------------------- page links
   const debounced = useDebounced(open?.kind === "page" ? open.query.trim() : "", 120);
-  const searchResults = useQuery(api.search.documents, open?.kind === "page" && debounced ? { workspaceId: workspace.id, query: debounced, limit: 8 } : "skip");
-  const recent = useQuery(api.documents.recent, open?.kind === "page" && !debounced ? { workspaceId: workspace.id, limit: 8 } : "skip");
+  const searchResults = useQuery(api.search.documents, open?.kind === "page" && debounced ? { scope, query: debounced, limit: 8 } : "skip");
+  const recent = useQuery(api.documents.recent, open?.kind === "page" && !debounced ? { scope, limit: 8 } : "skip");
   const pageItems: MenuItem[] = useMemo(() => {
     if (open?.kind !== "page") return [];
     const docs = (debounced ? searchResults : recent) ?? [];
@@ -1544,7 +1544,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
   // Tracked by block id (not position) so edits elsewhere in the page can't retarget the popover.
   const [target, setTarget] = useState<{ blockId: string; left: number; top: number; bottom: number } | null>(null);
   const [, rerender] = useState(0);
-  const members = useQuery(api.workspaces.members, target ? { workspaceId: workspace.id } : "skip");
+  const members = useQuery(api.workspaces.members, target && workspace ? { workspaceId: workspace.id } : "skip");
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const on = (e: Event) => {

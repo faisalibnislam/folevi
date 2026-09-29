@@ -4,7 +4,9 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDownUp, ArrowUpRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, Table2, Trash2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
+import type { WireScope } from "@folevi/editor-schema";
 import { AppLink } from "@/lib/app/router";
+import { documentScope } from "@/lib/app/scope";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
@@ -354,7 +356,7 @@ function PropertyEditor({
         </Select>
       );
     case "relation":
-      return <RelationEditor label={label} workspaceId={collection.isMember ? collection.workspaceId : null} value={Array.isArray(value) ? (value as string[]) : []} onChange={(v) => void save(v)} />;
+      return <RelationEditor label={label} scope={collection.isMember ? documentScope(collection) : null} value={Array.isArray(value) ? (value as string[]) : []} onChange={(v) => void save(v)} />;
     default:
       return (
         <input
@@ -374,8 +376,8 @@ function PropertyEditor({
   }
 }
 
-/** Linked pages with a searchable picker (search across the collection's workspace). */
-function RelationEditor({ label, workspaceId, value, onChange }: { label: string; workspaceId: string | null; value: string[]; onChange: (v: string[]) => void }) {
+/** Linked pages with a searchable picker (search across the collection's scope: your Personal or its workspace). */
+function RelationEditor({ label, scope, value, onChange }: { label: string; scope: WireScope | null; value: string[]; onChange: (v: string[]) => void }) {
   const titles = useQuery(api.documents.titles, value.length ? { documentIds: value } : "skip");
   const [open, setOpen] = useState(false);
   return (
@@ -390,21 +392,21 @@ function RelationEditor({ label, workspaceId, value, onChange }: { label: string
           </button>
         </span>
       ))}
-      {workspaceId ? (
+      {scope ? (
         <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="rounded-[6px] px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken">
           + Link page
         </button>
       ) : null}
-      {workspaceId ? (
+      {scope ? (
         <Dialog open={open} onClose={() => setOpen(false)} title="Link a page" description={label} size="sm">
-          {open ? <PagePicker workspaceId={workspaceId} exclude={value} onPick={(id) => onChange([...value, id])} /> : null}
+          {open ? <PagePicker scope={scope} exclude={value} onPick={(id) => onChange([...value, id])} /> : null}
         </Dialog>
       ) : null}
     </div>
   );
 }
 
-function PagePicker({ workspaceId, exclude, onPick }: { workspaceId: string; exclude: string[]; onPick: (id: string) => void }) {
+function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: string[]; onPick: (id: string) => void }) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [active, setActive] = useState(0);
@@ -413,8 +415,8 @@ function PagePicker({ workspaceId, exclude, onPick }: { workspaceId: string; exc
     const t = setTimeout(() => setDebounced(query.trim()), 150);
     return () => clearTimeout(t);
   }, [query]);
-  const results = useQuery(api.search.documents, debounced ? { workspaceId, query: debounced, limit: 12 } : "skip");
-  const recent = useQuery(api.documents.recent, !debounced ? { workspaceId, limit: 12 } : "skip");
+  const results = useQuery(api.search.documents, debounced ? { scope, query: debounced, limit: 12 } : "skip");
+  const recent = useQuery(api.documents.recent, !debounced ? { scope, limit: 12 } : "skip");
   const loaded = debounced ? results : recent;
   const options = (loaded ?? []).filter((d) => !exclude.includes(d.id));
   const pick = (id: string) => {

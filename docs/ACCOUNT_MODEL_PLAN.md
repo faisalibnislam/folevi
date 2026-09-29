@@ -1,7 +1,7 @@
 # Personal, Workspaces, seats and billing — audit and plan
 
-Status: **Phase A shipped; Phase B server implemented on the `account-model` branch** (web client and
-the production migration run are next — see the Phase B runbook in §3a). Written 2026-09-29 against
+Status: **Phase A shipped; Phase B server and web implemented on the `account-model` branch** (the
+production migration run is next — see the Phase B runbook in §3a). Written 2026-09-29 against
 commit `9d25368`. It answers the
 "account, subscription, workspace, seat, guest, storage, AI and billing" specification in two parts:
 what exists today (Phase 1) and how to get to the specified model (Phase 2 onwards).
@@ -146,6 +146,16 @@ public function that took a `workspaceId` for content takes a `scope`
 counters; `users.bootstrap` seeds Personal directly; `workspaces.mine` lists team workspaces only;
 `documentAccess` gives the owner `manage` on their Personal and everyone else only page grants (guests).
 `defaultWorkspaceId` and `workspaces.kind` stay in the schema until step 5.
+
+*As built (web, part 2):* step 6. The web app's active context is `{ kind: "personal" } | { kind:
+"workspace", … }` (`apps/web/src/lib/app/state.tsx`, remembered as `folevi:context`; an older
+`folevi:workspace` value becomes the setting if it's still one of your team workspaces, else Personal —
+the default). Every list, search, task, AI and export call passes the context's `scope`; documents open by
+id from any context, and folder actions show only for pages of the current context. The switcher lists
+Personal (your name and plan) first, then Workspaces with your role; Settings has a "You" group and, only
+in a workspace, that workspace's group (General, Members, Import & export). The sync engine routes new
+pages by scope and re-stamps page creates queued by older builds (the old personal workspace → Personal);
+the local database (v3) keys its document cache by scope and keeps the queue and waiting uploads.
 
 **Phase C — Workspace plans, seats and billing.** Workspace plan & billing page (Free / Team /
 Business, monthly/yearly, seats × price, guests "not billed", renewal, manage/cancel), Stripe per-seat

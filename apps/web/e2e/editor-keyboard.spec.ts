@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved } from "./helpers";
 
 const mod = process.platform === "darwin" ? "Meta" : "Control";
 const lineEnd = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
@@ -23,7 +23,7 @@ async function newPage(page: Page, title: string, lines: string[] = []) {
 
 test.describe("editor keyboard", () => {
   test("inline Markdown shortcuts keep the text before them", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Shortcut Tester");
+    const { context, page } = await newPerson(browser, "Shortcut Tester");
     await newPage(page, "Shortcuts");
     await page.keyboard.type("Say **bold** and _it_ or `code` ~~no~~ end");
     const body = page.getByRole("textbox", { name: "Document body" });
@@ -38,7 +38,7 @@ test.describe("editor keyboard", () => {
   });
 
   test("⌘. block menu takes focus, arrows move within it, Escape returns to the text", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Block Menu Tester");
+    const { context, page } = await newPerson(browser, "Block Menu Tester");
     await newPage(page, "Block menu", ["Alpha", "Bravo"]);
     const body = page.getByRole("textbox", { name: "Document body" });
     await page.keyboard.press(`${mod}+.`);
@@ -66,7 +66,7 @@ test.describe("editor keyboard", () => {
   });
 
   test("⌘⇧K adds a link without opening the command palette; ⌥F10 reaches the formatting toolbar", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Link Tester");
+    const { context, page } = await newPerson(browser, "Link Tester");
     await newPage(page, "Links", ["Read the docs"]);
     const body = page.getByRole("textbox", { name: "Document body" });
     for (let i = 0; i < 4; i++) await page.keyboard.press("Shift+ArrowLeft");
@@ -126,7 +126,7 @@ test.describe("editor keyboard", () => {
   });
 
   test("block selection: Escape, Shift+↓, move, duplicate and delete several blocks", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Selection Tester");
+    const { context, page } = await newPerson(browser, "Selection Tester");
     await newPage(page, "Select blocks", ["A", "B", "C", "D"]);
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowUp"); // in B
@@ -157,7 +157,7 @@ test.describe("editor keyboard", () => {
   });
 
   test("slash menu: the active option is announced and axe finds no serious issues", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Slash A11y Tester");
+    const { context, page } = await newPerson(browser, "Slash A11y Tester");
     await newPage(page, "Slash");
     await page.keyboard.type("/");
     const list = page.getByRole("listbox", { name: "Insert block" });
@@ -182,7 +182,7 @@ test.describe("editor keyboard", () => {
   });
 
   test("dates can be picked and changed after inserting; tables can drop and reorder rows and columns", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Date Tester");
+    const { context, page } = await newPerson(browser, "Date Tester");
     await newPage(page, "Dates and tables");
     await page.keyboard.type("Due @pick");
     await page.getByRole("option", { name: "Pick a date…" }).click();

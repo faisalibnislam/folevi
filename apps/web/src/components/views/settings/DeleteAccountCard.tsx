@@ -20,7 +20,7 @@ export function DeleteAccountCard() {
   const [confirmEmail, setConfirmEmail] = useState("");
   return (
     <>
-      <Card title="Delete account" description="Deletes your account, your personal workspace and everything in it after a 7-day grace period. Team workspaces you own pass to an admin if there is one. Export your data first if you want to keep it.">
+      <Card title="Delete account" description="Deletes your account, your Personal and everything in it after a 7-day grace period. Team workspaces you own pass to an admin if there is one. Export your data first if you want to keep it.">
         {profile.status === "pending_deletion" ? (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm">Scheduled for {profile.deletionScheduledFor ? formatDateTime(profile.deletionScheduledFor) : "soon"}.</p>

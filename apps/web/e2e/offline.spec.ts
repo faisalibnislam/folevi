@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved } from "./helpers";
 
 test("offline edits are kept, shown as pending, and sync on reconnect", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Offline Tester");
+  const { page, context } = await newPerson(browser, "Offline Tester");
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
@@ -34,7 +34,7 @@ test("offline edits are kept, shown as pending, and sync on reconnect", async ({
 });
 
 test("unsent edits survive a reload (durable local queue)", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Reload Tester");
+  const { page, context } = await newPerson(browser, "Reload Tester");
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
@@ -54,10 +54,10 @@ test("unsent edits survive a reload (durable local queue)", async ({ browser }) 
 });
 
 test("opening Folevi while the server is unreachable shows the last-known folio, not a dead end", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Cold Start Tester");
+  const { page } = await newPerson(browser, "Cold Start Tester");
   await page.goto("/documents");
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
-  // The account snapshot is written once the workspace list has loaded.
+  // The account snapshot is written once the (possibly empty) workspace list has loaded.
   await page.waitForFunction(() => Boolean(localStorage.getItem("folevi:last-account")));
 
   // Cut the page off from the auth server and the Convex backend (the app shell itself still loads,
@@ -65,7 +65,8 @@ test("opening Folevi while the server is unreachable shows the last-known folio,
   await page.route("**/api/auth/**", (route) => route.abort("internetdisconnected"));
   await page.routeWebSocket(/127\.0\.0\.1:3210|convex\.cloud/, (ws) => ws.close());
   await page.reload();
-  await expect(page.getByRole("navigation", { name: "Workspace" })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole("button", { name: /workspace and account$/ })).toContainText("Personal");
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 20_000 });
+  // Personal (the default context) opens: the switcher shows it.
+  await expect(page.getByRole("button", { name: /— Personal, workspaces and account$/ })).toHaveAccessibleName("Personal — Personal, workspaces and account");
   await expect(page.getByText("You're offline", { exact: true })).toHaveCount(0);
 });

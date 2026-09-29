@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved } from "./helpers";
 
 test.describe("editor", () => {
   test("create a document, write with Markdown shortcuts and the slash menu, and it persists", async ({ browser }) => {
-    const { page } = await newPersonWithWorkspace(browser, "Editor Tester");
+    const { page } = await newPerson(browser, "Editor Tester");
     await page.getByRole("button", { name: "New note", exact: true }).click();
     await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
     const title = page.getByRole("textbox", { name: "Title" });
@@ -44,7 +44,7 @@ test.describe("editor", () => {
   });
 
   test("formatting shortcuts, nesting, moving and undo", async ({ browser }) => {
-    const { page } = await newPersonWithWorkspace(browser, "Format Tester");
+    const { page } = await newPerson(browser, "Format Tester");
     await page.getByRole("button", { name: "New note", exact: true }).click();
     await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
     await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("");

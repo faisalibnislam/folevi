@@ -24,7 +24,7 @@ export function SyncSection() {
           <dd>{online ? "Online" : "Offline"}</dd>
           <dt className="text-muted">Changes waiting to sync</dt>
           <dd className="tabular-nums">
-            {unsent} <span className="text-xs text-faint">(all workspaces and shared pages)</span>
+            {unsent} <span className="text-xs text-faint">(Personal, workspaces and shared pages)</span>
           </dd>
           <dt className="text-muted">Uploads waiting</dt>
           <dd className="tabular-nums">{state.uploads.length}</dd>

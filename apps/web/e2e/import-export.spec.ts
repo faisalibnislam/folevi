@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace } from "./helpers";
+import { newPerson } from "./helpers";
 
 test("import Markdown with a warning report, then export a page as Markdown", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Importer");
+  const { page } = await newPerson(browser, "Importer");
   await page.goto("/settings/data");
   const md = ["---", "title: Garden log", "---", "", "## Beds", "", "- [x] Compost", "- [ ] Sow beans", "", "```python", "print('hi')", "```", "", "<div>raw html</div>", ""].join("\n");
   await page.locator('input[type="file"]').first().setInputFiles({ name: "garden.md", mimeType: "text/markdown", buffer: Buffer.from(md) });

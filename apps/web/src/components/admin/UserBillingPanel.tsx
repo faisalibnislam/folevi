@@ -137,7 +137,7 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
           <Button size="sm" onClick={() => setAction("devices")} disabled={!canManage} title={canManage ? undefined : rolesFor("billing.manage")}>
             <MonitorSmartphone size={14} aria-hidden /> Device limit…
           </Button>
-          <Button size="sm" variant="quiet" className="ml-auto" onClick={() => setAction("export")} disabled={!data.personalWorkspaceId}>
+          <Button size="sm" variant="quiet" className="ml-auto" onClick={() => setAction("export")} disabled={data.personalDocuments === 0} title={data.personalDocuments === 0 ? "Their Personal has no notes yet." : undefined}>
             <FileArchive size={14} aria-hidden /> Prepare export for user…
           </Button>
         </div>
@@ -340,7 +340,7 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
         open={action === "export"}
         onClose={onClose}
         title="Prepare an export for this person?"
-        description="Builds a ZIP of their personal workspace and sends it to them as a notification with a download link. Only they can download it — you never see their notes."
+        description="Builds a ZIP of their Personal and sends it to them as a notification with a download link. Only they can download it — you never see their notes."
         confirmLabel="Prepare export"
         acknowledge="The person asked for an export of their notes."
         onSubmit={async ({ reason, meta }) => {

@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace, seedDemo, showFolders, pick } from "./helpers";
+import { APP, newPerson, seedDemo, showFolders, pick } from "./helpers";
 
 test("the sidebar lists a few folders and tags; All folders / All tags pages search and sort the rest", async ({ browser }) => {
-  const { page, email } = await newPersonWithWorkspace(browser, "Many Things");
+  const { page, email } = await newPerson(browser, "Many Things");
   seedDemo(email, { notes: 6, folders: 12, tags: 14 });
   await page.goto(`${APP}/documents`);
   await showFolders(page).catch(() => undefined);
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const nav = page.getByRole("navigation", { name: "Folio" });
 
   // Five folders (plus nested ones under them) and a "+N more" link to the full list.
   const moreFolders = nav.getByRole("link", { name: /^\+\d+ more folders$/ });
@@ -35,7 +35,7 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   await nav.getByRole("link", { name: /^\+\d+ more tags$/ }).click();
   await expect(page).toHaveURL(/\/tags$/);
   const tags = page.getByRole("list", { name: "Tags" });
-  // 14 seeded + the 2 every new workspace starts with.
+  // 14 seeded + the 2 every new Personal starts with.
   await expect(tags.getByRole("listitem")).toHaveCount(16);
   await page.getByLabel("Search tags").fill("#draft");
   await expect(tags.getByRole("listitem")).toHaveCount(1);
@@ -44,9 +44,9 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
 });
 
 test("a new note on a folder page lands in that folder with no page icon; folders take a colour; Home has three sections", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Home Person");
+  const { page } = await newPerson(browser, "Home Person");
   await showFolders(page);
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const nav = page.getByRole("navigation", { name: "Folio" });
   const drafts = nav.getByRole("link", { name: /^Drafts/ });
   // The seeded Welcome note is a draft: wait for the count to load before reading it.
   await expect(drafts).toHaveText(/\d+$/);

@@ -41,8 +41,8 @@ export function MoveToFolderDialog({
   /** Where the notes are now: a folder id, null for Drafts, undefined when mixed/unknown. */
   currentFolderId?: string | null;
 }) {
-  const { workspace } = useAppState();
-  const org = useQuery(api.organization.sidebar, open ? { workspaceId: workspace.id } : "skip");
+  const { scope } = useAppState();
+  const org = useQuery(api.organization.sidebar, open ? { scope } : "skip");
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const baseId = useId();

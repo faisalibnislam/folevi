@@ -4,6 +4,7 @@
 //   favicon.svg   the mark: a white F on a black disc (also the in-app mark)
 //   logo.svg      the mark and the "Folevi" letterforms (2021 x 512)
 //   app-icon.svg  the F on a black square, edge to edge, for the macOS and iOS icons
+//   ai-icon.svg   the AI mark (eight petals, violet → coral), for every AI entry point
 //
 // The macOS / iOS icon gets Apple's Liquid Glass treatment as an Icon Composer document (Folevi.icon):
 // a black background and the F as a glass layer (specular highlights, translucency, shadow), which the
@@ -19,6 +20,7 @@
 //   apps/macos/…/Assets.xcassets/FoleviMark.imageset       the mark for the Mac app's UI
 //   apps/macos/…/Assets.xcassets/FoleviMenuBar.imageset    the F alone (template) for the menu bar
 //   apps/macos/…/Assets.xcassets/FoleviWordmark.imageset   the logo's letters (template), for FoleviLogo
+//   apps/macos/…/Assets.xcassets/FoleviAI.imageset         the AI mark (AiIcon in Swift; the web draws it inline)
 //   packages/email/scripts/mark-pixels.json        the mark as a 28 px grid, drawn with table cells in emails
 //   packages/design-tokens/brand/app-icon/
 //     Folevi.icon                                  the Liquid Glass icon (macOS and iOS)
@@ -178,6 +180,11 @@ const wordSet = imageSet("FoleviWordmark", [1, 2, 3].map((n) => [`folevi-wordmar
 for (const [scale, h] of [[1, 26], [2, 52], [3, 78]]) {
   await save(sharp(lettersSvg, { density: 300 }).resize(Math.round((h * 2021) / 512), h), resolve(wordSet, `folevi-wordmark@${scale}x.png`));
 }
+
+// The AI mark, in colour (not a template): 32 pt base, sharp up to 3x.
+const aiSet = imageSet("FoleviAI", [1, 2, 3].map((n) => [`folevi-ai@${n}x.png`, `${n}x`]));
+const aiSvg = readFileSync(resolve(brand, "source/ai-icon.svg"));
+for (const n of [1, 2, 3]) await save(sharp(aiSvg, { density: 144 * n }).resize(32 * n, 32 * n), resolve(aiSet, `folevi-ai@${n}x.png`));
 
 // ---------------------------------------------------------------- the web app
 

@@ -1,39 +1,17 @@
 import SwiftUI
 
-/// Folevi's AI mark (the web's AiIcon): a four-point star with three speed lines, in the foreground
-/// colour. 339 × 208 units; `size` sets its weight to match a square icon of that size.
+/// Folevi's AI mark: eight petals in the brand's violet-to-coral gradient, the same image the web
+/// draws (FoleviAI, rendered from packages/design-tokens/brand/source/ai-icon.svg by brand-icons.mjs).
+/// It keeps its own colours, so a foreground style on it has no effect.
 struct AiIcon: View {
     var size: CGFloat = 16
 
     var body: some View {
-        let width = (size * 1.3).rounded()
-        Canvas { ctx, canvas in
-            let k = canvas.width / 339
-            func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * k, y: y * k) }
-            var star = Path()
-            star.move(to: p(267.95, 78.3245))
-            star.addCurve(to: p(275.121, 90.7442), control1: p(268.517, 83.2788), control2: p(271.113, 87.7762))
-            star.addLine(to: p(325.242, 127.864))
-            star.addLine(to: p(263.276, 134.95))
-            star.addCurve(to: p(250.856, 142.121), control1: p(258.321, 135.517), control2: p(253.824, 138.114))
-            star.addLine(to: p(213.736, 192.242))
-            star.addLine(to: p(206.65, 130.276))
-            star.addCurve(to: p(199.479, 117.856), control1: p(206.083, 125.322), control2: p(203.487, 120.824))
-            star.addLine(to: p(149.358, 80.7363))
-            star.addLine(to: p(211.324, 73.65))
-            star.addCurve(to: p(223.744, 66.4795), control1: p(216.279, 73.0834), control2: p(220.776, 70.4869))
-            star.addLine(to: p(260.864, 16.3585))
-            star.closeSubpath()
-            ctx.stroke(star, with: .foreground, style: StrokeStyle(lineWidth: 22 * k, lineJoin: .round))
-            var lines = Path()
-            for (x, y) in [(178.5, 13.0), (154.0, 195.0), (94.0, 104.0)] {
-                lines.move(to: p(x, y))
-                lines.addLine(to: p(10, y))
-            }
-            ctx.stroke(lines, with: .foreground, style: StrokeStyle(lineWidth: 22 * k, lineCap: .round))
-        }
-        .frame(width: width, height: (width * 208 / 339).rounded())
-        .accessibilityHidden(true)
+        Image("FoleviAI")
+            .resizable()
+            .interpolation(.high)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
     }
 }
 

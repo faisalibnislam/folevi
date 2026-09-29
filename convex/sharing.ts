@@ -21,6 +21,7 @@ import { fail } from "./lib/errors";
 import { hashSharePassword, keyedHash, randomToken, sha256Hex, timingSafeEqualHex } from "./lib/crypto";
 import { consume } from "./lib/rateLimit";
 import { liveBlocks, toWireBlock } from "./lib/documents";
+import { sharedLabels } from "./lib/linkLabels";
 import { signFileUrl } from "./lib/fileUrls";
 import { appUrl, notify, notifyAccessChange, notifyAccessLostOnRestrict, shareRoleLabel } from "./lib/notify";
 import { sharePermissions } from "./lib/permissions";
@@ -630,7 +631,9 @@ export const openPublicLink = mutation({
       if (!timingSafeEqualHex(hash, found.passwordHash)) return { status: "password_incorrect" as const };
     }
     await ctx.db.patch(found._id, { viewCount: found.viewCount + 1 });
-    const blocks = (await liveBlocks(ctx, doc._id)).map(toWireBlock);
+    // Links show only titles every reader of this page may see (never a restricted page's, nor one from
+    // another Personal or workspace).
+    const blocks = await sharedLabels(ctx, doc, (await liveBlocks(ctx, doc._id)).map(toWireBlock));
     const collections = await publicCollections(ctx, doc, blocks as { type: string; props: Record<string, unknown> }[]);
     // Attachments of this document only, via short-lived signed URLs.
     const site = process.env.CONVEX_SITE_URL ?? "";

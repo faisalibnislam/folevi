@@ -46,6 +46,7 @@ import type * as lib_flowchartAi from "../lib/flowchartAi.js";
 import type * as lib_folderColors from "../lib/folderColors.js";
 import type * as lib_identityImages from "../lib/identityImages.js";
 import type * as lib_images from "../lib/images.js";
+import type * as lib_linkLabels from "../lib/linkLabels.js";
 import type * as lib_metrics from "../lib/metrics.js";
 import type * as lib_nativeAuth from "../lib/nativeAuth.js";
 import type * as lib_nativeClients from "../lib/nativeClients.js";
@@ -123,6 +124,7 @@ declare const fullApi: ApiFromModules<{
   "lib/folderColors": typeof lib_folderColors;
   "lib/identityImages": typeof lib_identityImages;
   "lib/images": typeof lib_images;
+  "lib/linkLabels": typeof lib_linkLabels;
   "lib/metrics": typeof lib_metrics;
   "lib/nativeAuth": typeof lib_nativeAuth;
   "lib/nativeClients": typeof lib_nativeClients;

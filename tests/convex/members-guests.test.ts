@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { normalizeMembership, type DocumentAccessInfo } from "../../convex/lib/auth";
+import { normalizeMembership, requestedRole, type DocumentAccessInfo } from "../../convex/lib/auth";
 import { canInviteGuest, canInviteMember, canManageMember, canManageWorkspace, memberCanManageBilling, sharePermissions } from "../../convex/lib/permissions";
 import { inWorkspace, join, para, person, PERSONAL, setup, teamWorkspace, ulid, verifyAccountModel, type T } from "./helpers";
 
@@ -49,55 +49,40 @@ async function world(t: T, prefix: string) {
 // ---------------------------------------------------------------------------------------------------
 
 describe("roles: owner | admin | member", () => {
-  test("old member roles read as Member with a matching access, before and after the migration", async () => {
+  test("a member's access (edit / comment / view) decides what they can do; old role names from older clients are stored as Member + access", async () => {
     const t = setup();
-    const owner = await person(t, "mig-owner@example.com");
-    const c = await person(t, "mig-commenter@example.com");
-    const vw = await person(t, "mig-viewer@example.com");
-    const ed = await person(t, "mig-editor@example.com");
-    const { workspaceId } = await teamWorkspace(owner, "Legacy");
+    const owner = await person(t, "acc-owner@example.com");
+    const c = await person(t, "acc-commenter@example.com");
+    const vw = await person(t, "acc-viewer@example.com");
+    const ed = await person(t, "acc-editor@example.com");
+    const { workspaceId } = await teamWorkspace(owner, "Access");
     const wsId = await workspaceDbId(t, workspaceId);
     const page = await newPage(owner, workspaceId, "Plan");
-    // Rows as an older deployment wrote them.
-    await t.run(async (ctx) => {
-      await ctx.db.insert("workspaceMembers", { workspaceId: wsId, profileId: c.profileId as Id<"profiles">, role: "commenter", joinedAt: 1 });
-      await ctx.db.insert("workspaceMembers", { workspaceId: wsId, profileId: vw.profileId as Id<"profiles">, role: "viewer", joinedAt: 2 });
-      await ctx.db.insert("workspaceMembers", { workspaceId: wsId, profileId: ed.profileId as Id<"profiles">, role: "editor", joinedAt: 3 });
-      await ctx.db.insert("workspaceInvites", { publicId: ulid(), workspaceId: wsId, email: "later@example.com", role: "viewer", tokenHash: "x", invitedBy: owner.profileId as Id<"profiles">, status: "pending", expiresAt: Date.now() + 1e9, createdAt: 1 });
-    });
-    const check = async () => {
-      const w = (await c.as.query(api.workspaces.mine, {}))[0]!;
-      expect([w.role, w.memberAccess, w.canEdit]).toEqual(["member", "comment", false]);
-      const v2 = (await vw.as.query(api.workspaces.mine, {}))[0]!;
-      expect([v2.role, v2.memberAccess, v2.canEdit]).toEqual(["member", "view", false]);
-      const e = (await ed.as.query(api.workspaces.mine, {}))[0]!;
-      expect([e.role, e.memberAccess, e.canEdit]).toEqual(["member", "edit", true]);
-      expect((await c.as.query(api.documents.get, { documentId: page }))!.access).toBe("comment");
-      expect((await vw.as.query(api.documents.get, { documentId: page }))!.access).toBe("read");
-      expect((await ed.as.query(api.documents.get, { documentId: page }))!.access).toBe("write");
-      await expect(vw.as.mutation(api.documents.create, { scope: inWorkspace(workspaceId), title: "Nope" })).rejects.toThrow(/permission/);
-      // Every membership role is a seat.
-      expect((await seats(owner, workspaceId)).seats).toBe(4);
-    };
-    await check();
-    const before = await verifyAccountModel(t);
-    expect(before.legacyRoles).toBe(4);
-    expect(before.ok).toBe(false);
-
-    vi.useFakeTimers();
-    await t.mutation(internal.migrations.normalizeWorkspaceRoles, {});
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    vi.useRealTimers();
-    const rows = await t.run(async (ctx) => (await ctx.db.query("workspaceMembers").withIndex("by_workspace", (q) => q.eq("workspaceId", wsId)).collect()).map((m) => [m.role, m.memberAccess ?? null]));
-    expect(rows.sort()).toEqual([["member", "comment"], ["member", "view"], ["member", null], ["owner", null]].sort());
+    // Invited with the old role names, as the paused Mac app still sends them.
+    await join(t, owner, c, "acc-commenter@example.com", workspaceId, "commenter");
+    await join(t, owner, vw, "acc-viewer@example.com", workspaceId, "viewer");
+    await join(t, owner, ed, "acc-editor@example.com", workspaceId, "editor");
+    await owner.as.mutation(api.workspaces.invite, { workspaceId, email: "later@example.com", role: "viewer" });
+    const rows = await t.run(async (ctx) => (await ctx.db.query("workspaceMembers").withIndex("by_workspace", (q) => q.eq("workspaceId", wsId)).collect()).map((m) => [m.role, m.memberAccess ?? "edit"]));
+    expect(rows.sort()).toEqual([["member", "comment"], ["member", "view"], ["member", "edit"], ["owner", "edit"]].sort());
     const invite = await t.run(async (ctx) => (await ctx.db.query("workspaceInvites").collect()).find((i) => i.email === "later@example.com")!);
     expect([invite.role, invite.memberAccess]).toEqual(["member", "view"]);
-    await check();
-    const after = await verifyAccountModel(t);
-    expect(after.legacyRoles).toBe(0);
-    // Idempotent.
-    const again = await t.mutation(internal.migrations.normalizeWorkspaceRoles, { table: "workspaceMembers", cursor: null });
-    expect(again.updated).toBe(0);
+
+    const w = (await c.as.query(api.workspaces.mine, {}))[0]!;
+    expect([w.role, w.memberAccess, w.canEdit]).toEqual(["member", "comment", false]);
+    const v2 = (await vw.as.query(api.workspaces.mine, {}))[0]!;
+    expect([v2.role, v2.memberAccess, v2.canEdit]).toEqual(["member", "view", false]);
+    const e = (await ed.as.query(api.workspaces.mine, {}))[0]!;
+    expect([e.role, e.memberAccess, e.canEdit]).toEqual(["member", "edit", true]);
+    expect((await c.as.query(api.documents.get, { documentId: page }))!.access).toBe("comment");
+    expect((await vw.as.query(api.documents.get, { documentId: page }))!.access).toBe("read");
+    expect((await ed.as.query(api.documents.get, { documentId: page }))!.access).toBe("write");
+    await expect(vw.as.mutation(api.documents.create, { scope: inWorkspace(workspaceId), title: "Nope" })).rejects.toThrow(/permission/);
+    // Every membership role is a seat.
+    expect((await seats(owner, workspaceId)).seats).toBe(4);
+    // The data passes the account-model integrity check.
+    const report = await verifyAccountModel(t);
+    expect(report.ok).toBe(true);
   });
 
   test("invitations and role changes use Member (with access) and Admin; old names from older clients still work", async () => {
@@ -145,9 +130,9 @@ describe("roles: owner | admin | member", () => {
     const billingAdmin = { role: "admin" as const, canManageBilling: true };
     const member = { role: "member" as const };
     const viewOnly = { role: "member" as const, memberAccess: "view" as const };
-    const legacyCommenter = { role: "commenter" as const };
-    expect([owner, admin, member, viewOnly, legacyCommenter, null].map(canManageWorkspace)).toEqual([true, true, false, false, false, false]);
-    expect([owner, admin, member, viewOnly, legacyCommenter, null].map((m) => canInviteGuest(m))).toEqual([true, true, true, false, false, false]);
+    const commentOnly = { role: "member" as const, memberAccess: "comment" as const };
+    expect([owner, admin, member, viewOnly, commentOnly, null].map(canManageWorkspace)).toEqual([true, true, false, false, false, false]);
+    expect([owner, admin, member, viewOnly, commentOnly, null].map((m) => canInviteGuest(m))).toEqual([true, true, true, false, false, false]);
     expect([owner, admin, billingAdmin, member, null].map(memberCanManageBilling)).toEqual([true, false, true, false, false]);
     expect(canInviteMember(owner, "admin")).toBe(true);
     expect(canInviteMember(admin, "admin")).toBe(false);
@@ -159,7 +144,11 @@ describe("roles: owner | admin | member", () => {
     expect(canManageMember(admin, owner)).toBe(false);
     expect(canManageMember(owner, owner)).toBe(false);
     expect(canManageMember(member, viewOnly)).toBe(false);
-    expect(normalizeMembership({ role: "editor" })).toEqual({ role: "member", memberAccess: "edit" });
+    expect(normalizeMembership({ role: "member" })).toEqual({ role: "member", memberAccess: "edit" });
+    expect(normalizeMembership({ role: "member", memberAccess: "comment" })).toEqual({ role: "member", memberAccess: "comment" });
+    expect(normalizeMembership({ role: "admin", memberAccess: "view" })).toEqual({ role: "admin", memberAccess: "edit" });
+    expect(requestedRole("viewer")).toEqual({ role: "member", memberAccess: "view" });
+    expect(requestedRole("member", "comment")).toEqual({ role: "member", memberAccess: "comment" });
     const m = (x: object) => ({ _id: "m", workspaceId: "w", profileId: "p", joinedAt: 0, _creationTime: 0, ...x }) as never;
     const info = (access: DocumentAccessInfo["access"], member: object | null, restricted = false, inScope = true): DocumentAccessInfo => ({ access, inScope, member: member ? m(member) : null, restricted });
     expect(sharePermissions(info("manage", admin))).toEqual({ manage: true, share: true });

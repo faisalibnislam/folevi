@@ -39,7 +39,6 @@ async function insertWorkspace(ctx: MutationCtx, owner: Id<"profiles">, members:
   const workspaceId = await ctx.db.insert("workspaces", {
     publicId: `ws-${now}-${Math.random().toString(36).slice(2)}`,
     name: "Field Notes",
-    kind: "team",
     ownerId: owner,
     changeSeq: 0,
     status: "active",
@@ -61,7 +60,7 @@ async function world(t: T, prefs: { member?: Partial<Prefs>; guest?: Partial<Pre
     const owner = await insertProfile(ctx, "owner@example.com");
     const member = await insertProfile(ctx, "member@example.com", prefs.member);
     const guest = await insertProfile(ctx, "guest@example.com", prefs.guest);
-    const workspaceId = await insertWorkspace(ctx, owner, [[member, "editor"]]);
+    const workspaceId = await insertWorkspace(ctx, owner, [[member, "member"]]);
     const actor = (await ctx.db.get(owner))!;
     const doc = await createDocument(ctx, { scope: { kind: "workspace", workspaceId }, actor, title: "Spring planting plan" });
     return { owner, member, guest, workspaceId, docId: doc._id };

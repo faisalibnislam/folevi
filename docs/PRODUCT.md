@@ -132,9 +132,10 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
   admin email log (verified in production 2026-09-29). The Convex `LOOPS_*` variables are removed; the
   Loops DNS records and sending domain are removed by the owner per `docs/EMAIL_OPERATIONS.md` §9.
 - **Payments:** Stripe isn't configured on production (personal or workspace prices).
-- **Account model:** Personal-is-not-a-workspace, workspace plans and members vs guests are live; the
-  production migration ran on 2026-09-29 and verified clean (`docs/ACCOUNT_MODEL_PLAN.md` §3a). The Mac
-  app still expects the old model until its catch-up (paused).
+- **Account model:** production runs the new model (Personal is not a workspace, workspace plans, members
+  vs guests; migrated and verified 2026-09-29). A few clean-up migrations are left to run and the
+  `workspaces.kind` field to delete afterwards (`docs/ACCOUNT_MODEL_PLAN.md` §3b). The Mac app still
+  expects the old model until its catch-up (paused).
 - **Accounts:** no breached-password check yet and no passkeys; no social sign-in by design
   (`docs/AUTH_DECISION.md`). Account email changes are handled by support, not self-service.
 - **Collaboration is block-granular**, not character-level: concurrent edits to the same block become a

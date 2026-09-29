@@ -13,6 +13,8 @@ import {
   type WireBlock,
 } from "@folevi/editor-schema";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
+import { accessAtLeast, documentAccess, membership } from "./auth";
+import { sharedLabels } from "./linkLabels";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -72,6 +74,52 @@ export class IdResolver {
   async profile(id: Id<"profiles">): Promise<string> {
     if (!this.profiles.has(id)) this.profiles.set(id, (await this.ctx.db.get(id)) ? id : null);
     return this.profiles.get(id) ?? "";
+  }
+}
+
+/**
+ * What one reader may see of where pages sit. A page's folder only when they're in the page's own scope
+ * (its Personal's owner, or a member of its workspace) — never for a guest; its parent page only when they
+ * can open that page. Anything else is null: an id of a folder or page they can't open isn't theirs to
+ * have, even an opaque one. Cached per call; `summary` is toSummary for this reader.
+ */
+export class Placement {
+  private members = new Map<string, boolean>();
+  private readable = new Map<string, boolean>();
+  constructor(
+    private ctx: Ctx,
+    private profile: Doc<"profiles">,
+  ) {}
+
+  /** In the page's scope: its Personal's owner, or a member of its workspace (not a guest on it). */
+  async inScope(doc: Doc<"documents">): Promise<boolean> {
+    if (doc.ownerProfileId !== undefined) return doc.ownerProfileId === this.profile._id;
+    if (doc.workspaceId === undefined) return false;
+    let ok = this.members.get(doc.workspaceId);
+    if (ok === undefined) {
+      ok = (await membership(this.ctx, this.profile._id, doc.workspaceId)) !== null;
+      this.members.set(doc.workspaceId, ok);
+    }
+    return ok;
+  }
+
+  /** Whether the reader can open the page with this id. */
+  async canOpen(id: Id<"documents">): Promise<boolean> {
+    let ok = this.readable.get(id);
+    if (ok === undefined) {
+      const doc = await this.ctx.db.get(id);
+      ok = doc !== null && accessAtLeast(await documentAccess(this.ctx, this.profile, doc), "read");
+      this.readable.set(id, ok);
+    }
+    return ok;
+  }
+
+  /** toSummary as this reader may see it. */
+  async summary(ids: IdResolver, doc: Doc<"documents">): Promise<DocumentSummary> {
+    const s = await toSummary(ids, doc);
+    const folderId = s.folderId !== null && (await this.inScope(doc)) ? s.folderId : null;
+    const parentDocumentId = doc.parentDocumentId !== undefined && (await this.canOpen(doc.parentDocumentId)) ? s.parentDocumentId : null;
+    return { ...s, folderId, parentDocumentId };
   }
 }
 
@@ -202,9 +250,12 @@ export function buildPreview(entries: { block: WireBlock; depth: number }[]): Pr
   return out;
 }
 
-/** Recomputes search text, counts, excerpt and card preview from the canonical blocks. */
+/**
+ * Recomputes search text, counts, excerpt and card preview from the canonical blocks. Everyone who can
+ * read the page sees these, so links in them carry only titles everyone there may see (sharedLabels).
+ */
 export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, rows?: Doc<"blocks">[]): Promise<void> {
-  const blocks = (rows ?? (await liveBlocks(ctx, doc._id))).map(toWireBlock);
+  const blocks = await sharedLabels(ctx, doc, (rows ?? (await liveBlocks(ctx, doc._id))).map(toWireBlock));
   const flat = flattenTree(blocks);
   const ordered = flat.map((e) => e.block);
   const text = ordered.map((b) => plainText(b.text)).filter(Boolean);
@@ -232,8 +283,10 @@ export async function syncTaskProjection(
     .query("tasks")
     .withIndex("by_block", (q) => q.eq("blockId", row.blockId))
     .unique();
-  // Checklists inside templates are blueprints, not tasks.
-  const projection = row.deletedAt === undefined && doc.kind !== "template" ? projectTask(toWireBlock(row), doc.publicId) : null;
+  // Checklists inside templates are blueprints, not tasks. A task's title is shown to everyone who can read
+  // the page, so links in it carry only titles everyone there may see.
+  const live = row.deletedAt === undefined && doc.kind !== "template";
+  const projection = live ? projectTask((await sharedLabels(ctx, doc, [toWireBlock(row)]))[0]!, doc.publicId) : null;
   if (!projection) {
     if (existing) await ctx.db.delete(existing._id);
     return;

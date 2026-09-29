@@ -54,8 +54,6 @@ export default defineSchema({
     platformRole: v.optional(vPlatformRole),
     status: vProfileStatus,
     suspendedReason: v.optional(v.string()),
-    /** Legacy: the personal workspace of the old model. Cleared by migrations.migratePersonalWorkspaces. */
-    defaultWorkspaceId: v.optional(v.id("workspaces")),
     /** Change counter of this person's Personal (unset = 0); `seq` of Personal rows comes from it. */
     personalChangeSeq: v.optional(v.number()),
     /** Bytes stored in this person's Personal (unset = 0), checked against their Personal plan only. */
@@ -73,11 +71,16 @@ export default defineSchema({
     .index("by_platform_role", ["platformRole"])
     .index("by_created", ["createdAt"]),
 
-  /** Team workspaces. Rows of kind "personal" are the old model's Personal; the migration removes them. */
+  /** Team workspaces (Personal is not a workspace: it has no row). */
   workspaces: defineTable({
     publicId: v.string(),
     name: v.string(),
-    kind: v.union(v.literal("personal"), v.literal("team")),
+    /**
+     * Being removed: every workspace is a team workspace. Nothing reads or writes it any more; older rows
+     * hold "team" until `migrations.dropWorkspaceKind` has run, then the field is deleted from the schema
+     * (docs/ACCOUNT_MODEL_PLAN.md §3b).
+     */
+    kind: v.optional(v.literal("team")),
     ownerId: v.id("profiles"),
     icon: v.optional(v.string()),
     /** Square logo (a `files` row of kind "logo", counted in this workspace's storage). */
@@ -101,7 +104,6 @@ export default defineSchema({
   })
     .index("by_public_id", ["publicId"])
     .index("by_owner", ["ownerId"])
-    .index("by_kind", ["kind"])
     .index("by_created", ["createdAt"]),
 
   workspaceMembers: defineTable({
@@ -1010,7 +1012,9 @@ export default defineSchema({
 
   /**
    * Progress and result of a resumable data check (migrations.verifyAccountModel): where the job has got to
-   * (`stage` + `cursor`) and what it has found so far. Read with migrations.accountModelReport.
+   * (`stage` + `cursor`) and what it has found so far. Read with migrations.accountModelReport; only the
+   * latest few are kept. Counts are name → number (the check's counts changed over time; older reports
+   * keep the names they were written with).
    */
   migrationReports: defineTable({
     name: v.string(),
@@ -1019,20 +1023,8 @@ export default defineSchema({
     done: v.boolean(),
     /** Set when done: every count is 0. */
     ok: v.optional(v.boolean()),
-    counts: v.object({
-      rowsWithBothScopes: v.number(),
-      rowsWithNoScope: v.number(),
-      rowsInLegacyWorkspaces: v.number(),
-      rowsOutOfTheirDocumentsScope: v.number(),
-      orphanedGrants: v.number(),
-      personalWorkspaces: v.number(),
-      profilesWithDefaultWorkspace: v.number(),
-      legacyRoles: v.number(),
-    }),
-    tables: v.record(
-      v.string(),
-      v.object({ rows: v.number(), both: v.number(), neither: v.number(), legacyWorkspace: v.number(), outOfScope: v.number(), orphanedGrants: v.number() }),
-    ),
+    counts: v.record(v.string(), v.number()),
+    tables: v.record(v.string(), v.record(v.string(), v.number())),
     runs: v.number(),
     startedAt: v.number(),
     updatedAt: v.number(),

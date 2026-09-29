@@ -25,8 +25,8 @@ export { billedQuantity, seatChargeCents } from "./plans";
 
 type Ctx = QueryCtx | MutationCtx;
 
-/** Membership roles that take a seat: every one (owner, admin, member — and the old member roles editor/commenter/viewer until the role migration has rewritten them). */
-const BILLABLE_ROLES: Record<WorkspaceRole, boolean> = { owner: true, admin: true, member: true, editor: true, commenter: true, viewer: true };
+/** Membership roles that take a seat: every one (owner, admin, member). Guests have no membership. */
+const BILLABLE_ROLES: Record<WorkspaceRole, boolean> = { owner: true, admin: true, member: true };
 export const isBillableRole = (role: WorkspaceRole) => BILLABLE_ROLES[role];
 
 /** How long seat changes are gathered before Stripe is updated (a burst of accepts → one update). */

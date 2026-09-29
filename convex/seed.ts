@@ -8,6 +8,7 @@ import { insertScoped, personalScope } from "./lib/scope";
 import { bump } from "./lib/metrics";
 import { DEFAULT_WORKSPACE_QUOTA_BYTES } from "./lib/entitlements";
 import { seatsChanged } from "./lib/seats";
+import { randomFolderColor } from "./lib/folderColors";
 import {
   READING_SHELF,
   WELCOME_TITLE,
@@ -25,7 +26,6 @@ export async function createWorkspace(ctx: MutationCtx, owner: Doc<"profiles">, 
   const workspaceId = await ctx.db.insert("workspaces", {
     publicId: ulid(),
     name,
-    kind: "team",
     ownerId: owner._id,
     changeSeq: 0,
     status: "active",
@@ -55,7 +55,8 @@ export async function seedPersonal(ctx: MutationCtx, owner: Doc<"profiles">, tod
   const projects = await insertScoped(ctx, "folders", scope, {
     publicId: ulid(),
     name: "Projects",
-    icon: "🗂",
+    // Folders show a colour, never an emoji.
+    color: randomFolderColor(),
     rank: folderRanks[0]!,
     createdBy: owner._id,
     createdAt: now,
@@ -65,7 +66,7 @@ export async function seedPersonal(ctx: MutationCtx, owner: Doc<"profiles">, tod
   const personal = await insertScoped(ctx, "folders", scope, {
     publicId: ulid(),
     name: "Personal",
-    icon: "🌿",
+    color: randomFolderColor(),
     rank: folderRanks[1]!,
     createdBy: owner._id,
     createdAt: now,

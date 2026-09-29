@@ -5,7 +5,8 @@ import { assertWritable, requireProfile, resolveScope, documentAccess, accessAtL
 import { consume } from "./lib/rateLimit";
 import { fail } from "./lib/errors";
 import { SyncEngine, MAX_BATCH } from "./lib/syncEngine";
-import { IdResolver, toSummary, toWireBlock } from "./lib/documents";
+import { IdResolver, Placement, toWireBlock } from "./lib/documents";
+import { ReaderLabels } from "./lib/linkLabels";
 import { vSyncOp } from "./lib/validators";
 import { headSeq } from "./lib/seq";
 import { vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
@@ -129,20 +130,24 @@ async function pullRows(ctx: QueryCtx, profile: Doc<"profiles">, arg: ScopeArg, 
     if (!access.has(doc._id)) access.set(doc._id, accessAtLeast(await documentAccess(ctx, profile, doc), "read"));
     return access.get(doc._id)!;
   };
+  // No parent page id the caller can't open (a page granted on its own under a restricted page).
+  const place = new Placement(ctx, profile);
   const outDocs = [];
   for (const d of docs.rows) {
     if (d.seq > upTo) continue;
     if (!(await canRead(d))) continue;
-    outDocs.push(await toSummary(ids, d));
+    outDocs.push(await place.summary(ids, d));
   }
   const outBlocks = [];
   const docCache = new Map<Id<"documents">, Doc<"documents"> | null>();
+  // Links to other pages carry their current title only when this person can open them.
+  const labels = new ReaderLabels(ctx, profile);
   for (const b of blocks.rows) {
     if (b.seq > upTo) continue;
     if (!docCache.has(b.documentId)) docCache.set(b.documentId, await ctx.db.get(b.documentId));
     const d = docCache.get(b.documentId);
     if (!d || !(await canRead(d))) continue;
-    outBlocks.push({ documentId: d.publicId, block: toWireBlock(b), deleted: b.deletedAt !== undefined });
+    outBlocks.push({ documentId: d.publicId, block: await labels.block(toWireBlock(b)), deleted: b.deletedAt !== undefined });
   }
   return { documents: outDocs, blocks: outBlocks, nextCursor: upTo, hasMore, head };
 }

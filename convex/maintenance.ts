@@ -291,7 +291,7 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
       // workspace other people use before asking (users.requestAccountDeletion); if someone joined during
       // the grace period — or support scheduled the deletion — the workspace passes to its longest-standing
       // admin, else its longest-standing member, who is told. Only a workspace nobody else is in is purged.
-      const heir = ws.kind === "team" && ws.deletionScheduledFor === undefined ? (others.find((x) => normalizeMembership(x).role === "admin") ?? others[0]) : undefined;
+      const heir = ws.deletionScheduledFor === undefined ? (others.find((x) => normalizeMembership(x).role === "admin") ?? others[0]) : undefined;
       if (heir) {
         await ctx.db.patch(heir._id, { role: "owner", memberAccess: undefined, canManageBilling: undefined });
         await ctx.db.patch(ws._id, { ownerId: heir.profileId });
@@ -348,7 +348,6 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     tokenIdentifier: `deleted:${profileId}`,
     authSubject: `deleted:${profileId}`,
     platformRole: undefined,
-    defaultWorkspaceId: undefined,
     avatarFileId: undefined,
     personalStorageUsedBytes: undefined,
     personalDocumentCount: undefined,

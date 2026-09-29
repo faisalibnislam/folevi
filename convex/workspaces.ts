@@ -55,7 +55,7 @@ export const mine = query({
     const out = [];
     for (const m of memberships) {
       const w = await ctx.db.get(m.workspaceId);
-      if (!w || w.kind !== "team" || w.status === "deleting") continue;
+      if (!w || w.status === "deleting") continue;
       const { role, memberAccess } = normalizeMembership(m);
       const deleting = isScheduledForDeletion(w);
       if (deleting && role !== "owner") continue;
@@ -165,7 +165,7 @@ export const createTeamWorkspace = mutation({
       .query("workspaces")
       .withIndex("by_owner", (q) => q.eq("ownerId", profile._id))
       .collect();
-    if (owned.filter((w) => w.kind === "team" && w.status !== "deleting").length >= 10) fail("limit_exceeded", "You can own up to 10 workspaces.");
+    if (owned.filter((w) => w.status !== "deleting").length >= 10) fail("limit_exceeded", "You can own up to 10 workspaces.");
     const id = await createWorkspace(ctx, profile, name);
     return { id: (await ctx.db.get(id))!.publicId };
   },
@@ -378,7 +378,7 @@ export const acceptInvite = mutation({
     // Invitations are bound to the verified address they were sent to.
     if (invite.email !== profile.email) fail("forbidden", "This invitation was sent to a different email address.");
     const workspace = await ctx.db.get(invite.workspaceId);
-    if (!workspace || workspace.kind !== "team" || workspace.status !== "active" || isScheduledForDeletion(workspace)) fail("not_found", "This workspace is unavailable.");
+    if (!workspace || workspace.status !== "active" || isScheduledForDeletion(workspace)) fail("not_found", "This workspace is unavailable.");
     if (!(await membership(ctx, profile._id, workspace._id))) {
       const count = await ctx.db
         .query("workspaceMembers")
@@ -496,7 +496,7 @@ export const transferOwnership = mutation({
       .query("workspaces")
       .withIndex("by_owner", (q) => q.eq("ownerId", targetId))
       .collect();
-    if (owned.filter((w) => w.kind === "team" && w.status !== "deleting").length >= 10) fail("limit_exceeded", `${targetProfile.displayName} already owns 10 workspaces.`);
+    if (owned.filter((w) => w.status !== "deleting").length >= 10) fail("limit_exceeded", `${targetProfile.displayName} already owns 10 workspaces.`);
     // The workspace's subscription belongs to the workspace, so it stays as it is; only who owns it changes.
     await ctx.db.patch(target._id, { role: "owner", memberAccess: undefined, canManageBilling: undefined });
     await ctx.db.patch(member._id, { role: "admin", memberAccess: undefined, canManageBilling: undefined });

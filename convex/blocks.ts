@@ -3,11 +3,15 @@ import { mutation, query } from "./_generated/server";
 import { rankSequence } from "@folevi/editor-schema";
 import { assertWritable, documentAccess, getDocumentByPublicId, requireDocument, requireProfile, accessAtLeast } from "./lib/auth";
 import { liveBlocks, toWireBlock } from "./lib/documents";
+import { ReaderLabels } from "./lib/linkLabels";
 import { nextSeq } from "./lib/seq";
 import { scopeOfRow } from "./lib/scope";
 import { LIMITS } from "@folevi/editor-schema";
 
-/** Live, canonical blocks of a document (tombstones excluded). Subscribed by the editor. */
+/**
+ * Live, canonical blocks of a document (tombstones excluded). Subscribed by the editor. Links to other
+ * pages carry their current title only when this person can open them (lib/linkLabels.ts).
+ */
 export const list = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
@@ -17,7 +21,8 @@ export const list = query({
     const access = await documentAccess(ctx, profile, doc);
     if (!accessAtLeast(access, "read")) return null;
     const rows = await liveBlocks(ctx, doc._id);
-    return { documentId: doc.publicId, revision: doc.revision, contentSeq: doc.contentSeq, blocks: rows.map(toWireBlock) };
+    const blocks = await new ReaderLabels(ctx, profile).blocks(rows.map(toWireBlock));
+    return { documentId: doc.publicId, revision: doc.revision, contentSeq: doc.contentSeq, blocks };
   },
 });
 
@@ -31,11 +36,12 @@ export const deleted = query({
       .query("blocks")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id))
       .collect();
-    return rows
+    const recent = rows
       .filter((r) => r.deletedAt !== undefined)
       .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
-      .slice(0, 100)
-      .map((r) => ({ ...toWireBlock(r), deletedAt: r.deletedAt! }));
+      .slice(0, 100);
+    const blocks = await new ReaderLabels(ctx, profile).blocks(recent.map(toWireBlock));
+    return blocks.map((b, i) => ({ ...b, deletedAt: recent[i]!.deletedAt! }));
   },
 });
 

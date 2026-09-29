@@ -7,10 +7,10 @@ import { fail } from "./errors";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./claims";
 import { findActiveSession } from "./authStore";
 import { deviceStatus } from "./devices";
-import { hasValidScope, personalScope, scopeOfRow, workspaceScope, type Scope, type ScopeArg, type ScopedRow } from "./scope";
+import { hasValidScope, personalScope, sameScope, scopeOfRow, workspaceScope, type Scope, type ScopeArg, type ScopedRow } from "./scope";
 
 type Ctx = QueryCtx | MutationCtx;
-/** A membership role as stored (may still be an old member role until migrations.normalizeWorkspaceRoles has run). */
+/** A membership role as stored (owner | admin | member). */
 export type WorkspaceRole = Doc<"workspaceMembers">["role"];
 /** Membership roles: every one of them takes a seat (lib/seats.ts). Guests have no membership. */
 export type MemberRole = "owner" | "admin" | "member";
@@ -30,29 +30,23 @@ const ACCESS_RANK: Record<Access, number> = { none: -1, read: 0, comment: 1, wri
 
 export { CLAIM_EMAIL_VERIFIED, CLAIM_MFA };
 
-/** The old member roles, read as Members with the matching access (until the migration rewrites them). */
-const LEGACY_MEMBER_ACCESS: Partial<Record<WorkspaceRole, MemberAccess>> = { editor: "edit", commenter: "comment", viewer: "view" };
-
-export function isLegacyRole(role: WorkspaceRole): boolean {
-  return LEGACY_MEMBER_ACCESS[role] !== undefined;
-}
-
 /**
- * A membership as the product sees it: owner | admin | member, and for members their access. Old rows
- * (editor / commenter / viewer) read as member with edit / comment / view, so the code is correct before
- * and after `migrations.normalizeWorkspaceRoles` runs.
+ * The old member role names, still accepted as input from older clients (the paused Mac app) when inviting
+ * or changing a role, and stored as Member with the matching access. Stored rows never hold them.
+ * Remove after the Mac catch-up (docs/ACCOUNT_MODEL_PLAN.md §3b).
  */
+const OLD_ROLE_INPUT_ACCESS: Record<"editor" | "commenter" | "viewer", MemberAccess> = { editor: "edit", commenter: "comment", viewer: "view" };
+
+/** A membership as the product sees it: owner | admin | member, and for members their access. */
 export function normalizeMembership(m: { role: WorkspaceRole; memberAccess?: MemberAccess }): { role: MemberRole; memberAccess: MemberAccess } {
-  const legacy = LEGACY_MEMBER_ACCESS[m.role];
-  if (legacy) return { role: "member", memberAccess: legacy };
   if (m.role === "owner" || m.role === "admin") return { role: m.role, memberAccess: "edit" };
   return { role: "member", memberAccess: m.memberAccess ?? "edit" };
 }
 
-/** The role and access an invitation or role change asks for (old role names map to Member + access). */
+/** The role and access an invitation or role change asks for (old role names from older clients map to Member + access). */
 export function requestedRole(role: "admin" | "member" | "editor" | "commenter" | "viewer", memberAccess?: MemberAccess): { role: "admin" | "member"; memberAccess?: MemberAccess } {
   if (role === "admin") return { role: "admin" };
-  return { role: "member", memberAccess: LEGACY_MEMBER_ACCESS[role] ?? memberAccess ?? "edit" };
+  return { role: "member", memberAccess: role === "member" ? (memberAccess ?? "edit") : OLD_ROLE_INPUT_ACCESS[role] };
 }
 
 export function memberLevel(m: { role: WorkspaceRole; memberAccess?: MemberAccess }): WorkspaceLevel {
@@ -220,17 +214,12 @@ export async function membership(
     .unique();
 }
 
-/**
- * A team workspace the caller is a member of (at least `minRole`). Workspaces left over from the old model's
- * Personal (kind "personal") are never a workspace scope: they read as not found.
- */
 export const DELETION_SCHEDULED_MESSAGE = "This workspace is scheduled for deletion. Cancel the deletion to make changes.";
 
 /**
- * A team workspace the caller is a member of (at least `minLevel`). Workspaces left over from the old
- * model's Personal (kind "personal") are never a workspace scope: they read as not found. A workspace
- * scheduled for deletion is hidden from everyone but its owner, who may only read it (and cancel the
- * deletion, which passes `allowScheduledDeletion`).
+ * A team workspace the caller is a member of (at least `minLevel`). A workspace scheduled for deletion is
+ * hidden from everyone but its owner, who may only read it (and cancel the deletion, which passes
+ * `allowScheduledDeletion`).
  */
 export async function requireWorkspace(
   ctx: Ctx,
@@ -243,7 +232,7 @@ export async function requireWorkspace(
     .query("workspaces")
     .withIndex("by_public_id", (q) => q.eq("publicId", workspacePublicId))
     .unique();
-  if (!workspace || workspace.kind !== "team" || workspace.status === "deleting") fail("not_found", "Workspace not found.");
+  if (!workspace || workspace.status === "deleting") fail("not_found", "Workspace not found.");
   const member = await membership(ctx, profile._id, workspace._id);
   // Same error for "does not exist" and "not a member" to avoid leaking workspace existence.
   if (!member) fail("not_found", "Workspace not found.");
@@ -369,6 +358,86 @@ export async function documentAccessInfo(ctx: Ctx, profile: Doc<"profiles">, doc
   }
   const base: Access = member ? memberToAccess(member) : "none";
   return { ...info, access: maxAccess(base, grant) };
+}
+
+/**
+ * Which pages of one scope the caller can open, for lists and counts: a number or list shown to a member
+ * never includes a restricted page they can't open. Their standing in the scope is resolved once (by
+ * resolveScope): in their own Personal, or as the workspace's owner or an admin, they can open everything
+ * in it; for a member, a page with no restricted page above it (or itself restricted) is always open, and
+ * only restricted ones need documentAccess. Verdicts and restriction walks are cached per call, so a list
+ * of top-level pages costs no extra reads. Pages outside the scope always go through documentAccess.
+ */
+export class PageReader {
+  private restricted = new Map<string, boolean>();
+  private verdicts = new Map<string, boolean>();
+  private docs = new Map<string, Doc<"documents"> | null>();
+  constructor(
+    private ctx: Ctx,
+    private profile: Doc<"profiles">,
+    private standing: Pick<ScopeAccess, "scope" | "level">,
+  ) {}
+
+  /** Opens everything in the scope (their own Personal, or its owner / an admin). */
+  get opensEverything(): boolean {
+    return this.standing.scope.kind === "personal" || this.standing.level === "owner" || this.standing.level === "admin";
+  }
+
+  private async get(id: Id<"documents">): Promise<Doc<"documents"> | null> {
+    if (!this.docs.has(id)) this.docs.set(id, await this.ctx.db.get(id));
+    return this.docs.get(id) ?? null;
+  }
+
+  /** The page or a page above it is restricted to invited people. */
+  private async underRestriction(doc: Doc<"documents">): Promise<boolean> {
+    const chain: string[] = [];
+    let found = false;
+    let cursor: Doc<"documents"> | null = doc;
+    for (let depth = 0; cursor && depth < 12; depth++) {
+      const known = this.restricted.get(cursor._id);
+      if (known !== undefined) {
+        found = known;
+        break;
+      }
+      chain.push(cursor._id);
+      if (cursor.accessMode === "restricted") {
+        found = true;
+        break;
+      }
+      cursor = cursor.parentDocumentId ? await this.get(cursor.parentDocumentId) : null;
+    }
+    // Everything walked sits under the same verdict (a restricted page marks itself and those below it).
+    for (const id of chain) this.restricted.set(id, found);
+    return found;
+  }
+
+  /** Whether the caller can open (at least read) `doc`. */
+  async canOpen(doc: Doc<"documents">): Promise<boolean> {
+    const known = this.verdicts.get(doc._id);
+    if (known !== undefined) return known;
+    let ok: boolean;
+    if (!hasValidScope(doc) || !sameScope(scopeOfRow(doc), this.standing.scope)) ok = accessAtLeast(await documentAccess(this.ctx, this.profile, doc), "read");
+    else if (this.opensEverything) ok = true;
+    // A member: every page outside a restriction is open to them (at least view); a restricted one needs a
+    // grant (or being its creator), which documentAccess decides.
+    else if (!(await this.underRestriction(doc))) ok = true;
+    else ok = accessAtLeast(await documentAccess(this.ctx, this.profile, doc), "read");
+    this.verdicts.set(doc._id, ok);
+    return ok;
+  }
+
+  /** canOpen by id (a missing page can't be opened). */
+  async canOpenId(id: Id<"documents">): Promise<boolean> {
+    const doc = await this.get(id);
+    return doc !== null && (await this.canOpen(doc));
+  }
+
+  /** The pages of `docs` the caller can open, in order. */
+  async filter(docs: Doc<"documents">[]): Promise<Doc<"documents">[]> {
+    const out: Doc<"documents">[] = [];
+    for (const d of docs) if (await this.canOpen(d)) out.push(d);
+    return out;
+  }
 }
 
 export async function getDocumentByPublicId(ctx: Ctx, publicId: string): Promise<Doc<"documents"> | null> {

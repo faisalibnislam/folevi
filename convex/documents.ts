@@ -18,10 +18,12 @@ import {
   resolveScope,
   levelAtLeast,
   memberAtLeast,
+  PageReader,
   type Access,
 } from "./lib/auth";
-import { HomeFolders, IdResolver, liveBlocks, refreshDerived, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary, type HomeFolder } from "./lib/documents";
+import { HomeFolders, IdResolver, liveBlocks, Placement, refreshDerived, syncTaskProjection, toWireBlock, type DocumentSummary, type HomeFolder } from "./lib/documents";
 import { SyncEngine, refreshLinkLabels, syncLinks } from "./lib/syncEngine";
+import { ReaderLabels } from "./lib/linkLabels";
 import { cloneBlocks, createDocument } from "./lib/create";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
@@ -77,6 +79,7 @@ function scopeDailies(ctx: QueryCtx, scope: Scope, owner: Id<"profiles">, from: 
 async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolver, docs: Doc<"documents">[]) {
   const out: (DocumentSummary & { starred: boolean; tags: { id: string; name: string; color: string }[]; homeFolder: HomeFolder | null })[] = [];
   const homes = new HomeFolders(ctx);
+  const place = new Placement(ctx, profile);
   for (const d of docs) {
     const star = await ctx.db
       .query("stars")
@@ -91,7 +94,7 @@ async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolv
       const t = await ctx.db.get(l.tagId);
       if (t) tags.push({ id: t.publicId, name: t.name, color: t.color });
     }
-    out.push({ ...(await toSummary(ids, d)), starred: Boolean(star), tags, homeFolder: await homes.of(d) });
+    out.push({ ...(await place.summary(ids, d)), starred: Boolean(star), tags, homeFolder: await homes.of(d) });
   }
   return out;
 }
@@ -260,15 +263,10 @@ export const get = query({
     const scope = scopeOfRow(doc);
     // In the document's scope (its Personal's owner, or a member of its workspace), not only a guest on it.
     const inItsScope = scope.kind === "personal" ? scope.profileId === profile._id : Boolean(await membership(ctx, profile._id, scope.workspaceId));
-    const [extras] = await withExtras(ctx, profile, ids, [doc]);
     // A guest sees the page, not how the workspace (or someone's Personal) is organized: no folder, tag
-    // or home-folder names, and no parent they can't open.
-    let document = extras!;
-    if (!inItsScope) {
-      const parent = doc.parentDocumentId ? await ctx.db.get(doc.parentDocumentId) : null;
-      const parentReadable = parent !== null && accessAtLeast(await documentAccess(ctx, profile, parent), "read");
-      document = { ...document, folderId: null, tags: [], homeFolder: null, parentDocumentId: parentReadable ? document.parentDocumentId : null };
-    }
+    // or home-folder names. Nobody gets a parent they can't open (withExtras → Placement).
+    const [extras] = await withExtras(ctx, profile, ids, [doc]);
+    const document = inItsScope ? extras! : { ...extras!, folderId: null, tags: [], homeFolder: null };
     const folder = inItsScope && doc.folderId ? await ctx.db.get(doc.folderId) : null;
     const lastEditor = await ctx.db.get(doc.lastEditedBy);
     const creator = await ctx.db.get(doc.createdBy);
@@ -317,7 +315,11 @@ export const children = query({
       profile,
       kids.filter((k) => !k.inTrash && k.kind !== "collectionRow"),
     );
-    return await Promise.all(readable.map((k) => toSummary(ids, k)));
+    // A guest gets no folder ids (and the parent is this page, which they can open).
+    const place = new Placement(ctx, profile);
+    const out: DocumentSummary[] = [];
+    for (const k of readable) out.push(await place.summary(ids, k));
+    return out;
   },
 });
 
@@ -410,13 +412,14 @@ export const recent = query({
       .take(60);
     const ids = new IdResolver(ctx);
     const homes = new HomeFolders(ctx);
+    const place = new Placement(ctx, profile);
     const out: (DocumentSummary & { homeFolder: HomeFolder | null })[] = [];
     for (const r of rows) {
       if (!inScope(r, scope)) continue;
       const d = await ctx.db.get(r.documentId);
       if (!d || d.inTrash) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      out.push({ ...(await toSummary(ids, d)), homeFolder: await homes.of(d) });
+      out.push({ ...(await place.summary(ids, d)), homeFolder: await homes.of(d) });
       if (out.length >= Math.min(args.limit ?? 8, 30)) break;
     }
     return out;
@@ -752,15 +755,18 @@ async function trashRoot(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">): Pr
 const TRASH_COUNT_CAP = 500;
 
 /**
- * How many pages in this scope's Trash emptying it would delete for the caller (pages they can't delete
- * stay), capped at TRASH_COUNT_CAP with `more` set beyond it. For the "Empty Trash" confirmation.
+ * How many pages in this scope's Trash the caller can open (`total`) and how many emptying it would delete
+ * for them (pages they can't delete stay), over the newest TRASH_COUNT_CAP trashed pages, with `more` set
+ * beyond it. For the "Empty Trash" confirmation. A restricted page the caller can't open is never counted.
  */
 export const trashSummary = query({
   args: { scope: vScopeArg },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { scope, level } = await resolveScope(ctx, profile, args.scope);
-    const trashed = await scopeDocuments(ctx, scope, true, "created").take(TRASH_COUNT_CAP + 1);
+    const standing = await resolveScope(ctx, profile, args.scope);
+    const { scope, level } = standing;
+    const fetched = await scopeDocuments(ctx, scope, true, "created").take(TRASH_COUNT_CAP + 1);
+    const trashed = await new PageReader(ctx, profile, standing).filter(fetched);
     let deletable = 0;
     if (levelAtLeast(level, "edit")) {
       const verdicts = new Map<Id<"documents">, boolean>();
@@ -1007,7 +1013,7 @@ export const duplicate = mutation({
       cover: doc.cover,
       blocks,
     });
-    return await toSummary(new IdResolver(ctx), copy);
+    return await new Placement(ctx, profile).summary(new IdResolver(ctx), copy);
   },
 });
 
@@ -1021,7 +1027,7 @@ export const daily = query({
     const { scope } = await resolveScope(ctx, profile, args.scope);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(args.date)) fail("invalid_argument", "Invalid date.");
     const doc = await scopeDailies(ctx, scope, profile._id, args.date, args.date).first();
-    return doc && !doc.inTrash ? await toSummary(new IdResolver(ctx), doc) : null;
+    return doc && !doc.inTrash ? await new Placement(ctx, profile).summary(new IdResolver(ctx), doc) : null;
   },
 });
 
@@ -1129,7 +1135,16 @@ export const snapshotContent = query({
     if (!snap) return null;
     const doc = await ctx.db.get(snap.documentId);
     if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
-    return { content: await snapshotText(ctx, snap) };
+    const content = await snapshotText(ctx, snap);
+    if (content === null) return { content };
+    // Links in an old version show labels this person may see, like the live page (lib/linkLabels.ts).
+    try {
+      const parsed = JSON.parse(content) as { blocks?: WireBlock[] };
+      if (!Array.isArray(parsed.blocks)) return { content };
+      return { content: JSON.stringify({ ...parsed, blocks: await new ReaderLabels(ctx, profile).blocks(parsed.blocks) }) };
+    } catch {
+      return { content: null };
+    }
   },
 });
 

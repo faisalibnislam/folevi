@@ -21,6 +21,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { aiAccessIn, recordAiUsage } from "./lib/entitlements";
 import { liveBlocks, toWireBlock } from "./lib/documents";
+import { ReaderLabels } from "./lib/linkLabels";
 import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
 import { FLOWCHART_SYSTEM, flowchartForPrompt, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
 
@@ -306,7 +307,8 @@ export const noteText = internalQuery({
   handler: async (ctx, args): Promise<SourceNote> => {
     const profile = await requireProfile(ctx);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
-    const blocks = (await liveBlocks(ctx, doc._id)).map(toWireBlock);
+    // Link labels as this person may see them (lib/linkLabels.ts): the AI never learns a title they can't.
+    const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
     const text = blocksToMarkdown(blocks, { title: doc.title || "Untitled" }).slice(0, FOCUS_CHARS);
     return { id: doc.publicId, title: doc.title || "Untitled", text };
   },

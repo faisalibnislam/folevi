@@ -31,7 +31,6 @@ describe("accounts", () => {
       expect(await ctx.db.query("workspaces").collect()).toEqual([]);
       expect(await ctx.db.query("workspaceMembers").collect()).toEqual([]);
       const p = (await ctx.db.query("profiles").collect()).find((x) => x.email === "ada@example.com")!;
-      expect(p.defaultWorkspaceId).toBeUndefined();
       expect(p.personalChangeSeq).toBeGreaterThan(0);
       expect(p.personalDocumentCount).toBeGreaterThan(0);
       // Every seeded row is in their Personal, and only there.

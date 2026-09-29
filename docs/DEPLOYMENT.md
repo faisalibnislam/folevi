@@ -116,13 +116,14 @@ Billing section):
   once per event id and in order; access is granted only by these events (never by returning from
   Checkout). Details: `docs/ACCOUNT_MODEL_PLAN.md` (Phase C).
 
-## 6. Account-model migration (one-off)
+## 6. Account-model migration (done) and clean-up
 
-The `account-model` backend (Personal is not a workspace; workspace plans and seats; members vs guests)
-expects migrated data. Deploy it to production only with the runbook in `docs/ACCOUNT_MODEL_PLAN.md` §3a:
-read-only mode, a backup with `--include-file-storage`, deploy, `migrations:migratePersonalWorkspaces` and
-`migrations:normalizeWorkspaceRoles`, then `migrations:verifyAccountModel` and
-`migrations:accountModelReport` until it says `done: true, ok: true`, and only then lift read-only.
+Production was migrated to the new account model (Personal is not a workspace; workspace plans and seats;
+members vs guests) with the runbook in `docs/ACCOUNT_MODEL_PLAN.md` §3a on 2026-09-29; the migration code
+has since been removed. What's left — `migrations:dropWorkspaceKind`, `migrations:backfillAccountDefaults`
+and `migrations:refreshLinkingPages`, then deleting `workspaces.kind` from the schema — is in §3b with
+the exact commands. `migrations:verifyAccountModel` / `migrations:accountModelReport` stay as an integrity
+check any time (`done: true, ok: true`).
 
 ## 7. First release checklist
 

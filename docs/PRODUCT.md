@@ -128,15 +128,13 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 
 - **Still to check on production:** signing out another session from Settings → Security, creating and
   revoking a public link, and export (`docs/DEPLOYMENT.md`, first-release checklist).
-- **Email:** the previous provider's leftovers still exist outside the repository (Convex `LOOPS_*`
-  variables, the Loops webhook and sending domain, Loops DNS records); remove them per
-  `docs/EMAIL_OPERATIONS.md` §9. Without the Mailtrap webhook, delivered/bounced events don't reach the
-  admin email log.
+- **Email:** Mailtrap sends everything, with its signed webhook reporting deliveries and bounces to the
+  admin email log (verified in production 2026-09-29). The Convex `LOOPS_*` variables are removed; the
+  Loops DNS records and sending domain are removed by the owner per `docs/EMAIL_OPERATIONS.md` §9.
 - **Payments:** Stripe isn't configured on production (personal or workspace prices).
-- **Account model:** Personal-is-not-a-workspace, workspace plans and members vs guests are built on the
-  `account-model` branch; production still runs the old model until the migration in
-  `docs/ACCOUNT_MODEL_PLAN.md` §3a (backup, deploy, migrate, verify) is run. The Mac app still expects the
-  old model.
+- **Account model:** Personal-is-not-a-workspace, workspace plans and members vs guests are live; the
+  production migration ran on 2026-09-29 and verified clean (`docs/ACCOUNT_MODEL_PLAN.md` §3a). The Mac
+  app still expects the old model until its catch-up (paused).
 - **Accounts:** no breached-password check yet and no passkeys; no social sign-in by design
   (`docs/AUTH_DECISION.md`). Account email changes are handled by support, not self-service.
 - **Collaboration is block-granular**, not character-level: concurrent edits to the same block become a

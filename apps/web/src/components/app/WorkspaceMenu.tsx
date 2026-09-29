@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ChevronsUpDown, CreditCard, HelpCircle, LogOut, Monitor, Moon, Sun, Plus, Settings, Shield, ShieldCheck, UserPlus, Users, MonitorSmartphone } from "lucide-react";
+import { ChevronsUpDown, CreditCard, HelpCircle, LifeBuoy, LogOut, Monitor, Moon, Sun, Plus, Settings, Shield, ShieldCheck, UserPlus, Users, MonitorSmartphone } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
 import { PLANS } from "@/lib/plans";
 import { useAppState, type Profile, type Workspace } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { useSafeSignOut } from "@/components/auth/SignOut";
+import { SupportDialog } from "@/components/support/SupportDialog";
 import { InviteDialog } from "./InviteDialog";
 import { NewWorkspaceDialog, workspaceRoleLabel } from "./NewWorkspaceDialog";
 
@@ -61,6 +62,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
   const safeSignOut = useSafeSignOut(profile.id);
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [contacting, setContacting] = useState(false);
   const canManage = workspace !== null && (workspace.role === "owner" || workspace.role === "admin");
   const go = (href: string) => {
     onNavigate?.();
@@ -108,6 +110,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
     { label: "Security", icon: <ShieldCheck size={14} />, onSelect: () => go("/settings/security") },
     { label: "Devices", icon: <MonitorSmartphone size={14} />, onSelect: () => go("/settings/devices") },
     { label: "Help", icon: <HelpCircle size={14} />, onSelect: () => go("/help") },
+    { label: "Contact support…", icon: <LifeBuoy size={14} />, onSelect: () => setContacting(true) },
     ...(profile.platformRole ? [{ label: "Admin console", icon: <Shield size={14} />, onSelect: () => (window.location.href = "/admin") }] : []),
     "separator",
     { label: "Light", icon: <Sun size={14} />, checked: appearance === "light", onSelect: () => setAppearance("light") },
@@ -159,6 +162,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
       />
       <NewWorkspaceDialog open={creating} onClose={() => setCreating(false)} onCreated={() => go("/documents")} />
       {inviting && workspace ? <InviteDialog workspace={workspace} open onClose={() => setInviting(false)} /> : null}
+      <SupportDialog open={contacting} onClose={() => setContacting(false)} />
       {safeSignOut.dialog}
     </>
   );

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Component, Suspense, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowUp, BarChart3, Building2, ClipboardList, DollarSign, Eye, Gauge, LogOut, Mail, Settings2, Trash2, Users } from "lucide-react";
+import { useQuery } from "convex/react";
+import { ArrowLeft, ArrowUp, BarChart3, Building2, ClipboardList, DollarSign, Eye, Gauge, LifeBuoy, LogOut, Mail, Settings2, Trash2, Users } from "lucide-react";
+import { api } from "@/lib/convex/api";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +19,8 @@ interface NavEntry {
   label: string;
   icon: typeof Gauge;
   capability: Capability;
+  /** Shows the number of support tickets with a message nobody on staff has opened. */
+  count?: "supportUnread";
 }
 
 // The same grouping idea as the app's sidebar: a few plain sections under small caps labels.
@@ -32,6 +36,7 @@ const NAV: { heading: string; items: NavEntry[] }[] = [
   {
     heading: "Accounts",
     items: [
+      { href: "/admin/support", label: "Support", icon: LifeBuoy, capability: "support.view", count: "supportUnread" },
       { href: "/admin/users", label: "Users", icon: Users, capability: "users.view" },
       { href: "/admin/workspaces", label: "Workspaces", icon: Building2, capability: "workspaces.view" },
     ],
@@ -95,6 +100,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const admin = useAdmin();
   const [recordTitle, setRecordTitle] = useState<string | null>(null);
   const groups = NAV.map((g) => ({ ...g, items: g.items.filter((n) => admin.can(n.capability)) })).filter((g) => g.items.length > 0);
+  const supportUnread = useQuery(api.support.unreadCount, admin.can("support.view") ? {} : "skip");
   const section = ALL_ITEMS.find((n) => isActive(pathname, n.href));
   // A record's own page (a person, a workspace) sits under its section: the section becomes a tab you can go back to.
   const onRecord = Boolean(section && pathname !== section.href);
@@ -124,11 +130,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
                     {g.items.map((item) => {
                       const active = isActive(pathname, item.href);
                       const Icon = item.icon;
+                      const count = item.count === "supportUnread" ? (supportUnread ?? 0) : 0;
                       return (
                         <li key={item.href}>
                           <Link href={item.href} aria-current={active ? "page" : undefined} className={`${ROW} ${active ? ROW_ON : ROW_OFF}`}>
                             <Icon size={16} aria-hidden className={`flex-none transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} />
                             {item.label}
+                            {count > 0 ? (
+                              <span className="ml-auto rounded-full bg-heading px-1.5 text-[11px] font-semibold leading-[18px] text-canvas tabular-nums">
+                                {count >= 100 ? "99+" : count}
+                                <span className="sr-only"> unread</span>
+                              </span>
+                            ) : null}
                           </Link>
                         </li>
                       );

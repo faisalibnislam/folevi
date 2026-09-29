@@ -36,6 +36,15 @@ if (env === "production") {
       } else {
         problems.push("Convex MAILTRAP_API_TOKEN is not set (no email provider: sign-up confirmation and password reset emails can't be sent).");
       }
+      // Support inbox: optional, but half a setup means email to support@folevi.com never becomes a ticket.
+      if (has("MAILTRAP_INBOUND_WEBHOOK_SECRET") !== has("MAILTRAP_INBOUND_API_TOKEN")) {
+        warn.push("Convex MAILTRAP_INBOUND_WEBHOOK_SECRET and MAILTRAP_INBOUND_API_TOKEN must be set together, or email to support@folevi.com won't become tickets (docs/SUPPORT.md).");
+      } else if (!has("MAILTRAP_INBOUND_WEBHOOK_SECRET")) {
+        warn.push("Convex MAILTRAP_INBOUND_WEBHOOK_SECRET is not set: email to support@folevi.com isn't turned into support tickets (docs/SUPPORT.md).");
+      }
+      if (["support@folevi.com", "security@folevi.com"].includes((get("SUPPORT_NOTIFY_EMAIL") ?? "").trim().toLowerCase())) {
+        warn.push("Convex SUPPORT_NOTIFY_EMAIL must not be the support or security mailbox (it is ignored); use a staff address.");
+      }
       // Leftovers from the old email provider are never read; flag them so they get deleted.
       for (const [, k] of out.matchAll(/^(LOOPS_[A-Z0-9_]*)=/gm)) warn.push(`Convex ${k} is set but unused (Loops is no longer used); remove it.`);
       for (const k of ["MAILTRAP_SANDBOX_INBOX_ID", "MAILTRAP_SANDBOX_TOKEN"]) {

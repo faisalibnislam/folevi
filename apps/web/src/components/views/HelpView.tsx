@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { ViewChrome } from "@/components/app/Shell";
-import { Kbd } from "@/components/ui/Button";
+import { Button, Kbd } from "@/components/ui/Button";
+import { SupportDialog, SupportRequests } from "@/components/support/SupportDialog";
 import { isMac } from "@/lib/hooks/useEngine";
 
 const SHORTCUTS: [string, string][] = [
@@ -38,6 +40,7 @@ const STATUSES: [string, string][] = [
 export function HelpView() {
   const mac = isMac();
   const fmt = (s: string) => (mac ? s : s.replace(/⌘/g, "Ctrl").replace(/⌥/g, "Alt").replace(/⇧/g, "Shift"));
+  const [contacting, setContacting] = useState(false);
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Help</h1>} tabTitle="Help">
       <div className="mx-auto max-w-3xl space-y-10 px-4 pb-24 pt-6 sm:px-8">
@@ -48,9 +51,24 @@ export function HelpView() {
             <a className="text-accent underline underline-offset-2" href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"}/docs`}>
               folevi.com/docs
             </a>
-            . Questions or problems? Write to support@folevi.com. Security reports: security@folevi.com.
+            . Questions or problems? Contact support below, or write to support@folevi.com. Security reports: security@folevi.com.
           </p>
         </header>
+        <section id="support" aria-labelledby="h-support" className="scroll-mt-20">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 id="h-support" className="ui-display text-[20px]">
+                Your support requests
+              </h3>
+              <p className="text-sm text-muted">A person on the Folevi team reads every request and replies by email. Replies show here too.</p>
+            </div>
+            <Button variant="primary" onClick={() => setContacting(true)}>
+              Contact support
+            </Button>
+          </div>
+          <SupportRequests onContact={() => setContacting(true)} />
+          <SupportDialog open={contacting} onClose={() => setContacting(false)} />
+        </section>
         <section aria-labelledby="h-shortcuts">
           <h3 id="h-shortcuts" className="ui-display mb-3 text-[20px]">
             Keyboard shortcuts

@@ -23,6 +23,8 @@ export interface MailtrapMessage {
   category: string;
   /** Opaque ids only, never personal data (they come back in webhooks). */
   customVariables: Record<string, string>;
+  /** Extra headers (only threading headers: In-Reply-To, References), already validated. */
+  headers?: Record<string, string>;
 }
 
 /** The exact JSON body Mailtrap receives. */
@@ -36,6 +38,7 @@ export function mailtrapRequestBody(m: MailtrapMessage): Record<string, unknown>
     html: m.html,
     category: m.category,
     custom_variables: { ...m.customVariables },
+    ...(m.headers && Object.keys(m.headers).length ? { headers: { ...m.headers } } : {}),
   };
 }
 

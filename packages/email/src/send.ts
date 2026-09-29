@@ -16,6 +16,27 @@ export type ProviderSelection =
 const INBOX_ID_RE = /^\d{1,12}$/;
 const HOSTNAME_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
 const ATTEMPT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/** An RFC 5322 msg-id without the angle brackets: printable, no spaces, no brackets, one "@". */
+const MSG_ID_RE = /^[\x21-\x3b\x3d\x3f-\x7e]{1,250}@[\x21-\x3b\x3d\x3f-\x7e]{1,250}$/;
+
+/** `<id@host>` for a plausible message id (with or without brackets), else null. */
+export function normaliseMessageId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const bare = value.trim().replace(/^<|>$/g, "");
+  return bare.length <= 250 && MSG_ID_RE.test(bare) ? `<${bare}>` : null;
+}
+
+/** In-Reply-To / References for a reply, from validated message ids only (at most 10 references). */
+export function threadHeaders(thread: SendEmailInput["thread"]): Record<string, string> {
+  if (!thread) return {};
+  const out: Record<string, string> = {};
+  const inReplyTo = normaliseMessageId(thread.inReplyTo);
+  if (inReplyTo) out["In-Reply-To"] = inReplyTo;
+  const refs = (thread.references ?? []).map(normaliseMessageId).filter((r): r is string => r !== null).slice(-10);
+  if (inReplyTo && !refs.includes(inReplyTo)) refs.push(inReplyTo);
+  if (refs.length) out.References = refs.join(" ");
+  return out;
+}
 
 const value = (env: Env, name: string): string | undefined => {
   const v = env[name]?.trim();
@@ -107,12 +128,15 @@ export async function sendEmail(
     return { status: "skipped", errorCode: "recipient_not_allowed", retryable: false, attempts: 0, provider: provider.kind };
   }
 
-  const replyTo = value(opts.env, "EMAIL_REPLY_TO");
+  // A template may fix its Reply-To (support mail answers to the support mailbox) or have none (staff notices).
+  const replyTo = def.replyTo === undefined ? value(opts.env, "EMAIL_REPLY_TO") : (def.replyTo ?? undefined);
+  const headers = threadHeaders(input.thread);
   const outcome = await postToMailtrap(
     {
-      from: { email: `${def.sender.localPart}@${sendingDomain(opts.env)}`, name: def.sender.name },
+      from: { email: def.sender.address ?? `${def.sender.localPart}@${sendingDomain(opts.env)}`, name: def.sender.name },
       to,
       ...(replyTo && isPlausibleEmail(replyTo) ? { replyTo } : {}),
+      ...(Object.keys(headers).length ? { headers } : {}),
       subject: rendered.subject,
       text: rendered.text,
       html: rendered.html,

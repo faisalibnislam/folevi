@@ -931,6 +931,53 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_recipient", ["recipientHash"]),
 
+  /**
+   * Support requests (convex/support.ts, docs/SUPPORT.md): from the support page, the app, or email to
+   * support@folevi.com. `number` is the human ticket number ("[Folevi #1042]"), allocated in order. The
+   * requester's address is stored lowercased; `profileId` is set only from a signed-in session, never from
+   * an address someone typed or an email's From line.
+   */
+  supportTickets: defineTable({
+    number: v.number(),
+    requesterEmail: v.string(),
+    profileId: v.optional(v.id("profiles")),
+    name: v.string(),
+    topic: v.string(),
+    subject: v.string(),
+    status: v.union(v.literal("open"), v.literal("pending"), v.literal("closed")),
+    source: v.union(v.literal("web_form"), v.literal("in_app"), v.literal("email")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastMessageAt: v.number(),
+    /** A requester message staff haven't opened yet (drives the admin nav count). */
+    unreadForStaff: v.boolean(),
+    assigneeId: v.optional(v.id("profiles")),
+    closedAt: v.optional(v.number()),
+  })
+    .index("by_number", ["number"])
+    .index("by_last_message", ["lastMessageAt"])
+    .index("by_status_last", ["status", "lastMessageAt"])
+    .index("by_email_last", ["requesterEmail", "lastMessageAt"])
+    .index("by_profile_last", ["profileId", "lastMessageAt"])
+    .index("by_unread", ["unreadForStaff", "lastMessageAt"]),
+
+  /** The messages of a support ticket: the requester's, staff replies (emailed) and internal notes (never emailed). */
+  supportMessages: defineTable({
+    ticketId: v.id("supportTickets"),
+    authorKind: v.union(v.literal("requester"), v.literal("staff"), v.literal("note")),
+    /** The staff member who wrote a reply or note. */
+    staffProfileId: v.optional(v.id("profiles")),
+    body: v.string(),
+    createdAt: v.number(),
+    /** RFC Message-ID of an inbound email (without brackets), for threading and de-duplication. */
+    emailMessageId: v.optional(v.string()),
+    /** Mailtrap's id of the inbound message (de-duplicates webhook retries). */
+    inboundMessageId: v.optional(v.string()),
+  })
+    .index("by_ticket", ["ticketId", "createdAt"])
+    .index("by_email_message", ["emailMessageId"])
+    .index("by_inbound_message", ["inboundMessageId"]),
+
   featureFlags: defineTable({
     key: v.string(),
     enabled: v.boolean(),

@@ -8,7 +8,8 @@ does not do.
 
 ## 1. Principles
 
-- **The server is the gate.** Every function in `convex/admin.ts` calls `requirePlatformRole`.
+- **The server is the gate.** Every function in `convex/admin.ts` (and every staff function in
+  `convex/support.ts`) calls `requirePlatformRole`.
   People without a suitable role get `not_found` from every admin function, so the admin API
   looks like it doesn't exist. Hiding buttons in the UI is a convenience, not authorization.
 - **No hint that the console exists.** `/admin` checks the role on the server
@@ -20,7 +21,8 @@ does not do.
   the console. The API doesn't provide one and the UI must not invent one. Admins see
   account metadata (email, auth subject and issuer, sessions, memberships), workspace names,
   counts and sizes. They never see document titles, blocks, comments, files or search
-  results.
+  results. The one exception is what a person chose to send to support: the Support inbox shows the
+  messages of support requests (never anything from their notes).
 - **Every sensitive read or write is audited.** Reads that reveal identity data (user
   search, user view, workspace view, the email log) are Convex *mutations* so they can write
   an audit record. Every change requires a written reason.
@@ -69,6 +71,9 @@ membership). A person's Personal is not a workspace and never appears in the wor
 | Audit log: everyone's entries                            | `auditLog` (no filter)                                                        |   ✓   |       |         |
 | Audit log: own entries, or all entries for one target    | `auditLog` (default / `targetType`+`targetId`)                                |   ✓   |   ✓   |    ✓    |
 | Deletion jobs                                            | `deletionJobs`                                                                |   ✓   |   ✓   |         |
+| Support inbox: unread count, list and search tickets     | `support.unreadCount`, `support.listTickets`                                  |   ✓   |   ✓   |    ✓    |
+| View a ticket (thread, notes, requester)                 | `support.viewTicket`                                                          |   ✓   |   ✓   |    ✓    |
+| Reply (emailed), internal note, status, assign to self   | `support.reply`, `addNote`, `setStatus`, `assign`                             |   ✓   |   ✓   |    ✓    |
 
 ¹ Only an owner can suspend another owner. Nobody can suspend themselves.
 
@@ -150,8 +155,12 @@ Records are written by `recordAudit` (`convex/lib/audit.ts`) into `adminAuditLog
     client computes it, so treat it as a correlation hint, not proof of the device.
 - **What is audited:** every change listed above, plus these reads: `user.search` (the
   query is stored only as a keyed hash; "all" for an empty query), `user.view`,
-  `workspace.list` (names are user content), `workspace.view` and `email.list`. Aggregate reads
-  (dashboard, configuration, deletion jobs, the audit log itself) are not audited.
+  `workspace.list` (names are user content), `workspace.view`, `email.list`, `support.list` (a search is
+  stored as a keyed hash) and `support.view`. Support changes write `support.reply`, `support.note`,
+  `support.set_status` and `support.assign` (target type `support_ticket`, id = the ticket number); replies
+  and notes are recorded by message id and length, never their text (the thread keeps it). Support actions
+  need no written reason. Aggregate reads (dashboard, configuration, deletion jobs, the support unread
+  count, the audit log itself) are not audited.
 - **Who sees it:** super admins see the whole log. Other admins see their own entries, or
   every entry for one target when they filter by target type and id. The console shows
   before/after as a field-by-field diff.
@@ -220,6 +229,8 @@ attempts, quotas and the audit trail.
 | `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above. Upgrade or Change plan at the top. **Plan & billing**: Personal plan, provider, renewal, AI access and 30-day use in Personal, personal storage, payments, and the billing actions (trial, AI grant, storage limit, device limit, prepare export, mark refunded). Loading it is an audited read (`user.view_billing`). |
 | `/admin/workspaces`          | All workspaces, paginated, with each workspace's plan and Upgrade or Change plan (admins and owners).                                             |
 | `/admin/workspaces/[id]`     | Members and roles, usage against quotas, redacted invites, admin history, suspend and quota. **Plan & billing**: the workspace's plan (never its owner's Personal plan), billed seats and estimated charge, and payments. Upgrade or Change plan at the top. |
+| `/admin/support`             | The Support inbox ([SUPPORT.md](./SUPPORT.md)): tickets by latest activity, a status filter, search by ticket number or exact email, 50 per page. The nav item shows how many tickets have a message nobody on staff has opened. Opening it is audited. |
+| `/admin/support/[number]`    | One ticket: the thread with internal notes, reply or note, status, assign to me, the requester (and whether an account filed it or only uses the address), and the ticket's audit history. Opening it is audited and marks it read. |
 | `/admin/emails`              | The last 100 send attempts, with a status filter, provider events, resend for eligible failures, and the delivery explainer.                     |
 | `/admin/audit`               | The paginated log with a target filter and an expandable before/after diff.                                                                       |
 | `/admin/deletion-jobs`       | Deletion jobs with status and progress (live).                                                                                                    |
@@ -228,7 +239,7 @@ attempts, quotas and the audit trail.
 The daily active users figure, weekly active users figure and retention cohorts come from the
 `daily metrics` cron (00:15 UTC). Until it has run once, the dashboard shows a dash instead of a number and says why.
 
-End-to-end coverage: `apps/web/e2e/admin.spec.ts` (non-admin 404, signed-out redirect,
+Support is covered by `tests/convex/support.test.ts` and `apps/web/e2e/support.spec.ts`. End-to-end coverage: `apps/web/e2e/admin.spec.ts` (non-admin 404, signed-out redirect,
 dashboard, audited search and view, suspend requires a reason, upgrading a person from the users
 list, plan/AI/export from the user page, a workspace plan, analytics and revenue, support-staff
 limits, and axe checks in light and dark). Server rules: `tests/convex/billing.test.ts` and

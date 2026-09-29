@@ -131,7 +131,9 @@ next.config.ts, which still allows inline scripts because they have no per-reque
 ## Abuse controls
 
 Fixed-window rate limits (admin-tunable) on bootstrap, invites, email resends, password resets, public
-link opens and password attempts, sync batches, uploads, comments, exports and device registration.
+link opens and password attempts, sync batches, uploads, comments, exports, device registration, and
+support requests (per hashed IP and per address, plus inbound support email per sender; see
+`docs/SUPPORT.md`).
 Exhausted windows are recorded in `rateLimitEvents` and every rejection is logged.
 
 ## Logging and privacy
@@ -169,6 +171,7 @@ exports and abuse handling require the server to process content.
 | Export ZIPs | 1 day |
 | Email attempt log | kept for operations (hashed recipients) |
 | Admin audit log | kept (append-only) |
+| Support requests (tickets and their messages) | kept for support history; deleted with the account (those filed under it or sent from its address) |
 
 Backups: Convex provides deployment backups and point-in-time export (`npx convex export`); see
 `docs/DEPLOYMENT.md` for the procedure.
@@ -179,7 +182,7 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 | --- | --- | --- |
 | Convex | Database, backend functions, file storage, accounts (Better Auth runs here) | Account, workspace and document data, files, password hashes, encrypted two-step secrets, sessions |
 | Vercel | Web hosting | Request metadata, logs |
-| Mailtrap | Transactional email delivery (open/click tracking off) | Recipient email and the rendered email (names, titles, links; no note bodies) |
+| Mailtrap | Transactional email delivery (open/click tracking off); receiving email to support@folevi.com | Recipient email and the rendered email (names, titles, links; no note bodies); support emails people send us |
 | Google (Gemini API) | AI Assistant, only when used | The request and the notes it needs (not stored or used for training) |
 | Stripe | Payments for paid personal and workspace plans (not configured yet) | Billing email, plan, seat quantity, payment status; card details stay with Stripe |
 

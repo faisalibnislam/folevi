@@ -16,7 +16,9 @@ function renderError(fn: () => unknown): EmailRenderError {
 describe("renderEmail", () => {
   it.each([...TEMPLATE_KEYS])("%s renders its fixture completely (HTML + text, no placeholders left)", (key) => {
     const email = renderEmail(key, emailManifest[key].fixture);
-    expect(email.subject).toBe(emailManifest[key].subject);
+    // Support subjects carry the ticket number; every other subject is static.
+    const fixture = emailManifest[key].fixture;
+    expect(email.subject).toBe(emailManifest[key].subject.replace(/\{\{(\w+)\}\}/g, (_m, name: string) => String(fixture[name])));
     for (const part of [email.html, email.text, email.subject, email.previewText]) {
       expect(part).not.toMatch(/\{\{|\}\}/);
     }

@@ -5,6 +5,7 @@ import { internalAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { normalizeEmail } from "./lib/support";
 import { bump } from "./lib/metrics";
 import { adjustStorageUsed } from "./lib/entitlements";
 import { adjustDocumentCount } from "./lib/create";
@@ -333,6 +334,18 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     for (const r of rows) await ctx.db.delete(r._id);
     if (rows.length === 200) return false;
   }
+  // Their support requests (sent while signed in, or from the account's address) and every message in them.
+  const tickets = [
+    ...(await ctx.db.query("supportTickets").withIndex("by_profile_last", (q) => q.eq("profileId", profileId)).take(50)),
+    ...(await ctx.db.query("supportTickets").withIndex("by_email_last", (q) => q.eq("requesterEmail", normalizeEmail(profile.email))).take(50)),
+  ];
+  for (const t of tickets) {
+    const messages = await ctx.db.query("supportMessages").withIndex("by_ticket", (q) => q.eq("ticketId", t._id)).take(200);
+    for (const m of messages) await ctx.db.delete(m._id);
+    if (messages.length === 200) return false;
+    if (await ctx.db.get(t._id)) await ctx.db.delete(t._id);
+  }
+  if (tickets.length >= 50) return false;
   await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
     key: "account_deletion_completed",
     to: profile.email,

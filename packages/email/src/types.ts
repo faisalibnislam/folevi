@@ -12,9 +12,17 @@ export type TemplateKey =
   | "comment_notification"
   | "comment_digest"
   | "share_notification"
-  | "access_changed";
+  | "access_changed"
+  | "support_ticket_received"
+  | "support_reply"
+  | "support_staff_notice";
 
-export type TemplateCategory = "identity" | "security" | "product";
+/**
+ * identity/security: required account mail (never unsubscribable). product: notifications that honour
+ * Folevi-side preferences. support: mail about a support request the recipient opened (or, for
+ * `support_staff_notice`, to the staff inbox); never unsubscribable, never preference-gated.
+ */
+export type TemplateCategory = "identity" | "security" | "product" | "support";
 
 export interface VariableSpec {
   type: "string" | "number";
@@ -29,8 +37,15 @@ export interface TemplateDefinition {
   category: TemplateCategory;
   subject: string;
   previewText: string;
-  /** From: `${localPart}@${EMAIL_SENDING_DOMAIN}` (the domain can be overridden per deployment). */
-  sender: { name: string; localPart: string };
+  /**
+   * From: `${localPart}@${EMAIL_SENDING_DOMAIN}` (the domain can be overridden per deployment), unless
+   * `address` fixes the whole address (support mail comes from support@folevi.com so replies thread).
+   */
+  sender: { name: string; localPart: string; address?: string };
+  /**
+   * Reply-To for this template: a fixed address, or null for none. Unset: EMAIL_REPLY_TO (if configured).
+   */
+  replyTo?: string | null;
   /** false for identity/security (never unsubscribable); product notifications honor Folevi preferences. */
   unsubscribable: boolean;
   /** Folevi-side preference enforced by the caller before sending. */
@@ -73,6 +88,8 @@ export interface SendEmailInput {
   dataVariables: Record<string, unknown>;
   /** Our send-attempt id (emailSendAttempts): sent as a custom variable so webhooks can be matched. */
   attemptId: string;
+  /** Threading headers for a reply (RFC 5322 message ids, with or without angle brackets). */
+  thread?: { inReplyTo?: string; references?: string[] };
 }
 
 export interface SendOutcome {

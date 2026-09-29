@@ -11,7 +11,8 @@
 // - Variables are deliberately minimal: never note bodies or comment text (not even excerpts),
 //   TOTP secrets, backup codes, passwords or tokens beyond the single action link.
 // - Subjects are static on purpose: user-controlled strings (names, titles) never appear
-//   in a subject line, which limits spoofing/phishing via crafted display names.
+//   in a subject line, which limits spoofing/phishing via crafted display names. Support subjects
+//   carry only the ticket number ("[Folevi #1042] ..."), which Folevi assigns, so replies thread.
 //
 // This file must only use `import type` so Node can load it with type stripping.
 
@@ -20,11 +21,22 @@ import type { TemplateDefinition, TemplateKey } from "./types";
 const SECURITY_SENDER = { name: "Folevi", localPart: "security" } as const;
 const PRODUCT_SENDER = { name: "Folevi", localPart: "hello" } as const;
 
+/**
+ * The support mailbox. Replies to support mail go to it (Reply-To), and Mailtrap Email Inbound turns them into
+ * ticket messages (docs/SUPPORT.md). The mail itself comes from support@ on the sending domain
+ * (support@mail.folevi.com), which is already verified, so folevi.com needs no sending records of its own.
+ */
+export const SUPPORT_ADDRESS = "support@folevi.com";
+const SUPPORT_SENDER = { name: "Folevi Support", localPart: "support" } as const;
+/** Staff notices come from the sending domain and have no Reply-To, so a reply can't loop into a new ticket. */
+const STAFF_NOTICE_SENDER = { name: "Folevi", localPart: "support" } as const;
+
 const url = (description: string, required = true) =>
   ({ type: "string", required, format: "url", maxLength: 2048, description }) as const;
 const text = (description: string, maxLength: number, required = true) =>
   ({ type: "string", required, format: "text", maxLength, description }) as const;
 const num = (description: string) => ({ type: "number", required: true, description }) as const;
+const ticket = () => num("The support ticket number Folevi assigned (also in the subject, for threading).");
 
 const FIX_APP = "https://app.folevi.com";
 
@@ -267,6 +279,65 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
       summary: "changed your access to “Spring planting plan” to Can comment.",
       actionUrl: `${FIX_APP}/d/EXAMPLEdoc`,
       preferencesUrl: `${FIX_APP}/settings/notifications`,
+    },
+  },
+  support_ticket_received: {
+    key: "support_ticket_received",
+    category: "support",
+    subject: "[Folevi #{{ticketNumber}}] We got your message",
+    previewText: "Your message reached Folevi support. Reply to this email to add to it.",
+    sender: SUPPORT_SENDER,
+    replyTo: SUPPORT_ADDRESS,
+    unsubscribable: false,
+    variables: {
+      ticketNumber: ticket(),
+      topicLabel: text('The topic the person chose, e.g. "Billing and plans".', 40),
+      quotedMessage: text("The person's own message, quoted back to them (they wrote it; capped).", 5000),
+    },
+    fixture: {
+      ticketNumber: 1042,
+      topicLabel: "Sync and offline",
+      quotedMessage: "My notes on the train didn't sync when I got home.\nThe page still says Offline.",
+    },
+  },
+  support_reply: {
+    key: "support_reply",
+    category: "support",
+    subject: "[Folevi #{{ticketNumber}}] Reply from Folevi support",
+    previewText: "Folevi support replied to your request.",
+    sender: SUPPORT_SENDER,
+    replyTo: SUPPORT_ADDRESS,
+    unsubscribable: false,
+    variables: {
+      ticketNumber: ticket(),
+      replyText: text("The reply a member of Folevi support wrote.", 10000),
+    },
+    fixture: {
+      ticketNumber: 1042,
+      replyText: "Thanks for the details. Open the page once while online and it will send the waiting edits.\nIf it still says Offline, reply here and we'll look further.",
+    },
+  },
+  support_staff_notice: {
+    key: "support_staff_notice",
+    category: "support",
+    subject: "Support request {{ticketNumber}} needs a look",
+    previewText: "There is new activity on a support request.",
+    sender: STAFF_NOTICE_SENDER,
+    replyTo: null,
+    unsubscribable: false,
+    variables: {
+      ticketNumber: ticket(),
+      activity: text('What happened, e.g. "New request" or "The requester replied".', 80),
+      topicLabel: text("The request's topic.", 40),
+      sourceLabel: text('Where it came from, e.g. "Support page", "In the app" or "Email".', 40),
+      adminUrl: url("Link to the ticket in the admin console."),
+    },
+    fixture: {
+      ticketNumber: 1042,
+      activity: "New request",
+      topicLabel: "Billing and plans",
+      sourceLabel: "Support page",
+      adminUrl: `${FIX_APP}/admin/support/1042`,
     },
   },
 };

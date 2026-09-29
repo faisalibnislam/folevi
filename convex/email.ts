@@ -62,6 +62,8 @@ export const sendTemplate = internalAction({
     resendOf: v.optional(v.id("emailSendAttempts")),
     /** A finer preference for this send (see REFINED_PREFERENCES), e.g. "replies" for a reply's comment email. */
     preference: v.optional(v.string()),
+    /** Threading headers for a support reply (message ids only; validated again by @folevi/email). */
+    thread: v.optional(v.object({ inReplyTo: v.optional(v.string()), references: v.optional(v.array(v.string())) })),
   },
   handler: async (ctx, args) => {
     const key = args.key as TemplateKey;
@@ -119,7 +121,7 @@ export const sendTemplate = internalAction({
       return { status: "failed" as const };
     }
     const outcome = await sendEmail(
-      { key, to, dataVariables: args.dataVariables, attemptId: attempt.attemptId },
+      { key, to, dataVariables: args.dataVariables, attemptId: attempt.attemptId, ...(args.thread ? { thread: args.thread } : {}) },
       {
         env,
         policy: {

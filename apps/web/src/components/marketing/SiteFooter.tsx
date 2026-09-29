@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SECURITY_EMAIL } from "./site";
+import { SECURITY_EMAIL, SUPPORT_EMAIL } from "./site";
 import { Wordmark, container, cx } from "./ui";
 
 const columns: Array<{ title: string; links: Array<{ label: string; href: string }> }> = [
@@ -15,6 +15,7 @@ const columns: Array<{ title: string; links: Array<{ label: string; href: string
   {
     title: "Help",
     links: [
+      { label: "Support", href: "/support" },
       { label: "Documentation", href: "/docs" },
       { label: "Status", href: "/status" },
       { label: "Security", href: "/security" },
@@ -40,6 +41,12 @@ export function SiteFooter() {
             Notes, documents and tasks on the web. The Mac app is coming soon.
           </p>
           <p className="mt-5 text-[14px] text-muted">
+            Support{" "}
+            <a className="mk-link" href={`mailto:${SUPPORT_EMAIL}`}>
+              {SUPPORT_EMAIL}
+            </a>
+          </p>
+          <p className="mt-1 text-[14px] text-muted">
             Security contact{" "}
             <a className="mk-link" href={`mailto:${SECURITY_EMAIL}`}>
               {SECURITY_EMAIL}

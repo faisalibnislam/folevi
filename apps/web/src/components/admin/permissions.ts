@@ -1,4 +1,4 @@
-// Client-side mirror of the platform-role checks in convex/admin.ts, adminBilling.ts and adminAnalytics.ts.
+// Client-side mirror of the platform-role checks in convex/admin.ts, adminBilling.ts, adminAnalytics.ts and support.ts.
 // It only decides what the UI offers; the server enforces every rule again (and answers `not_found` to anyone
 // without a role). Three tiers. The stored names predate the labels and are kept so existing roles still work:
 //   Owner (super_admin) ⊃ Admin (ops_admin) ⊃ Support staff (support_admin).
@@ -34,7 +34,9 @@ export type Capability =
   | "users.export"
   | "analytics.view"
   | "revenue.view"
-  | "config.maintenance";
+  | "config.maintenance"
+  | "support.view"
+  | "support.reply";
 
 const ALL: AdminRole[] = ["super_admin", "ops_admin", "support_admin"];
 const ADMIN: AdminRole[] = ["super_admin", "ops_admin"];
@@ -68,6 +70,10 @@ export const PERMISSIONS: Record<Capability, AdminRole[]> = {
   "billing.refund": OWNER,
   "analytics.view": ALL,
   "revenue.view": ADMIN,
+  /** The Support inbox and tickets (each ticket view is audited). */
+  "support.view": ALL,
+  /** Reply to the requester (emailed), add internal notes, change status, assign to yourself. */
+  "support.reply": ALL,
 };
 
 /** The longest trial extension each role may give (mirrors adminBilling.extendTrial). */

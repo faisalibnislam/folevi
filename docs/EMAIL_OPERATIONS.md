@@ -82,10 +82,14 @@ shows for **your** account and domain.
 | ----------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------- |
 | `Folevi <security@mail.folevi.com>` | all `identity` and `security` templates | Required mail. No unsubscribe.                                                          |
 | `Folevi <hello@mail.folevi.com>`    | all `product` templates                 | Folevi-side preferences, with a link to `preferencesUrl`.                               |
-| Reply-To                            | every email, when `EMAIL_REPLY_TO` is set | A **monitored** mailbox (e.g. `support@folevi.com`). Never a no-reply address. |
+| `Folevi Support <support@mail.folevi.com>` | `support_ticket_received`, `support_reply` | Reply-To is always `support@folevi.com` (replies become ticket messages); see [SUPPORT.md](./SUPPORT.md). |
+| `Folevi <support@mail.folevi.com>`  | `support_staff_notice`                  | To `SUPPORT_NOTIFY_EMAIL` only. No Reply-To, so it can't loop into a ticket.            |
+| Reply-To                            | every other email, when `EMAIL_REPLY_TO` is set | A **monitored** mailbox (e.g. `support@folevi.com`). Never a no-reply address. |
 
-The From name and local part come from `emailManifest[key].sender`; nothing is configured per template
-in Mailtrap.
+The From name and address come from `emailManifest[key].sender` (and a template may fix its Reply-To with
+`replyTo`); nothing is configured per template in Mailtrap. Support templates are their own category
+(`support`): never unsubscribable, never preference-gated, and the only subjects that carry a value (the
+ticket number, "[Folevi #1042] …", so replies thread).
 
 ## 4. Environment separation
 
@@ -104,7 +108,8 @@ in Mailtrap.
 
 ## 5. Templates
 
-All eleven templates are compiled in this repository; Mailtrap stores no templates.
+All fourteen templates (eleven account and product templates, three support templates) are compiled in
+this repository; Mailtrap stores no templates.
 
 - **Copy and layout:** `packages/email/scripts/build-templates.ts` (one shared, table-based layout: soft
   canvas, white rounded card, logo, serif heading, black button with the link repeated as text, muted
@@ -178,6 +183,14 @@ All eleven templates are compiled in this repository; Mailtrap stores no templat
   MAILTRAP_WEBHOOK_SECRET …` right away; events signed with the old secret are refused and Mailtrap retries
   them.
 
+## 7a. Inbound email (support@folevi.com)
+
+Email to `support@folevi.com` reaches Folevi through **Mailtrap Email Inbound**: an inbound inbox (a
+catch-all on `folevi.com`, or a hosted address that `support@` forwards to) and an `inbound_receiving`
+webhook to `POST https://<deployment>.convex.site/webhooks/mailtrap-inbound`, signed like the sending
+webhook (hex HMAC-SHA256 of the raw body, `MAILTRAP_INBOUND_WEBHOOK_SECRET`). Setup, MX records, threading
+and loop protection are in [SUPPORT.md](./SUPPORT.md).
+
 ## 8. Environment variables
 
 All on the **Convex** deployment (`npx convex env set NAME …`); none belong in Vercel.
@@ -193,7 +206,10 @@ All on the **Convex** deployment (`npx convex env set NAME …`); none belong in
 | `EMAIL_BRAND_BASE_URL`       | Convex (optional)             | https base for the logo images (default `https://folevi.com/brand/email`).                        |
 | `FOLEVI_EMAIL_ALLOWLIST`     | Convex, non-production        | Comma-separated exact addresses allowed besides `@example.com` / `@test.com` on a live token.     |
 | `FOLEVI_HASH_SALT`           | Convex                        | Salt for `hashRecipient()` (attempts, events, suppressions). Secret; never rotated without a migration. |
-| `FOLEVI_DEV_MAILBOX_SECRET`  | Convex + `apps/web/.env.local`, non-production only | Enables the development mailbox for identity email.                      |
+| `FOLEVI_DEV_MAILBOX_SECRET`  | Convex + `apps/web/.env.local`, non-production only | Enables the development mailbox for identity email (support mail is captured there too). |
+| `MAILTRAP_INBOUND_WEBHOOK_SECRET` | Convex (optional)        | Signing secret for `/webhooks/mailtrap-inbound` (email to support@ becomes tickets). See [SUPPORT.md](./SUPPORT.md). |
+| `MAILTRAP_INBOUND_API_TOKEN` | Convex (optional)             | Reads inbound messages from Mailtrap's Messages API (the webhook carries ids only).               |
+| `SUPPORT_NOTIFY_EMAIL`       | Convex (optional)             | Staff address told about new tickets and requester replies.                                       |
 
 `scripts/check-prod-env.mjs` (runs before every Vercel production build) fails when production has no
 `MAILTRAP_API_TOKEN`, and warns when the Mailtrap webhook secret is missing, when sandbox variables are

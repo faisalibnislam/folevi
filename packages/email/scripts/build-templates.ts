@@ -66,10 +66,16 @@ interface Content {
   blocks: Block[];
   /** Product only: why the recipient got this email (before the preferences link). */
   reason?: string;
+  /** Support only: the footer line (defaults to SUPPORT_FOOTER). */
+  footer?: string;
 }
 
 export const SECURITY_FOOTER =
   "This is a required email about the security of your Folevi account, so it is sent even if you have turned off notifications.";
+export const SUPPORT_FOOTER =
+  "You received this because you contacted Folevi support. Folevi support will never ask for your password or your two-step verification codes.";
+const SUPPORT_THREAD_NOTE =
+  "To add details, reply to this email. Keep the request number in the subject so your reply joins this request.";
 export const SIGN_OFF = "Folevi · A quieter place for ideas that keep growing.";
 const NO_CONTENT_NOTE = "Open the page to read it. Folevi never puts your notes or comments in email.";
 
@@ -241,6 +247,62 @@ export const CONTENT: Record<TemplateKey, Content> = {
     ],
     reason: "You received this because share emails are turned on for your Folevi account.",
   },
+  support_ticket_received: {
+    eyebrow: "Folevi support",
+    heading: "We got your message",
+    blocks: [
+      {
+        kind: "p",
+        text: "Thanks for writing to Folevi support. We reply by email to this address.",
+      },
+      {
+        kind: "details",
+        rows: [
+          ["Request", "#{{ticketNumber}}"],
+          ["Topic", "{{topicLabel}}"],
+        ],
+      },
+      { kind: "p", muted: true, text: "Here is what you sent:" },
+      { kind: "panel", text: "{{quotedMessage}}" },
+      { kind: "p", text: SUPPORT_THREAD_NOTE },
+      {
+        kind: "p",
+        muted: true,
+        text: "If you didn't contact Folevi support, you can ignore this email.",
+      },
+    ],
+  },
+  support_reply: {
+    eyebrow: "Folevi support",
+    heading: "A reply to your request",
+    blocks: [
+      { kind: "p", text: "Here is our reply to request #[[ticketNumber]]." },
+      { kind: "panel", text: "{{replyText}}" },
+      { kind: "p", text: SUPPORT_THREAD_NOTE },
+    ],
+  },
+  support_staff_notice: {
+    eyebrow: "Support inbox",
+    heading: "New support activity",
+    blocks: [
+      { kind: "p", text: "[[activity]] on request #[[ticketNumber]]." },
+      {
+        kind: "details",
+        rows: [
+          ["Topic", "{{topicLabel}}"],
+          ["Came from", "{{sourceLabel}}"],
+        ],
+      },
+      {
+        kind: "p",
+        muted: true,
+        text: "The message isn't included in this email. Open the request in the admin console to read and answer it.",
+      },
+      { kind: "button", label: "Open the request", urlVar: "adminUrl" },
+    ],
+    footer:
+      "Sent to the Folevi support team because SUPPORT_NOTIFY_EMAIL is set on this deployment. Replies to this email are not read.",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -384,7 +446,9 @@ function renderHtml(def: TemplateDefinition, content: Content): string {
   const footer =
     def.category === "product"
       ? `${escapeHtml(content.reason ?? "")} <a href="${placeholder("preferencesUrl")}" target="_blank" rel="noopener" class="fv-muted" style="color:${C.muted};text-decoration:underline;">Manage notification preferences</a>`
-      : escapeHtml(SECURITY_FOOTER);
+      : def.category === "support"
+        ? escapeHtml(content.footer ?? SUPPORT_FOOTER)
+        : escapeHtml(SECURITY_FOOTER);
 
   return `<!DOCTYPE html>
 <html lang="en" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -462,6 +526,8 @@ function renderText(def: TemplateDefinition, content: Content): string {
       wrap(content.reason ?? ""),
       `Manage notification preferences: ${placeholder("preferencesUrl")}`,
     );
+  } else if (def.category === "support") {
+    parts.push(wrap(content.footer ?? SUPPORT_FOOTER));
   } else {
     parts.push(wrap(SECURITY_FOOTER));
   }

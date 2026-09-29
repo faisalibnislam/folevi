@@ -36,6 +36,9 @@ const ALL_KEYS: TemplateKey[] = [
   "comment_digest",
   "share_notification",
   "access_changed",
+  "support_ticket_received",
+  "support_reply",
+  "support_staff_notice",
 ];
 
 describe("manifest contract", () => {
@@ -132,7 +135,7 @@ describe("manifest contract", () => {
   it.each(ALL_KEYS)("%s: category rules (sender, unsubscribe, preferences)", (key) => {
     const def = emailManifest[key];
     const { html, text } = GENERATED_TEMPLATES[key];
-    expect(def.sender.name).toBe("Folevi");
+    expect(def.sender.name).toBe(def.category === "support" && def.sender.address ? "Folevi Support" : "Folevi");
     expect(text).toContain("Folevi · A quieter place for ideas that keep growing.");
     expect(html).toContain("Folevi · A quieter place for ideas that keep growing.");
     if (def.category === "product") {
@@ -142,6 +145,24 @@ describe("manifest contract", () => {
       expect(def.variables.preferencesUrl?.required).toBe(true);
       expect(html).toContain("Manage notification preferences");
       expect(text).toContain("Manage notification preferences: {{preferencesUrl}}");
+    } else if (def.category === "support") {
+      expect(def.unsubscribable).toBe(false);
+      expect(def.preferenceKey).toBeUndefined();
+      expect(def.sender.localPart).toBe("support");
+      // Mail to a requester comes from, and answers to, the support mailbox; the subject carries the ticket
+      // number so replies thread. Staff notices have no Reply-To (a reply must never loop into a ticket).
+      if (key === "support_staff_notice") {
+        expect(def.replyTo).toBeNull();
+        expect(def.sender.address).toBeUndefined();
+      } else {
+        expect(def.sender.address).toBe("support@folevi.com");
+        expect(def.replyTo).toBe("support@folevi.com");
+        expect(def.subject.startsWith("[Folevi #{{ticketNumber}}] ")).toBe(true);
+      }
+      for (const file of [html, text]) {
+        expect(file.toLowerCase()).not.toContain("unsubscribe");
+        expect(file).not.toContain("preferencesUrl");
+      }
     } else {
       expect(def.unsubscribable).toBe(false);
       expect(def.preferenceKey).toBeUndefined();

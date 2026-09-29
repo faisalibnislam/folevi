@@ -1,7 +1,7 @@
 # Deployment
 
-Nothing in this repository has been deployed to production by the build process. These are the exact
-steps for the account owner. Every secret lives in a provider's secret store — never in Git.
+Production is live (`folevi.com`, `app.folevi.com`; current status in `docs/PRODUCT.md`). These are the
+exact steps the account owner follows to set up or rebuild it. Every secret lives in a provider's secret store — never in Git.
 
 ## Environments
 
@@ -112,9 +112,8 @@ webhook `https://<deployment>.convex.site/webhooks/loops` and set `LOOPS_WEBHOOK
 
 ## Mac app distribution
 
-**Not ready to distribute:** the Mac app cannot sign in with Folevi's built-in accounts yet (it still
-contains code for the previous identity provider; it will move to Authorization Code + PKCE against
-Folevi's own accounts). Once that is done: set the production values in
+**Not distributed yet.** The app signs in through the browser (Authorization Code + PKCE against
+Folevi's own accounts, `docs/AUTH_DECISION.md`). To ship it: set the production values in
 `apps/macos/Config/Release.xcconfig`, archive with a Developer ID certificate, notarize
 (`xcrun notarytool`), staple, and distribute the DMG. See `docs/MACOS.md`.
 

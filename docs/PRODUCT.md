@@ -10,14 +10,15 @@ This page describes what exists in this repository today, what has been verified
 
 | Surface | Status |
 | --- | --- |
-| Marketing site (`folevi.com`) | Built: home, Mac, Security, Pricing (free during the preview), Changelog, Docs, Status, Privacy, Terms. Uses real product screenshots (`apps/web/public/marketing/screenshots`). |
-| Web app (`app.folevi.com`) | Built and covered by unit and end-to-end tests. Installable PWA with an offline app shell. |
-| Admin console (`app.folevi.com/admin`) | Built: server-enforced platform roles, append-only audit log, no content viewer (`docs/ADMIN.md`). |
-| Native Mac app (`apps/macos`) | Built, unit- and UI-tested against the local backend (`docs/MACOS.md`). **Sign-in does not work at the moment:** the app still contains code for the previous identity provider (Auth0) and will move to Authorization Code + PKCE against Folevi's own accounts after the web app is finalized. |
-| Backend (Convex) | Built; integration tests run against `convex-test`, end-to-end tests against a local backend. |
-| Identity (built-in accounts) | Better Auth running inside Convex: email + password, confirmed email, optional authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). Works locally and in the end-to-end suite, with identity emails captured in the development mailbox. **Not yet run on a production deployment.** |
-| Email (Loops) | Manifest, 11 templates (including confirmation and password reset for built-in accounts), sender, webhook verification and tests are written. **No real email has been sent.** |
-| Production deployment | **Not deployed.** `docs/DEPLOYMENT.md` lists the account steps. |
+| Marketing site (`folevi.com`) | **Live.** Home, Mac, Security, Pricing, Changelog, Docs, Status, Privacy, Terms. |
+| Web app (`app.folevi.com`) | **Live.** Covered by unit and end-to-end tests. Installable PWA with an offline app shell. |
+| Admin console (`app.folevi.com/admin`) | **Live.** Server-enforced platform roles (two-step verification required), append-only audit log, no content viewer (`docs/ADMIN.md`). The first super admin was bootstrapped on production on 2026-09-29. |
+| Backend (Convex) | **Live** (production deployment `fastidious-clownfish-123`, deployed by the Vercel build). Integration tests run against `convex-test`, end-to-end tests against a local backend. |
+| Identity (built-in accounts) | **Live.** Better Auth inside Convex: email + password, confirmed email, optional authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). |
+| Email (Loops) | **Partly live.** Sending domain `mail.folevi.com` verified; the two identity templates (confirmation, password reset) are published and working. The other nine (new device, deletion, invites, mentions, comments, digest, shares, access changes) are written but not yet created in Loops, so those emails are skipped. |
+| AI Assistant (Gemini) | **Live.** Server-side only (`convex/ai.ts`); the key is a Convex environment variable. |
+| Payments (Stripe) | **Not configured.** Plans, trial and limits work; paid plans can't be bought until the Stripe variables are set (`.env.example`). |
+| Native Mac app (`apps/macos`) | Built and unit-tested against the local backend, brought up to the web's current design on 2026-09-28; signs in through the browser (Authorization Code + PKCE). **Not distributed** (ad-hoc signed, not notarized); the marketing page says “Coming soon”. Work is paused while the web is finished (`docs/MACOS.md`). |
 
 iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 
@@ -25,18 +26,33 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 
 ### Writing
 - Block editor with paragraphs, three heading levels, bulleted/numbered/to-do lists, toggles, quotes,
-  callouts, code, dividers, images, files, bookmarks, tables, page links, collections and mentions.
-  Unknown future block types are preserved, never dropped.
+  callouts, code, dividers, images (including Unsplash, when configured), files, bookmarks, tables, cards,
+  page links, collections, mentions, TeX formulas, Mermaid diagrams and whiteboards. Unknown future block
+  types are preserved, never dropped.
 - Markdown shortcuts, a `/` menu, `[[` page links, `@` mentions, nesting with Tab, block moves with
   ⌥⇧↑/↓ and drag handles, undo/redo, paste normalization (HTML and Markdown).
-- Per-page styling: icon, cover (accent color, accent gradient, or one of 20 abstract artworks), accent,
-  serif/sans/mono font, width, background, card style.
-- Nested pages, backlinks, an outline on wide screens, version history (snapshots) with restore.
+- Per-page styling: 57 note styles (artwork that also colours text, highlights and blocks) or your own
+  image, serif/sans/mono font, width, background, card style.
+- A tool bar at the bottom of each note (AI, Insert, Format, Style, Info), a page sidebar (contents,
+  tasks, files, search) and browser-style tabs.
+- Nested pages, backlinks, version history (snapshots) with restore.
 
 ### Organizing
-- Home (all your pages), folders, starred pages, tags, Drafts (pages not in a folder), Archive and Trash (30-day restore).
+- Home dashboard, folders (shown with the notes inside them), starred pages, tags, Drafts (pages not in
+  a folder), Archive and Trash (30-day restore).
 - Search with highlighted matches and a ⌘K command palette.
-- Templates (built-in and your own).
+- Templates: 26 built-in, plus your own.
+
+### AI Assistant
+- Ask questions of your notes (with links to the notes used), write, rewrite, summarize, continue,
+  translate and find action items — from the slash menu, the selection toolbar or ⌘J — and “Catch me
+  up”, a brief of the week on Home. Answers stream in. Anyone can turn it off in Settings. Sent to
+  Google Gemini; included in Pro and the Pro trial.
+
+### Plans
+- Free (1 GB, 2 devices), Basic (20 GB, unlimited devices) and Pro (100 GB, unlimited devices, AI), with
+  a 7-day Pro trial for every new account and no card. Settings → Plan & billing and Settings → Devices.
+  Limits are enforced by the server.
 
 ### Tasks and calendar
 - Every to-do in every page is a task. Due dates, Today / Upcoming / Anytime / Completed views, a
@@ -73,46 +89,47 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 
 ## Verified
 
-Commands and suites are listed in `docs/TESTING.md`. At the time of writing:
+Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 
-- Schema, email and Convex integration suites pass (Convex: 27 tests, including tenant isolation,
-  sync protocol, sharing, deletion cascades, admin RBAC and static invariants).
-- Web unit tests pass (8). Playwright end-to-end suite passes (24 tests, including axe WCAG 2.2 AA
-  checks in light and dark, offline and durable-queue behavior, and the two-device conflict flow).
-- Mac: 53 unit tests (including the shared golden fixtures for ranks, documents and all 9 sync
-  scenarios) and 6 UI tests pass; the app has been built, launched, and exercised against the local
-  backend (offline edits, remote changes, conflicts, export).
-- Web and Mac render the same seeded documents from the same backend (screenshots in the marketing
-  site were taken from both clients on the same account, before the switch to built-in accounts).
-- The counts above predate the switch from Auth0 to built-in accounts. The account flows are now
-  covered by `apps/web/e2e/account.spec.ts` and the session tests in `tests/convex/backend.test.ts`
-  (`docs/TESTING.md`); re-run the suites for current numbers.
+- **On production** (`app.folevi.com`), by the account owner: security headers (HSTS, CSP), no
+  development mailbox, real sign-up → confirmation email → sign-in, password reset by email, turning on
+  two-step verification, the admin console, and the AI Assistant.
+- **CI** (every push to `main`): lint, typecheck, unit and integration tests, the web build, a secret
+  scan of the full history, dependency audit, the Mac build and tests, and two Playwright suites (local
+  backend, and a production build for the service worker and headers).
+- Convex integration: 107 tests (tenant isolation, sync protocol, sharing, deletion cascades, admin RBAC,
+  optional two-step verification, session revocation, static invariants). Web unit: 64 tests.
+- Playwright: about 80 tests, including axe WCAG 2.2 AA checks in light and dark, offline and
+  durable-queue behaviour, the two-device conflict flow, and the account flows.
+- Mac: 68 unit tests (including the shared golden fixtures for ranks, documents and sync scenarios).
 
 ## Not verified / known limitations
 
-- **No production deployment or Loops team was used.** Built-in accounts have only run locally and in
-  tests; real email delivery (including confirmation and reset emails) is untested.
-- **Mac sign-in** is not working until the app moves to Authorization Code + PKCE against Folevi's own
-  accounts.
+- **Still to check on production:** signing out another session from Settings → Security, creating and
+  revoking a public link, and export (`docs/DEPLOYMENT.md`, first-release checklist).
+- **Email:** nine of eleven Loops templates aren't created yet, and the Loops webhook isn't configured,
+  so delivered/bounced events don't reach the admin email log. One early password-reset email was
+  accepted by Loops but never delivered, with no bounce.
+- **Payments:** Stripe isn't configured on production.
 - **Accounts:** no breached-password check yet and no passkeys; no social sign-in by design
-  (`docs/AUTH_DECISION.md`).
+  (`docs/AUTH_DECISION.md`). Account email changes are handled by support, not self-service.
 - **Collaboration is block-granular**, not character-level: concurrent edits to the same block become a
   conflict the person resolves, rather than merging automatically.
-- **Mac app**: arm64 only, ad-hoc signed and not notarized, run only on macOS 27. Collections are
-  read-only; no `@mention` picker, image resizing, code highlighting or sharing UI; several library
-  actions need a connection. Details in `docs/MACOS.md`.
-- **Account email changes** are handled by support, not self-service.
+- **Mac app**: arm64 only, ad-hoc signed and not notarized. Collections are read-only; no `@mention`
+  picker, image resizing, code highlighting or sharing UI; several library actions need a connection.
+  Changes to the web after 2026-09-28 (such as optional two-step verification) haven't reached it yet.
+  Details in `docs/MACOS.md`.
 - **Loops** has no documented plain-text part; text versions are kept in the repository for review.
 - **Browser coverage**: automated tests run in Chromium; Safari and Firefox are on the manual checklist.
 - **No public status dashboard** yet (the Status page says so).
 
 ## Next
 
-1. Configure Loops, Convex and Vercel accounts and deploy (`docs/DEPLOYMENT.md`), then run the
-   first-release checklist, including real sign-up, confirmation email and authenticator setup.
-2. Mac sign-in with Authorization Code + PKCE against Folevi's own accounts.
-3. Mac distribution: Developer ID signing, notarization, universal build once the Convex Swift client
-   ships an x86_64 slice, testing on macOS 15.
+1. Finish the first-release checklist on production, create Loops templates 03–11, and set up the Loops
+   webhook.
+2. Stripe on production, so paid plans can be bought.
+3. Mac: catch up with the web, then distribution (Developer ID signing, notarization, universal build
+   once the Convex Swift client ships an x86_64 slice, testing on macOS 15).
 4. Character-level merging for concurrent edits to the same block.
 5. Mac parity: collection editing, mention picker, sharing UI, code highlighting.
 6. iOS client from the shared Swift layers (`docs/FUTURE_IOS.md`).

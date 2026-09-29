@@ -99,8 +99,9 @@ variable (delete them; EMAIL_OPERATIONS.md §9).
 
 Optional until paid plans go on sale; without it, upgrades say payments aren't set up (non-production
 deployments offer test purchases instead). All variables are server-only, on Convex: `POLAR_ACCESS_TOKEN`,
-`POLAR_WEBHOOK_SECRET`, `POLAR_SERVER` (sandbox | production) and one `POLAR_PRODUCT_*` id per plan,
-interval and credit pack (14 in all; `.env.example`, Billing section). The webhook endpoint is
+`POLAR_WEBHOOK_SECRET` and `POLAR_SERVER` (sandbox | production). The 14 products (one per plan, interval
+and credit pack) are created from Admin → Billing setup, which records their ids in the database; a
+`POLAR_PRODUCT_*` env var per product (`.env.example`, Billing section) still works as a fallback. The webhook endpoint is
 `https://<deployment>.convex.site/webhooks/polar`. The full checklist (the 14 products with names, prices
 and intervals, the webhook events, the token's scopes, sandbox testing) and the one-time plan migration
 command are in `docs/BILLING.md`. Access is granted only by signed webhook events (never by returning

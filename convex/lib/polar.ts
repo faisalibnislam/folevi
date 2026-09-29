@@ -6,7 +6,8 @@
 //   POLAR_ACCESS_TOKEN    an Organization Access Token (Bearer)
 //   POLAR_WEBHOOK_SECRET  the webhook endpoint's secret ("whsec_…")
 //   POLAR_SERVER          "sandbox" (default) or "production"
-//   POLAR_PRODUCT_*       one product id per plan and interval, and per credit pack (productEnvName below)
+//   POLAR_PRODUCT_*       optional: one product id per plan and interval, and per credit pack (productEnvName
+//                         below), used when the database (Admin → Billing setup) has none
 import { fail } from "./errors";
 import { timingSafeEqualHex } from "./crypto";
 import { CREDIT_PACKS, PLAN_CATALOG, type BillingInterval, type CreditPackId, type PaidWorkspacePlanId, type PersonalPlanId, type PersonalTier } from "./plans";
@@ -42,21 +43,38 @@ export const PRODUCT_KEYS: ProductKey[] = [
 ];
 
 /**
- * The env var holding a product's Polar id: POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY,
- * POLAR_PRODUCT_TEAM_CORE_YEARLY, POLAR_PRODUCT_CREDITS_500…
+ * The env var holding a product's Polar id (the fallback when the database has none):
+ * POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY, POLAR_PRODUCT_TEAM_CORE_YEARLY, POLAR_PRODUCT_CREDITS_500…
  */
 export const productEnvName = (key: ProductKey) => `POLAR_PRODUCT_${key.replace(/^workspace_/, "team_").toUpperCase()}`;
-export const productId = (key: ProductKey): string | undefined => process.env[productEnvName(key)] || undefined;
+export const envProductId = (key: ProductKey): string | undefined => process.env[productEnvName(key)] || undefined;
+
+/**
+ * Each product's known Polar ids, the one checkout uses first: the id recorded in the database
+ * (`billingProducts`, filled in from Admin → Billing setup) and then the env var. Webhooks accept any of
+ * them, so a subscription started under an env id keeps working after the database gets one.
+ * Loaded by `productIds` in convex/lib/billingProducts.ts.
+ */
+export type ProductIds = Record<ProductKey, string[]>;
+
+export function resolveProductIds(recorded: Partial<Record<ProductKey, string>>): ProductIds {
+  const out = {} as ProductIds;
+  for (const k of PRODUCT_KEYS) out[k] = [...new Set([recorded[k], envProductId(k)].filter((x): x is string => Boolean(x)))];
+  return out;
+}
+
+/** The Polar id checkout uses for a product (database first, env var as a fallback). */
+export const productId = (ids: ProductIds, key: ProductKey): string | undefined => ids[key][0];
 
 export type ProductMatch =
   | { kind: "personal"; planId: PaidPersonalPlanId; tier: Exclude<PersonalTier, "free">; interval: BillingInterval }
   | { kind: "workspace"; planId: PaidWorkspacePlanId; interval: BillingInterval }
   | { kind: "credits"; pack: CreditPackId; credits: number };
 
-/** What a Polar product id is, by the env vars (null: not one of ours). */
-export function productFor(id: string | undefined | null): ProductMatch | null {
+/** What a Polar product id is (null: not one of ours). */
+export function productFor(ids: ProductIds, id: string | undefined | null): ProductMatch | null {
   if (!id) return null;
-  const key = PRODUCT_KEYS.find((k) => productId(k) === id);
+  const key = PRODUCT_KEYS.find((k) => ids[k].includes(id));
   if (!key) return null;
   if (key === "credits_500" || key === "credits_1000") return { kind: "credits", pack: key, credits: CREDIT_PACKS[key].credits };
   const plan = PLAN_CATALOG[key];
@@ -64,11 +82,13 @@ export function productFor(id: string | undefined | null): ProductMatch | null {
   return { kind: "workspace", planId: key as PaidWorkspacePlanId, interval: plan.interval! };
 }
 
-/** Whether checkout can run for these products (the token and every one of their ids). */
-export const polarReady = (keys: ProductKey[]) => Boolean(polarToken() && keys.every((k) => productId(k)));
-export const personalCheckoutReady = () => polarReady(PAID_PERSONAL_PLAN_IDS);
-export const workspaceCheckoutReady = () => polarReady(["workspace_core_monthly", "workspace_core_yearly", "workspace_pro_monthly", "workspace_pro_yearly", "workspace_pro_ai_monthly", "workspace_pro_ai_yearly"]);
-export const creditsCheckoutReady = () => polarReady(["credits_500", "credits_1000"]);
+export const WORKSPACE_PRODUCT_KEYS: PaidWorkspacePlanId[] = ["workspace_core_monthly", "workspace_core_yearly", "workspace_pro_monthly", "workspace_pro_yearly", "workspace_pro_ai_monthly", "workspace_pro_ai_yearly"];
+
+/** Whether checkout can run for these products (the token and an id for every one of them). */
+export const polarReady = (ids: ProductIds, keys: ProductKey[]) => Boolean(polarToken() && keys.every((k) => productId(ids, k)));
+export const personalCheckoutReady = (ids: ProductIds) => polarReady(ids, PAID_PERSONAL_PLAN_IDS);
+export const workspaceCheckoutReady = (ids: ProductIds) => polarReady(ids, WORKSPACE_PRODUCT_KEYS);
+export const creditsCheckoutReady = (ids: ProductIds) => polarReady(ids, ["credits_500", "credits_1000"]);
 
 // ---------------------------------------------------------------------------------------------------
 // Requests
@@ -76,8 +96,18 @@ export const creditsCheckoutReady = () => polarReady(["credits_500", "credits_10
 
 type Json = Record<string, unknown>;
 
-async function request(method: "GET" | "POST" | "PATCH", path: string, body?: Json): Promise<Json> {
-  if (!polarToken()) fail("maintenance", "Payments aren't set up on this server yet.");
+/** Polar's answer: its HTTP status and JSON body (an empty object when there's none). */
+export interface PolarResponse {
+  ok: boolean;
+  status: number;
+  data: Json;
+}
+
+/**
+ * One request to the Polar API with the access token and the pinned API version. Throws only when Polar
+ * can't be reached; an error answer is returned for the caller to explain. Never logs the token or a body.
+ */
+export async function polarSend(method: "GET" | "POST" | "PATCH", path: string, body?: Json): Promise<PolarResponse> {
   const res = await fetch(`${polarApiBase()}/${path}`, {
     method,
     headers: {
@@ -91,16 +121,23 @@ async function request(method: "GET" | "POST" | "PATCH", path: string, body?: Js
   const text = await res.text();
   let data: Json;
   try {
-    data = text ? (JSON.parse(text) as Json) : {};
+    const parsed: unknown = text ? JSON.parse(text) : {};
+    data = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Json) : {};
   } catch {
     data = {};
   }
   if (!res.ok) {
-    // The path without ids and the status only; never the body, the token or an address.
-    console.warn(JSON.stringify({ event: "billing.polar_error", path: path.replace(/\/[^/]+\/?$/, "/…"), status: res.status }));
-    fail("maintenance", res.status === 429 ? "Payments are busy right now. Try again in a minute." : "Payments couldn't be started. Try again shortly.");
+    // The path without ids or query and the status only; never the body, the token or an address.
+    console.warn(JSON.stringify({ event: "billing.polar_error", path: path.replace(/\?.*$/, "").replace(/\/[^/]+\/?$/, "/…"), status: res.status }));
   }
-  return data;
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function request(method: "GET" | "POST" | "PATCH", path: string, body?: Json): Promise<Json> {
+  if (!polarToken()) fail("maintenance", "Payments aren't set up on this server yet.");
+  const res = await polarSend(method, path, body);
+  if (!res.ok) fail("maintenance", res.status === 429 ? "Payments are busy right now. Try again in a minute." : "Payments couldn't be started. Try again shortly.");
+  return res.data;
 }
 
 export const polarGet = (path: string) => request("GET", path);

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CREDIT_NANO_USD, GEMINI_PRICES, costNano, creditsFor, estimateCredits, monthlyWindow } from "../../convex/lib/credits";
-import { DAY_MS, addMonthsUtc } from "../../convex/lib/plans";
+import { addMonthsUtc } from "../../convex/lib/plans";
 import { inWorkspace, person, PERSONAL, setup, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;

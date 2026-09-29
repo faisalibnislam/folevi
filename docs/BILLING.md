@@ -4,7 +4,8 @@ How Folevi charges for plans and AI, and how to set it up. The code: `convex/lib
 catalog: every price and limit), `convex/lib/entitlements.ts` (storage), `convex/lib/credits.ts` (AI credits
 and metering), `convex/lib/polar.ts` (Polar requests and webhook signatures), `convex/billing.ts` (Personal
 billing, credit packs, the webhook), `convex/workspaceBilling.ts` (Team plans and seats),
-`convex/adminBilling.ts` (admin tools), `convex/migrations.ts` (`migratePlanTiers`).
+`convex/adminBilling.ts` (admin tools), `convex/billingSetup.ts` and `convex/lib/billingProducts.ts` (Admin →
+Billing setup: the Polar products), `convex/migrations.ts` (`migratePlanTiers`).
 
 ## Plans
 
@@ -129,49 +130,69 @@ then repeat in production.
 
 1. **Create the organization** and turn on seat-based pricing if Polar asks (Settings; the seat pricing
    guide lists it as a prerequisite).
-2. **Create these 14 products** (Products → New). Prices in USD. Leave taxes on Polar's default. No trial on
-   Polar's side (Folevi runs its own).
-
-   | Env var                                | Product name                  | Type      | Price                          | Interval |
-   | -------------------------------------- | ----------------------------- | --------- | ------------------------------ | -------- |
-   | `POLAR_PRODUCT_PERSONAL_CORE_MONTHLY`   | Folevi Core (monthly)         | Recurring | $1.99 fixed                    | Month    |
-   | `POLAR_PRODUCT_PERSONAL_CORE_YEARLY`    | Folevi Core (yearly)          | Recurring | $19 fixed                      | Year     |
-   | `POLAR_PRODUCT_PERSONAL_PRO_MONTHLY`    | Folevi Pro (monthly)          | Recurring | $4.99 fixed                    | Month    |
-   | `POLAR_PRODUCT_PERSONAL_PRO_YEARLY`     | Folevi Pro (yearly)           | Recurring | $49 fixed                      | Year     |
-   | `POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY` | Folevi Pro AI (monthly)       | Recurring | $12.99 fixed                   | Month    |
-   | `POLAR_PRODUCT_PERSONAL_PRO_AI_YEARLY`  | Folevi Pro AI (yearly)        | Recurring | $149 fixed                     | Year     |
-   | `POLAR_PRODUCT_TEAM_CORE_MONTHLY`       | Folevi Team Core (monthly)    | Recurring | Seat-based, $1.99 per seat     | Month    |
-   | `POLAR_PRODUCT_TEAM_CORE_YEARLY`        | Folevi Team Core (yearly)     | Recurring | Seat-based, $19 per seat       | Year     |
-   | `POLAR_PRODUCT_TEAM_PRO_MONTHLY`        | Folevi Team Pro (monthly)     | Recurring | Seat-based, $4.99 per seat     | Month    |
-   | `POLAR_PRODUCT_TEAM_PRO_YEARLY`         | Folevi Team Pro (yearly)      | Recurring | Seat-based, $49 per seat       | Year     |
-   | `POLAR_PRODUCT_TEAM_PRO_AI_MONTHLY`     | Folevi Team Pro AI (monthly)  | Recurring | Seat-based, $12.99 per seat    | Month    |
-   | `POLAR_PRODUCT_TEAM_PRO_AI_YEARLY`      | Folevi Team Pro AI (yearly)   | Recurring | Seat-based, $149 per seat      | Year     |
-   | `POLAR_PRODUCT_CREDITS_500`             | Folevi AI credits: 500        | One-time  | $7.99 fixed                    |          |
-   | `POLAR_PRODUCT_CREDITS_1000`            | Folevi AI credits: 1,000      | One-time  | $14.99 fixed                   |          |
-
-   Team products: seat-based pricing with one fixed tier (the per-seat price), minimum 1 seat. Folevi
-   sets the seat count; don't let customers change seats in the portal if Polar offers that option.
-   Credit products: descriptions should say the credits last 12 months and are used after the monthly
-   ones. Copy each product's id.
-3. **Create an Organization Access Token** (Settings → Developers) with the scopes checkouts:write,
-   customer_sessions:write, subscriptions:read and subscriptions:write, customers:read.
-4. **Add the webhook endpoint** (Settings → Webhooks): URL `https://<deployment>.convex.site/webhooks/polar`
+2. **Create an Organization Access Token** (Settings → Developers) with the scopes products:read,
+   products:write, checkouts:write, customer_sessions:write, subscriptions:read, subscriptions:write and
+   customers:read. organizations:read is optional: with it, Billing setup links each product to its page
+   in the Polar dashboard.
+3. **Add the webhook endpoint** (Settings → Webhooks): URL `https://<deployment>.convex.site/webhooks/polar`
    (production: `https://fastidious-clownfish-123.convex.site/webhooks/polar`), format Raw, API version
    2026-10. Events: `subscription.created`, `subscription.active`, `subscription.updated`,
    `subscription.canceled`, `subscription.uncanceled`, `subscription.past_due`, `subscription.revoked`,
    `order.paid`, `order.updated`, `order.refunded`. Copy the secret (`whsec_...`).
-5. **Set the Convex environment** (never in Vercel, never `NEXT_PUBLIC_`):
+4. **Set the Convex environment** (never in Vercel, never `NEXT_PUBLIC_`):
 
    ```sh
    npx convex env set POLAR_SERVER sandbox            # production: production
    npx convex env set POLAR_ACCESS_TOKEN polar_oat_...
    npx convex env set POLAR_WEBHOOK_SECRET whsec_...
-   npx convex env set POLAR_PRODUCT_PERSONAL_CORE_MONTHLY <id>   # and the other 13 ids
    ```
 
    Add `--deployment <prod-deployment>` for production (never `--prod`: in a checkout whose `.env.local` points at a local backend it runs against that instead). `scripts/check-prod-env.mjs` warns (doesn't fail) while
-   they're missing, and flags any leftover `STRIPE_*` variables and any Polar variable in the web app's
-   environment.
+   the token or webhook secret is missing or the server isn't production, and flags any leftover `STRIPE_*`
+   variables and any Polar variable in the web app's environment. It doesn't check product ids (they live
+   in the database); Admin → Billing setup shows which are missing.
+5. **Create the 14 products from Admin → Billing setup** (owners only; the page needs `POLAR_SERVER` and
+   `POLAR_ACCESS_TOKEN` from step 4). **Check Polar** lists the organization's products and finds each one: by the id already recorded, then the `POLAR_PRODUCT_*` env
+   var, then the `folevi_key` metadata Billing setup puts on every product it makes (for example
+   `{"folevi_key": "personal_core_monthly"}`), then the exact name. Products that match the catalog have
+   their ids recorded (the `billingProducts` table, per Polar server); products that differ are shown with
+   what differs. **Create missing products** does the same check, then creates only the products with
+   nothing found and records their ids, so running it twice never makes a duplicate. Names, prices and
+   intervals come from `convex/lib/plans.ts`, never from the page:
+
+   | Product key               | Env var (fallback)                      | Product name                  | Type      | Price                          | Interval |
+   | ------------------------- | --------------------------------------- | ----------------------------- | --------- | ------------------------------ | -------- |
+   | `personal_core_monthly`   | `POLAR_PRODUCT_PERSONAL_CORE_MONTHLY`   | Folevi Core (monthly)         | Recurring | $1.99 fixed                    | Month    |
+   | `personal_core_yearly`    | `POLAR_PRODUCT_PERSONAL_CORE_YEARLY`    | Folevi Core (yearly)          | Recurring | $19 fixed                      | Year     |
+   | `personal_pro_monthly`    | `POLAR_PRODUCT_PERSONAL_PRO_MONTHLY`    | Folevi Pro (monthly)          | Recurring | $4.99 fixed                    | Month    |
+   | `personal_pro_yearly`     | `POLAR_PRODUCT_PERSONAL_PRO_YEARLY`     | Folevi Pro (yearly)           | Recurring | $49 fixed                      | Year     |
+   | `personal_pro_ai_monthly` | `POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY` | Folevi Pro AI (monthly)       | Recurring | $12.99 fixed                   | Month    |
+   | `personal_pro_ai_yearly`  | `POLAR_PRODUCT_PERSONAL_PRO_AI_YEARLY`  | Folevi Pro AI (yearly)        | Recurring | $149 fixed                     | Year     |
+   | `workspace_core_monthly`  | `POLAR_PRODUCT_TEAM_CORE_MONTHLY`       | Folevi Team Core (monthly)    | Recurring | Seat-based, $1.99 per seat     | Month    |
+   | `workspace_core_yearly`   | `POLAR_PRODUCT_TEAM_CORE_YEARLY`        | Folevi Team Core (yearly)     | Recurring | Seat-based, $19 per seat       | Year     |
+   | `workspace_pro_monthly`   | `POLAR_PRODUCT_TEAM_PRO_MONTHLY`        | Folevi Team Pro (monthly)     | Recurring | Seat-based, $4.99 per seat     | Month    |
+   | `workspace_pro_yearly`    | `POLAR_PRODUCT_TEAM_PRO_YEARLY`         | Folevi Team Pro (yearly)      | Recurring | Seat-based, $49 per seat       | Year     |
+   | `workspace_pro_ai_monthly`| `POLAR_PRODUCT_TEAM_PRO_AI_MONTHLY`     | Folevi Team Pro AI (monthly)  | Recurring | Seat-based, $12.99 per seat    | Month    |
+   | `workspace_pro_ai_yearly` | `POLAR_PRODUCT_TEAM_PRO_AI_YEARLY`      | Folevi Team Pro AI (yearly)   | Recurring | Seat-based, $149 per seat      | Year     |
+   | `credits_500`             | `POLAR_PRODUCT_CREDITS_500`             | Folevi AI credits: 500        | One-time  | $7.99 fixed                    |          |
+   | `credits_1000`            | `POLAR_PRODUCT_CREDITS_1000`            | Folevi AI credits: 1,000      | One-time  | $14.99 fixed                   |          |
+
+   All in USD, taxes on Polar's default, no trial on Polar's side (Folevi runs its own). Team products use
+   seat-based pricing with one volume tier from 1 seat up (the per-seat price); Folevi sets the seat
+   count, so don't let customers change seats in the portal if Polar offers that option. Credit products
+   say the credits last 12 months and are used after the monthly ones.
+
+   - **Seat-based pricing** may need turning on for the organization first (Settings; the seat pricing
+     guide lists it as a prerequisite). If it's off, creating the Team products fails and the page shows
+     Polar's message; the products created before that are kept, so run it again once it's on.
+   - **A product that differs** (a price, interval, name or type changed in Polar) is never edited or
+     archived from Folevi. Fix it in Polar and check again, or use **Use this product anyway** (audited)
+     to sell it as it is. A recorded product that Polar no longer lists (archived or deleted) is forgotten
+     on the next check.
+   - **Manual creation still works:** create a product by hand with the name, price and interval above
+     (and the `folevi_key` metadata if you like), then Check Polar; or set its `POLAR_PRODUCT_*` env var.
+     The id recorded by Billing setup takes precedence over the env var, and webhooks accept either, so a
+     subscription started under an env var's id keeps working.
 6. **Run the plan migration once on production** (after deploying this code): rows from before these
    plans read correctly without it, but it rewrites them for good. A dry run first shows what changes:
 
@@ -187,8 +208,10 @@ then repeat in production.
 
 ## Testing in the Polar sandbox
 
-1. Point a non-production Convex deployment at the sandbox (step 5 with `POLAR_SERVER=sandbox`) and add the
-   sandbox webhook endpoint for that deployment's `.convex.site` URL.
+1. Point a non-production Convex deployment at the sandbox (step 4 with `POLAR_SERVER=sandbox`), add the
+   sandbox webhook endpoint for that deployment's `.convex.site` URL, and create the sandbox products from
+   Admin → Billing setup (step 5). Product ids are recorded per Polar server, so sandbox ids are never
+   used once `POLAR_SERVER` is production.
 2. In the app, Settings → Plan & billing → Upgrade. Pay with Polar's test card (4242 4242 4242 4242, any
    future date, any CVC). Back in the app the plan changes within seconds, once the webhook arrives. Check
    the Convex logs for `billing.webhook` lines.

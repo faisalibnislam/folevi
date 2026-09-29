@@ -58,6 +58,7 @@ membership). A person's Personal is not a workspace and never appears in the wor
 | Set a plan by hand, override storage or device limit     | `adminBilling.setPlan`, `setStorageOverride`, `setDeviceLimit`                |   ✓   |   ✓   |         |
 | Grant AI credits (Personal, or a seat in a paid workspace) | `adminBilling.grantCredits`                                                 |   ✓   |   ✓   |         |
 | Mark a payment refunded (a credit pack's unused credits go too) | `adminBilling.markRefunded`                                            |   ✓   |       |         |
+| Billing setup: Polar connection and products; check Polar, create missing products, use a differing product anyway | `billingSetup.overview`, `checkPolar`, `createMissing`, `useProductAnyway` | ✓ |  |  |
 | User analytics (aggregates)                              | `adminAnalytics.users`                                                        |   ✓   |   ✓   |    ✓    |
 | Revenue analytics                                        | `adminAnalytics.revenue`                                                      |   ✓   |   ✓   |         |
 | List and view workspaces                                 | `listWorkspaces`, `viewWorkspace`                                             |   ✓   |   ✓   |    ✓    |
@@ -248,6 +249,7 @@ attempts, quotas and the audit trail.
 | `/admin/audit`               | The paginated log with a target filter and an expandable before/after diff.                                                                       |
 | `/admin/deletion-jobs`       | Deletion jobs with status and progress (live).                                                                                                    |
 | `/admin/configuration`       | Feature flags, maintenance banner and read-only mode, rate limits, built-in templates.                                                            |
+| `/admin/billing-setup`       | Owners only. The Polar connection (sandbox or production, and whether the access token and webhook secret are set; never their values), and the 14 products Folevi sells with their expected name, type, price, interval and seat pricing, each "Not created", "Created" (with its Polar id and a link to it in the Polar dashboard) or "Mismatch" (with what differs). **Check Polar** lists the organization's products and records the ids of those that match the catalog; **Create missing products** creates only the ones with nothing found in Polar (never a second copy) and records their ids; **Use this product anyway** records a differing product. Nothing here edits or archives a product in Polar. Each run needs a reason and is audited (`billing.products_check`, `billing.products_create`, one `billing.product_create` per product made, `billing.product_pin`). [BILLING.md](./BILLING.md) has the setup. |
 
 The daily active users figure, weekly active users figure and retention cohorts come from the
 `daily metrics` cron (00:15 UTC). Until it has run once, the dashboard shows a dash instead of a number and says why.
@@ -255,8 +257,8 @@ The daily active users figure, weekly active users figure and retention cohorts 
 Support is covered by `tests/convex/support.test.ts` and `apps/web/e2e/support.spec.ts`. End-to-end coverage: `apps/web/e2e/admin.spec.ts` (non-admin 404, signed-out redirect,
 dashboard, audited search and view, suspend requires a reason, upgrading a person from the users
 list, plan/AI/export from the user page, a workspace plan, analytics and revenue, support-staff
-limits, and axe checks in light and dark). Server rules: `tests/convex/billing.test.ts` and
-`tests/convex/workspace-billing.test.ts`.
+limits, the Billing setup page, and axe checks in light and dark). Server rules: `tests/convex/billing.test.ts`,
+`tests/convex/workspace-billing.test.ts` and `tests/convex/billing-setup.test.ts`.
 
 ## 9. Look
 

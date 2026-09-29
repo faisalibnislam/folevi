@@ -54,17 +54,12 @@ if (env === "production") {
         if (has(k)) warn.push(`Convex ${k} is set in production; it is ignored there (the sandbox is for non-production only). Remove it.`);
       }
       // Billing (Polar, docs/BILLING.md): optional while billing isn't live, so these only warn. Secrets
-      // stay in Convex; a NEXT_PUBLIC_ copy of any of them is refused above.
-      const polarProducts = [
-        "PERSONAL_CORE_MONTHLY", "PERSONAL_CORE_YEARLY", "PERSONAL_PRO_MONTHLY", "PERSONAL_PRO_YEARLY", "PERSONAL_PRO_AI_MONTHLY", "PERSONAL_PRO_AI_YEARLY",
-        "TEAM_CORE_MONTHLY", "TEAM_CORE_YEARLY", "TEAM_PRO_MONTHLY", "TEAM_PRO_YEARLY", "TEAM_PRO_AI_MONTHLY", "TEAM_PRO_AI_YEARLY",
-        "CREDITS_500", "CREDITS_1000",
-      ].map((k) => `POLAR_PRODUCT_${k}`);
+      // stay in Convex; a NEXT_PUBLIC_ copy of any of them is refused above. Product ids aren't checked:
+      // they're recorded in the database from Admin → Billing setup (POLAR_PRODUCT_* env vars are only a
+      // fallback), which this script can't see; that page shows what's missing.
       if (has("POLAR_ACCESS_TOKEN")) {
         if (!has("POLAR_WEBHOOK_SECRET")) warn.push("Convex POLAR_WEBHOOK_SECRET is not set: Polar payments would never activate plans or add credits (docs/BILLING.md).");
         if (get("POLAR_SERVER") !== "production") warn.push("Convex POLAR_SERVER is not 'production': checkout uses the Polar sandbox (no real payments).");
-        const missing = polarProducts.filter((k) => !has(k));
-        if (missing.length) warn.push(`Convex ${missing.join(", ")} not set: those plans or credit packs can't be bought yet.`);
       } else {
         warn.push("Convex POLAR_ACCESS_TOKEN is not set: paid plans and credit packs can't be bought (billing isn't live; docs/BILLING.md).");
       }

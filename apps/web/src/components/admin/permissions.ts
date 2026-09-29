@@ -1,4 +1,4 @@
-// Client-side mirror of the platform-role checks in convex/admin.ts, adminBilling.ts, adminAnalytics.ts and support.ts.
+// Client-side mirror of the platform-role checks in convex/admin.ts, adminBilling.ts, billingSetup.ts, adminAnalytics.ts and support.ts.
 // It only decides what the UI offers; the server enforces every rule again (and answers `not_found` to anyone
 // without a role). Three tiers. The stored names predate the labels and are kept so existing roles still work:
 //   Owner (super_admin) ⊃ Admin (ops_admin) ⊃ Support staff (support_admin).
@@ -32,6 +32,7 @@ export type Capability =
   | "billing.manage"
   | "billing.credits"
   | "billing.refund"
+  | "billing.setup"
   | "users.export"
   | "analytics.view"
   | "revenue.view"
@@ -71,6 +72,8 @@ export const PERMISSIONS: Record<Capability, AdminRole[]> = {
   /** Grant AI credits (Personal, or a seat in a paid workspace); mirrors adminBilling.grantCredits. */
   "billing.credits": ADMIN,
   "billing.refund": OWNER,
+  /** Billing setup: the Polar connection and products; check Polar, create missing products (mirrors billingSetup.ts). */
+  "billing.setup": OWNER,
   "analytics.view": ALL,
   "revenue.view": ADMIN,
   /** The Support inbox and tickets (each ticket view is audited). */

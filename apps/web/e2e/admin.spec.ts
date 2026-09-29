@@ -274,6 +274,26 @@ test("an admin puts a workspace on Pro by hand (audited), and its plan, seats an
   await page.context().close();
 });
 
+test("the owner sees Billing setup: Polar's connection and all 14 products, not created while Polar isn't set up", async ({ browser }) => {
+  const page = await adminPage(browser, "/admin");
+  await page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Billing setup" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Billing setup" })).toBeVisible({ timeout: 30_000 });
+  // This backend has no Polar settings: nothing is (or can be) sent to Polar from here.
+  await expect(page.getByText("Polar isn't connected on this server")).toBeVisible();
+  const connection = page.getByRole("region", { name: "Polar connection" });
+  await expect(connection.getByText("Sandbox", { exact: true })).toBeVisible();
+  await expect(connection.getByText("Not set", { exact: true })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Check Polar…" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Create missing products…" })).toBeDisabled();
+  const products = page.getByRole("table", { name: "Polar products" });
+  await expect(products.getByRole("row")).toHaveCount(15);
+  await expect(products.getByText("Not created")).toHaveCount(14);
+  await expect(products.getByRole("rowheader", { name: /Folevi Core \(monthly\)/ })).toBeVisible();
+  await expect(products.getByRole("row", { name: /Folevi Team Pro AI \(yearly\)/ })).toContainText("$149 per seat a year");
+  await expect(products.getByRole("row", { name: /Folevi AI credits: 1,000/ })).toContainText("$14.99 once");
+  await page.context().close();
+});
+
 test("support staff see analytics but not revenue, and can't set plans", async ({ browser }) => {
   const staff = await newPerson(browser, "Support Person");
   grantPlatformRole(staff.email, "support_admin");
@@ -283,6 +303,7 @@ test("support staff see analytics but not revenue, and can't set plans", async (
   await expect(nav).toBeVisible({ timeout: 30_000 });
   await expect(nav.getByRole("link", { name: "User analytics" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Revenue" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Billing setup" })).toHaveCount(0);
   await expect(page.getByText("Support staff").first()).toBeVisible();
   await page.goto(`${APP}/admin/users?q=`);
   await page.getByRole("searchbox", { name: "Email or name" }).fill(staff.email);
@@ -301,11 +322,11 @@ test("support staff see analytics but not revenue, and can't set plans", async (
 
 for (const scheme of ["light", "dark"] as const) {
   test(`admin pages have no serious accessibility violations (${scheme})`, async ({ browser }) => {
-    // Ten pages, each compiled on first visit in CI's dev server and scanned by axe.
+    // Eleven pages, each compiled on first visit in CI's dev server and scanned by axe.
     test.setTimeout(240_000);
     const page = await adminPage(browser, "/admin");
     await page.evaluate((s) => localStorage.setItem("folevi:appearance", s), scheme);
-    for (const path of ["/admin", "/admin/users?q=", "/admin/workspaces", "/admin/emails", "/admin/audit", "/admin/deletion-jobs", "/admin/configuration", "/admin/analytics", "/admin/revenue", "/admin/support"]) {
+    for (const path of ["/admin", "/admin/users?q=", "/admin/workspaces", "/admin/emails", "/admin/audit", "/admin/deletion-jobs", "/admin/configuration", "/admin/billing-setup", "/admin/analytics", "/admin/revenue", "/admin/support"]) {
       await page.goto(`${APP}${path}`);
       await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible({ timeout: 30_000 });
       await page.waitForTimeout(1500);

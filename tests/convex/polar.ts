@@ -83,8 +83,8 @@ export function order(opts: { id: string; productKey: (typeof PRODUCT_KEYS)[numb
   };
 }
 
-/** A fake Polar API: records requests and answers them. */
-export function fakePolar(answer: (method: string, path: string, body: Record<string, unknown> | null) => Record<string, unknown> = () => ({})) {
+/** A fake Polar API: records requests and answers them (a Response answer is sent as is, e.g. an error status). */
+export function fakePolar(answer: (method: string, path: string, body: Record<string, unknown> | null) => Record<string, unknown> | Response = () => ({})) {
   const calls: { method: string; path: string; body: Record<string, unknown> | null; headers: Record<string, string> }[] = [];
   vi.stubGlobal(
     "fetch",
@@ -92,7 +92,8 @@ export function fakePolar(answer: (method: string, path: string, body: Record<st
       const path = url.replace(/^https:\/\/sandbox-api\.polar\.sh\/v1\//, "");
       const body = init.body ? (JSON.parse(init.body) as Record<string, unknown>) : null;
       calls.push({ method: init.method, path, body, headers: init.headers });
-      return new Response(JSON.stringify(answer(init.method, path, body)), { status: 200 });
+      const a = answer(init.method, path, body);
+      return a instanceof Response ? a : new Response(JSON.stringify(a), { status: 200 });
     }),
   );
   return calls;

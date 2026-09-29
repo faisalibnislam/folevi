@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Component, Suspense, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { ArrowLeft, ArrowUp, BarChart3, Building2, ClipboardList, DollarSign, Eye, Gauge, LifeBuoy, LogOut, Mail, Settings2, Trash2, Users } from "lucide-react";
+import { ArrowLeft, ArrowUp, BarChart3, Building2, ClipboardList, CreditCard, DollarSign, Eye, Gauge, LifeBuoy, LogOut, Mail, Settings2, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { Avatar } from "@/components/ui/Avatar";
@@ -48,6 +48,7 @@ const NAV: { heading: string; items: NavEntry[] }[] = [
       { href: "/admin/audit", label: "Audit log", icon: ClipboardList, capability: "audit.view" },
       { href: "/admin/deletion-jobs", label: "Deletion jobs", icon: Trash2, capability: "deletionJobs.view" },
       { href: "/admin/configuration", label: "Configuration", icon: Settings2, capability: "config.view" },
+      { href: "/admin/billing-setup", label: "Billing setup", icon: CreditCard, capability: "billing.setup" },
     ],
   },
 ];

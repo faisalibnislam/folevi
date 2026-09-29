@@ -500,6 +500,30 @@ export default defineSchema({
   }).index("by_event_id", ["eventId"]),
 
   /**
+   * The Polar product behind each of the 14 things Folevi sells (`key`: "personal_core_monthly",
+   * "workspace_pro_ai_yearly", "credits_500"…), per Polar server (sandbox or production), with the
+   * catalog settings it was created or matched with. Written only from Admin → Billing setup
+   * (convex/billingSetup.ts). Checkout reads the id here first and falls back to the POLAR_PRODUCT_* env var.
+   */
+  billingProducts: defineTable({
+    key: v.string(),
+    server: v.union(v.literal("sandbox"), v.literal("production")),
+    polarProductId: v.string(),
+    /** created: made by Billing setup; matched: found in Polar by its metadata or name; pinned: used although it differs. */
+    source: v.union(v.literal("created"), v.literal("matched"), v.literal("pinned")),
+    name: v.string(),
+    type: v.union(v.literal("recurring"), v.literal("one_time")),
+    priceCents: v.number(),
+    currency: v.string(),
+    interval: v.optional(v.union(v.literal("month"), v.literal("year"))),
+    seatBased: v.boolean(),
+    /** For a pinned product: how it differs from the catalog, as shown to the admin who pinned it. */
+    differences: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+    createdBy: v.id("profiles"),
+  }).index("by_server_key", ["server", "key"]),
+
+  /**
    * AI use per person per day (UTC), per scope, for the credits meter and analytics. No content: never a
    * prompt, a note or an answer. `count` is requests; credits and tokens were added with AI credits.
    */

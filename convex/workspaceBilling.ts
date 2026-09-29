@@ -30,7 +30,8 @@ import { requireWorkspaceBilling } from "./lib/permissions";
 import { PLAN_CATALOG, TIER_NAMES, isPaidPlan, type PaidWorkspacePlanId, type WorkspacePlanId } from "./lib/plans";
 import { workspaceScope } from "./lib/scope";
 import { billableQuantity, seatChargeCents, seatSummary, seatsChanged } from "./lib/seats";
-import { createCheckout, customerPortal, ms, num, polarGet, polarPatch, polarToken, productId, str, testPurchasesAllowed, workspaceCheckoutReady } from "./lib/polar";
+import { createCheckout, customerPortal, ms, num, polarGet, polarPatch, polarToken, productId, str, testPurchasesAllowed, workspaceCheckoutReady, type ProductIds } from "./lib/polar";
+import { productIds } from "./lib/billingProducts";
 import { vPaidWorkspacePlanId } from "./lib/validators";
 
 const intervalOf = (planId: PaidWorkspacePlanId) => PLAN_CATALOG[planId].interval!;
@@ -107,7 +108,7 @@ export const summary = query({
         const planId = p.planId ? storedWorkspacePlanId({ planId: p.planId }) : null;
         return { id: p._id as string, amountCents: p.amountCents, currency: p.currency, planId, plan: planId ? PLAN_CATALOG[planId].tier : null, interval: p.interval ?? null, quantity: p.quantity ?? null, status: p.status, createdAt: p.createdAt };
       }),
-      checkoutAvailable: workspaceCheckoutReady(),
+      checkoutAvailable: workspaceCheckoutReady(await productIds(ctx)),
       testPurchases: testPurchasesAllowed(),
     };
   },
@@ -219,10 +220,11 @@ export const checkout = action({
   handler: async (ctx, args): Promise<{ url: string }> => {
     await requireIdentity(ctx);
     const c = await contextFor(ctx, args.workspaceId);
-    if (!workspaceCheckoutReady()) fail("maintenance", "Workspace payments aren't set up on this server yet.");
+    const ids: ProductIds = await ctx.runQuery(internal.billingSetup.productIds, {});
+    if (!workspaceCheckoutReady(ids)) fail("maintenance", "Workspace payments aren't set up on this server yet.");
     if (c.polarLive) fail("invalid_argument", "This workspace already has a subscription. Change its plan instead.");
     const url = await createCheckout({
-      product: productId(args.planId)!,
+      product: productId(ids, args.planId)!,
       externalCustomerId: c.profileId,
       email: c.email,
       metadata: { kind: "workspace", workspaceId: c.workspaceId, profileId: c.profileId },
@@ -254,7 +256,7 @@ export const changePlan = action({
     const c = await contextFor(ctx, args.workspaceId);
     if (!c.polarLive || !c.polarSubscriptionId) fail("invalid_argument", "There's no subscription to change. Choose a plan to start one.");
     if (c.planId === args.planId) fail("invalid_argument", "The workspace is already on that plan.");
-    const product = productId(args.planId);
+    const product = productId(await ctx.runQuery(internal.billingSetup.productIds, {}), args.planId);
     if (!product) fail("maintenance", "That plan isn't available to buy yet.");
     await polarPatch(`subscriptions/${c.polarSubscriptionId}`, { product_id: product, proration_behavior: "prorate" });
     // Seats are their own update (Polar takes one kind of change at a time); the sync reads the count again.

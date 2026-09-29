@@ -48,7 +48,9 @@ import {
   testPurchasesAllowed,
   verifyPolarWebhook,
   type PaidPersonalPlanId,
+  type ProductIds,
 } from "./lib/polar";
+import { productIds } from "./lib/billingProducts";
 import { vCreditPackId, vInterval, vPaidPersonalTier } from "./lib/validators";
 import { applyWorkspaceOrder, applyWorkspaceSubscriptionEvent, settleExpiredWorkspacePlans } from "./workspaceBilling";
 
@@ -82,6 +84,7 @@ export const mine = query({
     const pool = storage.rule === "shared_free" ? await freePool(ctx, profile._id) : null;
     const account = await personalAccount(ctx, profile._id);
     const credits = await creditBalance(ctx, account);
+    const ids = await productIds(ctx);
     return {
       entitlements,
       subscription: sub
@@ -107,8 +110,8 @@ export const mine = query({
       /** Kept for older clients: AI requests this period. */
       aiRequestsThisMonth: await requestsSince(ctx, profile._id, credits.periodStart),
       payments: payments.map((p) => ({ id: p._id, amountCents: p.amountCents, currency: p.currency, plan: paymentTier(p), interval: p.interval ?? null, credits: p.credits ?? null, status: p.status, createdAt: p.createdAt })),
-      checkoutAvailable: personalCheckoutReady(),
-      creditsCheckoutAvailable: creditsCheckoutReady(),
+      checkoutAvailable: personalCheckoutReady(ids),
+      creditsCheckoutAvailable: creditsCheckoutReady(ids),
       testPurchases: testPurchasesAllowed(),
     };
   },
@@ -159,7 +162,7 @@ export const creditAccounts = query({
       if (!seat) continue;
       out.push({ kind: "seat", workspaceId: w.publicId, name: w.name, plan: seat.planLabel, aiIncluded: true, canBuy: seat.canBuy, trialing: false, ...(await creditBalance(ctx, seat)) });
     }
-    return { accounts: out, checkoutAvailable: creditsCheckoutReady(), testPurchases: testPurchasesAllowed() };
+    return { accounts: out, checkoutAvailable: creditsCheckoutReady(await productIds(ctx)), testPurchases: testPurchasesAllowed() };
   },
 });
 
@@ -317,8 +320,9 @@ export const checkout = action({
     await requireIdentity(ctx);
     const planId = personalPlanId(args.plan, args.interval) as PaidPersonalPlanId;
     const me: { profileId: string; email: string; live: boolean; polarSubscriptionId: string | null; planId: string } = await ctx.runQuery(internal.billing.checkoutContext, {});
-    if (!personalCheckoutReady()) fail("maintenance", "Payments aren't set up on this server yet.");
-    const product = productId(planId)!;
+    const ids: ProductIds = await ctx.runQuery(internal.billingSetup.productIds, {});
+    if (!personalCheckoutReady(ids)) fail("maintenance", "Payments aren't set up on this server yet.");
+    const product = productId(ids, planId)!;
     if (me.live && me.polarSubscriptionId) {
       if (me.planId === planId) fail("invalid_argument", "You're already on that plan.");
       await polarPatch(`subscriptions/${me.polarSubscriptionId}`, { product_id: product, proration_behavior: "prorate" });
@@ -338,9 +342,10 @@ export const buyCredits = action({
   handler: async (ctx, args): Promise<{ url: string }> => {
     await requireIdentity(ctx);
     const target: { profileId: string; email: string; workspaceId: string | null } = await ctx.runQuery(internal.billing.creditsCheckoutContext, { scope: args.scope });
-    if (!creditsCheckoutReady()) fail("maintenance", "Payments aren't set up on this server yet.");
+    const ids: ProductIds = await ctx.runQuery(internal.billingSetup.productIds, {});
+    if (!creditsCheckoutReady(ids)) fail("maintenance", "Payments aren't set up on this server yet.");
     const metadata: Record<string, string> = { kind: "credits", profileId: target.profileId, pack: args.pack, ...(target.workspaceId ? { workspaceId: target.workspaceId } : {}) };
-    const url = await createCheckout({ product: productId(args.pack)!, externalCustomerId: target.profileId, email: target.email, metadata, successPath: "/settings/billing?credits=success", returnPath: "/settings/billing" });
+    const url = await createCheckout({ product: productId(ids, args.pack)!, externalCustomerId: target.profileId, email: target.email, metadata, successPath: "/settings/billing?credits=success", returnPath: "/settings/billing" });
     return { url };
   },
 });
@@ -469,7 +474,7 @@ export function statusOf(type: string, raw: unknown): Doc<"subscriptions">["stat
 }
 
 async function applySubscriptionEvent(ctx: MutationCtx, type: string, at: number, o: Record<string, unknown>): Promise<ApplyResult> {
-  const product = productFor(str(o.product_id));
+  const product = productFor(await productIds(ctx), str(o.product_id));
   if (!product || product.kind === "credits") {
     console.warn(JSON.stringify({ event: "billing.webhook_unknown_product", type }));
     return { status: "unmatched" };
@@ -521,7 +526,7 @@ async function applySubscriptionEvent(ctx: MutationCtx, type: string, at: number
 /** A paid order: a credit pack (credits added) or a subscription payment (recorded, keyed by order id). */
 async function applyOrderPaid(ctx: MutationCtx, o: Record<string, unknown>): Promise<ApplyResult> {
   const orderId = str(o.id);
-  const product = productFor(str(o.product_id));
+  const product = productFor(await productIds(ctx), str(o.product_id));
   if (!orderId || !product) {
     console.warn(JSON.stringify({ event: "billing.webhook_unknown_product", type: "order.paid" }));
     return { status: "unmatched" };

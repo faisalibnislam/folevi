@@ -46,16 +46,20 @@ export async function signUp(page: Page, opts: { email: string; name: string; pa
   await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible({ timeout: 20_000 });
 }
 
-/** Opens the emailed confirmation link; the person is signed in and sent to two-step setup. */
+/** Opens the emailed confirmation link; the person is signed in and lands in the app. */
 export async function confirmEmail(page: Page, email: string) {
   const link = await mailboxLink(page.context().request, email, "auth_verify_email");
   await page.goto(link);
-  await page.waitForURL(/\/two-factor\/setup/, { timeout: 20_000 });
+  await page.waitForURL((url) => url.host.startsWith("app.") && !/^\/(signin|signup|verify-email|two-factor|api)/.test(url.pathname), { timeout: 20_000 });
 }
 
-/** Completes required two-step setup (password → scan → code → backup codes) and continues. */
-export async function enrollTwoFactor(page: Page, password = PASSWORD): Promise<{ totpSecret: string; backupCodes: string[] }> {
-  await page.getByLabel("Password", { exact: true }).fill(password);
+/**
+ * Turns on (optional) two-step verification: password → scan → code → backup codes, then continues.
+ * Opens the setup page itself unless `opts.onPage` says it's already showing.
+ */
+export async function enrollTwoFactor(page: Page, opts: { password?: string; onPage?: boolean } = {}): Promise<{ totpSecret: string; backupCodes: string[] }> {
+  if (!opts.onPage) await page.goto(`${APP}/two-factor/setup?returnTo=${encodeURIComponent("/documents")}`);
+  await page.getByLabel("Password", { exact: true }).fill(opts.password ?? PASSWORD);
   await page.getByRole("button", { name: "Continue" }).click();
   const totpSecret = ((await page.getByTestId("totp-secret").textContent({ timeout: 20_000 })) ?? "").replace(/\s/g, "");
   await page.getByLabel("6-digit code").fill(totpCode(totpSecret));
@@ -67,7 +71,7 @@ export async function enrollTwoFactor(page: Page, password = PASSWORD): Promise<
   return { totpSecret, backupCodes };
 }
 
-/** A brand-new, verified account with two-step verification, signed in on `context`. */
+/** A brand-new, verified account with two-step verification turned on, signed in on `context`. */
 export async function createAccount(context: BrowserContext, opts: { name?: string; email?: string } = {}): Promise<{ page: Page; account: Account }> {
   const page = await context.newPage();
   const email = opts.email ?? uniqueEmail();

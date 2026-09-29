@@ -1,4 +1,4 @@
-// Folevi identity: email + password, verified email, and a required authenticator-app second factor,
+// Folevi identity: email + password, verified email, and an optional authenticator-app second factor (required for platform admins),
 // built on Better Auth (docs/AUTH_DECISION.md). Better Auth owns every piece of credential cryptography
 // (password hashing, TOTP secrets, backup codes, session tokens); this file only configures it.
 //

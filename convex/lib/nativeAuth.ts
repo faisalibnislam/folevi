@@ -66,10 +66,8 @@ export function nativeAuth() {
         if (field(ctx.body, "code_challenge_method") !== "S256" || !CHALLENGE_RE.test(challenge)) {
           throw oauthError("invalid_request", "The app sent an invalid sign-in request. Try again from the app.");
         }
-        const user = ctx.context.session.user as { id: string; emailVerified?: boolean; twoFactorEnabled?: boolean | null };
-        const flags = enforcementFlags();
-        if (flags.requireVerifiedEmail && !user.emailVerified) throw oauthError("access_denied", "Verify your email address first.");
-        if (flags.requireMfa && user.twoFactorEnabled !== true) throw oauthError("access_denied", "Turn on two-step verification first.");
+        const user = ctx.context.session.user as { id: string; emailVerified?: boolean };
+        if (enforcementFlags().requireVerifiedEmail && !user.emailVerified) throw oauthError("access_denied", "Verify your email address first.");
 
         const code = generateRandomString(48);
         const record: CodeRecord = { userId: user.id, clientId, redirectUri, challenge };

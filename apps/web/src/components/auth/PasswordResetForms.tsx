@@ -72,7 +72,7 @@ export function ResetPasswordForm({ token, linkError }: { token: string | null; 
   }
   return (
     <>
-      <AuthHeading title="Choose a new password" lede="You'll still need your authenticator app to sign in." />
+      <AuthHeading title="Choose a new password" lede="If you use two-step verification, you'll still need your authenticator app to sign in." />
       <form
         className="space-y-4"
         noValidate

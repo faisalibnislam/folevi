@@ -15,9 +15,9 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
 - Email verification is required: unverified accounts can't sign in (a new link is sent instead),
   confirmation links expire after 24 hours, and the backend rejects tokens without the
   `https://folevi.com/email_verified` claim.
-- Authenticator-app TOTP is required for every account: after confirming the email, the person must set
-  up an authenticator (password → QR code rendered on the device, never by a third-party QR service →
-  code → 10 single-use backup codes) before the app opens. The backend rejects tokens without the
+- Authenticator-app TOTP is optional: anyone can turn it on (password → QR code rendered on the device,
+  never by a third-party QR service → code → 10 single-use backup codes) or off (password) in Settings →
+  Security. Platform admins must have it: admin functions reject tokens without the
   `https://folevi.com/mfa` claim. There is no SMS or email second factor.
 - “Trust this device for 30 days” skips the TOTP step on that browser; signing out, revoking the session
   or changing the password ends it.

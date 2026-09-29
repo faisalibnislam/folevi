@@ -13,8 +13,8 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   },
   {
     icon: "key",
-    title: "Two-step verification, always",
-    body: "Every account uses an authenticator app (TOTP) as a second step, with one-time recovery codes for emergencies.",
+    title: "Two-step verification",
+    body: "Add an authenticator app (TOTP) as a second step whenever you like, with one-time recovery codes for emergencies.",
   },
   {
     icon: "lock",

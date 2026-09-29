@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Security",
   description:
-    "How Folevi protects your account and notes: verified email, required two-step verification, encryption in transit and at rest, private-by-default sharing, full export and account deletion. Plus our subprocessors and how to report a vulnerability.",
+    "How Folevi protects your account and notes: verified email, optional two-step verification, encryption in transit and at rest, private-by-default sharing, full export and account deletion. Plus our subprocessors and how to report a vulnerability.",
   path: "/security",
 });
 
@@ -63,7 +63,7 @@ export default function SecurityPage() {
         <h2 id="summary">In short</h2>
         <ul>
           <li>You verify your email before you can open a workspace.</li>
-          <li>Two-step verification with an authenticator app is required for every account, with one-time recovery codes.</li>
+          <li>You can turn on two-step verification with an authenticator app, with one-time recovery codes. We recommend it.</li>
           <li>Data is encrypted in transit (TLS, with HSTS) and at rest by our hosting providers.</li>
           <li>Nothing is public unless you create a link. Links can expire, require a password, and be revoked instantly.</li>
           <li>You can export everything, and you can delete your account.</li>
@@ -78,10 +78,11 @@ export default function SecurityPage() {
           Before you can open or create a workspace, you confirm that you own your email address. That address is where we
           send security notices, so it has to be real and yours.
         </p>
-        <h3>Two-step verification is required</h3>
+        <h3>Two-step verification</h3>
         <p>
-          Every Folevi account signs in with a second step from an authenticator app, using time-based one-time codes
-          (TOTP). This isn’t optional, and it isn’t something you have to remember to turn on.
+          You can add a second step to signing in: a time-based one-time code (TOTP) from an authenticator app. It’s
+          optional, and we recommend it — with it on, a stolen password alone isn’t enough to get into your account. Turn
+          it on or off any time in Settings → Security.
         </p>
         <p>
           When you set it up, you receive a set of one-time recovery codes. Each code works once, for the moment you lose

@@ -33,7 +33,7 @@ identity service to deploy.
    rate-limited per person, and chosen photos are hotlinked and credited per the Unsplash API
    guidelines. Without it the picker explains that Unsplash isn't set up on this server.
    **Must not be set in production:** `FOLEVI_DEV_MAILBOX_SECRET`, `FOLEVI_AUTH_RATE_LIMIT_SCALE`, and
-   `FOLEVI_REQUIRE_VERIFIED_EMAIL=false` / `FOLEVI_REQUIRE_MFA=false`. `scripts/check-prod-env.mjs`
+   `FOLEVI_REQUIRE_VERIFIED_EMAIL=false`. `scripts/check-prod-env.mjs`
    reads the Convex environment during the Vercel production build and fails it if any of these is
    wrong or a required variable is missing.
 4. Preview deployments: set the same names as project **default environment variables** for previews with
@@ -98,10 +98,11 @@ webhook `https://<deployment>.convex.site/webhooks/loops` and set `LOOPS_WEBHOOK
 3. Vercel production deploy runs automatically (or promote a verified preview).
 4. Verify: `curl -I https://folevi.com` (HSTS, CSP), `https://app.folevi.com/signin` shows Folevi's own
    sign-in page, `https://app.folevi.com/dev/mailbox` returns 404, sign up with a real address →
-   confirmation email arrives (Loops) → authenticator setup and backup codes → onboarding → Welcome
-   document; sign in on a second browser and revoke that session from Settings → Security (it must sign
-   out at once); reset the password by email; `/admin` returns 404 for non-admins; create and revoke a public link; export a page.
+   confirmation email arrives (Loops) → onboarding → Welcome
+   document; turn on two-step verification in Settings → Security (authenticator + backup codes); sign
+   in on a second browser and revoke that session from Settings → Security (it must sign out at once); reset the password by email; `/admin` returns 404 for non-admins; create and revoke a public link; export a page.
 5. Bootstrap the first super admin: `npx convex run --prod admin:bootstrapSuperAdmin '{"email":"…"}'`.
+   That account needs two-step verification on before `/admin` opens.
 6. Recent deployments on the admin dashboard are recorded by CI: the `record-deployment` job in
    `.github/workflows/ci.yml` runs after checks and e2e pass on `main` and calls
    `npx convex run admin:recordDeployment` with the `CONVEX_DEPLOY_KEY` repository secret (the deploy key

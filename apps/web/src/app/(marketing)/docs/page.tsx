@@ -53,7 +53,6 @@ export default function DocsPage() {
           <li>
             <a href={SIGN_UP_URL}>Create an account</a> and confirm your email address.
           </li>
-          <li>Set up two-step verification with an authenticator app and save your recovery codes.</li>
           <li>Your workspace opens. Create a page with the New page button (or ⌘N in the Mac app) and start typing.</li>
           <li>
             Type <code>/</code> on any line to turn it into a heading, checklist, quote or any other block.
@@ -201,7 +200,7 @@ export default function DocsPage() {
         <h2 id="account-security">Account security</h2>
         <ul>
           <li>Email verification is required before you can open a workspace.</li>
-          <li>Two-step verification with an authenticator app (TOTP) is required for every account.</li>
+          <li>Two-step verification with an authenticator app (TOTP) is optional; turn it on in Settings → Security.</li>
           <li>
             When you set up two-step verification you receive one-time recovery codes. Each works once. Store them somewhere
             safe, away from your password.

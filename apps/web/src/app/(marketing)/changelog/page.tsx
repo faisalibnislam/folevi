@@ -43,6 +43,10 @@ const releases = [
           "Folders that show the notes inside them",
         ],
       },
+      {
+        title: "Account",
+        items: ["Two-step verification is now optional: turn it on or off anytime in Settings → Security"],
+      },
     ],
   },
   {

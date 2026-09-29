@@ -35,7 +35,9 @@ async function createAccount(page) {
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByRole("heading", { name: "Check your inbox" }).waitFor({ timeout: 20_000 });
   await page.goto(await mailboxLink(page.context().request, email));
-  await page.waitForURL(/\/two-factor\/setup/, { timeout: 20_000 });
+  await page.waitForURL((url) => !/\/(signup|verify-email)/.test(url.pathname), { timeout: 20_000 });
+  // Two-step verification is optional; the visual account turns it on so it matches real sign-ins.
+  await page.goto(`${APP}/two-factor/setup?returnTo=%2Fdocuments`);
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Continue" }).click();
   const secret = ((await page.getByTestId("totp-secret").textContent({ timeout: 20_000 })) ?? "").replace(/\s/g, "");

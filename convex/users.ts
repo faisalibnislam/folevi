@@ -67,9 +67,8 @@ export const me = query({
     if (!identity) return { state: "signed_out" as const };
     try {
       assertIdentityClaims(identity);
-    } catch (e) {
-      const code = (e as { data?: { code?: string } }).data?.code;
-      return { state: (code === "mfa_required" ? "mfa_required" : "email_unverified") as "mfa_required" | "email_unverified" };
+    } catch {
+      return { state: "email_unverified" as const };
     }
     const sessionId = sessionIdOf(identity);
     if (!sessionId || !(await findActiveSession(ctx, sessionId))) return { state: "session_revoked" as const };

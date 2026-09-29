@@ -29,7 +29,7 @@ export default function TermsPage() {
   return (
     <>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="28 September 2026" />
+        <DraftNotice updated="29 September 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
@@ -49,7 +49,7 @@ export default function TermsPage() {
         <h2 id="account">Your account</h2>
         <ul>
           <li>Give us an email address you control, and keep your sign-in details and recovery codes safe.</li>
-          <li>Two-step verification is required; please don’t try to get around it.</li>
+          <li>We strongly recommend turning on two-step verification in Settings → Security.</li>
           <li>You’re responsible for what happens under your account. Tell us promptly if you think it has been compromised.</li>
         </ul>
 

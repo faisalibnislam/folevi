@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, ShieldOff } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -68,13 +68,33 @@ function PasswordGate({
 
 function TwoStepCard() {
   const toast = useToast();
-  const [gate, setGate] = useState<"codes" | "key" | null>(null);
+  const { data: session, isPending } = authClient.useSession();
+  const enabled = (session?.user as { twoFactorEnabled?: boolean | null } | undefined)?.twoFactorEnabled === true;
+  const [gate, setGate] = useState<"codes" | "key" | "off" | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
   const [totpUri, setTotpUri] = useState<string | null>(null);
+  if (isPending) return <Card title="Two-step verification">{null}</Card>;
+  if (!enabled) {
+    return (
+      <Card
+        title="Two-step verification"
+        description="Optional. When it's on, signing in on a new device needs a code from your authenticator app as well as your password, so a stolen password isn't enough."
+      >
+        <p className="flex items-center gap-2 text-sm font-medium text-muted">
+          <ShieldOff size={16} aria-hidden /> Off
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button variant="primary" onClick={() => window.location.assign(`/two-factor/setup?returnTo=${encodeURIComponent("/settings/security")}`)}>
+            Turn on two-step verification
+          </Button>
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card
       title="Two-step verification"
-      description="Folevi asks for a code from your authenticator app every time you sign in on a new device. It's required for every account and can't be turned off."
+      description="Folevi asks for a code from your authenticator app every time you sign in on a new device."
     >
       <p className="flex items-center gap-2 text-sm font-medium text-success">
         <ShieldCheck size={16} aria-hidden /> On — authenticator app
@@ -86,7 +106,22 @@ function TwoStepCard() {
       <div className="mt-4 flex flex-wrap gap-2">
         <Button onClick={() => setGate("key")}>Move to a new authenticator app</Button>
         <Button onClick={() => setGate("codes")}>Get new backup codes</Button>
+        <Button onClick={() => setGate("off")}>Turn off</Button>
       </div>
+      <PasswordGate
+        open={gate === "off"}
+        title="Turn off two-step verification?"
+        description="Signing in will only need your password. Your authenticator entry and backup codes stop working; you can turn it on again at any time."
+        action="Turn off"
+        onClose={() => setGate(null)}
+        onConfirm={async (password) => {
+          const { error } = await authClient.twoFactor.disable({ password });
+          if (error) return authErrorMessage(error);
+          setGate(null);
+          toast.show("Two-step verification is off", { tone: "success" });
+          return null;
+        }}
+      />
       <PasswordGate
         open={gate === "codes"}
         title="New backup codes"

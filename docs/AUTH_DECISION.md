@@ -19,8 +19,9 @@ Folevi runs its own accounts on **Better Auth inside Convex**, with exactly thes
 
 1. **Email + password only.** No social sign-in, magic links, passkeys or anonymous accounts.
 2. **A confirmed email address** before first sign-in.
-3. **A required authenticator-app second step (TOTP)**, set up before the app can be used, with
-   single-use backup codes. No SMS or email codes.
+3. **An optional authenticator-app second step (TOTP)** with single-use backup codes, turned on or off
+   in Settings → Security; required only for the admin console. No SMS or email codes. (Until
+   2026-09-29 it was mandatory for every account; the account owner made it optional.)
 
 The account owner chose this set of methods. Given that set, an external identity provider was mostly
 cost: it added a vendor and a subprocessor holding password hashes, a second place where email was
@@ -55,11 +56,11 @@ Alternatives: keeping Auth0 (rejected for the reasons above) and writing the acc
 | Area | Behavior |
 | --- | --- |
 | Sign-up | Name, email, password (10–128 characters). Sends a confirmation email; does not sign in. Admins can pause sign-ups (`new_signups` flag). |
-| Email confirmation | Required. Links expire after 24 hours; confirming signs the person in and continues to authenticator setup. Signing in unconfirmed sends a fresh link. |
-| Two-step setup | Mandatory before using the app (`/two-factor/setup`): password → QR code rendered on the device (the `qrcode` library, never a third-party QR service) plus the manual key → a code from the app → 10 backup codes to save. |
-| Sign-in | Password, then a 6-digit authenticator code or a backup code. “Trust this device for 30 days” is optional. |
-| Password reset | By email (`/forgot-password` → `/reset-password`); link valid 1 hour, single use; ends every session of the account. Two-step verification stays on. |
-| Settings → Security | New backup codes and “move to a new authenticator app” (both password-gated), change password (ends every other session), list of sessions with “sign out” per device and for all others. |
+| Email confirmation | Required. Links expire after 24 hours; confirming signs the person in and opens the app. Signing in unconfirmed sends a fresh link. |
+| Two-step setup | Optional, from Settings → Security (`/two-factor/setup`, with a “Not now” link); required before the admin console opens: password → QR code rendered on the device (the `qrcode` library, never a third-party QR service) plus the manual key → a code from the app → 10 backup codes to save. |
+| Sign-in | Password; then, if two-step verification is on, a 6-digit authenticator code or a backup code. “Trust this device for 30 days” is optional. |
+| Password reset | By email (`/forgot-password` → `/reset-password`); link valid 1 hour, single use; ends every session of the account. Two-step verification, if on, stays on. |
+| Settings → Security | Turn two-step verification on, or off (password-gated); new backup codes and “move to a new authenticator app” (both password-gated), change password (ends every other session), list of sessions with “sign out” per device and for all others. |
 | Sessions | HTTP-only cookie with the `folevi` prefix, first-party on `app.folevi.com` via the `/api/auth/*` proxy; rolling 14 days, refreshed at most daily. Convex tokens last 15 minutes and carry `sessionId`, `https://folevi.com/email_verified` and `https://folevi.com/mfa`. |
 | Admin | `convex/identity.ts`: end all sessions, resend confirmation, send a password reset, block (suspension also ends sessions), delete credentials at the end of account deletion. Each writes an audit row when triggered from the console. |
 | Migration | `users.bootstrap` re-links a profile created under Auth0 (or the old local development sign-in) to the new account by **verified** email, so existing workspaces carry over. |
@@ -96,11 +97,12 @@ suspension).
 - **Credentials:** scrypt password hashes; TOTP secrets and backup codes encrypted at rest with a key
   derived from `BETTER_AUTH_SECRET`; confirmation and reset tokens are single-use and expire (24 h and
   1 h).
-- **Required factors, enforced by the backend:** `requireProfile` rejects tokens without the verified-
-  email and MFA claims, regardless of what the UI does. If the second step were ever turned off for an
-  account (Better Auth's endpoint for that needs the password), the MFA claim disappears and every call
-  is refused until it is set up again. `FOLEVI_REQUIRE_VERIFIED_EMAIL=false` / `FOLEVI_REQUIRE_MFA=false`
-  exist for automated tests only; the production build check fails if either is set.
+- **Factors enforced by the backend:** `requireProfile` rejects tokens without the verified-email claim,
+  regardless of what the UI does. The MFA claim (`twoFactorEnabled`) is optional for everyone except
+  platform admins: `requirePlatformRole` refuses admin functions with `mfa_required` when it's missing
+  (checked after the role, so non-admins still see `not_found`), and `/admin` sends such an admin to
+  `/two-factor/setup`. `FOLEVI_REQUIRE_VERIFIED_EMAIL=false` exists for automated tests only; the
+  production build check fails if it is set.
 - **Brute force:** per-IP limits stored in the database, so they hold across Convex instances (5
   sign-ins per minute, 5 sign-ups per hour, 5 two-step codes per minute, 3 reset requests per hour, 3
   confirmation resends per 5 minutes, among others; `rateLimitRules()`). Each sign-in challenge allows 5
@@ -126,8 +128,9 @@ suspension).
 
 ## Threat notes
 
-- **Stolen password:** not enough on its own; the attacker also needs the authenticator or a backup
-  code. Reset emails go only to the account's confirmed address.
+- **Stolen password:** enough on its own for an account without two-step verification (which is
+  optional); with it on, the attacker also needs the authenticator or a backup code. Reset emails go
+  only to the account's confirmed address. A breached-password check is not built yet.
 - **Phishing:** TOTP codes can be phished in real time; passkeys would close this (not built yet).
 - **Stolen session cookie:** HTTP-only (not readable by script), and ended from Settings or by an admin
   with immediate effect. There is no device binding.

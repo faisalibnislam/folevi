@@ -59,7 +59,6 @@ export function claimsOf(identity: UserIdentity): VerifiedClaims {
 export function enforcementFlags() {
   return {
     requireVerifiedEmail: process.env.FOLEVI_REQUIRE_VERIFIED_EMAIL !== "false",
-    requireMfa: process.env.FOLEVI_REQUIRE_MFA !== "false",
   };
 }
 
@@ -69,12 +68,14 @@ export async function requireIdentity(ctx: { auth: Ctx["auth"] }): Promise<UserI
   return identity;
 }
 
-/** Enforces the verified-email and TOTP requirements carried as signed claims in the identity token. */
+/**
+ * Enforces the verified-email requirement carried as a signed claim in the identity token. Two-step
+ * verification is optional for everyone except platform admins (see requirePlatformRole).
+ */
 export function assertIdentityClaims(identity: UserIdentity): VerifiedClaims {
   const claims = claimsOf(identity);
   const flags = enforcementFlags();
   if (flags.requireVerifiedEmail && !claims.emailVerified) fail("email_unverified", "Verify your email address to continue.");
-  if (flags.requireMfa && !claims.mfa) fail("mfa_required", "Two-step verification is required.");
   return claims;
 }
 
@@ -238,6 +239,10 @@ export async function requirePlatformRole(ctx: Ctx, roles: PlatformRole[]): Prom
     // Admin endpoints look like they don't exist to everyone else.
     fail("not_found", "Not found.");
   }
+  // Two-step verification is optional for accounts, but the admin console always requires it. Checked
+  // after the role so nobody else learns that an admin area exists.
+  const identity = await requireIdentity(ctx);
+  if (!claimsOf(identity).mfa) fail("mfa_required", "Turn on two-step verification to use the admin console.");
   return profile;
 }
 

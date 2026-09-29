@@ -30,7 +30,7 @@ if (env === "production") {
       for (const k of ["FOLEVI_DEV_MAILBOX_SECRET", "FOLEVI_AUTH_RATE_LIMIT_SCALE"]) {
         if (get(k) && get(k) !== "none") problems.push(`Convex ${k} must not be set in production.`);
       }
-      for (const k of ["FOLEVI_REQUIRE_VERIFIED_EMAIL", "FOLEVI_REQUIRE_MFA"]) {
+      for (const k of ["FOLEVI_REQUIRE_VERIFIED_EMAIL"]) {
         if (get(k) === "false") problems.push(`Convex ${k}=false disables a required protection; remove it in production.`);
       }
     } catch {

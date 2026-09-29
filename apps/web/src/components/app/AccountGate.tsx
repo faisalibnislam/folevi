@@ -49,11 +49,6 @@ export function AccountGate() {
     bootstrap({ timeZone, locale: (navigator.language || "en").slice(0, 5) }).catch((e) => setBootError(errorMessage(e)));
   }, [me?.state, bootstrap]);
 
-  // Every account must finish two-step verification setup before using Folevi.
-  useEffect(() => {
-    if (me?.state === "mfa_required") window.location.replace(`/two-factor/setup?returnTo=${encodeURIComponent(currentPath())}`);
-  }, [me?.state]);
-
   // The server says there is no session (signed out elsewhere, revoked, expired): go sign in. Work
   // written offline stays on this device and syncs after signing back in to the same account.
   useEffect(() => {
@@ -122,8 +117,6 @@ export function AccountGate() {
           </div>
         </FullPageMessage>
       );
-    case "mfa_required":
-      return <FullPageMessage title="Setting up two-step verification…" busy />;
     case "suspended":
       return (
         <FullPageMessage title="This account is suspended" body="If you think this is a mistake, write to support@folevi.com from the address on your account.">

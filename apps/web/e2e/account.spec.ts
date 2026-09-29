@@ -5,6 +5,7 @@ import {
   completeOnboarding,
   confirmEmail,
   createAccount,
+  enrollTwoFactor,
   mailboxLink,
   newPersonWithWorkspace,
   signIn,
@@ -21,18 +22,34 @@ test("sign-up requires a confirmed email before signing in", async ({ page }) =>
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Verify your email address first" })).toBeVisible();
-  // Signing in unverified re-sends the link; confirming it continues to two-step setup.
+  // Signing in unverified re-sends the link; confirming it signs them straight in (no two-step setup).
   await confirmEmail(page, email);
-  await expect(page.getByRole("heading", { name: "Protect your account" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Protect your account" })).toHaveCount(0);
 });
 
-test("an account without two-step verification can't use the app until it's set up", async ({ page }) => {
+test("two-step verification is optional: use Folevi without it, turn it on and off in Settings", async ({ page }) => {
   const email = uniqueEmail("nomfa");
   await signUp(page, { email, name: "No Second Factor" });
   await confirmEmail(page, email);
-  await page.goto(`${APP}/documents`);
-  await page.waitForURL(/\/two-factor\/setup/);
+  await completeOnboarding(page);
+
+  await page.goto(`${APP}/settings/security`);
+  await expect(page.getByText("Off", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Turn on two-step verification" }).click();
   await expect(page.getByRole("heading", { name: "Protect your account" })).toBeVisible();
+  await page.getByRole("link", { name: "Not now" }).click();
+  await page.waitForURL(/\/settings\/security/);
+
+  await page.getByRole("button", { name: "Turn on two-step verification" }).click();
+  await enrollTwoFactor(page, { onPage: true });
+  await page.waitForURL(/\/settings\/security/);
+  await expect(page.getByText("On — authenticator app")).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole("button", { name: "Turn off" }).click();
+  const dialog = page.getByRole("dialog", { name: "Turn off two-step verification?" });
+  await dialog.getByLabel("Current password").fill(PASSWORD);
+  await dialog.getByRole("button", { name: "Turn off" }).click();
+  await expect(page.getByText("Off", { exact: true })).toBeVisible({ timeout: 20_000 });
 });
 
 test("signed-out visitors are sent to sign in, and product URLs keep their return path", async ({ page }) => {

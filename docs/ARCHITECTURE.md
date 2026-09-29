@@ -45,7 +45,7 @@ safe for the service worker to keep a copy for offline boot.
   Why this replaced Auth0, and the security properties and known gaps: `docs/AUTH_DECISION.md`.
 - Methods: email + password only (10–128 characters), a confirmed email address (links valid 24 h; the
   person is signed in after confirming), password reset by email (link valid 1 h; resetting ends every
-  other session) and a **required** authenticator-app second step (TOTP, 10 single-use backup codes,
+  other session) and an **optional** authenticator-app second step (TOTP, 10 single-use backup codes,
   optional “trust this device” for 30 days). There is no social sign-in, passkey or passwordless sign-in.
 - Routes: `convex/http.ts` registers the Better Auth routes on the Convex site URL; the Next.js route
   `apps/web/src/app/api/auth/[...all]/route.ts` proxies `/api/auth/*` to it, so the session cookie
@@ -55,7 +55,8 @@ safe for the service worker to keep a copy for offline boot.
   (`lib/convex/provider.tsx` fetches them for the Convex client). Besides `sub` they carry `sessionId`,
   `https://folevi.com/email_verified` and `https://folevi.com/mfa`. `convex/auth.config.ts` trusts
   only this issuer (issuer, audience `convex`, expiry and signature against the published JWKS).
-- `lib/auth.ts` (`requireProfile`) requires the verified-email and MFA claims, then checks that the
+- `lib/auth.ts` (`requireProfile`) requires the verified-email claim (the MFA claim only for platform
+  admins, in `requirePlatformRole`), then checks that the
   **Better Auth session behind the token still exists** (`requireActiveSession`), and rejects
   suspended/deleted profiles. Because live queries read the session row, signing out, revoking a
   session, changing or resetting the password and admin suspension take effect on the very next call

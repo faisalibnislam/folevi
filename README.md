@@ -11,7 +11,7 @@ and as a fully native Mac app.
 | Admin console | `app.folevi.com/admin` → `apps/web/src/app/admin` | Next.js |
 | Native Mac app | `apps/macos` | Swift 6, SwiftUI + AppKit, Convex Swift client, SQLite |
 | Backend | `convex/` | Convex (queries, mutations, actions, crons, HTTP) |
-| Identity | Built-in accounts: Better Auth inside Convex (email + password, verified email, authenticator-app 2FA) | `convex/auth.ts`, `convex/betterAuth` |
+| Identity | Built-in accounts: Better Auth inside Convex (email + password, verified email, optional authenticator-app 2FA) | `convex/auth.ts`, `convex/betterAuth` |
 | Transactional email | Loops | `packages/email` |
 
 Shared packages: `packages/editor-schema` (canonical block schema → TypeScript, Swift, JSON Schema;
@@ -50,7 +50,7 @@ identity emails (email confirmation, password reset) are not sent: they are capt
 **development mailbox** at http://app.localhost:3000/dev/mailbox, which `scripts/setup-local.mjs`
 enables with a random `FOLEVI_DEV_MAILBOX_SECRET`. The mailbox never exists in production (the Convex
 query refuses when `FOLEVI_ENV=production`, and the production build fails if the secret is set).
-Every account must set up an authenticator app (TOTP) before it can use the app.
+Two-step verification (TOTP) is optional for accounts, but the admin console requires it.
 
 Make yourself a platform super admin (local): create an account and sign in once, then
 

@@ -14,7 +14,7 @@ export function SignInForm({ returnTo, notice }: { returnTo?: string; notice?: s
 
   return (
     <>
-      <AuthHeading title="Welcome back" lede="Sign in with your email, password and authenticator app." />
+      <AuthHeading title="Welcome back" lede="Sign in with your email and password." />
       {notice ? (
         <div className="mb-4">
           <Alert tone="success">{notice}</Alert>
@@ -36,7 +36,7 @@ export function SignInForm({ returnTo, notice }: { returnTo?: string; notice?: s
           const { data, error: err } = await authClient.signIn.email({
             email: email.trim(),
             password,
-            callbackURL: `/two-factor/setup?returnTo=${encodeURIComponent(destination)}`,
+            callbackURL: destination,
           });
           if (err) {
             setBusy(false);
@@ -49,8 +49,7 @@ export function SignInForm({ returnTo, notice }: { returnTo?: string; notice?: s
             window.location.assign(`/two-factor?returnTo=${encodeURIComponent(destination)}`);
             return;
           }
-          // No second factor yet: every account must enroll one before using Folevi.
-          window.location.assign(`/two-factor/setup?returnTo=${encodeURIComponent(destination)}`);
+          window.location.assign(destination);
         }}
       >
         {error ? <Alert>{error}</Alert> : null}

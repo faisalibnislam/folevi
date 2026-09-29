@@ -65,7 +65,7 @@ export const resendVerificationEmail = internalAction({
     if (!user) return await report(ctx, args, "identity.resend_verification", { ok: false, code: "no_identity" });
     if (user.emailVerified) return await report(ctx, args, "identity.resend_verification", { ok: false, code: "already_verified" });
     try {
-      await createAuth(ctx).api.sendVerificationEmail({ body: { email: user.email, callbackURL: `${siteUrl()}/two-factor/setup` } });
+      await createAuth(ctx).api.sendVerificationEmail({ body: { email: user.email, callbackURL: `${siteUrl()}/documents` } });
       return await report(ctx, args, "identity.resend_verification", { ok: true, code: "sent" });
     } catch {
       return await report(ctx, args, "identity.resend_verification", { ok: false, code: "send_failed" });

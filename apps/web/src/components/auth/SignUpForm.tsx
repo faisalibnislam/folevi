@@ -28,7 +28,7 @@ export function SignUpForm() {
 
   return (
     <>
-      <AuthHeading title="Start writing" lede="Create your Folevi account. You'll confirm your email and set up an authenticator app — it takes about a minute." />
+      <AuthHeading title="Start writing" lede="Create your Folevi account. We'll email you a link to confirm your address." />
       <form
         className="space-y-4"
         noValidate
@@ -49,7 +49,7 @@ export function SignUpForm() {
             name: name.trim().slice(0, 80),
             email: trimmedEmail,
             password,
-            callbackURL: "/two-factor/setup",
+            callbackURL: "/documents",
           });
           setBusy(false);
           // An address that already has an account gets the same answer (no account enumeration).

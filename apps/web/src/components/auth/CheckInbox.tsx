@@ -35,7 +35,7 @@ export function CheckInbox({ email: initialEmail }: { email?: string }) {
           if (busy || !email.trim()) return;
           setBusy(true);
           setMessage(null);
-          const { error } = await authClient.sendVerificationEmail({ email: email.trim(), callbackURL: "/two-factor/setup" });
+          const { error } = await authClient.sendVerificationEmail({ email: email.trim(), callbackURL: "/documents" });
           setBusy(false);
           if (error && error.status === 429) setMessage({ tone: "error", text: authErrorMessage(error) });
           else setMessage({ tone: "success", text: "If that address has an account waiting for confirmation, a new link is on its way." });

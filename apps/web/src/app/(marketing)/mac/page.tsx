@@ -145,7 +145,7 @@ export default function MacPage() {
                 {[
                   ["macOS", "macOS 15 or later"],
                   ["Best on", "macOS 26, with Liquid Glass"],
-                  ["Account", "A Folevi account with two-step verification"],
+                  ["Account", "A Folevi account"],
                   ["Availability", "Coming soon — we’ll email your account when it’s ready"],
                 ].map(([term, detail], index) => (
                   <div key={term} className={cx("grid gap-1 py-4 sm:grid-cols-[110px_1fr] sm:gap-4", index > 0 && "border-t mk-hair")}>

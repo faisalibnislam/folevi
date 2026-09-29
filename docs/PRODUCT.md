@@ -15,7 +15,7 @@ This page describes what exists in this repository today, what has been verified
 | Admin console (`app.folevi.com/admin`) | Built: server-enforced platform roles, append-only audit log, no content viewer (`docs/ADMIN.md`). |
 | Native Mac app (`apps/macos`) | Built, unit- and UI-tested against the local backend (`docs/MACOS.md`). **Sign-in does not work at the moment:** the app still contains code for the previous identity provider (Auth0) and will move to Authorization Code + PKCE against Folevi's own accounts after the web app is finalized. |
 | Backend (Convex) | Built; integration tests run against `convex-test`, end-to-end tests against a local backend. |
-| Identity (built-in accounts) | Better Auth running inside Convex: email + password, confirmed email, required authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). Works locally and in the end-to-end suite, with identity emails captured in the development mailbox. **Not yet run on a production deployment.** |
+| Identity (built-in accounts) | Better Auth running inside Convex: email + password, confirmed email, optional authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). Works locally and in the end-to-end suite, with identity emails captured in the development mailbox. **Not yet run on a production deployment.** |
 | Email (Loops) | Manifest, 11 templates (including confirmation and password reset for built-in accounts), sender, webhook verification and tests are written. **No real email has been sent.** |
 | Production deployment | **Not deployed.** `docs/DEPLOYMENT.md` lists the account steps. |
 
@@ -64,10 +64,10 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   the web; Markdown, HTML and PDF export on the Mac.
 
 ### Account and security
-- Built-in accounts: email and password only, confirmed email and authenticator-app two-step
-  verification required (set up before first use, with 10 single-use backup codes and an optional
-  30-day “trust this device”), password reset by email, password change, new backup codes and moving to
-  a new authenticator in Settings → Security, session list with instant revocation, account deletion
+- Built-in accounts: email and password only, confirmed email, and optional authenticator-app two-step
+  verification (turned on or off in Settings → Security, with 10 single-use backup codes and an optional
+  30-day “trust this device”; required for the admin console), password reset by email, password
+  change, new backup codes and moving to a new authenticator in Settings → Security, session list with instant revocation, account deletion
   with a 7-day grace period (`docs/SECURITY.md`, `docs/AUTH_DECISION.md`).
 - No third-party analytics or trackers.
 

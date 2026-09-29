@@ -30,14 +30,25 @@ describe("accounts", () => {
     expect(templates.page.map((d) => d.title)).toContain("Weekly Reset");
   });
 
-  test("unverified email and missing MFA are rejected by every protected function", async () => {
+  test("unverified email is rejected by every protected function", async () => {
     const t = setup();
     const unverified = t.withIdentity(identity("u@example.com", { emailVerified: false, "https://folevi.com/email_verified": false }));
     expect((await unverified.query(api.users.me, {})).state).toBe("email_unverified");
     await expect(unverified.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" })).rejects.toThrow(/email_unverified/);
-    const noMfa = t.withIdentity(identity("m@example.com", { "https://folevi.com/mfa": false }));
-    expect((await noMfa.query(api.users.me, {})).state).toBe("mfa_required");
-    await expect(noMfa.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" })).rejects.toThrow(/mfa_required/);
+  });
+
+  test("two-step verification is optional, except for the admin console", async () => {
+    const t = setup();
+    const noMfa = await signedIn(t, "m@example.com", { "https://folevi.com/mfa": false });
+    await noMfa.as.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" });
+    expect((await noMfa.as.query(api.users.me, {})).state).toBe("ready");
+    // Without a role the admin console still looks like it doesn't exist.
+    await expect(noMfa.as.query(api.admin.whoami, {})).rejects.toThrow(/not_found/);
+    await t.run(async (ctx) => {
+      const p = (await ctx.db.query("profiles").collect()).find((x) => x.email === "m@example.com")!;
+      await ctx.db.patch(p._id, { platformRole: "support_admin" });
+    });
+    await expect(noMfa.as.query(api.admin.whoami, {})).rejects.toThrow(/mfa_required/);
   });
 
   test("signed-out callers get nothing", async () => {

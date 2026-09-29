@@ -202,7 +202,7 @@ export function TotpEnrollment({ totpUri }: { totpUri: string }) {
   );
 }
 
-/** Required enrollment: confirm password → scan → confirm a code → save backup codes. */
+/** Optional enrollment (Settings → Security; required before the admin console): confirm password → scan → confirm a code → save backup codes. */
 export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
   const destination = safeReturnTo(returnTo);
   const { data: session, isPending } = authClient.useSession();
@@ -238,7 +238,7 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
         <>
           <AuthHeading
             title="Protect your account"
-            lede="Folevi requires an authenticator app for every account. First, confirm your password."
+            lede="Turn on two-step verification so a code from your authenticator app is needed as well as your password. First, confirm your password."
           />
           <form
             className="space-y-4"
@@ -292,7 +292,14 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
           <BackupCodes codes={enrollment.backupCodes} onDone={() => window.location.assign(destination)} doneLabel="Continue to Folevi" />
         </>
       ) : null}
-      <p className="mt-6 text-sm text-muted">
+      {step !== "codes" ? (
+        <p className="mt-6 text-sm text-muted">
+          <a href={destination} className="font-medium text-accent underline underline-offset-2">
+            {step === "password" ? "Not now" : "Cancel"}
+          </a>
+        </p>
+      ) : null}
+      <p className="mt-3 text-sm text-muted">
         Signed in as {user?.email}.{" "}
         <button
           type="button"

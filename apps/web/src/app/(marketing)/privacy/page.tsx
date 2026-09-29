@@ -29,7 +29,7 @@ export default function PrivacyPage() {
   return (
     <>
       <PageHeader eyebrow="Legal" title="Privacy policy" lede="How Folevi handles your information, written to be read.">
-        <DraftNotice updated="28 September 2026" />
+        <DraftNotice updated="29 September 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="short">The short version</h2>
@@ -46,7 +46,7 @@ export default function PrivacyPage() {
         <p>
           Your email address, a display name and profile picture if you choose them, and what’s needed to sign you in
           securely: a one-way hash of your password (never the password itself), your two-step verification setup and
-          recovery codes (stored protected), and the devices you’re signed in on.
+          recovery codes if you turn it on (stored protected), and the devices you’re signed in on.
         </p>
         <h3>Your content</h3>
         <p>
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
         <h2 id="use">How we use it</h2>
         <ul>
           <li>To provide Folevi: store, sync, search, share and export your content as you ask.</li>
-          <li>To keep your account secure: verify your email, require two-step verification, detect abuse.</li>
+          <li>To keep your account secure: verify your email, offer two-step verification, detect abuse.</li>
           <li>To send you service emails, such as verification, security notices and share invitations.</li>
           <li>To run your plan: apply its storage, device and AI limits, and bill paid plans.</li>
           <li>When you ask it to, to answer with the AI Assistant (below).</li>
@@ -157,7 +157,7 @@ export default function PrivacyPage() {
 
         <h2 id="security">Security</h2>
         <p>
-          Data is encrypted in transit and at rest by our hosting providers, and every account uses two-step verification.
+          Data is encrypted in transit and at rest by our hosting providers, and you can add two-step verification to your account.
           Folevi is not end-to-end encrypted. The details are on the <Link href="/security">Security</Link> page.
         </p>
 

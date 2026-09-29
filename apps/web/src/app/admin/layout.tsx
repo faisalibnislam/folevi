@@ -20,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!(await hasSessionCookie())) redirect(`/signin?returnTo=${encodeURIComponent("/admin")}`);
 
   let rejected = false;
+  let needsTwoStep = false;
   try {
     const token = await getToken();
     if (!token) rejected = true;
@@ -27,8 +28,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   } catch (error) {
     // An application error (not_found, suspended, profile_missing…) means "not an admin".
     // Transport errors fall through to the client gate, which fails closed on its own.
-    if (error instanceof ConvexError) rejected = true;
+    if (error instanceof ConvexError) {
+      // Only an admin gets `mfa_required` (it's checked after the role): send them to turn it on.
+      if ((error.data as { code?: string } | undefined)?.code === "mfa_required") needsTwoStep = true;
+      else rejected = true;
+    }
   }
+  if (needsTwoStep) redirect(`/two-factor/setup?returnTo=${encodeURIComponent("/admin")}`);
   if (rejected) notFound();
 
   return <AdminApp>{children}</AdminApp>;

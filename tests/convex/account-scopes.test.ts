@@ -311,8 +311,8 @@ describe("AI usage is recorded per scope (20, 21)", () => {
     expect(rows.find((r) => r.scope === "personal")).toMatchObject({ count: 2 });
     expect(rows.find((r) => r.scope === "personal")!.workspaceId).toBeUndefined();
     expect(rows.find((r) => r.scope === "workspace")).toMatchObject({ count: 1, workspaceId: teamDbId });
-    // The Personal billing page counts Personal only (and older rows without a scope, which were all Personal).
-    await t.run(async (ctx) => ctx.db.insert("aiUsage", { profileId: a.profileId as Id<"profiles">, day: new Date().toISOString().slice(0, 10), count: 5 }));
+    // The Personal billing page counts Personal requests only.
+    await t.run(async (ctx) => ctx.db.insert("aiUsage", { profileId: a.profileId as Id<"profiles">, day: new Date().toISOString().slice(0, 10), count: 5, scope: "personal" }));
     expect((await a.as.query(api.billing.mine, {})).aiRequestsThisMonth).toBe(7);
   });
 });

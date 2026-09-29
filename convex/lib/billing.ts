@@ -1,7 +1,7 @@
 // Billing rows: a person's Personal subscription and a team workspace's subscription live in the same
 // `subscriptions` table (and their payments in `payments`), with exactly one owner each:
 //
-//   ownerType "user"      → profileId set, workspaceId unset (rows from before workspace billing: no ownerType)
+//   ownerType "user"      → profileId set, workspaceId unset
 //   ownerType "workspace" → workspaceId set, profileId unset
 //
 // Every subscription and payment row is inserted here (tests/convex/static checks nothing else inserts into
@@ -23,7 +23,7 @@ export type PersonalSubscription = Doc<"subscriptions"> & { profileId: Id<"profi
 export type WorkspaceSubscription = Doc<"subscriptions"> & { workspaceId: Id<"workspaces">; planId: WorkspacePlanId; ownerType: "workspace" };
 
 export const isWorkspaceSubscription = (s: Doc<"subscriptions">): s is WorkspaceSubscription => s.ownerType === "workspace" && s.workspaceId !== undefined && s.planId !== undefined;
-export const isPersonalSubscription = (s: Doc<"subscriptions">): s is PersonalSubscription => s.ownerType !== "workspace" && s.profileId !== undefined && s.plan !== undefined;
+export const isPersonalSubscription = (s: Doc<"subscriptions">): s is PersonalSubscription => s.ownerType === "user" && s.profileId !== undefined && s.plan !== undefined;
 
 /** A Personal payment row (basic or pro, for a person). */
 export type PersonalPayment = Doc<"payments"> & { profileId: Id<"profiles">; plan: "basic" | "pro" };

@@ -143,68 +143,8 @@ export const startBillingForExistingUsers = internalMutation({
 // workspace, roles are owner | admin | member); these finish removing what only the old model needed.
 // Each is batched, continues itself and is idempotent (rows already done are skipped).
 //
-//   npx convex run --deployment <prod> migrations:dropWorkspaceKind         unsets workspaces.kind
-//   npx convex run --deployment <prod> migrations:backfillAccountDefaults   sets subscriptions.ownerType
-//                                                                             and aiUsage.scope explicitly
 //   npx convex run --deployment <prod> migrations:refreshLinkingPages       re-derives text of linking pages
 // ---------------------------------------------------------------------------------------------------
-
-const CLEANUP_PAGE = 200;
-
-/**
- * Unsets `kind` on every workspace (every workspace is a team workspace; nothing reads the field). Once
- * it has finished in production, `kind` is deleted from the schema.
- */
-export const dropWorkspaceKind = internalMutation({
-  args: { cursor: v.optional(v.union(v.string(), v.null())) },
-  handler: async (ctx, args): Promise<{ updated: number; done: boolean }> => {
-    const page = await ctx.db.query("workspaces").paginate({ cursor: args.cursor ?? null, numItems: CLEANUP_PAGE });
-    let updated = 0;
-    for (const w of page.page) {
-      if (w.kind === undefined) continue;
-      await ctx.db.patch(w._id, { kind: undefined });
-      updated++;
-    }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.dropWorkspaceKind, { cursor: page.continueCursor });
-    if (updated) console.log(JSON.stringify({ event: "migration.workspace_kind_dropped", updated }));
-    return { updated, done: page.isDone };
-  },
-});
-
-/**
- * Writes out the defaults older rows leave unset, so the fields can become required: `subscriptions.ownerType`
- * (unset = "user"; a row with a workspace is "workspace") and `aiUsage.scope` (unset = "personal"; a row
- * with a workspace is "workspace"). Runs subscriptions, then aiUsage.
- */
-export const backfillAccountDefaults = internalMutation({
-  args: { table: v.optional(v.union(v.literal("subscriptions"), v.literal("aiUsage"))), cursor: v.optional(v.union(v.string(), v.null())) },
-  handler: async (ctx, args): Promise<{ table: string; updated: number; done: boolean }> => {
-    const table = args.table ?? "subscriptions";
-    let updated = 0;
-    let page: { isDone: boolean; continueCursor: string };
-    if (table === "subscriptions") {
-      const rows = await ctx.db.query("subscriptions").paginate({ cursor: args.cursor ?? null, numItems: CLEANUP_PAGE });
-      for (const s of rows.page) {
-        if (s.ownerType !== undefined) continue;
-        await ctx.db.patch(s._id, { ownerType: s.workspaceId !== undefined && s.profileId === undefined ? "workspace" : "user" });
-        updated++;
-      }
-      page = rows;
-    } else {
-      const rows = await ctx.db.query("aiUsage").paginate({ cursor: args.cursor ?? null, numItems: CLEANUP_PAGE });
-      for (const u of rows.page) {
-        if (u.scope !== undefined) continue;
-        await ctx.db.patch(u._id, { scope: u.workspaceId !== undefined ? "workspace" : "personal" });
-        updated++;
-      }
-      page = rows;
-    }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.backfillAccountDefaults, { table, cursor: page.continueCursor });
-    else if (table === "subscriptions") await ctx.scheduler.runAfter(0, internal.migrations.backfillAccountDefaults, { table: "aiUsage", cursor: null });
-    if (updated) console.log(JSON.stringify({ event: "migration.account_defaults_backfilled", table, updated }));
-    return { table, updated, done: page.isDone && table === "aiUsage" };
-  },
-});
 
 /**
  * Link labels stopped leaking restricted titles (lib/linkLabels.ts): recomputes the derived text (excerpt,

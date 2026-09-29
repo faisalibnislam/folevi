@@ -159,11 +159,11 @@ export async function recordAiUsage(ctx: MutationCtx, profileId: Id<"profiles">,
   else await ctx.db.insert("aiUsage", { profileId, day, count: 1, scope: scope.kind, workspaceId });
 }
 
-/** A person's AI requests in Personal since `sinceDay` (rows from before scopes were recorded were all Personal). */
+/** A person's AI requests in Personal since `sinceDay`. */
 export async function personalAiUsage(ctx: Ctx, profileId: Id<"profiles">, sinceDay: string): Promise<Doc<"aiUsage">[]> {
   const rows = await ctx.db
     .query("aiUsage")
     .withIndex("by_profile_day", (q) => q.eq("profileId", profileId).gte("day", sinceDay))
     .collect();
-  return rows.filter((r) => r.scope !== "workspace");
+  return rows.filter((r) => r.scope === "personal");
 }

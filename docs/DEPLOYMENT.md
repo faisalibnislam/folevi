@@ -120,9 +120,8 @@ Billing section):
 
 Production was migrated to the new account model (Personal is not a workspace; workspace plans and seats;
 members vs guests) with the runbook in `docs/ACCOUNT_MODEL_PLAN.md` §3a on 2026-09-29; the migration code
-has since been removed. What's left — `migrations:dropWorkspaceKind`, `migrations:backfillAccountDefaults`
-and `migrations:refreshLinkingPages`, then deleting `workspaces.kind` from the schema — is in §3b with
-the exact commands. `migrations:verifyAccountModel` / `migrations:accountModelReport` stay as an integrity
+has since been removed. The §3b clean-up ran on the same day (`workspaces.kind` deleted,
+`subscriptions.ownerType` and `aiUsage.scope` required, one-off migrations removed). `migrations:verifyAccountModel` / `migrations:accountModelReport` stay as an integrity
 check any time (`done: true, ok: true`).
 
 ## 7. First release checklist

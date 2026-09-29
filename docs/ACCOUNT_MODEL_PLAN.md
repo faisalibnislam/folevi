@@ -498,34 +498,27 @@ profile with a default workspace, no personal workspace; every remaining workspa
   are gone. `migrationReports.counts` / `tables` are now name → number records (older reports keep their
   old names and still validate), and starting a check keeps only the latest 5 reports
   (`REPORTS_KEPT`).
-- New idempotent, batched, self-continuing migrations: `migrations:dropWorkspaceKind` (unsets `kind`),
-  `migrations:backfillAccountDefaults` (writes `subscriptions.ownerType` — "workspace" for a row with a
+- One-off, batched, self-continuing migrations `migrations:dropWorkspaceKind` (unset `kind`) and
+  `migrations:backfillAccountDefaults` (wrote `subscriptions.ownerType` — "workspace" for a row with a
   workspace and no person, else "user" — then `aiUsage.scope` — "workspace" with a workspace, else
-  "personal") and `migrations:refreshLinkingPages` (re-derives the excerpt, preview, search text and task
-  titles of every page that links to another page, see §3d). Tests: `tests/convex/account-cleanup.test.ts`.
+  "personal"), plus `migrations:refreshLinkingPages` (re-derives the excerpt, preview, search text and
+  task titles of every page that links to another page, see §3d; kept). Tests:
+  `tests/convex/account-cleanup.test.ts`.
 
-**Run in production, in this order** (after deploying this commit; each continues itself, can be run
-again, and logs a line per batch that changed something):
+**Done in production on 2026-09-29**, in this order: `dropWorkspaceKind` (1 workspace),
+`backfillAccountDefaults`, `refreshLinkingPages`, then `verifyAccountModel` → `ok: true`. Afterwards no
+`workspaces` row had `kind`, no `subscriptions` row lacked `ownerType` and no `aiUsage` row lacked
+`scope`, so the follow-up commit:
+- deleted `workspaces.kind` from `convex/schema.ts`;
+- made `subscriptions.ownerType` and `aiUsage.scope` required, and dropped the "unset = user / personal"
+  readings (`convex/lib/billing.ts` `isPersonalSubscription`, `convex/lib/entitlements.ts`
+  `personalAiUsage`, `convex/adminAnalytics.ts`);
+- removed `dropWorkspaceKind` and `backfillAccountDefaults` and their tests.
 
-```sh
-pnpm exec convex run --deployment <prod-deployment> migrations:dropWorkspaceKind
-pnpm exec convex run --deployment <prod-deployment> migrations:backfillAccountDefaults
-pnpm exec convex run --deployment <prod-deployment> migrations:refreshLinkingPages
-pnpm exec convex run --deployment <prod-deployment> migrations:verifyAccountModel
-pnpm exec convex run --deployment <prod-deployment> migrations:accountModelReport   # until done: true, ok: true
-```
-
-(`npx convex run …` works the same; always name the deployment, as in §3a.) Check the Schedules page until no `migrations:*` run is
-pending before the next command. To confirm the first two: in the dashboard's data view, no `workspaces`
-row has `kind`, no `subscriptions` row lacks `ownerType`, no `aiUsage` row lacks `scope`.
+A backend whose data never ran them (an old local dev backend) now fails the schema push; reset its data
+(`pnpm exec convex dev` against a fresh local deployment) or fix the rows in its dashboard.
 
 **Left for later.**
-- *After `dropWorkspaceKind` has run in production:* delete `kind` from `workspaces` in
-  `convex/schema.ts` (and its comment), and redeploy. The deploy fails harmlessly if any row still holds
-  it.
-- *After `backfillAccountDefaults` has run in production:* make `subscriptions.ownerType` and
-  `aiUsage.scope` required in the schema, then drop the "unset = user / personal" readings
-  (`convex/lib/billing.ts` `isPersonalSubscription`, `convex/lib/entitlements.ts` `personalAiUsage`).
 - `workspaces.storageQuotaBytes` as an implicit admin override (`convex/lib/entitlements.ts`
   `workspaceStorageOverride`): move any non-default value to `storageQuotaOverrideBytes`, then keep the
   field only as the value shown to older clients, or remove it.

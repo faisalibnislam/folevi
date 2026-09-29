@@ -72,7 +72,7 @@ export const users = query({
       aiByDay.set(u.day, (aiByDay.get(u.day) ?? 0) + u.count);
       aiUsers.add(u.profileId);
       // Rows from before scopes were recorded were all Personal.
-      aiByScope[u.scope ?? "personal"] += u.count;
+      aiByScope[u.scope] += u.count;
     }
     // Team workspaces plus every Personal (each counts on its own; nothing is double counted).
     const workspaces = await ctx.db.query("workspaces").collect();

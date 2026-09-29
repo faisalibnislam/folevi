@@ -75,12 +75,6 @@ export default defineSchema({
   workspaces: defineTable({
     publicId: v.string(),
     name: v.string(),
-    /**
-     * Being removed: every workspace is a team workspace. Nothing reads or writes it any more; older rows
-     * hold "team" until `migrations.dropWorkspaceKind` has run, then the field is deleted from the schema
-     * (docs/ACCOUNT_MODEL_PLAN.md §3b).
-     */
-    kind: v.optional(v.literal("team")),
     ownerId: v.id("profiles"),
     icon: v.optional(v.string()),
     /** Square logo (a `files` row of kind "logo", counted in this workspace's storage). */
@@ -378,8 +372,7 @@ export default defineSchema({
 
   /**
    * Plans: a person's Personal plan (one row per profile) or a team workspace's plan (one row per workspace).
-   * Exactly one of `profileId` / `workspaceId` is set, matching `ownerType` (rows from before workspace
-   * billing have no `ownerType` and are Personal); rows are written only through convex/lib/billing.ts.
+   * Exactly one of `profileId` / `workspaceId` is set, matching `ownerType`; rows are written only through convex/lib/billing.ts.
    *
    * Personal rows are created at sign-up with a 7-day Pro trial and store the tier in `plan`. Workspace rows
    * store the catalog id in `planId` and the billed seat count in `quantity`. Paid plans come from the
@@ -388,7 +381,7 @@ export default defineSchema({
    */
   subscriptions: defineTable({
     /** "user" (Personal) or "workspace"; unset on older rows = "user". */
-    ownerType: v.optional(v.union(v.literal("user"), v.literal("workspace"))),
+    ownerType: v.union(v.literal("user"), v.literal("workspace")),
     /** Personal rows: the person. */
     profileId: v.optional(v.id("profiles")),
     /** Workspace rows: the workspace (the plan belongs to it, not to whoever owns it). */
@@ -477,7 +470,7 @@ export default defineSchema({
     profileId: v.id("profiles"),
     day: v.string(),
     count: v.number(),
-    scope: v.optional(v.union(v.literal("personal"), v.literal("workspace"))),
+    scope: v.union(v.literal("personal"), v.literal("workspace")),
     /** The team workspace the requests were made in (scope "workspace"). */
     workspaceId: v.optional(v.id("workspaces")),
   })

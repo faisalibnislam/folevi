@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex/api";
+import { BlurredBackdrop } from "@/components/doc/BlurredBackdrop";
 import { ReadOnlyBlocks } from "@/components/doc/ReadOnlyBlocks";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { coverBackground, pageBackdrop, sheetProps } from "@/lib/cover";
@@ -157,9 +158,10 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   const shareSheet = sheetProps(document.style, document.cover, coverPalette);
   return shell(
     // The page floats on its backdrop, as in the app.
-    <div className={backdrop ? "rounded-[6px] px-3 py-8 sm:px-8" : ""} style={backdrop ? { background: backdrop } : undefined}>
+    <div className={backdrop ? "relative rounded-[6px] px-3 py-8 sm:px-8" : ""} style={backdrop && !document.style.blur ? { background: backdrop } : undefined}>
+    {backdrop && document.style.blur ? <BlurredBackdrop background={backdrop} /> : null}
     <article
-      className="fb-page fb-sheet mx-auto max-w-[calc(var(--editor-width)+8rem)] rounded-[10px] border border-line"
+      className="fb-page fb-sheet relative mx-auto max-w-[calc(var(--editor-width)+8rem)] rounded-[10px] border border-line"
       data-font={document.style.font}
       data-width={document.style.width}
       data-background={document.style.background}

@@ -27,9 +27,17 @@ test("pick one of the note styles (or Plain) from the inspector; it persists", a
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveCount(0);
   await page.getByRole("radio", { name: "Note style: Irises" }).click();
   await expect(page.locator("#doc-scroll")).toHaveAttribute("style", /\/covers\/art-03\.webp/);
+  // Blur background: the artwork moves to a blurred layer behind the page; the page itself stays sharp.
+  const blur = page.getByRole("switch", { name: "Blur background" });
+  await expect(blur).toHaveAttribute("aria-checked", "false");
+  await blur.click();
+  await expect(blur).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("#doc-scroll")).toHaveAttribute("data-backdrop", "blur");
+  await expect(page.locator("[data-backdrop-blur]:has(+ #doc-scroll) > div")).toHaveAttribute("style", /\/covers\/art-03\.webp/);
   await waitForSaved(page);
   await page.reload();
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveAttribute("style", /\/covers\/art-03\.webp/);
+  await expect(page.locator("#doc-scroll")).toHaveAttribute("data-backdrop", "blur");
   // The sidebar says Home, and there is no Daily Notes entry.
   const nav = page.getByRole("navigation", { name: "Folio" });
   await expect(nav.getByRole("link", { name: "Home" })).toBeVisible();

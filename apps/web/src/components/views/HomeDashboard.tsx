@@ -138,12 +138,16 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
       </div>
     );
   }
+  // The cards fade out at either edge while there's more to scroll that way. A mask on the row, not a
+  // coloured overlay, so the fade matches whatever is behind it (the glass panel, a note's artwork).
+  const fadeMask = `linear-gradient(to right, ${edges.start ? "#000" : "transparent"} 0, #000 64px, #000 calc(100% - 64px), ${edges.end ? "#000" : "transparent"} 100%)`;
   const arrow = "absolute top-[calc(50%-12px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[6px] bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div className="relative">
       <ul
         ref={setEl}
         aria-label={label}
+        style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask }}
         className="-mx-2 flex snap-x snap-mandatory scroll-px-2 gap-8 overflow-x-auto px-2 pb-7 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {docs.slice(0, CAROUSEL_COUNT).map((d) => (
@@ -152,9 +156,6 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
           </li>
         ))}
       </ul>
-      {/* White fades at either edge while there's more to scroll that way. */}
-      <div aria-hidden className={`pointer-events-none absolute -left-2 bottom-0 top-0 z-10 w-16 bg-[linear-gradient(to_right,var(--color-canvas),transparent)] transition-opacity duration-200 ${edges.start ? "opacity-0" : "opacity-100"}`} />
-      <div aria-hidden className={`pointer-events-none absolute -right-2 bottom-0 top-0 z-10 w-16 bg-[linear-gradient(to_left,var(--color-canvas),transparent)] transition-opacity duration-200 ${edges.end ? "opacity-0" : "opacity-100"}`} />
       {!edges.start ? (
         <button type="button" aria-label={`Scroll ${label.toLowerCase()} back`} onClick={() => scroll(-1)} className={`${arrow} left-0`}>
           <ChevronLeft size={18} aria-hidden />

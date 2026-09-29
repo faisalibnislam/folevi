@@ -60,7 +60,8 @@
       "backdrop": "string?",
       "sheet": "DocumentSheet?",
       "text": "DocumentText?",
-      "separator": "SeparatorStyle?"
+      "separator": "SeparatorStyle?",
+      "blur": "bool?"
     },
     "DocumentCover": {
       "kind": "CoverKind",

@@ -66,9 +66,11 @@ const PLAIN_CSS = "#F1F1F3";
 import { CommentsOverview, type CommentThread } from "./Comments";
 import { MovePageDialog } from "./MovePageDialog";
 import { InsertPanel } from "./InsertPanel";
+import { BlurredBackdrop } from "./BlurredBackdrop";
 import { AiPanel } from "@/components/ai/AiPanel";
 import { useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
 import { Select } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
 import { colorName, useNotePalette } from "@/components/editor/notePalette";
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
@@ -652,6 +654,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const imageCss = imageUrl ? `url(${JSON.stringify(imageUrl)}) center / cover no-repeat` : COVER_IMAGE_PLACEHOLDER;
   const styleName = art?.name ?? (ownImage ? "Your image" : "Plain");
   const noBackdrop = "linear-gradient(180deg, var(--color-surface-sunken), var(--color-canvas))";
+  const hasBackdrop = Boolean(pageBackdrop(style, cover, imageUrl));
   const backdropCss = pageBackdrop(style, cover, imageUrl) ?? noBackdrop;
   // Your own image: checked here, uploaded into this note (online only), then used as its style.
   const uploadImage = async (file: File) => {
@@ -677,7 +680,8 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   return (
     <div className="space-y-5 text-sm">
       <section aria-label="Page style">
-        <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-[6px] shadow-[var(--shadow-card)]" style={{ background: backdropCss }}>
+        <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-[6px] shadow-[var(--shadow-card)]" style={{ background: style.blur && hasBackdrop ? undefined : backdropCss }}>
+          {style.blur && hasBackdrop ? <BlurredBackdrop background={backdropCss} /> : null}
           <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-[6px] px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: sheetColor, color: textColor, fontFamily: font.family }}>
             <span className="block text-[10.5px] font-semibold leading-tight">{styleName}</span>
             <span className="mt-1.5 block h-1 w-4/5 rounded-full opacity-25" style={{ background: textColor }} />
@@ -744,6 +748,14 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
                 : "Plain: a very light grey page background, no cover."}
           </p>
         </StyleRow>
+        {hasBackdrop ? (
+          <div className="flex items-center justify-between gap-3 px-1 pt-2">
+            <span aria-hidden className="text-[13px] text-heading">
+              Blur background
+            </span>
+            <Switch checked={Boolean(style.blur)} label="Blur background" disabled={disabled} onChange={(on) => set({ blur: on || undefined })} />
+          </div>
+        ) : null}
       </fieldset>
 
       <fieldset disabled={disabled}>

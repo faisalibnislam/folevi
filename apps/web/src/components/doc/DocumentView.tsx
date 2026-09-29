@@ -46,6 +46,7 @@ import { Editor, type EditorHandle } from "@/components/editor/Editor";
 import { CollectionRowProperties } from "@/components/editor/CollectionEmbed";
 import type { DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
+import { BlurredBackdrop } from "./BlurredBackdrop";
 import { NotePaletteProvider } from "@/components/editor/notePalette";
 import { useCoverImage } from "@/lib/app/coverImage";
 import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
@@ -279,6 +280,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // text colours are picked from it.
   const { url: coverImageUrl, palette: coverPalette } = useCoverImage(summary?.cover);
   const sheetAttrs = sheetProps(style, summary?.cover ?? DEFAULT_COVER, coverPalette);
+  const blurredBackdrop = style.blur ? pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) : undefined;
   // The note's style lights the glass chrome around it (a small image: it's heavily blurred anyway).
   const { setAmbient } = useShell();
   const ambientCover = summary?.cover ?? DEFAULT_COVER;
@@ -547,18 +549,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <div ref={noteRef} className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
+        {/* Blur background: the backdrop sits blurred behind the scrolling page, which is then see-through. */}
+        {blurredBackdrop ? <BlurredBackdrop background={blurredBackdrop} className="inset-x-1.5 bottom-2 top-0 rounded-[14px] sm:inset-0" /> : null}
         <div
           id="doc-scroll"
           ref={setScrollEl}
           className={`fb-page relative h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
-          data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "on" : undefined}
+          data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
           data-font={style.font}
           data-width={style.width}
           style={{
             ["--doc-accent" as string]: style.accent === "accent" ? "var(--color-ember)" : `var(--color-${style.accent})`,
             ["--doc-accent-ink" as string]: style.accent === "accent" ? "var(--color-ember-ink)" : `var(--color-${style.accent}-ink)`,
             ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-ember-soft)" : `var(--color-${style.accent}-soft)`,
-            background: pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)",
+            background: blurredBackdrop ? "transparent" : (pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)"),
           }}
         >
           <article

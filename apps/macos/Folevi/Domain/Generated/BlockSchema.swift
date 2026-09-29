@@ -304,8 +304,9 @@ public struct DocumentStyle: Codable, Sendable, Hashable {
     public var sheet: DocumentSheet?
     public var text: DocumentText?
     public var separator: SeparatorStyle?
+    public var blur: Bool?
 
-    public init(font: DocumentFont, width: DocumentWidth, background: DocumentBackground, accent: DocumentAccent, card: CardStyle, backdrop: String? = nil, sheet: DocumentSheet? = nil, text: DocumentText? = nil, separator: SeparatorStyle? = nil) {
+    public init(font: DocumentFont, width: DocumentWidth, background: DocumentBackground, accent: DocumentAccent, card: CardStyle, backdrop: String? = nil, sheet: DocumentSheet? = nil, text: DocumentText? = nil, separator: SeparatorStyle? = nil, blur: Bool? = nil) {
         self.font = font
         self.width = width
         self.background = background
@@ -315,9 +316,10 @@ public struct DocumentStyle: Codable, Sendable, Hashable {
         self.sheet = sheet
         self.text = text
         self.separator = separator
+        self.blur = blur
     }
 
-    enum CodingKeys: String, CodingKey { case font, width, background, accent, card, backdrop, sheet, text, separator }
+    enum CodingKeys: String, CodingKey { case font, width, background, accent, card, backdrop, sheet, text, separator, blur }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -330,6 +332,7 @@ public struct DocumentStyle: Codable, Sendable, Hashable {
         self.sheet = try c.decodeIfPresent(DocumentSheet.self, forKey: .sheet)
         self.text = try c.decodeIfPresent(DocumentText.self, forKey: .text)
         self.separator = try c.decodeIfPresent(SeparatorStyle.self, forKey: .separator)
+        self.blur = try c.decodeIfPresent(Bool.self, forKey: .blur)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -343,6 +346,7 @@ public struct DocumentStyle: Codable, Sendable, Hashable {
         try c.encodeIfPresent(sheet, forKey: .sheet)
         try c.encodeIfPresent(text, forKey: .text)
         try c.encodeIfPresent(separator, forKey: .separator)
+        try c.encodeIfPresent(blur, forKey: .blur)
     }
 }
 

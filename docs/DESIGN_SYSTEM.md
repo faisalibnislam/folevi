@@ -321,7 +321,7 @@ text to `ink`. Axe runs in the e2e suite in both themes.
   `art-NN-1x.webp` (1600 px), picked per screen by CSS `image-set()` for the cover and page background, and
   a 640 px `art-NN-thumb.webp` (picker tiles, note-card spines). Sources are kept at 3200 px, and picks every style colour from the image with the
   same engine as uploads (`covers.json`). There are 40 (`art-01`…`art-40`); should fewer exist, higher ids wrap
-  onto the ones there are. Every new note starts **Plain**; its owner picks a style later in Style. The title sits on the cover over a soft shade: white on covers that read deep, the style's
+  onto the ones there are. Every new note starts **Plain**; its owner picks a style later in Style. **Blur background** (a switch under Note Style, `style.blur`) draws the page background blurred behind the note, which stays sharp. The title sits on the cover over a soft shade: white on covers that read deep, the style's
   dark ink on ones that read light.
 - **Style colours everywhere in the note**: every note style (built-in or your image) gives, besides the
   page and text, an **accent** and **five text colours + four highlights** (`palette.ts`: the style's own

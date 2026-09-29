@@ -73,6 +73,8 @@ export const vDocumentStyle = v.object({
   ),
   text: v.optional(v.union(v.literal("ink"), v.literal("slate"), v.literal("navy"), v.literal("forest"), v.literal("plum"), v.literal("brown"), v.literal("white"))),
   separator: v.optional(v.union(v.literal("line"), v.literal("dots"), v.literal("doodle"))),
+  /** Blurs the page background behind the note (its style artwork, image or colour). */
+  blur: v.optional(v.boolean()),
 });
 export const vDocumentCover = v.object({
   kind: v.union(v.literal("none"), v.literal("color"), v.literal("gradient"), v.literal("image"), v.literal("art")),

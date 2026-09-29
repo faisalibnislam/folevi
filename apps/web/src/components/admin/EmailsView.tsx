@@ -161,6 +161,7 @@ export function EmailsView() {
                     <td className={td}>
                       {a.errorCode ? <Mono>{a.errorCode}</Mono> : <span className="text-muted">—</span>}
                       {a.httpStatus ? <div className="mt-0.5 text-xs text-muted">HTTP {a.httpStatus}</div> : null}
+                      {a.providerError ? <div className="mt-0.5 max-w-[280px] text-xs text-muted">{a.providerError}</div> : null}
                     </td>
                     <td className={td}>
                       {a.deliveryStatus ? (

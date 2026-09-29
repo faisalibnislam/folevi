@@ -145,9 +145,10 @@ export const sendTemplate = internalAction({
       httpStatus: outcome.httpStatus,
       errorCode: outcome.errorCode,
       providerMessageId: outcome.providerMessageId,
+      providerError: outcome.providerError,
     });
     console.log(
-      JSON.stringify({ event: "email.send", provider: outcome.provider, template: key, status: outcome.status, attempts: outcome.attempts, code: outcome.errorCode, requestId }),
+      JSON.stringify({ event: "email.send", provider: outcome.provider, template: key, status: outcome.status, attempts: outcome.attempts, code: outcome.errorCode, reason: outcome.providerError, requestId }),
     );
     return { status: outcome.status };
   },
@@ -254,9 +255,11 @@ export const finishAttempt = internalMutation({
     httpStatus: v.optional(v.number()),
     errorCode: v.optional(v.string()),
     providerMessageId: v.optional(v.string()),
+    providerError: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.attemptId, {
+      providerError: args.providerError?.slice(0, 200),
       status: args.status,
       attempts: args.attempts,
       httpStatus: args.httpStatus,

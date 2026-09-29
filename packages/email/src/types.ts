@@ -86,6 +86,8 @@ export interface SendOutcome {
   attempts: number;
   /** Provider message id, when the provider returned one with its 2xx response. */
   providerMessageId?: string;
+  /** The provider's own reason for a refusal (e.g. Mailtrap's `errors`), with addresses and tokens masked. */
+  providerError?: string;
 }
 
 // ------------------------------------------------------------------ Mailtrap webhooks

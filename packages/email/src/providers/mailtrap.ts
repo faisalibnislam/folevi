@@ -49,12 +49,30 @@ function classify(status: number): { errorCode: string; retryable: boolean } {
 
 const MESSAGE_ID_RE = /^[A-Za-z0-9_.:@-]{1,128}$/;
 
-async function readResponse(res: Response): Promise<{ success?: boolean; messageId?: string }> {
+/**
+ * Mailtrap's reason for a refusal, safe to store and log: email addresses and long token-like strings
+ * are masked, whitespace collapsed, and the result capped at 200 characters.
+ */
+export function sanitizeProviderError(raw: unknown): string | undefined {
+  const parts = Array.isArray(raw) ? raw : raw === undefined || raw === null ? [] : [raw];
+  const text = parts
+    .filter((p): p is string => typeof p === "string")
+    .join("; ")
+    .replace(/[^\s@<>"']+@[^\s@<>"']+/g, "<email>")
+    .replace(/[A-Za-z0-9_-]{24,}/g, "<redacted>")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, 200) : undefined;
+}
+
+async function readResponse(res: Response): Promise<{ success?: boolean; messageId?: string; error?: string }> {
   try {
     const body: unknown = await res.json();
     if (!body || typeof body !== "object") return {};
     const obj = body as Record<string, unknown>;
-    const out: { success?: boolean; messageId?: string } = {};
+    const out: { success?: boolean; messageId?: string; error?: string } = {};
+    const error = sanitizeProviderError(obj.errors ?? obj.error);
+    if (error) out.error = error;
     if ("success" in obj) out.success = obj.success === true;
     const ids = obj.message_ids;
     if (Array.isArray(ids) && typeof ids[0] === "string" && MESSAGE_ID_RE.test(ids[0])) out.messageId = ids[0];
@@ -104,16 +122,17 @@ export async function postToMailtrap(
     try {
       const res = await fetchImpl(opts.endpoint, { method: "POST", headers, body, signal: controller?.signal });
       if (res.status >= 200 && res.status < 300) {
-        const { success, messageId } = await readResponse(res);
+        const { success, messageId, error } = await readResponse(res);
         if (success === false) {
-          return { status: "failed", httpStatus: res.status, errorCode: "provider_rejected", retryable: false, attempts: attempt };
+          return { status: "failed", httpStatus: res.status, errorCode: "provider_rejected", retryable: false, attempts: attempt, ...(error ? { providerError: error } : {}) };
         }
         return messageId
           ? { status: "accepted", httpStatus: res.status, retryable: false, attempts: attempt, providerMessageId: messageId }
           : { status: "accepted", httpStatus: res.status, retryable: false, attempts: attempt };
       }
       const { errorCode, retryable } = classify(res.status);
-      last = { status: "failed", httpStatus: res.status, errorCode, retryable, attempts: attempt };
+      const { error } = await readResponse(res);
+      last = { status: "failed", httpStatus: res.status, errorCode, retryable, attempts: attempt, ...(error ? { providerError: error } : {}) };
       if (!retryable) return last;
       retryAfter = res.headers.get("retry-after");
     } catch (error) {

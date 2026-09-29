@@ -571,6 +571,7 @@ export const listEmails = mutation({
         attempts: r.attempts,
         httpStatus: r.httpStatus ?? null,
         errorCode: r.errorCode ?? null,
+        providerError: r.providerError ?? null,
         environment: r.environment,
         requestId: r.requestId,
         createdAt: r.createdAt,

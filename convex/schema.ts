@@ -861,6 +861,8 @@ export default defineSchema({
 
   emailSendAttempts: defineTable({
     templateKey: v.string(),
+    /** The provider's reason for a refusal (masked, ≤200 chars), for the admin email log. */
+    providerError: v.optional(v.string()),
     category: v.string(),
     recipientHash: v.string(),
     recipientHint: v.string(),

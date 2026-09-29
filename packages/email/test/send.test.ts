@@ -121,7 +121,7 @@ describe("sendEmail via Mailtrap", () => {
   it("stops after maxAttempts on persistent 5xx", async () => {
     const { fetchImpl, calls, sleep } = setup([res(500), res(502), res(500), res(500)]);
     const out = await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl, sleep, maxAttempts: 3 });
-    expect(out).toEqual({ status: "failed", provider: "mailtrap", httpStatus: 500, errorCode: "provider_server_error", retryable: true, attempts: 3 });
+    expect(out).toEqual({ status: "failed", provider: "mailtrap", httpStatus: 500, errorCode: "provider_server_error", retryable: true, attempts: 3, providerError: "x" });
     expect(calls).toHaveLength(3);
     for (const [ms] of sleep.mock.calls as unknown as Array<[number]>) expect(ms).toBeLessThanOrEqual(8000);
   });
@@ -254,5 +254,17 @@ describe("secrets and personal data", () => {
     for (const spy of spies) expect(spy).not.toHaveBeenCalled();
     const serialised = JSON.stringify(outcomes);
     for (const secret of [TOKEN, "reader@example.com", "Spring planting plan", "Maya"]) expect(serialised).not.toContain(secret);
+  });
+});
+
+describe("Mailtrap refusal reasons", () => {
+  it("keeps Mailtrap's reason, masking addresses and token-like strings", async () => {
+    const { sanitizeProviderError } = await import("../src/providers/mailtrap");
+    expect(sanitizeProviderError(["Unauthorized: sender ada@example.com not allowed", "key abcdefghijklmnopqrstuvwxyz123456"])).toBe(
+      "Unauthorized: sender <email> not allowed; key <redacted>",
+    );
+    expect(sanitizeProviderError("x".repeat(500))!.length).toBeLessThanOrEqual(200);
+    expect(sanitizeProviderError(undefined)).toBeUndefined();
+    expect(sanitizeProviderError([42, null])).toBeUndefined();
   });
 });

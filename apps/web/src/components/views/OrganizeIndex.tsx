@@ -179,7 +179,7 @@ export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; p
 
 /** Every folder in the current context (Personal or a workspace), with search and sorting (the sidebar only lists the first few). */
 export function FoldersIndex() {
-  const { scope, role } = useAppState();
+  const { scope, canEdit } = useAppState();
   const data = useQuery(api.organization.index, { scope });
   const createFolder = useMutation(api.organization.createFolder);
   const { navigate } = useAppRouter();
@@ -188,7 +188,6 @@ export function FoldersIndex() {
   const [sort, setSort] = useLocalStorage<FolderSort>("folevi:folders-sort", "name");
   const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:folders-layout", "grid");
   const [creating, setCreating] = useState(false);
-  const canEdit = role !== "viewer" && role !== "commenter";
 
   const names = useMemo(() => new Map((data?.folders ?? []).map((f) => [f.id, f.name])), [data]);
   const list = useMemo(() => {

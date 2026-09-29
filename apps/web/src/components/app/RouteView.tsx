@@ -10,6 +10,7 @@ import { SharedView } from "@/components/views/SharedView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { HelpView } from "@/components/views/HelpView";
 import { InviteView } from "@/components/views/InviteView";
+import { ShareInviteView } from "@/components/views/ShareInviteView";
 import { FoldersIndex, TagsIndex } from "@/components/views/OrganizeIndex";
 import { HomeDashboard } from "@/components/views/HomeDashboard";
 import { ViewChrome } from "./Shell";
@@ -52,6 +53,8 @@ export function RouteView() {
       return <HelpView />;
     case "invite":
       return <InviteView token={route.token} />;
+    case "share-invite":
+      return <ShareInviteView token={route.token} />;
     default:
       return (
         <ViewChrome title="Not found">

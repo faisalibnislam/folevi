@@ -74,7 +74,7 @@ export function TabsProvider({ accountKey, children }: { accountKey: string; chi
       // Keep the strip bounded: drop the oldest tabs other than this one.
       while (next.length > MAX_TABS) next = next.filter((t, i) => i !== next.findIndex((x) => x.id !== docId));
       setTabs(next);
-    } else if (!["settings", "onboarding", "invite", "not_found", "help"].includes(route.name)) {
+    } else if (!["settings", "onboarding", "invite", "share-invite", "not_found", "help"].includes(route.name)) {
       const href = `${pathname}${query ? `?${query}` : ""}`;
       if (href !== homeHref) setHomeHref(href);
     }

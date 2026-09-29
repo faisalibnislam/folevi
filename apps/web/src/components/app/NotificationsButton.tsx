@@ -263,6 +263,8 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
   const markUnread = useMutation(api.notifications.markUnread);
   const remove = useMutation(api.notifications.remove);
   const accept = useMutation(api.workspaces.acceptInvite);
+  const acceptPage = useMutation(api.sharing.acceptPageInvite);
+  const { navigate } = useAppRouter();
   const toast = useToast();
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
   const actionable = Boolean(n.documentId);
@@ -302,9 +304,23 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
         </span>
         {n.read ? null : <span aria-hidden className="absolute right-3.5 top-4 h-2 w-2 rounded-full bg-coral transition-opacity group-hover:opacity-0 group-focus-within:opacity-0" />}
       </button>
-      {n.fileId || (n.kind === "invite" && n.inviteId) ? (
+      {n.fileId || (n.kind === "invite" && n.inviteId) || n.pageInviteId ? (
         <div className="-mt-1 flex gap-1.5 pb-2.5 pl-[50px]">
           {n.fileId ? <DownloadFile fileId={n.fileId} /> : null}
+          {n.pageInviteId ? (
+            <button
+              type="button"
+              className="ui-btn ui-btn-primary h-7 px-2.5 text-xs font-medium"
+              onClick={() =>
+                acceptPage({ inviteId: n.pageInviteId! }).then((r) => {
+                  toast.show("The page was added to Shared with Me.", { tone: "success" });
+                  navigate(`/d/${r.documentId}`);
+                }, fail)
+              }
+            >
+              Accept and open
+            </button>
+          ) : null}
           {n.kind === "invite" && n.inviteId ? (
             <button
               type="button"

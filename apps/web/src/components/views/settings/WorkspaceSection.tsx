@@ -7,7 +7,7 @@ import { useAppState, type Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, formatDateTime } from "@/lib/format";
 import { AppLink } from "@/lib/app/router";
 import { uploadIdentityImage } from "@/lib/app/identityImages";
 import { workspaceRoleLabel } from "@/components/app/NewWorkspaceDialog";
@@ -33,13 +33,17 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
   const [name, setName] = useState(workspace.name);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const canAdmin = workspace.role === "owner" || workspace.role === "admin";
-  // Owners never leave their own workspace (they hand it on first).
+  const scheduled = workspace.deletionScheduledFor ?? null;
+  // Owners and admins change settings; members read them. Nothing changes while deletion is scheduled.
+  const canAdmin = workspace.canManage && scheduled === null;
+  // Owners never leave their own workspace (they hand it on, or delete it).
   const canLeave = workspace.role !== "owner";
   const pct = workspace.storageQuotaBytes ? (workspace.storageUsedBytes / workspace.storageQuotaBytes) * 100 : 0;
+  const access = workspace.role === "member" && workspace.memberAccess !== "edit" ? (workspace.memberAccess === "comment" ? " who can comment" : " with view-only access") : "";
   return (
     <>
-      <Card title="Workspace" description={`You're ${workspace.role === "owner" ? "the owner" : workspace.role === "admin" ? "an admin" : "a member"} of this workspace.`}>
+      {scheduled !== null ? <ScheduledDeletionCard workspace={workspace} at={scheduled} /> : null}
+      <Card title="Workspace" description={`You're ${workspace.role === "owner" ? "the owner" : workspace.role === "admin" ? "an admin" : `a member${access}`} of this workspace.`}>
         {canAdmin ? (
           <form
             className="flex max-w-md gap-2"
@@ -104,7 +108,10 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
             Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed{workspace.canManageBilling ? " or the plan is upgraded" : ""}.
           </p>
         ) : null}
-        <p className="mt-3 text-xs text-muted">Your role: {workspaceRoleLabel(workspace.role)}</p>
+        <p className="mt-3 text-xs text-muted">
+          Your role: {workspaceRoleLabel(workspace.role)}
+          {workspace.role === "member" && workspace.memberAccess !== "edit" ? ` · ${workspace.memberAccess === "comment" ? "can comment" : "view only"}` : ""}
+        </p>
       </Card>
       {canLeave ? (
         <Card title="Leave workspace" description="You’ll lose access to its pages, folders and tasks. Pages you wrote stay in the workspace. Your Personal isn’t affected.">
@@ -112,6 +119,15 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
             Leave {workspace.name}
           </Button>
         </Card>
+      ) : scheduled === null ? (
+        <>
+          <Card title="Leave workspace" description="You own this workspace, so you can’t leave it. Make another member the owner first (Members → Make owner), or delete the workspace below.">
+            <AppLink href="/settings/members" className="text-sm font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
+              Go to Members
+            </AppLink>
+          </Card>
+          <DeleteWorkspaceCard workspace={workspace} />
+        </>
       ) : null}
       <Dialog
         open={confirmLeave}
@@ -146,5 +162,81 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
         }
       />
     </>
+  );
+}
+
+/**
+ * Owner only: deletes the workspace after a 7-day grace period (cancelable). Typing its name confirms.
+ * Members and guests lose it at once; its plan stops renewing; everything in it is purged at the end.
+ */
+function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
+  const schedule = useMutation(api.workspaces.scheduleDeletion);
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <>
+      <Card title="Delete workspace" description="Deletes this workspace and everything in it — pages, folders, tasks, files and comments — for everyone, after a 7-day grace period. Export it first if you want to keep a copy. Nobody’s Personal is affected.">
+        <Button variant="danger" onClick={() => setOpen(true)}>
+          Delete {workspace.name}…
+        </Button>
+      </Card>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`Delete ${workspace.name}?`}
+        description="Members and guests lose access right away and are told. You can cancel within 7 days; after that it’s gone for good. A paid plan ends with its current period."
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setOpen(false)}>Keep workspace</Button>
+            <Button
+              variant="danger"
+              disabled={busy || typed.trim() !== workspace.name.trim()}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await schedule({ workspaceId: workspace.id, confirmName: typed });
+                  setOpen(false);
+                  toast.show(`${workspace.name} is scheduled for deletion`);
+                } catch (e) {
+                  toast.show(errorMessage(e), { tone: "error" });
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Schedule deletion
+            </Button>
+          </>
+        }
+      >
+        <label className="text-sm" htmlFor="confirm-workspace-name">
+          Type <strong>{workspace.name}</strong> to confirm
+        </label>
+        <input id="confirm-workspace-name" value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-[6px] px-3" autoComplete="off" />
+      </Dialog>
+    </>
+  );
+}
+
+/** Shown to the owner while deletion is scheduled: the workspace is read-only, and deletion can be canceled. */
+function ScheduledDeletionCard({ workspace, at }: { workspace: Workspace; at: number }) {
+  const cancel = useMutation(api.workspaces.cancelDeletion);
+  const toast = useToast();
+  return (
+    <Card title="Scheduled for deletion" description={`${workspace.name} will be deleted on ${formatDateTime(at)}. Until then it’s read-only for you and hidden from members and guests.`}>
+      <Button
+        onClick={() =>
+          void cancel({ workspaceId: workspace.id }).then(
+            () => toast.show(`${workspace.name} won’t be deleted. If it had a paid plan, resume it in Plan & billing.`, { tone: "success" }),
+            (e) => toast.show(errorMessage(e), { tone: "error" }),
+          )
+        }
+      >
+        Cancel deletion
+      </Button>
+    </Card>
   );
 }

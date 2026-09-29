@@ -178,7 +178,7 @@ export default function DocsPage() {
             <strong>Restrict a page</strong> so only the people you add can open it.
           </li>
           <li>
-            <strong>Invite people by email</strong> as an <em>editor</em>, <em>commenter</em> or <em>viewer</em>. They get an
+            <strong>Share with people by email</strong>: they can view, comment or edit. People without a Folevi account get an invitation to accept first; people outside a workspace join that page as guests, who aren’t billed. They get an
             email and find the page under Shared.
           </li>
           <li>

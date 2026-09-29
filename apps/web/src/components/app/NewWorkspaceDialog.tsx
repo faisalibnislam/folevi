@@ -6,7 +6,7 @@ import { useAppState, type WorkspaceRole } from "@/lib/app/state";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 
-/** How a role reads in the switcher and settings. Editors, commenters and viewers are all Members. */
+/** How a role reads in the switcher and settings: Owner, Admin or Member (a member's access restriction is shown separately). */
 export function workspaceRoleLabel(role: WorkspaceRole): string {
   return role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Member";
 }

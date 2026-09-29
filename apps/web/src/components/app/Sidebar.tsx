@@ -339,7 +339,7 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { scope, role, today } = useAppState();
+  const { scope, canEdit, today } = useAppState();
   const { openPalette } = useShell();
   const org = useQuery(api.organization.sidebar, { scope });
   const counts = useQuery(api.tasks.counts, { scope, today });
@@ -465,7 +465,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <div className="min-w-0 flex-1">
                 <NavItem href={`/tags/${t.id}`} icon={<Hash size={15} style={{ color: tagColorVar(t.color) }} />} label={t.name} onNavigate={onNavigate} />
               </div>
-              {role !== "viewer" && role !== "commenter" ? <TagMenu key={`${t.id}:${t.name}:${t.color}`} tag={t} /> : null}
+              {canEdit ? <TagMenu key={`${t.id}:${t.name}:${t.color}`} tag={t} /> : null}
             </div>
           ))}
           <MoreLink href="/tags" count={(org?.tags.length ?? 0) - shownTags.length} noun="tags" onNavigate={onNavigate} />

@@ -20,7 +20,7 @@ export const nodeNameFor = (type: string) => (type === "code" ? "codeBlock" : ty
 export const blockTypeFor = (nodeName: string) => (nodeName === "codeBlock" ? "code" : nodeName);
 
 export const TEXT_NODES = new Set(["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote", "callout"]);
-export const ATOM_NODES = new Set(["divider", "pageBreak", "image", "file", "table", "page", "bookmark", "collection", "formula", "whiteboard", "unknownBlock"]);
+export const ATOM_NODES = new Set(["divider", "pageBreak", "image", "file", "table", "page", "bookmark", "collection", "formula", "whiteboard", "flowchart", "unknownBlock"]);
 
 /** Props each node stores as attributes (besides id/depth). */
 const FORMAT = ["decoration", "color", "align", "font", "group"];
@@ -45,6 +45,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   collection: ["collectionId", "viewId"],
   formula: ["latex"],
   whiteboard: ["data", "height"],
+  flowchart: ["data", "height"],
 };
 
 function markToPM(m: Mark): { type: string; attrs?: Record<string, unknown> } {
@@ -168,6 +169,10 @@ export function nodeToFlat(node: PMNode): FlatBlock | null {
   if (type === "whiteboard") {
     props.data = String(props.data ?? "");
     props.height = Number(props.height ?? 420) || 420;
+  }
+  if (type === "flowchart") {
+    props.data = String(props.data ?? "");
+    props.height = Math.round(Number(props.height ?? 440)) || 440;
   }
   return { id, depth, type, schemaVersion: SCHEMA_VERSION, text: TEXT_NODES.has(type) ? pmInline(node) : [], props };
 }

@@ -1,6 +1,7 @@
 import type { WireBlock } from "./types";
 import { plainText } from "./richtext";
 import type { InlineNode } from "./generated/schema";
+import { flowchartText, parseFlowchart } from "./flowchart";
 
 /** Lowercase, strip diacritics, collapse whitespace. Used on both indexing and query sides. */
 export function normalizeForSearch(value: string): string {
@@ -39,6 +40,9 @@ export function blockSearchText(block: Pick<WireBlock, "type" | "text" | "props"
       break;
     case "formula":
       parts.push(String(p.latex ?? ""));
+      break;
+    case "flowchart":
+      parts.push(flowchartText(parseFlowchart(String(p.data ?? ""))));
       break;
   }
   return parts.filter(Boolean).join(" ");

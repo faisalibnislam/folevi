@@ -6,6 +6,8 @@ import { rankSequence } from "./rank";
 import { flattenTree } from "./tree";
 import { normalizeInline, plainText, sanitizeHref } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
+import { parseFlowchart } from "./flowchart";
+import { flowchartToMermaid } from "./flowchartMermaid";
 
 // ---------------------------------------------------------------- export
 
@@ -123,6 +125,12 @@ export function blocksToMarkdown(
         const svg = whiteboardToSvg(String(p.data ?? ""), Number(p.height));
         const uri = `data:image/svg+xml;utf8,${encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29")}`;
         lines.push(`${indent}![Whiteboard](${uri})`, "");
+        break;
+      }
+      case "flowchart": {
+        // A Mermaid diagram, so the chart stays editable and renders in most Markdown viewers.
+        const fc = parseFlowchart(String(p.data ?? ""));
+        if (fc.nodes.length) lines.push("```mermaid", flowchartToMermaid(fc), "```", "");
         break;
       }
       case "code": {

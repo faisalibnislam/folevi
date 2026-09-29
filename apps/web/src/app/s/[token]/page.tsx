@@ -13,6 +13,7 @@ import { currentRequestId, logEvent } from "@/lib/server/log";
 import { GRANT_COOKIE, GRANT_TTL_MS, openGrant, sealGrant } from "./grant";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
+import "@/components/editor/flowchart/flowchart.css";
 
 export const dynamic = "force-dynamic";
 

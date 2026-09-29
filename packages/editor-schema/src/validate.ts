@@ -4,6 +4,7 @@ import { isValidId } from "./ids";
 import { isValidRank } from "./rank";
 import { plainText } from "./richtext";
 import { whiteboardDataIssue } from "./whiteboard";
+import { flowchartDataIssue } from "./flowchart";
 
 export interface ValidationIssue {
   path: string;
@@ -161,8 +162,9 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   if (issues.length === 0 && plainText(b.text as never).length > LIMITS.maxTextLength) {
     issues.push({ path: "text", code: "too_long", message: "text too long" });
   }
-  // Whiteboard drawings may be larger than other strings (see LIMITS.maxWhiteboardDataLength).
-  const stringLimits: Record<string, number> = b.type === "whiteboard" ? { data: LIMITS.maxWhiteboardDataLength } : {};
+  // Whiteboard drawings and flowcharts may be larger than other strings (see LIMITS.max*DataLength).
+  const stringLimits: Record<string, number> =
+    b.type === "whiteboard" ? { data: LIMITS.maxWhiteboardDataLength } : b.type === "flowchart" ? { data: LIMITS.maxFlowchartDataLength } : {};
   checkFields(b.props as Record<string, unknown>, def.props, "props", issues, [], stringLimits);
   if (issues.length) return issues;
 
@@ -212,6 +214,15 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
       const h = p.height as number;
       if (h < LIMITS.minWhiteboardHeight || h > LIMITS.maxWhiteboardHeight) {
         issues.push({ path: "props.height", code: "range", message: `height must be between ${LIMITS.minWhiteboardHeight} and ${LIMITS.maxWhiteboardHeight}` });
+      }
+      break;
+    }
+    case "flowchart": {
+      const issue = flowchartDataIssue(p.data as string);
+      if (issue) issues.push({ path: "props.data", code: issue === "flowchart too large" ? "too_long" : "shape", message: issue });
+      const h = p.height as number;
+      if (h < LIMITS.minFlowchartHeight || h > LIMITS.maxFlowchartHeight) {
+        issues.push({ path: "props.height", code: "range", message: `height must be between ${LIMITS.minFlowchartHeight} and ${LIMITS.maxFlowchartHeight}` });
       }
       break;
     }

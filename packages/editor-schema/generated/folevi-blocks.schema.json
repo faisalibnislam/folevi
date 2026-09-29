@@ -354,6 +354,22 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "flowchart"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/FlowchartProps"
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -1188,6 +1204,22 @@
       "additionalProperties": false
     },
     "WhiteboardProps": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "data",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "FlowchartProps": {
       "type": "object",
       "properties": {
         "data": {

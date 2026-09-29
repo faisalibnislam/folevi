@@ -3,6 +3,7 @@ import { flattenTree, sanitizeHref, type InlineNode, type WireBlock } from "@fol
 import { formatCalendarDate } from "@/i18n";
 import { ReadOnlyCollection, type ReadOnlyCollectionData } from "@/components/views/ReadOnlyCollection";
 import { FormulaRender, MermaidDiagram, WhiteboardStatic } from "@/components/editor/RichBlocks";
+import { FlowchartStatic } from "@/components/editor/flowchart/render";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
   return (
@@ -132,6 +133,12 @@ export function ReadOnlyBlocks({
             return (
               <div key={block.id} className="fb-readonly-whiteboard" style={{ marginLeft: `${depth * 1.6}em` }}>
                 <WhiteboardStatic data={String(p.data ?? "")} height={Number(p.height)} />
+              </div>
+            );
+          case "flowchart":
+            return (
+              <div key={block.id} className="fb-readonly-flowchart" style={{ marginLeft: `${depth * 1.6}em` }}>
+                <FlowchartStatic data={String(p.data ?? "")} height={Number(p.height)} />
               </div>
             );
           case "image": {

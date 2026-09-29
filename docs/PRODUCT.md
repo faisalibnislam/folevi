@@ -27,8 +27,9 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 ### Writing
 - Block editor with paragraphs, three heading levels, bulleted/numbered/to-do lists, toggles, quotes,
   callouts, code, dividers, images (including Unsplash, when configured), files, bookmarks, tables, cards,
-  page links, collections, mentions, TeX formulas, Mermaid diagrams and whiteboards. Unknown future block
-  types are preserved, never dropped.
+  page links, collections, mentions, TeX formulas, Mermaid diagrams, whiteboards and flowcharts (a canvas of
+  shapes and connectors with auto-layout, AI create/update and Mermaid conversion; web only for now — the
+  Mac keeps them intact). Unknown future block types are preserved, never dropped.
 - Markdown shortcuts, a `/` menu, `[[` page links, `@` mentions, nesting with Tab, block moves with
   ⌥⇧↑/↓ and drag handles, undo/redo, paste normalization (HTML and Markdown).
 - Per-page styling: 57 note styles (artwork that also colours text, highlights and blocks) or your own

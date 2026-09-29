@@ -1,5 +1,5 @@
 /* Insert panel (Inspector → Insert) and the blocks it adds: divider styles, page break, formula,
- * Mermaid preview and whiteboard. Loaded after editor.css by the document view and share pages. */
+ * Mermaid diagram card and whiteboard (flowcharts: flowchart/flowchart.css). Loaded after editor.css by the document view and share pages. */
 
 /* ---------------------------------------------------------------- whiteboard palette (theme-aware) */
 :root {
@@ -158,20 +158,78 @@
 .fb-formula-preview { margin-top: 6px; display: flex; justify-content: center; }
 .fb-readonly-formula { margin: 0.6em 0; display: flex; justify-content: center; }
 
-/* ---------------------------------------------------------------- Mermaid */
-.fb-editor pre.fb-code .fb-mermaid-preview {
-  display: flex; justify-content: center;
-  margin: 0.85em 0 0.1em; padding: 16px;
+/* ---------------------------------------------------------------- Mermaid
+ * A diagram card: the drawing in a clean frame, a slim bar (label, Convert, Edit) that shows on hover or
+ * focus, and the source folded away until the diagram is being edited (codeView.ts). */
+.fb-editor pre.fb-code.fb-code-mermaid {
+  padding: 0; overflow: hidden; white-space: normal;
+  border-radius: 14px;
   background: var(--color-surface);
   box-shadow: 0 0 0 1px var(--color-line);
-  border-radius: 9px;
-  white-space: normal; font-family: var(--font-sans); cursor: default; user-select: none;
+  font-family: var(--font-sans);
+  transition: box-shadow 140ms;
 }
-.fb-mermaid-svg { display: block; max-width: 100%; max-height: 560px; width: auto; height: auto; }
-.fb-mermaid-status, .fb-mermaid-error { margin: 0; font: 13px/1.5 var(--font-sans); color: var(--color-ink-muted); }
-.fb-mermaid-error { color: var(--color-coral-ink, var(--color-ink-muted)); }
-.fb-readonly-mermaid { margin: 0.6em 0; padding: 16px; border-radius: 12px; box-shadow: 0 0 0 1px var(--color-line); display: grid; justify-items: center; gap: 10px; }
-.fb-readonly-mermaid details { justify-self: stretch; font-size: 13px; color: var(--color-ink-muted); }
+.fb-editor pre.fb-code.fb-code-mermaid::after { content: none; }
+.fb-editor pre.fb-code-mermaid:hover, .fb-editor pre.fb-code-mermaid[data-editing="true"] { box-shadow: 0 0 0 1px var(--color-line-strong); }
+.fb-editor pre.fb-code-mermaid.ProseMirror-selectednode { box-shadow: 0 0 0 2px var(--doc-accent); }
+.fb-editor pre.fb-code-mermaid > code {
+  display: none;
+  padding: 12px 16px; margin: 0;
+  background: var(--color-code-bg); color: var(--color-code-ink);
+  border-bottom: 1px solid var(--color-line);
+  font: 13px/1.65 var(--font-mono); white-space: pre-wrap; tab-size: 2;
+}
+.fb-editor pre.fb-code-mermaid[data-editing="true"] > code { display: block; }
+
+.fb-mermaid-bar {
+  position: absolute; z-index: 1; top: 8px; right: 8px;
+  display: flex; align-items: center; gap: 4px; padding: 3px;
+  border-radius: 10px;
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: var(--glass-edge);
+  font: 550 12px/1 var(--font-sans); color: var(--color-ink-muted);
+  opacity: 0; transition: opacity 120ms; user-select: none;
+}
+.fb-editor pre.fb-code-mermaid:hover .fb-mermaid-bar,
+.fb-editor pre.fb-code-mermaid:focus-within .fb-mermaid-bar,
+.fb-editor pre.fb-code-mermaid.ProseMirror-selectednode .fb-mermaid-bar { opacity: 1; }
+/* While editing, the bar is a header above the source. */
+.fb-editor pre.fb-code-mermaid[data-editing="true"] .fb-mermaid-bar {
+  position: static; opacity: 1; border-radius: 0; padding: 5px 6px 5px 14px;
+  background: color-mix(in oklab, var(--color-surface-sunken) 45%, var(--color-surface));
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 -1px 0 var(--color-line);
+}
+.fb-mermaid-label { display: none; margin-right: auto; letter-spacing: 0.02em; }
+.fb-editor pre.fb-code-mermaid[data-editing="true"] .fb-mermaid-label { display: inline; }
+.fb-mermaid-note { max-width: 32ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--color-coral-ink, var(--color-ink-muted)); }
+.fb-mermaid-btn {
+  height: 26px; padding: 0 10px; border-radius: 7px;
+  font: inherit; color: var(--color-ink); white-space: nowrap;
+}
+.fb-mermaid-btn:hover { background: var(--glass-hover); color: var(--color-heading); }
+.fb-mermaid-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+.fb-mermaid-btn[hidden] { display: none; }
+
+.fb-editor pre.fb-code .fb-mermaid-preview, .fb-mermaid-view {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 22px 20px; min-height: 64px;
+  white-space: normal; font-family: var(--font-sans); cursor: default; user-select: none;
+  overflow-x: auto;
+}
+.fb-editor pre.fb-code-mermaid[data-editing="false"] .fb-mermaid-preview { cursor: zoom-in; }
+.fb-mermaid-svg { display: block; max-width: 100%; max-height: 640px; width: auto; height: auto; }
+:is(.fb-mermaid-preview, .fb-mermaid-view)[data-stale="true"] .fb-mermaid-svg { opacity: 0.35; filter: grayscale(0.6); transition: opacity 160ms; }
+.fb-mermaid-status, .fb-mermaid-error { margin: 0; max-width: 100%; font: 13px/1.5 var(--font-sans); color: var(--color-ink-muted); text-align: center; overflow-wrap: anywhere; }
+.fb-mermaid-error {
+  padding: 8px 12px; border-radius: 9px;
+  color: var(--color-coral-ink, var(--color-ink-muted));
+  background: color-mix(in oklab, var(--color-coral-soft, var(--color-surface-sunken)) 60%, var(--color-surface));
+}
+.fb-readonly-mermaid { margin: 0.6em 0; border-radius: 14px; box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); display: grid; justify-items: stretch; overflow: hidden; }
+.fb-readonly-mermaid details { padding: 8px 16px 12px; font-size: 13px; color: var(--color-ink-muted); border-top: 1px solid var(--color-line); }
+.fb-readonly-mermaid summary { cursor: pointer; }
 .fb-readonly-mermaid pre { margin-top: 6px; padding: 10px 12px; border-radius: 9px; background: var(--color-code-bg); font: 12.5px/1.6 var(--font-mono); white-space: pre-wrap; }
 
 /* ---------------------------------------------------------------- whiteboard */

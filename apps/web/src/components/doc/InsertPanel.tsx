@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
   ImagePlus,
   LayoutGrid,
+  Network,
   Link as LinkIcon,
   List,
   ListOrdered,
@@ -33,7 +34,7 @@ import {
   Text,
   Workflow,
 } from "lucide-react";
-import { WHITEBOARD_DEFAULT_HEIGHT } from "@folevi/editor-schema";
+import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT } from "@folevi/editor-schema";
 import { emptyTableRows, insertBlockAfterCurrent, insertBlockAt } from "@/components/editor/commands";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
 import { beginPointerDrag } from "@/components/editor/blockDrag";
@@ -66,6 +67,7 @@ const MAIN: InsertItem[] = [
   { label: "Code Block", type: "code", attrs: () => ({ language: "plaintext" }), icon: <Code2 {...i16} />, keywords: "code snippet programming" },
   { label: "TeX Formula", type: "formula", attrs: () => newFormulaAttrs(), icon: <Sigma {...i16} />, keywords: "formula math latex tex equation katex" },
   { label: "Mermaid Diagram", type: "code", attrs: () => ({ language: "mermaid" }), text: MERMAID_SAMPLE, icon: <Workflow {...i16} />, keywords: "mermaid diagram flowchart chart graph" },
+  { label: "Flowchart", type: "flowchart", attrs: () => ({ data: "", height: FLOWCHART_DEFAULT_HEIGHT }), icon: <Network {...i16} />, keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro" },
   { label: "Whiteboard", type: "whiteboard", attrs: () => ({ data: "", height: WHITEBOARD_DEFAULT_HEIGHT }), icon: <PenTool {...i16} />, keywords: "drawing sketch draw pen canvas" },
 ];
 

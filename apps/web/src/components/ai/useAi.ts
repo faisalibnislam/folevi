@@ -51,6 +51,7 @@ export function useAi() {
   const { workspace } = useAppState();
   const askAction = useAction(api.ai.ask);
   const writeAction = useAction(api.ai.write);
+  const flowchartAction = useAction(api.ai.flowchart);
   const ask = useCallback(
     (question: string, opts: { documentId?: string; scope?: "note" | "workspace"; folderId?: string; history?: AskTurn[]; streamId?: Id<"aiStreams"> } = {}) =>
       askAction({ workspaceId: workspace.id, question, documentId: opts.documentId, scope: opts.scope, folderId: opts.folderId, history: opts.history, streamId: opts.streamId }),
@@ -61,7 +62,12 @@ export function useAi() {
       writeAction({ workspaceId: workspace.id, task, ...opts }),
     [writeAction, workspace.id],
   );
-  return { ask, write };
+  /** A flowchart draft (nodes and connectors, no positions) from a description, or the current chart changed. */
+  const flowchart = useCallback(
+    (mode: "create" | "update", instruction: string, current?: string) => flowchartAction({ workspaceId: workspace.id, mode, instruction, current }),
+    [flowchartAction, workspace.id],
+  );
+  return { ask, write, flowchart };
 }
 
 /** Events between the editor's menus and the note's AI panel. */

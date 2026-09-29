@@ -49,6 +49,27 @@ describe("Insert panel blocks on the server", () => {
     expect(longFormula.status).toBe("rejected");
   });
 
+  test("flowcharts sync; malformed or oversized charts are rejected", async () => {
+    const t = setup();
+    const a = await person(t, "flowcharts@example.com");
+    const doc = await newDoc(a);
+    const data = JSON.stringify({
+      v: 1,
+      nodes: [
+        { id: "a", shape: "terminator", x: 0, y: 0, w: 160, h: 56, text: "Start" },
+        { id: "b", shape: "decision", x: 0, y: 120, w: 176, h: 96, text: "Ready?", color: "blue" },
+      ],
+      edges: [{ id: "e1", from: "a", to: "b", label: "go", style: "dashed" }],
+    });
+    expect((await upsert(a, doc, block("flowchart", { data, height: 440 }, "A"))).status).toBe("applied");
+    expect((await upsert(a, doc, block("flowchart", { data: "", height: 440 }, "B"))).status).toBe("applied");
+    const dangling = JSON.stringify({ v: 1, nodes: [{ id: "a", shape: "process", x: 0, y: 0, w: 160, h: 64 }], edges: [{ id: "e", from: "a", to: "zz" }] });
+    expect((await upsert(a, doc, block("flowchart", { data: dangling, height: 440 }, "C"))).status).toBe("rejected");
+    const script = JSON.stringify({ v: 1, nodes: [{ id: "a", shape: "process", x: 0, y: 0, w: 160, h: 64, onclick: "x" }], edges: [] });
+    expect((await upsert(a, doc, block("flowchart", { data: script, height: 440 }, "D"))).status).toBe("rejected");
+    expect((await upsert(a, doc, block("flowchart", { data, height: 50 }, "E"))).status).toBe("rejected");
+  });
+
   test("collections can start as a gallery or a kanban board", async () => {
     const t = setup();
     const a = await person(t, "views@example.com");

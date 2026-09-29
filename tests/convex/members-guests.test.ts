@@ -5,7 +5,7 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { normalizeMembership, type DocumentAccessInfo } from "../../convex/lib/auth";
 import { canInviteGuest, canInviteMember, canManageMember, canManageWorkspace, memberCanManageBilling, sharePermissions } from "../../convex/lib/permissions";
-import { inWorkspace, join, para, person, PERSONAL, setup, teamWorkspace, ulid, type T } from "./helpers";
+import { inWorkspace, join, para, person, PERSONAL, setup, teamWorkspace, ulid, verifyAccountModel, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
@@ -80,7 +80,7 @@ describe("roles: owner | admin | member", () => {
       expect((await seats(owner, workspaceId)).seats).toBe(4);
     };
     await check();
-    const before = (await t.action(internal.migrations.verifyAccountModel, {})) as { legacyRoles: number; ok: boolean };
+    const before = await verifyAccountModel(t);
     expect(before.legacyRoles).toBe(4);
     expect(before.ok).toBe(false);
 
@@ -93,7 +93,7 @@ describe("roles: owner | admin | member", () => {
     const invite = await t.run(async (ctx) => (await ctx.db.query("workspaceInvites").collect()).find((i) => i.email === "later@example.com")!);
     expect([invite.role, invite.memberAccess]).toEqual(["member", "view"]);
     await check();
-    const after = (await t.action(internal.migrations.verifyAccountModel, {})) as { legacyRoles: number; ok: boolean };
+    const after = await verifyAccountModel(t);
     expect(after.legacyRoles).toBe(0);
     // Idempotent.
     const again = await t.mutation(internal.migrations.normalizeWorkspaceRoles, { table: "workspaceMembers", cursor: null });

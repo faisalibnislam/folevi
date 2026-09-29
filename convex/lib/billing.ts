@@ -101,8 +101,32 @@ export async function ensureWorkspaceSubscription(ctx: MutationCtx, workspaceId:
   return (await ctx.db.get(id)) as WorkspaceSubscription;
 }
 
-/** A refund in Stripe marks the payment for that invoice refunded (Personal or workspace alike). */
+/**
+ * The status an invoice event leaves on the payment already recorded for that invoice (Stripe events can
+ * arrive late, twice or out of order): a refund stays refunded, and a failure delivered after the invoice
+ * was paid doesn't undo the payment.
+ */
+export function invoicePaymentStatus(existing: Doc<"payments"> | null, paid: boolean): Doc<"payments">["status"] {
+  if (existing?.status === "refunded") return "refunded";
+  if (existing?.status === "paid" && !paid) return "paid";
+  return paid ? "paid" : "failed";
+}
+
+/**
+ * Whether a failed-invoice event may mark the plan past due: not when that invoice has been paid since,
+ * nor when a newer subscription event (which carries the real status) was already applied.
+ */
+export function failedInvoiceMarksPastDue(existing: Doc<"payments"> | null, created: number | undefined, row: { stripeEventCreatedAt?: number }): boolean {
+  if (existing && existing.status !== "failed") return false;
+  return !(created !== undefined && row.stripeEventCreatedAt !== undefined && created < row.stripeEventCreatedAt);
+}
+
+/**
+ * A refund in Stripe marks the payment for that invoice refunded (Personal or workspace alike). A partial
+ * refund (Stripe's charge says `refunded: false`) leaves it paid.
+ */
 export async function markInvoiceRefunded(ctx: MutationCtx, o: Record<string, unknown>): Promise<void> {
+  if (o.refunded === false) return;
   const ref = typeof o.invoice === "string" ? o.invoice : undefined;
   const payment = ref
     ? await ctx.db

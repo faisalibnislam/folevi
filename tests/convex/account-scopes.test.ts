@@ -323,21 +323,25 @@ describe("devices are per account, from the Personal plan (32, 33)", () => {
     return { as: t.withIdentity(identity(email, { subject: p.userId, tokenIdentifier: `https://test.folevi.local|${p.userId}`, sessionId })), sessionId };
   }
 
-  test("Free allows 2 devices, and joining a workspace doesn't lift it", async () => {
+  test("Free allows 2 devices, and joining a workspace (even a paid Business one) doesn't lift it", async () => {
     vi.useFakeTimers();
     try {
       const t = setup();
       const owner = await person(t, "dev-owner@example.com");
       const a = await person(t, "dev-member@example.com");
       await endTrial(t, a);
-      await team(owner, "Devices", { p: a, email: "dev-member@example.com" });
+      const teamId = await team(owner, "Devices", { p: a, email: "dev-member@example.com" });
+      await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_business_yearly" });
+      expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", devices: 2 });
       vi.advanceTimersByTime(1000);
       const second = await anotherDevice(t, a, "dev-member@example.com");
       vi.advanceTimersByTime(1000);
       const third = await anotherDevice(t, a, "dev-member@example.com");
       expect((await second.as.query(api.users.me, {})).state).toBe("ready");
       expect(await third.as.query(api.users.me, {})).toMatchObject({ state: "device_limit", limit: 2, active: 3 });
+      // The held device can't reach the Business workspace either (nor anything else).
       await expect(third.as.query(api.workspaces.mine, {})).rejects.toThrow(/device_limit/);
+      await expect(third.as.query(api.documents.list, { scope: inWorkspace(teamId), view: "all", paginationOpts: { numItems: 5, cursor: null } })).rejects.toThrow(/device_limit/);
     } finally {
       vi.useRealTimers();
     }

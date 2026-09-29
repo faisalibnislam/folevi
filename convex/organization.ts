@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { normalizeForSearch, rankBetween, ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, requireDocument, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, requireDocument, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { nextSeq } from "./lib/seq";
 import { inScope, insertScoped, sameScopeRows, scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
@@ -347,6 +347,9 @@ export const setDocumentTags = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    // Tags belong to the page's Personal or workspace: guests (who can edit a shared page) don't see them
+    // and can't change them.
+    if (!(await documentAccessInfo(ctx, profile, doc)).inScope) fail("forbidden", "Only members can tag pages.");
     const wanted = new Map<string, Id<"tags">>();
     for (const id of args.tagIds.slice(0, 20)) {
       const tag = await ctx.db

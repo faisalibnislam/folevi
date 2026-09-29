@@ -18,6 +18,7 @@ import {
   resolveScope,
   levelAtLeast,
   memberAtLeast,
+  type Access,
 } from "./lib/auth";
 import { HomeFolders, IdResolver, liveBlocks, refreshDerived, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary, type HomeFolder } from "./lib/documents";
 import { SyncEngine, refreshLinkLabels, syncLinks } from "./lib/syncEngine";
@@ -677,15 +678,20 @@ export const restoreFromTrash = mutation({
     const doc = await getDocumentByPublicId(ctx, args.documentId);
     if (!doc) fail("not_found", "Document not found.");
     const access = await documentAccess(ctx, profile, doc);
+    if (access === "none") fail("not_found", "Document not found.");
     if (!accessAtLeast(access, "write")) fail("forbidden", "You can't restore this document.");
     await restoreDoc(ctx, doc, profile._id);
     return null;
   },
 });
 
-/** Who may delete a page for good: whoever manages it, or the person who created it. */
-async function canDeletePermanently(ctx: MutationCtx | QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">) {
-  return doc.createdBy === profile._id || accessAtLeast(await documentAccess(ctx, profile, doc), "manage");
+/**
+ * Who may delete a page for good: whoever manages it, or the person who created it while they can still
+ * edit it (a creator who was removed, made view-only, or whose workspace is closing can't).
+ */
+async function canDeletePermanently(ctx: MutationCtx | QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">, access?: Access) {
+  const a = access ?? (await documentAccess(ctx, profile, doc));
+  return accessAtLeast(a, "manage") || (doc.createdBy === profile._id && accessAtLeast(a, "write"));
 }
 
 /**
@@ -721,7 +727,9 @@ export const deletePermanently = mutation({
     await assertWritable(ctx, profile);
     const doc = await getDocumentByPublicId(ctx, args.documentId);
     if (!doc) fail("not_found", "Document not found.");
-    if (!(await canDeletePermanently(ctx, profile, doc))) fail("forbidden", "Only the owner or a workspace admin can delete permanently.");
+    const access = await documentAccess(ctx, profile, doc);
+    if (access === "none") fail("not_found", "Document not found.");
+    if (!(await canDeletePermanently(ctx, profile, doc, access))) fail("forbidden", "Only the owner or a workspace admin can delete permanently.");
     if (!doc.inTrash) fail("invalid_argument", "Move the document to Trash first.");
     if (args.confirmTitle.trim() !== (doc.title.trim() || "Untitled")) fail("invalid_argument", "Type the document title to confirm.");
     await queueDeletion(ctx, doc, profile._id, "user_request");

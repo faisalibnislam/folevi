@@ -9,7 +9,7 @@ import type { Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
-import { WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, formatPrice, workspacePlanId, type BillingInterval, type WorkspaceTier } from "@/lib/plans";
+import { PLAN_CATALOG, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, billedQuantity, formatPrice, isPaidPlan, seatChargeCents, workspacePlanId, type BillingInterval, type WorkspaceTier } from "@/lib/plans";
 import { Card } from "./Card";
 import { formatBytes } from "./BillingSection";
 
@@ -156,7 +156,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                 ? `${data.seats.toLocaleString()} × ${seatPrice} = ${formatPrice(data.estimatedChargeCents)}/${per(plan.interval)}`
                 : "Free — nothing is charged."}
             </p>
-            {e.paid && sub?.quantity !== null && sub?.quantity !== undefined && sub.quantity !== data.seats ? <p className="mt-1 text-[12.5px] text-faint">Updating the billed seats ({sub.quantity}) to match…</p> : null}
+            {e.paid && sub?.quantity !== null && sub?.quantity !== undefined && sub.quantity !== billedQuantity(data.seats) ? <p className="mt-1 text-[12.5px] text-faint">Updating the billed seats ({sub.quantity}) to match…</p> : null}
           </div>
           <div className="rounded-[10px] bg-[var(--glass-hover)] p-4">
             <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
@@ -196,10 +196,12 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
         <div className="grid gap-3 lg:grid-cols-3">
           {WORKSPACE_PLAN_ORDER.map((tier) => {
             const card = WORKSPACE_PLANS[tier];
-            const paid = tier !== "free";
+            const cardPlan = workspacePlanId(tier, interval);
+            // What a plan includes comes from the catalog (capabilities), never from its name.
+            const paid = isPaidPlan(cardPlan);
             const price = interval === "year" ? card.yearlyCents : card.monthlyCents;
-            const isCurrent = paid ? e.planId === workspacePlanId(tier, interval) : !e.paid;
-            const ai = tier !== "free";
+            const isCurrent = paid ? e.planId === cardPlan : !e.paid;
+            const ai = PLAN_CATALOG[cardPlan].entitlements.aiAssistant;
             const canBuy = paid && (stripeLive || data.checkoutAvailable || data.testPurchases);
             return (
               <section key={tier} aria-label={`${card.name} plan`} className={`flex flex-col rounded-[14px] p-5 ${ai ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}>
@@ -213,7 +215,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                   <span className="text-sm text-muted">{paid ? ` per member / ${per(interval)}` : ` / ${per(interval)}`}</span>
                 </p>
                 <p className="min-h-[20px] text-[12.5px] text-muted">
-                  {!paid ? "No card required" : `${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(price * data.seats)}/${per(interval)}`}
+                  {!paid ? "No card required" : `${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(seatChargeCents(price, data.seats))}/${per(interval)}`}
                 </p>
                 <p className="mt-2 text-[13px] text-ink">{card.blurb}</p>
                 <ul className="mt-3 flex-1 space-y-1.5 text-[13px]">
@@ -235,7 +237,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                       </Button>
                     ) : null
                   ) : canBuy ? (
-                    <Button variant={tier === "team" ? "primary" : "secondary"} className="w-full" onClick={() => choose(tier)} aria-busy={busy === tier || undefined}>
+                    <Button variant={tier === "team" ? "primary" : "secondary"} className="w-full" onClick={() => choose(tier as Exclude<WorkspaceTier, "free">)} aria-busy={busy === tier || undefined}>
                       {busy === tier ? (stripeLive ? "Switching…" : data.checkoutAvailable ? "Opening checkout…" : "Switching…") : `${e.paid ? "Switch to" : "Upgrade to"} ${card.name}${!stripeLive && !data.checkoutAvailable ? " (test)" : ""}`}
                     </Button>
                   ) : (

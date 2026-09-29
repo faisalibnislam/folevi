@@ -252,6 +252,48 @@ describe("Stripe", () => {
     }
   });
 
+  test("invoice events in any order: a late failure never undoes a payment or a refund, and a partial refund isn't a refund", async () => {
+    const t = setup();
+    const a = await person(t, "late@example.com");
+    process.env.STRIPE_PRICE_PRO_MONTH = "price_pro_m";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
+    try {
+      const sec = Math.floor(Date.now() / 1000);
+      const apply = (eventId: string, created: number, type: string, object: Record<string, unknown>) => t.mutation(internal.billing.applyStripeEvent, { eventId, created, type, object });
+      const active = { object: "subscription", id: "sub_l", customer: "cus_l", status: "active", current_period_end: sec + 30 * 86_400, metadata: { profileId: a.profileId }, items: { data: [{ price: { id: "price_pro_m" } }] } };
+      const invoice = { id: "in_l", subscription: "sub_l", customer: "cus_l", amount_paid: 500, amount_due: 500, currency: "usd" };
+      await apply("evt_a", sec, "customer.subscription.created", active);
+      await apply("evt_b", sec + 5, "invoice.paid", invoice);
+      await apply("evt_c", sec + 6, "customer.subscription.updated", active);
+      // A failure from an earlier attempt, delivered late (a different event id).
+      await apply("evt_late", sec + 1, "invoice.payment_failed", invoice);
+      let mine = await a.as.query(api.billing.mine, {});
+      expect(mine.payments.map((p) => p.status)).toEqual(["paid"]);
+      expect(mine.subscription?.status).toBe("active");
+      // A partial refund leaves it paid; a full one marks it refunded; the paid event redelivered under a
+      // new id doesn't bring it back.
+      await apply("evt_p", sec + 7, "charge.refunded", { invoice: "in_l", customer: "cus_l", refunded: false, amount_refunded: 100 });
+      expect((await a.as.query(api.billing.mine, {})).payments[0]!.status).toBe("paid");
+      await apply("evt_r", sec + 8, "charge.refunded", { invoice: "in_l", customer: "cus_l", refunded: true });
+      await apply("evt_b2", sec + 9, "invoice.paid", invoice);
+      mine = await a.as.query(api.billing.mine, {});
+      expect(mine.payments.map((p) => p.status)).toEqual(["refunded"]);
+      // An invoice without an id can't be recorded exactly once, so it isn't recorded.
+      await apply("evt_noid", sec + 10, "invoice.paid", { ...invoice, id: undefined });
+      expect((await a.as.query(api.billing.mine, {})).payments).toHaveLength(1);
+      // The webhook refuses a (signed) event without an id.
+      const body = JSON.stringify({ type: "invoice.paid", created: sec, data: { object: invoice } });
+      const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("whsec_test"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${sec}.${body}`));
+      const header = `t=${sec},v1=${[...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+      const res = await t.fetch("/webhooks/stripe", { method: "POST", body, headers: { "stripe-signature": header } });
+      expect(res.status).toBe(400);
+    } finally {
+      delete process.env.STRIPE_PRICE_PRO_MONTH;
+      delete process.env.STRIPE_WEBHOOK_SECRET;
+    }
+  });
+
   test("a subscription event older than the last one applied is ignored (out of order)", async () => {
     const t = setup();
     const a = await person(t, "order@example.com");

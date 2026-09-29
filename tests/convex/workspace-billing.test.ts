@@ -4,7 +4,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { insertPayment, insertSubscription } from "../../convex/lib/billing";
-import { inWorkspace, person, PERSONAL, setup, ulid, type T } from "./helpers";
+import { inWorkspace, para, person, PERSONAL, setup, ulid, type T } from "./helpers";
 
 const GB = 1024 ** 3;
 const DAY = 86_400_000;
@@ -390,6 +390,45 @@ describe("cancellation, ownership and the end of a period (28–30)", () => {
     // Nothing deleted; the payment history stays.
     expect(s.payments).toHaveLength(1);
     expect((await owner.as.query(api.billing.mine, {})).entitlements).toMatchObject({ paidPlan: "pro", ai: true });
+  });
+
+  test("a workspace whose paid plan ends while it holds more than Free allows keeps everything; only growth is blocked (19)", async () => {
+    const t = setup();
+    const owner = await person(t, "c19-owner@example.com");
+    const m = await person(t, "c19-member@example.com");
+    const { id } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "C19" });
+    await join(t, owner, m, "c19-member@example.com", id);
+    await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_team_monthly" });
+    const note = await newDoc(owner, id);
+    const wid = await workspaceDbId(t, id);
+    await t.run(async (ctx) => ctx.db.patch(wid, { storageUsedBytes: 40 * GB }));
+    const upload = (p: Person) => p.as.mutation(api.files.generateUploadUrl, { documentId: note, filename: "a.png", size: 1024 * 1024, mimeType: "image/png", kind: "image" });
+    expect((await upload(m)).uploadUrl).toBeTruthy();
+    // The Team plan is canceled and its period ends: Workspace Free (5 GB) with 40 GB stored.
+    await owner.as.action(api.workspaceBilling.cancel, { workspaceId: id });
+    const sub = (await workspaceSub(t, id))!;
+    await t.run(async (ctx) => ctx.db.patch(sub._id, { currentPeriodEnd: Date.now() - 1 }));
+    await t.mutation(internal.billing.settleExpiredPlans, {});
+    const s = await summary(owner, id);
+    expect(s.entitlements).toMatchObject({ planId: "workspace_free", storageBytes: 5 * GB });
+    expect(s.storageUsedBytes).toBe(40 * GB);
+    // Growth is refused for everyone, with the reason…
+    for (const p of [owner, m]) await expect(upload(p)).rejects.toThrow(/is over its storage limit \(40 GB of 5 GB on Workspace Free\)\. Everything already stored stays available/);
+    // …but nothing was removed and the work goes on: reading, writing text, organizing and exporting.
+    expect((await m.as.query(api.documents.get, { documentId: note }))!.access).toBe("write");
+    const [edit] = await m.as.mutation(api.sync.push, {
+      scope: inWorkspace(id),
+      deviceId: "device-c19",
+      ops: [{ opId: ulid(), kind: "block.upsert", documentId: note, block: para(ulid(), "Still writing"), baseRevision: null, fields: ["content", "position"] }],
+    });
+    expect(edit!.status).toBe("applied");
+    const { id: folderId } = await m.as.mutation(api.organization.createFolder, { scope: inWorkspace(id), name: "Archive" });
+    await m.as.mutation(api.documents.move, { documentId: note, folderId });
+    expect((await owner.as.action(api.exports.exportScope, { scope: inWorkspace(id) })).documents).toBeGreaterThan(0);
+    expect((await summary(owner, id)).storageUsedBytes).toBe(40 * GB);
+    // Freeing room below the limit lets uploads through again.
+    await t.run(async (ctx) => ctx.db.patch(wid, { storageUsedBytes: 4 * GB }));
+    expect((await upload(m)).uploadUrl).toBeTruthy();
   });
 
   test("the hourly job renews test plans and ends manual plans whose date has passed", async () => {

@@ -3,7 +3,7 @@ import { isOverdue, taskViews } from "../src";
 
 describe("task views", () => {
   const today = "2026-09-25";
-  it("treats unassigned open tasks in a personal workspace as mine", () => {
+  it("treats unassigned open tasks in Personal as mine", () => {
     expect(taskViews({ status: "open", dueDate: null, assigneeId: null }, today, "me", { personal: true })).toEqual(["all", "inbox", "mine"]);
     expect(taskViews({ status: "open", dueDate: "2026-09-30", assigneeId: null }, today, "me", { personal: true })).toEqual(["all", "upcoming", "mine"]);
     // Team workspaces: unassigned tasks are nobody's yet.

@@ -16,7 +16,7 @@ import { action, internalMutation, internalQuery, mutation, query } from "./_gen
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
+import { accessAtLeast, documentAccess, membership, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { aiAccessIn, recordAiUsage } from "./lib/entitlements";
@@ -258,7 +258,7 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
 /**
  * Auth, scope access, whether AI is included where it's asked for, and a per-person budget (the free
  * Gemini tier is shared by everyone). The scope decides: Personal follows the person's Personal plan; a
- * team workspace follows that workspace's plan. A request about one note (`noteOnly`) is made in that
+ * team workspace follows that workspace's plan, for its members only. A request about one note (`noteOnly`) is made in that
  * note's scope; otherwise in the scope given — and, when it also reads a note from elsewhere, AI must be
  * included there too, so one scope's plan never covers another's content.
  */
@@ -275,6 +275,11 @@ export const begin = internalMutation({
       const home = scopeOfRow(doc);
       if (args.noteOnly) target = home;
       else if (!sameScope(home, context)) also = home;
+    }
+    // A workspace plan's AI is for its members (who hold its seats): a guest on one of its pages doesn't
+    // get it, and their own Personal plan doesn't cover the workspace's content either.
+    for (const s of [target, also]) {
+      if (s?.kind === "workspace" && !(await membership(ctx, profile._id, s.workspaceId))) fail("forbidden", "The AI Assistant here is for members of this workspace.");
     }
     const access = await aiAccessIn(ctx, profile, target);
     if (!access.allowed) fail("forbidden", access.message ?? "The AI Assistant isn't available here.");

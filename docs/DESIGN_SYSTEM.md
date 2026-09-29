@@ -200,8 +200,6 @@ the bottom left, ~35% opacity in light, ~50% in dark — fixed behind content. N
   right after it in muted 12.5px text (e.g. "48 notes", "12 templates", "52 folders", "3 pages · across all
   workspaces", "Today · 4 open", "September 2026"; a "+" when more are still loading), announced as a status. Sort and layout controls sit
   right-aligned at the top of the content.
-- **Someone else's Personal workspace** reads "Personal · Ada" in the workspace menu, and the bottom button
-  shows "Shared by Ada" under the name.
 - **Home** is a dashboard: *Recent notes* and *Starred* are single sideways-scrolling rows on the page
   itself (no tray), with white fades at an edge while there is more to scroll that way of the latest
   10 notes (snap scrolling, hidden scrollbar, round arrow buttons at either end that appear only when
@@ -409,14 +407,16 @@ text to `ink`. Axe runs in the e2e suite in both themes.
 - **Plans** (`convex/lib/plans.ts`, the one catalog of plan ids, prices and entitlements; the web
   re-exports it from `@/lib/plans`). **Personal** plans belong to a person: **Free** $0 — 1 GB personal
   storage, 2 devices, no AI · **Basic** $2/month or $9/year — 20 GB, unlimited devices, no AI · **Pro**
-  $5/month or $49/year — 100 GB, unlimited AI. **Workspace** plans belong to a team workspace: **Free** — 5
-  GB, no AI · **Team** $5 per member/month ($49/year) — 100 GB, AI · **Business** $10 per member/month
-  ($99/year) — 1 TB, AI with higher fair-use limits. Team and Business aren't on sale yet, so every team
-  workspace is on Workspace Free. New accounts get **Pro free for 7 days** (no card); it ends without
-  charge. Choosing a paid plan ends a running trial.
+  $5/month or $49/year — 100 GB, AI Assistant (fair use). **Workspace** plans belong to a team workspace
+  (not to its owner) and are billed per member seat — owner, admins and members; guests and pending
+  invitations are free (`convex/lib/seats.ts`): **Free** — 5 GB, no AI · **Team** $5 per member/month
+  ($49/year) — 100 GB, AI for members · **Business** $10 per member/month ($99/year) — 1 TB, AI with higher
+  fair-use limits. Stripe checkout for Team and Business opens once its prices are configured; until
+  then workspaces are on Workspace Free unless an admin sets a plan. New accounts get **Pro free for 7
+  days** (no card); it ends without charge. Choosing a paid plan ends a running trial.
 - **Entitlements** (`convex/lib/entitlements.ts`): `resolveEntitlements({ kind: "personal", profileId } |
-  { kind: "workspace", workspaceId })`; `scopeOfWorkspace` maps a workspace row to its scope (a personal
-  workspace is its owner's Personal). The two never merge: a Personal plan never upgrades a workspace and a
+  { kind: "workspace", workspaceId })` (Personal is not a workspace: its rows carry `ownerProfileId`). The
+  two never merge: a Personal plan never upgrades a workspace and a
   workspace plan never upgrades Personal. Personal (`personalEntitlementsOf`): trial counts as Pro; an admin
   AI grant turns AI on whatever the plan; a plan whose period has ended falls back to Free. Code checks
   capabilities (`ai`, `storageBytes`, `devices`, `paid`), never plan names.
@@ -424,8 +424,8 @@ text to `ink`. Axe runs in the e2e suite in both themes.
   are separate, never summed. An admin can set one workspace's limit (`storageQuotaOverrideBytes`), which
   replaces the plan's. Over the limit, uploads are refused (`assertStorageFor` in
   `files.generateUploadUrl`/`commitFile`); nothing is deleted.
-- **AI**: in Personal it follows the Personal plan; in a team workspace, that workspace's plan; never in
-  someone else's Personal. `ai.begin` checks after the person's own on/off switch and records usage per
+- **AI**: in Personal it follows the Personal plan; in a team workspace, that workspace's plan, for its
+  members only (not guests); never in someone else's Personal. `ai.begin` checks after the person's own on/off switch and records usage per
   scope (`aiUsage.scope`, `workspaceId`). The client reads `aiIncluded` per workspace from
   `workspaces.mine` (`useAiAccess`), and says "AI Assistant comes with the Team and Business workspace
   plans" in a team workspace.

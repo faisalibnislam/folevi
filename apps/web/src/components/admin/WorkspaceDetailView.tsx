@@ -11,7 +11,7 @@ import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
 import { endOfDay, futureDate } from "./UserBillingPanel";
-import { PLAN_CATALOG, WORKSPACE_PLANS, formatPrice, planName, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
+import { PLAN_CATALOG, WORKSPACE_PLANS, formatPrice, planName, seatChargeCents, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { t } from "@/i18n";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, td, th } from "./ui";
@@ -142,7 +142,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
               { label: "Status", value: b.subscription ? <StatusBadge status={b.subscription.cancelAtPeriodEnd && b.paid ? "cancel_scheduled" : b.subscription.status} /> : "—" },
               { label: "Billable seats", value: `${b.seats}${b.subscription?.quantity !== null && b.subscription?.quantity !== undefined && b.subscription.quantity !== b.seats ? ` (billed: ${b.subscription.quantity})` : ""}` },
               { label: "Guests (not billed)", value: b.guests },
-              { label: "Estimated charge", value: b.paid ? `${b.seats} × ${formatPrice(b.seatPriceCents)} = ${formatPrice(b.seats * b.seatPriceCents)}/${PLAN_CATALOG[b.planId as WorkspacePlanId].interval === "year" ? "year" : "month"}` : "—" },
+              { label: "Estimated charge", value: b.paid ? `${b.seats} × ${formatPrice(b.seatPriceCents)} = ${formatPrice(seatChargeCents(b.seatPriceCents, b.seats))}/${PLAN_CATALOG[b.planId as WorkspacePlanId].interval === "year" ? "year" : "month"}` : "—" },
               { label: "Renews / ends", value: b.subscription?.currentPeriodEnd ? <Time ts={b.subscription.currentPeriodEnd} /> : "—" },
               { label: "Stripe customer", value: b.subscription?.stripeCustomerId ? <Mono>{b.subscription.stripeCustomerId}</Mono> : "—" },
             ]}

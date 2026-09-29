@@ -11,7 +11,7 @@ import {
   type WireDocumentCreate,
   type WireDocumentPatch,
 } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE } from "./auth";
+import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE } from "./auth";
 import { IdResolver, liveBlocks, refreshDerived, sanitizeTitle, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary } from "./documents";
 import { createDocument, cloneBlocks } from "./create";
 import { builtInTemplateBlocks } from "./templates";
@@ -180,19 +180,33 @@ export class SyncEngine {
     return result;
   }
 
-  /** Duplicate delivery: never re-apply; report the original outcome against current server state. */
+  /** Whether the caller may still read `doc` (a replay never returns what they can't open now). */
+  private async readable(doc: Doc<"documents"> | null): Promise<Doc<"documents"> | null> {
+    return doc && (await documentAccess(this.ctx, this.profile, doc)) !== "none" ? doc : null;
+  }
+
+  /**
+   * Duplicate delivery: never re-apply; report the original outcome against current server state. Only
+   * for the same operation: an op id reused for another page or block is refused, and the current state
+   * is only returned if the caller can still read it.
+   */
   private async replay(op: SyncOp, prior: Doc<"syncOperations">): Promise<ServerOpResult> {
+    const entityId = op.kind === "block.upsert" ? op.block.id : op.kind === "document.create" ? op.document.id : "blockId" in op ? op.blockId : op.documentId;
+    if (entityId !== prior.entityId || op.kind !== prior.kind) {
+      return { opId: op.opId, status: "rejected", error: { code: "invalid_op", message: "This operation id was already used for something else." } };
+    }
     if (op.kind === "document.create" || op.kind === "document.update") {
       const id = op.kind === "document.create" ? op.document.id : op.documentId;
-      const doc = await getDocumentByPublicId(this.ctx, id);
+      const doc = await this.readable(await getDocumentByPublicId(this.ctx, id));
       if (prior.status === "rejected") return { opId: op.opId, status: "rejected", error: { code: prior.errorCode ?? "rejected", message: "Rejected earlier." } };
       return { opId: op.opId, status: "duplicate", revision: doc?.revision, document: doc ? await toSummary(this.ids, doc) : undefined };
     }
     const blockId = op.kind === "block.upsert" ? op.block.id : op.blockId;
-    const row = await this.ctx.db
+    const found = await this.ctx.db
       .query("blocks")
       .withIndex("by_block_id", (q) => q.eq("blockId", blockId))
       .unique();
+    const row = found && (await this.readable(await this.ctx.db.get(found.documentId))) ? found : null;
     if (prior.status === "rejected") {
       return {
         opId: op.opId,
@@ -503,8 +517,8 @@ export class SyncEngine {
     const input: WireDocumentCreate = op.document;
     const existing = await getDocumentByPublicId(this.ctx, input.id);
     if (existing) {
-      // A replay through another path (or after a lost ack) of our own create.
-      if (existing.createdBy === this.profile._id) {
+      // A replay through another path (or after a lost ack) of our own create — if we can still open it.
+      if (existing.createdBy === this.profile._id && (await this.readable(existing))) {
         return { opId: op.opId, status: "applied", revision: existing.revision, document: await toSummary(this.ids, existing) };
       }
       return { opId: op.opId, status: "rejected", error: { code: "exists", message: "A document with this id already exists." } };
@@ -616,21 +630,31 @@ export class SyncEngine {
     if (patch.icon) update.icon = patch.icon;
     if (patch.cover !== undefined) update.cover = await this.checkedCover(patch.cover, scopeOfRow(doc));
     if (patch.style !== undefined) update.style = checkedStyle(patch.style);
+    // Moving a page: guests (a page grant, no membership) may only rearrange pages among what was shared
+    // with them — never file pages in the scope's folders or put them at its top level — and taking a
+    // page out from under a restricted page (which would open it up) needs manage access.
+    const moving = patch.folderId !== undefined || patch.parentDocumentId !== undefined;
+    const info = moving ? await documentAccessInfo(this.ctx, this.profile, doc) : null;
     if (patch.folderId !== undefined) {
-      if (patch.folderId === null) update.folderId = undefined;
-      else {
+      let folderId: Id<"folders"> | undefined;
+      if (patch.folderId !== null) {
         const folder = await this.ctx.db
           .query("folders")
           .withIndex("by_public_id", (q) => q.eq("publicId", patch.folderId!))
           .unique();
         if (!folder || !sameScopeRows(folder, doc) || folder.deletedAt) fail("not_found", "Folder not found.");
-        update.folderId = folder._id;
+        folderId = folder._id;
       }
+      if (folderId !== doc.folderId && !info!.inScope) fail("forbidden", "Only members can move pages between folders.");
+      update.folderId = folderId;
     }
     if (patch.parentDocumentId !== undefined) {
-      if (patch.parentDocumentId === null) update.parentDocumentId = undefined;
-      else {
-        const parent = await this.writableDoc(patch.parentDocumentId);
+      let parent: Doc<"documents"> | null = null;
+      if (patch.parentDocumentId === null) {
+        if (doc.parentDocumentId !== undefined && !info!.inScope) fail("forbidden", "Only members can move a page to the top level.");
+        update.parentDocumentId = undefined;
+      } else {
+        parent = await this.writableDoc(patch.parentDocumentId);
         // Pages never move between Personal and a workspace (or between workspaces) by moving them.
         if (!sameScopeRows(parent, doc)) fail("invalid_argument", "A page can only be moved under a page in the same place.");
         // Reject cycles: the new parent may not be a descendant of this document.
@@ -640,6 +664,10 @@ export class SyncEngine {
           cursor = cursor.parentDocumentId ? await this.ctx.db.get(cursor.parentDocumentId) : null;
         }
         update.parentDocumentId = parent._id;
+      }
+      if (info!.restricted && !accessAtLeast(info!.access, "manage") && (parent?._id ?? undefined) !== doc.parentDocumentId) {
+        const stillRestricted = doc.accessMode === "restricted" || (parent !== null && (await documentAccessInfo(this.ctx, this.profile, parent)).restricted);
+        if (!stillRestricted) fail("forbidden", "Only people who manage this page can move it out of a restricted page.");
       }
     }
     const changed = Object.keys(update).length > 0;
@@ -786,6 +814,19 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
     return { nodes: out, changed };
   };
   const seen = new Set<string>();
+  // A link's label is only refreshed when whoever last wrote that block can open the page: anyone can put
+  // a link to any page id in their own notes, and must not learn a page's new title that way.
+  const canRead = new Map<string, boolean>();
+  const writerCanRead = async (profileId: Id<"profiles">): Promise<boolean> => {
+    if (profileId === actor) return true;
+    let ok = canRead.get(profileId);
+    if (ok === undefined) {
+      const writer = await ctx.db.get(profileId);
+      ok = Boolean(writer && (await documentAccess(ctx, writer, doc)) !== "none");
+      canRead.set(profileId, ok);
+    }
+    return ok;
+  };
   for (const link of links) {
     const key = `${link.sourceDocumentId}:${link.blockId}`;
     if (seen.has(key)) continue;
@@ -795,6 +836,7 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
       .withIndex("by_block_id", (q) => q.eq("blockId", link.blockId))
       .unique();
     if (!row || row.deletedAt !== undefined || row.documentId !== link.sourceDocumentId) continue;
+    if (!(await writerCanRead(row.updatedBy))) continue;
     const patch: Partial<Doc<"blocks">> = {};
     const props = row.props as Record<string, unknown>;
     if (row.type === "page" && props.documentId === doc.publicId) {

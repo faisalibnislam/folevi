@@ -6,7 +6,7 @@ import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { redactEmail } from "./lib/crypto";
-import { DAY_MS, PLANS, monthlyValueCents, personalEntitlementsOf, workspaceEntitlementsOf, type PersonalTier } from "./lib/plans";
+import { DAY_MS, PLANS, billedQuantity, monthlyValueCents, personalEntitlementsOf, seatChargeCents, workspaceEntitlementsOf, type PersonalTier } from "./lib/plans";
 import { isPersonalPayment, isPersonalSubscription, isWorkspaceSubscription } from "./lib/billing";
 import { workspaceSubscriptionLike } from "./lib/entitlements";
 
@@ -111,8 +111,10 @@ export const revenue = query({
       const e = workspaceEntitlementsOf(workspaceSubscriptionLike(s), {}, now);
       if (!e.paid || s.status === "canceled") continue;
       workspaceTotals.paying++;
-      workspaceTotals.seats += s.quantity ?? 0;
-      if (s.provider !== "manual") workspaceTotals.mrrCents += monthlyValueCents(e.planId) * (s.quantity ?? 0);
+      // The stored quantity is the billed one (convex/lib/seats.ts keeps it in step with the members).
+      const quantity = billedQuantity(s.quantity ?? 0);
+      workspaceTotals.seats += quantity;
+      if (s.provider !== "manual") workspaceTotals.mrrCents += seatChargeCents(monthlyValueCents(e.planId), quantity);
     }
 
     // Recurring revenue from plans in effect today (paid, not canceled; manual comps count at list price).

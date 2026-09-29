@@ -8,6 +8,7 @@ import {
   documentAccess,
   documentAccessInfo,
   getDocumentByPublicId,
+  isScheduledForDeletion,
   maxShareRoleFor,
   membership,
   requireDocument,
@@ -114,14 +115,17 @@ async function publicCollections(ctx: MutationCtx, doc: Doc<"documents">, blocks
   return out;
 }
 
-/** Whether a page's scope still serves public links: an active workspace, or a Personal whose account is in good standing. */
+/**
+ * Whether a page's scope still serves public links: an active workspace not scheduled for deletion, or a
+ * Personal whose account is in good standing.
+ */
 async function scopeIsOpen(ctx: MutationCtx, doc: Doc<"documents">): Promise<boolean> {
   if (doc.ownerProfileId) {
     const owner = await ctx.db.get(doc.ownerProfileId);
     return Boolean(owner && (owner.status === "active" || owner.status === "pending_deletion"));
   }
   const workspace = doc.workspaceId ? await ctx.db.get(doc.workspaceId) : null;
-  return Boolean(workspace && workspace.status === "active");
+  return Boolean(workspace && workspace.status === "active" && !isScheduledForDeletion(workspace));
 }
 
 /** A page and how the caller stands on it; anything they can't open reads as not found. */

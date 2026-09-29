@@ -781,8 +781,12 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                 <button
                   type="button"
                   aria-expanded={inline ? expanded === t.id : undefined}
+                  // A thread still being saved has a temporary id that's replaced when the server answers;
+                  // opening it before then would open a thread that's about to disappear.
+                  disabled={isPending(t.id)}
+                  aria-busy={isPending(t.id) || undefined}
                   onClick={() => (inline ? setExpanded(expanded === t.id ? null : t.id) : onOpenThread(t))}
-                  className="block w-full rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  className="block w-full rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-progress"
                 >
                   <span className="flex min-w-0 items-center gap-1 text-[11.5px] text-faint">{anchorLabel(t)}</span>
                   <span className="mt-1.5 flex items-center gap-2">

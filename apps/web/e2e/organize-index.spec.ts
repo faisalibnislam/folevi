@@ -48,6 +48,8 @@ test("a new note on a folder page lands in that folder with no page icon; folder
   await showFolders(page);
   const nav = page.getByRole("navigation", { name: "Workspace" });
   const drafts = nav.getByRole("link", { name: /^Drafts/ });
+  // The seeded Welcome note is a draft: wait for the count to load before reading it.
+  await expect(drafts).toHaveText(/\d+$/);
   const before = Number((await drafts.innerText()).replace(/\D/g, "") || 0);
 
   // A new note made on a folder page starts in that folder (so Drafts doesn't grow); notes have no emoji icon.

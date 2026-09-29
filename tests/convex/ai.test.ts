@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { person, setup } from "./helpers";
 
@@ -78,5 +78,41 @@ describe("AI assistant", () => {
     // Old rows are swept.
     await t.run(async (ctx) => ctx.db.patch(id, { createdAt: Date.now() - 2 * 60 * 60_000 }));
     expect((await t.mutation(internal.ai.sweepStreams, {})).deleted).toBe(1);
+  });
+
+  test("flowcharts: the model's JSON is sanitised before it's returned, and the usual gates apply", async () => {
+    const t = setup();
+    const a = await person(t, "ai-flowchart@example.com");
+    process.env.GEMINI_API_KEY = "test-key";
+    const reply = { direction: "TD", nodes: [{ id: "s", shape: "terminator", text: "Start" }, { id: "x", shape: "hexagon", text: "Do <b>it</b>", color: "#f00" }], edges: [{ from: "s", to: "x" }, { from: "x", to: "ghost" }] };
+    const prompts: string[] = [];
+    const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
+      prompts.push(init.body);
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] }, finishReason: "STOP" }] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const draft = await a.as.action(api.ai.flowchart, { workspaceId: a.workspaceId, mode: "create", instruction: "Ship a feature" });
+      expect(draft.nodes.map((n) => [n.id, n.shape, n.color])).toEqual([
+        ["s", "terminator", "neutral"],
+        ["x", "process", "neutral"],
+      ]);
+      expect(draft.edges).toEqual([{ from: "s", to: "x", label: "", style: "solid", arrow: "end" }]);
+      // Updating sends the current chart (no positions) and needs one.
+      const current = JSON.stringify({ v: 1, nodes: [{ id: "s", shape: "terminator", x: 0, y: 0, w: 160, h: 56, text: "Start" }], edges: [] });
+      await a.as.action(api.ai.flowchart, { workspaceId: a.workspaceId, mode: "update", instruction: "add a review step", current });
+      expect(prompts[1]).toContain("Start");
+      expect(prompts[1]).not.toContain('\\"w\\"');
+      await expect(a.as.action(api.ai.flowchart, { workspaceId: a.workspaceId, mode: "update", instruction: "add a step", current: "" })).rejects.toThrow(/no flowchart/);
+      await expect(a.as.action(api.ai.flowchart, { workspaceId: a.workspaceId, mode: "create", instruction: "  " })).rejects.toThrow(/Describe/);
+      // Turned off in settings: refused before anything is sent.
+      await a.as.mutation(api.users.updateProfile, { aiEnabled: false });
+      const calls = fetchMock.mock.calls.length;
+      await expect(a.as.action(api.ai.flowchart, { workspaceId: a.workspaceId, mode: "create", instruction: "Ship a feature" })).rejects.toThrow(/turned off/);
+      expect(fetchMock.mock.calls.length).toBe(calls);
+    } finally {
+      vi.unstubAllGlobals();
+      delete process.env.GEMINI_API_KEY;
+    }
   });
 });

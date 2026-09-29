@@ -5,6 +5,8 @@
 //               workspace full-text index finds notes, and only notes this person can read are used.
 //   ai.write  — writing help: rewrite a selection (improve, fix, shorten, …), or write from a note (summary,
 //               continuation, outline, action items, title) or from an instruction.
+//   ai.flowchart — a flowchart block from a description, or the current flowchart changed as asked (strict
+//               JSON, sanitised before it's returned; the client lays it out).
 //
 // Privacy: note text goes to Google only when a person asks for AI help, and only the notes that request
 // needs. Prompts, note text and answers are never logged — only the event, model and status.
@@ -18,6 +20,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { entitlementsFor } from "./lib/billing";
 import { liveBlocks, toWireBlock } from "./lib/documents";
+import { FLOWCHART_SYSTEM, flowchartForPrompt, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 const model = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
@@ -484,6 +487,35 @@ export const write = action({
       maxOutputTokens: task === "title" ? 60 : 3072,
     });
     return { text: task === "title" ? out.split("\n")[0]!.replace(/^#+\s*/, "").replace(/^["'“”]+|["'“”.]+$/g, "").trim() : out };
+  },
+});
+
+/**
+ * Flowchart help for a flowchart block: "create" draws one from a description, "update" applies an
+ * instruction to the current chart (`current`, the block's data). Returns a sanitised draft — nodes and
+ * connectors without positions — that the client lays out and applies as one undoable change.
+ */
+export const flowchart = action({
+  args: {
+    workspaceId: v.string(),
+    mode: v.union(v.literal("create"), v.literal("update")),
+    instruction: v.string(),
+    current: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<FlowDraft> => {
+    await requireIdentity(ctx);
+    const instruction = args.instruction.trim().slice(0, MAX_QUESTION);
+    if (!instruction) fail("invalid_argument", args.mode === "create" ? "Describe the process first." : "Say what to change.");
+    const current = args.mode === "update" ? flowchartForPrompt(args.current ?? "") : null;
+    if (args.mode === "update" && !current) fail("invalid_argument", "There's no flowchart to update yet.");
+    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId });
+    const prompt = current
+      ? `<flowchart>\n${current}\n</flowchart>\n\nChange the flowchart as the person asks, and return the complete updated flowchart. Keep the ids, text and colours of everything they didn't ask to change.\n\nRequest: ${instruction}`
+      : `Draw a flowchart of this process.\n\nRequest: ${instruction}`;
+    const raw = await gemini({ system: FLOWCHART_SYSTEM, prompt, json: true, temperature: 0.4, maxOutputTokens: 6144 });
+    const draft = parseFlowchartDraft(raw);
+    if (!draft) fail("invalid_argument", "The AI couldn't draw a flowchart from that. Try describing the steps.");
+    return draft;
   },
 });
 

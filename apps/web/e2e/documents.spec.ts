@@ -49,16 +49,51 @@ test.describe("documents", () => {
     await expect(box).toHaveValue("Ping @Mira Comment ");
     await page.keyboard.type("please");
     await page.getByRole("button", { name: "Comment", exact: true }).click();
-    const thread = page.getByRole("listitem").filter({ hasText: "Ping" }).first();
+    // A comment on the whole note opens right in the Comments panel.
+    await page.getByRole("button", { name: /On the whole note/ }).click();
+    const thread = page.getByRole("region", { name: "Thread" });
     await expect(thread.locator("span", { hasText: "@Mira Comment" })).toBeVisible();
-    await thread.getByRole("button", { name: "Edit" }).click();
+    await thread.getByRole("listitem").filter({ hasText: "Ping" }).hover();
+    await thread.getByRole("button", { name: /Options for Mira Comment/ }).click();
+    await page.getByRole("menuitem", { name: "Edit" }).click();
     const edit = page.getByRole("textbox", { name: "Edit comment" });
     await edit.fill("Ping @Mira Comment again");
     await thread.getByRole("button", { name: "Save", exact: true }).click();
     await expect(thread).toContainText("again");
     await expect(thread).toContainText("edited");
-    await thread.getByRole("button", { name: "Resolve" }).click();
+    await thread.getByRole("button", { name: "Resolve thread" }).click();
     await expect(page.getByText("No open comments.")).toBeVisible();
+    await page.getByRole("button", { name: /^Resolved/ }).click();
+    await expect(page.getByRole("button", { name: /On the whole note/ })).toContainText("Resolved by Mira Comment");
+    await context.close();
+  });
+
+  test("comments on a block: ⌘⌥M opens a thread under it, and the comment line reopens it", async ({ browser }) => {
+    const { context, page } = await newPersonWithWorkspace(browser, "Block Commenter");
+    await newPage(page, "Launch review");
+    await page.keyboard.type("Ship the beta on Friday");
+    await waitForSaved(page);
+    const mod = process.platform === "darwin" ? "Meta" : "Control";
+    await page.keyboard.press(`${mod}+Alt+KeyM`);
+    const card = page.getByRole("dialog", { name: "Comments" });
+    const box = card.getByRole("textbox", { name: "Comment on this block" });
+    await expect(box).toBeFocused();
+    await page.keyboard.type("Is Friday realistic?");
+    await page.keyboard.press("Enter");
+    await expect(card.getByText("Is Friday realistic?")).toBeVisible();
+    // The thread now takes replies; Escape closes it.
+    await expect(card.getByRole("textbox", { name: "Reply" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(card).toBeHidden();
+    const line = page.getByRole("button", { name: /^1 comment, latest/ });
+    await expect(line).toBeVisible();
+    await line.click();
+    await expect(card.getByText("Is Friday realistic?")).toBeVisible();
+    // Resolving collapses the thread and removes the line under the block.
+    await card.getByRole("button", { name: "Resolve thread" }).click();
+    await expect(card.getByText(/^Resolved/)).toBeVisible();
+    await card.getByRole("button", { name: "Close comments" }).click();
+    await expect(line).toBeHidden();
     await context.close();
   });
 

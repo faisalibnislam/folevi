@@ -21,8 +21,9 @@ import { entitlementsFor, startTrial } from "./lib/billing";
 import { consume } from "./lib/rateLimit";
 import { bump } from "./lib/metrics";
 import { keyedHash } from "./lib/crypto";
-import { vAppearance } from "./lib/validators";
+import { vAppearance, vNotificationPrefs } from "./lib/validators";
 import { seedPersonalWorkspace } from "./seed";
+import { notifyInvite } from "./lib/notify";
 import { claimIdentityImage, deleteIdentityImage, identityImageUrl, personalWorkspaceOf, workspaceLabel } from "./lib/identityImages";
 
 const DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -166,15 +167,7 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
     if (invite.status !== "pending" || invite.expiresAt < Date.now()) continue;
     const workspace = await ctx.db.get(invite.workspaceId);
     if (!workspace) continue;
-    await ctx.db.insert("notifications", {
-      profileId: profile._id,
-      workspaceId: invite.workspaceId,
-      kind: "invite",
-      actorId: invite.invitedBy,
-      inviteId: invite._id,
-      title: `You're invited to ${await workspaceLabel(ctx, workspace)}`,
-      createdAt: Date.now(),
-    });
+    await notifyInvite(ctx, { recipient: profile, actorId: invite.invitedBy, workspaceId: invite.workspaceId, inviteId: invite._id, title: `You're invited to ${await workspaceLabel(ctx, workspace)}` });
   }
 }
 
@@ -211,16 +204,7 @@ export const updateProfile = mutation({
     appearance: v.optional(vAppearance),
     aiEnabled: v.optional(v.boolean()),
     timeZone: v.optional(v.string()),
-    notificationPrefs: v.optional(
-      v.object({
-        mentions: v.boolean(),
-        comments: v.boolean(),
-        shares: v.boolean(),
-        invites: v.boolean(),
-        digest: v.union(v.literal("off"), v.literal("daily")),
-        productEmail: v.boolean(),
-      }),
-    ),
+    notificationPrefs: v.optional(vNotificationPrefs),
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);

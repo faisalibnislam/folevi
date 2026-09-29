@@ -49,6 +49,7 @@ import { NotePaletteProvider } from "@/components/editor/notePalette";
 import { useCoverImage } from "@/lib/app/coverImage";
 import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
+import { BlockThread, useNoteNotifyItems } from "./Comments";
 import { AI_OPEN_EVENT, AI_RUN_EVENT, useAi, useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
 import { DocumentSidebar, type Crumb } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
@@ -79,7 +80,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [reconciled, setReconciled] = useState(false);
   const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode } = useShell();
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("format");
-  const [commentBlock, setCommentBlock] = useState<string | null>(null);
+  // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
+  const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
+  // A thread to open inside the Comments panel (on the whole note or a deleted block).
+  const [focusThreadId, setFocusThreadId] = useState<string | null>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -203,6 +208,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [documentId, engine, createSnapshot]);
 
   const threads = useQuery(api.comments.threads, meta ? { documentId } : "skip");
+  const openBlockThread = useCallback((blockId: string, threadId: string | null = null) => setOpenThread({ blockId, threadId }), []);
   // Memoized so the editor's decorations aren't re-sent on every render of this view.
   const conflicts = useMemo(() => engineState.conflicts.filter((c) => c.documentId === documentId), [engineState.conflicts, documentId]);
   const decorations: DecorationInputs = useMemo(
@@ -211,16 +217,46 @@ export function DocumentView({ documentId }: { documentId: string }) {
       commentBlocks: new Set((threads?.threads ?? []).filter((t) => t.status === "open" && t.blockId).map((t) => t.blockId!)),
       selectedBlocks: new Set<string>(),
       conflictBlocks: new Set(conflicts.map((c) => c.blockId)),
+      commentSummaries: new Map((threads?.blocks ?? []).map((b) => [b.blockId, { count: b.comments, lastActivityAt: b.lastActivityAt, unread: b.unread, authors: b.authors }])),
+      onOpenComments: openBlockThread,
     }),
-    [presence, threads, conflicts],
+    [presence, threads, conflicts, openBlockThread],
   );
 
-  // Deep link to a block (#block-<id>).
+  // Deep links: a block (#block-<id>) or a comment thread (#comment-<thread id>). Also re-run when a
+  // notification for this note is opened while it's already showing (it dispatches "hashchange").
+  const [hashTick, setHashTick] = useState(0);
+  useEffect(() => {
+    const onHash = () => setHashTick((n) => n + 1);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  const handledHash = useRef<string | null>(null);
   useEffect(() => {
     if (!editor) return;
-    const m = /^#block-(.+)$/.exec(window.location.hash);
-    if (m) setTimeout(() => editorRef.current?.focusBlock(m[1]!), 150);
-  }, [editor]);
+    const hash = window.location.hash;
+    const key = `${documentId}${hash}:${hashTick}`;
+    if (!hash || handledHash.current === key) return;
+    const block = /^#block-(.+)$/.exec(hash);
+    if (block) {
+      handledHash.current = key;
+      setTimeout(() => editorRef.current?.focusBlock(block[1]!), 150);
+      return;
+    }
+    const comment = /^#comment-(.+)$/.exec(hash);
+    if (!comment || !threads) return;
+    handledHash.current = key;
+    const t = threads.threads.find((x) => x.id === comment[1]);
+    if (!t) return;
+    if (t.blockId && t.blockExists) {
+      // The thread scrolls itself (and its block) into view once the block is on screen.
+      setOpenThread({ blockId: t.blockId, threadId: t.id });
+    } else {
+      setFocusThreadId(t.id);
+      setInspectorTab("comments");
+      setInspectorOpen(true);
+    }
+  }, [editor, threads, hashTick, documentId, setInspectorOpen]);
 
   // A folder inside another folder shows its parent in the breadcrumb too (folders nest one level).
   const org = useQuery(api.organization.sidebar, meta?.folder && meta.isMember ? { workspaceId: workspace.id } : "skip");
@@ -342,16 +378,39 @@ export function DocumentView({ documentId }: { documentId: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [editor, openFind]);
 
+  // A block: its thread floats under it. Otherwise the Comments panel (every thread in the note).
   const openComments = useCallback(
     (blockId?: string) => {
-      setCommentBlock(blockId ?? null);
+      if (blockId) {
+        openBlockThread(blockId);
+        return;
+      }
+      setFocusThreadId(null);
       setInspectorTab("comments");
       setInspectorOpen(true);
     },
-    [setInspectorOpen],
+    [setInspectorOpen, openBlockThread],
   );
+  const closeThread = useCallback(() => setOpenThread(null), []);
 
-  const actions = useDocumentActions({
+  // ⌘⌥M: comment on the block with the caret (or open the Comments panel).
+  const canComment = Boolean(threads?.canComment);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyM") return;
+      e.preventDefault();
+      const $from = editor?.state.selection.$from;
+      const inEditor = Boolean(editor && editor.view.dom.contains(document.activeElement));
+      const blockId = inEditor && $from && $from.depth >= 1 ? ($from.node(1).attrs.id as string | null) : null;
+      if (blockId && canComment) openBlockThread(blockId);
+      else openComments();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editor, canComment, openBlockThread, openComments]);
+
+  const noteNotify = useNoteNotifyItems(documentId, Boolean(meta));
+  const docActions = useDocumentActions({
     documentId,
     title: meta?.document.title ?? "",
     starred: meta?.document.starred ?? false,
@@ -372,6 +431,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
         : undefined,
     client: convex,
   });
+  // Plus following or muting this note's comment notifications.
+  const actions: (MenuItem | "separator")[] = noteNotify.length ? [...docActions, "separator", ...noteNotify] : docActions;
 
   if (meta === null && !pendingCreate && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {
@@ -484,7 +545,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
         <div
           id="doc-scroll"
-          className={`fb-page h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
+          ref={setScrollEl}
+          className={`fb-page relative h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
           data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "on" : undefined}
           data-font={style.font}
           data-width={style.width}
@@ -537,6 +599,26 @@ export function DocumentView({ documentId }: { documentId: string }) {
             </div>
           </article>
           <Backlinks documentId={documentId} />
+          {openThread && threads ? (
+            <BlockThread
+              key={openThread.blockId}
+              documentId={documentId}
+              data={threads}
+              blockId={openThread.blockId}
+              threadId={openThread.threadId}
+              scrollEl={scrollEl}
+              editor={editor}
+              onSelect={(threadId) => setOpenThread({ blockId: openThread.blockId, threadId })}
+              onClose={closeThread}
+              onMissing={() => {
+                // The block isn't on screen (deleted or folded away): show the thread in the Comments panel.
+                closeThread();
+                setFocusThreadId(openThread.threadId);
+                setInspectorTab("comments");
+                setInspectorOpen(true);
+              }}
+            />
+          ) : null}
         </div>
         <PageDock
           ai={aiOn}
@@ -597,9 +679,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
               meta={meta ?? null}
               tab={inspectorTab}
               onTab={setInspectorTab}
-              commentBlock={commentBlock}
-              onClearCommentBlock={() => setCommentBlock(null)}
-              onJumpToBlock={(id) => editorRef.current?.focusBlock(id)}
+              focusThreadId={focusThreadId}
+              onOpenThread={(t) => {
+                if (!t.blockId) return;
+                // The panel floats over the note: step aside so the thread under its block is visible.
+                setInspectorOpen(false);
+                editorRef.current?.focusBlock(t.blockId);
+                setOpenThread({ blockId: t.blockId, threadId: t.id });
+              }}
               onClose={closeInspector}
               onHistory={() => setHistoryOpen(true)}
               actions={actions}

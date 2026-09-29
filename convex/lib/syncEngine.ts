@@ -42,7 +42,7 @@ export class SyncEngine {
   private seq: SeqAllocator;
   private touched = new Map<string, Touched>();
   /** People newly @-mentioned in block text during this batch (notified after the batch applies). */
-  private newMentions: { doc: Doc<"documents">; userIds: string[]; excerpt: string }[] = [];
+  private newMentions: { doc: Doc<"documents">; blockId: string; userIds: string[]; excerpt: string }[] = [];
   private ids: IdResolver;
   /** The batch's routing workspace (see docs/SYNC_PROTOCOL.md §Routing); null when the caller isn't a member. */
   private routing: Doc<"workspaces"> | null = null;
@@ -640,7 +640,7 @@ export class SyncEngine {
     const added = mentionedIds(after.text).filter((id) => !had.has(id) && id !== this.profile._id);
     if (!added.length) return;
     const excerpt = after.text.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : n.type === "date" ? n.date : n.label)).join("").slice(0, 140);
-    this.newMentions.push({ doc, userIds: added, excerpt });
+    this.newMentions.push({ doc, blockId: after.id, userIds: added, excerpt });
   }
 
   /** Post-batch bookkeeping: derived text, task projections, links, document revision/seq. */
@@ -654,6 +654,7 @@ export class SyncEngine {
           actor: this.profile,
           kind: "mention",
           doc: m.doc,
+          blockId: m.blockId,
           title: `${this.profile.displayName} mentioned you in ${m.doc.title || "Untitled"}`,
           excerpt: m.excerpt,
           email: { key: "mention_notification" },

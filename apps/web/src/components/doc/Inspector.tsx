@@ -62,7 +62,7 @@ import { COVER_IMAGE_ACCEPT, coverImageProblem, uploadCoverImage, useCoverImage 
 
 /** The Plain note style: a very light grey page background. */
 const PLAIN_CSS = "#F1F1F3";
-import { MentionInput, textToCommentBody, type MentionInputHandle, type MentionPerson } from "./MentionInput";
+import { CommentsOverview, type CommentThread } from "./Comments";
 import { MovePageDialog } from "./MovePageDialog";
 import { InsertPanel } from "./InsertPanel";
 import { AiPanel } from "@/components/ai/AiPanel";
@@ -88,9 +88,8 @@ export function Inspector({
   meta,
   tab,
   onTab,
-  commentBlock,
-  onClearCommentBlock,
-  onJumpToBlock,
+  onOpenThread,
+  focusThreadId = null,
   onClose,
   onHistory,
   actions,
@@ -104,9 +103,10 @@ export function Inspector({
   meta: Meta | null;
   tab: InspectorTab;
   onTab: (t: InspectorTab) => void;
-  commentBlock: string | null;
-  onClearCommentBlock: () => void;
-  onJumpToBlock: (id: string) => void;
+  /** A thread chosen in the Comments overview (on a block: jump there and open it). */
+  onOpenThread: (thread: CommentThread) => void;
+  /** A thread to open inside the overview (on the whole note or a deleted block), e.g. from a link. */
+  focusThreadId?: string | null;
   onClose: () => void;
   onHistory: () => void;
   /** The page's actions (same as the "…" menu), listed under Info → Actions. */
@@ -193,7 +193,7 @@ export function Inspector({
         {tab === "format" ? <FormatPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}
         {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} actions={actions} disabled={readOnly} /> : null}
-        {tab === "comments" ? <CommentsPanel documentId={documentId} blockId={commentBlock} onClearBlock={onClearCommentBlock} onJumpToBlock={onJumpToBlock} /> : null}
+        {tab === "comments" ? <CommentsOverview documentId={documentId} onOpenThread={onOpenThread} focusThreadId={focusThreadId} /> : null}
       </div>
     </div>
   );
@@ -1024,243 +1024,5 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
         </ul>
       </section>
     </div>
-  );
-}
-
-function CommentBody({ body }: { body: { type: string; text?: string; label?: string }[] }) {
-  return (
-    <>
-      {body.map((n, i) =>
-        n.type === "mention" ? (
-          <span key={i} className="rounded-[6px] bg-accent-soft px-1.5 font-medium text-heading">
-            @{n.label}
-          </span>
-        ) : n.type === "text" ? (
-          <span key={i}>{n.text}</span>
-        ) : null,
-      )}
-    </>
-  );
-}
-
-const bodyToText = (body: { type: string; text?: string; label?: string }[]) => body.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : "")).join("");
-
-function CommentsPanel({ documentId, blockId, onClearBlock, onJumpToBlock }: { documentId: string; blockId: string | null; onClearBlock: () => void; onJumpToBlock: (id: string) => void }) {
-  const data = useQuery(api.comments.threads, { documentId });
-  const people = useQuery(api.comments.mentionable, { documentId });
-  const create = useMutation(api.comments.create);
-  const reply = useMutation(api.comments.reply);
-  const setResolved = useMutation(api.comments.setResolved);
-  const remove = useMutation(api.comments.remove);
-  const edit = useMutation(api.comments.edit);
-  const markRead = useMutation(api.comments.markRead);
-  const toast = useToast();
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [showResolved, setShowResolved] = useState(false);
-  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
-  const inputRef = useRef<MentionInputHandle>(null);
-  const editRef = useRef<MentionInputHandle>(null);
-  useEffect(() => {
-    if (blockId) inputRef.current?.focus();
-  }, [blockId]);
-  useEffect(() => {
-    if (data?.threads.some((t) => t.unread)) void markRead({ documentId }).catch(() => undefined);
-  }, [data, markRead, documentId]);
-  if (!data) return <p className="text-sm text-muted">Loading comments…</p>;
-  const everyone: MentionPerson[] = people ?? [];
-  const threads = data.threads.filter((t) => (showResolved ? true : t.status === "open"));
-  const fail = (err: unknown) => toast.show(errorMessage(err), { tone: "error" });
-  const submit = async () => {
-    if (!draft.trim() || busy) return;
-    setBusy(true);
-    try {
-      await create({ documentId, blockId: blockId ?? undefined, body: textToCommentBody(draft.trim(), inputRef.current?.picked() ?? [], everyone) });
-      setDraft("");
-      inputRef.current?.reset();
-      onClearBlock();
-    } catch (err) {
-      fail(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const saveEdit = async () => {
-    if (!editing || !editing.text.trim()) return;
-    try {
-      await edit({ commentId: editing.id, body: textToCommentBody(editing.text.trim(), editRef.current?.picked() ?? [], everyone) });
-      setEditing(null);
-    } catch (err) {
-      fail(err);
-    }
-  };
-  return (
-    <div className="space-y-4 text-sm">
-      {data.canComment ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void submit();
-          }}
-        >
-          <label htmlFor="new-comment" className="ui-caps mb-1.5 block px-1">
-            {blockId ? "Comment on the selected block" : "Comment on this document"}
-          </label>
-          <MentionInput
-            ref={inputRef}
-            id="new-comment"
-            multiline
-            value={draft}
-            onChange={setDraft}
-            people={everyone}
-            describedBy="comment-hint"
-            placeholder="Write a comment"
-            className="ui-input w-full rounded-[6px] p-2.5 text-sm"
-            onSubmitShortcut={() => void submit()}
-          />
-          <p id="comment-hint" className="text-xs text-muted">
-            Type @ to mention someone who can see this page. ⌘↩ to send.
-          </p>
-          <div className="mt-1.5 flex justify-between">
-            {blockId ? (
-              <button type="button" onClick={onClearBlock} className="text-xs text-muted hover:text-ink">
-                Comment on the whole document instead
-              </button>
-            ) : (
-              <span />
-            )}
-            <Button size="sm" variant="primary" type="submit" disabled={!draft.trim() || busy}>
-              {busy ? "Sending…" : "Comment"}
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <p className="text-muted">You can read comments on this document but not add them.</p>
-      )}
-      <label className="flex items-center gap-2 text-xs text-muted">
-        <input type="checkbox" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} /> Show resolved
-      </label>
-      {threads.length === 0 ? <p className="text-muted">No {showResolved ? "" : "open "}comments.</p> : null}
-      <ul className="space-y-3">
-        {threads.map((t) => (
-          <li key={t.id} className={`ui-card rounded-[8px] p-3 ${t.status === "resolved" ? "opacity-70" : ""}`}>
-            {t.blockId ? (
-              <button type="button" onClick={() => onJumpToBlock(t.blockId!)} className="mb-2 rounded-[6px] bg-accent-soft px-2 py-0.5 text-xs font-medium text-heading">
-                Go to block
-              </button>
-            ) : null}
-            <ul className="space-y-2">
-              {t.comments.map((c) => (
-                <li key={c.id}>
-                  <p className="text-xs">
-                    <span className="font-semibold text-ink">{c.authorName}</span> <span className="text-faint">· {formatRelative(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
-                  </p>
-                  {editing?.id === c.id ? (
-                    <form
-                      className="mt-1"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void saveEdit();
-                      }}
-                    >
-                      <MentionInput
-                        ref={editRef}
-                        multiline
-                        label="Edit comment"
-                        value={editing.text}
-                        onChange={(text) => setEditing({ id: c.id, text })}
-                        people={everyone}
-                        className="ui-input w-full rounded-[6px] p-2 text-sm"
-                        onSubmitShortcut={() => void saveEdit()}
-                        onEscape={() => setEditing(null)}
-                      />
-                      <div className="mt-1 flex justify-end gap-1.5">
-                        <Button size="sm" variant="quiet" onClick={() => setEditing(null)}>
-                          Cancel
-                        </Button>
-                        <Button size="sm" variant="primary" type="submit" disabled={!editing.text.trim()}>
-                          Save
-                        </Button>
-                      </div>
-                    </form>
-                  ) : (
-                    <p className={`mt-0.5 whitespace-pre-wrap ${c.deleted ? "italic text-faint" : ""}`}>{c.deleted ? "Comment deleted" : <CommentBody body={c.body} />}</p>
-                  )}
-                  {c.mine && !c.deleted && editing?.id !== c.id ? (
-                    <div className="flex gap-3">
-                      <button type="button" className="inline-flex items-center gap-1 text-[11px] text-faint hover:text-ink" onClick={() => setEditing({ id: c.id, text: bodyToText(c.body) })}>
-                        <Pencil size={10} aria-hidden /> Edit
-                      </button>
-                      <button type="button" className="text-[11px] text-faint hover:text-danger" onClick={() => void remove({ commentId: c.id }).catch(fail)}>
-                        Delete
-                      </button>
-                    </div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-            {data.canComment ? (
-              <ReplyBox
-                people={everyone}
-                onReply={(text, picked) => reply({ threadId: t.id, body: textToCommentBody(text, picked, everyone) })}
-                onError={fail}
-                resolved={t.status === "resolved"}
-                onResolve={() => void setResolved({ threadId: t.id, resolved: t.status !== "resolved" }).catch(fail)}
-              />
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function ReplyBox({
-  people,
-  onReply,
-  onError,
-  resolved,
-  onResolve,
-}: {
-  people: MentionPerson[];
-  onReply: (text: string, picked: MentionPerson[]) => Promise<unknown>;
-  onError: (err: unknown) => void;
-  resolved: boolean;
-  onResolve: () => void;
-}) {
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const ref = useRef<MentionInputHandle>(null);
-  const send = async () => {
-    if (!text.trim() || busy) return;
-    setBusy(true);
-    try {
-      await onReply(text.trim(), ref.current?.picked() ?? []);
-      setText("");
-      ref.current?.reset();
-    } catch (err) {
-      onError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <form
-      className="mt-2 flex items-start gap-1.5"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void send();
-      }}
-    >
-      <div className="min-w-0 flex-1">
-        <MentionInput ref={ref} value={text} onChange={setText} people={people} placeholder="Reply" label="Reply" className="ui-input h-8 w-full rounded-[6px] px-3 text-sm" />
-      </div>
-      <Button size="sm" type="submit" disabled={!text.trim() || busy}>
-        Reply
-      </Button>
-      <Button size="sm" variant="quiet" onClick={onResolve}>
-        {resolved ? "Reopen" : "Resolve"}
-      </Button>
-    </form>
   );
 }

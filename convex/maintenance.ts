@@ -45,6 +45,7 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     () => ctx.db.query("documentPermissions").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("publicLinks").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("documentLinks").withIndex("by_source", (q) => q.eq("sourceDocumentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("noteSubscriptions").withIndex("by_document_mode", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
   ] as never;
   for (const load of batches) {
     const rows = await load();
@@ -232,6 +233,7 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("notifications").withIndex("by_profile_created", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("sessionsMirror").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("documentPermissions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("noteSubscriptions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
   for (const load of personalBatches) {
     const rows = await load();

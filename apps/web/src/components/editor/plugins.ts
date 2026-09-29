@@ -41,11 +41,91 @@ export const BlockIdentity = Extension.create({
   },
 });
 
+export interface CommentSummary {
+  /** Comments in the block's open threads. */
+  count: number;
+  lastActivityAt: number;
+  unread: boolean;
+  /** The latest people to comment (up to three). */
+  authors: { name: string; avatarUrl: string | null }[];
+}
+
 export interface DecorationInputs {
   presence: { blockId: string; color: string; name: string }[];
   commentBlocks: Set<string>;
   selectedBlocks: Set<string>;
   conflictBlocks: Set<string>;
+  /** Blocks with open comments get a small "2 comments · 8:18 AM" line under them. */
+  commentSummaries?: Map<string, CommentSummary>;
+  /** Opens a block's comment thread (from that line). Keep it stable: lines are cached by content. */
+  onOpenComments?: (blockId: string) => void;
+}
+
+/** The top-level elements of blocks, in document order (skipping lines drawn between blocks, like comment lines). */
+export function blockElements(dom: HTMLElement): HTMLElement[] {
+  return ([...dom.children] as HTMLElement[]).filter((c) => !c.hasAttribute("data-fb-widget"));
+}
+
+const LIST_BLOCKS = new Set(["bulleted", "numbered", "todo"]);
+
+function commentTime(ts: number): string {
+  const d = new Date(ts);
+  const today = new Date();
+  return d.toDateString() === today.toDateString()
+    ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** The "2 comments · 8:18 AM" line under a commented block (plain DOM: it's a ProseMirror widget). */
+function commentLine(blockId: string, depth: number, list: boolean, s: CommentSummary, open?: (blockId: string) => void): HTMLElement {
+  const line = document.createElement("div");
+  line.className = "fb-comment-line";
+  line.setAttribute("data-fb-widget", "comments");
+  line.contentEditable = "false";
+  line.style.setProperty("--depth", String(depth));
+  if (list) line.style.setProperty("--pad-list", "1.6em");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "fb-comment-chip";
+  btn.dataset.commentChip = blockId;
+  const count = `${s.count} ${s.count === 1 ? "comment" : "comments"}`;
+  const time = commentTime(s.lastActivityAt);
+  btn.setAttribute("aria-label", `${count}, latest ${time}${s.unread ? ", unread" : ""}. Open comments`);
+  btn.setAttribute("aria-haspopup", "dialog");
+  const faces = document.createElement("span");
+  faces.className = "fb-comment-faces";
+  faces.setAttribute("aria-hidden", "true");
+  for (const a of s.authors.slice(0, 3)) {
+    if (a.avatarUrl) {
+      const img = document.createElement("img");
+      img.src = a.avatarUrl;
+      img.alt = "";
+      faces.appendChild(img);
+    } else {
+      const face = document.createElement("span");
+      face.textContent = (a.name.trim()[0] ?? "?").toUpperCase();
+      faces.appendChild(face);
+    }
+  }
+  const label = document.createElement("span");
+  label.setAttribute("aria-hidden", "true");
+  label.textContent = `${count} · ${time}`;
+  btn.append(faces, label);
+  if (s.unread) {
+    const dot = document.createElement("span");
+    dot.className = "fb-comment-unread";
+    dot.setAttribute("aria-hidden", "true");
+    btn.appendChild(dot);
+  }
+  // Keep the editor's selection; open on click.
+  btn.addEventListener("mousedown", (e) => e.preventDefault());
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    open?.(blockId);
+  });
+  line.appendChild(btn);
+  return line;
 }
 
 export const decorationsKey = new PluginKey<DecorationInputs>("foleviDecorations");
@@ -94,6 +174,12 @@ export const BlockDecorations = Extension.create({
                 attrs["data-presence"] = who.name;
               }
               if (classes.length || Object.keys(attrs).length) decos.push(Decoration.node(pos, end, { ...attrs, class: classes.join(" ") }));
+              const summary = id ? inputs.commentSummaries?.get(id) : undefined;
+              if (summary && id && !classes.includes("fb-hidden")) {
+                const key = `comments:${id}:${depth}:${summary.count}:${summary.lastActivityAt}:${summary.unread}:${summary.authors.map((a) => a.name + (a.avatarUrl ?? "")).join("|")}`;
+                const list = LIST_BLOCKS.has(node.type.name);
+                decos.push(Decoration.widget(end, () => commentLine(id, depth, list, summary, inputs.onOpenComments), { side: -1, key, ignoreSelection: true, stopEvent: () => true }));
+              }
               pos = end;
             });
             return DecorationSet.create(state.doc, decos);

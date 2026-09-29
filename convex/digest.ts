@@ -30,19 +30,21 @@ export const sendDailyDigests = internalMutation({
     let sent = 0;
     for (const p of page.page) {
       if (p.notificationPrefs.digest !== "daily") continue;
+      // Hidden (`silent`) rows exist only for email: the person turned that kind off in the bell.
       const unread = (
         await ctx.db
           .query("notifications")
           .withIndex("by_profile_created", (q) => q.eq("profileId", p._id).gt("createdAt", since))
           .take(200)
-      ).filter((n) => !n.readAt && !n.emailedAt && includedInDigest(p.notificationPrefs, n.kind));
+      ).filter((n) => (!n.readAt || n.silent) && !n.emailedAt && includedInDigest(p.notificationPrefs, n.kind));
       if (!unread.length) continue;
       await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
         key: "comment_digest",
         profileId: p._id,
         idempotencyKey: `digest:${p._id}:${date}`,
         dataVariables: {
-          count: unread.length,
+          // A folded burst counts every event in it.
+          count: unread.reduce((sum, n) => sum + (n.count ?? 1), 0),
           summary: digestSummary(unread),
           inboxUrl: `${appUrl()}/documents`,
           preferencesUrl: `${appUrl()}/settings/notifications`,

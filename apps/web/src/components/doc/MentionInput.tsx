@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTopLayer } from "@/components/ui/topLayer";
 
 export interface MentionPerson {
@@ -79,9 +79,22 @@ export const MentionInput = forwardRef<
     className?: string;
     onSubmitShortcut?: () => void;
     onEscape?: () => void;
+    /** Enter sends (calls onSubmitShortcut) and Shift+Enter starts a new line, as in chat. */
+    enterToSend?: boolean;
+    /** A multiline field that starts at one line and grows with its text (up to `maxHeight` px). */
+    autoGrow?: boolean;
+    maxHeight?: number;
+    disabled?: boolean;
   }
->(function MentionInput({ value, onChange, people, multiline = false, id, label, placeholder, describedBy, className, onSubmitShortcut, onEscape }, ref) {
+>(function MentionInput({ value, onChange, people, multiline = false, id, label, placeholder, describedBy, className, onSubmitShortcut, onEscape, enterToSend = false, autoGrow = false, maxHeight = 160, disabled }, ref) {
   const inputRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!autoGrow || !multiline || !el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [value, autoGrow, multiline, maxHeight]);
   const listRef = useRef<HTMLUListElement>(null);
   const [caret, setCaret] = useState(0);
   const [active, setActive] = useState(0);
@@ -90,7 +103,12 @@ export const MentionInput = forwardRef<
   const listId = useId();
 
   useImperativeHandle(ref, () => ({
-    focus: () => inputRef.current?.focus(),
+    focus: () => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      el.setSelectionRange(el.value.length, el.value.length);
+    },
     picked: () => picked.current,
     reset: () => {
       picked.current = [];
@@ -169,13 +187,18 @@ export const MentionInput = forwardRef<
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && onSubmitShortcut) {
         e.preventDefault();
         onSubmitShortcut();
+        return;
+      }
+      if (enterToSend && e.key === "Enter" && !e.shiftKey && !e.altKey && !e.nativeEvent.isComposing && onSubmitShortcut) {
+        e.preventDefault();
+        onSubmitShortcut();
       }
     },
   };
 
   return (
     <div className="relative">
-      {multiline ? <textarea ref={inputRef} rows={3} maxLength={5000} {...common} /> : <input ref={inputRef} maxLength={5000} {...common} />}
+      {multiline ? <textarea ref={inputRef} rows={autoGrow ? 1 : 3} maxLength={5000} disabled={disabled} {...common} /> : <input ref={inputRef} maxLength={5000} disabled={disabled} {...common} />}
       {open ? (
         <ul ref={listRef} id={listId} role="listbox" aria-label="People to mention" popover="manual" style={listStyle} className="ui-pop z-[100] border-0 p-1.5 text-ink" onMouseDown={(e) => e.preventDefault()}>
           {matches.map((p, i) => (

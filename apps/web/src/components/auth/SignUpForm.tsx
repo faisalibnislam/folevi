@@ -54,7 +54,7 @@ export function SignUpForm() {
           setBusy(false);
           // An address that already has an account gets the same answer (no account enumeration).
           if (err && err.code !== "USER_ALREADY_EXISTS" && err.code !== "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
-            setError(authErrorMessage(err));
+            setError(authErrorMessage(err, undefined, "up to an hour"));
             return;
           }
           setSentTo(trimmedEmail);

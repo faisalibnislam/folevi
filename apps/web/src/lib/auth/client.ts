@@ -15,11 +15,14 @@ export const authClient = createAuthClient({
 
 export type AuthErrorLike = { code?: string; message?: string; status?: number } | null | undefined;
 
-/** Plain-language messages for auth errors. Sign-in failures stay generic (no account enumeration). */
-export function authErrorMessage(error: AuthErrorLike, fallback = "Something went wrong. Please try again."): string {
+/**
+ * Plain-language messages for auth errors. Sign-in failures stay generic (no account enumeration).
+ * `wait` names how long the endpoint's rate limit lasts (see convex/auth.ts), so a 429 says it honestly.
+ */
+export function authErrorMessage(error: AuthErrorLike, fallback = "Something went wrong. Please try again.", wait = "a minute"): string {
   if (!error) return fallback;
   const code = error.code ?? "";
-  if (error.status === 429 || code === "TOO_MANY_REQUESTS") return "Too many attempts. Wait a minute, then try again.";
+  if (error.status === 429 || code === "TOO_MANY_REQUESTS") return `Too many attempts. Wait ${wait}, then try again.`;
   switch (code) {
     case "INVALID_EMAIL_OR_PASSWORD":
     case "INVALID_PASSWORD":

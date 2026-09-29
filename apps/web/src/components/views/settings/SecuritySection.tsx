@@ -194,7 +194,7 @@ function PasswordCard() {
           setError(null);
           const { error: err } = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
           setBusy(false);
-          if (err) return setError(authErrorMessage(err));
+          if (err) return setError(authErrorMessage(err, undefined, "up to an hour"));
           setCurrent("");
           setNext("");
           setRepeat("");

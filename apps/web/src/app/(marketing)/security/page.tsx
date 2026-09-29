@@ -62,7 +62,7 @@ export default function SecurityPage() {
       <DocShell toc={toc}>
         <h2 id="summary">In short</h2>
         <ul>
-          <li>You verify your email before you can open a workspace.</li>
+          <li>You verify your email before you can open Folevi.</li>
           <li>You can turn on two-step verification with an authenticator app, with one-time recovery codes. We recommend it.</li>
           <li>Data is encrypted in transit (TLS, with HSTS) and at rest by our hosting providers.</li>
           <li>Nothing is public unless you create a link. Links can expire, require a password, and be revoked instantly.</li>
@@ -75,7 +75,7 @@ export default function SecurityPage() {
         <h2 id="account">Your account</h2>
         <h3>Email verification</h3>
         <p>
-          Before you can open or create a workspace, you confirm that you own your email address. That address is where we
+          Before you can open Folevi, you confirm that you own your email address. That address is where we
           send security notices, so it has to be real and yours.
         </p>
         <h3>Two-step verification</h3>
@@ -96,7 +96,7 @@ export default function SecurityPage() {
         </p>
         <p>
           <strong>At rest.</strong> Your data is encrypted at rest by our hosting and infrastructure providers (see
-          subprocessors below). On the Mac, your workspace is stored locally so you can work offline; it’s protected by your
+          subprocessors below). On the Mac, your notes are stored locally so you can work offline; they’re protected by your
           Mac’s own security, such as FileVault if you use it.
         </p>
 
@@ -133,7 +133,7 @@ export default function SecurityPage() {
 
         <h2 id="export">Export and deletion</h2>
         <p>
-          You can export any page as Markdown, HTML or PDF, or download your whole workspace as a ZIP archive. Your writing
+          You can export any page as Markdown, HTML or PDF, or download everything in your Personal (or, for owners and admins, a workspace) as a ZIP archive. Your writing
           is never locked in.
         </p>
         <p>

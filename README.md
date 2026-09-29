@@ -1,8 +1,9 @@
 # Folevi
 
 A quieter place for ideas that keep growing. Folevi is a calm writing and notes workspace — block
-documents, nested pages, tasks, calendar, collections, comments, offline editing and sync — for the web
-and as a fully native Mac app.
+documents, nested pages, tasks, calendar, collections, comments, offline editing and sync — on the web
+today, with a fully native Mac app coming soon. Each person has their own Personal; teams share
+workspaces with their own plans, seats and billing (`docs/ACCOUNT_MODEL_PLAN.md`).
 
 | Surface | Where | Stack |
 | --- | --- | --- |
@@ -64,9 +65,9 @@ npx convex run admin:bootstrapSuperAdmin '{"email":"you@example.com"}'
 script/build_and_run_macos.sh
 ```
 
-Builds `apps/macos/build/Folevi.app` and launches it. **Sign-in in the Mac app does not work at the
-moment:** it still contains code for the previous identity provider and will move to Authorization Code +
-PKCE against Folevi's own accounts once the web app is finalized. See `docs/MACOS.md`.
+Builds `apps/macos/build/Folevi.app` and launches it. It signs in through the browser (Authorization Code
++ PKCE against Folevi's own accounts). It isn't distributed yet, and it still expects the old account model
+(Personal as a workspace) until its catch-up with the web. See `docs/MACOS.md`.
 
 ## Tests
 
@@ -96,6 +97,7 @@ See `docs/TESTING.md` for what each suite covers, and the Mac tests in `docs/MAC
 ## Documentation
 
 - `docs/PRODUCT.md` — scope, principles, what is and isn't built
+- `docs/ACCOUNT_MODEL_PLAN.md` — Personal vs workspaces, plans, seats, guests, billing; the production migration runbook
 - `docs/ARCHITECTURE.md` — system design, data model, auth, hosts, offline
 - `docs/AUTH_DECISION.md` — why accounts are built in (Better Auth on Convex), security properties, known gaps
 - `docs/EDITOR_SCHEMA.md` — canonical block schema, versioning, migrations

@@ -21,7 +21,7 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "What counts as a device?",
-    a: `Each browser or app you're signed in to — say, your laptop's browser and the Mac app. Free works on ${PLANS.free.devices} devices at a time; Basic and Pro work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
+    a: `Each browser or app you're signed in to — say, the browser on your laptop and the one on your work computer. Free works on ${PLANS.free.devices} devices at a time; Basic and Pro work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
   },
   {
     q: "What happens if I run out of storage?",
@@ -39,14 +39,14 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
     q: "What happens to my notes if I downgrade?",
     a: (
       <>
-        They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal or a workspace as a ZIP, at any time —
+        They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time —
         see <Link href="/docs#import-export">Import &amp; export</Link>.
       </>
     ),
   },
   {
     q: "How do workspace plans work?",
-    a: "A workspace has its own plan, separate from anyone’s personal plan: a Pro personal plan doesn’t upgrade a workspace, and a workspace plan doesn’t change your Personal. Every workspace starts on Free. Team and Business are billed per member and aren’t on sale yet.",
+    a: "A workspace has its own plan, separate from anyone’s personal plan: a Pro personal plan doesn’t upgrade a workspace, and a workspace plan doesn’t change your Personal. Every workspace starts on Free. Team and Business are billed per member seat — the owner, admins and members each take one; guests and pending invitations are free — and aren’t on sale yet.",
   },
   {
     q: "Is the Mac app included?",

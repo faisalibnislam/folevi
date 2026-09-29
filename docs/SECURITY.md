@@ -44,22 +44,39 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   exists (`requireActiveSession` in `convex/lib/auth.ts`). Revoking a session in Settings → Security,
   “sign out other devices”, a password change or reset, or an admin suspension ends it on its next
   request, and open live queries fail at once.
-- Mac: not signing in at the moment; it will use Authorization Code + PKCE against Folevi's own accounts
-  (`docs/MACOS.md`).
+- Mac: signs in through the browser with Authorization Code + PKCE against Folevi's own accounts, as a
+  device of its own (`docs/MACOS.md`; not distributed yet).
 - New-device security email on sign-in from a new session.
 - Development tools: identity emails outside production are captured in a development mailbox guarded
   by `FOLEVI_DEV_MAILBOX_SECRET`; it refuses to work when `FOLEVI_ENV=production`, and the production
   build fails if the secret is set on Vercel or Convex.
-- Account deletion: 7-day grace period (cancellable by signing in), then a bounded server-side cascade
-  that also deletes the credentials, sessions and two-step data. A confirmation email is sent.
+- Account deletion: refused while the person owns a workspace other people are in (they transfer or delete
+  it first; `users.deletionBlockers`). 7-day grace period (cancellable by signing in), then a bounded
+  server-side cascade that deletes the Personal, owned workspaces nobody else is in, the credentials,
+  sessions and two-step data. A workspace someone joined during the grace period (or when support
+  scheduled the deletion) passes to its longest-standing admin, else member — other people's work is never
+  deleted. A confirmation email is sent.
 
 ## Authorization
 
 - Every public Convex function derives identity from the verified token and calls the centralized
   helpers in `convex/lib/auth.ts`; the static test `tests/convex/static/invariants.test.ts` fails CI if a
   function lacks one.
-- Reads are scoped by workspace membership and document permissions (workspace mode or restricted with
-  explicit grants inherited by nested pages). Missing and forbidden resources return the same `not_found`.
+- Every content row belongs to exactly one scope: a person's Personal (`ownerProfileId`, only its owner
+  browses it) or a team workspace (`workspaceId`, its members). Reads are scoped by that and by document
+  permissions (workspace mode or restricted with explicit grants inherited by nested pages); a page grant
+  outside your own scope makes you a guest of that page only. Missing and forbidden resources return the
+  same `not_found`.
+- Guests never reach workspace-wide data (lists, search, folders, tags, members, settings, billing,
+  export) and can't add pages to the workspace, move pages to its top level or into folders, or share.
+  Moving a page out from under a restricted page needs manage access. A workspace scheduled for deletion
+  is hidden from everyone but its owner (read-only), its public links stop, and its billing can only be
+  canceled (`tests/convex/sweep-security.test.ts`).
+- Plans, storage and AI are resolved per scope on the server (`convex/lib/entitlements.ts`); seats per
+  workspace (`convex/lib/seats.ts`). Workspace billing is managed only by the owner and admins the owner
+  allows (`canManageWorkspaceBilling`). Stripe webhooks are signature-checked, applied once per event id,
+  and ordered (stale subscription events ignored; a late invoice failure never undoes a payment or
+  refund).
 - Workspace roles: Owner, Admin, Member (members may be limited to comment or view); guests are page grants
   without a membership and see only what was shared with them (`convex/lib/permissions.ts` has the matrix;
   `tests/convex/members-guests.test.ts`). Platform roles for the admin console are enforced in
@@ -86,8 +103,10 @@ Authorized short-lived upload URLs; server-side re-verification of size and SHA-
 `application/octet-stream` and always downloaded; image metadata is stripped (JPEG EXIF/XMP/comments,
 PNG text/EXIF chunks, GIF comments and non-rendering application extensions, WebP EXIF/XMP chunks);
 images whose dimensions can't be read are rejected, so the pixel-count limit always applies;
-per-workspace storage quotas; delivery only through signed, expiring URLs with `nosniff`, sandboxing CSP
-and `Content-Disposition`.
+storage limits per Personal and per workspace (never pooled); delivery only through signed, expiring URLs
+(at most ~2 hours for page files, whatever the client's clock says; verification refuses any link that
+claims to last longer than 9 days) with `nosniff`, sandboxing CSP and `Content-Disposition`. Export ZIPs
+are only ever linked for the person who made them.
 
 ## Web platform
 
@@ -138,6 +157,8 @@ exports and abuse handling require the server to process content.
 | Notifications | 180 days |
 | Rate-limit events | 90 days |
 | Accounts scheduled for deletion | 7 days grace, then cascade |
+| Workspaces scheduled for deletion | 7 days (the owner can cancel), then cascade |
+| Export ZIPs | 1 day |
 | Email attempt log | kept for operations (hashed recipients) |
 | Admin audit log | kept (append-only) |
 
@@ -151,13 +172,14 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 | Convex | Database, backend functions, file storage, accounts (Better Auth runs here) | Account, workspace and document data, files, password hashes, encrypted two-step secrets, sessions |
 | Vercel | Web hosting | Request metadata, logs |
 | Loops | Transactional email delivery | Recipient email, template variables (no note bodies) |
+| Google (Gemini API) | AI Assistant, only when used | The request and the notes it needs (not stored or used for training) |
+| Stripe | Payments for paid personal and workspace plans (not configured yet) | Billing email, plan, seat quantity, payment status; card details stay with Stripe |
 
 ## Known limitations
 
 - Account email changes are handled by support, not self-service.
 - Passwords are not yet checked against known breach lists; there are no passkeys (see
   `docs/AUTH_DECISION.md`, known gaps).
-- The native Mac app cannot sign in until it moves to Authorization Code + PKCE against Folevi's own
-  accounts.
+- The native Mac app isn't distributed and still expects the old account model (Personal as a workspace).
 - Auth0 was previously a subprocessor; it is no longer used.
 - Loops does not document a plain-text email part; text versions are kept in the repo for review.

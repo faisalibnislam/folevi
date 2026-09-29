@@ -37,7 +37,8 @@ working:
 | Admin         | `ops_admin`     | Account and workspace enforcement, plans, AI grants, storage, configuration and revenue.  |
 | Support staff | `support_admin` | Look people up, resend emails, user-requested password resets, short trials and exports.  |
 
-Platform roles are separate from workspace roles (owner, admin, editor…).
+Platform roles are separate from workspace roles (owner, admin, member; guests are page grants without a
+membership). A person's Personal is not a workspace and never appears in the workspace list.
 
 | Capability                                               | Function(s)                                                                   | Owner | Admin | Support |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------- | :---: | :---: | :-----: |
@@ -51,7 +52,7 @@ Platform roles are separate from workspace roles (owner, admin, editor…).
 | Grant, change or remove platform roles                   | `setPlatformRole`                                                             |   ✓   |       |         |
 | View a person's plan, storage, AI use and payments       | `adminBilling.userBilling`                                                    |   ✓   |   ✓   |    ✓    |
 | Give or extend a Pro trial                               | `adminBilling.extendTrial`                                                    | ✓ (90 days) | ✓ (90 days) | ✓ (14 days) |
-| Prepare a workspace export for the person (delivered to them only) | `adminBilling.requestUserExport`                                    |   ✓   |   ✓   |    ✓    |
+| Prepare a Personal export for the person (delivered to them only) | `adminBilling.requestUserExport`                                     |   ✓   |   ✓   |    ✓    |
 | Set a plan by hand, grant AI, override storage or device limit | `adminBilling.setPlan`, `setAiGrant`, `setStorageOverride`, `setDeviceLimit` |   ✓   |   ✓   |         |
 | Mark a payment refunded                                  | `adminBilling.markRefunded`                                                   |   ✓   |       |         |
 | User analytics (aggregates)                              | `adminAnalytics.users`                                                        |   ✓   |   ✓   |    ✓    |
@@ -59,6 +60,7 @@ Platform roles are separate from workspace roles (owner, admin, editor…).
 | List and view workspaces                                 | `listWorkspaces`, `viewWorkspace`                                             |   ✓   |   ✓   |    ✓    |
 | Suspend / unsuspend a workspace                          | `setWorkspaceSuspended`                                                       |   ✓   |   ✓   |         |
 | Set workspace storage quota and member limit             | `setWorkspaceQuota`                                                           |   ✓   |   ✓   |         |
+| Set a workspace's plan by hand (not Stripe-billed ones)   | `adminBilling.setWorkspacePlan`                                               |   ✓   |   ✓   |         |
 | View the email send log                                  | `listEmails`                                                                  |   ✓   |   ✓   |    ✓    |
 | Resend a failed email                                    | `resendEmail`                                                                 |   ✓   |   ✓   |    ✓    |
 | View configuration                                       | `configuration`                                                               |   ✓   |   ✓   |    ✓    |
@@ -71,8 +73,8 @@ Platform roles are separate from workspace roles (owner, admin, editor…).
 ¹ Only an owner can suspend another owner. Nobody can suspend themselves.
 
 **Note content stays private.** No admin path returns note bodies. "Prepare export" builds the
-person's personal workspace as a ZIP and delivers it to *them* as a notification with a
-download link; staff never receive the file or its contents.
+person's Personal as a ZIP and delivers it to *them* as a notification with a download link; staff
+never receive the file or its contents.
 
 The UI mirrors this matrix in `apps/web/src/components/admin/permissions.ts`: navigation
 items a role can't use are hidden, and actions it can't take are disabled with a one-line
@@ -93,7 +95,7 @@ success shows a toast, and detail pages reload their data by calling the audited
 | Resend verification           | —                          | Offered only while the email is unverified; the server refuses otherwise. The link goes to the user, never to the admin.                                                                                                                              |
 | Password reset                | —                          | Checkbox "The user asked for this…" must be ticked. The API requires `userRequested: true`. Use it only after verifying the request came from the account holder. The reset link is emailed to the user; admins never see it.                          |
 | Platform role                 | User's email               | Owner only. The target needs a verified email **and** TOTP to receive a role. At least one owner must remain.                                                                                                                                        |
-| Schedule account deletion     | User's email               | Refused while the user holds a platform role. Deletion runs after 7 days. The user is emailed and can cancel by signing in.                                                                                                                          |
+| Schedule account deletion     | User's email               | Refused while the user holds a platform role. Deletion runs after 7 days. The user is emailed and can cancel by signing in. Their Personal and workspaces nobody else is in are deleted; a workspace other people use passes to its longest-standing admin, else member (who is told) — other people's work is never deleted. |
 | Suspend / unsuspend workspace | Workspace name (exact)     | Everyone except owners becomes read-only. Nothing is deleted. Not available for workspaces that are already being deleted.                                                                                                                           |
 | Set quota                     | —                          | Storage in GB (1024³ bytes, ≥ 0; replaces the plan's limit for that workspace) and member limit 1–10,000. Lowering a quota below usage blocks new uploads or invites; nothing is removed.                                                                                                          |
 | Resend failed email           | —                          | Failed attempts only. Identity emails (one-time links) can never be replayed; use "Resend verification" or a password reset instead. Notices whose payload wasn't stored can't be replayed, and the server says so.                                    |
@@ -183,11 +185,11 @@ attempts, quotas and the audit trail.
 | `/admin`                     | Stat tiles, 30-day signups and DAU charts (SVG with a data-table fallback), retention cohorts, failed emails (7 d), sync errors (7 d), rate-limited events (24 h), deployments. |
 | `/admin/users`               | Exact-email search, or browse newest first with a name filter and status filter, 50 per page.                                                     |
 | `/admin/analytics`           | User analytics: users, new signups, daily/weekly/monthly active, storage, signups and AI requests per day, plan mix, trials and conversion, AI use and grants (7–180 day window). Aggregates only. |
-| `/admin/revenue`             | Admins and owners: MRR, ARR, paying accounts, revenue per payer, last 30 days, at-risk (canceling/past due), revenue, new and canceled by month, subscribers per plan, recent payments (emails redacted). Test purchases are excluded unless switched on. |
+| `/admin/revenue`             | Admins and owners: MRR, ARR, paying accounts, revenue per payer, last 30 days, at-risk (canceling/past due), revenue, new and canceled by month, subscribers per plan, workspace plans (paying workspaces, billed seats, workspace MRR), recent payments (emails redacted). Test purchases are excluded unless switched on. |
 | `/admin/users`               | Plan column: Free/Basic/Pro, "· trial" while on the Pro trial, and an AI badge for grants.                                                        |
 | `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above. **Plan & billing**: Personal plan, provider, renewal, AI access and 30-day use in Personal, personal storage, payments, and the billing actions (set plan, trial, AI grant, storage limit, prepare export, mark refunded). Loading it is an audited read (`user.view_billing`). |
 | `/admin/workspaces`          | All workspaces, paginated.                                                                                                                        |
-| `/admin/workspaces/[id]`     | Members and roles, usage against quotas, redacted invites, admin history, suspend and quota.                                                      |
+| `/admin/workspaces/[id]`     | Members and roles, usage against quotas, redacted invites, admin history, suspend and quota. **Plan & billing**: the workspace's plan (never its owner's Personal plan), billed seats and estimated charge, payments, and Set plan. |
 | `/admin/emails`              | The last 100 send attempts, with a status filter, provider events, resend for eligible failures, and the delivery explainer.                     |
 | `/admin/audit`               | The paginated log with a target filter and an expandable before/after diff.                                                                       |
 | `/admin/deletion-jobs`       | Deletion jobs with status and progress (live).                                                                                                    |

@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <li>Your content is private by default. We don’t sell it, rent it, or use it for advertising.</li>
           <li>This website has no third-party trackers or advertising scripts.</li>
           <li>The AI Assistant is optional. When you use it, your request and the notes it needs are sent to Google’s Gemini API to answer — nothing is sent while it’s off.</li>
-          <li>You can export everything and delete your account whenever you like.</li>
+          <li>You can export everything and delete your account at any time (if you own a workspace other people use, you transfer or delete it first).</li>
         </ul>
 
         <h2 id="collect">What we collect</h2>
@@ -51,7 +51,9 @@ export default function PrivacyPage() {
         <h3>Your content</h3>
         <p>
           The pages, blocks, tasks, comments, files and settings you create in Folevi, plus the version history and sync
-          records needed to keep your devices in step.
+          records needed to keep your devices in step. Content in your Personal is yours alone. Content you add to a
+          workspace belongs to that workspace: its owner and admins can see, export and delete
+          it, and it stays with the workspace if you leave.
         </p>
         <h3>Technical information</h3>
         <p>
@@ -61,7 +63,9 @@ export default function PrivacyPage() {
         <h3>Plan and billing</h3>
         <p>
           Which plan you’re on, trial and renewal dates, storage and AI usage counts, and a record of payments (amount, date,
-          plan). Card details are handled by Stripe and never reach Folevi.
+          plan). For a workspace on a paid plan, the same for the workspace, plus how many member seats it’s billed for; the
+          workspace’s owner and the admins they allow can see its billing. Card details are handled by Stripe and never
+          reach Folevi.
         </p>
         <h3>Messages you send us</h3>
         <p>If you email us, we keep the conversation so we can help you and follow up.</p>
@@ -71,7 +75,7 @@ export default function PrivacyPage() {
           <li>To provide Folevi: store, sync, search, share and export your content as you ask.</li>
           <li>To keep your account secure: verify your email, offer two-step verification, detect abuse.</li>
           <li>To send you service emails, such as verification, security notices and share invitations.</li>
-          <li>To run your plan: apply its storage, device and AI limits, and bill paid plans.</li>
+          <li>To run plans: apply your personal plan’s storage, device and AI limits and each workspace plan’s own limits, and bill paid plans (workspace plans per member seat).</li>
           <li>When you ask it to, to answer with the AI Assistant (below).</li>
           <li>To fix problems and improve Folevi, using technical data rather than the content of your notes.</li>
           <li>To meet legal obligations.</li>
@@ -94,7 +98,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>What we keep:</strong> the answer is shown to you and not stored beyond a few minutes; we keep only a count
-            of requests per day for your plan. Your prompts and notes are not logged.
+            of requests per day, recorded against your Personal or the workspace you asked in, and short-lived counters for
+            fair-use limits. Your prompts and notes are not logged.
           </li>
           <li>
             We use Google’s paid Gemini API service, under which Google does not use your requests or notes to train or
@@ -104,9 +109,10 @@ export default function PrivacyPage() {
 
         <h2 id="payments">Payments</h2>
         <p>
-          Paid plans are billed by Stripe. Stripe receives your email address and handles your card; Folevi receives only
-          what it needs to run your plan (plan, status, dates and amounts). You can manage or cancel your plan in Settings →
-          Plan & billing.
+          Paid plans are billed by Stripe. Stripe receives the billing email address and handles the card; Folevi receives only
+          what it needs to run the plan (plan, status, dates, amounts and, for a workspace, the number of seats). Personal
+          and workspace plans are billed separately. You can manage or cancel your personal plan in Settings → Plan &
+          billing; a workspace’s owner (or an admin they allow) manages the workspace’s plan.
         </p>
 
         <h2 id="never">What we don’t do</h2>
@@ -114,7 +120,7 @@ export default function PrivacyPage() {
           <li>We don’t sell or rent your personal information or your content.</li>
           <li>We don’t show ads, and we don’t use your content to target advertising.</li>
           <li>We don’t use your notes to train AI models, and neither does our AI provider.</li>
-          <li>We don’t make your pages public. Only you can create a public link.</li>
+          <li>We don’t make your pages public. Only people who manage a page can create a public link to it.</li>
           <li>Our internal admin tools have no content viewer: they manage accounts, not notes.</li>
         </ul>
 
@@ -133,21 +139,25 @@ export default function PrivacyPage() {
         <h2 id="keep">How long we keep it</h2>
         <p>
           We keep your account and content for as long as your account exists. When you delete your account, there is a
-          7-day grace period in case it was a mistake; after that, your account and content are permanently deleted. Some
-          limited records, such as security logs, may be kept longer where needed to protect the service or meet legal
-          obligations.
+          7-day grace period in case it was a mistake; after that, your account, your Personal and any workspace only you use
+          are permanently deleted. What you added to a workspace other people use stays with that workspace (you can’t
+          delete your account while you own one — transfer it or delete it first). A deleted workspace is removed 7 days
+          after its owner deletes it. Some limited records, such as security logs, may be kept longer where needed to
+          protect the service or meet legal obligations.
         </p>
 
         <h2 id="rights">Your choices and rights</h2>
         <ul>
           <li>
-            <strong>Access and portability.</strong> Export any page as Markdown, HTML or PDF, or your whole workspace as a ZIP.
+            <strong>Access and portability.</strong> Export any page as Markdown, HTML or PDF, or everything in your Personal
+            as a ZIP. Owners and admins can export a whole workspace.
           </li>
           <li>
             <strong>Correction.</strong> Update your account details in settings.
           </li>
           <li>
-            <strong>Deletion.</strong> Delete your account from settings, or ask us to.
+            <strong>Deletion.</strong> Delete your account from settings, or ask us to. For content in a workspace, ask its
+            owner or an admin.
           </li>
           <li>
             <strong>Questions or objections.</strong> Contact us and we’ll respond. Depending on where you live, you may also

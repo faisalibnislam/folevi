@@ -83,7 +83,7 @@ Do the first two before anyone signs up: without them, confirmation and password
 - **Data variables:**
   - `inviterName` (string) — Display name of the inviter (user-controlled).
   - `workspaceName` (string) — Workspace name (user-controlled).
-  - `role` (string) — Role granted, e.g. "Editor".
+  - `role` (string) — Role granted, e.g. "Member".
   - `acceptUrl` (string) — Invitation acceptance link.
   - `expiresInDays` (number) — Days until the invitation expires.
   - `preferencesUrl` (string) — Email preferences page.

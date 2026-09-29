@@ -57,7 +57,7 @@
         <mj-column>
         <mj-text css-class="fv-muted" color="#63636B" font-size="14px" line-height="20px" letter-spacing="1px" text-transform="uppercase" padding="0 32px 8px 32px">Your account</mj-text>
         <mj-text font-family="'Iowan Old Style', 'Palatino Linotype', Georgia, ui-serif, 'Times New Roman', serif" font-size="28px" line-height="36px" padding="0 32px 16px 32px"><h1 style="margin:0;font-size:28px;line-height:36px;font-weight:normal;font-family:'Iowan Old Style', 'Palatino Linotype', Georgia, ui-serif, 'Times New Roman', serif;">Your account is scheduled for deletion</h1></mj-text>
-        <mj-text>As requested, your Folevi account and everything in it, including notes, documents and the workspaces you own, will be permanently deleted on <strong>{DATA_VARIABLE:scheduledFor}</strong>.</mj-text>
+        <mj-text>As requested, your Folevi account will be permanently deleted on <strong>{DATA_VARIABLE:scheduledFor}</strong>, together with everything in your Personal and any workspace only you use. Workspaces other people use aren’t deleted.</mj-text>
         <mj-text>Until then, you can change your mind.</mj-text>
         <mj-button href="{DATA_VARIABLE:cancelUrl}" css-class="fv-button" background-color="#111114" color="#FFFFFF" font-size="16px" font-weight="600" border-radius="8px" inner-padding="13px 24px" align="left" padding="12px 32px 8px 32px">Cancel account deletion</mj-button>
         <mj-text css-class="fv-muted" color="#63636B" font-size="14px" line-height="22px" padding="4px 32px 16px 32px">Button not working? Paste this link into your browser:<br /><a href="{DATA_VARIABLE:cancelUrl}" class="fv-link" style="color:#111114;word-break:break-all;">{DATA_VARIABLE:cancelUrl}</a></mj-text>

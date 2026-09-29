@@ -2,9 +2,10 @@ Folevi
 
 Your account is scheduled for deletion
 
-As requested, your Folevi account and everything in it, including notes,
-documents and the workspaces you own, will be permanently deleted on
-{DATA_VARIABLE:scheduledFor}.
+As requested, your Folevi account will be permanently deleted on
+{DATA_VARIABLE:scheduledFor}, together with everything in your Personal
+and any workspace only you use. Workspaces other people use aren’t
+deleted.
 
 Until then, you can change your mind.
 

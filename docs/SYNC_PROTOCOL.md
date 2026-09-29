@@ -80,11 +80,16 @@ scope**; it does not scope the batch:
 - `document.create` goes, in order of precedence: under `parentDocumentId` (a nested page always lives
   in its parent's scope; the caller needs write access to the parent), else into `document.scope` (or
   the older `document.workspaceId`), else into the routing scope. Personal takes new pages from its owner
-  only; a workspace from editor (or higher) **members** — a grant on one page never lets a guest add pages
+  only; a workspace from **members** who can edit (owner, admin, or member with edit access) — a grant on one page never lets a guest add pages
   to someone else's Personal or workspace (`forbidden`). An unknown workspace or one the caller doesn't
   belong to → `not_found` (existence isn't revealed); a malformed `scope` → `invalid_argument`.
 - `document.update` may only re-parent a page under a page of the same scope, and only move it into a
-  folder of the same scope. Pages never move between Personal and a workspace this way.
+  folder of the same scope. Pages never move between Personal and a workspace this way. A guest (grant,
+  no membership) may only re-parent a page under another page they can edit — never to the top level or
+  into a folder — and taking a page out from under a restricted page needs manage access (`forbidden`).
+- A resent op id is answered from the first delivery only when it names the same entity and kind; an op
+  id reused for anything else is `rejected` (`invalid_op`), and a replay never returns a page or block the
+  caller can no longer open.
 - If the caller isn't a member of the routing workspace (e.g. removed since the ops were queued), the
   batch still runs: each op succeeds or is rejected on its own merits. Nothing is thrown for the batch.
 

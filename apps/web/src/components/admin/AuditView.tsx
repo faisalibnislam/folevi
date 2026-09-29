@@ -105,7 +105,7 @@ export function AuditView() {
       ) : null}
 
       <form
-        className="mb-4 flex flex-wrap items-end gap-3 ui-card rounded-[8px] p-4"
+        className="mb-4 flex flex-wrap items-end gap-3 ui-card p-4"
         aria-label="Filter audit log"
         noValidate
         onSubmit={(e) => {
@@ -172,7 +172,7 @@ export function AuditView() {
         ) : null}
       </form>
 
-      <div className="overflow-hidden ui-card rounded-[8px]">
+      <div className="overflow-hidden ui-card">
         <DataTable caption={filter ? `Audit entries for ${filter.targetType} ${filter.targetId}` : "Audit entries, newest first"} minWidth={1100}>
           <thead>
             <tr>
@@ -198,7 +198,7 @@ export function AuditView() {
                 const detailId = `${uid}-d-${e.id}`;
                 return (
                   <Fragment key={e.id}>
-                    <tr className={expanded ? "bg-surface" : "hover:bg-surface"}>
+                    <tr className={expanded ? "bg-[var(--glass-hover)]" : "transition-colors hover:bg-[var(--glass-hover)]"}>
                       <td className={td}>
                         <button
                           type="button"
@@ -206,7 +206,7 @@ export function AuditView() {
                           aria-controls={detailId}
                           aria-label={`${expanded ? "Hide" : "Show"} details for ${e.action} at ${formatDateTime(e.createdAt)}`}
                           onClick={() => toggle(e.id)}
-                          className="grid h-6 w-6 place-items-center rounded-[6px] text-muted hover:bg-sunken hover:text-ink"
+                          className="grid h-6 w-6 place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
                         >
                           {expanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
                         </button>
@@ -217,7 +217,7 @@ export function AuditView() {
                       <td className={td}>
                         <span className="font-medium">{e.actor}</span>
                         <div className="mt-0.5">
-                          <Badge tone="plum">{ROLE_LABEL[e.actorRole as AdminRole] ?? e.actorRole}</Badge>
+                          <Badge tone="outline">{ROLE_LABEL[e.actorRole as AdminRole] ?? e.actorRole}</Badge>
                         </div>
                       </td>
                       <td className={td}>
@@ -226,7 +226,7 @@ export function AuditView() {
                       <td className={td}>
                         <span className="text-muted">{e.targetType}</span>{" "}
                         {e.targetType === "profile" && admin.can("users.view") ? (
-                          <Link href={`/admin/users/${e.targetId}`} className="underline decoration-line-strong underline-offset-2 hover:decoration-ink">
+                          <Link href={`/admin/users/${e.targetId}`} className="text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
                             <ShortId value={e.targetId} />
                           </Link>
                         ) : (

@@ -107,7 +107,7 @@ export function DashboardView() {
                       <td className={tdNum}>
                         <span className="inline-flex items-center gap-2">
                           <span aria-hidden className="inline-block h-1.5 w-14 overflow-hidden rounded-full bg-sunken">
-                            <span className="block h-full rounded-full bg-plum" style={{ width: `${pct}%` }} />
+                            <span className="block h-full rounded-full bg-heading" style={{ width: `${pct}%` }} />
                           </span>
                           {pct}%
                         </span>

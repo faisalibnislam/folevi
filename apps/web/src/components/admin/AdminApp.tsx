@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, createContext, useContext, type ErrorInfo, type ReactNode } from "react";
+import { Component, createContext, useContext, useEffect, type ErrorInfo, type ReactNode } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { ConvexClientProvider, useAuthPhase } from "@/lib/convex/provider";
@@ -65,7 +65,7 @@ function Gate({ children }: { children: ReactNode }) {
       <div className="grid min-h-dvh place-items-center bg-canvas" aria-busy="true">
         <span className="sr-only">Loading…</span>
         <div className="h-1 w-40 overflow-hidden rounded-full bg-sunken" aria-hidden>
-          <div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-full bg-plum" />
+          <div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-full bg-heading" />
         </div>
       </div>
     );
@@ -79,6 +79,13 @@ function Gate({ children }: { children: ReactNode }) {
 }
 
 export function AdminApp({ children }: { children: ReactNode }) {
+  // The console wears the app's neutral chrome (globals.css, data-chrome), like AccountGate does for the app.
+  useEffect(() => {
+    document.documentElement.dataset.chrome = "neutral";
+    return () => {
+      delete document.documentElement.dataset.chrome;
+    };
+  }, []);
   return (
     <ConvexClientProvider>
       <ToastProvider>

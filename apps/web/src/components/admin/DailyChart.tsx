@@ -110,9 +110,9 @@ export function DailyChart({
   const hovered = hover !== null ? { date: dates[hover]!, value: values[hover] ?? null } : null;
 
   return (
-    <figure className="min-w-0 ui-card rounded-[8px]" aria-labelledby={`${id}-t`}>
-      <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
-        <figcaption id={`${id}-t`} className="text-[14px] font-semibold">
+    <figure className="min-w-0 ui-card" aria-labelledby={`${id}-t`}>
+      <div className="flex items-baseline justify-between gap-3 px-5 pb-2 pt-4">
+        <figcaption id={`${id}-t`} className="ui-display text-[17px] leading-snug">
           {title}
         </figcaption>
         <span className="text-[12px] text-muted">{description}</span>
@@ -155,16 +155,16 @@ export function DailyChart({
                   const y0 = pad.top + innerH - h;
                   // Rounded data-end, square baseline.
                   const d = `M${x0},${pad.top + innerH}V${y0 + r}Q${x0},${y0} ${x0 + r},${y0}H${x0 + barW - r}Q${x0 + barW},${y0} ${x0 + barW},${y0 + r}V${pad.top + innerH}Z`;
-                  return <path key={i} d={d} fill="var(--color-accent)" opacity={hover === null || hover === i ? 1 : 0.55} />;
+                  return <path key={i} d={d} fill="var(--color-heading)" opacity={hover === null || hover === i ? 1 : 0.55} />;
                 })
               : (
                 <>
                   {segments.map((d, i) => (
-                    <path key={i} d={d} fill="none" stroke="var(--color-plum)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+                    <path key={i} d={d} fill="none" stroke="var(--color-heading)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
                   ))}
                   {values.map((v, i) =>
                     v === null ? null : (
-                      <circle key={i} cx={x(i)} cy={y(v)} r={hover === i ? 5 : 4} fill="var(--color-plum)" stroke="var(--color-surface-raised)" strokeWidth={1.5} />
+                      <circle key={i} cx={x(i)} cy={y(v)} r={hover === i ? 5 : 4} fill="var(--color-heading)" stroke="var(--color-surface-raised)" strokeWidth={1.5} />
                     ),
                   )}
                   {latestIndex >= 0 && latest !== null ? (
@@ -181,7 +181,7 @@ export function DailyChart({
         {hovered ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-well rounded-[6px] px-2.5 py-1.5 text-[12px] shadow-[var(--shadow-pop)]"
+            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-pop rounded-[8px] px-2.5 py-1.5 text-[12px]"
             style={{ left: Math.min(Math.max(x(hover!) + 8, 60), width - 50) }}
           >
             <div className="text-muted">{formatDate(hovered.date, { weekday: "short", month: "short", day: "numeric" })}</div>
@@ -189,7 +189,7 @@ export function DailyChart({
           </div>
         ) : null}
       </div>
-      <details className="border-t border-line px-4 py-2 text-[13px]">
+      <details className="border-t border-line px-5 py-2 text-[13px]">
         <summary className="cursor-pointer rounded-[4px] text-muted hover:text-ink">Show data table</summary>
         <div className="mt-2 max-h-56 overflow-y-auto">
           <table className="w-full border-collapse text-[12.5px]">

@@ -10,7 +10,7 @@
 import type { WithoutSystemFields } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { DAY_MS, TRIAL_DAYS, type PersonalTier, type WorkspacePlanId } from "./plans";
+import { DAY_MS, TRIAL_DAYS, isPaidPlan, personalPlanId, type PersonalTier, type WorkspacePlanId } from "./plans";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -72,6 +72,14 @@ export async function ensureSubscription(ctx: MutationCtx, profileId: Id<"profil
   return (await ctx.db.get(id)) as PersonalSubscription;
 }
 
+/**
+ * Whether a Personal plan is billed through Stripe right now. Admins can't set such a plan by hand
+ * (adminBilling.setPlan refuses); it is changed or canceled in Stripe.
+ */
+export function personalStripeBilled(sub: PersonalSubscription | null): boolean {
+  return Boolean(sub && sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval)));
+}
+
 /** A new account's billing row: Free, with a Pro trial. */
 export async function startTrial(ctx: MutationCtx, profileId: Id<"profiles">): Promise<void> {
   if (await subscriptionOf(ctx, profileId)) return;
@@ -90,6 +98,14 @@ export async function workspaceSubscriptionOf(ctx: Ctx, workspaceId: Id<"workspa
     .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     .first();
   return row && isWorkspaceSubscription(row) ? row : null;
+}
+
+/**
+ * Whether a workspace's plan is billed through Stripe right now (including a canceled plan still inside its
+ * paid period). Admins can't set such a plan by hand (adminBilling.setWorkspacePlan refuses).
+ */
+export function workspaceStripeBilled(sub: WorkspaceSubscription | null, now = Date.now()): boolean {
+  return Boolean(sub && sub.provider === "stripe" && isPaidPlan(sub.planId) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now));
 }
 
 /** A workspace's billing row, created on Workspace Free if it doesn't exist yet. */

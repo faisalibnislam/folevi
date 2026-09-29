@@ -64,7 +64,7 @@ export function EmailsView() {
       />
 
       <div className="mb-5 grid gap-3 xl:grid-cols-[3fr_2fr]">
-        <Callout tone="plum" icon={<Info size={16} aria-hidden className="mt-0.5 flex-none text-plum-ink" />} title="What “accepted” means">
+        <Callout icon={<Info size={16} aria-hidden className="mt-0.5 flex-none text-muted" />} title="What “accepted” means">
           <p>
             <strong>Accepted</strong> means the email provider accepted the message for sending; it does <strong>not</strong> mean delivered. Delivery, bounce and complaint states appear only
             when the signed provider webhook is configured, and only for events whose signature was verified.
@@ -116,7 +116,7 @@ export function EmailsView() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden ui-card rounded-[8px]">
+      <div className="overflow-hidden ui-card">
         <DataTable caption={`Email send attempts${status ? `, status ${status}` : ""}`} minWidth={1040}>
           <thead>
             <tr>

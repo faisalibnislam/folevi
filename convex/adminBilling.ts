@@ -9,7 +9,7 @@ import type { MutationCtx } from "./_generated/server";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { recordAudit } from "./lib/audit";
 import { fail } from "./lib/errors";
-import { ensureSubscription, ensureWorkspaceSubscription, isPersonalPayment, type PersonalSubscription, type WorkspaceSubscription } from "./lib/billing";
+import { ensureSubscription, ensureWorkspaceSubscription, isPersonalPayment, personalStripeBilled, workspaceStripeBilled, type PersonalSubscription, type WorkspaceSubscription } from "./lib/billing";
 import { personalAiUsage, personalEntitlements, storageUsage } from "./lib/entitlements";
 import { DAY_MS, isPaidPlan, personalPlanId } from "./lib/plans";
 import { personalScope } from "./lib/scope";
@@ -71,6 +71,8 @@ export const userBilling = mutation({
     const storage = await storageUsage(ctx, { kind: "personal", profileId: p._id });
     return {
       subscription: { ...snapshot(sub), stripeCustomerId: sub.stripeCustomerId ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), paidSince: sub.paidSince ?? null },
+      /** Billed through Stripe: the plan can't be set by hand here (setPlan refuses). */
+      stripeBilled: personalStripeBilled(sub),
       entitlements: await personalEntitlements(ctx, p._id),
       /** Personal storage only (team workspaces have their own). */
       storageUsedBytes: storage.usedBytes,
@@ -97,7 +99,7 @@ export const setPlan = mutation({
     const p = await targetProfile(ctx, args.profileId);
     const sub = await ensureSubscription(ctx, p._id);
     const paid = isPaidPlan(personalPlanId(args.plan, args.interval));
-    if (sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval))) fail("invalid_argument", "This plan is billed through Stripe. Change or cancel it there, then set it here if needed.");
+    if (personalStripeBilled(sub)) fail("invalid_argument", "This plan is billed through Stripe. Change or cancel it there, then set it here if needed.");
     if (args.until !== undefined && args.until !== null && args.until <= Date.now()) fail("invalid_argument", "The end date must be in the future.");
     const before = snapshot(sub);
     const now = Date.now();
@@ -249,8 +251,7 @@ export const setWorkspacePlan = mutation({
     if (!w || w.status === "deleting") fail("not_found", "Workspace not found.");
     const sub = await ensureWorkspaceSubscription(ctx, w._id);
     const now = Date.now();
-    const stripeLive = sub.provider === "stripe" && isPaidPlan(sub.planId) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now);
-    if (stripeLive) fail("invalid_argument", "This workspace is billed through Stripe. Change or cancel it there, then set it here if needed.");
+    if (workspaceStripeBilled(sub, now)) fail("invalid_argument", "This workspace is billed through Stripe. Change or cancel it there, then set it here if needed.");
     if (args.until !== undefined && args.until !== null && args.until <= now) fail("invalid_argument", "The end date must be in the future.");
     const paid = isPaidPlan(args.planId);
     const before = workspaceSnapshot(sub);

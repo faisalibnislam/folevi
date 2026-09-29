@@ -118,6 +118,55 @@ test("listing workspaces is audited, and identity emails appear in the email log
   await page.context().close();
 });
 
+test("an admin upgrades a person straight from the users list (reason required, audited)", async ({ browser }) => {
+  const target = await newPerson(browser, "List Upgrade");
+  const page = await adminPage(browser, "/admin/users");
+  await page.getByRole("searchbox", { name: "Email or name" }).fill(target.email);
+  await page.getByRole("button", { name: "Search" }).click();
+  const row = page.getByRole("row").filter({ hasText: "List Upgrade" });
+  await expect(row.getByText("Free · trial")).toBeVisible();
+
+  // The row's Upgrade opens the plan dialog right there.
+  await row.getByRole("button", { name: "Upgrade for List Upgrade" }).click();
+  const dialog = page.getByRole("dialog", { name: "Change plan for List Upgrade" });
+  await expect(dialog).toContainText("Currently Free");
+  await dialog.getByRole("radio", { name: "Pro" }).check();
+  await dialog.getByRole("button", { name: "Yearly" }).click();
+  await pick(dialog.getByRole("combobox", { name: "Ends" }), "In 3 months");
+  const changes = dialog.getByRole("region", { name: "What changes" });
+  await expect(changes).toContainText("Pro, yearly");
+  await expect(changes).toContainText("100 GB");
+  await settle(page);
+  const scan = await new AxeBuilder({ page }).include("dialog[open]").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+  expect(scan.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+
+  // No reason, no change.
+  await dialog.getByRole("button", { name: "Upgrade to Pro" }).click();
+  const reason = dialog.getByRole("textbox", { name: "Reason" });
+  await expect(reason).toHaveAttribute("aria-invalid", "true");
+  await expect(reason).toBeFocused();
+  await reason.fill("E2E: upgraded from the users list");
+  await dialog.getByRole("button", { name: "Upgrade to Pro" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Plan set to Pro, yearly" })).toBeVisible();
+  await expect(dialog).toBeHidden();
+
+  // The list shows the new plan, and the row now offers Change plan; reopening it changes nothing yet.
+  await expect(row.getByText("Pro", { exact: true })).toBeVisible();
+  await expect(row.getByText(/Yearly · ends /)).toBeVisible();
+  await row.getByRole("button", { name: "Change plan for List Upgrade" }).click();
+  await expect(dialog.getByRole("radio", { name: "Pro" })).toBeChecked();
+  await expect(dialog.getByRole("button", { name: "Save plan" })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+
+  // The change is in the person's admin history with its reason.
+  await row.getByRole("link", { name: "List Upgrade" }).click();
+  const history = page.getByRole("table", { name: "Admin audit history for this user" });
+  await expect(history.getByText("billing.set_plan")).toBeVisible();
+  await expect(history.getByText("E2E: upgraded from the users list")).toBeVisible();
+  await page.context().close();
+  await target.context.close();
+});
+
 test("an owner manages a person's plan and AI from their page; analytics and revenue load", async ({ browser }) => {
   const target = await newPerson(browser, "Plan Target");
   const page = await adminPage(browser, "/admin/users");
@@ -128,13 +177,15 @@ test("an owner manages a person's plan and AI from their page; analytics and rev
   await row.getByRole("link", { name: "Plan Target" }).click();
   await expect(page.getByRole("heading", { name: "Plan & billing" })).toBeVisible();
 
-  // Set Basic by hand (a comp), with a reason.
-  await page.getByRole("button", { name: "Set plan…" }).click();
-  let dialog = page.getByRole("dialog", { name: /Set .*plan/ });
-  await pick(dialog.getByRole("combobox", { name: "Plan" }), "Basic (20 GB)");
+  // Set Basic by hand (a comp) from the page's own Upgrade button, with a reason.
+  await page.getByRole("button", { name: "Upgrade", exact: true }).click();
+  let dialog = page.getByRole("dialog", { name: "Change plan for Plan Target" });
+  await dialog.getByRole("radio", { name: "Basic" }).check();
   await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: comped for a support issue");
-  await dialog.getByRole("button", { name: "Save plan" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Plan set to Basic" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Upgrade to Basic" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Plan set to Basic, monthly" })).toBeVisible();
+  // Now on a paid plan, the same button changes it.
+  await expect(page.getByRole("button", { name: "Change plan", exact: true })).toBeEnabled();
 
   // Grant AI.
   await page.getByRole("button", { name: /Grant AI…|AI access…/ }).click();
@@ -173,16 +224,22 @@ test("an admin puts a workspace on Team by hand (audited), and its plan, seats a
   await expect(page.getByRole("heading", { name: "Plan & billing" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Workspace Free").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Set plan…" }).click();
-  const dialog = page.getByRole("dialog", { name: /Set the plan for/ });
-  await pick(dialog.getByRole("combobox", { name: "Plan" }), "Workspace Team (monthly, $5 per member)");
+  await page.getByRole("button", { name: "Upgrade", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Change plan for Ada Studio" });
+  await dialog.getByRole("radio", { name: "Team" }).check();
+  await expect(dialog.getByRole("region", { name: "What changes" })).toContainText("1 seat × $5 = $5 / month, not billed");
   await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: team plan before Stripe is set up");
-  await dialog.getByRole("button", { name: "Save plan" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Plan set to Workspace Team" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Upgrade to Team" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Plan set to Workspace Team, monthly" })).toBeVisible();
   await expect(page.getByText("Workspace Team").first()).toBeVisible();
   await expect(page.getByText("1 × $5 = $5/month")).toBeVisible();
   await expect(page.getByRole("table", { name: "Workspace payments" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Admin audit history for this workspace" }).getByText("billing.set_workspace_plan").first()).toBeVisible();
+  // The workspaces list shows the plan too, with Change plan on the row.
+  await page.getByRole("link", { name: "Up to Workspaces" }).click();
+  const wsRow = page.getByRole("table", { name: "Workspaces, newest first" }).getByRole("row").filter({ hasText: "Ada Studio" }).first();
+  await expect(wsRow.getByText("Workspace Team")).toBeVisible();
+  await expect(wsRow.getByRole("button", { name: "Change plan for Ada Studio" })).toBeEnabled();
 
   // The workspace's owner sees it in the workspace's Plan & billing; their Personal plan is unchanged.
   const owner = await browser.newContext({ storageState: adminState ?? undefined });
@@ -212,8 +269,12 @@ test("support staff see analytics but not revenue, and can't set plans", async (
   await page.goto(`${APP}/admin/users?q=`);
   await page.getByRole("searchbox", { name: "Email or name" }).fill(staff.email);
   await page.getByRole("button", { name: "Search" }).click();
-  await page.getByRole("link", { name: "Support Person" }).click();
-  await expect(page.getByRole("button", { name: "Set plan…" })).toBeDisabled();
+  // No plan actions on the list for support staff; on the person's page the button is there but off.
+  const results = page.getByRole("table", { name: `Users matching “${staff.email}”` });
+  await expect(results.getByRole("link", { name: "Support Person" })).toBeVisible();
+  await expect(results.getByRole("button")).toHaveCount(0);
+  await results.getByRole("link", { name: "Support Person" }).click();
+  await expect(page.getByRole("button", { name: /^(Upgrade|Change plan)$/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Extend trial…|Give Pro trial…/ })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Suspend…" })).toBeDisabled();
   await staff.context.close();

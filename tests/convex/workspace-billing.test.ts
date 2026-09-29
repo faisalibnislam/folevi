@@ -567,9 +567,17 @@ describe("admin: workspace plans", () => {
     await ops.as.mutation(api.adminBilling.setWorkspacePlan, { workspaceId: id, planId: "workspace_free", reason: REASON });
     s = await summary(owner, id);
     expect(s.entitlements.planId).toBe("workspace_free");
-    // A live Stripe plan is refused.
+    // The workspaces list shows each workspace's plan (so it can be changed from the list).
+    const listed = async () => (await ops.as.mutation(api.admin.listWorkspaces, {})).workspaces.find((w) => w.id === id)!;
+    expect(await listed()).toMatchObject({ planId: "workspace_free", planEndsAt: null, stripeBilled: false });
+    const until = Date.now() + 10 * DAY;
+    await ops.as.mutation(api.adminBilling.setWorkspacePlan, { workspaceId: id, planId: "workspace_business_yearly", until, reason: REASON });
+    expect(await listed()).toMatchObject({ planId: "workspace_business_yearly", planEndsAt: until, stripeBilled: false });
+    // A live Stripe plan is flagged in the list and the detail, and refused.
     const sub = (await workspaceSub(t, id))!;
     await t.run(async (ctx) => ctx.db.patch(sub._id, { provider: "stripe", planId: "workspace_team_monthly", status: "active", currentPeriodEnd: Date.now() + DAY }));
+    expect(await listed()).toMatchObject({ planId: "workspace_team_monthly", stripeBilled: true });
+    expect((await ops.as.mutation(api.admin.viewWorkspace, { workspaceId: id })).billing.stripeBilled).toBe(true);
     await expect(ops.as.mutation(api.adminBilling.setWorkspacePlan, { workspaceId: id, planId: "workspace_business_monthly", reason: REASON })).rejects.toThrow(/billed through Stripe/);
   });
 });

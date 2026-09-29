@@ -26,7 +26,7 @@ export function DeletionJobsView() {
           ))}
         </ul>
       ) : null}
-      <div className="overflow-hidden ui-card rounded-[8px]">
+      <div className="overflow-hidden ui-card">
         <DataTable caption="Deletion jobs, newest first" minWidth={1040}>
           <thead>
             <tr>
@@ -66,7 +66,7 @@ export function DeletionJobsView() {
                           aria-valuenow={pct}
                           className="h-1.5 w-24 overflow-hidden rounded-full bg-sunken"
                         >
-                          <div className={`h-full rounded-full ${j.status === "failed" ? "bg-danger" : j.status === "completed" ? "bg-success" : "bg-plum"}`} style={{ width: `${pct}%` }} />
+                          <div className={`h-full rounded-full ${j.status === "failed" ? "bg-danger" : j.status === "completed" ? "bg-success" : "bg-heading"}`} style={{ width: `${pct}%` }} />
                         </div>
                         <span className="tabular-nums text-muted">{pct}%</span>
                       </div>

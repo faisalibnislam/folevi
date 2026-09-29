@@ -25,7 +25,7 @@ function MonthlyBars({ caption, rows, format }: { caption: string; rows: { month
               {monthLabel(r.month)}
             </th>
             <td className={`${td} w-full align-middle`}>
-              <div aria-hidden className="h-2 rounded-full bg-plum/80" style={{ width: `${Math.max((r.value / max) * 100, r.value > 0 ? 1.5 : 0)}%` }} />
+              <div aria-hidden className="h-2 rounded-full bg-heading/80" style={{ width: `${Math.max((r.value / max) * 100, r.value > 0 ? 1.5 : 0)}%` }} />
             </td>
             <td className={`${tdNum} whitespace-nowrap`}>
               {format(r.value)}
@@ -168,7 +168,7 @@ export function RevenueView() {
                     </td>
                     <td className={td}>
                       {admin.can("users.view") ? (
-                        <Link href={`/admin/users/${p.profileId}`} className="font-medium underline decoration-line-strong underline-offset-2 hover:decoration-ink">
+                        <Link href={`/admin/users/${p.profileId}`} className="font-semibold text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
                           {p.name}
                         </Link>
                       ) : (

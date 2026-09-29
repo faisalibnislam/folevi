@@ -49,6 +49,7 @@ export function ActionDialog({
   confirm,
   acknowledge,
   children,
+  confirmDisabled,
   onSubmit,
 }: {
   open: boolean;
@@ -62,6 +63,8 @@ export function ActionDialog({
   confirm?: { label: ReactNode; expected: string; caseInsensitive?: boolean };
   acknowledge?: string;
   children?: ReactNode;
+  /** Keeps the confirm button off (e.g. nothing would change yet). */
+  confirmDisabled?: boolean;
   /** Performs the action; resolves to the success message shown in a toast. */
   onSubmit: (ctx: SubmitContext) => Promise<string>;
 }) {
@@ -148,7 +151,7 @@ export function ActionDialog({
           <Button onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button type="submit" form={`${uid}-form`} variant={tone === "danger" ? "danger" : "primary"} disabled={busy} aria-busy={busy || undefined}>
+          <Button type="submit" form={`${uid}-form`} variant={tone === "danger" ? "danger" : "primary"} disabled={busy || confirmDisabled} aria-busy={busy || undefined}>
             {busy ? "Working…" : confirmLabel}
           </Button>
         </>
@@ -256,7 +259,7 @@ export function ActionDialog({
                 onChange={(e) => setAck(e.target.checked)}
                 aria-invalid={errors.ack ? true : undefined}
                 aria-describedby={describedBy("ack", false)}
-                className="mt-0.5 h-4 w-4 flex-none accent-[var(--color-plum)]"
+                className="mt-0.5 h-4 w-4 flex-none accent-[var(--color-heading)]"
               />
               <span>{acknowledge}</span>
             </label>
@@ -294,7 +297,7 @@ export function ActionDialog({
           ) : null}
         </div>
         {formError ? (
-          <div role="alert" className="rounded-[6px] border border-danger/40 bg-danger-soft px-3 py-2 text-[13px]">
+          <div role="alert" className="rounded-[10px] bg-danger-soft px-3 py-2 text-[13px]">
             {formError}
           </div>
         ) : null}

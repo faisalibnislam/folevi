@@ -104,6 +104,33 @@ success shows a toast, and detail pages reload their data by calling the audited
 | Rate limit                    | None                       | Known rules only. Limit 1–100,000, window 1 s–24 h. "Reset to default" removes the override.                                                                                                                                                         |
 | Built-in template             | None                       | Hides or shows a starter template for new documents; existing documents are unaffected.                                                                                                                                                             |
 
+### Changing a plan by hand (upgrades, downgrades, comps)
+
+Admins and owners (`billing.manage`) can put a person or a team workspace on any plan without a
+payment, for comps, corrections, purchases made outside the app, or a paid plan before online
+payments are set up. Nobody is charged and nothing is refunded; money only moves through the
+payment provider.
+
+- **Where:** every row on **Users** and **Workspaces** has **Upgrade** (on a free plan) or
+  **Change plan** (on a paid plan), which opens the plan dialog right there. Each person's and
+  each workspace's own page has the same button at the top, next to Reload. Both lists show
+  the current plan, how it's counted (monthly or yearly) and its end date, if any.
+- **The dialog:** pick the plan (Personal: Free, Basic, Pro; workspace: Free, Team, Business),
+  how it's counted (Monthly or Yearly), and when it ends (**No end date** by default, or in 1
+  month, 3 months, 1 year, or on a date). **What changes** lists the plan, storage, AI
+  Assistant, devices (Personal) and end date, from the current value to the new one; for a
+  workspace it also shows the seat estimate. The button says what happens ("Upgrade to Pro",
+  "Downgrade to Free"), and stays off while nothing would change. A reason (8+ characters) is
+  required and goes to the audit log.
+- **After the end date** the plan goes back to Free (Personal) or Workspace Free.
+- **A Pro trial keeps running** when someone is set to Basic during it; the dialog says so.
+- **Refused on the server:** plans billed through Stripe (change or cancel them in Stripe;
+  the lists and pages mark them "Stripe" and the button is off), accounts that were deleted,
+  workspaces being deleted, end dates in the past, missing reasons, and anyone without an
+  admin or owner role (support staff don't see the list buttons; the page button is off).
+- **Audit:** `billing.set_plan` (target: profile) or `billing.set_workspace_plan` (target:
+  workspace), with the reason and the before/after subscription state.
+
 ## 4. Audit log
 
 Records are written by `recordAudit` (`convex/lib/audit.ts`) into `adminAuditLogs`.
@@ -186,13 +213,13 @@ attempts, quotas and the audit trail.
 | Path                         | Shows                                                                                                                                             |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/admin`                     | Stat tiles, 30-day signups and DAU charts (SVG with a data-table fallback), retention cohorts, failed emails (7 d), sync errors (7 d), rate-limited events (24 h), deployments. |
-| `/admin/users`               | Exact-email search, or browse newest first with a name filter and status filter, 50 per page.                                                     |
+| `/admin/users`               | Exact-email search, or browse newest first with a name filter and status filter, 50 per page. Each row shows the plan and has Upgrade or Change plan (admins and owners). |
 | `/admin/analytics`           | User analytics: users, new signups, daily/weekly/monthly active, storage, signups and AI requests per day, plan mix, trials and conversion, AI use and grants (7–180 day window). Aggregates only. |
 | `/admin/revenue`             | Admins and owners: MRR, ARR, paying accounts, revenue per payer, last 30 days, at-risk (canceling/past due), revenue, new and canceled by month, subscribers per plan, workspace plans (paying workspaces, billed seats, workspace MRR), recent payments (emails redacted). Test purchases are excluded unless switched on. |
-| `/admin/users`               | Plan column: Free/Basic/Pro, "· trial" while on the Pro trial, and an AI badge for grants.                                                        |
-| `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above. **Plan & billing**: Personal plan, provider, renewal, AI access and 30-day use in Personal, personal storage, payments, and the billing actions (set plan, trial, AI grant, storage limit, prepare export, mark refunded). Loading it is an audited read (`user.view_billing`). |
-| `/admin/workspaces`          | All workspaces, paginated.                                                                                                                        |
-| `/admin/workspaces/[id]`     | Members and roles, usage against quotas, redacted invites, admin history, suspend and quota. **Plan & billing**: the workspace's plan (never its owner's Personal plan), billed seats and estimated charge, payments, and Set plan. |
+| `/admin/users`               | Plan column: Free/Basic/Pro, "· trial" while on the Pro trial, monthly or yearly and the end date, an AI badge for grants and a Stripe badge for Stripe-billed plans. |
+| `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above. Upgrade or Change plan at the top. **Plan & billing**: Personal plan, provider, renewal, AI access and 30-day use in Personal, personal storage, payments, and the billing actions (trial, AI grant, storage limit, device limit, prepare export, mark refunded). Loading it is an audited read (`user.view_billing`). |
+| `/admin/workspaces`          | All workspaces, paginated, with each workspace's plan and Upgrade or Change plan (admins and owners).                                             |
+| `/admin/workspaces/[id]`     | Members and roles, usage against quotas, redacted invites, admin history, suspend and quota. **Plan & billing**: the workspace's plan (never its owner's Personal plan), billed seats and estimated charge, and payments. Upgrade or Change plan at the top. |
 | `/admin/emails`              | The last 100 send attempts, with a status filter, provider events, resend for eligible failures, and the delivery explainer.                     |
 | `/admin/audit`               | The paginated log with a target filter and an expandable before/after diff.                                                                       |
 | `/admin/deletion-jobs`       | Deletion jobs with status and progress (live).                                                                                                    |
@@ -202,6 +229,16 @@ The daily active users figure, weekly active users figure and retention cohorts 
 `daily metrics` cron (00:15 UTC). Until it has run once, the dashboard shows a dash instead of a number and says why.
 
 End-to-end coverage: `apps/web/e2e/admin.spec.ts` (non-admin 404, signed-out redirect,
-dashboard, audited search and view, suspend requires a reason, plan/AI/export from the user page,
-analytics and revenue, support-staff limits, and axe checks in light and dark). Server rules:
-`tests/convex/billing.test.ts`.
+dashboard, audited search and view, suspend requires a reason, upgrading a person from the users
+list, plan/AI/export from the user page, a workspace plan, analytics and revenue, support-staff
+limits, and axe checks in light and dark). Server rules: `tests/convex/billing.test.ts` and
+`tests/convex/workspace-billing.test.ts`.
+
+## 9. Look
+
+The console uses the app's own chrome (`data-chrome="neutral"`, set by `AdminApp` like
+`AccountGate` does for the app): white in light mode, near-black in dark, frosted glass for the
+sidebar and the tab strip, and the app's buttons, custom dropdowns, switches, dialogs and menus.
+The sidebar groups pages under small caps labels; the tab strip shows the section and, on a
+person's or workspace's page, that record as the open tab with Up to go back. Colour is kept
+for meaning only (success, warning, danger); plans and roles use neutral pills.

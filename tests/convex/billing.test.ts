@@ -376,6 +376,41 @@ describe("admin: billing, tiers and analytics", () => {
     expect(log.entries.map((e) => e.action)).toEqual(expect.arrayContaining(["billing.set_plan", "billing.grant_ai", "billing.set_storage", "billing.mark_refunded"]));
   });
 
+  test("the users list shows each person's plan, so it can be changed from the list; Stripe-billed plans are flagged and refused", async () => {
+    const t = setup();
+    const admin = await person(t, "lister@example.com");
+    const user = await person(t, "upgraded@example.com");
+    await withRole(t, admin, "ops_admin");
+    const row = async () => (await admin.as.mutation(api.admin.searchUsers, { query: "upgraded@example.com" })).users[0]!;
+
+    // A new account: Free with a Pro trial, not billed.
+    expect(await row()).toMatchObject({ plan: "free", trialing: true, interval: null, planEndsAt: null, billedBy: "none", stripeBilled: false });
+
+    // Upgraded by hand: Pro, yearly, with an end date.
+    const until = Date.now() + 30 * DAY_MS;
+    await admin.as.mutation(api.adminBilling.setPlan, { profileId: user.profileId, plan: "pro", interval: "year", until, reason: REASON });
+    expect(await row()).toMatchObject({ plan: "pro", interval: "year", planEndsAt: until, billedBy: "manual", stripeBilled: false, ai: true });
+    expect((await admin.as.mutation(api.adminBilling.userBilling, { profileId: user.profileId })).stripeBilled).toBe(false);
+
+    // Back to Free (a downgrade) clears the interval and the end date.
+    await admin.as.mutation(api.adminBilling.setPlan, { profileId: user.profileId, plan: "free", reason: REASON });
+    expect(await row()).toMatchObject({ plan: "free", interval: null, planEndsAt: null, billedBy: "none" });
+
+    // A live Stripe plan shows as Stripe-billed, and the server still refuses to change it by hand.
+    const sub = await subOf(t, user);
+    await t.run(async (ctx) => ctx.db.patch(sub!._id, { plan: "basic", interval: "month", provider: "stripe", status: "active", currentPeriodEnd: Date.now() + DAY_MS }));
+    expect(await row()).toMatchObject({ plan: "basic", interval: "month", billedBy: "stripe", stripeBilled: true });
+    expect((await admin.as.mutation(api.adminBilling.userBilling, { profileId: user.profileId })).stripeBilled).toBe(true);
+    await expect(admin.as.mutation(api.adminBilling.setPlan, { profileId: user.profileId, plan: "pro", reason: REASON })).rejects.toThrow(/billed through Stripe/);
+
+    // Every search is audited; every change has its reason and before/after.
+    const log = await admin.as.query(api.admin.auditLog, {});
+    const changes = log.entries.filter((e) => e.action === "billing.set_plan");
+    expect(changes).toHaveLength(2);
+    expect(changes.every((e) => e.reason === REASON)).toBe(true);
+    expect(log.entries.filter((e) => e.action === "user.search").length).toBeGreaterThanOrEqual(4);
+  });
+
   test("owner-only: platform roles and maintenance mode", async () => {
     const t = setup();
     const admin = await person(t, "ops2@example.com");

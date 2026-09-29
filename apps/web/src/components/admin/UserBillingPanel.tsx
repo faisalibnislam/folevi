@@ -4,37 +4,23 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { CalendarPlus, CreditCard, FileArchive, HardDrive, MonitorSmartphone, RotateCw, Undo2 } from "lucide-react";
+import { CalendarPlus, FileArchive, HardDrive, MonitorSmartphone, RotateCw, Undo2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { PLANS, formatPrice, isPaidPlan, personalPlanId, type PersonalTier } from "@/lib/plans";
+import { PLANS, formatPrice, type PersonalTier } from "@/lib/plans";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { maxTrialDays, rolesFor } from "./permissions";
-import { useAuditedLoad } from "./useAuditedLoad";
-import { Badge, Callout, DataTable, EmptyRow, ErrorNotice, KeyValues, Meter, Panel, StatusBadge, Time, humanize, td, tdNum, th, thNum } from "./ui";
+import { endOfDay, futureDate, storageLimit as limit } from "./PlanDialog";
+import { Badge, Callout, DataTable, EmptyRow, ErrorNotice, KeyValues, Meter, Panel, StatusBadge, Time, humanize, td, tdNum, th, thNum, type Tone } from "./ui";
 
-type Billing = FunctionReturnType<typeof api.adminBilling.userBilling>;
-type Kind = "plan" | "trial" | "ai" | "storage" | "devices" | "export" | { refund: Billing["payments"][number] };
+export type Billing = FunctionReturnType<typeof api.adminBilling.userBilling>;
+type Kind = "trial" | "ai" | "storage" | "devices" | "export" | { refund: Billing["payments"][number] };
 
 const DAY = 86_400_000;
-/** Storage limits read better as whole gigabytes ("50 GB", not "50.00 GB"). */
-const limit = (bytes: number) => (bytes % 1024 ** 3 === 0 ? `${bytes / 1024 ** 3} GB` : formatBytes(bytes));
 const day = (ts: number) => new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-const PLAN_TONE: Record<PersonalTier, "neutral" | "accent" | "plum"> = { free: "neutral", basic: "accent", pro: "plum" };
-
-/** Parses a YYYY-MM-DD field (end of that day, UTC) or "" → null. */
-export function endOfDay(value: string): number | null {
-  if (!value) return null;
-  const t = Date.parse(`${value}T23:59:59Z`);
-  return Number.isFinite(t) ? t : null;
-}
-export const futureDate = (v: string) => {
-  if (!v) return null;
-  const t = endOfDay(v);
-  return t === null ? "Use a date like 2026-12-31." : t <= Date.now() ? "Choose a date in the future." : null;
-};
+const PLAN_TONE: Record<PersonalTier, Tone> = { free: "neutral", basic: "outline", pro: "strong" };
 
 export function PlanBadge({ plan, trialing }: { plan: PersonalTier; trialing?: boolean }) {
   return (
@@ -46,13 +32,22 @@ export function PlanBadge({ plan, trialing }: { plan: PersonalTier; trialing?: b
 }
 
 /**
- * One person's plan, storage, AI access and payments, with the billing actions their role allows.
- * Loading it is an audited read (adminBilling.userBilling), like the rest of the user page.
+ * One person's plan, storage, AI access and payments, with the billing actions their role allows. The
+ * user page loads it (adminBilling.userBilling, an audited read) and has the Change plan action at the top.
  */
-export function UserBillingPanel({ profileId, email, name }: { profileId: string; email: string; name: string }) {
+export function UserBillingPanel({
+  profileId,
+  email,
+  name,
+  billing,
+}: {
+  profileId: string;
+  email: string;
+  name: string;
+  billing: { data: Billing | undefined; error: unknown; loading: boolean; refresh: () => Promise<void> };
+}) {
   const admin = useAdmin();
-  const view = useMutation(api.adminBilling.userBilling);
-  const { data, error, loading, refresh } = useAuditedLoad(profileId, (meta) => view({ profileId, ...meta }));
+  const { data, error, loading, refresh } = billing;
   const [action, setAction] = useState<Kind | null>(null);
 
   if (!data) {
@@ -65,7 +60,7 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
 
   const { subscription: sub, entitlements: e } = data;
   const canManage = admin.can("billing.manage");
-  const stripeBilled = sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval));
+  const stripeBilled = data.stripeBilled;
   const paidPlan = sub.plan as PersonalTier;
   const who = name || email;
 
@@ -85,7 +80,7 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
           {e.trialing && e.trialEndsAt ? <span className="text-sm text-muted">Trial ends {day(e.trialEndsAt)} · pays for {PLANS[e.paidPlan].name}</span> : null}
           {sub.cancelAtPeriodEnd ? <Badge tone="warning">Cancels at period end</Badge> : null}
           {sub.status === "past_due" ? <Badge tone="danger">Payment past due</Badge> : null}
-          {sub.aiGrant ? <Badge tone="plum">AI granted</Badge> : null}
+          {sub.aiGrant ? <Badge tone="outline">AI granted</Badge> : null}
         </div>
 
         <div className="mt-4">
@@ -122,9 +117,6 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => setAction("plan")} disabled={!canManage || stripeBilled} title={!canManage ? rolesFor("billing.manage") : stripeBilled ? "Billed through Stripe. Change it there." : undefined}>
-            <CreditCard size={14} aria-hidden /> Set plan…
-          </Button>
           <Button size="sm" onClick={() => setAction("trial")}>
             <CalendarPlus size={14} aria-hidden /> {e.trialing ? "Extend trial…" : "Give Pro trial…"}
           </Button>
@@ -199,7 +191,6 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
 }
 
 function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDone }: { profileId: string; who: string; data: Billing; action: Kind | null; maxTrial: number; onClose: () => void; onDone: () => void }) {
-  const setPlan = useMutation(api.adminBilling.setPlan);
   const extendTrial = useMutation(api.adminBilling.extendTrial);
   const setAiGrant = useMutation(api.adminBilling.setAiGrant);
   const setStorage = useMutation(api.adminBilling.setStorageOverride);
@@ -216,39 +207,6 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
 
   return (
     <>
-      <ActionDialog
-        open={action === "plan"}
-        onClose={onClose}
-        title={`Set ${who}'s plan`}
-        description="For comps, corrections and purchases made outside the app. Nobody is charged. Without an end date the plan stays until someone changes it."
-        confirmLabel="Save plan"
-        fields={[
-          {
-            name: "plan",
-            label: "Plan",
-            type: "select",
-            initial: sub.plan,
-            options: (["free", "basic", "pro"] as const).map((id) => ({ value: id, label: `${PLANS[id].name} (${limit(PLANS[id].storageBytes)}${PLANS[id].ai ? ", AI" : ""})` })),
-          },
-          {
-            name: "interval",
-            label: "Counted as",
-            type: "select",
-            initial: sub.interval ?? "month",
-            options: [
-              { value: "month", label: "Monthly" },
-              { value: "year", label: "Yearly" },
-            ],
-            hint: "Only affects how the plan is shown. Manual plans aren't counted in recurring revenue.",
-          },
-          { name: "until", label: "Ends on (optional)", type: "text", initial: "", hint: "YYYY-MM-DD. After this date the account goes back to Free.", validate: futureDate },
-        ]}
-        onSubmit={async ({ reason, fields, meta }) => {
-          const plan = fields.plan as PersonalTier;
-          await setPlan({ profileId, plan, interval: fields.interval as "month" | "year", until: endOfDay(fields.until ?? ""), reason, ...meta });
-          return done(`Plan set to ${PLANS[plan].name}`);
-        }}
-      />
       <ActionDialog
         open={action === "trial"}
         onClose={onClose}
@@ -348,7 +306,7 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
           return done("Export started. They'll be notified when it's ready");
         }}
       >
-        <Callout tone="plum">Admins can't open or download people's notes. This only delivers the export to the account owner.</Callout>
+        <Callout>Admins can't open or download people's notes. This only delivers the export to the account owner.</Callout>
       </ActionDialog>
       <ActionDialog
         open={Boolean(refund)}

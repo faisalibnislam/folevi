@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
 import { useMutation } from "convex/react";
-import { Search } from "lucide-react";
+import { ArrowUpCircle, Search } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { useAuditedLoad } from "./useAuditedLoad";
-import { ROLE_LABEL } from "./permissions";
+import { useAdmin } from "./AdminApp";
+import { ROLE_LABEL, rolesFor } from "./permissions";
 import { PlanBadge } from "./UserBillingPanel";
+import { PersonalPlanDialog, shortDate, type PersonalPlanTarget } from "./PlanDialog";
 import type { PersonalTier } from "@/lib/plans";
-import { Badge, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, PageHeader, Pager, StatusBadge, Time, inputCls, selectCls, td, th } from "./ui";
+import { Badge, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, PageHeader, Pager, StatusBadge, Time, inputCls, recordLink, selectCls, tableCard, td, tdMid, th, trHover } from "./ui";
 import { Select } from "@/components/ui/Select";
 
 const STATUSES = ["active", "suspended", "pending_deletion", "deleted"] as const;
@@ -43,16 +45,28 @@ export function UsersView() {
   const key = searched ? JSON.stringify([q, status ?? "", cursor, nonce]) : null;
   const { data, error, loading, refresh } = useAuditedLoad(key, (meta) => search({ query: q, status, cursor, ...meta }));
   const emailMode = q.includes("@");
+  const admin = useAdmin();
+  const canSetPlans = admin.can("billing.manage");
+  const [planFor, setPlanFor] = useState<PersonalPlanTarget | null>(null);
+  const cols = canSetPlans ? 9 : 8;
 
   return (
     <>
       <DocTitle>Users</DocTitle>
-      <PageHeader title="Users" description="Find an account by exact email address, or browse newest first with an optional name filter. Every search is recorded in the audit log (the query itself is stored hashed)." />
+      <PageHeader
+        title="Users"
+        description={
+          <>
+            Find an account by exact email address, or browse newest first with an optional name filter. Every search is recorded in the audit log (the query itself is stored hashed).
+            {canSetPlans ? " Use Upgrade or Change plan on a row to set someone's plan by hand." : ` Setting plans: ${rolesFor("billing.manage")}`}
+          </>
+        }
+      />
 
       <form
         role="search"
         aria-label="Search users"
-        className="mb-5 flex flex-wrap items-end gap-3 ui-card rounded-[8px] p-4"
+        className="mb-5 flex flex-wrap items-end gap-3 ui-card p-4"
         onSubmit={(e) => {
           e.preventDefault();
           const sp = new URLSearchParams();
@@ -106,8 +120,8 @@ export function UsersView() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden ui-card rounded-[8px]">
-        <DataTable caption={searched ? `Users matching “${q || "all"}”${status ? `, status ${status}` : ""}` : "Users"} minWidth={980}>
+      <div className={tableCard}>
+        <DataTable caption={searched ? `Users matching “${q || "all"}”${status ? `, status ${status}` : ""}` : "Users"} minWidth={canSetPlans ? 1100 : 980}>
           <thead>
             <tr>
               <th scope="col" className={th}>Name</th>
@@ -118,47 +132,79 @@ export function UsersView() {
               <th scope="col" className={th}>Platform role</th>
               <th scope="col" className={th}>Created</th>
               <th scope="col" className={th}>Last active</th>
+              {canSetPlans ? (
+                <th scope="col" className={th}>
+                  <span className="sr-only">Plan actions</span>
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody aria-busy={loading || undefined}>
             {!searched ? (
-              <EmptyRow colSpan={8}>Search to see accounts. Nothing is loaded until you ask.</EmptyRow>
+              <EmptyRow colSpan={cols}>Search to see accounts. Nothing is loaded until you ask.</EmptyRow>
             ) : loading && !data ? (
-              <LoadingRows colSpan={8} />
+              <LoadingRows colSpan={cols} />
             ) : data && data.users.length === 0 ? (
-              <EmptyRow colSpan={8}>{emailMode ? "No account uses that exact email address." : "No matching accounts on this page."}</EmptyRow>
+              <EmptyRow colSpan={cols}>{emailMode ? "No account uses that exact email address." : "No matching accounts on this page."}</EmptyRow>
             ) : (
-              data?.users.map((u) => (
-                <tr key={u.id} className="hover:bg-surface">
-                  <td className={td}>
-                    <Link href={`/admin/users/${u.id}`} className="font-medium text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">
-                      {u.displayName || "(no name)"}
-                    </Link>
-                  </td>
-                  <td className={`${td} break-all`}>{u.email}</td>
-                  <td className={td}>
-                    <StatusBadge status={u.status} />
-                  </td>
-                  <td className={td}>
-                    <span className="flex flex-wrap gap-1">
-                      <VerificationBadges emailVerified={u.emailVerified} mfaVerified={u.mfaVerified} />
-                    </span>
-                  </td>
-                  <td className={td}>
-                    <span className="flex flex-wrap gap-1">
-                      <PlanBadge plan={u.plan as PersonalTier} trialing={u.trialing} />
-                      {u.aiSource === "grant" ? <Badge tone="plum">AI</Badge> : null}
-                    </span>
-                  </td>
-                  <td className={td}>{u.platformRole ? <Badge tone="plum">{ROLE_LABEL[u.platformRole]}</Badge> : <span className="text-muted">None</span>}</td>
-                  <td className={td}>
-                    <Time ts={u.createdAt} />
-                  </td>
-                  <td className={td}>
-                    <Time ts={u.lastActiveAt} />
-                  </td>
-                </tr>
-              ))
+              data?.users.map((u) => {
+                const name = u.displayName || u.email;
+                const onFree = u.plan === "free";
+                return (
+                  <tr key={u.id} className={trHover}>
+                    <td className={td}>
+                      <Link href={`/admin/users/${u.id}`} className={recordLink}>
+                        {u.displayName || "(no name)"}
+                      </Link>
+                    </td>
+                    <td className={`${td} break-all`}>{u.email}</td>
+                    <td className={td}>
+                      <StatusBadge status={u.status} />
+                    </td>
+                    <td className={td}>
+                      <span className="flex flex-wrap gap-1">
+                        <VerificationBadges emailVerified={u.emailVerified} mfaVerified={u.mfaVerified} />
+                      </span>
+                    </td>
+                    <td className={td}>
+                      <span className="flex flex-wrap items-center gap-1">
+                        <PlanBadge plan={u.plan as PersonalTier} trialing={u.trialing} />
+                        {u.aiSource === "grant" ? <Badge tone="outline">AI</Badge> : null}
+                        {u.stripeBilled ? <Badge tone="outline" title="Billed through Stripe">Stripe</Badge> : null}
+                      </span>
+                      {u.interval || u.planEndsAt ? (
+                        <span className="mt-0.5 block text-[12px] text-muted">
+                          {u.interval === "year" ? "Yearly" : u.interval === "month" ? "Monthly" : ""}
+                          {u.planEndsAt ? `${u.interval ? " · " : ""}ends ${shortDate(u.planEndsAt)}` : ""}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className={td}>{u.platformRole ? <Badge tone="strong">{ROLE_LABEL[u.platformRole]}</Badge> : <span className="text-muted">None</span>}</td>
+                    <td className={td}>
+                      <Time ts={u.createdAt} />
+                    </td>
+                    <td className={td}>
+                      <Time ts={u.lastActiveAt} />
+                    </td>
+                    {canSetPlans ? (
+                      <td className={`${tdMid} text-right`}>
+                        {u.status === "deleted" ? null : (
+                          <Button
+                            size="sm"
+                            disabled={u.stripeBilled}
+                            title={u.stripeBilled ? "Billed through Stripe. Change it in Stripe." : undefined}
+                            onClick={() => setPlanFor({ profileId: u.id, who: name, plan: u.plan as PersonalTier, interval: u.interval, endsAt: u.planEndsAt, trialEndsAt: u.trialEndsAt })}
+                          >
+                            {onFree ? <ArrowUpCircle size={14} aria-hidden /> : null}
+                            {onFree ? "Upgrade" : "Change plan"}
+                            <span className="sr-only"> for {name}</span>
+                          </Button>
+                        )}
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </DataTable>
@@ -175,6 +221,7 @@ export function UsersView() {
           </div>
         ) : null}
       </div>
+      <PersonalPlanDialog target={planFor} onClose={() => setPlanFor(null)} onDone={() => void refresh()} />
     </>
   );
 }

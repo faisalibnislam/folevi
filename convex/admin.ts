@@ -20,7 +20,7 @@ import { DEFAULT_WORKSPACE_QUOTA_BYTES, personalEntitlements, storageUsage, work
 import { personalScope, workspaceScope } from "./lib/scope";
 import { PLAN_CATALOG, planName } from "./lib/plans";
 import { seatSummary, seatsChanged } from "./lib/seats";
-import { workspaceSubscriptionOf } from "./lib/billing";
+import { personalStripeBilled, subscriptionOf, workspaceStripeBilled, workspaceSubscriptionOf } from "./lib/billing";
 
 // Three tiers (stored names kept for existing admins and audit records):
 //   Owner (super_admin):           everything, including admin roles and money matters
@@ -168,10 +168,36 @@ export const searchUsers = mutation({
       rows = page.page.filter((p) => !q || p.displayName.toLowerCase().includes(q) || p.email.includes(q) || (p._id as string) === q);
       continueCursor = page.isDone ? null : page.continueCursor;
     }
-    const plans = new Map<string, { plan: string; trialing: boolean; ai: boolean; aiSource: string | null }>();
+    // Each person's Personal plan, so the list can show it and offer "Change plan" without opening the person.
+    const plans = new Map<
+      string,
+      {
+        plan: string;
+        trialing: boolean;
+        trialEndsAt: number | null;
+        ai: boolean;
+        aiSource: string | null;
+        interval: "month" | "year" | null;
+        planEndsAt: number | null;
+        billedBy: "none" | "stripe" | "manual" | "test";
+        stripeBilled: boolean;
+      }
+    >();
     for (const p of rows) {
       const e = await personalEntitlements(ctx, p._id);
-      plans.set(p._id, { plan: e.paidPlan, trialing: e.trialing, ai: e.ai, aiSource: e.aiSource });
+      const sub = await subscriptionOf(ctx, p._id);
+      const paid = e.paidPlan !== "free";
+      plans.set(p._id, {
+        plan: e.paidPlan,
+        trialing: e.trialing,
+        trialEndsAt: e.trialing ? e.trialEndsAt : null,
+        ai: e.ai,
+        aiSource: e.aiSource,
+        interval: PLAN_CATALOG[e.paidPlanId].interval,
+        planEndsAt: paid ? (sub?.currentPeriodEnd ?? null) : null,
+        billedBy: sub?.provider ?? "none",
+        stripeBilled: personalStripeBilled(sub),
+      });
     }
     return {
       users: rows.map((p) => ({
@@ -466,6 +492,8 @@ export const viewWorkspace = mutation({
         seats: seats.seats,
         guests: seats.guests,
         pendingInvites: seats.pendingInvites,
+        /** Billed through Stripe: the plan can't be set by hand here (setWorkspacePlan refuses). */
+        stripeBilled: workspaceStripeBilled(sub),
         subscription: sub
           ? { planId: sub.planId, provider: sub.provider, status: sub.status, quantity: sub.quantity ?? null, currentPeriodEnd: sub.currentPeriodEnd ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), stripeCustomerId: sub.stripeCustomerId ?? null }
           : null,
@@ -532,8 +560,26 @@ export const listWorkspaces = mutation({
       .order("desc")
       .paginate({ cursor: args.cursor ?? null, numItems: 50 });
     // Workspace names are user content but needed to identify records; no document data is exposed.
+    const now = Date.now();
+    const workspaces = [];
+    for (const w of page.page) {
+      // Each workspace's own plan, so the list can show it and offer "Change plan" without opening it.
+      const entitlements = await workspaceEntitlements(ctx, w, now);
+      const sub = await workspaceSubscriptionOf(ctx, w._id);
+      workspaces.push({
+        id: w.publicId,
+        name: w.name,
+        status: w.status,
+        documentCount: w.documentCount,
+        storageUsedBytes: w.storageUsedBytes,
+        createdAt: w.createdAt,
+        planId: entitlements.planId,
+        planEndsAt: entitlements.paid ? (sub?.currentPeriodEnd ?? null) : null,
+        stripeBilled: workspaceStripeBilled(sub, now),
+      });
+    }
     return {
-      workspaces: page.page.map((w) => ({ id: w.publicId, name: w.name, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes, createdAt: w.createdAt })),
+      workspaces,
       continueCursor: page.isDone ? null : page.continueCursor,
     };
   },

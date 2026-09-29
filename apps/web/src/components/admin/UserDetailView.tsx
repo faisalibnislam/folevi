@@ -4,18 +4,19 @@ import Link from "next/link";
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Ban, KeyRound, LogOut, MailCheck, RotateCw, ShieldCheck, Trash2, UserCheck } from "lucide-react";
+import { ArrowUpCircle, Ban, CreditCard, KeyRound, LogOut, MailCheck, RotateCw, ShieldCheck, Trash2, UserCheck } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { ROLE_LABEL, rolesFor, type AdminRole } from "./permissions";
-import { UserBillingPanel } from "./UserBillingPanel";
+import { PlanBadge, UserBillingPanel } from "./UserBillingPanel";
+import { PersonalPlanDialog, type PersonalPlanTarget } from "./PlanDialog";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { t } from "@/i18n";
 import { VerificationBadges } from "./UsersView";
-import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, LoadingRows, Mono, ShortId, PageHeader, Panel, StatusBadge, Time, humanize, td, tdNum, th, thNum } from "./ui";
+import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, LoadingRows, Mono, ShortId, PageHeader, Panel, StatusBadge, Time, humanize, recordLink, td, tdNum, th, thNum } from "./ui";
 
 type UserDetail = FunctionReturnType<typeof api.admin.viewUser>;
 type ActionKind = "suspend" | "revoke" | "verify" | "reset" | "role" | "delete";
@@ -24,13 +25,17 @@ export function UserDetailView({ id }: { id: string }) {
   const admin = useAdmin();
   const view = useMutation(api.admin.viewUser);
   const { data: user, error, loading, refresh } = useAuditedLoad(id, (meta) => view({ profileId: id, ...meta }));
+  // Their plan and billing (a separate audited read): the header's Change plan and the Plan & billing panel.
+  const viewBilling = useMutation(api.adminBilling.userBilling);
+  const billing = useAuditedLoad(id, (meta) => viewBilling({ profileId: id, ...meta }));
   const [action, setAction] = useState<ActionKind | null>(null);
+  const [planFor, setPlanFor] = useState<PersonalPlanTarget | null>(null);
 
   if (error && !user) {
     return (
       <>
         <DocTitle>User</DocTitle>
-        <PageHeader title="User" breadcrumb={{ href: "/admin/users", label: "Users" }} />
+        <PageHeader title="User" />
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       </>
     );
@@ -39,29 +44,50 @@ export function UserDetailView({ id }: { id: string }) {
     return (
       <div aria-busy="true">
         <DocTitle>User</DocTitle>
-        <PageHeader title={<span className="text-muted">Loading user…</span>} breadcrumb={{ href: "/admin/users", label: "Users" }} />
+        <PageHeader title={<span className="text-muted">Loading user…</span>} />
       </div>
     );
   }
+
+  const b = billing.data;
+  const canSetPlan = admin.can("billing.manage");
+  const onFree = !b || b.entitlements.paidPlan === "free";
+  const planBlocked = !canSetPlan ? rolesFor("billing.manage") : b?.stripeBilled ? "Billed through Stripe. Change it in Stripe." : user.status === "deleted" ? "This account has been deleted." : null;
+  const openPlan = () =>
+    b &&
+    setPlanFor({
+      profileId: user.id,
+      who: user.displayName || user.email,
+      plan: b.entitlements.paidPlan,
+      interval: b.entitlements.paidPlan === "free" ? null : (b.subscription.interval ?? "month"),
+      endsAt: b.entitlements.paidPlan === "free" ? null : b.subscription.currentPeriodEnd,
+      trialEndsAt: b.entitlements.trialing ? b.entitlements.trialEndsAt : null,
+    });
 
   return (
     <>
       <DocTitle>{user.displayName || user.email}</DocTitle>
       <PageHeader
-        breadcrumb={{ href: "/admin/users", label: "Users" }}
         eyebrow={
           <>
             <StatusBadge status={user.status} />
+            {b ? <PlanBadge plan={b.entitlements.plan} trialing={b.entitlements.trialing} /> : null}
             <VerificationBadges emailVerified={user.emailVerified} mfaVerified={user.mfaVerified} />
-            {user.platformRole ? <Badge tone="plum">{ROLE_LABEL[user.platformRole]}</Badge> : null}
+            {user.platformRole ? <Badge tone="strong">{ROLE_LABEL[user.platformRole]}</Badge> : null}
           </>
         }
         title={user.displayName || "(no name)"}
         description={<span className="break-all">{user.email}</span>}
         actions={
-          <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload user (writes an audit entry)">
-            <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
-          </Button>
+          <>
+            <Button size="sm" variant="quiet" onClick={() => void Promise.all([refresh(), billing.refresh()])} disabled={loading} aria-label="Reload user (writes an audit entry)">
+              <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
+            </Button>
+            <Button size="sm" variant="primary" onClick={openPlan} disabled={!b || Boolean(planBlocked)} title={planBlocked ?? undefined}>
+              {onFree ? <ArrowUpCircle size={14} aria-hidden /> : <CreditCard size={14} aria-hidden />}
+              {onFree ? "Upgrade" : "Change plan"}
+            </Button>
+          </>
         }
       />
       {error ? (
@@ -111,8 +137,8 @@ export function UserDetailView({ id }: { id: string }) {
               { label: "All documents", value: user.usage.documents.toLocaleString() },
               { label: "Personal storage", value: formatBytes(user.usage.storageBytes) },
             ].map((s) => (
-              <div key={s.label} className="ui-card rounded-[8px] px-3 py-2.5">
-                <dt className="text-[12px] text-muted">{s.label}</dt>
+              <div key={s.label} className="rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5">
+                <dt className="text-[12px] font-medium text-muted">{s.label}</dt>
                 <dd className="mt-0.5 ui-display text-[24px] leading-tight tabular-nums">{s.value}</dd>
               </div>
             ))}
@@ -121,7 +147,7 @@ export function UserDetailView({ id }: { id: string }) {
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <UserBillingPanel profileId={user.id} email={user.email} name={user.displayName} />
+        <UserBillingPanel profileId={user.id} email={user.email} name={user.displayName} billing={billing} />
         <Panel title="Sessions" description={t("admin.user.sessions", { active: user.sessions.filter((s) => !s.revokedAt).length, total: user.sessions.length })} flush>
           <DataTable caption="Sessions" minWidth={520}>
             <thead>
@@ -179,7 +205,7 @@ export function UserDetailView({ id }: { id: string }) {
                 user.workspaces.map((w) => (
                   <tr key={w.id}>
                     <td className={td}>
-                      <Link href={`/admin/workspaces/${w.id}`} className="font-medium underline decoration-line-strong underline-offset-2 hover:decoration-ink">
+                      <Link href={`/admin/workspaces/${w.id}`} className={recordLink}>
                         {w.name}
                       </Link>
                     </td>
@@ -270,6 +296,14 @@ export function UserDetailView({ id }: { id: string }) {
       </div>
 
       <UserActionDialogs user={user} action={action} onClose={() => setAction(null)} onDone={() => void refresh()} />
+      <PersonalPlanDialog
+        target={planFor}
+        onClose={() => setPlanFor(null)}
+        onDone={() => {
+          void billing.refresh();
+          void refresh();
+        }}
+      />
     </>
   );
 }
@@ -291,7 +325,7 @@ function UserActions({ user, role, canManage, selfId, onAction }: { user: UserDe
   if (user.platformRole) notes.push("Remove the platform role before scheduling deletion.");
   if (user.emailVerified) notes.push("Resend verification is only offered while the email is unverified.");
   return (
-    <section aria-label="Account actions" className="ui-card rounded-[8px] p-3">
+    <section aria-label="Account actions" className="ui-card p-3">
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={() => onAction("suspend")} disabled={!canManage || isSelf || protectedSuper}>
           {suspended ? <UserCheck size={14} aria-hidden /> : <Ban size={14} aria-hidden />}

@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { Ban, CreditCard, Gauge, RotateCw, Undo2 } from "lucide-react";
+import { ArrowUpCircle, Ban, CreditCard, Gauge, RotateCw, Undo2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
-import { endOfDay, futureDate } from "./UserBillingPanel";
+import { WorkspacePlanDialog, type WorkspacePlanTarget } from "./PlanDialog";
 import { PLAN_CATALOG, WORKSPACE_PLANS, formatPrice, planName, seatChargeCents, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { t } from "@/i18n";
-import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, td, th } from "./ui";
+import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, recordLink, td, th } from "./ui";
 
 const GB = 1024 ** 3;
 
@@ -23,15 +23,15 @@ export function WorkspaceDetailView({ id }: { id: string }) {
   const view = useMutation(api.admin.viewWorkspace);
   const setSuspended = useMutation(api.admin.setWorkspaceSuspended);
   const setQuota = useMutation(api.admin.setWorkspaceQuota);
-  const setPlan = useMutation(api.adminBilling.setWorkspacePlan);
   const { data: w, error, loading, refresh } = useAuditedLoad(id, (meta) => view({ workspaceId: id, ...meta }));
-  const [action, setAction] = useState<"suspend" | "quota" | "plan" | null>(null);
+  const [action, setAction] = useState<"suspend" | "quota" | null>(null);
+  const [planFor, setPlanFor] = useState<WorkspacePlanTarget | null>(null);
 
   if (error && !w) {
     return (
       <>
         <DocTitle>Workspace</DocTitle>
-        <PageHeader title="Workspace" breadcrumb={{ href: "/admin/workspaces", label: "Workspaces" }} />
+        <PageHeader title="Workspace" />
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       </>
     );
@@ -40,7 +40,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
     return (
       <div aria-busy="true">
         <DocTitle>Workspace</DocTitle>
-        <PageHeader title={<span className="text-muted">Loading workspace…</span>} breadcrumb={{ href: "/admin/workspaces", label: "Workspaces" }} />
+        <PageHeader title={<span className="text-muted">Loading workspace…</span>} />
       </div>
     );
   }
@@ -52,16 +52,18 @@ export function WorkspaceDetailView({ id }: { id: string }) {
   const owners = w.members.filter((m) => m.role === "owner");
   const canSetPlan = admin.can("billing.manage");
   const b = w.billing;
-  const stripeLive = b.subscription?.provider === "stripe" && b.paid;
+  const stripeLive = b.stripeBilled;
+  const onFree = !b.paid;
+  const planBlocked = !canSetPlan ? rolesFor("billing.manage") : stripeLive ? "Billed through Stripe. Change it in Stripe." : w.status === "deleting" ? "This workspace is being deleted." : null;
 
   return (
     <>
       <DocTitle>{w.name}</DocTitle>
       <PageHeader
-        breadcrumb={{ href: "/admin/workspaces", label: "Workspaces" }}
         eyebrow={
           <>
             <StatusBadge status={w.status} />
+            <Badge tone={b.paid ? "strong" : "neutral"}>{planName(b.planId as WorkspacePlanId)}</Badge>
           </>
         }
         title={w.name}
@@ -71,9 +73,21 @@ export function WorkspaceDetailView({ id }: { id: string }) {
           </>
         }
         actions={
-          <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload workspace (writes an audit entry)">
-            <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
-          </Button>
+          <>
+            <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload workspace (writes an audit entry)">
+              <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={Boolean(planBlocked)}
+              title={planBlocked ?? undefined}
+              onClick={() => setPlanFor({ workspaceId: w.id, name: w.name, planId: b.planId as WorkspacePlanId, endsAt: b.paid ? (b.subscription?.currentPeriodEnd ?? null) : null, seats: b.seats })}
+            >
+              {onFree ? <ArrowUpCircle size={14} aria-hidden /> : <CreditCard size={14} aria-hidden />}
+              {onFree ? "Upgrade" : "Change plan"}
+            </Button>
+          </>
         }
       />
       {error ? (
@@ -89,16 +103,13 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         </div>
       ) : null}
 
-      <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 ui-card rounded-[8px] p-3">
+      <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 ui-card p-3">
         <Button size="sm" variant={suspended ? "secondary" : "danger"} onClick={() => setAction("suspend")} disabled={!canSuspend || w.status === "deleting"}>
           {suspended ? <Undo2 size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
           {suspended ? "Unsuspend…" : "Suspend…"}
         </Button>
         <Button size="sm" onClick={() => setAction("quota")} disabled={!canQuota}>
           <Gauge size={14} aria-hidden /> Set quota…
-        </Button>
-        <Button size="sm" onClick={() => setAction("plan")} disabled={!canSetPlan || stripeLive || w.status === "deleting"} title={stripeLive ? "Billed through Stripe. Change it there" : undefined}>
-          <CreditCard size={14} aria-hidden /> Set plan…
         </Button>
         {!canQuota ? <span className="text-xs text-muted">Suspending and quotas: {rolesFor("workspaces.quota")}</span> : null}
       </section>
@@ -137,7 +148,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         <Panel title="Plan & billing" description="The workspace's own plan, billed per member seat (never its owner's Personal plan).">
           <KeyValues
             items={[
-              { label: "Plan", value: <Badge tone={b.paid ? "plum" : "neutral"}>{planName(b.planId as WorkspacePlanId)}</Badge> },
+              { label: "Plan", value: <Badge tone={b.paid ? "strong" : "neutral"}>{planName(b.planId as WorkspacePlanId)}</Badge> },
               { label: "Provider", value: b.subscription ? humanize(b.subscription.provider) : "None" },
               { label: "Status", value: b.subscription ? <StatusBadge status={b.subscription.cancelAtPeriodEnd && b.paid ? "cancel_scheduled" : b.subscription.status} /> : "None" },
               { label: "Billable seats", value: `${b.seats}${b.subscription?.quantity !== null && b.subscription?.quantity !== undefined && b.subscription.quantity !== b.seats ? ` (billed: ${b.subscription.quantity})` : ""}` },
@@ -203,7 +214,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
                   <tr key={m.profileId}>
                     <td className={td}>
                       {canSeeUsers ? (
-                        <Link href={`/admin/users/${m.profileId}`} className="font-medium underline decoration-line-strong underline-offset-2 hover:decoration-ink">
+                        <Link href={`/admin/users/${m.profileId}`} className={recordLink}>
                           {m.displayName || "(no name)"}
                         </Link>
                       ) : (
@@ -211,7 +222,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
                       )}
                     </td>
                     <td className={`${td} break-all`}>{m.email}</td>
-                    <td className={td}>{m.role === "owner" ? <Badge tone="plum">Owner</Badge> : humanize(m.role)}</td>
+                    <td className={td}>{m.role === "owner" ? <Badge tone="strong">Owner</Badge> : humanize(m.role)}</td>
                     <td className={td}>
                       <Time ts={m.joinedAt} />
                     </td>
@@ -303,33 +314,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
           return suspended ? "Workspace unsuspended" : "Workspace suspended";
         }}
       />
-      <ActionDialog
-        open={action === "plan"}
-        onClose={() => setAction(null)}
-        title={`Set the plan for “${w.name}”`}
-        description="For comps, offline purchases, or a paid plan before online payments are set up. Nobody is charged; seats are counted but not billed. Without an end date the plan stays until someone changes it."
-        confirmLabel="Save plan"
-        fields={[
-          {
-            name: "plan",
-            label: "Plan",
-            type: "select",
-            initial: b.planId,
-            options: (["workspace_free", "workspace_team_monthly", "workspace_team_yearly", "workspace_business_monthly", "workspace_business_yearly"] as const).map((id) => ({
-              value: id,
-              label: `${planName(id)}${PLAN_CATALOG[id].interval ? ` (${PLAN_CATALOG[id].interval === "year" ? "yearly" : "monthly"}, ${formatPrice(PLAN_CATALOG[id].priceCents)} per member)` : ""}`,
-            })),
-            hint: "Manual plans aren't counted in recurring revenue.",
-          },
-          { name: "until", label: "Ends on (optional)", type: "text", initial: "", hint: "YYYY-MM-DD. After this date the workspace goes back to Workspace Free.", validate: futureDate },
-        ]}
-        onSubmit={async ({ reason, fields, meta }) => {
-          const planId = fields.plan as WorkspacePlanId;
-          await setPlan({ workspaceId: w.id, planId, until: endOfDay(fields.until ?? ""), reason, ...meta });
-          void refresh();
-          return `Plan set to ${planName(planId)}`;
-        }}
-      />
+      <WorkspacePlanDialog target={planFor} onClose={() => setPlanFor(null)} onDone={() => void refresh()} />
       <ActionDialog
         open={action === "quota"}
         onClose={() => setAction(null)}

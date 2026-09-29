@@ -25,12 +25,12 @@ const day = (ts: number) => new Date(ts).toLocaleDateString(undefined, { year: "
 const PLAN_TONE: Record<PersonalTier, "neutral" | "accent" | "plum"> = { free: "neutral", basic: "accent", pro: "plum" };
 
 /** Parses a YYYY-MM-DD field (end of that day, UTC) or "" → null. */
-function endOfDay(value: string): number | null {
+export function endOfDay(value: string): number | null {
   if (!value) return null;
   const t = Date.parse(`${value}T23:59:59Z`);
   return Number.isFinite(t) ? t : null;
 }
-const futureDate = (v: string) => {
+export const futureDate = (v: string) => {
   if (!v) return null;
   const t = endOfDay(v);
   return t === null ? "Use a date like 2026-12-31." : t <= Date.now() ? "Choose a date in the future." : null;

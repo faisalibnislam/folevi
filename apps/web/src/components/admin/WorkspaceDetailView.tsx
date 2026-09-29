@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { Ban, Gauge, RotateCw, Undo2 } from "lucide-react";
+import { Ban, CreditCard, Gauge, RotateCw, Undo2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
+import { endOfDay, futureDate } from "./UserBillingPanel";
+import { PLAN_CATALOG, WORKSPACE_PLANS, formatPrice, planName, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { t } from "@/i18n";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, td, th } from "./ui";
@@ -21,8 +23,9 @@ export function WorkspaceDetailView({ id }: { id: string }) {
   const view = useMutation(api.admin.viewWorkspace);
   const setSuspended = useMutation(api.admin.setWorkspaceSuspended);
   const setQuota = useMutation(api.admin.setWorkspaceQuota);
+  const setPlan = useMutation(api.adminBilling.setWorkspacePlan);
   const { data: w, error, loading, refresh } = useAuditedLoad(id, (meta) => view({ workspaceId: id, ...meta }));
-  const [action, setAction] = useState<"suspend" | "quota" | null>(null);
+  const [action, setAction] = useState<"suspend" | "quota" | "plan" | null>(null);
 
   if (error && !w) {
     return (
@@ -47,6 +50,9 @@ export function WorkspaceDetailView({ id }: { id: string }) {
   const canSuspend = admin.can("workspaces.suspend");
   const canSeeUsers = admin.can("users.view");
   const owners = w.members.filter((m) => m.role === "owner");
+  const canSetPlan = admin.can("billing.manage");
+  const b = w.billing;
+  const stripeLive = b.subscription?.provider === "stripe" && b.paid;
 
   return (
     <>
@@ -91,6 +97,9 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         <Button size="sm" onClick={() => setAction("quota")} disabled={!canQuota}>
           <Gauge size={14} aria-hidden /> Set quota…
         </Button>
+        <Button size="sm" onClick={() => setAction("plan")} disabled={!canSetPlan || stripeLive || w.status === "deleting"} title={stripeLive ? "Billed through Stripe — change it there" : undefined}>
+          <CreditCard size={14} aria-hidden /> Set plan…
+        </Button>
         {!canQuota ? <span className="text-xs text-muted">Suspending and quotas: {rolesFor("workspaces.quota")}</span> : null}
       </section>
 
@@ -123,6 +132,57 @@ export function WorkspaceDetailView({ id }: { id: string }) {
               ]}
             />
           </div>
+        </Panel>
+
+        <Panel title="Plan & billing" description="The workspace's own plan, billed per member seat (never its owner's Personal plan).">
+          <KeyValues
+            items={[
+              { label: "Plan", value: <Badge tone={b.paid ? "plum" : "neutral"}>{planName(b.planId as WorkspacePlanId)}</Badge> },
+              { label: "Provider", value: b.subscription ? humanize(b.subscription.provider) : "—" },
+              { label: "Status", value: b.subscription ? <StatusBadge status={b.subscription.cancelAtPeriodEnd && b.paid ? "cancel_scheduled" : b.subscription.status} /> : "—" },
+              { label: "Billable seats", value: `${b.seats}${b.subscription?.quantity !== null && b.subscription?.quantity !== undefined && b.subscription.quantity !== b.seats ? ` (billed: ${b.subscription.quantity})` : ""}` },
+              { label: "Guests (not billed)", value: b.guests },
+              { label: "Estimated charge", value: b.paid ? `${b.seats} × ${formatPrice(b.seatPriceCents)} = ${formatPrice(b.seats * b.seatPriceCents)}/${PLAN_CATALOG[b.planId as WorkspacePlanId].interval === "year" ? "year" : "month"}` : "—" },
+              { label: "Renews / ends", value: b.subscription?.currentPeriodEnd ? <Time ts={b.subscription.currentPeriodEnd} /> : "—" },
+              { label: "Stripe customer", value: b.subscription?.stripeCustomerId ? <Mono>{b.subscription.stripeCustomerId}</Mono> : "—" },
+            ]}
+          />
+        </Panel>
+
+        <Panel title="Workspace payments" description="This workspace only." flush>
+          <DataTable caption="Workspace payments" minWidth={480}>
+            <thead>
+              <tr>
+                <th scope="col" className={th}>Date</th>
+                <th scope="col" className={th}>Plan</th>
+                <th scope="col" className={th}>Amount</th>
+                <th scope="col" className={th}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {b.payments.length === 0 ? (
+                <EmptyRow colSpan={4}>No payments.</EmptyRow>
+              ) : (
+                b.payments.map((p) => (
+                  <tr key={p.id}>
+                    <td className={td}>
+                      <Time ts={p.createdAt} />
+                    </td>
+                    <td className={td}>
+                      {p.plan === "team" || p.plan === "business" ? WORKSPACE_PLANS[p.plan as WorkspaceTier].name : humanize(p.plan)} · {p.interval === "year" ? "yearly" : "monthly"}
+                      {p.quantity ? ` · ${p.quantity} seats` : ""}
+                    </td>
+                    <td className={`${td} tabular-nums`}>
+                      {formatPrice(p.amountCents)} {p.currency.toUpperCase()}
+                    </td>
+                    <td className={td}>
+                      <StatusBadge status={p.status} /> {p.provider === "test" ? <Badge>test</Badge> : null}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </DataTable>
         </Panel>
 
         <Panel title="Members" description={t("admin.workspace.members", { count: w.members.length })} flush>
@@ -241,6 +301,33 @@ export function WorkspaceDetailView({ id }: { id: string }) {
           await setSuspended({ workspaceId: w.id, suspended: !suspended, confirmName: confirmValue, reason, ...meta });
           void refresh();
           return suspended ? "Workspace unsuspended" : "Workspace suspended";
+        }}
+      />
+      <ActionDialog
+        open={action === "plan"}
+        onClose={() => setAction(null)}
+        title={`Set the plan for “${w.name}”`}
+        description="For comps, offline purchases, or a paid plan before online payments are set up. Nobody is charged; seats are counted but not billed. Without an end date the plan stays until someone changes it."
+        confirmLabel="Save plan"
+        fields={[
+          {
+            name: "plan",
+            label: "Plan",
+            type: "select",
+            initial: b.planId,
+            options: (["workspace_free", "workspace_team_monthly", "workspace_team_yearly", "workspace_business_monthly", "workspace_business_yearly"] as const).map((id) => ({
+              value: id,
+              label: `${planName(id)}${PLAN_CATALOG[id].interval ? ` (${PLAN_CATALOG[id].interval === "year" ? "yearly" : "monthly"}, ${formatPrice(PLAN_CATALOG[id].priceCents)} per member)` : ""}`,
+            })),
+            hint: "Manual plans aren't counted in recurring revenue.",
+          },
+          { name: "until", label: "Ends on (optional)", type: "text", initial: "", hint: "YYYY-MM-DD. After this date the workspace goes back to Workspace Free.", validate: futureDate },
+        ]}
+        onSubmit={async ({ reason, fields, meta }) => {
+          const planId = fields.plan as WorkspacePlanId;
+          await setPlan({ workspaceId: w.id, planId, until: endOfDay(fields.until ?? ""), reason, ...meta });
+          void refresh();
+          return `Plan set to ${planName(planId)}`;
         }}
       />
       <ActionDialog

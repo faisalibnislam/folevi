@@ -1,7 +1,8 @@
 // Personal billing for the signed-in person: their Personal plan, personal usage and history; upgrading
 // through Stripe Checkout; managing a subscription in Stripe's billing portal; and the Stripe webhook that
-// keeps plans in step (each event applied once; stale subscription events ignored). Workspace plans are
-// billed separately and never change a Personal plan.
+// keeps plans in step (each event applied once; stale subscription events ignored). The webhook serves
+// workspace plans too: events for a workspace's subscription go to convex/workspaceBilling.ts and never
+// touch a Personal plan (and the other way round).
 // Stripe is optional: without STRIPE_* settings, upgrades explain that payments aren't set up, and
 // development builds offer test purchases instead (never in production).
 import { v } from "convex/values";
@@ -11,11 +12,13 @@ import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { ensureSubscription, subscriptionOf } from "./lib/billing";
+import { ensureSubscription, ensureWorkspaceSubscription, insertPayment, isPersonalPayment, markInvoiceRefunded, isPersonalSubscription, isWorkspaceSubscription, subscriptionOf, type PersonalSubscription } from "./lib/billing";
 import { personalAiUsage, personalEntitlements, storageUsage } from "./lib/entitlements";
 import { DAY_MS, PLAN_CATALOG, PLAN_ORDER, isPaidPlan, personalPlanId, type BillingInterval, type PersonalTier } from "./lib/plans";
 import { timingSafeEqualHex } from "./lib/crypto";
 import { listUserSessions } from "./lib/authStore";
+import { appUrl, stripeKey, stripePost, subscriptionIdOf, testPurchasesAllowed } from "./lib/stripe";
+import { applyWorkspaceStripeEvent, settleExpiredWorkspacePlans } from "./workspaceBilling";
 
 const vPaidPlan = v.union(v.literal("basic"), v.literal("pro"));
 const vInterval = v.union(v.literal("month"), v.literal("year"));
@@ -25,9 +28,8 @@ const isPaidTier = (t: PersonalTier): t is PaidTier => isPaidPlan(personalPlanId
 /** The Personal tiers that are paid for (from the catalog). */
 const PAID_TIERS = PLAN_ORDER.filter(isPaidTier);
 /** Whether a billing row stores a paid Personal plan (whether it's still in force is the entitlements' job). */
-const onPaidPlan = (s: Pick<Doc<"subscriptions">, "plan" | "interval">) => isPaidPlan(personalPlanId(s.plan, s.interval));
+const onPaidPlan = (s: Pick<PersonalSubscription, "plan" | "interval">) => isPaidPlan(personalPlanId(s.plan, s.interval));
 
-const stripeKey = () => process.env.STRIPE_SECRET_KEY ?? "";
 /** Stripe price ids for each paid plan and interval (Stripe dashboard → Products). */
 function priceIdFor(plan: PaidTier, interval: BillingInterval): string | undefined {
   return process.env[`STRIPE_PRICE_${plan.toUpperCase()}_${interval === "month" ? "MONTH" : "YEAR"}`];
@@ -37,8 +39,6 @@ function planForPrice(priceId: string): { plan: PaidTier; interval: BillingInter
   return null;
 }
 const stripeReady = () => Boolean(stripeKey() && priceIdFor("basic", "month") && priceIdFor("pro", "month"));
-const testPurchasesAllowed = () => process.env.FOLEVI_ENV !== "production";
-const appUrl = () => (process.env.FOLEVI_APP_URL ?? "http://app.localhost:3000").replace(/\/$/, "");
 
 // ---------------------------------------------------------------------------------------------------
 // The person's own billing
@@ -51,11 +51,14 @@ export const mine = query({
     const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
     const sub = await subscriptionOf(ctx, profile._id);
     const entitlements = await personalEntitlements(ctx, profile._id);
-    const payments = await ctx.db
-      .query("payments")
-      .withIndex("by_profile_created", (q) => q.eq("profileId", profile._id))
-      .order("desc")
-      .take(24);
+    // Personal payments only (workspace payments carry a workspace, not a person).
+    const payments = (
+      await ctx.db
+        .query("payments")
+        .withIndex("by_profile_created", (q) => q.eq("profileId", profile._id))
+        .order("desc")
+        .take(24)
+    ).filter(isPersonalPayment);
     const month = new Date().toISOString().slice(0, 7);
     const usage = await personalAiUsage(ctx, profile._id, `${month}-01`);
     const storage = await storageUsage(ctx, { kind: "personal", profileId: profile._id });
@@ -108,7 +111,7 @@ export const testPurchase = mutation({
       updatedAt: now,
     });
     const price = PLAN_CATALOG[personalPlanId(args.plan, args.interval)].priceCents;
-    await ctx.db.insert("payments", { profileId: profile._id, amountCents: price, currency: "usd", plan: args.plan, interval: args.interval, status: "paid", provider: "test", createdAt: now });
+    await insertPayment(ctx, { kind: "user", profileId: profile._id }, { amountCents: price, currency: "usd", plan: args.plan, interval: args.interval, status: "paid", provider: "test", createdAt: now });
     return null;
   },
 });
@@ -137,7 +140,11 @@ export const resumePlan = mutation({
   },
 });
 
-/** Plans set to cancel at period end, and plans whose period has ended: back to Free. Hourly. */
+/**
+ * Plans set to cancel at period end, and plans whose period has ended: Personal plans back to Free,
+ * workspace plans back to Workspace Free (nothing is deleted). Stripe plans are ended by Stripe's own
+ * events. Hourly.
+ */
 export const settleExpiredPlans = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -159,27 +166,14 @@ export const settleExpiredPlans = internalMutation({
         changed++;
       }
     }
-    return { changed };
+    const workspaces = await settleExpiredWorkspacePlans(ctx, now);
+    return { changed: changed + workspaces };
   },
 });
 
 // ---------------------------------------------------------------------------------------------------
 // Stripe: Checkout, billing portal, webhook
 // ---------------------------------------------------------------------------------------------------
-
-async function stripe(path: string, params: Record<string, string>): Promise<Record<string, unknown>> {
-  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${stripeKey()}`, "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(params).toString(),
-  });
-  const data = (await res.json()) as Record<string, unknown>;
-  if (!res.ok) {
-    console.warn(JSON.stringify({ event: "billing.stripe_error", path, status: res.status }));
-    fail("maintenance", "Payments couldn't be started. Try again shortly.");
-  }
-  return data;
-}
 
 export const checkoutContext = internalQuery({
   args: {},
@@ -199,7 +193,7 @@ export const checkout = action({
     const price = priceIdFor(args.plan, args.interval);
     if (!price) fail("maintenance", "That plan isn't available to buy yet.");
     const me: { profileId: string; email: string; customerId: string | null } = await ctx.runQuery(internal.billing.checkoutContext, {});
-    const session = await stripe("checkout/sessions", {
+    const session = await stripePost("checkout/sessions", {
       mode: "subscription",
       "line_items[0][price]": price,
       "line_items[0][quantity]": "1",
@@ -222,7 +216,7 @@ export const portal = action({
     if (!stripeKey()) fail("maintenance", "Payments aren't set up on this server yet.");
     const me: { customerId: string | null } = await ctx.runQuery(internal.billing.checkoutContext, {});
     if (!me.customerId) fail("invalid_argument", "There's no paid subscription to manage yet.");
-    const session = await stripe("billing_portal/sessions", { customer: me.customerId, return_url: `${appUrl()}/settings/billing` });
+    const session = await stripePost("billing_portal/sessions", { customer: me.customerId, return_url: `${appUrl()}/settings/billing` });
     return { url: String(session.url) };
   },
 });
@@ -260,14 +254,33 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
   return new Response(null, { status: 200 });
 });
 
+/** A checkout or subscription for a workspace names it as `ws:<id>` (client_reference_id) or in metadata. */
+function workspaceRefOf(o: Record<string, unknown>): string | null {
+  const meta = (o.metadata as Record<string, string> | undefined)?.workspaceId;
+  if (typeof meta === "string" && meta) return meta;
+  const ref = typeof o.client_reference_id === "string" ? o.client_reference_id : "";
+  return ref.startsWith("ws:") ? ref.slice(3) : null;
+}
+
+/**
+ * The billing row an event is about: by the Stripe subscription id we stored, else by what our Checkout
+ * put on it (a workspace's `ws:<id>` / metadata.workspaceId, or a person's profile id), else by customer.
+ * Workspace and Personal subscriptions have separate Stripe customers, so a customer names one row.
+ */
 async function findStripeRow(ctx: MutationCtx, o: Record<string, unknown>): Promise<Doc<"subscriptions"> | null> {
-  const subId = typeof o.subscription === "string" ? o.subscription : typeof o.id === "string" && String(o.object) === "subscription" ? o.id : null;
+  const subId = subscriptionIdOf(o);
   if (subId) {
     const bySub = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_subscription", (q) => q.eq("stripeSubscriptionId", subId))
       .unique();
     if (bySub) return bySub;
+  }
+  const workspaceRef = workspaceRefOf(o);
+  if (workspaceRef) {
+    const workspaceId = ctx.db.normalizeId("workspaces", workspaceRef);
+    const workspace = workspaceId ? await ctx.db.get(workspaceId) : null;
+    return workspace && workspace.kind === "team" ? await ensureWorkspaceSubscription(ctx, workspace._id) : null;
   }
   const meta = (o.metadata as Record<string, string> | undefined)?.profileId ?? (typeof o.client_reference_id === "string" ? o.client_reference_id : null);
   const profileId = meta ? ctx.db.normalizeId("profiles", meta) : null;
@@ -284,13 +297,14 @@ async function findStripeRow(ctx: MutationCtx, o: Record<string, unknown>): Prom
 
 const STATUS: Record<string, Doc<"subscriptions">["status"]> = { active: "active", trialing: "active", past_due: "past_due", unpaid: "past_due", incomplete: "past_due", canceled: "canceled", incomplete_expired: "canceled", paused: "canceled" };
 
-type ApplyResult = { status: "applied" | "duplicate" | "stale" | "unmatched" };
+export type ApplyResult = { status: "applied" | "duplicate" | "stale" | "unmatched" };
 
 /**
- * Applies one Stripe event to the matching person's plan. Idempotent: an event id is applied once (Stripe
- * redelivers events), payments are keyed by invoice, and a subscription event older than the last one
- * applied to that subscription is ignored (Stripe doesn't promise delivery order). Checking and recording
- * the event id happen in this one transaction, so two deliveries of the same event can't both apply.
+ * Applies one Stripe event to the matching plan (a person's or a workspace's). Idempotent: an event id is
+ * applied once (Stripe redelivers events), payments are keyed by invoice, and a subscription event older
+ * than the last one applied to that subscription is ignored (Stripe doesn't promise delivery order).
+ * Checking and recording the event id happen in this one transaction, so two deliveries of the same event
+ * can't both apply. Access is only ever granted here, never because a browser came back from Checkout.
  */
 export const applyStripeEvent = internalMutation({
   args: { eventId: v.optional(v.string()), created: v.optional(v.number()), type: v.string(), object: v.any() },
@@ -311,7 +325,8 @@ export const applyStripeEvent = internalMutation({
 
 async function applyEvent(ctx: MutationCtx, type: string, created: number | undefined, o: Record<string, unknown>): Promise<ApplyResult> {
   const row = await findStripeRow(ctx, o);
-  if (!row) {
+  if (row && isWorkspaceSubscription(row)) return await applyWorkspaceStripeEvent(ctx, row, type, created, o);
+  if (!row || !isPersonalSubscription(row)) {
     console.warn(JSON.stringify({ event: "billing.webhook_unmatched", type }));
     return { status: "unmatched" };
   }
@@ -320,7 +335,7 @@ async function applyEvent(ctx: MutationCtx, type: string, created: number | unde
     await ctx.db.patch(row._id, {
       provider: "stripe",
       stripeCustomerId: typeof o.customer === "string" ? o.customer : row.stripeCustomerId,
-      stripeSubscriptionId: typeof o.subscription === "string" ? o.subscription : row.stripeSubscriptionId,
+      stripeSubscriptionId: subscriptionIdOf(o) ?? row.stripeSubscriptionId,
       updatedAt: now,
     });
   } else if (type === "customer.subscription.created" || type === "customer.subscription.updated" || type === "customer.subscription.deleted") {
@@ -361,18 +376,12 @@ async function applyEvent(ctx: MutationCtx, type: string, created: number | unde
     const tier = row.plan;
     if (isPaidTier(tier) && row.interval && amount > 0) {
       if (existing) await ctx.db.patch(existing._id, { status: paid ? "paid" : "failed" });
-      else await ctx.db.insert("payments", { profileId: row.profileId, amountCents: amount, currency: String(o.currency ?? "usd"), plan: tier, interval: row.interval, status: paid ? "paid" : "failed", provider: "stripe", providerRef: ref, createdAt: now });
+      else await insertPayment(ctx, { kind: "user", profileId: row.profileId }, { amountCents: amount, currency: String(o.currency ?? "usd"), plan: tier, interval: row.interval, status: paid ? "paid" : "failed", provider: "stripe", providerRef: ref, createdAt: now });
     }
     if (!paid) await ctx.db.patch(row._id, { status: "past_due", updatedAt: now });
   } else if (type === "charge.refunded") {
-    const ref = typeof o.invoice === "string" ? o.invoice : undefined;
-    const payment = ref
-      ? await ctx.db
-          .query("payments")
-          .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
-          .unique()
-      : null;
-    if (payment) await ctx.db.patch(payment._id, { status: "refunded" });
+    await markInvoiceRefunded(ctx, o);
   }
   return { status: "applied" };
 }
+

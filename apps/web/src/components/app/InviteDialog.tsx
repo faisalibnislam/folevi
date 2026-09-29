@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
+import { formatPrice } from "@/lib/plans";
 
 type Role = "admin" | "editor" | "commenter" | "viewer";
 type InviteWorkspace = Pick<Workspace, "id" | "name">;
@@ -75,6 +76,12 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
       {error ? (
         <p id={`${uid}-error`} role="alert" className="mt-2 text-sm text-danger">
           {error}
+        </p>
+      ) : null}
+      {/* On a paid plan, what one more member costs (the server bills it once they accept). */}
+      {data?.seats?.paid && data.seats.interval ? (
+        <p className="mt-2 text-[12.5px] text-muted">
+          Adds a seat when they accept: +{formatPrice(data.seats.seatPriceCents)}/{data.seats.interval === "year" ? "year" : "month"} on {data.seats.planName}.
         </p>
       ) : null}
     </>

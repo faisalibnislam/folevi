@@ -16,7 +16,9 @@ import { keyedHash, redactEmail } from "./lib/crypto";
 import { vPlatformRole } from "./lib/validators";
 import { DEFAULT_WORKSPACE_QUOTA_BYTES, personalEntitlements, storageUsage, workspaceEntitlements, workspaceStorageOverride } from "./lib/entitlements";
 import { personalScope, workspaceScope } from "./lib/scope";
-import { planName } from "./lib/plans";
+import { PLAN_CATALOG, planName } from "./lib/plans";
+import { seatSummary, seatsChanged } from "./lib/seats";
+import { workspaceSubscriptionOf } from "./lib/billing";
 
 // Three tiers (stored names kept for existing admins and audit records):
 //   Owner (super_admin)      — everything, including admin roles and money matters
@@ -287,6 +289,12 @@ export const suspendUser = mutation({
         .collect();
       for (const s of sessions) if (!s.revokedAt) await ctx.db.patch(s._id, { revokedAt: Date.now(), revokedReason: "admin_suspend" });
     }
+    // A suspended account takes no seat in the workspaces it belongs to (and takes it back when unsuspended).
+    const memberships = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_profile", (q) => q.eq("profileId", p._id))
+      .collect();
+    for (const m of memberships) await seatsChanged(ctx, m.workspaceId);
     await ctx.scheduler.runAfter(0, internal.identity.setProviderBlocked, { profileId: p._id, blocked: args.suspend });
     await audit(ctx, admin, args.suspend ? "user.suspend" : "user.unsuspend", { type: "profile", id: p._id }, { reason, before, after: { status }, requestId: args.requestId, clientHash: args.clientHash });
     return null;
@@ -426,6 +434,15 @@ export const viewWorkspace = mutation({
       .withIndex("by_target", (q) => q.eq("targetType", "workspace").eq("targetId", w._id))
       .order("desc")
       .take(30);
+    // The workspace's own plan and billing (never its owner's Personal plan).
+    const entitlements = await workspaceEntitlements(ctx, w);
+    const sub = await workspaceSubscriptionOf(ctx, w._id);
+    const seats = await seatSummary(ctx, w._id);
+    const payments = await ctx.db
+      .query("payments")
+      .withIndex("by_workspace_created", (q) => q.eq("workspaceId", w._id))
+      .order("desc")
+      .take(25);
     return {
       id: w.publicId,
       name: w.name,
@@ -441,6 +458,18 @@ export const viewWorkspace = mutation({
       memberLimit: w.memberLimit,
       members: people,
       invites: invites.map((i) => ({ email: redactEmail(i.email), role: i.role, status: i.status, expiresAt: i.expiresAt, createdAt: i.createdAt })),
+      billing: {
+        planId: entitlements.planId,
+        paid: entitlements.paid,
+        seatPriceCents: PLAN_CATALOG[entitlements.planId].priceCents,
+        seats: seats.seats,
+        guests: seats.guests,
+        pendingInvites: seats.pendingInvites,
+        subscription: sub
+          ? { planId: sub.planId, provider: sub.provider, status: sub.status, quantity: sub.quantity ?? null, currentPeriodEnd: sub.currentPeriodEnd ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), stripeCustomerId: sub.stripeCustomerId ?? null }
+          : null,
+        payments: payments.map((p) => ({ id: p._id as string, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval, quantity: p.quantity ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
+      },
       audit: history.map((h) => ({ action: h.action, reason: h.reason ?? null, createdAt: h.createdAt })),
     };
   },

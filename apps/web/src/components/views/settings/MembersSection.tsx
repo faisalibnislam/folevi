@@ -11,6 +11,8 @@ import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { Select } from "@/components/ui/Select";
 import { InviteForm } from "@/components/app/InviteDialog";
+import { Switch } from "@/components/ui/Switch";
+import { formatPrice } from "@/lib/plans";
 
 type Role = "admin" | "editor" | "commenter" | "viewer";
 type Confirm = { kind: "remove" | "owner"; profileId: string; name: string } | null;
@@ -24,6 +26,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
   const changeRole = useMutation(api.workspaces.changeRole);
   const remove = useMutation(api.workspaces.removeMember);
   const transfer = useMutation(api.workspaces.transferOwnership);
+  const setBillingManager = useMutation(api.workspaces.setBillingManager);
   const toast = useToast();
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
@@ -38,7 +41,16 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
           <InviteForm workspace={workspace} />
         </Card>
       ) : null}
-      <Card title="Members">
+      <Card
+        title="Members"
+        description={
+          data?.seats
+            ? data.seats.paid && data.seats.interval
+              ? `Billable seats: ${data.seats.billable} × ${formatPrice(data.seats.seatPriceCents)} per ${data.seats.interval === "year" ? "year" : "month"} on ${data.seats.planName}. Guests and pending invitations are free.`
+              : `Billable seats: ${data.seats.billable} (the ${data.seats.planName} plan is free). Guests and pending invitations never take a seat.`
+            : undefined
+        }
+      >
         <ul className="divide-y divide-line rounded-[8px] border border-line">
           {data?.members.map((m) => (
             <li key={m.profileId} className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -47,6 +59,21 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                   {m.displayName} {m.isYou ? <span className="text-xs text-muted">(you)</span> : null}
                 </span>
                 <span className="block text-xs text-muted">{m.email}</span>
+                {/* The owner decides which admins may manage the plan and billing. */}
+                {isOwner && m.role === "admin" ? (
+                  <span className="mt-1.5 flex items-center gap-2 text-xs text-muted">
+                    <Switch
+                      checked={m.canManageBilling}
+                      label={`${m.displayName} can manage billing`}
+                      onChange={(next) =>
+                        void act(setBillingManager({ workspaceId: workspace.id, profileId: m.profileId, allowed: next }), next ? `${m.displayName} can manage billing` : `${m.displayName} can no longer manage billing`)
+                      }
+                    />
+                    Can manage billing
+                  </span>
+                ) : m.role === "admin" && m.canManageBilling ? (
+                  <span className="mt-0.5 block text-xs text-muted">Can manage billing</span>
+                ) : null}
               </span>
               {canAdmin && m.role !== "owner" && !m.isYou && (isOwner || m.role !== "admin") ? (
                 <>

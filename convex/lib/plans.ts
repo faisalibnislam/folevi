@@ -5,7 +5,7 @@
 // - Personal plans belong to a person (Free, Basic, Pro). They cover that person's own notes and storage,
 //   their devices, and the AI Assistant in Personal.
 // - Workspace plans belong to a workspace (Free, Team, Business). They cover that workspace's storage and
-//   the AI Assistant inside it. Paid workspace plans are billed per member seat (not on sale yet).
+//   the AI Assistant inside it. Paid workspace plans are billed per member seat (convex/workspaceBilling.ts).
 //
 // A subscription row stores a personal tier ("free" | "basic" | "pro") and an interval; `personalPlanId`
 // maps that to a catalog id. Entitlements are resolved in convex/lib/entitlements.ts; code checks
@@ -181,7 +181,10 @@ export interface WorkspacePlanCard {
   perSeat: boolean;
   blurb: string;
   features: string[];
-  /** Whether it can be bought yet (workspace billing isn't live). */
+  /**
+   * Whether the public pricing page offers it. Keep false until workspace checkout is configured in
+   * production (STRIPE_PRICE_WS_* set); in the app, Settings → Plan & billing asks the server instead.
+   */
   available: boolean;
 }
 

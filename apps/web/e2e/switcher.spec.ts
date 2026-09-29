@@ -65,7 +65,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   await switcher(page).click();
   const studio = menu.getByRole("menuitemradio", { name: "Switch Studio", exact: true });
   await expect(studio).toHaveAttribute("aria-checked", "true");
-  await expect(studio).toContainText("Owner");
+  await expect(studio).toContainText("Owner · Free");
   await expect(menu.getByRole("menuitemradio", { name: "Personal", exact: true })).toHaveAttribute("aria-checked", "false");
   await page.keyboard.press("Escape");
 

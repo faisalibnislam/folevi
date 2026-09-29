@@ -85,6 +85,7 @@ export function RevenueView() {
           <StatTile label="Revenue per payer" value={r ? money(r.arppuCents) : "…"} hint="Per month (ARPPU)" />
           <StatTile label="Last 30 days" value={r ? money(r.last30.grossCents - r.last30.refundedCents) : "…"} hint={r ? `${money(r.last30.refundedCents)} refunded · ${n(r.last30.failed)} failed` : undefined} />
           <StatTile label="At risk" value={r ? n(r.cancelingAtPeriodEnd + r.pastDue) : "…"} hint={r ? `${n(r.cancelingAtPeriodEnd)} canceling · ${n(r.pastDue)} past due` : undefined} />
+          <StatTile label="Workspace MRR" value={r ? money(r.workspaces.mrrCents) : "…"} hint={r ? `${n(r.workspaces.paying)} paying workspaces · ${n(r.workspaces.seats)} seats` : undefined} />
         </dl>
       </section>
 

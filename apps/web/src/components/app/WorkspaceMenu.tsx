@@ -84,7 +84,8 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
     { heading: "Workspaces" },
     ...workspaces.map((w) => ({
       label: w.name,
-      detail: workspaceRoleLabel(w.role),
+      // "Owner · Team": your role here, and this workspace's own plan.
+      description: `${workspaceRoleLabel(w.role)} · ${w.plan.shortName}`,
       icon: <WorkspaceLogo workspace={w} size={18} />,
       checked: context.kind === "workspace" && context.workspaceId === w.id,
       onSelect: () => switchTo({ kind: "workspace", workspaceId: w.id }),

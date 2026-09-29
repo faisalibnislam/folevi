@@ -52,6 +52,7 @@ import { AI_OPEN_EVENT, AI_RUN_EVENT, useAi, useAiEnabled, type AiRunDetail } fr
 import { DocumentSidebar, type Crumb } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
+import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
 import { VersionHistory } from "./VersionHistory";
 import { MovePageDialog } from "./MovePageDialog";
 import { exportHtml, exportMarkdown, exportPdf } from "./export";
@@ -719,6 +720,13 @@ function DocumentHeader({
   const { write } = useAi();
   const toast = useToast();
   const [suggesting, setSuggesting] = useState(false);
+  // The title's own AI menu (the editor's selection menu doesn't reach this textarea).
+  const [titleSel, setTitleSel] = useState<TitleRange | null>(null);
+  const [titleAi, setTitleAi] = useState<TitleRange | null>(null);
+  const readSel = (): TitleRange => {
+    const el = titleRef.current;
+    return { start: el?.selectionStart ?? 0, end: el?.selectionEnd ?? 0 };
+  };
   const save = (next: string) => {
     pendingTitle.current = next;
     if (timer.current) clearTimeout(timer.current);
@@ -775,7 +783,19 @@ function DocumentHeader({
             setValue(next);
             save(next);
           }}
+          onSelect={() => {
+            const r = readSel();
+            setTitleSel(r.start !== r.end ? r : null);
+          }}
+          onBlur={() => setTitleSel(null)}
           onKeyDown={(e) => {
+            if (!readOnly && aiOn && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
+              // In the title, ⌘J edits the title (the app-wide ⌘J opens Ask AI).
+              e.preventDefault();
+              e.stopPropagation();
+              setTitleAi(readSel());
+              return;
+            }
             if (e.key === "Enter" || (e.key === "ArrowDown" && titleRef.current?.selectionStart === value.length)) {
               e.preventDefault();
               onEnter();
@@ -786,6 +806,35 @@ function DocumentHeader({
           aria-describedby={readOnly ? `ro-${documentId}` : undefined}
         />
       </h1>
+      {!readOnly && aiOn && titleSel && !titleAi ? <TitleAiPill anchor={titleRef.current} onOpen={() => setTitleAi(titleSel)} /> : null}
+      {!readOnly && aiOn && titleAi ? (
+        <TitleAi
+          anchor={titleRef.current}
+          documentId={documentId}
+          title={value}
+          range={titleAi}
+          hasContent={hasContent}
+          onClose={() => setTitleAi(null)}
+          onApply={(next) => {
+            const before = value;
+            setTitleAi(null);
+            setTitleSel(null);
+            if (next === before) return;
+            setValue(next);
+            save(next);
+            titleRef.current?.focus();
+            toast.show("Title updated", {
+              action: {
+                label: "Undo",
+                onClick: () => {
+                  setValue(before);
+                  save(before);
+                },
+              },
+            });
+          }}
+        />
+      ) : null}
       {readOnly ? (
         <p id={`ro-${documentId}`} className="sr-only">
           This document is read-only for you.

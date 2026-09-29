@@ -15,7 +15,7 @@ import { GENERATED_TEMPLATES } from "../src/generated/templates";
 import { renderAll } from "../scripts/build-templates.ts";
 
 const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const PLACEHOLDER_RE = /\{\{(@?[A-Za-z0-9_]+)\}\}/g;
+const PLACEHOLDER_RE = /\{\{(@?[A-Za-z0-9_]+)(?: [^{}|]+\|[^{}|]+)?\}\}/g; // plain, or a plural "{{n one|many}}"
 
 function read(rel: string): string {
   return readFileSync(join(PKG_ROOT, rel), "utf8");

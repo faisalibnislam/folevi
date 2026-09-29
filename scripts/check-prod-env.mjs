@@ -27,14 +27,17 @@ if (env === "production") {
       for (const k of ["BETTER_AUTH_SECRET", "FOLEVI_HASH_SALT", "FOLEVI_FILE_URL_SECRET", "FOLEVI_SERVER_SECRET"]) {
         if (!has(k)) problems.push(`Convex ${k} is not set.`);
       }
-      // Email: Mailtrap is required. During the cutover only, a complete legacy Loops setup is accepted
+      // Email: Mailtrap is required. During the cutover only, legacy Loops with at least the two identity templates is accepted
       // (with a loud warning) so sign-up email keeps working until the Mailtrap token is in place.
       const loopsIds = ["AUTH_VERIFY_EMAIL", "AUTH_PASSWORD_RESET", "SECURITY_NEW_DEVICE", "ACCOUNT_DELETION_SCHEDULED", "ACCOUNT_DELETION_COMPLETED", "WORKSPACE_INVITE", "MENTION_NOTIFICATION", "COMMENT_NOTIFICATION", "COMMENT_DIGEST", "SHARE_NOTIFICATION", "ACCESS_CHANGED"].map((t) => `LOOPS_TRANSACTIONAL_${t}_ID`);
       if (has("MAILTRAP_API_TOKEN")) {
         if (!has("MAILTRAP_WEBHOOK_SECRET")) warn.push("Convex MAILTRAP_WEBHOOK_SECRET is not set: no delivery, bounce or complaint tracking, and bounced addresses are never suppressed.");
         if (has("LOOPS_API_KEY")) warn.push("Convex LOOPS_API_KEY is still set but unused (Mailtrap is active). Remove the LOOPS_* variables to finish the cutover.");
-      } else if (has("LOOPS_API_KEY") && loopsIds.every(has)) {
+      } else if (has("LOOPS_API_KEY") && ["LOOPS_TRANSACTIONAL_AUTH_VERIFY_EMAIL_ID", "LOOPS_TRANSACTIONAL_AUTH_PASSWORD_RESET_ID"].every(has)) {
+        // The identity emails (confirm email, reset password) are the minimum that must keep working.
         warn.push("!!! EMAIL IS STILL SENT THROUGH LOOPS (legacy). Set Convex MAILTRAP_API_TOKEN to finish the Mailtrap cutover (docs/EMAIL_OPERATIONS.md). !!!");
+        const missing = loopsIds.filter((k) => !has(k));
+        if (missing.length) warn.push(`Until Mailtrap is set up, these Loops templates aren't configured, so those emails are skipped: ${missing.join(", ")}.`);
       } else {
         problems.push("Convex MAILTRAP_API_TOKEN is not set (no email provider: sign-up confirmation and password reset emails can't be sent).");
       }

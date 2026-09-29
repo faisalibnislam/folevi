@@ -109,3 +109,17 @@ describe("renderEmail", () => {
     }
   });
 });
+
+describe("plural units", () => {
+  const reset = (expiresInHours: number) =>
+    renderEmail("auth_password_reset", { actionUrl: "https://app.folevi.com/reset?token=t", expiresInHours });
+  it("says 1 hour, not 1 hours or hour(s)", () => {
+    const one = reset(1);
+    expect(one.text).toContain("expires in 1 hour and");
+    expect(one.html).toContain("expires in 1 hour and");
+    expect(one.text).not.toMatch(/hour\(s\)|1 hours/);
+  });
+  it("says 24 hours", () => {
+    expect(reset(24).text).toContain("expires in 24 hours");
+  });
+});

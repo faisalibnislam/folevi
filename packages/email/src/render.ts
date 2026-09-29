@@ -14,6 +14,8 @@ export class EmailRenderError extends Error {
 }
 
 const PLACEHOLDER_RE = /\{\{(@?[A-Za-z][A-Za-z0-9]*)\}\}/g;
+/** `{{count one|many}}` → "1 one" / "24 many": a number variable followed by its unit in the right form. */
+const PLURAL_RE = /\{\{([A-Za-z][A-Za-z0-9]*) ([^{}|]+)\|([^{}|]+)\}\}/g;
 const BRAND = "@brand";
 
 export function escapeHtml(value: string): string {
@@ -99,7 +101,18 @@ export function renderEmail(
   const lookup = (name: string): string | number | undefined =>
     Object.prototype.hasOwnProperty.call(values, name) ? values[name] : undefined;
 
-  const html = template.html.replace(PLACEHOLDER_RE, (_m, name: string) => {
+  // Plurals first: they carry the number and its unit ("1 hour", "24 hours").
+  const plural = (str: string, escape: boolean) =>
+    str.replace(PLURAL_RE, (_m, name: string, one: string, many: string) => {
+      const value = lookup(name);
+      if (value === undefined) {
+        unresolved.add(name);
+        return "";
+      }
+      const out = `${String(value)} ${Number(value) === 1 ? one : many}`;
+      return escape ? escapeHtml(out) : out;
+    });
+  const html = plural(template.html, true).replace(PLACEHOLDER_RE, (_m, name: string) => {
     if (name === BRAND) return brand;
     const value = lookup(name);
     if (value === undefined) {
@@ -109,7 +122,7 @@ export function renderEmail(
     return htmlValue(def.variables[name], value);
   });
   const fill = (s: string) =>
-    s.replace(PLACEHOLDER_RE, (_m, name: string) => {
+    plural(s, false).replace(PLACEHOLDER_RE, (_m, name: string) => {
       const value = name === BRAND ? undefined : lookup(name);
       if (value === undefined) {
         unresolved.add(name);

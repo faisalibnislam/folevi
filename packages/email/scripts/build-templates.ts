@@ -86,7 +86,7 @@ export const CONTENT: Record<TemplateKey, Content> = {
       {
         kind: "p",
         muted: true,
-        text: "This link expires in {{expiresInHours}} hour(s). If you did not create a Folevi account, you can ignore this email and nothing will be activated.",
+        text: "This link expires in {{expiresInHours hour|hours}}. If you did not create a Folevi account, you can ignore this email and nothing will be activated.",
       },
     ],
   },
@@ -102,7 +102,7 @@ export const CONTENT: Record<TemplateKey, Content> = {
       {
         kind: "p",
         muted: true,
-        text: "This link expires in {{expiresInHours}} hour(s) and works once. If you did not ask to reset your password, you can ignore this email and your current password will keep working.",
+        text: "This link expires in {{expiresInHours hour|hours}} and works once. If you did not ask to reset your password, you can ignore this email and your current password will keep working.",
       },
     ],
   },

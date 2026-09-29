@@ -41,6 +41,7 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     () => ctx.db.query("documentTags").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("stars").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("recents").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("recentHidden").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("documentPermissions").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("publicLinks").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("documentLinks").withIndex("by_source", (q) => q.eq("sourceDocumentId", docId)).take(Math.max(1, budget.left)),
@@ -227,6 +228,7 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
   const personalBatches: (() => Promise<{ _id: Id<never> }[]>)[] = [
     () => ctx.db.query("stars").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("recents").withIndex("by_profile_viewed", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("recentHidden").withIndex("by_profile_workspace", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("notifications").withIndex("by_profile_created", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("sessionsMirror").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("documentPermissions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

@@ -25,7 +25,7 @@ test("folders, starring, archive, trash and restore", async ({ browser }) => {
   await card.hover();
   await card.getByRole("button", { name: /Actions for Field Notes/ }).click();
   await page.getByRole("menuitem", { name: "Move to folder…" }).click();
-  await page.getByRole("dialog", { name: "Move to folder" }).getByRole("button", { name: "Letters" }).click();
+  await page.getByRole("dialog", { name: "Move to folder" }).getByRole("option", { name: "Letters" }).click();
   await nav.getByRole("link", { name: "Letters" }).click();
   await expect(page.getByRole("main").getByText("Field Notes: A Quiet Morning")).toBeVisible();
 

@@ -21,6 +21,7 @@ import { HomeFolders, IdResolver, liveBlocks, refreshDerived, syncTaskProjection
 import { SyncEngine, refreshLinkLabels, syncLinks } from "./lib/syncEngine";
 import { cloneBlocks, createDocument } from "./lib/create";
 import { fail } from "./lib/errors";
+import { consume } from "./lib/rateLimit";
 import { SeqAllocator, nextSeq } from "./lib/seq";
 import { vDocumentKind } from "./lib/validators";
 
@@ -386,6 +387,92 @@ export const recordView = mutation({
     } else {
       await ctx.db.insert("recents", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, viewedAt: now });
     }
+    // Opening a note removed from Recent notes brings it back there.
+    const hidden = await ctx.db
+      .query("recentHidden")
+      .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
+      .unique();
+    if (hidden) await ctx.db.delete(hidden._id);
+    return null;
+  },
+});
+
+/**
+ * Home's "Recent notes": the workspace's most recently edited notes, minus the ones this person removed
+ * from the list (until they're edited again or reopened — see recentHidden in the schema).
+ */
+export const recentNotes = query({
+  args: { workspaceId: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const limit = Math.max(1, Math.min(args.limit ?? 10, 30));
+    const hiddenRows = await ctx.db
+      .query("recentHidden")
+      .withIndex("by_profile_workspace", (q) => q.eq("profileId", profile._id).eq("workspaceId", workspace._id))
+      .take(500);
+    const hidden = new Map(hiddenRows.map((h) => [h.documentId, h.hiddenAt]));
+    const candidates = await ctx.db
+      .query("documents")
+      .withIndex("by_workspace_trash", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", false))
+      .order("desc")
+      .filter((q) =>
+        q.and(
+          q.or(q.eq(q.field("kind"), "document"), q.eq(q.field("kind"), "daily")),
+          q.eq(q.field("archivedAt"), undefined),
+          q.eq(q.field("parentDocumentId"), undefined),
+        ),
+      )
+      .take(Math.min(200, limit * 2 + hidden.size));
+    const shown = candidates.filter((d) => {
+      const at = hidden.get(d._id);
+      return at === undefined || d.updatedAt > at;
+    });
+    const page = (await filterReadable(ctx, profile, shown)).slice(0, limit);
+    return await withExtras(ctx, profile, new IdResolver(ctx), page);
+  },
+});
+
+const MAX_RECENT_BATCH = 50;
+
+/** Removes notes from this person's Recent notes on Home (nobody else's list changes). */
+export const hideFromRecent = mutation({
+  args: { documentIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    if (args.documentIds.length > MAX_RECENT_BATCH) fail("limit_exceeded", `At most ${MAX_RECENT_BATCH} notes at a time.`);
+    const now = Date.now();
+    let hidden = 0;
+    for (const id of new Set(args.documentIds)) {
+      const doc = await getDocumentByPublicId(ctx, id);
+      if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
+      const existing = await ctx.db
+        .query("recentHidden")
+        .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
+        .unique();
+      if (existing) await ctx.db.patch(existing._id, { hiddenAt: now });
+      else await ctx.db.insert("recentHidden", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, hiddenAt: now });
+      hidden++;
+    }
+    return { hidden };
+  },
+});
+
+/** Undoes hideFromRecent. Only ever touches the caller's own rows. */
+export const showInRecent = mutation({
+  args: { documentIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    if (args.documentIds.length > MAX_RECENT_BATCH) fail("limit_exceeded", `At most ${MAX_RECENT_BATCH} notes at a time.`);
+    for (const id of new Set(args.documentIds)) {
+      const doc = await getDocumentByPublicId(ctx, id);
+      if (!doc) continue;
+      const row = await ctx.db
+        .query("recentHidden")
+        .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
+        .unique();
+      if (row) await ctx.db.delete(row._id);
+    }
     return null;
   },
 });
@@ -518,6 +605,17 @@ export const moveToTrash = mutation({
   },
 });
 
+/** Brings a trashed page back (with the pages trashed together with it). Callers check write access. */
+async function restoreDoc(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">) {
+  if (!doc.inTrash) return;
+  // If the parent is still in Trash, restore to the top level.
+  if (doc.parentDocumentId) {
+    const parent = await ctx.db.get(doc.parentDocumentId);
+    if (!parent || parent.inTrash) await ctx.db.patch(doc._id, { parentDocumentId: undefined });
+  }
+  await setTrashState(ctx, (await ctx.db.get(doc._id))!, actor, false, undefined);
+}
+
 export const restoreFromTrash = mutation({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
@@ -527,16 +625,40 @@ export const restoreFromTrash = mutation({
     if (!doc) fail("not_found", "Document not found.");
     const access = await documentAccess(ctx, profile, doc);
     if (!accessAtLeast(access, "write")) fail("forbidden", "You can't restore this document.");
-    if (!doc.inTrash) return null;
-    // If the parent is still in Trash, restore to the top level.
-    if (doc.parentDocumentId) {
-      const parent = await ctx.db.get(doc.parentDocumentId);
-      if (!parent || parent.inTrash) await ctx.db.patch(doc._id, { parentDocumentId: undefined });
-    }
-    await setTrashState(ctx, (await ctx.db.get(doc._id))!, profile._id, false, undefined);
+    await restoreDoc(ctx, doc, profile._id);
     return null;
   },
 });
+
+/** Who may delete a page for good: whoever manages it, or the person who created it. */
+async function canDeletePermanently(ctx: MutationCtx | QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">) {
+  return doc.createdBy === profile._id || accessAtLeast(await documentAccess(ctx, profile, doc), "manage");
+}
+
+/**
+ * Queues a trashed page (and its nested pages) for permanent deletion by the deletion-job runner, which
+ * works through the cascade (blocks, tasks, files, versions, comments…) in bounded batches. A page that
+ * already has a job waiting isn't queued twice. Callers schedule the runner.
+ */
+async function queueDeletion(ctx: MutationCtx, doc: Doc<"documents">, requestedBy: Id<"profiles">, reason: string): Promise<void> {
+  const existing = await ctx.db
+    .query("deletionJobs")
+    .withIndex("by_target", (q) => q.eq("kind", "document").eq("targetId", doc._id))
+    .order("desc")
+    .first();
+  if (existing && (existing.status === "scheduled" || existing.status === "running")) return;
+  await ctx.db.insert("deletionJobs", {
+    kind: "document",
+    targetId: doc._id,
+    requestedBy,
+    requestedByAdmin: false,
+    reason,
+    scheduledFor: Date.now(),
+    status: "scheduled",
+    progress: 0,
+    createdAt: Date.now(),
+  });
+}
 
 /** Permanent deletion is irreversible: requires manage access, the document to be in Trash, and the title typed back. */
 export const deletePermanently = mutation({
@@ -546,58 +668,106 @@ export const deletePermanently = mutation({
     await assertWritable(ctx, profile);
     const doc = await getDocumentByPublicId(ctx, args.documentId);
     if (!doc) fail("not_found", "Document not found.");
-    const access = await documentAccess(ctx, profile, doc);
-    if (!accessAtLeast(access, "manage") && doc.createdBy !== profile._id) fail("forbidden", "Only the owner or a workspace admin can delete permanently.");
+    if (!(await canDeletePermanently(ctx, profile, doc))) fail("forbidden", "Only the owner or a workspace admin can delete permanently.");
     if (!doc.inTrash) fail("invalid_argument", "Move the document to Trash first.");
     if (args.confirmTitle.trim() !== (doc.title.trim() || "Untitled")) fail("invalid_argument", "Type the document title to confirm.");
-    await ctx.db.insert("deletionJobs", {
-      kind: "document",
-      targetId: doc._id,
-      requestedBy: profile._id,
-      requestedByAdmin: false,
-      reason: "user_request",
-      scheduledFor: Date.now(),
-      status: "scheduled",
-      progress: 0,
-      createdAt: Date.now(),
-    });
+    await queueDeletion(ctx, doc, profile._id, "user_request");
     await ctx.scheduler.runAfter(0, internal.maintenance.runDeletionJobs, {});
     return null;
   },
 });
+
+/** The top of a trashed page's trashed ancestry: the page whose deletion takes this one with it. */
+async function trashRoot(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">): Promise<Doc<"documents">> {
+  let root = doc;
+  for (let i = 0; root.parentDocumentId && i < 12; i++) {
+    const parent = await ctx.db.get(root.parentDocumentId);
+    if (!parent || !parent.inTrash) break;
+    root = parent;
+  }
+  return root;
+}
+
+const TRASH_COUNT_CAP = 500;
+
+/**
+ * How many pages in this workspace's Trash emptying it would delete for the caller (pages they can't
+ * delete stay), capped at TRASH_COUNT_CAP with `more` set beyond it. For the "Empty Trash" confirmation.
+ */
+export const trashSummary = query({
+  args: { workspaceId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { workspace, member } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const trashed = await ctx.db
+      .query("documents")
+      .withIndex("by_workspace_trash_created", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", true))
+      .take(TRASH_COUNT_CAP + 1);
+    let deletable = 0;
+    if (roleAtLeast(member.role, "editor")) {
+      const verdicts = new Map<Id<"documents">, boolean>();
+      for (const d of trashed.slice(0, TRASH_COUNT_CAP)) {
+        const root = await trashRoot(ctx, d);
+        let ok = verdicts.get(root._id);
+        if (ok === undefined) {
+          ok = await canDeletePermanently(ctx, profile, root);
+          verdicts.set(root._id, ok);
+        }
+        if (ok) deletable++;
+      }
+    }
+    return { total: Math.min(trashed.length, TRASH_COUNT_CAP), deletable, more: trashed.length > TRASH_COUNT_CAP };
+  },
+});
+
+const EMPTY_TRASH_PAGE = 100;
+
+/**
+ * One page of "Empty Trash": queues deletion of the trashed pages (roots of trashed trees) the person may
+ * delete. A large Trash continues in follow-up mutations so no single one runs into Convex's limits.
+ */
+async function emptyTrashPage(ctx: MutationCtx, profile: Doc<"profiles">, workspaceId: Id<"workspaces">, cursor: string | null) {
+  const page = await ctx.db
+    .query("documents")
+    .withIndex("by_workspace_trash_created", (q) => q.eq("workspaceId", workspaceId).eq("inTrash", true))
+    .paginate({ cursor, numItems: EMPTY_TRASH_PAGE });
+  let queued = 0;
+  for (const d of page.page) {
+    if (d.parentDocumentId) {
+      const parent = await ctx.db.get(d.parentDocumentId);
+      if (parent?.inTrash) continue; // deleted with its root
+    }
+    if (!(await canDeletePermanently(ctx, profile, d))) continue;
+    await queueDeletion(ctx, d, profile._id, "empty_trash");
+    queued++;
+  }
+  if (queued) await ctx.scheduler.runAfter(0, internal.maintenance.runDeletionJobs, {});
+  if (!page.isDone) await ctx.scheduler.runAfter(0, internal.documents.emptyTrashContinue, { profileId: profile._id, workspaceId, cursor: page.continueCursor });
+  return { queued, done: page.isDone };
+}
 
 export const emptyTrash = mutation({
   args: { workspaceId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { workspace, member } = await requireWorkspace(ctx, profile, args.workspaceId, "editor");
-    const trashed = await ctx.db
-      .query("documents")
-      .withIndex("by_workspace_trash", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", true))
-      .take(500);
-    let count = 0;
-    for (const d of trashed) {
-      if (!roleAtLeast(member.role, "admin") && d.createdBy !== profile._id) continue;
-      if (d.parentDocumentId) {
-        const parent = await ctx.db.get(d.parentDocumentId);
-        if (parent?.inTrash) continue; // deleted with its root
-      }
-      await ctx.db.insert("deletionJobs", {
-        kind: "document",
-        targetId: d._id,
-        requestedBy: profile._id,
-        requestedByAdmin: false,
-        reason: "empty_trash",
-        scheduledFor: Date.now(),
-        status: "scheduled",
-        progress: 0,
-        createdAt: Date.now(),
-      });
-      count++;
-    }
-    await ctx.scheduler.runAfter(0, internal.maintenance.runDeletionJobs, {});
-    return { scheduled: count };
+    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "editor");
+    await consume(ctx, "bulk", profile._id);
+    const r = await emptyTrashPage(ctx, profile, workspace._id, null);
+    return { scheduled: r.queued, continuing: !r.done };
+  },
+});
+
+/** Follow-up pages of emptyTrash. Re-checks that the person may still do this before each page. */
+export const emptyTrashContinue = internalMutation({
+  args: { profileId: v.id("profiles"), workspaceId: v.id("workspaces"), cursor: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile || profile.status !== "active") return null;
+    const member = await membership(ctx, profile._id, args.workspaceId);
+    if (!member || !roleAtLeast(member.role, "editor")) return null;
+    await emptyTrashPage(ctx, profile, args.workspaceId, args.cursor);
+    return null;
   },
 });
 
@@ -617,6 +787,125 @@ export const move = mutation({
     ]);
     if (r?.status === "rejected") fail("invalid_argument", r.error?.message ?? "Could not move the document.");
     return null;
+  },
+});
+
+export const MAX_BULK = 50;
+
+/**
+ * One action on several notes at once (multi-select in lists, dragging to a folder): move to a folder,
+ * star, archive, move to Trash, restore, or delete permanently. Each note is authorized on its own, as
+ * the single-note mutations do; notes the caller can't change are skipped and counted, never fatal.
+ * `previousFolders` (for "move") lets the client undo. Clients send at most MAX_BULK ids per call.
+ */
+export const bulkUpdate = mutation({
+  args: {
+    documentIds: v.array(v.string()),
+    action: v.union(
+      v.object({ kind: v.literal("move"), folderId: v.union(v.string(), v.null()) }),
+      v.object({ kind: v.literal("star"), starred: v.boolean() }),
+      v.object({ kind: v.literal("archive"), archived: v.boolean() }),
+      v.object({ kind: v.literal("trash") }),
+      v.object({ kind: v.literal("restore") }),
+      v.object({ kind: v.literal("delete") }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const action = args.action;
+    // Starring is personal (read access is enough), as in setStarred.
+    if (action.kind !== "star") await assertWritable(ctx, profile);
+    let ids = [...new Set(args.documentIds)];
+    if (ids.length > MAX_BULK) fail("limit_exceeded", `At most ${MAX_BULK} notes at a time.`);
+    if (action.kind === "restore") {
+      // Parents before their nested pages, so a restored page lands back under its parent instead of at
+      // the top level (restoring a page whose parent is still in Trash moves it out).
+      const depth = new Map<string, number>();
+      for (const id of ids) {
+        let d = 0;
+        let cursor = await getDocumentByPublicId(ctx, id);
+        while (cursor?.parentDocumentId && d < 12) {
+          cursor = await ctx.db.get(cursor.parentDocumentId);
+          d++;
+        }
+        depth.set(id, d);
+      }
+      ids = [...ids].sort((a, b) => depth.get(a)! - depth.get(b)!);
+    }
+    const done: string[] = [];
+    const previousFolders: Record<string, string | null> = {};
+    if (!ids.length) return { done, skipped: 0, previousFolders };
+    await consume(ctx, "bulk", profile._id);
+    const need = action.kind === "star" ? "read" : "write";
+    let skipped = 0;
+    const moves: Doc<"documents">[] = [];
+    for (const id of ids) {
+      const found = await getDocumentByPublicId(ctx, id);
+      const access = found ? await documentAccess(ctx, profile, found) : "none";
+      if (!found || !accessAtLeast(access, need)) {
+        skipped++;
+        continue;
+      }
+      // Re-read: an earlier note in this batch may have taken this one with it (a nested page).
+      const doc = (await ctx.db.get(found._id))!;
+      let ok = true;
+      switch (action.kind) {
+        case "move":
+          // Applied together below; counted there.
+          if (!doc.inTrash) {
+            moves.push(doc);
+            continue;
+          }
+          ok = false;
+          break;
+        case "star": {
+          const existing = await ctx.db
+            .query("stars")
+            .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
+            .unique();
+          if (action.starred && !existing) await ctx.db.insert("stars", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, createdAt: Date.now() });
+          else if (!action.starred && existing) await ctx.db.delete(existing._id);
+          break;
+        }
+        case "archive":
+          if (doc.inTrash) ok = false;
+          else if (Boolean(doc.archivedAt) !== action.archived) await touchDoc(ctx, doc, { archivedAt: action.archived ? Date.now() : undefined }, profile._id);
+          break;
+        case "trash":
+          if (!doc.inTrash) await setTrashState(ctx, doc, profile._id, true, Date.now());
+          break;
+        case "restore":
+          await restoreDoc(ctx, doc, profile._id);
+          break;
+        case "delete":
+          if (!doc.inTrash || !(await canDeletePermanently(ctx, profile, doc))) ok = false;
+          // Exactly this page and its nested pages, as deletePermanently does.
+          else await queueDeletion(ctx, doc, profile._id, "user_request");
+          break;
+      }
+      if (ok) done.push(id);
+      else skipped++;
+    }
+    if (moves.length) {
+      // Moves take the same document.update path as a single move (and as offline clients).
+      const resolver = new IdResolver(ctx);
+      for (const d of moves) previousFolders[d.publicId] = await resolver.folder(d.folderId);
+      const folderId = action.kind === "move" ? action.folderId : null;
+      const engine = new SyncEngine(ctx, profile, "server");
+      const results = await engine.applyAll(
+        null,
+        moves.map((d) => ({ opId: ulid(), kind: "document.update" as const, documentId: d.publicId, patch: { folderId }, baseRevision: d.revision })),
+      );
+      results.forEach((r, i) => {
+        const id = moves[i]!.publicId;
+        if (r.status === "rejected") {
+          skipped++;
+          delete previousFolders[id];
+        } else done.push(id);
+      });
+    }
+    if (action.kind === "delete" && done.length) await ctx.scheduler.runAfter(0, internal.maintenance.runDeletionJobs, {});
+    return { done, skipped, previousFolders };
   },
 });
 

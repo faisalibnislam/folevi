@@ -12,7 +12,8 @@ import { ageText } from "@/lib/format";
 import { ViewChrome } from "@/components/app/Shell";
 import { NOTE_CARD_ASPECT, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderCard } from "./OrganizeIndex";
-import { DocMenu, type Summary as DocSummary } from "./DocumentBrowser";
+import { DocMenu, NoteContextMenu, contextPoint, type Summary as DocSummary } from "./DocumentBrowser";
+import { startNoteDrag } from "@/lib/app/noteDrag";
 
 const CARD_WIDTH = 250;
 const FOLDER_MIN = 210;
@@ -63,9 +64,22 @@ function Section({ title, icon, href, count, children, empty, shelf }: { title: 
 
 type Summary = DocSummary;
 
-function NoteCard({ d, folders }: { d: Summary; folders: { id: string; name: string }[] }) {
+/**
+ * A note on Home. It can be dragged onto a folder in the sidebar, and right-clicked for its actions (the
+ * same as its "…" menu; Recent notes adds "Remove from recent").
+ */
+function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
+  const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null);
   return (
-    <div className="group relative [container-type:inline-size]">
+    <div
+      className="group relative [container-type:inline-size]"
+      draggable
+      onDragStart={(e) => startNoteDrag(e, [d.id])}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setCtx(contextPoint(e));
+      }}
+    >
       <AppLink href={`/d/${d.id}`} className={NOTE_CARD_LINK}>
         <NoteCardFace
           title={d.title}
@@ -81,9 +95,10 @@ function NoteCard({ d, folders }: { d: Summary; folders: { id: string; name: str
       </AppLink>
       <div className={`absolute top-2 ${d.starred ? "right-[calc(12cqw+8px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
         <div className="ui-raised rounded-[6px]">
-          <DocMenu doc={d} view="all" folders={folders} />
+          <DocMenu doc={d} view="all" recent={recent} />
         </div>
       </div>
+      {ctx ? <NoteContextMenu doc={d} view="all" recent={recent} at={ctx} onDone={() => setCtx(null)} /> : null}
     </div>
   );
 }
@@ -94,7 +109,7 @@ const CAROUSEL_COUNT = 10;
  * One row of note cards that scrolls sideways, with arrow buttons at either end (shown only when there's
  * more to see that way). Cards are real list items, so Tab moves through them and scrolls them into view.
  */
-function NoteCarousel({ docs, folders, label }: { docs: Summary[] | undefined; folders: { id: string; name: string }[]; label: string }) {
+function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; label: string; recent?: boolean }) {
   const [el, setEl] = useState<HTMLUListElement | null>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
   useEffect(() => {
@@ -133,7 +148,7 @@ function NoteCarousel({ docs, folders, label }: { docs: Summary[] | undefined; f
       >
         {docs.slice(0, CAROUSEL_COUNT).map((d) => (
           <li key={d.id} style={{ width: CARD_WIDTH }} className="flex-none snap-start">
-            <NoteCard d={d} folders={folders} />
+            <NoteCard d={d} recent={recent} />
           </li>
         ))}
       </ul>
@@ -161,7 +176,8 @@ function NoteCarousel({ docs, folders, label }: { docs: Summary[] | undefined; f
 export function HomeDashboard() {
   const aiOn = useAiEnabled();
   const { workspace } = useAppState();
-  const recent = useQuery(api.documents.list, { workspaceId: workspace.id, view: "all", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
+  // The latest edited notes, minus any this person removed from the list.
+  const recent = useQuery(api.documents.recentNotes, { workspaceId: workspace.id, limit: CAROUSEL_COUNT });
   const starred = useQuery(api.documents.list, { workspaceId: workspace.id, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
   const org = useQuery(api.organization.index, { workspaceId: workspace.id });
   const folders = useColumns(FOLDER_MIN);
@@ -175,12 +191,12 @@ export function HomeDashboard() {
     >
       <div className="mx-auto max-w-[1400px] px-4 pb-8 pt-2 sm:px-8">
         {aiOn ? <CatchUp /> : null}
-        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.page.length ? <p className="text-sm text-muted">No notes yet. Press New to write your first one.</p> : undefined}>
-          <NoteCarousel docs={recent?.page} folders={org?.folders ?? []} label="Recent notes" />
+        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <p className="text-sm text-muted">No notes yet. Press New to write your first one.</p> : undefined}>
+          <NoteCarousel docs={recent} label="Recent notes" recent />
         </Section>
 
         <Section shelf title="Starred" icon={<Star size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <p className="text-sm text-muted">Star notes you come back to often and they’ll appear here.</p> : undefined}>
-          <NoteCarousel docs={starred?.page} folders={org?.folders ?? []} label="Starred notes" />
+          <NoteCarousel docs={starred?.page} label="Starred notes" />
         </Section>
 
         <Section

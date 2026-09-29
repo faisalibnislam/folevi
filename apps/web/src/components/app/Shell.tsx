@@ -6,7 +6,7 @@ import { PanelLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
-import { TabsProvider } from "@/lib/app/tabs";
+import { TabsProvider, useViewTab } from "@/lib/app/tabs";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { IconButton } from "@/components/ui/Button";
@@ -316,10 +316,11 @@ export function Shell() {
 }
 
 /** Top bar shared by all views: sidebar toggle, title/breadcrumbs, and actions. */
-export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string }) {
+export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode }) {
   const { sidebarOpen, toggleSidebar, drawerMode } = useShell();
   const { route } = useAppRouter();
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
+  useViewTab(tabTitle ?? (typeof title === "string" ? title : undefined));
   // Save state lives in the sidebar; on phones (sidebar is a drawer) it shows here instead.
   const sync = drawerMode ? <SyncStatus documentId={route.name === "doc" ? route.id : undefined} /> : null;
   // No title bar: the page's name is in its tab and read to screen readers (a visually hidden h1). Only
@@ -363,6 +364,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
         {inFlow ? bar : null}
         {children}
       </main>
+      {overlay}
     </div>
   );
 }

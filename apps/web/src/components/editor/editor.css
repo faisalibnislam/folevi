@@ -258,6 +258,17 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   100% { background: transparent; box-shadow: 0 0 0 4px transparent; }
 }
 
+/* Find & replace bar (in the note): every match, and the current one (ProseMirror decorations). */
+.fb-find-match {
+  background-color: color-mix(in oklab, var(--color-marigold) 32%, transparent);
+  border-radius: 2px;
+}
+.fb-find-current {
+  background-color: color-mix(in oklab, var(--color-marigold) 78%, transparent);
+  color: var(--color-heading);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-marigold) 90%, transparent);
+}
+
 /* Find in page (DocumentSidebar → Find): every match, and the current one. */
 ::highlight(folevi-find) {
   background-color: color-mix(in oklab, var(--color-marigold) 32%, transparent);

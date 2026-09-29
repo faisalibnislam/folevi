@@ -5,8 +5,8 @@ confirmation and password reset from Folevi's built-in accounts), is rendered in
 by the Convex backend through **Mailtrap** (Email API, transactional stream). For why it is built this
 way, see [EMAIL_DECISION.md](./EMAIL_DECISION.md).
 
-Loops, the previous provider, is still wired in as a **legacy fallback for the cutover only**: it is used
-when `MAILTRAP_API_TOKEN` is not set but `LOOPS_API_KEY` is. Section 9 removes it.
+Mailtrap is the only provider. Loops, the previous one, has been removed from the code; section 9 lists
+what is left to delete outside the repository.
 
 ## 1. Set up Mailtrap for `mail.folevi.com` (production)
 
@@ -21,11 +21,10 @@ shows for **your** account and domain.
    **SPF** TXT and/or a return-path CNAME (bounce domain), and a DMARC record. At Namecheap the *Host*
    is the part before `.folevi.com` (for `<selector>._domainkey.mail.folevi.com` enter
    `<selector>._domainkey.mail`).
-   - **SPF: one TXT record per name.** If `mail.folevi.com` already has a `v=spf1 …` TXT record (for
-     example from Loops), **merge** Mailtrap's `include:` into it instead of adding a second one — two SPF
-     records on the same name make SPF fail. Example shape (use Mailtrap's include):
-     `v=spf1 include:<mailtrap-include> include:<other-provider> ~all`. After Loops is removed
-     (section 9), drop its include.
+   - **SPF: one TXT record per name.** If `mail.folevi.com` already has a `v=spf1 …` TXT record,
+     **merge** Mailtrap's `include:` into it instead of adding a second one — two SPF records on the same
+     name make SPF fail. Example shape (use Mailtrap's include):
+     `v=spf1 include:<mailtrap-include> include:<other-provider> ~all`.
    - **DMARC: keep ours.** `_dmarc.folevi.com` is Folevi's own policy (section 2). Don't replace it with a
      vendor value; if Mailtrap asks for a DMARC record and one already exists, keep the existing one.
 3. **Verify.** Back in Mailtrap, **Verify** the domain. DNS can take up to a few hours; don't send until
@@ -40,7 +39,7 @@ shows for **your** account and domain.
    npx convex env set MAILTRAP_API_TOKEN --deployment <prod-deployment>   # prompts; paste the token
    npx convex env set EMAIL_REPLY_TO support@folevi.com --deployment <prod-deployment>   # a monitored mailbox
    ```
-   From this moment Convex sends through Mailtrap (it takes precedence over Loops).
+   From this moment Convex sends through Mailtrap.
 7. **Create the webhook.** Mailtrap → **Webhooks** (under the sending domain / Settings → Webhooks) →
    **Create**:
    - URL: `https://<prod-deployment>.convex.site/webhooks/mailtrap` (the deployment's `.convex.site`
@@ -195,26 +194,23 @@ All on the **Convex** deployment (`npx convex env set NAME …`); none belong in
 | `FOLEVI_EMAIL_ALLOWLIST`     | Convex, non-production        | Comma-separated exact addresses allowed besides `@example.com` / `@test.com` on a live token.     |
 | `FOLEVI_HASH_SALT`           | Convex                        | Salt for `hashRecipient()` (attempts, events, suppressions). Secret; never rotated without a migration. |
 | `FOLEVI_DEV_MAILBOX_SECRET`  | Convex + `apps/web/.env.local`, non-production only | Enables the development mailbox for identity email.                      |
-| `LOOPS_*`                    | Convex — **legacy, remove after cutover** | `LOOPS_API_KEY`, `LOOPS_WEBHOOK_SECRET`, `LOOPS_TRANSACTIONAL_*_ID`. Only used while `MAILTRAP_API_TOKEN` is unset. |
 
 `scripts/check-prod-env.mjs` (runs before every Vercel production build) fails when production has no
-email provider, and warns loudly while Loops is still the active provider, when the Mailtrap webhook
-secret is missing, and when sandbox variables are set in production.
+`MAILTRAP_API_TOKEN`, and warns when the Mailtrap webhook secret is missing, when sandbox variables are
+set in production, and when any leftover `LOOPS_*` variable is still set (unused; remove it).
 
-## 9. Cutover from Loops, then removal
+## 9. Removing Loops (owner checklist)
 
-1. Deploy this code (Convex + web). With no Mailtrap token yet, production keeps sending through Loops
-   exactly as before (the build check warns).
-2. Do section 1 (domain, DNS, tracking off, token, `MAILTRAP_API_TOKEN`, webhook + secret, test). Setting
-   the token switches every email to Mailtrap immediately; to roll back, `npx convex env remove
-   MAILTRAP_API_TOKEN` (Loops takes over again while its variables still exist).
-3. After a few days of clean sends (admin **Emails** log: accepted → delivered, no `unauthorized` or
-   `provider_rejected`), remove Loops:
-   - Convex: `npx convex env remove` each of `LOOPS_API_KEY`, `LOOPS_WEBHOOK_SECRET` and the eleven
-     `LOOPS_TRANSACTIONAL_*_ID` variables.
-   - Loops: delete the webhook, then the sending domain.
-   - Namecheap: delete the Loops DNS records (its DKIM/return-path/MX records under `mail.folevi.com`) and
-     remove Loops' `include:` from the SPF record. Keep Mailtrap's records and DMARC.
-   - Code (a follow-up PR): delete `packages/email/src/providers/loops*.ts`, their tests, the
-     `/webhooks/loops` route, `recordProviderEvent` and the `LOOPS_*` lines in `.env.example` and
-     `scripts/check-prod-env.mjs` (everything marked "LEGACY … remove after cutover").
+Loops was the provider before Mailtrap. The code no longer reads any `LOOPS_*` variable and no longer has
+a `/webhooks/loops` endpoint. What is left lives outside the repository:
+
+- [ ] **Convex:** `npx convex env remove` each `LOOPS_*` variable on every deployment (`LOOPS_API_KEY`,
+      `LOOPS_WEBHOOK_SECRET` and the eleven `LOOPS_TRANSACTIONAL_*_ID`). The production build check warns
+      while any is still set.
+- [ ] **Loops:** delete the webhook, then the sending domain.
+- [ ] **Namecheap:** delete the Loops DNS records (its DKIM/return-path/MX records under
+      `mail.folevi.com`) and remove Loops' `include:` from the SPF record. Keep Mailtrap's records and DMARC.
+
+Old rows in the admin **Emails** log that were sent through Loops still show as "Loops (legacy)"; the
+database keeps their historical `transactionalId` fields (see `convex/schema.ts`), which nothing writes any
+more.

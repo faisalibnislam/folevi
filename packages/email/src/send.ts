@@ -1,7 +1,6 @@
 // Provider selection and the one entry point Convex uses to send a template.
 import { EMAIL_SENDING_DOMAIN, emailManifest } from "./manifest";
 import { isRecipientAllowed } from "./policy";
-import { sendTransactional } from "./providers/loops";
 import { MAILTRAP_SANDBOX_ENDPOINT, MAILTRAP_SEND_ENDPOINT, postToMailtrap } from "./providers/mailtrap";
 import { EmailRenderError, renderEmail } from "./render";
 import type { EmailProviderKind, SendEmailInput, SendOutcome, SendPolicy } from "./types";
@@ -12,8 +11,6 @@ type Env = Record<string, string | undefined>;
 export type ProviderSelection =
   | { kind: "mailtrap"; token: string; endpoint: string }
   | { kind: "mailtrap_sandbox"; token: string; endpoint: string }
-  /** LEGACY (remove after cutover). */
-  | { kind: "loops"; apiKey: string }
   | { kind: "none" };
 
 const INBOX_ID_RE = /^\d{1,12}$/;
@@ -30,8 +27,7 @@ const value = (env: Env, name: string): string | undefined => {
  * 1. Outside production, when MAILTRAP_SANDBOX_INBOX_ID + MAILTRAP_SANDBOX_TOKEN are set: the Mailtrap
  *    sandbox (captured in a test inbox, never delivered). Ignored in production.
  * 2. MAILTRAP_API_TOKEN: Mailtrap's sending API.
- * 3. LEGACY, during the cutover only: LOOPS_API_KEY → Loops (remove after cutover).
- * 4. Otherwise nothing is configured.
+ * 3. Otherwise nothing is configured.
  */
 export function selectProvider(env: Env, environment: SendPolicy["environment"]): ProviderSelection {
   if (environment !== "production") {
@@ -43,8 +39,6 @@ export function selectProvider(env: Env, environment: SendPolicy["environment"])
   }
   const token = value(env, "MAILTRAP_API_TOKEN");
   if (token) return { kind: "mailtrap", token, endpoint: MAILTRAP_SEND_ENDPOINT };
-  const loopsKey = value(env, "LOOPS_API_KEY");
-  if (loopsKey) return { kind: "loops", apiKey: loopsKey };
   return { kind: "none" };
 }
 
@@ -87,15 +81,6 @@ export async function sendEmail(
 
   const provider = selectProvider(opts.env, opts.policy.environment);
   if (provider.kind === "none") return fail("provider_not_configured");
-
-  if (provider.kind === "loops") {
-    // LEGACY (remove after cutover): Loops renders its own copy of the template.
-    const outcome = await sendTransactional(
-      { key: input.key, to, dataVariables: input.dataVariables, idempotencyKey: input.idempotencyKey.slice(0, 100) },
-      { apiKey: provider.apiKey, env: opts.env, policy: opts.policy, fetchImpl: opts.fetchImpl, sleep: opts.sleep, maxAttempts: opts.maxAttempts },
-    );
-    return { ...outcome, provider: "loops" };
-  }
 
   if (typeof input.attemptId !== "string" || !ATTEMPT_ID_RE.test(input.attemptId)) {
     return fail("invalid_attempt_id", provider.kind);

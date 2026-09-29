@@ -8,7 +8,6 @@ import type { MutationCtx } from "../../convex/_generated/server";
 import { isFeatureEnabled, KNOWN_FLAGS } from "../../convex/lib/flags";
 import { notify, notifyAccessChange, notifyAccessLostOnRestrict } from "../../convex/lib/notify";
 import { createDocument } from "../../convex/lib/create";
-import { hashRecipient } from "@folevi/email";
 import { setup, type T } from "./helpers";
 
 type Prefs = Doc<"profiles">["notificationPrefs"];
@@ -230,52 +229,6 @@ describe("access change notifications", () => {
     const rows = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
     expect(rows.map((r) => r.title)).toEqual(["owner changed your role in “Field Notes” to Member (view only).", "owner removed you from “Field Notes”."]);
     expect(rows[1]!.workspaceId).toBeUndefined();
-  });
-});
-
-describe("email log", () => {
-  async function attempt(t: T, fields: { to: string; transactionalId?: string; providerMessageId?: string; createdAt: number }) {
-    const recipientHash = await hashRecipient(fields.to, "test-salt");
-    return await t.run(async (ctx) =>
-      ctx.db.insert("emailSendAttempts", {
-        templateKey: "mention_notification",
-        category: "product",
-        recipientHash,
-        recipientHint: "r***@example.com",
-        idempotencyKey: `k-${Math.random()}`,
-        status: "accepted",
-        attempts: 1,
-        environment: "test",
-        requestId: "req",
-        createdAt: fields.createdAt,
-        updatedAt: fields.createdAt,
-        transactionalId: fields.transactionalId,
-        providerMessageId: fields.providerMessageId,
-      }),
-    );
-  }
-
-  test("webhook events link to their send by provider id, else by recipient + template + time", async () => {
-    const t = setup();
-    const now = Date.now();
-    const byId = await attempt(t, { to: "a@example.com", transactionalId: "tpl_mention", providerMessageId: "em_1", createdAt: now - 60_000 });
-    const older = await attempt(t, { to: "b@example.com", transactionalId: "tpl_mention", createdAt: now - 120_000 });
-    const other = await attempt(t, { to: "b@example.com", transactionalId: "tpl_comment", createdAt: now - 30_000 });
-    const seconds = Math.floor(now / 1000);
-    const r1 = await t.mutation(internal.email.recordProviderEvent, { webhookId: "w1", eventName: "email.delivered", eventTime: seconds, providerEmailId: "em_1", recipient: "someone-else@example.com" });
-    const r2 = await t.mutation(internal.email.recordProviderEvent, { webhookId: "w2", eventName: "email.hardBounced", eventTime: seconds, transactionalId: "tpl_mention", recipient: "b@example.com" });
-    const dup = await t.mutation(internal.email.recordProviderEvent, { webhookId: "w2", eventName: "email.hardBounced", eventTime: seconds, transactionalId: "tpl_mention", recipient: "b@example.com" });
-    const r3 = await t.mutation(internal.email.recordProviderEvent, { webhookId: "w3", eventName: "email.delivered", eventTime: seconds, transactionalId: "tpl_unknown", recipient: "nobody@example.com" });
-    expect([r1.matched, r2.matched, dup.duplicate, r3.matched]).toEqual([true, true, true, false]);
-    const events = await t.run(async (ctx) => await ctx.db.query("emailProviderEvents").collect());
-    const byWebhook = Object.fromEntries(events.map((e) => [e.webhookId, e]));
-    expect(byWebhook.w1!.attemptId).toBe(byId);
-    // The comment email to b@ was more recent, but the event names the mention template.
-    expect(byWebhook.w2!.attemptId).toBe(older);
-    expect(byWebhook.w2!.attemptId).not.toBe(other);
-    expect(byWebhook.w3!.attemptId).toBeUndefined();
-    // Stored in milliseconds.
-    expect(byWebhook.w1!.eventTime).toBe(seconds * 1000);
   });
 });
 

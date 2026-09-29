@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { stripeWebhook } from "./billing";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { parseLoopsWebhook, parseMailtrapWebhook, verifyLoopsWebhook, verifyMailtrapSignature } from "@folevi/email";
+import { parseMailtrapWebhook, verifyMailtrapSignature } from "@folevi/email";
 import { verifyFileSignature } from "./lib/fileUrls";
 import { createAuth } from "./auth";
 import { withTrustedClientIp } from "./lib/clientIp";
@@ -109,36 +109,6 @@ http.route({
       stored += result.stored;
     }
     console.log(JSON.stringify({ event: "email.webhook", provider: "mailtrap", received: parsed.events.length, stored, ignored: parsed.ignored }));
-    return new Response("ok", { status: 200 });
-  }),
-});
-
-/** LEGACY (remove after the Mailtrap cutover): Loops delivery webhooks (only when LOOPS_WEBHOOK_SECRET is configured). */
-http.route({
-  path: "/webhooks/loops",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const secret = process.env.LOOPS_WEBHOOK_SECRET;
-    if (!secret) return new Response("Webhook not configured", { status: 404 });
-    const rawBody = await request.text();
-    const ok = await verifyLoopsWebhook({
-      id: request.headers.get("webhook-id"),
-      timestamp: request.headers.get("webhook-timestamp"),
-      signature: request.headers.get("webhook-signature"),
-      rawBody,
-      secret,
-    });
-    if (!ok) return new Response("Invalid signature", { status: 401 });
-    const event = parseLoopsWebhook(rawBody);
-    if (!event) return new Response("Ignored", { status: 202 });
-    await ctx.runMutation(internal.email.recordProviderEvent, {
-      webhookId: request.headers.get("webhook-id")!,
-      eventName: event.eventName,
-      eventTime: event.eventTime,
-      transactionalId: event.transactionalId,
-      providerEmailId: event.emailId,
-      recipient: event.recipient,
-    });
     return new Response("ok", { status: 200 });
   }),
 });

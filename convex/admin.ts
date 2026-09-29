@@ -556,8 +556,8 @@ export const listEmails = mutation({
       : await ctx.db.query("emailSendAttempts").withIndex("by_created").order("desc").take(100);
     const out = [];
     for (const r of rows) {
-      // Provider delivery state appears only if a signature-verified webhook (Mailtrap, or legacy Loops)
-      // reported it, and only for events matched to this exact send at receipt.
+      // Provider delivery state appears only if a signature-verified Mailtrap webhook reported it, and
+      // only for events matched to this exact send at receipt.
       const events = await ctx.db
         .query("emailProviderEvents")
         .withIndex("by_attempt", (q) => q.eq("attemptId", r._id))
@@ -576,6 +576,7 @@ export const listEmails = mutation({
         requestId: r.requestId,
         createdAt: r.createdAt,
         hasProviderId: Boolean(r.providerMessageId),
+        // Historical rows from the Loops era have `transactionalId` set and no `provider`: shown read-only as "loops".
         provider: r.provider ?? (r.transactionalId ? "loops" : null),
         deliveryStatus: r.deliveryStatus ?? null,
         providerEvents: events.map((e) => ({ eventName: e.eventName, eventTime: e.eventTime < 1e12 ? e.eventTime * 1000 : e.eventTime })),
@@ -586,7 +587,7 @@ export const listEmails = mutation({
     return {
       attempts: out,
       activeProvider: active,
-      webhooksConfigured: active === "loops" ? webhookSecret("LOOPS_WEBHOOK_SECRET") : webhookSecret("MAILTRAP_WEBHOOK_SECRET"),
+      webhooksConfigured: webhookSecret("MAILTRAP_WEBHOOK_SECRET"),
     };
   },
 });

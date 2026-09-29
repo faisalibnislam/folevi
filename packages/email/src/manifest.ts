@@ -1,5 +1,4 @@
-// Source of truth for every transactional email Folevi sends (through Mailtrap; Loops only as a
-// legacy fallback during the cutover).
+// Source of truth for every transactional email Folevi sends (through Mailtrap).
 //
 // Each entry is one template. Its copy and layout live in scripts/build-templates.ts, which compiles
 // every template to final HTML + plain text in src/generated/templates.ts (with `{{variable}}`

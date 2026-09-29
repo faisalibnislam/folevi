@@ -63,7 +63,7 @@ describe("manifest contract", () => {
       for (const [name, spec] of Object.entries(def.variables)) {
         if (spec.required) expect(used.has(name), `${key}: ${name} unused`).toBe(true);
       }
-      // No provider merge syntax left over (Loops' {DATA_VARIABLE:x}, Mailtrap/Handlebars helpers).
+      // No provider merge syntax left over ({DATA_VARIABLE:x} style, Handlebars helpers).
       expect(file).not.toMatch(/\{[A-Z_]+:[^}]*\}|\{\{[#/^>!]/);
     }
     // The only reserved placeholder is the logo base, and only in HTML.
@@ -171,7 +171,6 @@ describe("manifest contract", () => {
     const invite = GENERATED_TEMPLATES.workspace_invite.text.replace(/\s+/g, " ");
     expect(invite).toContain("as {{role}}");
     expect(invite).toContain("Personal");
-    for (const key of ALL_KEYS) expect(GENERATED_TEMPLATES[key].text.toLowerCase()).not.toContain("loops");
   });
 
   it("uses only uppercase-free camelCase variable names", () => {

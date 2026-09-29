@@ -19,6 +19,7 @@ const STATUSES = ["queued", "accepted", "failed", "skipped"] as const;
 type EmailStatus = (typeof STATUSES)[number];
 type Attempt = FunctionReturnType<typeof api.admin.listEmails>["attempts"][number];
 
+/** `loops` only labels historical rows sent before the move to Mailtrap; nothing sends through it any more. */
 const PROVIDER_LABELS: Record<string, string> = { mailtrap: "Mailtrap", mailtrap_sandbox: "Mailtrap sandbox", loops: "Loops (legacy)" };
 const DELIVERY_LABELS: Record<string, string> = {
   delivered: "Delivered",
@@ -77,10 +78,6 @@ export function EmailsView() {
           data.activeProvider === "none" ? (
             <Callout tone="warning" title="No email provider configured">
               Nothing can be sent from this environment. Set <Mono>MAILTRAP_API_TOKEN</Mono> (or the sandbox pair outside production) on the Convex deployment — see docs/EMAIL_OPERATIONS.md.
-            </Callout>
-          ) : data.activeProvider === "loops" ? (
-            <Callout tone="warning" title="Still sending through Loops">
-              Loops is the legacy provider and is only used until <Mono>MAILTRAP_API_TOKEN</Mono> is set. Finish the Mailtrap cutover in docs/EMAIL_OPERATIONS.md.
             </Callout>
           ) : data.webhooksConfigured ? (
             <Callout title={`Sending through ${PROVIDER_LABELS[data.activeProvider] ?? data.activeProvider}; webhook configured`}>

@@ -878,11 +878,14 @@ export default defineSchema({
     updatedAt: v.number(),
     resendOf: v.optional(v.id("emailSendAttempts")),
     resendPayload: v.optional(v.record(v.string(), v.union(v.string(), v.number()))),
-    /** LEGACY (Loops, remove after cutover): the Loops transactional id used for this send, for webhook matching. */
+    /**
+     * Historical (Loops era, no longer written): the Loops transactional id of a send made before the move
+     * to Mailtrap. Kept because production rows still carry it; the admin email log labels such rows "Loops".
+     */
     transactionalId: v.optional(v.string()),
     /** Provider message id, when the provider returns one (Mailtrap: message_ids[0]). */
     providerMessageId: v.optional(v.string()),
-    /** Which provider handled the send: "mailtrap", "mailtrap_sandbox" or (legacy) "loops". */
+    /** Which provider handled the send: "mailtrap" or "mailtrap_sandbox" ("loops" on historical rows, no longer written). */
     provider: v.optional(v.string()),
     /** Latest delivery state from signed provider webhooks (delivered, soft_bounced, bounced, spam_complaint, rejected, suspended). */
     deliveryStatus: v.optional(v.string()),
@@ -899,13 +902,14 @@ export default defineSchema({
     webhookId: v.string(),
     eventName: v.string(),
     eventTime: v.number(),
+    /** Historical (Loops era, no longer written): the Loops transactional id carried by a Loops webhook event. */
     transactionalId: v.optional(v.string()),
     providerEmailId: v.optional(v.string()),
     recipientHash: v.optional(v.string()),
     receivedAt: v.number(),
-    /** The send attempt this event was matched to on receipt (provider id first, then recipient + template + time). */
+    /** The send attempt this event was matched to on receipt (provider message id, else the attempt id the email carries). */
     attemptId: v.optional(v.id("emailSendAttempts")),
-    /** "mailtrap" (webhookId is "mailtrap:<event_id>"); unset for legacy Loops events. */
+    /** "mailtrap" (webhookId is "mailtrap:<event_id>"); unset on historical Loops-era events (no longer written). */
     provider: v.optional(v.string()),
     /** Mailtrap category = our template key. */
     category: v.optional(v.string()),

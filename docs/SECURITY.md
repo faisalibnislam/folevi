@@ -182,5 +182,5 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
   `docs/AUTH_DECISION.md`, known gaps).
 - The native Mac app isn't distributed and still expects the old account model (Personal as a workspace).
 - Auth0 was previously a subprocessor; it is no longer used.
-- Loops (the previous email provider) is still configured on production until the Mailtrap cutover
-  is finished (`docs/EMAIL_OPERATIONS.md` §9); it then stops being a subprocessor.
+- Loops (the previous email provider) is no longer used; Mailtrap sends all email. Its account, webhook
+  and DNS records are removed per `docs/EMAIL_OPERATIONS.md` §9.

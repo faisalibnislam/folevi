@@ -65,9 +65,8 @@ function checkString(name: string, spec: VariableSpec, raw: string, errors: stri
       if (!CODE_RE.test(value)) errors.push(`${name}: must be 4-12 letters, digits or dashes`);
       break;
     default:
-      // renderEmail HTML-escapes every value; as defence in depth (and for the legacy Loops path,
-      // whose escaping is undocumented) markup is also neutralised at the source: "<"/">" become
-      // single guillemets, which read naturally and cannot open a tag.
+      // renderEmail HTML-escapes every value; as defence in depth markup is also neutralised at the
+      // source: "<"/">" become single guillemets, which read naturally and cannot open a tag.
       return value.replace(/</g, "\u2039").replace(/>/g, "\u203A");
   }
   return value;

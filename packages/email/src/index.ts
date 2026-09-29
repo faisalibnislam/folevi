@@ -17,9 +17,6 @@ export type {
   SendOutcome,
   MailtrapEvent,
   MailtrapEventName,
-  LoopsSendInput,
-  LoopsSendOutcome,
-  LoopsWebhookEvent,
 } from "./types";
 export { emailManifest, TEMPLATE_KEYS, EMAIL_BRAND_BASE_URL, EMAIL_LOGO, EMAIL_SENDING_DOMAIN } from "./manifest";
 export { validateDataVariables, isAllowedUrl, isPlausibleEmail } from "./validate";
@@ -34,6 +31,3 @@ export {
   MAX_MAILTRAP_EVENTS,
 } from "./providers/mailtrapWebhook";
 export { redactEmail, hashRecipient } from "./privacy";
-// LEGACY (remove after the Mailtrap cutover).
-export { transactionalIdFor, loopsEnvVarFor, sendTransactional, LOOPS_TRANSACTIONAL_ENDPOINT } from "./providers/loops";
-export { verifyLoopsWebhook, parseLoopsWebhook } from "./providers/loopsWebhook";

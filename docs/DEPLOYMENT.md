@@ -91,9 +91,9 @@ records Mailtrap shows at Namecheap (one merged SPF record; keep our DMARC), ver
 click tracking**, create a sending API token and set `MAILTRAP_API_TOKEN` on Convex production, create the
 webhook `https://<deployment>.convex.site/webhooks/mailtrap` (delivery, bounces, spam complaint, reject,
 suspension) and set `MAILTRAP_WEBHOOK_SECRET`, then send a test. The templates are compiled in the
-repository and ship with the Convex deploy; nothing is uploaded to Mailtrap. While `MAILTRAP_API_TOKEN` is
-unset, a complete legacy Loops configuration keeps sending (the build warns); remove it after the cutover
-(EMAIL_OPERATIONS.md §9).
+repository and ship with the Convex deploy; nothing is uploaded to Mailtrap. Mailtrap is the only
+provider: the production build fails without `MAILTRAP_API_TOKEN` and warns about any leftover `LOOPS_*`
+variable (delete them; EMAIL_OPERATIONS.md §9).
 
 ## 5. Payments (Stripe)
 

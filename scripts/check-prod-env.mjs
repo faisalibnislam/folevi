@@ -10,6 +10,9 @@ const warn = [];
 if (process.env.FOLEVI_DEV_MAILBOX_SECRET) {
   (env === "production" ? problems : warn).push("FOLEVI_DEV_MAILBOX_SECRET is set (the development mailbox must not exist in production).");
 }
+for (const name of Object.keys(process.env)) {
+  if (name.startsWith("LOOPS_")) warn.push(`${name} is set but unused (Loops is no longer used); remove it.`);
+}
 if (env === "production") {
   for (const name of ["FOLEVI_SERVER_SECRET", "NEXT_PUBLIC_APP_URL", "NEXT_PUBLIC_MARKETING_URL", "CONVEX_DEPLOY_KEY"]) {
     if (!process.env[name]) problems.push(`${name} is not set.`);
@@ -27,20 +30,14 @@ if (env === "production") {
       for (const k of ["BETTER_AUTH_SECRET", "FOLEVI_HASH_SALT", "FOLEVI_FILE_URL_SECRET", "FOLEVI_SERVER_SECRET"]) {
         if (!has(k)) problems.push(`Convex ${k} is not set.`);
       }
-      // Email: Mailtrap is required. During the cutover only, legacy Loops with at least the two identity templates is accepted
-      // (with a loud warning) so sign-up email keeps working until the Mailtrap token is in place.
-      const loopsIds = ["AUTH_VERIFY_EMAIL", "AUTH_PASSWORD_RESET", "SECURITY_NEW_DEVICE", "ACCOUNT_DELETION_SCHEDULED", "ACCOUNT_DELETION_COMPLETED", "WORKSPACE_INVITE", "MENTION_NOTIFICATION", "COMMENT_NOTIFICATION", "COMMENT_DIGEST", "SHARE_NOTIFICATION", "ACCESS_CHANGED"].map((t) => `LOOPS_TRANSACTIONAL_${t}_ID`);
+      // Email: Mailtrap is the only provider and is required in production.
       if (has("MAILTRAP_API_TOKEN")) {
         if (!has("MAILTRAP_WEBHOOK_SECRET")) warn.push("Convex MAILTRAP_WEBHOOK_SECRET is not set: no delivery, bounce or complaint tracking, and bounced addresses are never suppressed.");
-        if (has("LOOPS_API_KEY")) warn.push("Convex LOOPS_API_KEY is still set but unused (Mailtrap is active). Remove the LOOPS_* variables to finish the cutover.");
-      } else if (has("LOOPS_API_KEY") && ["LOOPS_TRANSACTIONAL_AUTH_VERIFY_EMAIL_ID", "LOOPS_TRANSACTIONAL_AUTH_PASSWORD_RESET_ID"].every(has)) {
-        // The identity emails (confirm email, reset password) are the minimum that must keep working.
-        warn.push("!!! EMAIL IS STILL SENT THROUGH LOOPS (legacy). Set Convex MAILTRAP_API_TOKEN to finish the Mailtrap cutover (docs/EMAIL_OPERATIONS.md). !!!");
-        const missing = loopsIds.filter((k) => !has(k));
-        if (missing.length) warn.push(`Until Mailtrap is set up, these Loops templates aren't configured, so those emails are skipped: ${missing.join(", ")}.`);
       } else {
         problems.push("Convex MAILTRAP_API_TOKEN is not set (no email provider: sign-up confirmation and password reset emails can't be sent).");
       }
+      // Leftovers from the old email provider are never read; flag them so they get deleted.
+      for (const [, k] of out.matchAll(/^(LOOPS_[A-Z0-9_]*)=/gm)) warn.push(`Convex ${k} is set but unused (Loops is no longer used); remove it.`);
       for (const k of ["MAILTRAP_SANDBOX_INBOX_ID", "MAILTRAP_SANDBOX_TOKEN"]) {
         if (has(k)) warn.push(`Convex ${k} is set in production; it is ignored there (the sandbox is for non-production only). Remove it.`);
       }

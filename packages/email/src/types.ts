@@ -64,8 +64,8 @@ export interface SendPolicy {
   allowlist?: string[];
 }
 
-/** Which provider a send went through. `loops` is the legacy path (remove after the Mailtrap cutover). */
-export type EmailProviderKind = "mailtrap" | "mailtrap_sandbox" | "loops";
+/** Which provider a send went through. */
+export type EmailProviderKind = "mailtrap" | "mailtrap_sandbox";
 
 export interface SendEmailInput {
   key: TemplateKey;
@@ -73,8 +73,6 @@ export interface SendEmailInput {
   dataVariables: Record<string, unknown>;
   /** Our send-attempt id (emailSendAttempts): sent as a custom variable so webhooks can be matched. */
   attemptId: string;
-  /** Only the legacy Loops path uses it (as its Idempotency-Key); Mailtrap has none — the attempt row is the guard. */
-  idempotencyKey: string;
 }
 
 export interface SendOutcome {
@@ -121,23 +119,3 @@ export interface MailtrapEvent {
   bounceCategory?: string;
   responseCode?: number;
 }
-
-// ------------------------------------------------------------------ legacy Loops (remove after cutover)
-
-export interface LoopsSendInput {
-  key: TemplateKey;
-  to: string;
-  dataVariables: Record<string, unknown>;
-  idempotencyKey: string;
-  addToAudience?: false;
-}
-
-export type LoopsSendOutcome = SendOutcome;
-
-export type LoopsWebhookEvent = {
-  eventName: string;
-  eventTime: number;
-  transactionalId?: string;
-  emailId?: string;
-  recipient?: string;
-};

@@ -25,8 +25,7 @@
    only data is the link and its lifetime.
 4. **There is no silent fallback.** If an email can't be sent (no provider configured, recipient not
    allowed outside production, provider refusal), the attempt is recorded as failed or skipped and logged.
-   The only other provider path is the **Loops legacy fallback during the cutover** (used when
-   `MAILTRAP_API_TOKEN` is unset and `LOOPS_API_KEY` is set), which is removed afterwards.
+   Mailtrap is the only provider; there is no second one to fall back to.
 5. **Outside production, email never reaches real people.** Non-production deployments send to the
    Mailtrap **Email Sandbox** when `MAILTRAP_SANDBOX_INBOX_ID` + `MAILTRAP_SANDBOX_TOKEN` are set (captured,
    never delivered); otherwise only to `@example.com`, `@test.com` and allowlisted addresses. Identity
@@ -102,5 +101,7 @@ The facts this integration relies on (from Mailtrap's API documentation, Sept 20
 - Until Sept 2026 identity email was rendered by Auth0 and relayed to Loops by an Auth0 Action; removed
   with Auth0.
 - 25–29 Sept 2026: Loops transactional templates (MJML uploaded by hand, `{DATA_VARIABLE:…}`
-  placeholders, one env var per template id). Replaced by in-repo rendering and Mailtrap; the Loops path
-  remains only as a marked legacy fallback until the cutover is complete (EMAIL_OPERATIONS.md §9).
+  placeholders, one env var per template id). Replaced by in-repo rendering and Mailtrap.
+- 29 Sept 2026: after the cutover was confirmed in production, the Loops code was removed. Old send
+  attempts and webhook events from the Loops era stay in the database read-only (their `transactionalId`
+  fields are no longer written); the steps left outside the repository are in EMAIL_OPERATIONS.md §9.

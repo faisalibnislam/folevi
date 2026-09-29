@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   emailManifest,
-  loopsEnvVarFor,
   mailtrapRequestBody,
   selectProvider,
   sendEmail,
@@ -21,7 +20,6 @@ function input(overrides: Partial<SendEmailInput> = {}): SendEmailInput {
     to: "reader@example.com",
     dataVariables: { ...emailManifest.mention_notification.fixture },
     attemptId: "j57abc123def456",
-    idempotencyKey: "mention:evt_123",
     ...overrides,
   };
 }
@@ -51,11 +49,11 @@ function setup(responses: Array<Response | Error>) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("selectProvider", () => {
-  it("prefers Mailtrap, falls back to Loops only during the cutover, else none", () => {
-    expect(selectProvider({ MAILTRAP_API_TOKEN: TOKEN, LOOPS_API_KEY: "k" }, "production")).toMatchObject({ kind: "mailtrap", endpoint: "https://send.api.mailtrap.io/api/send" });
-    expect(selectProvider({ LOOPS_API_KEY: "k" }, "production")).toMatchObject({ kind: "loops" });
+  it("uses Mailtrap when a token is set, else none", () => {
+    expect(selectProvider({ MAILTRAP_API_TOKEN: TOKEN }, "production")).toMatchObject({ kind: "mailtrap", endpoint: "https://send.api.mailtrap.io/api/send" });
     expect(selectProvider({}, "production")).toEqual({ kind: "none" });
-    expect(selectProvider({ MAILTRAP_API_TOKEN: "none", LOOPS_API_KEY: " " }, "production")).toEqual({ kind: "none" });
+    expect(selectProvider({ MAILTRAP_API_TOKEN: "none" }, "production")).toEqual({ kind: "none" });
+    expect(selectProvider({ MAILTRAP_API_TOKEN: " " }, "production")).toEqual({ kind: "none" });
   });
 
   it("uses the sandbox outside production when both sandbox values are set", () => {
@@ -222,23 +220,6 @@ describe("non-production policy", () => {
     expect(calls[0]![0]).toBe("https://sandbox.api.mailtrap.io/api/send/4242");
     expect((calls[0]![1].headers as Record<string, string>).Authorization).toBe(`Bearer ${SANDBOX_TOKEN}`);
     expect(JSON.stringify(calls[0]![1].headers)).not.toContain(TOKEN);
-  });
-});
-
-describe("legacy Loops fallback (cutover only)", () => {
-  it("is used when only Loops is configured, with its idempotency key", async () => {
-    const { fetchImpl, calls } = setup([res(200, { success: true })]);
-    const env = { LOOPS_API_KEY: "loops_key", [loopsEnvVarFor("mention_notification")]: "cltemplate123" };
-    const out = await sendEmail(input(), { env, policy: PROD, fetchImpl });
-    expect(out).toMatchObject({ status: "accepted", provider: "loops" });
-    expect(calls[0]![0]).toBe("https://app.loops.so/api/v1/transactional");
-    expect((calls[0]![1].headers as Record<string, string>)["Idempotency-Key"]).toBe("mention:evt_123");
-  });
-
-  it("is ignored once a Mailtrap token exists", async () => {
-    const { fetchImpl, calls } = setup([res(200)]);
-    await sendEmail(input(), { env: { ...LIVE_ENV, LOOPS_API_KEY: "loops_key" }, policy: PROD, fetchImpl });
-    expect(calls[0]![0]).toBe("https://send.api.mailtrap.io/api/send");
   });
 });
 

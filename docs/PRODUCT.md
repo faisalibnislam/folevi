@@ -15,7 +15,7 @@ This page describes what exists in this repository today, what has been verified
 | Admin console (`app.folevi.com/admin`) | **Live.** Server-enforced platform roles (two-step verification required), append-only audit log, no content viewer (`docs/ADMIN.md`). The first super admin was bootstrapped on production on 2026-09-29. |
 | Backend (Convex) | **Live** (production deployment `fastidious-clownfish-123`, deployed by the Vercel build). Integration tests run against `convex-test`, end-to-end tests against a local backend. |
 | Identity (built-in accounts) | **Live.** Better Auth inside Convex: email + password, confirmed email, optional authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). |
-| Email (Mailtrap) | **Code ready; production cutover pending.** All eleven templates (confirmation, password reset, new device, deletion, invites, mentions, comments, digest, shares, access changes) are rendered in the repository with the app's look and sent through Mailtrap once `MAILTRAP_API_TOKEN` is set. Until then production keeps using the legacy Loops setup (only the two identity templates exist there). Steps: `docs/EMAIL_OPERATIONS.md` §1 and §9. |
+| Email (Mailtrap) | **Live.** All eleven templates (confirmation, password reset, new device, deletion, invites, mentions, comments, digest, shares, access changes) are rendered in the repository with the app's look and sent through Mailtrap, the only provider (`docs/EMAIL_OPERATIONS.md`). |
 | AI Assistant (Gemini) | **Live.** Server-side only (`convex/ai.ts`); the key is a Convex environment variable. |
 | Payments (Stripe) | **Not configured.** Personal and workspace plans, the trial, seats and limits work; paid plans can't be bought until the Stripe variables are set (`.env.example`, `docs/DEPLOYMENT.md`). |
 | Native Mac app (`apps/macos`) | Built and unit-tested against the local backend, brought up to the web's current design on 2026-09-28; signs in through the browser (Authorization Code + PKCE). **Not distributed** (ad-hoc signed, not notarized); the marketing page says “Coming soon”. Work is paused while the web is finished (`docs/MACOS.md`). |
@@ -128,9 +128,10 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 
 - **Still to check on production:** signing out another session from Settings → Security, creating and
   revoking a public link, and export (`docs/DEPLOYMENT.md`, first-release checklist).
-- **Email:** production still sends through Loops (identity templates only) until the Mailtrap cutover
-  (`docs/EMAIL_OPERATIONS.md` §1): verify `mail.folevi.com` in Mailtrap, set `MAILTRAP_API_TOKEN`, create
-  the webhook. Until the Mailtrap webhook exists, delivered/bounced events don't reach the admin email log.
+- **Email:** the previous provider's leftovers still exist outside the repository (Convex `LOOPS_*`
+  variables, the Loops webhook and sending domain, Loops DNS records); remove them per
+  `docs/EMAIL_OPERATIONS.md` §9. Without the Mailtrap webhook, delivered/bounced events don't reach the
+  admin email log.
 - **Payments:** Stripe isn't configured on production (personal or workspace prices).
 - **Account model:** Personal-is-not-a-workspace, workspace plans and members vs guests are built on the
   `account-model` branch; production still runs the old model until the migration in
@@ -150,8 +151,8 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 ## Next
 
 1. Run the account-model migration on production (`docs/ACCOUNT_MODEL_PLAN.md` §3a).
-2. Finish the first-release checklist on production and the Mailtrap cutover (`docs/EMAIL_OPERATIONS.md`
-   §1, then remove Loops per §9).
+2. Finish the first-release checklist on production and remove the Loops leftovers
+   (`docs/EMAIL_OPERATIONS.md` §9).
 3. Stripe on production, so paid personal and workspace plans can be bought.
 4. Mac: catch up with the web (Personal as its own scope, workspace plans, guests), then distribution (Developer ID signing, notarization, universal build
    once the Convex Swift client ships an x86_64 slice, testing on macOS 15).

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { emailManifest, hashRecipient, redactEmail, selectProvider, sendEmail, transactionalIdFor, type TemplateKey } from "@folevi/email";
+import { emailManifest, hashRecipient, redactEmail, selectProvider, sendEmail, type TemplateKey } from "@folevi/email";
 import { ulid } from "@folevi/editor-schema";
 import type { Doc, Id } from "./_generated/dataModel";
 import { bump, type MetricKey } from "./lib/metrics";
@@ -44,13 +44,8 @@ export function productEmailAllowed(key: string, preferenceKey: string, prefs: R
   return true;
 }
 
-/** Providers report webhook times in seconds; everything Folevi stores is milliseconds. */
-export function eventTimeMs(t: number): number {
-  return t < 1e12 ? Math.round(t * 1000) : t;
-}
-
 /**
- * Sends one transactional email (Mailtrap; Loops only as the legacy cutover fallback). Records every
+ * Sends one transactional email through Mailtrap. Records every
  * attempt locally; a 2xx from the provider is recorded as "accepted" (accepted by provider), never as
  * "delivered" — delivery state only comes from signed webhooks.
  *
@@ -110,8 +105,6 @@ export const sendTemplate = internalAction({
       resendOf: args.resendOf,
       resendPayload: RESENDABLE.has(key) ? args.dataVariables : undefined,
       provider: provider.kind === "none" ? undefined : provider.kind,
-      // LEGACY (remove after cutover): only the Loops path matches webhook events by template id.
-      transactionalId: provider.kind === "loops" ? (transactionalIdFor(key, env) ?? undefined) : undefined,
     });
     if (attempt.alreadyAccepted) return { status: "accepted" as const, duplicate: true };
     if (attempt.inFlight) return { status: "queued" as const, duplicate: true };
@@ -125,11 +118,8 @@ export const sendTemplate = internalAction({
       console.warn(JSON.stringify({ event: "email.not_configured", template: key, requestId }));
       return { status: "failed" as const };
     }
-    if (provider.kind === "loops") {
-      console.warn(JSON.stringify({ event: "email.legacy_provider", provider: "loops", template: key, requestId }));
-    }
     const outcome = await sendEmail(
-      { key, to, dataVariables: args.dataVariables, attemptId: attempt.attemptId, idempotencyKey: args.idempotencyKey },
+      { key, to, dataVariables: args.dataVariables, attemptId: attempt.attemptId },
       {
         env,
         policy: {
@@ -167,7 +157,6 @@ export const beginAttempt = internalMutation({
     resendOf: v.optional(v.id("emailSendAttempts")),
     resendPayload: v.optional(v.record(v.string(), v.union(v.string(), v.number()))),
     provider: v.optional(v.string()),
-    transactionalId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -207,7 +196,6 @@ export const beginAttempt = internalMutation({
       resendOf: args.resendOf,
       resendPayload: args.resendPayload,
       provider: args.provider,
-      transactionalId: args.transactionalId,
       ...(suppressed ? { status: "skipped" as const, errorCode: "recipient_suppressed" } : {}),
     });
     return { attemptId, alreadyAccepted: false, inFlight: false, suppressed };
@@ -288,67 +276,6 @@ export const profileByEmail = internalQuery({
 export const getAttempt = internalQuery({
   args: { attemptId: v.id("emailSendAttempts") },
   handler: async (ctx, { attemptId }) => await ctx.db.get(attemptId),
-});
-
-/** LEGACY (Loops): how far back a webhook event may be matched to a send by recipient + template (delivery can lag). */
-const MATCH_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
-
-/**
- * LEGACY (remove after cutover). Stores a verified Loops webhook event (delivery/bounce/complaint), deduplicated on Webhook-Id, and
- * links it to the send attempt it belongs to: by provider message id when Loops gave us one, otherwise
- * the most recent accepted send to the same (hashed) recipient with the same template before the event.
- */
-export const recordProviderEvent = internalMutation({
-  args: {
-    webhookId: v.string(),
-    eventName: v.string(),
-    eventTime: v.number(),
-    transactionalId: v.optional(v.string()),
-    providerEmailId: v.optional(v.string()),
-    recipient: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const dup = await ctx.db
-      .query("emailProviderEvents")
-      .withIndex("by_webhook_id", (q) => q.eq("webhookId", args.webhookId))
-      .unique();
-    if (dup) return { duplicate: true, matched: Boolean(dup.attemptId) };
-    const salt = process.env.FOLEVI_HASH_SALT ?? "folevi-development-salt";
-    const recipientHash = args.recipient ? await hashRecipient(args.recipient, salt) : undefined;
-    const eventTime = eventTimeMs(args.eventTime);
-    let attemptId: Id<"emailSendAttempts"> | undefined;
-    if (args.providerEmailId) {
-      const byId = await ctx.db
-        .query("emailSendAttempts")
-        .withIndex("by_provider_message", (q) => q.eq("providerMessageId", args.providerEmailId))
-        .first();
-      attemptId = byId?._id;
-    }
-    if (!attemptId && recipientHash) {
-      const candidates = await ctx.db
-        .query("emailSendAttempts")
-        .withIndex("by_recipient", (q) => q.eq("recipientHash", recipientHash).gte("createdAt", eventTime - MATCH_WINDOW_MS).lte("createdAt", eventTime + 60_000))
-        .order("desc")
-        .take(25);
-      const match = candidates.find(
-        (c) => c.status === "accepted" && (!args.transactionalId || !c.transactionalId || c.transactionalId === args.transactionalId),
-      );
-      attemptId = match?._id;
-    }
-    await ctx.db.insert("emailProviderEvents", {
-      webhookId: args.webhookId,
-      eventName: args.eventName,
-      eventTime,
-      transactionalId: args.transactionalId,
-      providerEmailId: args.providerEmailId,
-      recipientHash,
-      receivedAt: Date.now(),
-      attemptId,
-    });
-    const reason = args.eventName === "email.hardBounced" ? "hard_bounce" : args.eventName === "email.spamReported" ? "spam_complaint" : null;
-    if (reason && recipientHash) await suppress(ctx, { recipientHash, reason, provider: "loops", eventId: args.webhookId, attemptId });
-    return { duplicate: false, matched: Boolean(attemptId) };
-  },
 });
 
 // ---------------------------------------------------------------- Mailtrap webhooks

@@ -25,7 +25,7 @@ Folevi runs its own accounts on **Better Auth inside Convex**, with exactly thes
 
 The account owner chose this set of methods. Given that set, an external identity provider was mostly
 cost: it added a vendor and a subprocessor holding password hashes, a second place where email was
-rendered (and had to be parsed to reach Loops), plan-dependent features we could not verify, and a
+rendered (and had to be parsed to reach the email provider, Loops at the time), plan-dependent features we could not verify, and a
 revocation model where a signed-out device kept a valid token until it expired.
 
 ## Why built in

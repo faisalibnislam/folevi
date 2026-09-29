@@ -21,7 +21,7 @@ identity service to deploy.
 1. Create a Convex project (`npx convex login`, then `npx convex deploy` once from the repo root to create
    production).
 2. Dashboard → Settings → generate a **Production deploy key** and a **Preview deploy key**.
-3. Set production environment variables (`npx convex env set --prod NAME value`) — the full list with
+3. Set production environment variables (`npx convex env set --deployment <prod-deployment> NAME value`) — the full list with
    descriptions is in `.env.example` (Convex section). Required in production: `FOLEVI_ENV=production`,
    `FOLEVI_APP_URL`, `SITE_URL` (the https app origin, `https://app.folevi.com`; Better Auth runs under
    it and identity-email links point to it), `BETTER_AUTH_SECRET` (at least 32 random bytes, e.g.
@@ -130,14 +130,14 @@ read-only mode, a backup with `--include-file-storage`, deploy, `migrations:migr
    confirmation email arrives (Loops) → onboarding → Welcome
    document; turn on two-step verification in Settings → Security (authenticator + backup codes); sign
    in on a second browser and revoke that session from Settings → Security (it must sign out at once); reset the password by email; `/admin` returns 404 for non-admins; create and revoke a public link; export a page.
-5. Bootstrap the first super admin: `npx convex run --prod admin:bootstrapSuperAdmin '{"email":"…"}'`.
+5. Bootstrap the first super admin: `npx convex run --deployment <prod-deployment> admin:bootstrapSuperAdmin '{"email":"…"}'`.
    That account needs two-step verification on before `/admin` opens.
 6. Recent deployments on the admin dashboard are recorded by CI: the `record-deployment` job in
    `.github/workflows/ci.yml` runs after checks and e2e pass on `main` and calls
    `npx convex run admin:recordDeployment` with the `CONVEX_DEPLOY_KEY` repository secret (the deploy key
    of the deployment `main` ships to; set the `FOLEVI_DEPLOY_ENVIRONMENT` repository variable if it isn't
    `production`). Without the secret the job logs "skipping" and succeeds. To record one by hand:
-   `npx convex run --prod admin:recordDeployment '{"environment":"production","commitSha":"…","commitMessage":"…","source":"manual"}'`.
+   `npx convex run --deployment <prod-deployment> admin:recordDeployment '{"environment":"production","commitSha":"…","commitMessage":"…","source":"manual"}'`.
 
 ## Mac app distribution
 
@@ -150,7 +150,7 @@ Folevi's own accounts, `docs/AUTH_DECISION.md`). To ship it: set the production 
 
 - Convex keeps automatic backups on paid plans; take manual snapshots before risky migrations (always
   before the account-model migration, section 6):
-  `npx convex export --prod --path backups/folevi-$(date +%F).zip` (includes file storage with
+  `npx convex export --deployment <prod-deployment> --path backups/folevi-$(date +%F).zip` (includes file storage with
   `--include-file-storage`). Restore into a staging deployment with `npx convex import` first.
 - Deleted documents are recoverable from Trash for 30 days; blocks from version history.
 

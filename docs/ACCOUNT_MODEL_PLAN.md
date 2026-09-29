@@ -127,7 +127,7 @@ fast, before the risky part.*
    `personalChangeSeq`, `personalStorageUsedBytes`. Deploy.
 2. Scope-aware server: every function takes a `scope` instead of `workspaceId`; reads work for both old
    (personal-workspace) and new rows during the migration window.
-3. Take a production backup (`npx convex export --prod --include-file-storage`).
+3. Take a production backup (`npx convex export --deployment <prod-deployment> --include-file-storage`).
 4. Batched, idempotent backfill per personal workspace: move rows to `ownerProfileId`, move counters,
    convert any collaborators in someone's Personal to page grants (guests) on what they could reach,
    then delete the personal workspace and its membership rows. A verification query must report zero
@@ -429,34 +429,38 @@ What `migrations:migratePersonalWorkspaces` does, one personal workspace at a ti
 
 Steps (run from a checkout of the approved `account-model` commit, with production credentials):
 
+Always name the deployment (`--deployment <prod-deployment>`, e.g. `fastidious-clownfish-123`) rather than
+`--prod`: in a checkout whose `.env.local` points at a local backend, `--prod` can resolve to that local
+deployment and silently run there instead.
+
 1. **Read-only.** Admin console → Maintenance → turn on read-only with a banner ("Folevi is being
    updated; your changes wait on this device"). Writes are refused server-side (`assertWritable`).
 2. **Backup** (includes uploaded files):
-   `npx convex export --prod --include-file-storage --path backups/folevi-prod-$(date +%Y%m%d-%H%M).zip`
+   `npx convex export --deployment <prod-deployment> --include-file-storage --path backups/folevi-prod-$(date +%Y%m%d-%H%M).zip`
    and check the ZIP opens and lists every table.
 3. **Deploy** the backend: `npx convex deploy` (schema: optional `workspaceId`, new `ownerProfileId`
    fields and `by_owner*` indexes; existing rows stay valid). Deploy the web app from the same commit.
-4. **Migrate:** `npx convex run --prod migrations:migratePersonalWorkspaces`. It continues itself; watch
-   the logs (`npx convex logs --prod`) until the scheduled `migrations:*` runs stop (the dashboard's
+4. **Migrate:** `npx convex run --deployment <prod-deployment> migrations:migratePersonalWorkspaces`. It continues itself; watch
+   the logs (`npx convex logs --deployment <prod-deployment>`) until the scheduled `migrations:*` runs stop (the dashboard's
    Schedules page shows what's still pending). Every step is bounded and idempotent: if one fails, run the
    command again.
-   Then (Phase D) `npx convex run --prod migrations:normalizeWorkspaceRoles`: rewrites editor → member,
+   Then (Phase D) `npx convex run --deployment <prod-deployment> migrations:normalizeWorkspaceRoles`: rewrites editor → member,
    commenter → member (comment), viewer → member (view) on memberships and invitations. Nobody's access
    or seat count changes (the code already reads the old names that way), so it's safe at any time after
    the deploy; it continues itself and can be run again.
-5. **Verify:** `npx convex run --prod migrations:verifyAccountModel` starts the check in the background
-   (it returns a `reportId` at once). Then run `npx convex run --prod migrations:accountModelReport` until
+5. **Verify:** `npx convex run --deployment <prod-deployment> migrations:verifyAccountModel` starts the check in the background
+   (it returns a `reportId` at once). Then run `npx convex run --deployment <prod-deployment> migrations:accountModelReport` until
    it says `done: true` (while running it shows `reading: "<table>"` and partial counts). It must say
    `ok: true`, with every count 0: rows with both/neither owner field (`rowsWithBothScopes`,
    `rowsWithNoScope`), rows left in a personal workspace (`rowsInLegacyWorkspaces`), rows outside their
    document's scope, orphaned grants, personal workspaces, profiles with a default workspace, and
    memberships or invitations still holding an old role (`legacyRoles`); `tables` has the per-table
-   details. A given check: `npx convex run --prod migrations:accountModelReport '{"reportId":"<id>"}'`.
+   details. A given check: `npx convex run --deployment <prod-deployment> migrations:accountModelReport '{"reportId":"<id>"}'`.
    Spot-check in the app: each account's Personal has its notes; the team workspace is unchanged.
 6. **Lift read-only.**
 
 **Rollback** = restore the backup: redeploy the previous backend commit (`main`) and the previous web
-build, then `npx convex import --prod --replace-all backups/<file>.zip`. Anything written after the
+build, then `npx convex import --deployment <prod-deployment> --replace-all backups/<file>.zip`. Anything written after the
 backup is lost, which is why the site stays read-only from step 1 until verification passes. The
 migration never deletes content (only the emptied workspace rows, their memberships and invitations).
 

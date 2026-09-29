@@ -151,7 +151,8 @@ counters; `users.bootstrap` seeds Personal directly; `workspaces.mine` lists tea
 "workspace", … }` (`apps/web/src/lib/app/state.tsx`, remembered as `folevi:context`; an older
 `folevi:workspace` value becomes the setting if it's still one of your team workspaces, else Personal —
 the default). Every list, search, task, AI and export call passes the context's `scope`; documents open by
-id from any context, and folder actions show only for pages of the current context. The switcher lists
+id from any context, and folder actions show only for pages of the current context. Open tabs (and where the Home tab
+leads) are kept per context, and switching context from a page, folder or tag opens the new context's Home. The switcher lists
 Personal (your name and plan) first, then Workspaces with your role; Settings has a "You" group and, only
 in a workspace, that workspace's group (General, Members, Import & export). The sync engine routes new
 pages by scope and re-stamps page creates queued by older builds (the old personal workspace → Personal);

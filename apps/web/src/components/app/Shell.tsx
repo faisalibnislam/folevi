@@ -169,7 +169,7 @@ export function Shell() {
   aiOnRef.current = aiOn;
   const createDocument = useCreateDocument();
   const settings = useQuery(api.settings.status, {});
-  const { profile } = useAppState();
+  const { profile, context } = useAppState();
   const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
   const [docSidebarMode, setDocSidebarModePref] = useLocalStorage<"document" | "folders">("folevi:doc-sidebar-mode", "document");
   const pageSidebar = route.name === "doc" && docSidebarMode === "document";
@@ -258,7 +258,7 @@ export function Shell() {
   };
 
   return (
-    <TabsProvider accountKey={profile.id}>
+    <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
     <ShellContext.Provider value={value}>
       <a href="#main" className="sr-only-focusable ui-btn ui-btn-primary fixed left-2 top-2 z-[70] px-4 py-2">
         Skip to content

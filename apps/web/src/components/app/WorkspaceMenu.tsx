@@ -67,10 +67,12 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
     navigate(href);
   };
   const plan = personalPlanLabel(profile);
-  // A folder or tag belongs to one context: switching away from it goes Home instead of "not found".
+  // A page, folder or tag belongs to one context (and each context has its own tabs): switching away from
+  // one goes to the new context's Home instead of leaving the old context's page open without a tab.
   const switchTo = (next: WireScope) => {
+    const same = next.kind === context.kind && (next.kind === "personal" || (context.kind === "workspace" && context.workspaceId === next.workspaceId));
     setContext(next);
-    if (route.name === "folder" || route.name === "tag") go("/documents");
+    if (!same && (route.name === "doc" || route.name === "folder" || route.name === "tag")) go("/documents");
   };
 
   const items: MenuEntry[] = [

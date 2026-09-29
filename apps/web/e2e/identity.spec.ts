@@ -36,8 +36,10 @@ test("Personal is not a workspace; profile pictures and team logos upload and re
   await page.getByRole("button", { name: "Create a workspace" }).last().click();
   await page.getByRole("dialog", { name: "New workspace" }).getByLabel("Workspace name").fill("Iris Studio");
   await page.getByRole("button", { name: "Create workspace" }).click();
-  await page.waitForURL(/\/settings\/workspace$/);
-  await expect(page.getByRole("heading", { name: "Workspace", level: 2 })).toBeVisible();
+  // Already on /settings/workspace, so wait for the dialog to close rather than for the URL.
+  await expect(page.getByRole("dialog", { name: "New workspace" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/settings\/workspace$/);
+  await expect(page.getByRole("heading", { name: "Workspace", exact: true, level: 2 })).toBeVisible();
   await expect(page.getByLabel("Workspace name", { exact: true })).toHaveValue("Iris Studio");
   await expect(page.getByLabel("Workspace name", { exact: true })).not.toHaveAttribute("readonly", "");
   const logo = page.getByRole("group", { name: "Workspace logo" });

@@ -5,8 +5,11 @@ import { APP, completeOnboarding, createAccount, createWorkspace, newPerson, pic
 // account, accepting it as a guest who sees only that page, the Guests list, and making a guest a member.
 
 async function newNote(page: Page, title: string): Promise<string> {
+  const before = page.url();
   await page.getByRole("button", { name: "New note", exact: true }).click();
-  await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+  // The previous new note's URL also ends in ?new=1: wait for this note's own URL and empty title.
+  await page.waitForURL((url) => url.href !== before && /^\/d\/[0-9A-Z]{26}$/.test(url.pathname) && url.searchParams.get("new") === "1");
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("");
   await page.getByRole("textbox", { name: "Title" }).fill(title);
   await page.keyboard.press("Enter");
   await page.keyboard.type(`${title} body`);
@@ -99,7 +102,7 @@ test("members see roles, but only owners and admins see Guests and Import & expo
   const member = await newPerson(browser, "Viewing Member");
   await owner.page.goto(`${APP}/settings/members`);
   await owner.page.getByPlaceholder("name@example.com").fill(member.email);
-  await pick(owner.page.getByLabel("Role"), "Member · view only");
+  await pick(owner.page.getByLabel("Role", { exact: true }), "Member · view only");
   await owner.page.getByRole("button", { name: "Invite" }).click();
   await expect(owner.page.getByRole("status").filter({ hasText: /Invitation sent/ })).toBeVisible();
   await member.page.goto(`${APP}/documents`);

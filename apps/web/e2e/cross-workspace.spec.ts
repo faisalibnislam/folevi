@@ -21,7 +21,9 @@ async function editShared(guest: Page, title: RegExp, where: string, line: strin
   await row.getByRole("link").click();
   const body = guest.getByRole("textbox", { name: "Document body" });
   await expect(body).toHaveAttribute("contenteditable", "true");
-  await body.click();
+  // Click into the first paragraph: the middle of a long page can be a table, whose cells are fields of
+  // their own (Ctrl/⌘+End there only reaches the end of the cell).
+  await body.locator("p").first().click();
   await guest.keyboard.press("ControlOrMeta+End");
   await guest.keyboard.press("Enter");
   await guest.keyboard.type(line);

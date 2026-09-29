@@ -50,7 +50,7 @@ Loops key with hidden input. Existing values are kept unless you pass `--rotate`
 
 1. Import the GitHub repository. Root directory: `apps/web`. Framework: Next.js. Keep "Include files outside
    the Root Directory" on (the build installs and deploys from the repository root). Vercel deploys only the
-   web app — the native macOS and iOS apps in this monorepo ship through Xcode — and the `ignoreCommand` in
+   web app — the native macOS app in this monorepo (`apps/macos`) ships through Xcode — and the `ignoreCommand` in
    `apps/web/vercel.json` skips builds for commits that change only them (or docs). `apps/web/vercel.json`
    sets install and build commands; the build runs `scripts/check-prod-env.mjs`, then
    `npx convex deploy --cmd 'pnpm --filter @folevi/web build'`, which deploys the backend first and injects
@@ -91,7 +91,36 @@ records Loops shows), SPF/DKIM alignment, DMARC (`p=none` with reporting, then `
 templates), and store each `transactionalId` in the matching Convex env var. Optionally configure the
 webhook `https://<deployment>.convex.site/webhooks/loops` and set `LOOPS_WEBHOOK_SECRET`.
 
-## 5. First release checklist
+## 5. Payments (Stripe)
+
+Optional until paid plans go on sale; without it, upgrades say payments aren't set up (non-production
+deployments offer test purchases instead). All variables are server-only, on Convex (`.env.example`,
+Billing section):
+
+- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+- Personal plans (flat, per person): `STRIPE_PRICE_BASIC_MONTH` ($2), `STRIPE_PRICE_BASIC_YEAR` ($9),
+  `STRIPE_PRICE_PRO_MONTH` ($5), `STRIPE_PRICE_PRO_YEAR` ($49).
+- Workspace plans (recurring **per-unit** prices; the app sets the quantity to the workspace's billable
+  seats): `STRIPE_PRICE_WS_TEAM_MONTH` ($5), `STRIPE_PRICE_WS_TEAM_YEAR` ($49),
+  `STRIPE_PRICE_WS_BUSINESS_MONTH` ($10), `STRIPE_PRICE_WS_BUSINESS_YEAR` ($99). Workspace checkout turns on
+  only when all four are set; then flip `WORKSPACE_PLANS[*].available` in `convex/lib/plans.ts` for the
+  public pricing page. Optionally `STRIPE_PORTAL_CONFIG_WS`, a customer-portal configuration that lists only
+  workspace prices and doesn't allow quantity edits.
+- Webhook endpoint `https://<deployment>.convex.site/webhooks/stripe`, sending
+  `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`,
+  `invoice.payment_failed`, `charge.succeeded` and `charge.refunded`. Events are signature-checked, applied
+  once per event id and in order; access is granted only by these events (never by returning from
+  Checkout). Details: `docs/ACCOUNT_MODEL_PLAN.md` (Phase C).
+
+## 6. Account-model migration (one-off)
+
+The `account-model` backend (Personal is not a workspace; workspace plans and seats; members vs guests)
+expects migrated data. Deploy it to production only with the runbook in `docs/ACCOUNT_MODEL_PLAN.md` §3a:
+read-only mode, a backup with `--include-file-storage`, deploy, `migrations:migratePersonalWorkspaces` and
+`migrations:normalizeWorkspaceRoles`, then `migrations:verifyAccountModel` and
+`migrations:accountModelReport` until it says `done: true, ok: true`, and only then lift read-only.
+
+## 7. First release checklist
 
 1. `pnpm install && pnpm exec vitest run && pnpm --filter @folevi/web build` locally.
 2. Push to `main`; CI (lint, typecheck, unit, Convex, e2e, macOS, secret scan, audit) must pass.
@@ -119,7 +148,8 @@ Folevi's own accounts, `docs/AUTH_DECISION.md`). To ship it: set the production 
 
 ## Backups and restore
 
-- Convex keeps automatic backups on paid plans; take manual snapshots before risky migrations:
+- Convex keeps automatic backups on paid plans; take manual snapshots before risky migrations (always
+  before the account-model migration, section 6):
   `npx convex export --prod --path backups/folevi-$(date +%F).zip` (includes file storage with
   `--include-file-storage`). Restore into a staging deployment with `npx convex import` first.
 - Deleted documents are recoverable from Trash for 30 days; blocks from version history.

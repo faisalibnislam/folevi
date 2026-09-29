@@ -2,8 +2,8 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { deviceStatus } from "./lib/devices";
-import type { Doc } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { localDate } from "@folevi/editor-schema";
 import {
   assertIdentityClaims,
@@ -17,14 +17,16 @@ import {
 } from "./lib/auth";
 import { deleteSession, findActiveSession, listUserSessions } from "./lib/authStore";
 import { fail } from "./lib/errors";
-import { entitlementsFor, startTrial } from "./lib/billing";
+import { startTrial } from "./lib/billing";
+import { personalEntitlements } from "./lib/entitlements";
 import { consume } from "./lib/rateLimit";
 import { bump } from "./lib/metrics";
 import { keyedHash } from "./lib/crypto";
 import { vAppearance, vNotificationPrefs } from "./lib/validators";
-import { seedPersonalWorkspace } from "./seed";
-import { notifyInvite } from "./lib/notify";
-import { claimIdentityImage, deleteIdentityImage, identityImageUrl, personalWorkspaceOf, workspaceLabel } from "./lib/identityImages";
+import { seedPersonal } from "./seed";
+import { notifyInvite, wantsInApp } from "./lib/notify";
+import { claimIdentityImage, deleteIdentityImage, identityImageUrl, workspaceLabel } from "./lib/identityImages";
+import { personalScope } from "./lib/scope";
 
 const DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -53,7 +55,6 @@ export function publicProfile(p: Doc<"profiles">) {
     onboardingStep: p.onboardingStep,
     platformRole: p.platformRole ?? null,
     status: p.status,
-    defaultWorkspaceId: null as string | null,
     notificationPrefs: p.notificationPrefs,
     deletionScheduledFor: p.deletionScheduledFor ?? null,
     createdAt: p.createdAt,
@@ -80,23 +81,23 @@ export const me = query({
     // Over the plan's device limit: this device waits until another signs out or the plan is upgraded.
     const devices = await deviceStatus(ctx, profile, sessionId);
     if (!devices.allowed) return { state: "device_limit" as const, limit: devices.limit ?? 0, active: devices.active };
-    const workspace = profile.defaultWorkspaceId ? await ctx.db.get(profile.defaultWorkspaceId) : null;
     return {
       state: "ready" as const,
       profile: {
         ...publicProfile(profile),
-        defaultWorkspaceId: workspace?.publicId ?? null,
         avatarUrl: await identityImageUrl(ctx, profile.avatarFileId),
-        // What their plan includes right now (AI, storage, trial) — the server enforces it again.
-        entitlements: await entitlementsFor(ctx, profile._id),
+        // What their Personal plan includes right now (AI in Personal, storage, devices, trial) — the server
+        // enforces it again. A team workspace's own plan is on workspaces.mine.
+        entitlements: await personalEntitlements(ctx, profile._id),
       },
     };
   },
 });
 
 /**
- * First sign-in: creates the profile and a personal workspace with seed content. Idempotent — a second
- * call returns the existing profile. Identity data comes only from the verified token.
+ * First sign-in: creates the profile and seeds their Personal with example content (no workspace is
+ * created: Personal is not a workspace). Idempotent — a second call returns the existing profile.
+ * Identity data comes only from the verified token.
  */
 export const bootstrap = mutation({
   args: { timeZone: v.string(), locale: v.string() },
@@ -146,8 +147,7 @@ export const bootstrap = mutation({
       lastActiveAt: now,
     });
     const profile = (await ctx.db.get(profileId))!;
-    const workspaceId = await seedPersonalWorkspace(ctx, profile, localDate(now, timeZone));
-    await ctx.db.patch(profileId, { defaultWorkspaceId: workspaceId });
+    await seedPersonal(ctx, profile, localDate(now, timeZone));
     // Every new account starts with a Pro trial.
     await startTrial(ctx, profileId);
     await bump(ctx, "users_total");
@@ -167,7 +167,27 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
     if (invite.status !== "pending" || invite.expiresAt < Date.now()) continue;
     const workspace = await ctx.db.get(invite.workspaceId);
     if (!workspace) continue;
-    await notifyInvite(ctx, { recipient: profile, actorId: invite.invitedBy, workspaceId: invite.workspaceId, inviteId: invite._id, title: `You're invited to ${await workspaceLabel(ctx, workspace)}` });
+    await notifyInvite(ctx, { recipient: profile, actorId: invite.invitedBy, workspaceId: invite.workspaceId, inviteId: invite._id, title: `You're invited to ${workspaceLabel(workspace)}` });
+  }
+  // Pages shared with this address before the account existed: a notice to accept each (nothing is
+  // granted until they do).
+  const pageInvites = await ctx.db
+    .query("pageInvites")
+    .withIndex("by_email", (q) => q.eq("email", profile.email))
+    .take(100);
+  for (const invite of pageInvites) {
+    if (invite.status !== "pending" || invite.expiresAt < Date.now()) continue;
+    const doc = await ctx.db.get(invite.documentId);
+    if (!doc || doc.inTrash || !wantsInApp(profile.notificationPrefs, "share")) continue;
+    const inviter = await ctx.db.get(invite.invitedBy);
+    await ctx.db.insert("notifications", {
+      profileId: profile._id,
+      kind: "share",
+      actorId: invite.invitedBy,
+      pageInviteId: invite._id,
+      title: `${inviter?.displayName ?? "Someone"} shared “${(doc.title || "Untitled").slice(0, 100)}” with you`.slice(0, 200),
+      createdAt: Date.now(),
+    });
   }
 }
 
@@ -181,13 +201,7 @@ export const completeOnboardingStep = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     if (args.step === "workspace") {
-      // A personal workspace keeps its fixed name ("Personal"); only a team workspace takes the name given here.
-      const workspace = profile.defaultWorkspaceId ? await ctx.db.get(profile.defaultWorkspaceId) : null;
-      if (workspace && workspace.kind === "team") {
-        const name = sanitizeName(args.workspaceName ?? "");
-        if (!name) fail("invalid_argument", "Give your workspace a name.");
-        await ctx.db.patch(workspace._id, { name, updatedAt: Date.now() });
-      }
+      // Personal needs no name; `workspaceName` is accepted from older clients and ignored.
       await ctx.db.patch(profile._id, { onboardingStep: "appearance" });
     } else if (args.step === "appearance") {
       await ctx.db.patch(profile._id, { appearance: args.appearance ?? "system", onboardingStep: "welcome" });
@@ -229,16 +243,14 @@ export const updateProfile = mutation({
 
 /**
  * Sets your profile picture to an image just uploaded with `files.generateUploadUrl` (kind "avatar"),
- * which stores it in your personal workspace. The previous picture is deleted.
+ * which stores it as a Personal file (counted in your personal storage). The previous picture is deleted.
  */
 export const setAvatar = mutation({
   args: { fileId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const personal = await personalWorkspaceOf(ctx, profile._id);
-    if (!personal) fail("not_found", "Workspace not found.");
-    const file = await claimIdentityImage(ctx, profile, args.fileId, "avatar", personal._id);
+    const file = await claimIdentityImage(ctx, profile, args.fileId, "avatar", personalScope(profile._id));
     const previous = profile.avatarFileId;
     await ctx.db.patch(profile._id, { avatarFileId: file._id });
     if (previous && previous !== file._id) await deleteIdentityImage(ctx, previous);
@@ -408,12 +420,50 @@ function browserLabel(ua: string): string {
 
 // ---------------------------------------------------------------- account deletion
 
+/**
+ * Team workspaces `profileId` owns that still have other members (and aren't already being deleted).
+ * Deleting the account needs each of them handed on or deleted first; owned workspaces with nobody else
+ * in them are deleted with the account.
+ */
+export async function ownedWorkspacesWithMembers(ctx: QueryCtx, profileId: Id<"profiles">): Promise<{ id: string; name: string; otherMembers: number }[]> {
+  const owned = await ctx.db
+    .query("workspaces")
+    .withIndex("by_owner", (q) => q.eq("ownerId", profileId))
+    .collect();
+  const out = [];
+  for (const w of owned) {
+    if (w.kind !== "team" || w.status === "deleting" || w.deletionScheduledFor !== undefined) continue;
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", w._id))
+      .collect();
+    const others = members.filter((m) => m.profileId !== profileId).length;
+    if (others > 0) out.push({ id: w.publicId, name: w.name, otherMembers: others });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** What stands in the way of deleting your account (Settings → Security shows it before you confirm). */
+export const deletionBlockers = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    return { workspaces: await ownedWorkspacesWithMembers(ctx, profile._id) };
+  },
+});
+
 export const requestAccountDeletion = mutation({
   args: { confirmEmail: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     if (args.confirmEmail.trim().toLowerCase() !== profile.email) fail("invalid_argument", "Type your email address exactly to confirm.");
     if (profile.status === "pending_deletion") return { scheduledFor: profile.deletionScheduledFor ?? Date.now() };
+    // Other people's work is never deleted with your account: hand those workspaces on (or delete them) first.
+    const blockers = await ownedWorkspacesWithMembers(ctx, profile._id);
+    if (blockers.length) {
+      const names = blockers.map((b) => `“${b.name}”`).join(", ");
+      fail("forbidden", `You own ${blockers.length === 1 ? "a workspace" : "workspaces"} other people use: ${names}. Transfer ownership to another member or delete ${blockers.length === 1 ? "it" : "them"} first.`);
+    }
     const scheduledFor = Date.now() + DELETION_GRACE_MS;
     await ctx.db.patch(profile._id, { status: "pending_deletion", deletionScheduledFor: scheduledFor });
     await ctx.db.insert("deletionJobs", {

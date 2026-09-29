@@ -40,6 +40,7 @@ import {
 import type { DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
+import { documentScope } from "@/lib/app/scope";
 import { IconButton, Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
@@ -120,7 +121,7 @@ export function Inspector({
   onAiTitle?: (title: string) => void;
 }) {
   const baseId = useId();
-  const aiOn = useAiEnabled();
+  const aiOn = useAiEnabled(meta?.document);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments">>("format");
   useEffect(() => {
@@ -630,7 +631,7 @@ function Choice({ label, on, onPick, children, wide }: { label: string; on: bool
 }
 
 function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: Meta | null; disabled: boolean }) {
-  const { engine, workspace } = useAppState();
+  const { engine } = useAppState();
   const client = useConvex();
   const toast = useToast();
   const [open, setOpen] = useState<string | null>(null);
@@ -659,7 +660,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
     if (typeof navigator !== "undefined" && !navigator.onLine) return toast.show("Connect to the internet to upload an image.", { tone: "error" });
     setUploading(true);
     try {
-      const fileId = await uploadCoverImage(client, { workspaceId: workspace.id, documentId, file });
+      const fileId = await uploadCoverImage(client, { documentId, file });
       setCover({ kind: "image", value: fileId });
     } catch (e) {
       toast.show(errorMessage(e), { tone: "error" });
@@ -872,8 +873,9 @@ function ActionList({ actions }: { actions: (MenuItem | "separator")[] }) {
 
 function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: string; meta: Meta | null; onHistory: () => void; disabled: boolean }) {
   const info = useQuery(api.documents.info, meta ? { documentId } : "skip");
-  const { workspace } = useAppState();
-  const org = useQuery(api.organization.sidebar, { workspaceId: workspace.id });
+  // Tags come from the note's own scope (it may be open from another context than the current one).
+  const home = meta?.isMember ? documentScope(meta.document) : null;
+  const org = useQuery(api.organization.sidebar, home ? { scope: home } : "skip");
   const setTags = useMutation(api.organization.setDocumentTags);
   const createTag = useMutation(api.organization.createTag);
   const move = useMutation(api.documents.move);
@@ -957,7 +959,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
             </Button>
           ) : null}
         </div>
-        <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={meta.document.title} currentParentId={parent?.id ?? null} />
+        <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={meta.document.title} currentParentId={parent?.id ?? null} home={home} />
       </section>
       <section>
         <h3 className="ui-caps mb-2 px-1">Tags</h3>
@@ -987,7 +989,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
               if (!name) return;
               try {
                 const existing = org?.tags.find((t) => t.name.toLowerCase() === name.toLowerCase());
-                const id = existing?.id ?? (await createTag({ workspaceId: workspace.id, name })).id;
+                const id = existing?.id ?? (await createTag({ scope: home ?? documentScope(meta.document), name })).id;
                 await setTags({ documentId, tagIds: [...new Set([...tags.map((t) => t.id), id])] });
                 setNewTag("");
               } catch (err) {

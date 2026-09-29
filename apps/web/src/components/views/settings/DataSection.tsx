@@ -4,7 +4,7 @@ import { useAction, useConvex, useMutation } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { FolderUp, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";
-import { useAppState } from "@/lib/app/state";
+import type { WireScope } from "@folevi/editor-schema";
 import { AppLink } from "@/lib/app/router";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -16,11 +16,15 @@ type Result = { name: string; id?: string; warnings: { line?: number; message: s
 
 const MAX_DOCS = 50;
 
-export function DataSection() {
-  const { workspace } = useAppState();
+/** Where to import into and export from: your Personal, or a team workspace (under that workspace's settings). */
+export type DataTarget = { kind: "personal" } | { kind: "workspace"; workspaceId: string; name: string };
+
+export function DataSection({ target }: { target: DataTarget }) {
+  const scope: WireScope = target.kind === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: target.workspaceId };
+  const where = target.kind === "personal" ? "Personal" : target.name;
   const client = useConvex();
   const importText = useMutation(api.imports.importText);
-  const exportWorkspace = useAction(api.exports.exportWorkspace);
+  const exportScope = useAction(api.exports.exportScope);
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -54,7 +58,7 @@ export function DataSection() {
         let p = uploaded.get(entry);
         if (!p) {
           const name = entry.path.split("/").pop() ?? "image";
-          p = uploadFileNow(client, { workspaceId: workspace.id, blob: entry.blob, filename: name, mimeType: imageMime(entry.path) ?? "application/octet-stream", kind: "image" });
+          p = uploadFileNow(client, { scope, blob: entry.blob, filename: name, mimeType: imageMime(entry.path) ?? "application/octet-stream", kind: "image" });
           uploaded.set(entry, p);
         }
         return p;
@@ -85,7 +89,7 @@ export function DataSection() {
               }
             }
           }
-          const r = await importText({ workspaceId: workspace.id, filename: name, content, format: markdown ? "markdown" : "text", imageMap: images ? imageMap : undefined });
+          const r = await importText({ scope, filename: name, content, format: markdown ? "markdown" : "text", imageMap: images ? imageMap : undefined });
           out.push({ name: doc.path, id: r.document.id, warnings: [...warnings, ...r.warnings], images });
         } catch (err) {
           out.push({ name: doc.path, warnings: [], error: errorMessage(err) });
@@ -106,7 +110,7 @@ export function DataSection() {
   return (
     <>
       <Card
-        title="Import"
+        title={`Import into ${where}`}
         description="Markdown (.md) and plain text (.txt) files, a folder, or a ZIP. Images referenced by relative paths inside a folder or ZIP are uploaded with the page. Headings, lists, checklists, links, code, quotes, tables and the front-matter title are kept. Anything we can’t convert is kept as text and listed below."
       >
         <input
@@ -175,7 +179,7 @@ export function DataSection() {
           </ul>
         ) : null}
       </Card>
-      <Card title="Export workspace" description="A ZIP with every document as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, documents and files. Single pages can be exported from their ••• menu as Markdown, HTML or PDF.">
+      <Card title={`Export ${where}`} description={`A ZIP with every document in ${where} as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, documents and files. Single pages can be exported from their ••• menu as Markdown, HTML or PDF.`}>
         <Button
           variant="primary"
           disabled={busy}
@@ -183,7 +187,7 @@ export function DataSection() {
             setBusy(true);
             setExportNote(null);
             try {
-              const r = await exportWorkspace({ workspaceId: workspace.id });
+              const r = await exportScope({ scope });
               const a = document.createElement("a");
               a.href = r.url;
               a.download = r.filename;
@@ -204,7 +208,7 @@ export function DataSection() {
             }
           }}
         >
-          {busy ? "Preparing…" : "Export workspace (.zip)"}
+          {busy ? "Preparing…" : `Export ${where} (.zip)`}
         </Button>
         {exportNote ? (
           <p className="mt-2 text-xs text-muted" role="status">

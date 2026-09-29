@@ -38,6 +38,7 @@ import type * as lib_create from "../lib/create.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_devices from "../lib/devices.js";
 import type * as lib_documents from "../lib/documents.js";
+import type * as lib_entitlements from "../lib/entitlements.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_fileUrls from "../lib/fileUrls.js";
 import type * as lib_flags from "../lib/flags.js";
@@ -49,10 +50,14 @@ import type * as lib_metrics from "../lib/metrics.js";
 import type * as lib_nativeAuth from "../lib/nativeAuth.js";
 import type * as lib_nativeClients from "../lib/nativeClients.js";
 import type * as lib_notify from "../lib/notify.js";
+import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_plans from "../lib/plans.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_scope from "../lib/scope.js";
+import type * as lib_seats from "../lib/seats.js";
 import type * as lib_seedContent from "../lib/seedContent.js";
 import type * as lib_seq from "../lib/seq.js";
+import type * as lib_stripe from "../lib/stripe.js";
 import type * as lib_syncEngine from "../lib/syncEngine.js";
 import type * as lib_templates from "../lib/templates.js";
 import type * as lib_validators from "../lib/validators.js";
@@ -70,6 +75,7 @@ import type * as tasks from "../tasks.js";
 import type * as testSupport from "../testSupport.js";
 import type * as unsplash from "../unsplash.js";
 import type * as users from "../users.js";
+import type * as workspaceBilling from "../workspaceBilling.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -109,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   "lib/crypto": typeof lib_crypto;
   "lib/devices": typeof lib_devices;
   "lib/documents": typeof lib_documents;
+  "lib/entitlements": typeof lib_entitlements;
   "lib/errors": typeof lib_errors;
   "lib/fileUrls": typeof lib_fileUrls;
   "lib/flags": typeof lib_flags;
@@ -120,10 +127,14 @@ declare const fullApi: ApiFromModules<{
   "lib/nativeAuth": typeof lib_nativeAuth;
   "lib/nativeClients": typeof lib_nativeClients;
   "lib/notify": typeof lib_notify;
+  "lib/permissions": typeof lib_permissions;
   "lib/plans": typeof lib_plans;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/scope": typeof lib_scope;
+  "lib/seats": typeof lib_seats;
   "lib/seedContent": typeof lib_seedContent;
   "lib/seq": typeof lib_seq;
+  "lib/stripe": typeof lib_stripe;
   "lib/syncEngine": typeof lib_syncEngine;
   "lib/templates": typeof lib_templates;
   "lib/validators": typeof lib_validators;
@@ -141,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   testSupport: typeof testSupport;
   unsplash: typeof unsplash;
   users: typeof users;
+  workspaceBilling: typeof workspaceBilling;
   workspaces: typeof workspaces;
 }>;
 

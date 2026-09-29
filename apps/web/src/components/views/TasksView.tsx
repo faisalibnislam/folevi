@@ -29,8 +29,8 @@ const PRIORITY_LABEL: Record<Priority, string> = { none: "None", low: "Low", med
 
 export type TaskRow = NonNullable<ReturnType<typeof useTasks>>[number];
 function useTasks(view: View) {
-  const { workspace, today } = useAppState();
-  return useQuery(api.tasks.list, { workspaceId: workspace.id, view, today });
+  const { scope, today } = useAppState();
+  return useQuery(api.tasks.list, { scope, view, today });
 }
 
 export function TaskItem({ task, today, onToggle, onEdit, draggable = true, action }: { task: TaskRow; today: string; onToggle: (t: TaskRow) => void; onEdit?: (t: TaskRow) => void; draggable?: boolean; action?: ReactNode }) {
@@ -125,8 +125,10 @@ export function TaskEditDialog({ task, onClose }: { task: TaskRow | null; onClos
 }
 
 function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void }) {
-  const { workspace, deviceId } = useAppState();
-  const members = useQuery(api.workspaces.members, { workspaceId: workspace.id });
+  const { workspace, profile, deviceId } = useAppState();
+  const members = useQuery(api.workspaces.members, workspace ? { workspaceId: workspace.id } : "skip");
+  // Personal has no members: its tasks are yours (a guest on a page can still be the assignee already set).
+  const people = workspace ? members?.members : [{ profileId: profile.id, displayName: profile.displayName, isYou: true }];
   const update = useMutation(api.tasks.update);
   const toast = useToast();
   const [status, setStatus] = useState(task.status);
@@ -211,13 +213,13 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
             <span className="block text-muted">Assignee</span>
             <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="mt-1 h-9 w-full ui-input rounded-[6px] px-3">
               <option value="">Unassigned</option>
-              {members?.members.map((m) => (
+              {people?.map((m) => (
                 <option key={m.profileId} value={m.profileId}>
                   {m.displayName}
                   {m.isYou ? " (you)" : ""}
                 </option>
               ))}
-              {task.assigneeId && members && !members.members.some((m) => m.profileId === task.assigneeId) ? <option value={task.assigneeId}>{task.assigneeName ?? "Former member"}</option> : null}
+              {task.assigneeId && people && !people.some((m) => m.profileId === task.assigneeId) ? <option value={task.assigneeId}>{task.assigneeName ?? "Former member"}</option> : null}
             </Select>
           </label>
         </div>
@@ -241,9 +243,9 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
 }
 
 export function TasksView({ view }: { view: View }) {
-  const { today, workspace } = useAppState();
+  const { today, scope, context } = useAppState();
   const tasks = useTasks(view);
-  const counts = useQuery(api.tasks.counts, { workspaceId: workspace.id, today });
+  const counts = useQuery(api.tasks.counts, { scope, today });
   const { openQuickAdd } = useShell();
   const toggle = useToggleTask();
   const [filter, setFilter] = useState("");
@@ -251,7 +253,7 @@ export function TasksView({ view }: { view: View }) {
   const shown = (tasks ?? []).filter((t) => !filter || t.title.toLowerCase().includes(filter.toLowerCase()) || t.documentTitle.toLowerCase().includes(filter.toLowerCase()));
   const groups = view === "upcoming" ? groupByDate(shown) : [{ key: "all", label: null as string | null, items: shown }];
   const meta = VIEWS.find((v) => v.id === view)!;
-  const empty = view === "mine" && workspace.kind === "personal" && workspace.role === "owner" ? "No open tasks. In your personal workspace every unassigned task is yours." : meta.empty;
+  const empty = view === "mine" && context.kind === "personal" ? "No open tasks. In Personal every unassigned task is yours." : meta.empty;
 
   return (
     <ViewChrome

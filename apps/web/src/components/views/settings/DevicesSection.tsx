@@ -55,8 +55,8 @@ export function DevicesSection() {
               {limit === null
                 ? entitlements?.trialing
                   ? "Unlimited devices during your Pro trial."
-                  : "Your plan includes unlimited devices."
-                : `Your plan works on ${limit} ${plural(limit)} at a time. A new device beyond that asks you to sign one out first.`}
+                  : "Your personal plan includes unlimited devices."
+                : `Your personal plan works on ${limit} ${plural(limit)} at a time, in Personal and every workspace. A new device beyond that asks you to sign one out first.`}
             </p>
             {limit !== null ? (
               <div className="mt-2.5 h-1.5 max-w-sm overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label="Devices connected" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={count ?? 0}>

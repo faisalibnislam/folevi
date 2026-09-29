@@ -64,7 +64,7 @@ async function world(t: T, prefs: { member?: Partial<Prefs>; guest?: Partial<Pre
     const guest = await insertProfile(ctx, "guest@example.com", prefs.guest);
     const workspaceId = await insertWorkspace(ctx, owner, [[member, "editor"]]);
     const actor = (await ctx.db.get(owner))!;
-    const doc = await createDocument(ctx, { workspaceId, actor, title: "Spring planting plan" });
+    const doc = await createDocument(ctx, { scope: { kind: "workspace", workspaceId }, actor, title: "Spring planting plan" });
     return { owner, member, guest, workspaceId, docId: doc._id };
   });
 }
@@ -228,7 +228,7 @@ describe("access change notifications", () => {
       await notifyAccessChange(ctx, { recipientId: w.owner, actor, change: { type: "workspace_removed", workspace } });
     });
     const rows = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
-    expect(rows.map((r) => r.title)).toEqual(["owner changed your role in “Field Notes” to Viewer.", "owner removed you from “Field Notes”."]);
+    expect(rows.map((r) => r.title)).toEqual(["owner changed your role in “Field Notes” to Member (view only).", "owner removed you from “Field Notes”."]);
     expect(rows[1]!.workspaceId).toBeUndefined();
   });
 });

@@ -8,7 +8,7 @@ type P = Awaited<ReturnType<typeof person>>;
 async function newDoc(p: P, title = "Doc") {
   const id = ulid();
   const [r] = await p.as.mutation(api.sync.push, {
-    workspaceId: p.workspaceId,
+    scope: p.scope,
     deviceId: "device-test-1",
     ops: [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title, icon: null } }],
   });
@@ -18,7 +18,7 @@ async function newDoc(p: P, title = "Doc") {
 
 async function upsert(p: P, documentId: string, block: WireBlock) {
   const [r] = await p.as.mutation(api.sync.push, {
-    workspaceId: p.workspaceId,
+    scope: p.scope,
     deviceId: "device-test-1",
     ops: [{ opId: ulid(), kind: "block.upsert", documentId, block, baseRevision: null, fields: ["content", "position"] }],
   });

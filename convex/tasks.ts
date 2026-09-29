@@ -2,12 +2,38 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { inboxDocumentId, rankBetween, SCHEMA_VERSION, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, requireWorkspace } from "./lib/auth";
+import { inboxDocumentId, rankBetween, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { SyncEngine } from "./lib/syncEngine";
+import { inScope, sameScopeRows, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
 import { setTrashState } from "./documents";
+
+/** A scope's tasks of one status (Personal: by owner; a workspace: by workspace), by due date. */
+function tasksByDue(ctx: QueryCtx, scope: Scope, status: Doc<"tasks">["status"], range?: { from: string; to: string }) {
+  const base = ctx.db.query("tasks");
+  if (scope.kind === "personal") {
+    return base.withIndex("by_owner_status_due", (q) => {
+      const b = q.eq("ownerProfileId", scope.profileId).eq("status", status);
+      return range ? b.gte("dueDate", range.from).lte("dueDate", range.to) : b;
+    });
+  }
+  return base.withIndex("by_workspace_status_due", (q) => {
+    const b = q.eq("workspaceId", scope.workspaceId).eq("status", status);
+    return range ? b.gte("dueDate", range.from).lte("dueDate", range.to) : b;
+  });
+}
+
+/** A scope's closed tasks of one status, most recently closed first. */
+function tasksByCompleted(ctx: QueryCtx, scope: Scope, status: Doc<"tasks">["status"]) {
+  const base = ctx.db.query("tasks");
+  return (
+    scope.kind === "personal"
+      ? base.withIndex("by_owner_status_completed", (q) => q.eq("ownerProfileId", scope.profileId).eq("status", status))
+      : base.withIndex("by_workspace_status_completed", (q) => q.eq("workspaceId", scope.workspaceId).eq("status", status))
+  ).order("desc");
+}
 
 const vView = v.union(v.literal("inbox"), v.literal("today"), v.literal("upcoming"), v.literal("all"), v.literal("completed"), v.literal("mine"));
 
@@ -42,42 +68,31 @@ async function present(ctx: QueryCtx, profile: Doc<"profiles">, tasks: Doc<"task
   return out;
 }
 
-/** Global task views. `today` is the viewer's local date (the client knows its time zone best). */
+/** Task views of a scope. `today` is the viewer's local date (the client knows its time zone best). */
 export const list = query({
-  args: { workspaceId: v.string(), view: vView, today: v.string() },
+  args: { scope: vScopeArg, view: vView, today: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(args.today)) fail("invalid_argument", "Invalid date.");
-    // In your own personal workspace unassigned tasks are yours; collaborators there only get what's assigned to them.
-    const personalWorkspace = workspace.kind === "personal" && workspace.ownerId === profile._id;
+    // In your own Personal unassigned tasks are yours (a Personal scope is always the caller's own).
+    const personal = scope.kind === "personal";
     let rows: Doc<"tasks">[];
     if (args.view === "completed") {
       // Closed tasks: done and canceled, most recently closed first.
       const closed: Doc<"tasks">[] = [];
-      for (const status of ["done", "canceled"] as const) {
-        closed.push(
-          ...(await ctx.db
-            .query("tasks")
-            .withIndex("by_workspace_status_completed", (q) => q.eq("workspaceId", workspace._id).eq("status", status))
-            .order("desc")
-            .take(200)),
-        );
-      }
+      for (const status of ["done", "canceled"] as const) closed.push(...(await tasksByCompleted(ctx, scope, status).take(200)));
       rows = closed.sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt)).slice(0, 200);
-    } else if (args.view === "mine" && !personalWorkspace) {
+    } else if (args.view === "mine" && !personal) {
       rows = (
         await ctx.db
           .query("tasks")
           .withIndex("by_assignee_status", (q) => q.eq("assigneeId", profile._id).eq("status", "open"))
           .take(500)
-      ).filter((t) => t.workspaceId === workspace._id);
+      ).filter((t) => inScope(t, scope));
     } else {
-      rows = await ctx.db
-        .query("tasks")
-        .withIndex("by_workspace_status_due", (q) => q.eq("workspaceId", workspace._id).eq("status", "open"))
-        .take(1000);
-      rows = rows.filter((t) => taskViews({ status: t.status, dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personalWorkspace }).includes(args.view));
+      rows = await tasksByDue(ctx, scope, "open").take(1000);
+      rows = rows.filter((t) => taskViews({ status: t.status, dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personal }).includes(args.view));
     }
     rows = rows.filter((t) => !t.documentInTrash);
     const presented = await present(ctx, profile, rows);
@@ -92,20 +107,15 @@ export const list = query({
 });
 
 export const counts = query({
-  args: { workspaceId: v.string(), today: v.string() },
+  args: { scope: vScopeArg, today: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
-    const open = (
-      await ctx.db
-        .query("tasks")
-        .withIndex("by_workspace_status_due", (q) => q.eq("workspaceId", workspace._id).eq("status", "open"))
-        .take(1000)
-    ).filter((t) => !t.documentInTrash);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const open = (await tasksByDue(ctx, scope, "open").take(1000)).filter((t) => !t.documentInTrash);
     const c = { inbox: 0, today: 0, upcoming: 0, all: 0, mine: 0 };
-    // In your own personal workspace unassigned tasks are yours; collaborators there only get what's assigned to them.
-    const personalWorkspace = workspace.kind === "personal" && workspace.ownerId === profile._id;
-    for (const t of open) for (const view of taskViews({ status: "open", dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personalWorkspace })) {
+    // In your own Personal unassigned tasks are yours.
+    const personal = scope.kind === "personal";
+    for (const t of open) for (const view of taskViews({ status: "open", dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personal })) {
       if (view in c) c[view as keyof typeof c]++;
     }
     return c;
@@ -114,20 +124,13 @@ export const counts = query({
 
 /** Tasks due within a date range, for the calendar. */
 export const range = query({
-  args: { workspaceId: v.string(), from: v.string(), to: v.string(), includeCompleted: v.optional(v.boolean()) },
+  args: { scope: vScopeArg, from: v.string(), to: v.string(), includeCompleted: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     const statuses: Doc<"tasks">["status"][] = args.includeCompleted ? ["open", "done"] : ["open"];
     const rows: Doc<"tasks">[] = [];
-    for (const status of statuses) {
-      rows.push(
-        ...(await ctx.db
-          .query("tasks")
-          .withIndex("by_workspace_status_due", (q) => q.eq("workspaceId", workspace._id).eq("status", status).gte("dueDate", args.from).lte("dueDate", args.to))
-          .take(1000)),
-      );
-    }
+    for (const status of statuses) rows.push(...(await tasksByDue(ctx, scope, status, { from: args.from, to: args.to }).take(1000)));
     return await present(ctx, profile, rows.filter((t) => !t.documentInTrash));
   },
 });
@@ -142,8 +145,7 @@ async function taskBlock(ctx: MutationCtx, profile: Doc<"profiles">, blockId: st
   const access = await documentAccess(ctx, profile, doc);
   if (access === "none") fail("not_found", "Task not found.");
   if (!accessAtLeast(access, "write")) fail("forbidden", "You can't edit this task.");
-  const workspace = (await ctx.db.get(doc.workspaceId))!;
-  return { row, doc, workspace };
+  return { row, doc };
 }
 
 /** Edits a task's canonical block (server-side convenience for list/calendar views). Returns undo info. */
@@ -162,7 +164,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { row, doc, workspace } = await taskBlock(ctx, profile, args.blockId);
+    const { row, doc } = await taskBlock(ctx, profile, args.blockId);
     const before = toWireBlock(row);
     const props = { ...(row.props as Record<string, unknown>) };
     if (args.checked !== undefined) {
@@ -202,8 +204,12 @@ export const update = mutation({
       if (args.assigneeId === null) delete props.assigneeId;
       else {
         const id = ctx.db.normalizeId("profiles", args.assigneeId);
-        const member = id ? await ctx.db.query("workspaceMembers").withIndex("by_workspace_profile", (q) => q.eq("workspaceId", doc.workspaceId).eq("profileId", id)).unique() : null;
-        if (!member) fail("invalid_argument", "Assignees must be workspace members.");
+        const assignee = id ? await ctx.db.get(id) : null;
+        // Someone who can see the note: a member of its workspace — or, in Personal, its owner or a guest on it.
+        const workspaceId = doc.workspaceId;
+        const member = assignee && workspaceId ? await ctx.db.query("workspaceMembers").withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId).eq("profileId", assignee._id)).unique() : null;
+        const canSee = workspaceId ? Boolean(member) : Boolean(assignee && assignee.status === "active" && accessAtLeast(await documentAccess(ctx, assignee, doc), "read"));
+        if (!canSee) fail("invalid_argument", workspaceId ? "Assignees must be workspace members." : "Assignees must be able to see this note.");
         props.assigneeId = args.assigneeId;
       }
     }
@@ -212,7 +218,7 @@ export const update = mutation({
       else props.reminderAt = args.reminderAt;
     }
     const engine = new SyncEngine(ctx, profile, args.deviceId ?? "server");
-    const [result] = await engine.applyAll(workspace.publicId, [
+    const [result] = await engine.applyAll(null, [
       {
         opId: ulid(),
         kind: "block.upsert",
@@ -234,7 +240,7 @@ export const update = mutation({
  */
 export const quickAdd = mutation({
   args: {
-    workspaceId: v.string(),
+    scope: vScopeArg,
     title: v.string(),
     today: v.string(),
     dueDate: v.optional(v.string()),
@@ -246,17 +252,28 @@ export const quickAdd = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "editor");
+    const { scope, workspace } = await resolveScope(ctx, profile, args.scope, "edit");
+    const scopeArg: ScopeArg = workspace ? { kind: "workspace", workspaceId: workspace.publicId } : { kind: "personal" };
     const title = args.title.trim().slice(0, 500);
     if (!title) fail("invalid_argument", "Write the task first.");
     const engine = new SyncEngine(ctx, profile, args.deviceId ?? "server");
     let docPublicId = args.documentId;
     if (!docPublicId) {
-      docPublicId = inboxDocumentId(profile._id, workspace.publicId);
-      const existing = await getDocumentByPublicId(ctx, docPublicId);
+      docPublicId = inboxDocumentId(profile._id, scopeIdKey(scopeArg));
+      let existing = await getDocumentByPublicId(ctx, docPublicId);
+      // Someone else's page can't have this id, but never write into one that isn't in this scope.
+      if (existing && !inScope(existing, scope)) fail("conflict", "Could not find your Inbox.");
+      if (!existing && scope.kind === "personal") {
+        // Inboxes made before Personal stopped being a workspace have an id keyed by that workspace.
+        const legacy = await legacyPersonalInbox(ctx, scope.profileId);
+        if (legacy) {
+          existing = legacy;
+          docPublicId = legacy.publicId;
+        }
+      }
       if (existing?.inTrash) await setTrashState(ctx, existing, profile._id, false, undefined);
       else if (!existing) {
-        const [r] = await engine.applyAll(workspace.publicId, [
+        const [r] = await engine.applyAll(scopeArg, [
           {
             opId: ulid(),
             kind: "document.create",
@@ -284,7 +301,7 @@ export const quickAdd = mutation({
       props,
     };
     const engine2 = new SyncEngine(ctx, profile, args.deviceId ?? "server");
-    const [result] = await engine2.applyAll(workspace.publicId, [
+    const [result] = await engine2.applyAll(scopeArg, [
       { opId: ulid(), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: null, fields: ["content", "position"] },
     ]);
     if (!result || result.status !== "applied") fail("invalid_argument", result?.error?.message ?? "Could not add the task.");
@@ -292,20 +309,33 @@ export const quickAdd = mutation({
   },
 });
 
+/**
+ * The Inbox page someone made in their Personal back when it was a workspace (its deterministic id was
+ * keyed by that workspace, which no longer exists): their own page titled Inbox with an "inbox-" id.
+ */
+async function legacyPersonalInbox(ctx: MutationCtx, owner: Doc<"profiles">["_id"]): Promise<Doc<"documents"> | null> {
+  const hits = await ctx.db
+    .query("documents")
+    .withSearchIndex("search_title", (q) => q.search("title", "Inbox").eq("ownerProfileId", owner))
+    .take(20);
+  return hits.find((d) => d.publicId.startsWith("inbox-") && d.createdBy === owner && d.title === "Inbox") ?? null;
+}
+
 /** Moves a task (and nothing else) into another document: new block there, tombstone here. */
 export const moveToDocument = mutation({
   args: { blockId: v.string(), documentId: v.string(), deviceId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { row, doc, workspace } = await taskBlock(ctx, profile, args.blockId);
+    const { row, doc } = await taskBlock(ctx, profile, args.blockId);
     const target = await getDocumentByPublicId(ctx, args.documentId);
-    if (!target || target.workspaceId !== doc.workspaceId) fail("not_found", "Document not found.");
+    // Tasks never move between Personal and a workspace.
+    if (!target || !sameScopeRows(target, doc)) fail("not_found", "Document not found.");
     const roots = (await liveBlocks(ctx, target._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));
     const moved: WireBlock = { ...toWireBlock(row), id: ulid(), parentId: null, rank: rankBetween(roots[roots.length - 1]?.rank ?? null, null) };
     delete moved.revision;
     const engine = new SyncEngine(ctx, profile, args.deviceId ?? "server");
-    const results = await engine.applyAll(workspace.publicId, [
+    const results = await engine.applyAll(null, [
       { opId: ulid(), kind: "block.upsert", documentId: target.publicId, block: moved, baseRevision: null, fields: ["content", "position"] },
       { opId: ulid(), kind: "block.delete", documentId: doc.publicId, blockId: row.blockId, baseRevision: row.revision },
     ]);

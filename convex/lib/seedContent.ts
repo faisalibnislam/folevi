@@ -1,4 +1,4 @@
-// Seed documents for a new personal workspace. Fictional, original Folevi copy.
+// Seed documents for a new person's Personal. Fictional, original Folevi copy.
 import { addDays } from "@folevi/editor-schema";
 import type { BlockSpec } from "./create";
 

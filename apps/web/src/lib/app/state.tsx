@@ -2,7 +2,7 @@
 
 import { useConvex, useConvexConnectionState, useQuery } from "convex/react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { localDate } from "@folevi/editor-schema";
+import { localDate, scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { SyncEngine } from "@/lib/sync/engine";
 import { deviceId as loadDeviceId } from "@/lib/sync/db";
@@ -10,7 +10,15 @@ import { Uploader } from "@/lib/sync/uploads";
 import { saveAccountSnapshot } from "./offlineSnapshot";
 
 export type Profile = NonNullable<Extract<NonNullable<ReturnType<typeof useMeQuery>>, { state: "ready" }>["profile"]>;
+/** A team workspace you belong to (`workspaces.mine`). Personal is never one of these. */
 export type Workspace = NonNullable<ReturnType<typeof useWorkspacesQuery>>[number];
+export type WorkspaceRole = Workspace["role"];
+
+/**
+ * Where you're working: your own Personal, or one of your team workspaces. Personal is not a workspace
+ * and has no id; the server knows it as `{ kind: "personal" }` (always the caller's own).
+ */
+export type ActiveContext = { kind: "personal" } | { kind: "workspace"; workspaceId: string; name: string; role: WorkspaceRole; workspace: Workspace };
 
 function useMeQuery() {
   return useQuery(api.users.me, {});
@@ -19,11 +27,71 @@ function useWorkspacesQuery(enabled: boolean) {
   return useQuery(api.workspaces.mine, enabled ? {} : "skip");
 }
 
+const CONTEXT_KEY = "folevi:context";
+/** Older builds remembered a workspace id here — possibly the old personal workspace's. */
+const LEGACY_WORKSPACE_KEY = "folevi:workspace";
+
+/** The context as remembered on this device (a workspace id may no longer be one of yours). */
+export type StoredContext = { kind: "personal" } | { kind: "workspace"; workspaceId: string };
+
+export function parseStoredContext(raw: string | null, legacyWorkspaceId: string | null): StoredContext | null {
+  if (raw === "personal") return { kind: "personal" };
+  if (raw?.startsWith("workspace:") && raw.length > "workspace:".length) return { kind: "workspace", workspaceId: raw.slice("workspace:".length) };
+  // A legacy value only opens a workspace if it's one of your team workspaces (resolveContext); the old
+  // personal workspace isn't, so it opens Personal.
+  return legacyWorkspaceId ? { kind: "workspace", workspaceId: legacyWorkspaceId } : null;
+}
+
+export function serializeContext(scope: WireScope): string {
+  return scope.kind === "personal" ? "personal" : `workspace:${scope.workspaceId}`;
+}
+
+/** The context to open: the remembered workspace if you still belong to it, else Personal (the default). */
+export function resolveContext(stored: StoredContext | null, workspaces: readonly Workspace[]): ActiveContext {
+  if (stored?.kind === "workspace") {
+    const w = workspaces.find((x) => x.id === stored.workspaceId);
+    if (w) return { kind: "workspace", workspaceId: w.id, name: w.name, role: w.role, workspace: w };
+  }
+  return { kind: "personal" };
+}
+
+function readStoredContext(): { stored: StoredContext | null; legacy: boolean } {
+  try {
+    const raw = localStorage.getItem(CONTEXT_KEY);
+    const legacy = raw === null ? localStorage.getItem(LEGACY_WORKSPACE_KEY) : null;
+    return { stored: parseStoredContext(raw, legacy), legacy: legacy !== null };
+  } catch {
+    return { stored: null, legacy: false };
+  }
+}
+
+function writeStoredContext(scope: WireScope) {
+  try {
+    localStorage.setItem(CONTEXT_KEY, serializeContext(scope));
+    localStorage.removeItem(LEGACY_WORKSPACE_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 interface AppState {
   profile: Profile;
+  /** Your team workspaces, by name. May be empty: Personal always works on its own. */
   workspaces: Workspace[];
-  workspace: Workspace;
-  setWorkspace: (id: string) => void;
+  context: ActiveContext;
+  /** The current context as the server's `scope` argument (stable between renders). */
+  scope: WireScope;
+  /** `scopeIdKey(scope)`: "personal" or the workspace id — for local caches, deterministic ids and React keys. */
+  scopeKey: string;
+  /** The current team workspace, or null in Personal. */
+  workspace: Workspace | null;
+  /** Your role in the current context: "owner" in your Personal (you manage all of it), else your workspace role (owner, admin or member). */
+  role: WorkspaceRole;
+  /** Whether you can add and change pages, folders and tags here (always in Personal; members who can only comment or view can't). The server checks again. */
+  canEdit: boolean;
+  /** Owner or admin of the current workspace (settings, members, guests, export). False in Personal. */
+  canManage: boolean;
+  setContext: (scope: WireScope) => void;
   engine: SyncEngine | null;
   uploader: Uploader | null;
   deviceId: string | null;
@@ -90,19 +158,22 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
 
   // Keep the snapshot fresh while online so the next offline start opens the same folio.
   useEffect(() => {
-    if (liveWorkspaces?.length && !offlineWorkspaces) void saveAccountSnapshot(profile, liveWorkspaces);
+    if (liveWorkspaces && !offlineWorkspaces) void saveAccountSnapshot(profile, liveWorkspaces);
   }, [profile, liveWorkspaces, offlineWorkspaces]);
-  const [selected, setSelected] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem("folevi:workspace");
-    } catch {
-      return null;
-    }
-  });
-  const workspace = useMemo(() => {
-    if (!workspaces?.length) return null;
-    return workspaces.find((w) => w.id === selected) ?? workspaces.find((w) => w.isDefault) ?? workspaces[0]!;
-  }, [workspaces, selected]);
+  const [initial] = useState(readStoredContext);
+  const [selected, setSelected] = useState<StoredContext | null>(initial.stored);
+  const context = useMemo(() => (workspaces ? resolveContext(selected, workspaces) : null), [workspaces, selected]);
+  const contextWorkspaceId = context?.kind === "workspace" ? context.workspaceId : null;
+  const scope = useMemo<WireScope>(() => (contextWorkspaceId ? { kind: "workspace", workspaceId: contextWorkspaceId } : { kind: "personal" }), [contextWorkspaceId]);
+
+  // An older build's remembered workspace becomes the new setting once your workspaces are known (the
+  // old personal workspace isn't one of them, so it becomes Personal).
+  const migrated = useRef(!initial.legacy);
+  useEffect(() => {
+    if (migrated.current || !liveWorkspaces) return;
+    migrated.current = true;
+    writeStoredContext(scope);
+  }, [liveWorkspaces, scope]);
 
   const [engine, setEngine] = useState<SyncEngine | null>(null);
   const [uploader, setUploader] = useState<Uploader | null>(null);
@@ -114,21 +185,23 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   const today = useToday(timeZone);
   const [appearance, setAppearanceState] = useState(profile.appearance);
 
-  const workspaceId = workspace?.id ?? null;
-  // One sync engine per account (docs/SYNC_PROTOCOL.md §Routing): switching workspaces only changes where
-  // new top-level pages go, so edits to pages from any workspace share the same durable queue.
-  const workspaceRef = useRef(workspaceId);
+  // One sync engine per account (docs/SYNC_PROTOCOL.md §Routing): switching between Personal and workspaces
+  // only changes where new top-level pages go, so edits to pages from any scope share the same durable queue.
+  const scopeRef = useRef(scope);
   useEffect(() => {
-    workspaceRef.current = workspaceId;
-    if (workspaceId) engine?.setWorkspace(workspaceId);
-  }, [engine, workspaceId]);
-  const hasWorkspace = workspaceId !== null;
+    scopeRef.current = scope;
+    engine?.setScope(scope);
+  }, [engine, scope]);
+  const teamIdsRef = useRef<string[]>([]);
+  teamIdsRef.current = workspaces?.map((w) => w.id) ?? [];
+  const ready = context !== null;
   useEffect(() => {
-    if (!hasWorkspace) return;
+    if (!ready) return;
     let cancelled = false;
     (async () => {
       const id = await loadDeviceId(profile.id);
-      const e = await SyncEngine.open(convex, profile.id, workspaceRef.current!, id);
+      // Your workspaces let page creates queued by an older build find their scope (engine.ts adoptLegacyCreates).
+      const e = await SyncEngine.open(convex, profile.id, scopeRef.current, id, teamIdsRef.current);
       if (cancelled) return;
       setDevice(id);
       setEngine(e);
@@ -140,7 +213,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
     return () => {
       cancelled = true;
     };
-  }, [convex, profile.id, hasWorkspace]);
+  }, [convex, profile.id, ready]);
 
   useEffect(() => {
     engine?.setOnline(effectivelyOnline);
@@ -177,18 +250,20 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   }, [device, registerSession]);
 
   const value = useMemo<AppState | null>(() => {
-    if (!workspace || !workspaces) return null;
+    if (!context || !workspaces) return null;
     return {
       profile,
       workspaces,
-      workspace,
-      setWorkspace: (id: string) => {
-        try {
-          localStorage.setItem("folevi:workspace", id);
-        } catch {
-          /* ignore */
-        }
-        setSelected(id);
+      context,
+      scope,
+      scopeKey: scopeIdKey(scope),
+      workspace: context.kind === "workspace" ? context.workspace : null,
+      role: context.kind === "workspace" ? context.role : "owner",
+      canEdit: context.kind === "workspace" ? context.workspace.canEdit !== false : true,
+      canManage: context.kind === "workspace" ? context.workspace.canManage === true : false,
+      setContext: (next: WireScope) => {
+        writeStoredContext(next);
+        setSelected(next.kind === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: next.workspaceId });
       },
       engine,
       uploader,
@@ -202,7 +277,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
         applyAppearance(a);
       },
     };
-  }, [profile, workspaces, workspace, engine, uploader, device, effectivelyOnline, today, timeZone, appearance]);
+  }, [profile, workspaces, context, scope, engine, uploader, device, effectivelyOnline, today, timeZone, appearance]);
 
   if (!value) {
     return <FullPageMessage title="Opening your folio…" busy />;

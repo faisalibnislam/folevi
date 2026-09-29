@@ -11,14 +11,29 @@ import {
   vPlatformRole,
   vNotificationPrefs,
   vProfileStatus,
+  vMemberAccess,
   vShareRole,
+  vWorkspacePlanId,
   vWorkspaceRole,
 } from "./lib/validators";
 
 /**
- * Folevi data model. Every table that holds workspace content carries `workspaceId` so reads can be
- * scoped by membership, and a `seq` stamped from the workspace change counter (see SYNC_PROTOCOL.md).
- * Client-visible identity uses `publicId` (ULID) fields; Convex `_id`s never leave the backend as identity.
+ * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
+ *   ownerProfileId — the row is in that person's Personal (Personal is not a workspace);
+ *   workspaceId    — the row is in a team workspace.
+ * Every insert into a scoped table goes through `insertScoped` (checked by tests/convex/static), and
+ * `migrations.verifyAccountModel` reports any row with both or neither.
+ */
+const scoped = {
+  workspaceId: v.optional(v.id("workspaces")),
+  ownerProfileId: v.optional(v.id("profiles")),
+};
+
+/**
+ * Folevi data model. Every table that holds content carries its scope (`scoped` above) so reads can be
+ * authorized and listed per scope, and a `seq` stamped from the scope's change counter (a workspace's
+ * `changeSeq`, or the owner's `personalChangeSeq`; see SYNC_PROTOCOL.md). Client-visible identity uses
+ * `publicId` (ULID) fields; Convex `_id`s never leave the backend as identity.
  */
 export default defineSchema({
   profiles: defineTable({
@@ -39,7 +54,14 @@ export default defineSchema({
     platformRole: v.optional(vPlatformRole),
     status: vProfileStatus,
     suspendedReason: v.optional(v.string()),
+    /** Legacy: the personal workspace of the old model. Cleared by migrations.migratePersonalWorkspaces. */
     defaultWorkspaceId: v.optional(v.id("workspaces")),
+    /** Change counter of this person's Personal (unset = 0); `seq` of Personal rows comes from it. */
+    personalChangeSeq: v.optional(v.number()),
+    /** Bytes stored in this person's Personal (unset = 0), checked against their Personal plan only. */
+    personalStorageUsedBytes: v.optional(v.number()),
+    /** Documents in this person's Personal (unset = 0), for admin views. */
+    personalDocumentCount: v.optional(v.number()),
     notificationPrefs: vNotificationPrefs,
     createdAt: v.number(),
     lastActiveAt: v.number(),
@@ -51,31 +73,45 @@ export default defineSchema({
     .index("by_platform_role", ["platformRole"])
     .index("by_created", ["createdAt"]),
 
+  /** Team workspaces. Rows of kind "personal" are the old model's Personal; the migration removes them. */
   workspaces: defineTable({
     publicId: v.string(),
     name: v.string(),
     kind: v.union(v.literal("personal"), v.literal("team")),
     ownerId: v.id("profiles"),
     icon: v.optional(v.string()),
-    /** Square logo for team workspaces (a `files` row of kind "logo"). Personal workspaces show the owner's avatar. */
+    /** Square logo (a `files` row of kind "logo", counted in this workspace's storage). */
     logoFileId: v.optional(v.id("files")),
     changeSeq: v.number(),
     status: v.union(v.literal("active"), v.literal("suspended"), v.literal("deleting")),
     storageUsedBytes: v.number(),
+    /** The limit shown to older clients (convex/lib/entitlements.ts decides the real one). */
     storageQuotaBytes: v.number(),
+    /** A storage limit set by an admin for this workspace; replaces its plan's. */
+    storageQuotaOverrideBytes: v.optional(v.number()),
     memberLimit: v.number(),
     documentCount: v.number(),
+    /**
+     * The owner asked to delete this workspace; it's purged at this time (a `deletionJobs` row of kind
+     * "workspace"). Until then it's read-only for the owner (who can cancel) and hidden from everyone else.
+     */
+    deletionScheduledFor: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_public_id", ["publicId"])
     .index("by_owner", ["ownerId"])
+    .index("by_kind", ["kind"])
     .index("by_created", ["createdAt"]),
 
   workspaceMembers: defineTable({
     workspaceId: v.id("workspaces"),
     profileId: v.id("profiles"),
     role: vWorkspaceRole,
+    /** A member's access to the workspace's content (unset = edit). Ignored for owners and admins. */
+    memberAccess: v.optional(vMemberAccess),
+    /** An admin the owner allowed to manage the workspace's plan and billing (unset = no). Owners always can. */
+    canManageBilling: v.optional(v.boolean()),
     joinedAt: v.number(),
   })
     .index("by_workspace", ["workspaceId"])
@@ -87,6 +123,8 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     email: v.string(),
     role: vWorkspaceRole,
+    /** For a member invitation: their access (unset = edit). */
+    memberAccess: v.optional(vMemberAccess),
     tokenHash: v.string(),
     invitedBy: v.id("profiles"),
     status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked"), v.literal("expired")),
@@ -101,7 +139,7 @@ export default defineSchema({
 
   folders: defineTable({
     publicId: v.string(),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     parentFolderId: v.optional(v.id("folders")),
     name: v.string(),
     /** Legacy: folders used to take an emoji. Folders now show a coloured folder (color). */
@@ -116,12 +154,13 @@ export default defineSchema({
     seq: v.number(),
   })
     .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
     .index("by_public_id", ["publicId"])
     .index("by_parent", ["parentFolderId"]),
 
   tags: defineTable({
     publicId: v.string(),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     name: v.string(),
     normalizedName: v.string(),
     color: v.string(),
@@ -130,19 +169,23 @@ export default defineSchema({
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_name", ["workspaceId", "normalizedName"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_owner_name", ["ownerProfileId", "normalizedName"])
     .index("by_public_id", ["publicId"]),
 
   documentTags: defineTable({
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     documentId: v.id("documents"),
     tagId: v.id("tags"),
   })
     .index("by_document", ["documentId"])
-    .index("by_tag", ["tagId"]),
+    .index("by_tag", ["tagId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   documents: defineTable({
     publicId: v.string(),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     parentDocumentId: v.optional(v.id("documents")),
     folderId: v.optional(v.id("folders")),
     kind: vDocumentKind,
@@ -202,45 +245,64 @@ export default defineSchema({
     .index("by_workspace_folder", ["workspaceId", "folderId"])
     .index("by_daily", ["workspaceId", "dailyOwnerId", "dailyDate"])
     .index("by_workspace_kind", ["workspaceId", "kind"])
+    // Personal twins of the workspace indexes above (a Personal row has no workspaceId).
+    .index("by_owner_updated", ["ownerProfileId", "updatedAt"])
+    .index("by_owner_created", ["ownerProfileId", "createdAt"])
+    .index("by_owner_seq", ["ownerProfileId", "seq"])
+    .index("by_owner_trash", ["ownerProfileId", "inTrash", "updatedAt"])
+    .index("by_owner_trash_created", ["ownerProfileId", "inTrash", "createdAt"])
+    .index("by_owner_trash_title", ["ownerProfileId", "inTrash", "title"])
+    .index("by_owner_trash_rank", ["ownerProfileId", "inTrash", "rank"])
+    .index("by_owner_folder", ["ownerProfileId", "folderId"])
+    .index("by_owner_daily", ["ownerProfileId", "dailyOwnerId", "dailyDate"])
+    .index("by_owner_kind", ["ownerProfileId", "kind"])
     .index("by_collection", ["collectionId"])
     .searchIndex("search_text", {
       searchField: "searchText",
-      filterFields: ["workspaceId", "inTrash", "folderId", "createdBy", "kind"],
+      filterFields: ["workspaceId", "ownerProfileId", "inTrash", "folderId", "createdBy", "kind"],
     })
     .searchIndex("search_title", {
       searchField: "title",
-      filterFields: ["workspaceId", "inTrash"],
+      filterFields: ["workspaceId", "ownerProfileId", "inTrash"],
     }),
 
   documentLinks: defineTable({
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     sourceDocumentId: v.id("documents"),
     targetPublicId: v.string(),
     blockId: v.string(),
   })
     .index("by_target", ["targetPublicId"])
     .index("by_source_block", ["sourceDocumentId", "blockId"])
-    .index("by_source", ["sourceDocumentId"]),
+    .index("by_source", ["sourceDocumentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   stars: defineTable({
     profileId: v.id("profiles"),
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    /** The starred document's scope. */
+    ...scoped,
     createdAt: v.number(),
   })
     .index("by_profile", ["profileId", "createdAt"])
     .index("by_profile_document", ["profileId", "documentId"])
-    .index("by_document", ["documentId"]),
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   recents: defineTable({
     profileId: v.id("profiles"),
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    /** The viewed document's scope. */
+    ...scoped,
     viewedAt: v.number(),
   })
     .index("by_profile_viewed", ["profileId", "viewedAt"])
     .index("by_profile_document", ["profileId", "documentId"])
-    .index("by_document", ["documentId"]),
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   /**
    * Notes a person removed from their Home "Recent notes" (per person, never shared). A note stays hidden
@@ -249,17 +311,21 @@ export default defineSchema({
   recentHidden: defineTable({
     profileId: v.id("profiles"),
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    /** The hidden document's scope. */
+    ...scoped,
     hiddenAt: v.number(),
   })
     .index("by_profile_workspace", ["profileId", "workspaceId"])
+    .index("by_profile_owner", ["profileId", "ownerProfileId"])
     .index("by_profile_document", ["profileId", "documentId"])
-    .index("by_document", ["documentId"]),
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   blocks: defineTable({
     blockId: v.string(),
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     parentId: v.union(v.string(), v.null()),
     rank: v.string(),
     type: v.string(),
@@ -277,11 +343,12 @@ export default defineSchema({
   })
     .index("by_document", ["documentId"])
     .index("by_block_id", ["blockId"])
-    .index("by_workspace_seq", ["workspaceId", "seq"]),
+    .index("by_workspace_seq", ["workspaceId", "seq"])
+    .index("by_owner_seq", ["ownerProfileId", "seq"]),
 
   documentSnapshots: defineTable({
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     publicId: v.string(),
     reason: v.union(v.literal("idle"), v.literal("close"), v.literal("before_restore"), v.literal("manual"), v.literal("import")),
     title: v.string(),
@@ -297,7 +364,9 @@ export default defineSchema({
     .index("by_document", ["documentId", "createdAt"])
     .index("by_public_id", ["publicId"])
     .index("by_created", ["createdAt"])
-    .index("by_storage", ["storageId"]),
+    .index("by_storage", ["storageId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   snapshotChunks: defineTable({
     snapshotId: v.id("documentSnapshots"),
@@ -306,13 +375,35 @@ export default defineSchema({
   }).index("by_snapshot", ["snapshotId", "index"]),
 
   /**
-   * Each person's plan (one row per profile; see convex/lib/plans.ts for what plans include). Created at
-   * sign-up with a 7-day Pro trial. Paid plans come from the payment provider (Stripe webhooks) or are set
-   * by an admin ("manual"); admins can also grant AI or override storage.
+   * Plans: a person's Personal plan (one row per profile) or a team workspace's plan (one row per workspace).
+   * Exactly one of `profileId` / `workspaceId` is set, matching `ownerType` (rows from before workspace
+   * billing have no `ownerType` and are Personal); rows are written only through convex/lib/billing.ts.
+   *
+   * Personal rows are created at sign-up with a 7-day Pro trial and store the tier in `plan`. Workspace rows
+   * store the catalog id in `planId` and the billed seat count in `quantity`. Paid plans come from the
+   * payment provider (Stripe webhooks), a development test purchase ("test"), or an admin ("manual");
+   * admins can also grant AI or override storage on Personal plans.
    */
   subscriptions: defineTable({
-    profileId: v.id("profiles"),
-    plan: v.union(v.literal("free"), v.literal("basic"), v.literal("pro")),
+    /** "user" (Personal) or "workspace"; unset on older rows = "user". */
+    ownerType: v.optional(v.union(v.literal("user"), v.literal("workspace"))),
+    /** Personal rows: the person. */
+    profileId: v.optional(v.id("profiles")),
+    /** Workspace rows: the workspace (the plan belongs to it, not to whoever owns it). */
+    workspaceId: v.optional(v.id("workspaces")),
+    /** Personal rows: the tier. Workspace rows leave it unset (they use planId). */
+    plan: v.optional(v.union(v.literal("free"), v.literal("basic"), v.literal("pro"))),
+    /** Workspace rows: the catalog plan id (convex/lib/plans.ts). */
+    planId: v.optional(vWorkspacePlanId),
+    /** Workspace rows: member seats billed (the provider's subscription quantity). */
+    quantity: v.optional(v.number()),
+    /** Workspace rows: when a seat-quantity sync was scheduled (cleared when it runs; lib/seats.ts). */
+    seatSyncScheduledAt: v.optional(v.number()),
+    /** Workspace rows: the Stripe subscription item, for seat and plan changes. */
+    stripeSubscriptionItemId: v.optional(v.string()),
+    /** "Visa •••• 4242", when the provider has told us (workspace rows). */
+    paymentMethod: v.optional(v.string()),
+    currentPeriodStart: v.optional(v.number()),
     interval: v.optional(v.union(v.literal("month"), v.literal("year"))),
     status: v.union(v.literal("active"), v.literal("past_due"), v.literal("canceled")),
     provider: v.union(v.literal("none"), v.literal("stripe"), v.literal("manual"), v.literal("test")),
@@ -330,20 +421,32 @@ export default defineSchema({
     /** When the current paid plan started (for conversion and churn analytics). */
     paidSince: v.optional(v.number()),
     canceledAt: v.optional(v.number()),
+    /** Stripe's `created` time (seconds) of the last subscription event applied; older events are ignored. */
+    stripeEventCreatedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner_type", ["ownerType"])
     .index("by_plan", ["plan"])
     .index("by_stripe_customer", ["stripeCustomerId"])
     .index("by_stripe_subscription", ["stripeSubscriptionId"]),
 
-  /** Money received (and refunds), for billing history and revenue analytics. Amounts in cents. */
+  /**
+   * Money received (and refunds), for billing history and revenue analytics. Amounts in cents. Exactly one
+   * of `profileId` (a Personal plan) / `workspaceId` (a workspace plan), so the two histories never mix.
+   */
   payments: defineTable({
-    profileId: v.id("profiles"),
+    profileId: v.optional(v.id("profiles")),
+    workspaceId: v.optional(v.id("workspaces")),
     amountCents: v.number(),
     currency: v.string(),
-    plan: v.union(v.literal("basic"), v.literal("pro")),
+    /** The tier paid for: Personal (basic, pro) or workspace (team, business). */
+    plan: v.union(v.literal("basic"), v.literal("pro"), v.literal("team"), v.literal("business")),
+    /** Workspace payments: the catalog plan id and the seats billed. */
+    planId: v.optional(vWorkspacePlanId),
+    quantity: v.optional(v.number()),
     interval: v.union(v.literal("month"), v.literal("year")),
     status: v.union(v.literal("paid"), v.literal("refunded"), v.literal("failed")),
     provider: v.union(v.literal("stripe"), v.literal("manual"), v.literal("test")),
@@ -351,17 +454,34 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_profile_created", ["profileId", "createdAt"])
+    .index("by_workspace_created", ["workspaceId", "createdAt"])
     .index("by_created", ["createdAt"])
     .index("by_provider_ref", ["providerRef"]),
 
-  /** AI requests per person per day (UTC), for usage limits and analytics. No content. */
+  /** Stripe webhook events already applied (by event id), so a redelivered event is applied once. */
+  billingEvents: defineTable({
+    eventId: v.string(),
+    type: v.string(),
+    /** Stripe's `created` time (seconds). */
+    created: v.optional(v.number()),
+    processedAt: v.number(),
+  }).index("by_event_id", ["eventId"]),
+
+  /**
+   * AI requests per person per day (UTC), per scope, for usage limits and analytics. No content. Rows
+   * without a scope predate scopes (all were Personal).
+   */
   aiUsage: defineTable({
     profileId: v.id("profiles"),
     day: v.string(),
     count: v.number(),
+    scope: v.optional(v.union(v.literal("personal"), v.literal("workspace"))),
+    /** The team workspace the requests were made in (scope "workspace"). */
+    workspaceId: v.optional(v.id("workspaces")),
   })
     .index("by_profile_day", ["profileId", "day"])
-    .index("by_day", ["day"]),
+    .index("by_day", ["day"])
+    .index("by_workspace_day", ["workspaceId", "day"]),
 
   /**
    * Live AI output while it's being written (convex/ai.ts), so the app can show it word by word. Holds only
@@ -380,7 +500,7 @@ export default defineSchema({
     blockId: v.string(),
     blockDocId: v.id("blocks"),
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     title: v.string(),
     status: v.union(v.literal("open"), v.literal("done"), v.literal("canceled")),
     dueDate: v.optional(v.string()),
@@ -398,12 +518,14 @@ export default defineSchema({
     .index("by_document", ["documentId"])
     .index("by_workspace_status_due", ["workspaceId", "status", "dueDate"])
     .index("by_workspace_status_completed", ["workspaceId", "status", "completedAt"])
+    .index("by_owner_status_due", ["ownerProfileId", "status", "dueDate"])
+    .index("by_owner_status_completed", ["ownerProfileId", "status", "completedAt"])
     .index("by_assignee_status", ["assigneeId", "status"])
     .index("by_reminder", ["reminderAt"]),
 
   collections: defineTable({
     publicId: v.string(),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     documentId: v.id("documents"),
     name: v.string(),
     createdAt: v.number(),
@@ -413,7 +535,8 @@ export default defineSchema({
   })
     .index("by_public_id", ["publicId"])
     .index("by_document", ["documentId"])
-    .index("by_workspace", ["workspaceId"]),
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   collectionProperties: defineTable({
     publicId: v.string(),
@@ -489,7 +612,7 @@ export default defineSchema({
 
   commentThreads: defineTable({
     publicId: v.string(),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     documentId: v.id("documents"),
     blockId: v.optional(v.string()),
     status: v.union(v.literal("open"), v.literal("resolved")),
@@ -501,12 +624,14 @@ export default defineSchema({
     commentCount: v.number(),
   })
     .index("by_document", ["documentId", "lastActivityAt"])
-    .index("by_public_id", ["publicId"]),
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   comments: defineTable({
     publicId: v.string(),
     threadId: v.id("commentThreads"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     documentId: v.id("documents"),
     authorId: v.id("profiles"),
     body: v.any(),
@@ -515,7 +640,9 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
   })
     .index("by_thread", ["threadId", "createdAt"])
-    .index("by_public_id", ["publicId"]),
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   readStates: defineTable({
     profileId: v.id("profiles"),
@@ -527,9 +654,10 @@ export default defineSchema({
     .index("by_profile_document", ["profileId", "documentId"])
     .index("by_thread", ["threadId"]),
 
+  /** Page grants (shares and guests), inherited by nested pages. Scoped like the page they're on. */
   documentPermissions: defineTable({
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     profileId: v.id("profiles"),
     role: vShareRole,
     grantedBy: v.id("profiles"),
@@ -537,12 +665,39 @@ export default defineSchema({
   })
     .index("by_document", ["documentId"])
     .index("by_profile", ["profileId"])
-    .index("by_document_profile", ["documentId", "profileId"]),
+    .index("by_document_profile", ["documentId", "profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * A page shared with an email address that has no (verified, active) Folevi account: a guest invitation.
+   * It grants nothing and costs nothing until the person signs in with that verified address and accepts
+   * it, which creates the `documentPermissions` grant. Scoped like the page it's for.
+   */
+  pageInvites: defineTable({
+    publicId: v.string(),
+    documentId: v.id("documents"),
+    ...scoped,
+    email: v.string(),
+    role: vShareRole,
+    tokenHash: v.string(),
+    invitedBy: v.id("profiles"),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked"), v.literal("expired")),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    acceptedBy: v.optional(v.id("profiles")),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_email", ["email"])
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   publicLinks: defineTable({
     publicId: v.string(),
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     tokenHash: v.string(),
     tokenHint: v.string(),
     expiresAt: v.optional(v.number()),
@@ -556,10 +711,13 @@ export default defineSchema({
   })
     .index("by_token_hash", ["tokenHash"])
     .index("by_document", ["documentId"])
-    .index("by_public_id", ["publicId"]),
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   notifications: defineTable({
     profileId: v.id("profiles"),
+    /** The team workspace it happened in (unset for Personal and account notices). */
     workspaceId: v.optional(v.id("workspaces")),
     kind: v.union(
       v.literal("invite"),
@@ -574,6 +732,8 @@ export default defineSchema({
     documentId: v.optional(v.id("documents")),
     threadId: v.optional(v.id("commentThreads")),
     inviteId: v.optional(v.id("workspaceInvites")),
+    /** A page invitation (a page shared with an address that had no account) waiting for this person. */
+    pageInviteId: v.optional(v.id("pageInvites")),
     /** A file for the person to download (an export prepared for them). */
     fileId: v.optional(v.string()),
     title: v.string(),
@@ -593,24 +753,28 @@ export default defineSchema({
     .index("by_profile_created", ["profileId", "createdAt"])
     .index("by_profile_unread", ["profileId", "readAt"])
     .index("by_thread", ["threadId"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_workspace", ["workspaceId"]),
 
   /** Per-note notification choice: follow (comments on it notify you) or mute (no comment/reply notifications). */
   noteSubscriptions: defineTable({
     profileId: v.id("profiles"),
     documentId: v.id("documents"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     mode: v.union(v.literal("follow"), v.literal("mute")),
     updatedAt: v.number(),
   })
     .index("by_profile_document", ["profileId", "documentId"])
     .index("by_document_mode", ["documentId", "mode"])
-    .index("by_profile", ["profileId"]),
+    .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   files: defineTable({
     publicId: v.string(),
     storageId: v.id("_storage"),
-    workspaceId: v.id("workspaces"),
+    /** Whose storage it counts toward: a Personal (avatars always) or a team workspace (logos always). */
+    ...scoped,
     documentId: v.optional(v.id("documents")),
     uploadedBy: v.id("profiles"),
     filename: v.string(),
@@ -628,13 +792,14 @@ export default defineSchema({
   })
     .index("by_public_id", ["publicId"])
     .index("by_workspace", ["workspaceId", "createdAt"])
+    .index("by_owner", ["ownerProfileId", "createdAt"])
     .index("by_document", ["documentId"])
     .index("by_storage", ["storageId"])
     .index("by_kind_created", ["kind", "createdAt"]),
 
   uploadIntents: defineTable({
     profileId: v.id("profiles"),
-    workspaceId: v.id("workspaces"),
+    ...scoped,
     documentId: v.optional(v.id("documents")),
     kind: v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("logo"), v.literal("cover")),
     filename: v.string(),
@@ -643,13 +808,17 @@ export default defineSchema({
     createdAt: v.number(),
     expiresAt: v.number(),
     consumedAt: v.optional(v.number()),
-  }).index("by_profile", ["profileId", "createdAt"]),
+  })
+    .index("by_profile", ["profileId", "createdAt"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   syncOperations: defineTable({
     opId: v.string(),
     profileId: v.id("profiles"),
     deviceId: v.string(),
-    workspaceId: v.id("workspaces"),
+    /** The scope of the entity the op touched. */
+    ...scoped,
     entityId: v.string(),
     kind: v.string(),
     baseRevision: v.optional(v.union(v.number(), v.null())),
@@ -660,7 +829,9 @@ export default defineSchema({
   })
     .index("by_profile_op", ["profileId", "opId"])
     .index("by_created", ["createdAt"])
-    .index("by_status_created", ["status", "createdAt"]),
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   sessionsMirror: defineTable({
     profileId: v.id("profiles"),
@@ -804,6 +975,37 @@ export default defineSchema({
   })
     .index("by_status_scheduled", ["status", "scheduledFor"])
     .index("by_target", ["kind", "targetId"]),
+
+  /**
+   * Progress and result of a resumable data check (migrations.verifyAccountModel): where the job has got to
+   * (`stage` + `cursor`) and what it has found so far. Read with migrations.accountModelReport.
+   */
+  migrationReports: defineTable({
+    name: v.string(),
+    stage: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    done: v.boolean(),
+    /** Set when done: every count is 0. */
+    ok: v.optional(v.boolean()),
+    counts: v.object({
+      rowsWithBothScopes: v.number(),
+      rowsWithNoScope: v.number(),
+      rowsInLegacyWorkspaces: v.number(),
+      rowsOutOfTheirDocumentsScope: v.number(),
+      orphanedGrants: v.number(),
+      personalWorkspaces: v.number(),
+      profilesWithDefaultWorkspace: v.number(),
+      legacyRoles: v.number(),
+    }),
+    tables: v.record(
+      v.string(),
+      v.object({ rows: v.number(), both: v.number(), neither: v.number(), legacyWorkspace: v.number(), outOfScope: v.number(), orphanedGrants: v.number() }),
+    ),
+    runs: v.number(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  }).index("by_name_started", ["name", "startedAt"]),
 
   metrics: defineTable({
     key: v.string(),

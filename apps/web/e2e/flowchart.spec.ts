@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPersonWithWorkspace, openTool, settle, waitForSaved } from "./helpers";
+import { newPerson, openTool, settle, waitForSaved } from "./helpers";
 
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -15,7 +15,7 @@ test.describe("Flowchart", () => {
   test.setTimeout(150_000);
 
   test("draw shapes, connect them, write in them, undo, tidy up — it persists and publishes", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Flowchart Tester");
+    const { context, page } = await newPerson(browser, "Flowchart Tester");
     await newPage(page, "Flowchart");
 
     // Slash menu → Flowchart: an empty canvas with its toolbar.
@@ -104,7 +104,7 @@ test.describe("Flowchart", () => {
   });
 
   test("⌘Z while typing in a shape undoes the typing, never the flowchart block itself", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Undo Tester");
+    const { context, page } = await newPerson(browser, "Undo Tester");
     await newPage(page, "Undo in shapes");
     await page.keyboard.press("Enter");
     await page.keyboard.type("/flowchart");
@@ -123,7 +123,7 @@ test.describe("Flowchart", () => {
   });
 
   test("a Mermaid diagram folds its source away and converts to a flowchart", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Mermaid Tester");
+    const { context, page } = await newPerson(browser, "Mermaid Tester");
     await newPage(page, "Mermaid");
     const panel = await openTool(page, "Insert");
     await page.locator(".fb-editor > p.fb").last().click();

@@ -339,12 +339,12 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { workspace, today } = useAppState();
+  const { scope, canEdit, today } = useAppState();
   const { openPalette } = useShell();
-  const org = useQuery(api.organization.sidebar, { workspaceId: workspace.id });
-  const counts = useQuery(api.tasks.counts, { workspaceId: workspace.id, today });
-  const drafts = useQuery(api.organization.draftCount, { workspaceId: workspace.id });
-  const starred = useQuery(api.documents.list, { workspaceId: workspace.id, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
+  const org = useQuery(api.organization.sidebar, { scope });
+  const counts = useQuery(api.tasks.counts, { scope, today });
+  const drafts = useQuery(api.organization.draftCount, { scope });
+  const starred = useQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
   const createFolder = useMutation(api.organization.createFolder);
   const { route } = useAppRouter();
   const toast = useToast();
@@ -363,7 +363,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (route.name === "tag" && route.id === t.id));
 
   return (
-    <nav aria-label="Workspace" className="flex h-full flex-col">
+    <nav aria-label="Folio" className="flex h-full flex-col">
       <SidebarTopBar onNavigate={onNavigate} />
 
       <div className="flex-none space-y-2 px-2.5 pt-1">
@@ -465,7 +465,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <div className="min-w-0 flex-1">
                 <NavItem href={`/tags/${t.id}`} icon={<Hash size={15} style={{ color: tagColorVar(t.color) }} />} label={t.name} onNavigate={onNavigate} />
               </div>
-              {workspace.role !== "viewer" && workspace.role !== "commenter" ? <TagMenu key={`${t.id}:${t.name}:${t.color}`} tag={t} /> : null}
+              {canEdit ? <TagMenu key={`${t.id}:${t.name}:${t.color}`} tag={t} /> : null}
             </div>
           ))}
           <MoreLink href="/tags" count={(org?.tags.length ?? 0) - shownTags.length} noun="tags" onNavigate={onNavigate} />
@@ -485,7 +485,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         onClose={() => setFolderDialog(false)}
         onSubmit={async (name) => {
           try {
-            await createFolder({ workspaceId: workspace.id, name });
+            await createFolder({ scope, name });
           } catch (e) {
             toast.show(errorMessage(e), { tone: "error" });
           }

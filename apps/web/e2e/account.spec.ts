@@ -7,7 +7,7 @@ import {
   createAccount,
   enrollTwoFactor,
   mailboxLink,
-  newPersonWithWorkspace,
+  newPerson,
   signIn,
   signUp,
   totpCode,
@@ -108,7 +108,7 @@ test("sign-in: generic errors, authenticator code, single-use backup codes, trus
   await p2.getByRole("button", { name: "Verify" }).click();
   await p2.waitForURL(/\/documents/);
   await p2.goto(`${APP}/settings/account`);
-  await p2.getByRole("navigation", { name: "Workspace" }).getByRole("button", { name: /workspace and account$/ }).click();
+  await p2.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /Personal, workspaces and account$/ }).click();
   await p2.getByRole("menuitem", { name: "Sign out" }).click();
   await p2.waitForURL(/\/signin/);
   await p2.getByLabel("Email").fill(account.email);
@@ -118,7 +118,7 @@ test("sign-in: generic errors, authenticator code, single-use backup codes, trus
 });
 
 test("sessions can be listed and revoked, and a revoked session stops working at once", async ({ browser }) => {
-  const { page: pageA, account } = await newPersonWithWorkspace(browser, "Session Person");
+  const { page: pageA, account } = await newPerson(browser, "Session Person");
   const b = await browser.newContext();
   const pageB = await signIn(b, account);
   await pageB.goto(`${APP}/documents`);
@@ -136,7 +136,7 @@ test("sessions can be listed and revoked, and a revoked session stops working at
 });
 
 test("forgotten password: reset by email, other sessions end, sign in with the new password", async ({ browser }) => {
-  const { page: pageA, account } = await newPersonWithWorkspace(browser, "Reset Person");
+  const { page: pageA, account } = await newPerson(browser, "Reset Person");
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await page.goto(`${APP}/forgot-password`);
@@ -158,7 +158,7 @@ test("forgotten password: reset by email, other sessions end, sign in with the n
 });
 
 test("settings: change password, new backup codes, move to a new authenticator", async ({ browser }) => {
-  const { page, account } = await newPersonWithWorkspace(browser, "Settings Person");
+  const { page, account } = await newPerson(browser, "Settings Person");
   await page.goto(`${APP}/settings/security`);
   await expect(page.getByText("On — authenticator app")).toBeVisible();
 

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { APP, completeOnboarding, createAccount, grantPlatformRole, newPersonWithWorkspace, pick, settle } from "./helpers";
+import { APP, completeOnboarding, createAccount, createWorkspace, grantPlatformRole, newPerson, pick, settle, switchTo } from "./helpers";
 
 // One fresh super admin per run (granted through the local-only testSupport function), reused by every
 // test through its saved browser session so nobody signs in twice in the same authenticator window.
@@ -11,6 +11,9 @@ test.beforeAll(async ({ browser }) => {
   const context = await browser.newContext();
   const { page, account } = await createAccount(context, { name: "Ada Example" });
   await completeOnboarding(page);
+  // A team workspace, so the workspaces list has one (Personal isn't a workspace and isn't listed).
+  await createWorkspace(page, "Ada Studio");
+  await switchTo(page, "Personal");
   grantPlatformRole(account.email, "super_admin");
   adminEmail = account.email;
   adminState = await context.storageState();
@@ -26,7 +29,7 @@ async function adminPage(browser: Browser, path: string): Promise<Page> {
 }
 
 test("a signed-in person without a platform role gets a plain 404 at /admin", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Not An Admin");
+  const { page, context } = await newPerson(browser, "Not An Admin");
   const response = await page.goto(`${APP}/admin`);
   expect(response?.status()).toBe(404);
   await expect(page.getByText("This page could not be found.")).toBeVisible();
@@ -54,7 +57,7 @@ test("an admin sees the dashboard with aggregate metrics", async ({ browser }) =
 });
 
 test("user search and view are written to the audit log; suspending requires a reason", async ({ browser }) => {
-  const target = await newPersonWithWorkspace(browser, "Audit Target");
+  const target = await newPerson(browser, "Audit Target");
   const page = await adminPage(browser, "/admin/users");
 
   // Search by exact email.
@@ -116,7 +119,7 @@ test("listing workspaces is audited, and identity emails appear in the email log
 });
 
 test("an owner manages a person's plan and AI from their page; analytics and revenue load", async ({ browser }) => {
-  const target = await newPersonWithWorkspace(browser, "Plan Target");
+  const target = await newPerson(browser, "Plan Target");
   const page = await adminPage(browser, "/admin/users");
   await page.getByRole("searchbox", { name: "Email or name" }).fill(target.email);
   await page.getByRole("button", { name: "Search" }).click();
@@ -164,8 +167,40 @@ test("an owner manages a person's plan and AI from their page; analytics and rev
   await target.context.close();
 });
 
+test("an admin puts a workspace on Team by hand (audited), and its plan, seats and payments show", async ({ browser }) => {
+  const page = await adminPage(browser, "/admin/workspaces");
+  await page.getByRole("table", { name: "Workspaces, newest first" }).getByRole("link", { name: "Ada Studio" }).first().click();
+  await expect(page.getByRole("heading", { name: "Plan & billing" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Workspace Free").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Set plan…" }).click();
+  const dialog = page.getByRole("dialog", { name: /Set the plan for/ });
+  await pick(dialog.getByRole("combobox", { name: "Plan" }), "Workspace Team (monthly, $5 per member)");
+  await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: team plan before Stripe is set up");
+  await dialog.getByRole("button", { name: "Save plan" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Plan set to Workspace Team" })).toBeVisible();
+  await expect(page.getByText("Workspace Team").first()).toBeVisible();
+  await expect(page.getByText("1 × $5 = $5/month")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Workspace payments" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Admin audit history for this workspace" }).getByText("billing.set_workspace_plan").first()).toBeVisible();
+
+  // The workspace's owner sees it in the workspace's Plan & billing; their Personal plan is unchanged.
+  const owner = await browser.newContext({ storageState: adminState ?? undefined });
+  const ownerPage = await owner.newPage();
+  await ownerPage.goto(`${APP}/documents`);
+  await switchTo(ownerPage, "Ada Studio");
+  await ownerPage.goto(`${APP}/settings/workspace-billing`);
+  await expect(ownerPage.getByText("Set by the Folevi team.")).toBeVisible({ timeout: 30_000 });
+  await switchTo(ownerPage, "Personal");
+  await ownerPage.goto(`${APP}/settings/billing`);
+  await expect(ownerPage.getByRole("heading", { name: "Choose a personal plan" })).toBeVisible({ timeout: 30_000 });
+  await expect(ownerPage.getByRole("region", { name: "Team plan" })).toHaveCount(0);
+  await owner.close();
+  await page.context().close();
+});
+
 test("support staff see analytics but not revenue, and can't set plans", async ({ browser }) => {
-  const staff = await newPersonWithWorkspace(browser, "Support Person");
+  const staff = await newPerson(browser, "Support Person");
   grantPlatformRole(staff.email, "support_admin");
   const page = staff.page;
   await page.goto(`${APP}/admin`);

@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { productEmailAllowed } from "../../convex/email";
-import { para, person, setup, ulid, type T } from "./helpers";
+import { inWorkspace, para, person, setup, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 type Prefs = Doc<"profiles">["notificationPrefs"];
@@ -12,7 +12,7 @@ type Prefs = Doc<"profiles">["notificationPrefs"];
 async function newDoc(p: Person, workspaceId: string, title: string) {
   const id = ulid();
   const [r] = await p.as.mutation(api.sync.push, {
-    workspaceId,
+    scope: inWorkspace(workspaceId),
     deviceId: "device-test-1",
     ops: [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title, icon: null } }],
   });
@@ -21,7 +21,7 @@ async function newDoc(p: Person, workspaceId: string, title: string) {
 }
 
 async function addBlock(p: Person, workspaceId: string, documentId: string, block: ReturnType<typeof para>) {
-  const [r] = await p.as.mutation(api.sync.push, { workspaceId, deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.upsert", documentId, block, baseRevision: null, fields: ["content", "position"] }] });
+  const [r] = await p.as.mutation(api.sync.push, { scope: inWorkspace(workspaceId), deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.upsert", documentId, block, baseRevision: null, fields: ["content", "position"] }] });
   expect(r!.status).toBe("applied");
   return block.id;
 }
@@ -178,7 +178,7 @@ describe("notification triggers", () => {
     await w.owner.as.mutation(api.workspaces.changeRole, { workspaceId: w.teamId, profileId: w.editor.profileId, role: "viewer" });
     const [n] = await inbox(w.editor);
     expect(n).toMatchObject({ kind: "share_change", documentId: null });
-    expect(n!.title).toMatch(/Viewer/);
+    expect(n!.title).toMatch(/Member \(view only\)/);
   });
 
   test("a burst of comments from one person folds into one notification and one email", async () => {
@@ -353,7 +353,7 @@ describe("comments", () => {
     const t = setup();
     const w = await team(t);
     await w.editor.as.mutation(api.comments.create, { documentId: w.docId, blockId: w.blockId, body: text("about this line") });
-    const [r] = await w.owner.as.mutation(api.sync.push, { workspaceId: w.teamId, deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.delete", documentId: w.docId, blockId: w.blockId, baseRevision: 1 }] });
+    const [r] = await w.owner.as.mutation(api.sync.push, { scope: inWorkspace(w.teamId), deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.delete", documentId: w.docId, blockId: w.blockId, baseRevision: 1 }] });
     expect(r!.status).toBe("applied");
     const data = await w.owner.as.query(api.comments.threads, { documentId: w.docId });
     expect(data.threads[0]).toMatchObject({ blockId: w.blockId, blockExists: false, blockText: null });

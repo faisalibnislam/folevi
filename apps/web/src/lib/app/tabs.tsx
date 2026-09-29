@@ -42,13 +42,24 @@ export function openNextInNewTab() {
 const TabsContext = createContext<TabsValue | null>(null);
 
 /**
- * Pages open in tabs: visiting a page adds its tab (or switches to it), tabs stay open until closed, and
- * they're remembered per account on this device.
+ * Where a context's tabs are remembered: Personal keeps the account's original keys (so tabs opened before
+ * contexts existed stay in Personal); each workspace has its own.
  */
-export function TabsProvider({ accountKey, children }: { accountKey: string; children: ReactNode }) {
+export function tabsStorageKeys(accountKey: string, workspaceId: string | null): { tabs: string; homeHref: string } {
+  const suffix = workspaceId ? `:${workspaceId}` : "";
+  return { tabs: `folevi:tabs:${accountKey}${suffix}`, homeHref: `folevi:home-href:${accountKey}${suffix}` };
+}
+
+/**
+ * Pages open in tabs: visiting a page adds its tab (or switches to it), tabs stay open until closed, and
+ * they're remembered per account and per context (Personal, or each workspace) on this device — switching
+ * context shows that context's tabs, so a page from one never sits in another's strip.
+ */
+export function TabsProvider({ accountKey, workspaceId, children }: { accountKey: string; workspaceId: string | null; children: ReactNode }) {
   const { route, pathname, search, navigate } = useAppRouter();
-  const [tabs, setTabs] = useLocalStorage<DocTab[]>(`folevi:tabs:${accountKey}`, []);
-  const [homeHref, setHomeHref] = useLocalStorage<string>(`folevi:home-href:${accountKey}`, "/documents");
+  const keys = tabsStorageKeys(accountKey, workspaceId);
+  const [tabs, setTabs] = useLocalStorage<DocTab[]>(keys.tabs, []);
+  const [homeHref, setHomeHref] = useLocalStorage<string>(keys.homeHref, "/documents");
 
   const docId = route.name === "doc" ? route.id : null;
   const query = search.toString();
@@ -74,7 +85,7 @@ export function TabsProvider({ accountKey, children }: { accountKey: string; chi
       // Keep the strip bounded: drop the oldest tabs other than this one.
       while (next.length > MAX_TABS) next = next.filter((t, i) => i !== next.findIndex((x) => x.id !== docId));
       setTabs(next);
-    } else if (!["settings", "onboarding", "invite", "not_found", "help"].includes(route.name)) {
+    } else if (!["settings", "onboarding", "invite", "share-invite", "not_found", "help"].includes(route.name)) {
       const href = `${pathname}${query ? `?${query}` : ""}`;
       if (href !== homeHref) setHomeHref(href);
     }

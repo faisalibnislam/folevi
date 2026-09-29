@@ -103,12 +103,13 @@ export function UserDetailView({ id }: { id: string }) {
             ]}
           />
         </Panel>
-        <Panel title="Usage" description="Documents and storage count only workspaces this person owns.">
-          <dl className="grid grid-cols-3 gap-3">
+        <Panel title="Usage" description="Personal is theirs alone; team workspaces count on their own (documents include the team workspaces they own).">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Workspaces", value: user.usage.workspaces.toLocaleString() },
-              { label: "Documents", value: user.usage.documents.toLocaleString() },
-              { label: "Storage", value: formatBytes(user.usage.storageBytes) },
+              { label: "Team workspaces", value: user.usage.workspaces.toLocaleString() },
+              { label: "Personal documents", value: user.usage.personalDocuments.toLocaleString() },
+              { label: "All documents", value: user.usage.documents.toLocaleString() },
+              { label: "Personal storage", value: formatBytes(user.usage.storageBytes) },
             ].map((s) => (
               <div key={s.label} className="ui-card rounded-[8px] px-3 py-2.5">
                 <dt className="text-[12px] text-muted">{s.label}</dt>
@@ -160,8 +161,8 @@ export function UserDetailView({ id }: { id: string }) {
           </DataTable>
         </Panel>
 
-        <Panel title="Workspace memberships" flush>
-          <DataTable caption="Workspace memberships" minWidth={520}>
+        <Panel title="Team workspaces" flush>
+          <DataTable caption="Team workspaces" minWidth={520}>
             <thead>
               <tr>
                 <th scope="col" className={th}>Workspace</th>
@@ -173,15 +174,14 @@ export function UserDetailView({ id }: { id: string }) {
             </thead>
             <tbody>
               {user.workspaces.length === 0 ? (
-                <EmptyRow colSpan={5}>Not a member of any workspace.</EmptyRow>
+                <EmptyRow colSpan={5}>Not a member of any team workspace. (Personal isn't a workspace: see Usage.)</EmptyRow>
               ) : (
                 user.workspaces.map((w) => (
                   <tr key={w.id}>
                     <td className={td}>
                       <Link href={`/admin/workspaces/${w.id}`} className="font-medium underline decoration-line-strong underline-offset-2 hover:decoration-ink">
                         {w.name}
-                      </Link>{" "}
-                      <span className="text-xs text-muted">{w.kind === "personal" ? "Personal" : "Team"}</span>
+                      </Link>
                     </td>
                     <td className={td}>{humanize(w.role)}</td>
                     <td className={td}>
@@ -428,7 +428,7 @@ function UserActionDialogs({ user, action, onClose, onDone }: { user: UserDetail
         open={action === "delete"}
         onClose={onClose}
         title="Schedule account deletion?"
-        description="The account is locked now and permanently deleted after 7 days, including their personal workspace. They get an email and can cancel by signing in during the grace period."
+        description="The account is locked now and permanently deleted after 7 days, including everything in their Personal. They get an email and can cancel by signing in during the grace period."
         confirmLabel="Schedule deletion"
         tone="danger"
         confirm={confirmEmail}

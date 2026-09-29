@@ -56,6 +56,52 @@ describe("backend invariants", () => {
     }
   });
 
+  test("content rows are written only through insertScoped (exactly one of ownerProfileId / workspaceId)", () => {
+    const scopeSource = readFileSync(join(root, "lib", "scope.ts"), "utf8");
+    const list = /export const SCOPED_TABLES = \[([\s\S]*?)\]/.exec(scopeSource)![1]!;
+    const scopedTables = [...list.matchAll(/"(\w+)"/g)].map((m) => m[1]!);
+    expect(scopedTables.length).toBeGreaterThanOrEqual(20);
+    // Every table that spreads the scope fields in the schema is in SCOPED_TABLES, and vice versa.
+    const schema = readFileSync(join(root, "schema.ts"), "utf8");
+    const inSchema = [...schema.matchAll(/^ {2}(\w+): defineTable\(\{([\s\S]*?)^ {2}\}\)/gm)].filter((m) => /\.\.\.scoped,/.test(m[2]!)).map((m) => m[1]!);
+    expect(inSchema.sort()).toEqual([...scopedTables].sort());
+    // …and none of them declares its own workspaceId (it would bypass the "exactly one" rule).
+    for (const m of schema.matchAll(/^ {2}(\w+): defineTable\(\{([\s\S]*?)^ {2}\}\)/gm)) {
+      if (scopedTables.includes(m[1]!)) expect(m[2], m[1]).not.toMatch(/\bworkspaceId: v\./);
+    }
+    for (const { p, s } of sources) {
+      if (p.endsWith(join("lib", "scope.ts"))) continue;
+      for (const table of scopedTables) {
+        const direct = new RegExp(`\\.insert\\(\\s*"${table}"`);
+        if (direct.test(s)) throw new Error(`${p}: inserts into "${table}" directly; use insertScoped(ctx, "${table}", scope, …)`);
+      }
+    }
+  });
+
+  test("billing rows are written only through lib/billing.ts (exactly one of profileId / workspaceId)", () => {
+    for (const { p, s } of sources) {
+      if (p.endsWith(join("lib", "billing.ts"))) continue;
+      if (/\.insert\(\s*"(subscriptions|payments)"/.test(s)) throw new Error(`${p}: inserts a billing row directly; use insertSubscription / insertPayment`);
+    }
+    const schema = readFileSync(join(root, "schema.ts"), "utf8");
+    for (const table of ["subscriptions", "payments"]) {
+      const body = new RegExp(`^ {2}${table}: defineTable\\(\\{([\\s\\S]*?)^ {2}\\}\\)`, "m").exec(schema)![1]!;
+      expect(body, table).toMatch(/\bprofileId: v\.optional\(v\.id\("profiles"\)\)/);
+      expect(body, table).toMatch(/\bworkspaceId: v\.optional\(v\.id\("workspaces"\)\)/);
+    }
+  });
+
+  test("every workspace billing function checks billing permission on the server", () => {
+    const s = readFileSync(join(root, "workspaceBilling.ts"), "utf8");
+    const re = /export const (\w+) = (query|mutation|action|internalQuery|internalMutation)\(\{[\s\S]*?handler: async \([^)]*\)[^{]*\{([\s\S]*?)\n {2}\},\n\}\);/g;
+    const publicFns = [...s.matchAll(re)].filter((m) => m[2] === "query" || m[2] === "mutation" || m[2] === "action");
+    expect(publicFns.length).toBeGreaterThanOrEqual(7);
+    for (const [, fn, , body] of publicFns) expect(/requireWorkspaceBilling|contextFor|setCancel\(/.test(body!), fn).toBe(true);
+    // The contexts the actions use check it too.
+    expect(/billingContext = internalQuery[\s\S]*?requireWorkspaceBilling/.test(s)).toBe(true);
+    expect(/setLocalCancel = internalMutation[\s\S]*?requireWorkspaceBilling/.test(s)).toBe(true);
+  });
+
   test("no module logs note content, tokens or raw emails", () => {
     for (const { p, s } of sources) {
       for (const m of s.matchAll(/console\.(log|warn|error)\(([^;]*)\);/g)) {

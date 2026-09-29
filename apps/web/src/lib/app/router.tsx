@@ -25,14 +25,15 @@ export type Route =
   | { name: "notes" }
   | { name: "tags" }
   | { name: "tag"; id: string }
-  | { name: "settings"; section: "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "sync" | "data" }
+  | { name: "settings"; section: "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" }
   | { name: "help" }
   | { name: "onboarding" }
   | { name: "invite"; token: string }
+  | { name: "share-invite"; token: string }
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
-const SETTINGS = ["account", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "sync", "data"] as const;
+const SETTINGS = ["account", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "sync", "data"] as const;
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -70,6 +71,8 @@ export function parseRoute(pathname: string): Route {
       return { name: "settings", section: (SETTINGS as readonly string[]).includes(a ?? "") ? (a as (typeof SETTINGS)[number]) : "account" };
     case "invite":
       return a ? { name: "invite", token: a } : { name: "not_found" };
+    case "share-invite":
+      return a ? { name: "share-invite", token: a } : { name: "not_found" };
     default:
       return { name: "not_found" };
   }

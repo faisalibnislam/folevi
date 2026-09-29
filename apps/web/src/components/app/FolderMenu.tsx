@@ -27,10 +27,10 @@ export interface MenuFolder {
 
 /**
  * The "…" menu for a folder (sidebar rows and folder cards): new note in it, rename, change colour,
- * copy link, invite people to the workspace (a modal), and delete. Folders don't nest.
+ * copy link, invite people to the team workspace (a modal), and delete. Folders don't nest.
  */
 export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder; trigger?: ReactNode; className?: string }) {
-  const { workspace } = useAppState();
+  const { canEdit, canManage: managesWorkspace, workspace } = useAppState();
   const { openAsk } = useShell();
   const aiOn = useAiEnabled();
   const createDocument = useCreateDocument();
@@ -42,8 +42,8 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
   const [inviting, setInviting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [coloring, setColoring] = useState(false);
-  const canEdit = workspace.role !== "viewer" && workspace.role !== "commenter";
-  const canManage = workspace.role === "owner" || workspace.role === "admin";
+  // Personal has no members: inviting people is for team workspaces (single pages are shared instead).
+  const canManage = workspace !== null && managesWorkspace;
   const act = (p: Promise<unknown>, msg: string) => p.then(() => toast.show(msg), (e) => toast.show(errorMessage(e), { tone: "error" }));
 
   const copyLink = () => {
@@ -78,7 +78,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
     <>
       {coloring ? <FolderColorDialog open onClose={() => setColoring(false)} folder={folder} /> : null}
       <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(rename({ folderId: folder.id, name }), "Renamed")} />
-      {inviting ? <InviteDialog open onClose={() => setInviting(false)} /> : null}
+      {inviting && workspace ? <InviteDialog workspace={workspace} open onClose={() => setInviting(false)} /> : null}
       <Dialog
         open={deleting}
         onClose={() => setDeleting(false)}

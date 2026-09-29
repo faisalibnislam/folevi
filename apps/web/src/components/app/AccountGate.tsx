@@ -133,7 +133,7 @@ export function AccountGate() {
           </Button>
         </FullPageMessage>
       ) : (
-        <FullPageMessage title="Setting up your folio…" body="Creating your personal workspace and a few pages to start from." busy />
+        <FullPageMessage title="Setting up your folio…" body="Setting up your Personal space with a few pages to start from." busy />
       );
     case "ready":
       return (

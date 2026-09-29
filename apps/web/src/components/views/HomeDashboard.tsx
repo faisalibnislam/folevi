@@ -175,11 +175,11 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
  */
 export function HomeDashboard() {
   const aiOn = useAiEnabled();
-  const { workspace } = useAppState();
+  const { scope } = useAppState();
   // The latest edited notes, minus any this person removed from the list.
-  const recent = useQuery(api.documents.recentNotes, { workspaceId: workspace.id, limit: CAROUSEL_COUNT });
-  const starred = useQuery(api.documents.list, { workspaceId: workspace.id, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
-  const org = useQuery(api.organization.index, { workspaceId: workspace.id });
+  const recent = useQuery(api.documents.recentNotes, { scope, limit: CAROUSEL_COUNT });
+  const starred = useQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
+  const org = useQuery(api.organization.index, { scope });
   const folders = useColumns(FOLDER_MIN);
   const names = new Map((org?.folders ?? []).map((f) => [f.id, f.name]));
   const recentFolders = [...(org?.folders ?? [])].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, folders.cols * 2);

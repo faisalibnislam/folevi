@@ -22,7 +22,7 @@ const features: Array<{ icon: IconName; title: string; body: string }> = [
   {
     icon: "offline",
     title: "Offline by design",
-    body: "Your workspace is stored on your Mac. Write on a train or a plane; changes sync when you reconnect, and the toolbar always shows whether you’re Saved, Offline or Syncing.",
+    body: "Your notes are stored on your Mac. Write on a train or a plane; changes sync when you reconnect, and the toolbar always shows whether you’re Saved, Offline or Syncing.",
   },
   {
     icon: "window",
@@ -66,7 +66,7 @@ export default function MacPage() {
               <Eyebrow>Folevi for Mac</Eyebrow>
               <h1 className="mk-display mt-6 max-w-[14ch] text-[46px] sm:text-[66px] lg:text-[74px]">Built for the Mac, not ported to it.</h1>
               <p className="mk-lede mt-6 max-w-[50ch]">
-                A native app with the menus, windows and keyboard shortcuts you expect — and a workspace that stays on your
+                A native app with the menus, windows and keyboard shortcuts you expect — and notes that stay on your
                 Mac, so writing never waits for the network.
               </p>
             </div>
@@ -180,7 +180,7 @@ export default function MacPage() {
             align="center"
             id="web-title"
             eyebrow="Also on the web"
-            title="The same workspace in any browser."
+            title="The same notes in any browser."
             lede="Folevi on the web has the same pages, tasks and search, syncs in real time with your Mac, and keeps working offline once it’s loaded."
           />
           <div className="relative mx-auto mt-12 max-w-[1000px]">

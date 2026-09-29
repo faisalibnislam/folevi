@@ -29,10 +29,9 @@ const picking = new Map<string, Promise<ImagePalette | null>>();
  * Uploads a note style image into the note (so it follows the note's access) and returns its file id. The
  * page and text colours are picked from the local file and saved with it.
  */
-export async function uploadCoverImage(client: ConvexReactClient, input: { workspaceId: string; documentId: string; file: File }): Promise<string> {
+export async function uploadCoverImage(client: ConvexReactClient, input: { documentId: string; file: File }): Promise<string> {
   const palette = paletteFromImage(input.file).catch(() => null);
   const fileId = await uploadFileNow(client, {
-    workspaceId: input.workspaceId,
     documentId: input.documentId,
     blob: input.file,
     filename: input.file.name || "note-style",

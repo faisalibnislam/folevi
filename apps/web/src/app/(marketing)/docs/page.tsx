@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Documentation",
   description:
-    "Getting started with Folevi: keyboard shortcuts, blocks and slash commands, tasks and calendar, sync and offline status, sharing and permissions, import and export, and account security.",
+    "Getting started with Folevi: keyboard shortcuts, blocks and slash commands, tasks and calendar, sync and offline status, sharing and permissions, workspaces and plans, import and export, and account security.",
   path: "/docs",
 });
 
@@ -19,6 +19,7 @@ const toc = [
   { id: "tasks", label: "Tasks & calendar" },
   { id: "sync", label: "Sync & offline" },
   { id: "sharing", label: "Sharing & permissions" },
+  { id: "workspaces", label: "Workspaces & plans" },
   { id: "import-export", label: "Import & export" },
   { id: "account-security", label: "Account security" },
 ];
@@ -53,7 +54,7 @@ export default function DocsPage() {
           <li>
             <a href={SIGN_UP_URL}>Create an account</a> and confirm your email address.
           </li>
-          <li>Your workspace opens. Create a page with the New page button (or ⌘N in the Mac app) and start typing.</li>
+          <li>Your Personal space opens — it’s just yours. Create a page with the New page button and start typing. To work with a team, create a workspace from the menu at the bottom of the sidebar and switch between Personal and your workspaces there.</li>
           <li>
             Type <code>/</code> on any line to turn it into a heading, checklist, quote or any other block.
           </li>
@@ -68,8 +69,8 @@ export default function DocsPage() {
 
         <h2 id="shortcuts">Keyboard shortcuts</h2>
         <p>
-          These shortcuts work in the Mac app. On the web, most work the same way; shortcuts your browser reserves for itself
-          — such as <code>⌘N</code> for a new browser window — are left to the browser.
+          These shortcuts are for the Mac app (coming soon). On the web, most work the same way; shortcuts your browser
+          reserves for itself — such as <code>⌘N</code> for a new browser window — are left to the browser.
         </p>
         <div className="mk-card rounded-[22px] p-5 sm:p-6">
           <ShortcutTable caption="Folevi keyboard shortcuts" />
@@ -115,7 +116,7 @@ export default function DocsPage() {
         <p>
           Any checklist item is a task. Give it a due date — and optionally a time and a priority — and it appears in
           <strong> Today</strong> on that day, and in <strong>Tasks</strong> alongside every other open task in your
-          workspace. Overdue tasks show up there too, so nothing slips quietly past.
+          Personal (or the workspace you’re in). Overdue tasks show up there too, so nothing slips quietly past.
         </p>
         <p>
           The <strong>Calendar</strong> shows dated tasks by day. <strong>Quick Add</strong> (⇧⌘A) saves a task straight into
@@ -124,7 +125,7 @@ export default function DocsPage() {
 
         <h2 id="sync">Sync & offline</h2>
         <p>
-          Folevi saves every change on your device first, then syncs it. On the web, your workspace is kept in the browser’s
+          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s
           storage; on the Mac, in a local database. You can keep writing with no connection at all.
         </p>
         <p>Each page shows one of these statuses:</p>
@@ -172,18 +173,48 @@ export default function DocsPage() {
         </p>
 
         <h2 id="sharing">Sharing & permissions</h2>
-        <p>Pages are private to your workspace by default. From a page’s Share menu you can:</p>
+        <p>Pages in your Personal are private to you, and pages in a workspace are open to its members, by default. From a page’s Share menu you can:</p>
         <ul>
           <li>
-            <strong>Restrict a page</strong> so only the people you add can open it.
+            <strong>Restrict a page</strong> so only the people you add can open it (in a workspace, its owner and admins
+            still can).
           </li>
           <li>
-            <strong>Invite people by email</strong> as an <em>editor</em>, <em>commenter</em> or <em>viewer</em>. They get an
+            <strong>Share with people by email</strong>: they can view, comment or edit. People without a Folevi account get an invitation to accept first; people outside a workspace join that page as guests, who aren’t billed. They get an
             email and find the page under Shared.
           </li>
           <li>
             <strong>Create a public link</strong> for anyone with the URL. You can set an expiry date, require a password of
             at least 8 characters, and revoke the link at any time — it stops working immediately.
+          </li>
+        </ul>
+
+        <h2 id="workspaces">Workspaces & plans</h2>
+        <p>
+          Your <strong>Personal</strong> is yours alone and isn’t a workspace: nobody can join it, and your personal plan (Free,
+          Basic or Pro) covers only it — its storage, your devices and, on Pro, the AI Assistant. A{" "}
+          <strong>workspace</strong> is shared with a team and has its own plan, storage and billing.
+        </p>
+        <ul>
+          <li>
+            <strong>Roles.</strong> Every workspace has one owner. Admins manage members, guests and settings; members work on
+            the workspace’s pages (some members can only comment or view). Guests aren’t members: they see only the pages
+            shared with them.
+          </li>
+          <li>
+            <strong>Plans.</strong> Workspace Free, Team and Business. Paid plans are billed per member seat — the owner,
+            admins and members each take one; guests and pending invitations are free. The owner, and admins the owner
+            allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
+          </li>
+          <li>
+            <strong>Separate limits.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes
+            your Personal. Storage is counted separately for your Personal and for each workspace; if a space goes over its
+            limit, nothing is deleted — new uploads wait until there’s room.
+          </li>
+          <li>
+            <strong>Leaving and deleting.</strong> Content in a workspace belongs to the workspace and stays when someone
+            leaves. The owner can’t leave until they transfer ownership or delete the workspace; a deleted workspace is
+            removed after 7 days, and the owner can cancel until then.
           </li>
         </ul>
 
@@ -193,19 +224,22 @@ export default function DocsPage() {
         <h3>Export</h3>
         <ul>
           <li>Any page as Markdown, HTML or PDF.</li>
-          <li>Your whole workspace as a ZIP archive.</li>
+          <li>Everything in your Personal, or (for owners and admins) in a workspace, as a ZIP archive.</li>
         </ul>
         <p>Exports are yours to keep. Nothing in Folevi is locked to Folevi.</p>
 
         <h2 id="account-security">Account security</h2>
         <ul>
-          <li>Email verification is required before you can open a workspace.</li>
+          <li>Email verification is required before you can open Folevi.</li>
           <li>Two-step verification with an authenticator app (TOTP) is optional; turn it on in Settings → Security.</li>
           <li>
             When you set up two-step verification you receive one-time recovery codes. Each works once. Store them somewhere
             safe, away from your password.
           </li>
-          <li>You can delete your account at any time. After a 7-day grace period, it is deleted permanently.</li>
+          <li>
+            You can delete your account at any time — if you own a workspace other people use, transfer it or delete it first.
+            After a 7-day grace period, your account, your Personal and any workspace only you use are deleted permanently.
+          </li>
         </ul>
         <p>
           The full picture — encryption, what staff can and can’t see, and our subprocessors — is on the{" "}

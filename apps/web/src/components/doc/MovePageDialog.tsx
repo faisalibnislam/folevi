@@ -3,7 +3,7 @@
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useState } from "react";
 import { CornerLeftUp, FileText } from "lucide-react";
-import { SCHEMA_VERSION, rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
+import { SCHEMA_VERSION, rankBetween, ulid, type WireBlock, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import type { SyncEngine } from "@/lib/sync/engine";
@@ -57,14 +57,18 @@ export function MovePageDialog({
   documentId,
   title,
   currentParentId,
+  home,
 }: {
   open: boolean;
   onClose: () => void;
   documentId: string;
   title: string;
   currentParentId: string | null;
+  /** The page's own scope when you're a member there (pages only move within their scope); else the current context. */
+  home?: WireScope | null;
 }) {
-  const { workspace, engine } = useAppState();
+  const { scope: current, engine } = useAppState();
+  const scope = home ?? current;
   const client = useConvex();
   const move = useMutation(api.documents.move);
   const toast = useToast();
@@ -79,8 +83,8 @@ export function MovePageDialog({
     }
   }, [open]);
   const query = q.trim();
-  const results = useQuery(api.search.documents, open && query ? { workspaceId: workspace.id, query, limit: 12 } : "skip");
-  const recent = useQuery(api.documents.recent, open && !query ? { workspaceId: workspace.id, limit: 12 } : "skip");
+  const results = useQuery(api.search.documents, open && query ? { scope, query, limit: 12 } : "skip");
+  const recent = useQuery(api.documents.recent, open && !query ? { scope, limit: 12 } : "skip");
   const list = ((query ? results : recent) ?? []).filter((d) => d.id !== documentId && d.id !== currentParentId && ("kind" in d ? d.kind !== "template" : true));
   const loading = (query ? results : recent) === undefined;
 

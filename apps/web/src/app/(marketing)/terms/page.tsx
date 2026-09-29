@@ -6,7 +6,7 @@ import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Terms",
-  description: "The terms for using Folevi — plans and billing, device limits, the AI Assistant and your content — in plain language.",
+  description: "The terms for using Folevi — Personal and workspaces, plans and billing, device limits, the AI Assistant and your content — in plain language.",
   path: "/terms",
 });
 
@@ -15,6 +15,7 @@ const toc = [
   { id: "service", label: "The service" },
   { id: "account", label: "Your account" },
   { id: "content", label: "Your content" },
+  { id: "workspaces", label: "Workspaces" },
   { id: "use", label: "Acceptable use" },
   { id: "sharing", label: "Sharing" },
   { id: "price", label: "Plans and billing" },
@@ -34,7 +35,7 @@ export default function TermsPage() {
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
         <p>
-          By creating an account or using Folevi — the website, the web app and our native apps — you agree to these terms and
+          By creating an account or using Folevi — the website, the web app and, once it’s released, the Mac app — you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organisation, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>
@@ -59,7 +60,37 @@ export default function TermsPage() {
           to store, process, sync, back up and display your content — only as needed to provide the service to you and to
           the people you share with. This permission ends when your content is deleted.
         </p>
-        <p>You can export your content at any time.</p>
+        <p>
+          Your account has a <strong>Personal</strong> space that only you can browse; nobody else sees anything in it unless
+          you share a page with them. You can export everything in your Personal at any time.
+        </p>
+
+        <h2 id="workspaces">Workspaces</h2>
+        <ul>
+          <li>
+            A workspace is a shared space for a team. Content created in a workspace belongs to that workspace: its owner and
+            admins control it, and it stays with the workspace when someone leaves or is removed. If you add something to a
+            workspace, you give the workspace permission to keep and use it. Your Personal is never part of a workspace.
+          </li>
+          <li>
+            Every workspace has one owner, who can transfer ownership to another member. Owners and admins manage members and
+            guests; the owner, and admins the owner allows, manage the workspace’s plan and billing. Owners and admins can
+            export the workspace.
+          </li>
+          <li>
+            A guest is someone a page was shared with who isn’t a member. Guests see only the pages shared with them (and
+            the pages inside those), never the rest of the workspace.
+          </li>
+          <li>
+            If you leave or are removed from a workspace, you lose access to it; your Personal, your personal plan and your
+            other workspaces aren’t affected. The only owner can’t leave until they transfer ownership or delete the
+            workspace.
+          </li>
+          <li>
+            The owner can delete a workspace. It’s removed after 7 days, during which the owner can cancel; members lose
+            access straight away. After that, its content is permanently deleted.
+          </li>
+        </ul>
 
         <h2 id="use">Acceptable use</h2>
         <p>Please don’t use Folevi to:</p>
@@ -82,20 +113,33 @@ export default function TermsPage() {
         <h2 id="price">Plans and billing</h2>
         <ul>
           <li>
-            Folevi has a Free plan and paid plans (Basic and Pro), billed monthly or yearly in advance through Stripe. Prices
-            and what each plan includes — storage, devices and the AI Assistant — are on the{" "}
-            <Link href="/pricing">pricing page</Link>.
-          </li>
-          <li>New accounts get a free Pro trial. It ends without charge; you choose whether to pay.</li>
-          <li>
-            Paid plans renew automatically until you cancel. You can cancel at any time in Settings → Plan & billing; your plan
-            keeps working until the end of the period you paid for, then moves to Free. Payments already made aren’t refunded
-            except where the law requires it.
+            <strong>Personal plans</strong> are per person: Free, and the paid Basic and Pro plans, billed monthly or yearly in
+            advance through Stripe. A personal plan covers your own account and your Personal only.
           </li>
           <li>
-            Plan limits apply while you’re on a plan: storage (counted across the workspaces you own) and, on Free, the number
-            of devices signed in at once. Going over a limit pauses new uploads or holds a new device until you make room or
-            upgrade — nothing you’ve created is deleted.
+            <strong>Workspace plans</strong> belong to the workspace, not to any one person: Free, and the paid Team and
+            Business plans, billed monthly or yearly in advance through Stripe, per member seat. The owner, admins and members
+            each take a seat; guests and pending invitations are free. When members join or leave, the number of seats billed
+            changes to match, and Stripe prorates the difference. A workspace’s plan stays with it if ownership is
+            transferred.
+          </li>
+          <li>
+            Personal and workspace plans never affect each other: a personal plan doesn’t change what a workspace includes, and
+            a workspace plan doesn’t change your personal plan. Prices and what each plan includes — storage, devices and the
+            AI Assistant — are on the <Link href="/pricing">pricing page</Link>.
+          </li>
+          <li>New accounts get a free 7-day Pro trial. It ends without charge; you choose whether to pay.</li>
+          <li>
+            Paid plans renew automatically until canceled. You can cancel a personal plan in Settings → Plan & billing; a
+            workspace plan is canceled by its owner or an admin they allow. A canceled plan keeps working until the end of the
+            period paid for, then moves to Free. Payments already made aren’t refunded except where the law requires it.
+          </li>
+          <li>
+            Plan limits apply while you’re on a plan: personal storage for your personal plan, workspace storage for a
+            workspace’s plan (the two are never added together), and, on the Free personal plan, the number of devices
+            signed in at once — which being in a workspace doesn’t change. Going over a limit, for example after moving to a
+            smaller plan, pauses new uploads or holds a new device until you make room or upgrade — nothing already stored is
+            deleted, and you can still open, edit, organise, export and delete it.
           </li>
           <li>
             If we change prices, we’ll tell you by email at least 30 days before the change applies to your plan.
@@ -105,17 +149,21 @@ export default function TermsPage() {
 
         <h2 id="ai">The AI Assistant</h2>
         <p>
-          On plans that include it, the AI Assistant can answer questions about your notes and help you write. It uses
-          Google’s Gemini API, as described in our <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off
-          in settings. AI can be wrong: check what it produces before relying on it. You’re responsible for how you use its
-          output, and you keep the same rights to it as to the rest of your content.
+          On plans that include it, the AI Assistant can answer questions about your notes and help you write. In your
+          Personal it comes with Pro (and the trial); in a workspace it comes with the workspace’s Team or Business plan, for
+          its members — a personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it
+          available to everyone. It uses Google’s Gemini API, as described in our{" "}
+          <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
+          produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as
+          to the rest of your content.
         </p>
 
         <h2 id="ending">Ending</h2>
         <p>
-          You can stop using Folevi and delete your account whenever you like. Deletion has a 7-day grace period, then it’s
-          permanent. We may end the service or an account under these terms; if we end the service, we’ll give reasonable
-          notice so you can export your content.
+          You can stop using Folevi and delete your account at any time, with one condition: while you own a workspace other
+          people use, transfer its ownership or delete it first, so their work isn’t lost. Deletion has a 7-day grace period,
+          then your account, your Personal and any workspace only you use are permanently deleted. We may end the service or an
+          account under these terms; if we end the service, we’ll give reasonable notice so you can export your content.
         </p>
 
         <h2 id="liability">Warranties and liability</h2>

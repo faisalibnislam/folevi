@@ -4,6 +4,7 @@ import { rankSequence } from "@folevi/editor-schema";
 import { assertWritable, documentAccess, getDocumentByPublicId, requireDocument, requireProfile, accessAtLeast } from "./lib/auth";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { nextSeq } from "./lib/seq";
+import { scopeOfRow } from "./lib/scope";
 import { LIMITS } from "@folevi/editor-schema";
 
 /** Live, canonical blocks of a document (tombstones excluded). Subscribed by the editor. */
@@ -53,7 +54,7 @@ export const rebalance = mutation({
       .sort((a, b) => (a.rank < b.rank ? -1 : a.rank > b.rank ? 1 : a.blockId < b.blockId ? -1 : 1));
     if (!siblings.some((s) => s.rank.length > LIMITS.maxRankLength / 2)) return { rebalanced: 0 };
     const ranks = rankSequence(siblings.length);
-    const seq = await nextSeq(ctx, doc.workspaceId);
+    const seq = await nextSeq(ctx, scopeOfRow(doc));
     const now = Date.now();
     for (const [i, s] of siblings.entries()) {
       const revision = s.revision + 1;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -15,16 +15,29 @@ export function DeleteAccountCard() {
   const { profile } = useAppState();
   const requestDeletion = useMutation(api.users.requestAccountDeletion);
   const cancelDeletion = useMutation(api.users.cancelAccountDeletion);
+  // Workspaces other people use must be handed on or deleted first (the server refuses otherwise).
+  const blockers = useQuery(api.users.deletionBlockers, profile.status === "pending_deletion" ? "skip" : {});
   const toast = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
   return (
     <>
-      <Card title="Delete account" description="Deletes your account, your personal workspace and everything in it after a 7-day grace period. Team workspaces you own pass to an admin if there is one. Export your data first if you want to keep it.">
+      <Card title="Delete account" description="Deletes your account, your Personal and everything in it after a 7-day grace period, along with workspaces you own that nobody else is in. Export your data first if you want to keep it.">
         {profile.status === "pending_deletion" ? (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm">Scheduled for {profile.deletionScheduledFor ? formatDateTime(profile.deletionScheduledFor) : "soon"}.</p>
             <Button onClick={() => void cancelDeletion({}).then(() => toast.show("Deletion canceled", { tone: "success" }))}>Cancel deletion</Button>
+          </div>
+        ) : blockers && blockers.workspaces.length > 0 ? (
+          <div role="status" className="max-w-xl text-sm">
+            <p>You own {blockers.workspaces.length === 1 ? "a workspace" : "workspaces"} other people use. Your account can’t be deleted until you make another member the owner (Members → Make owner) or delete {blockers.workspaces.length === 1 ? "it" : "them"} (General → Delete workspace):</p>
+            <ul className="mt-2 list-disc space-y-0.5 pl-5 text-muted">
+              {blockers.workspaces.map((w) => (
+                <li key={w.id}>
+                  {w.name} · {w.otherMembers} other {w.otherMembers === 1 ? "member" : "members"}
+                </li>
+              ))}
+            </ul>
           </div>
         ) : (
           <Button variant="danger" onClick={() => setDeleteOpen(true)}>

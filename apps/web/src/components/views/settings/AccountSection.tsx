@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/Switch";
 import { useAiAccess } from "@/components/ai/useAi";
 
 export function AccountSection() {
-  const { profile, timeZone, workspace } = useAppState();
+  const { profile, timeZone } = useAppState();
   const convex = useConvex();
   const update = useMutation(api.users.updateProfile);
   const setAvatar = useMutation(api.users.setAvatar);
@@ -33,8 +33,8 @@ export function AccountSection() {
             src={profile.avatarUrl ?? null}
             initial={profile.displayName}
             onUpload={async (file) => {
-              // The server stores it in your personal workspace whatever workspace is open.
-              const fileId = await uploadIdentityImage(convex, { kind: "avatar", workspaceId: workspace.id, file });
+              // The server stores it in your Personal (your personal storage), whichever context is open.
+              const fileId = await uploadIdentityImage(convex, { kind: "avatar", file });
               await setAvatar({ fileId });
             }}
             onRemove={async () => {
@@ -85,7 +85,8 @@ export function AccountSection() {
 
 /** Turns the AI assistant on or off for this person (the server enforces it). */
 function AiSettingCard() {
-  const { setting: on, entitled } = useAiAccess();
+  // Your own setting and Personal plan (team workspaces include AI on their own plans).
+  const { setting: on, personalEntitled: entitled } = useAiAccess();
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const descId = useId();
@@ -97,7 +98,7 @@ function AiSettingCard() {
           {!entitled ? (
             <>
               {" "}
-              <span className="font-medium text-heading">AI is part of Pro.</span>{" "}
+              <span className="font-medium text-heading">In Personal, AI is part of Pro.</span>{" "}
               <a href="/settings/billing" className="underline underline-offset-2">
                 See plans
               </a>

@@ -1,19 +1,18 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace } from "./helpers";
+import { APP, newPerson } from "./helpers";
 
 // A valid 1×1 PNG.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
-test("the personal workspace is always called Personal; profile pictures and team logos upload and remove", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Iris Identity");
+test("Personal is not a workspace; profile pictures and team logos upload and remove", async ({ browser }) => {
+  const { page } = await newPerson(browser, "Iris Identity");
 
-  // Personal workspace name: read-only, with the reason.
+  // Personal has no workspace settings (no name, no logo, no members): it's you.
   await page.goto(`${APP}/settings/workspace`);
-  const name = page.getByLabel("Workspace name", { exact: true });
-  await expect(name).toHaveValue("Personal");
-  await expect(name).toHaveAttribute("readonly", "");
-  await expect(page.getByText("Your personal workspace is always called Personal.")).toBeVisible();
-  await expect(page.getByText("Your personal workspace uses your profile picture.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You're in Personal" })).toBeVisible();
+  await expect(page.getByLabel("Workspace name", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/personal workspace/i)).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Members" })).toHaveCount(0);
 
   // Profile picture: the initial until an image is uploaded.
   await page.goto(`${APP}/settings/account`);
@@ -32,10 +31,15 @@ test("the personal workspace is always called Personal; profile pictures and tea
   await avatar.getByLabel("Upload profile picture").setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
   await expect(page.getByRole("alert").filter({ hasText: "Choose a PNG, JPEG, WebP or GIF image." })).toBeVisible();
 
-  // A team workspace can be renamed and gets a square logo.
+  // A team workspace (created from Settings, where the Workspace group would be) can be renamed and gets a square logo.
   await page.goto(`${APP}/settings/workspace`);
-  await page.getByLabel("Team workspace name").fill("Iris Studio");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Create a workspace" }).last().click();
+  await page.getByRole("dialog", { name: "New workspace" }).getByLabel("Workspace name").fill("Iris Studio");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  // Already on /settings/workspace, so wait for the dialog to close rather than for the URL.
+  await expect(page.getByRole("dialog", { name: "New workspace" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/settings\/workspace$/);
+  await expect(page.getByRole("heading", { name: "Workspace", exact: true, level: 2 })).toBeVisible();
   await expect(page.getByLabel("Workspace name", { exact: true })).toHaveValue("Iris Studio");
   await expect(page.getByLabel("Workspace name", { exact: true })).not.toHaveAttribute("readonly", "");
   const logo = page.getByRole("group", { name: "Workspace logo" });

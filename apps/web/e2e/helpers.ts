@@ -108,12 +108,38 @@ export async function completeOnboarding(page: Page) {
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");
 }
 
-/** Signs up a brand-new person (verified email + 2FA), completes onboarding; lands on the Welcome document. */
-export async function newPersonWithWorkspace(browser: Browser, name = "Test Person"): Promise<{ context: BrowserContext; page: Page; email: string; account: Account }> {
+/**
+ * Signs up a brand-new person (verified email + 2FA), completes onboarding; lands on the Welcome document
+ * in their Personal (no workspaces yet — Personal is not a workspace).
+ */
+export async function newPerson(browser: Browser, name = "Test Person"): Promise<{ context: BrowserContext; page: Page; email: string; account: Account }> {
   const context = await browser.newContext();
   const { page, account } = await createAccount(context, { name });
   await completeOnboarding(page);
   return { context, page, email: account.email, account };
+}
+
+/** The switcher at the bottom of the sidebar (Personal, your workspaces, and account items). */
+export function switcher(page: Page): Locator {
+  return page.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /— Personal, workspaces and account$/ });
+}
+
+/** Opens the switcher and picks Personal, or the workspace called `name`. */
+export async function switchTo(page: Page, name: "Personal" | (string & {})) {
+  await showFolders(page);
+  await switcher(page).click();
+  await page.getByRole("menuitemradio", { name, exact: true }).click();
+  await expect(switcher(page)).toHaveAccessibleName(`${name} — Personal, workspaces and account`);
+}
+
+/** Creates a team workspace from the switcher and switches to it. */
+export async function createWorkspace(page: Page, name: string) {
+  await showFolders(page);
+  await switcher(page).click();
+  await page.getByRole("menuitem", { name: "New workspace…" }).click();
+  await page.getByRole("dialog", { name: "New workspace" }).getByLabel("Workspace name").fill(name);
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await expect(switcher(page)).toHaveAccessibleName(`${name} — Personal, workspaces and account`);
 }
 
 /** Grants a platform role on the local (non-production) deployment via the Convex CLI. */
@@ -149,7 +175,7 @@ export async function showFolders(page: Page) {
   if (!/\/d\/[0-9A-Z]{26}/.test(page.url())) return;
   await page.getByRole("button", { name: "Sidebar", exact: true }).click();
   await page.getByRole("menuitemradio", { name: "Show folders" }).click();
-  await expect(page.getByRole("navigation", { name: "Workspace" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible();
 }
 
 /** Seeds demo folders, tags and notes for an account on the local (non-production) deployment. */

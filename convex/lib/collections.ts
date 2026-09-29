@@ -2,6 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { rankSequence, ulid } from "@folevi/editor-schema";
 import { fail } from "./errors";
+import { insertScoped, type Scope } from "./scope";
 
 export type PropertyType = Doc<"collectionProperties">["type"];
 
@@ -51,7 +52,8 @@ export function normalizeValue(
 export async function createCollection(
   ctx: MutationCtx,
   input: {
-    workspaceId: Id<"workspaces">;
+    /** The hosting document's scope. */
+    scope: Scope;
     documentId: Id<"documents">;
     name: string;
     seq: number;
@@ -60,9 +62,8 @@ export async function createCollection(
 ): Promise<{ collectionId: Id<"collections">; publicId: string; propertyIds: Map<string, Id<"collectionProperties">>; propertyPublicIds: Map<string, string> }> {
   const now = Date.now();
   const publicId = ulid();
-  const collectionId = await ctx.db.insert("collections", {
+  const collectionId = await insertScoped(ctx, "collections", input.scope, {
     publicId,
-    workspaceId: input.workspaceId,
     documentId: input.documentId,
     name: input.name,
     createdAt: now,

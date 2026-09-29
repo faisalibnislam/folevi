@@ -12,7 +12,7 @@ export function SharedView() {
   return (
     <ViewChrome
       title={<h1 className="text-sm font-semibold">Shared with Me</h1>}
-      subtitle={docs === undefined ? undefined : `${docs.length} ${docs.length === 1 ? "page" : "pages"} · across all workspaces`}
+      subtitle={docs === undefined ? undefined : `${docs.length} ${docs.length === 1 ? "page" : "pages"} · from anyone`}
       tabTitle="Shared with Me"
     >
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:px-8">
@@ -21,7 +21,7 @@ export function SharedView() {
         ) : docs.length === 0 ? (
           <div className="mt-16 text-center">
             <p className="ui-display text-2xl text-muted">Nothing has been shared with you yet.</p>
-            <p className="mt-2 text-sm text-muted">Pages people add you to directly, in any workspace, show up here.</p>
+            <p className="mt-2 text-sm text-muted">Pages people share with you directly — from their Personal or from any workspace — show up here.</p>
           </div>
         ) : (
           <ul className="mt-6 divide-y divide-line overflow-hidden ui-card rounded-[8px]">
@@ -35,7 +35,7 @@ export function SharedView() {
                     <span className="block font-medium">{d.title || "Untitled"}</span>
                     <span className="block truncate text-sm text-muted">{d.excerpt}</span>
                     <span className="block text-xs text-faint">
-                      Shared by {d.sharedBy} · {d.workspaceName} · {d.role === "editor" ? "Can edit" : d.role === "commenter" ? "Can comment" : "Can view"} · updated {formatRelative(d.updatedAt)}
+                      Shared by {d.sharedBy} · {d.workspaceName ?? `Personal · ${d.ownerName ?? "someone"}`} · {d.role === "editor" ? "Can edit" : d.role === "commenter" ? "Can comment" : "Can view"} · updated {formatRelative(d.updatedAt)}
                     </span>
                   </span>
                 </AppLink>

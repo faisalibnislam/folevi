@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace } from "./helpers";
+import { newPerson } from "./helpers";
 
 test("the Up button goes up a level: note → its folder → Folders → Home (disabled there)", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Up Walker");
+  const { page } = await newPerson(browser, "Up Walker");
   await page.goto("/documents");
   await page.getByRole("link", { name: /Trip Sketch: Coastal Weekend/ }).first().click();
   await expect(page).toHaveURL(/\/d\//);

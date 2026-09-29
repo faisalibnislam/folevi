@@ -17,7 +17,7 @@ This page describes what exists in this repository today, what has been verified
 | Identity (built-in accounts) | **Live.** Better Auth inside Convex: email + password, confirmed email, optional authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). |
 | Email (Loops) | **Partly live.** Sending domain `mail.folevi.com` verified; the two identity templates (confirmation, password reset) are published and working. The other nine (new device, deletion, invites, mentions, comments, digest, shares, access changes) are written but not yet created in Loops, so those emails are skipped. |
 | AI Assistant (Gemini) | **Live.** Server-side only (`convex/ai.ts`); the key is a Convex environment variable. |
-| Payments (Stripe) | **Not configured.** Plans, trial and limits work; paid plans can't be bought until the Stripe variables are set (`.env.example`). |
+| Payments (Stripe) | **Not configured.** Personal and workspace plans, the trial, seats and limits work; paid plans can't be bought until the Stripe variables are set (`.env.example`, `docs/DEPLOYMENT.md`). |
 | Native Mac app (`apps/macos`) | Built and unit-tested against the local backend, brought up to the web's current design on 2026-09-28; signs in through the browser (Authorization Code + PKCE). **Not distributed** (ad-hoc signed, not notarized); the marketing page says “Coming soon”. Work is paused while the web is finished (`docs/MACOS.md`). |
 
 iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
@@ -48,23 +48,42 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Ask questions of your notes (with links to the notes used), write, rewrite, summarize, continue,
   translate and find action items — from the slash menu, the selection toolbar or ⌘J — and “Catch me
   up”, a brief of the week on Home. Answers stream in. Anyone can turn it off in Settings. Sent to
-  Google Gemini; included in Pro and the Pro trial.
+  Google Gemini. In Personal it comes with Pro and the Pro trial; in a workspace, with that workspace's
+  Team or Business plan, for its members (not guests). A personal plan never adds AI to a workspace.
+  Fair-use limits apply (per person, per Personal or workspace).
+
+### Personal and workspaces
+- **Personal** is each person's own space, not a workspace: nobody can join it; pages in it can be shared
+  with people as guests. **Workspaces** are shared team spaces with their own plan, storage and billing;
+  their content belongs to the workspace. The switcher lists Personal first, then your workspaces with your
+  role. The model and its migration are in `docs/ACCOUNT_MODEL_PLAN.md`.
 
 ### Plans
-- Free (1 GB, 2 devices), Basic (20 GB, unlimited devices) and Pro (100 GB, unlimited devices, AI), with
-  a 7-day Pro trial for every new account and no card. Settings → Plan & billing and Settings → Devices.
-  Limits are enforced by the server.
+- **Personal plans** (per person): Free (1 GB, 2 devices), Basic (20 GB, unlimited devices) and Pro (100 GB,
+  unlimited devices, AI), with a 7-day Pro trial for every new account and no card. Settings → Plan &
+  billing and Settings → Devices.
+- **Workspace plans** (per workspace, billed per member seat — owner, admins and members; guests and pending
+  invitations are free): Workspace Free (5 GB, no AI), Team (100 GB, AI) and Business (1 TB, AI with higher
+  fair use). Managed by the owner and admins they allow (Settings → workspace Plan & billing). Not on sale
+  until Stripe is configured; admins can set a workspace's plan by hand.
+- Personal and workspace plans, storage and AI never mix. Over a limit (e.g. after a downgrade) nothing is
+  deleted; uploads wait until there's room. Everything is enforced by the server
+  (`convex/lib/entitlements.ts`, `convex/lib/seats.ts`).
 
 ### Tasks and calendar
 - Every to-do in every page is a task. Due dates, Today / Upcoming / Anytime / Completed views, a
-  calendar, Quick Add into your Inbox page (one per person per workspace, deterministic id so offline
-  devices agree), optional reminders and a daily digest email.
+  calendar, Quick Add into your Inbox page (one per person per Personal or workspace, deterministic id so
+  offline devices agree), optional reminders and a daily digest email.
 - Daily Notes were retired: existing daily notes remain as ordinary pages and old `/daily` links open Home.
 
 ### Working with others
-- Workspace roles (Owner, Admin, Editor, Commenter, Viewer), restricted pages with explicit grants,
-  invitations bound to the invited address, comments with threads and resolution, presence,
-  notifications.
+- Workspace roles (Owner, Admin, Member — optionally comment or view only) and guests (single pages,
+  not billed; invited by email even without an account; a Guests list with member ↔ guest conversion),
+  restricted pages with explicit grants, invitations bound to the invited address, comments with threads
+  and resolution, presence, notifications.
+- Ownership transfer; the only owner can't leave without transferring or deleting the workspace;
+  deleting a workspace takes effect after 7 days (the owner can cancel), and removing a member never
+  touches their Personal or their plan.
 - Public links: off by default, optional expiry and password, `noindex`, revocable at once.
 
 ### Sync and offline
@@ -85,7 +104,8 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   verification (turned on or off in Settings → Security, with 10 single-use backup codes and an optional
   30-day “trust this device”; required for the admin console), password reset by email, password
   change, new backup codes and moving to a new authenticator in Settings → Security, session list with instant revocation, account deletion
-  with a 7-day grace period (`docs/SECURITY.md`, `docs/AUTH_DECISION.md`).
+  with a 7-day grace period — refused while you own a workspace other people use (transfer or delete it
+  first) (`docs/SECURITY.md`, `docs/AUTH_DECISION.md`).
 - No third-party analytics or trackers.
 
 ## Verified
@@ -111,7 +131,11 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 - **Email:** nine of eleven Loops templates aren't created yet, and the Loops webhook isn't configured,
   so delivered/bounced events don't reach the admin email log. One early password-reset email was
   accepted by Loops but never delivered, with no bounce.
-- **Payments:** Stripe isn't configured on production.
+- **Payments:** Stripe isn't configured on production (personal or workspace prices).
+- **Account model:** Personal-is-not-a-workspace, workspace plans and members vs guests are built on the
+  `account-model` branch; production still runs the old model until the migration in
+  `docs/ACCOUNT_MODEL_PLAN.md` §3a (backup, deploy, migrate, verify) is run. The Mac app still expects the
+  old model.
 - **Accounts:** no breached-password check yet and no passkeys; no social sign-in by design
   (`docs/AUTH_DECISION.md`). Account email changes are handled by support, not self-service.
 - **Collaboration is block-granular**, not character-level: concurrent edits to the same block become a
@@ -126,11 +150,12 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 
 ## Next
 
-1. Finish the first-release checklist on production, create Loops templates 03–11, and set up the Loops
+1. Run the account-model migration on production (`docs/ACCOUNT_MODEL_PLAN.md` §3a).
+2. Finish the first-release checklist on production, create Loops templates 03–11, and set up the Loops
    webhook.
-2. Stripe on production, so paid plans can be bought.
-3. Mac: catch up with the web, then distribution (Developer ID signing, notarization, universal build
+3. Stripe on production, so paid personal and workspace plans can be bought.
+4. Mac: catch up with the web (Personal as its own scope, workspace plans, guests), then distribution (Developer ID signing, notarization, universal build
    once the Convex Swift client ships an x86_64 slice, testing on macOS 15).
-4. Character-level merging for concurrent edits to the same block.
-5. Mac parity: collection editing, mention picker, sharing UI, code highlighting.
-6. iOS client from the shared Swift layers (`docs/FUTURE_IOS.md`).
+5. Character-level merging for concurrent edits to the same block.
+6. Mac parity: collection editing, mention picker, sharing UI, code highlighting.
+7. iOS client from the shared Swift layers (`docs/FUTURE_IOS.md`).

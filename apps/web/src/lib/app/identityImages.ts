@@ -21,9 +21,10 @@ export function identityImageProblem(file: File): string | null {
  * Uploads a profile picture ("avatar") or team logo ("logo") and returns the verified file id, ready for
  * `users.setAvatar` / `workspaces.setLogo`. The server decides where the file lives and who may upload it.
  */
-export async function uploadIdentityImage(client: ConvexReactClient, input: { kind: "avatar" | "logo"; workspaceId: string; file: File }): Promise<string> {
+export async function uploadIdentityImage(client: ConvexReactClient, input: { kind: "avatar"; file: File } | { kind: "logo"; workspaceId: string; file: File }): Promise<string> {
   const { uploadUrl, intentId } = await client.mutation(api.files.generateUploadUrl, {
-    workspaceId: input.workspaceId,
+    // A profile picture always goes to your Personal; a logo to its team workspace.
+    scope: input.kind === "logo" ? { kind: "workspace", workspaceId: input.workspaceId } : undefined,
     filename: input.file.name || "image",
     size: input.file.size,
     mimeType: input.file.type,

@@ -1,14 +1,14 @@
 import { readFileSync } from "node:fs";
 import { unzipSync, strFromU8 } from "fflate";
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { APP, newPerson, waitForSaved } from "./helpers";
 
-test("workspace export downloads a ZIP with Markdown documents and a manifest", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Export Tester");
+test("Personal export downloads a ZIP with Markdown documents and a manifest", async ({ browser }) => {
+  const { page, context } = await newPerson(browser, "Export Tester");
   await waitForSaved(page);
   await page.goto(`${APP}/settings/data`);
   const download = page.waitForEvent("download", { timeout: 60_000 });
-  await page.getByRole("button", { name: "Export workspace (.zip)" }).click();
+  await page.getByRole("button", { name: "Export Personal (.zip)" }).click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/-folevi-export-\d{4}-\d{2}-\d{2}\.zip$/);
   await expect(page.getByText(/Exported \d+ documents/)).toBeVisible({ timeout: 30_000 });
@@ -23,7 +23,7 @@ test("workspace export downloads a ZIP with Markdown documents and a manifest", 
 });
 
 test("account deletion is scheduled with a grace period and can be canceled", async ({ browser }) => {
-  const { page, context, email } = await newPersonWithWorkspace(browser, "Deletion Tester");
+  const { page, context, email } = await newPerson(browser, "Deletion Tester");
   await page.goto(`${APP}/settings/security`);
   await page.getByRole("button", { name: "Delete my account…" }).click();
   const dialog = page.getByRole("dialog", { name: "Delete your account?" });

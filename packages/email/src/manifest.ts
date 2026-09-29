@@ -140,7 +140,7 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     variables: {
       inviterName: text("Display name of the inviter (user-controlled).", 80),
       workspaceName: text("Workspace name (user-controlled).", 80),
-      role: text('Role granted, e.g. "Editor".', 32),
+      role: text('Role granted, e.g. "Member".', 32),
       acceptUrl: url("Invitation acceptance link."),
       expiresInDays: num("Days until the invitation expires."),
       preferencesUrl: url("Email preferences page."),
@@ -148,7 +148,7 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     fixture: {
       inviterName: "Maya Okafor",
       workspaceName: "Field Notes",
-      role: "Editor",
+      role: "Member",
       acceptUrl: `${FIX_APP}/invite/EXAMPLEinvite`,
       expiresInDays: 7,
       preferencesUrl: `${FIX_APP}/settings/notifications`,

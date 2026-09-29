@@ -1,9 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace, showFolders, pick, settle } from "./helpers";
+import { APP, createWorkspace, newPerson, showFolders, pick, settle } from "./helpers";
 
-test("tasks: quick add with priority, My Tasks in a personal workspace, edit/cancel from the list, schedule from the calendar", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Planner");
+test("tasks: quick add with priority, My Tasks in Personal, edit/cancel from the list, schedule from the calendar", async ({ browser }) => {
+  const { page } = await newPerson(browser, "Planner");
   await showFolders(page);
   await page.getByRole("link", { name: /^Tasks/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
@@ -13,7 +13,7 @@ test("tasks: quick add with priority, My Tasks in a personal workspace, edit/can
   await dialog.getByRole("button", { name: "Add task" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Task added to Inbox" })).toBeVisible();
 
-  // Personal workspace: unassigned tasks are mine.
+  // Personal: unassigned tasks are mine.
   await page.getByRole("link", { name: /^My Tasks/ }).click();
   const row = page.getByRole("listitem").filter({ hasText: "Plan the herb bed" });
   await expect(row).toBeVisible();
@@ -50,9 +50,9 @@ test("tasks: quick add with priority, My Tasks in a personal workspace, edit/can
 });
 
 test("organization: tags, templates, missing folders, team workspaces from the switcher", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Organizer Two");
+  const { page } = await newPerson(browser, "Organizer Two");
   await showFolders(page);
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const nav = page.getByRole("navigation", { name: "Folio" });
 
   // Tags start collapsed; opened, they can be renamed, recolored and deleted.
   await expect(nav.getByRole("link", { name: "reading" })).toHaveCount(0);
@@ -83,15 +83,14 @@ test("organization: tags, templates, missing folders, team workspaces from the s
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Weekly Reset");
   await expect(page.getByRole("textbox", { name: "Document body" })).not.toBeEmpty();
 
-  // Personal workspaces take collaborators too; so does a team made from the workspace menu.
+  // Personal has no members (single pages are shared instead); a workspace made from the switcher does.
   await page.goto(`${APP}/settings/members`);
-  await expect(page.getByText(/Invite collaborators to your personal workspace/)).toBeVisible();
-  await nav.getByRole("button", { name: /workspace and account$/ }).click();
-  await page.getByRole("menuitem", { name: "New team workspace…" }).click();
-  await page.getByRole("dialog", { name: "New team workspace" }).getByLabel("Workspace name").fill("Garden Club");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(nav.getByRole("button", { name: /workspace and account$/ })).toContainText("Garden Club");
+  await expect(page.getByRole("heading", { name: "You're in Personal" })).toBeVisible();
+  await expect(page.getByText(/Invite collaborators/)).toHaveCount(0);
+  await expect(page.getByLabel("Email")).toHaveCount(0);
+  await createWorkspace(page, "Garden Club");
   await page.goto(`${APP}/settings/members`);
+  await expect(page.getByRole("navigation", { name: "Settings sections" }).getByText("Garden Club")).toBeVisible();
   await page.getByLabel("Email").fill("garden-friend@example.com");
   await page.getByRole("button", { name: "Invite", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Invitation sent to garden-friend@example.com" })).toBeVisible();
@@ -101,7 +100,7 @@ test("organization: tags, templates, missing folders, team workspaces from the s
 test("organization views have no serious accessibility violations (light and dark)", async ({ browser }) => {
   // Seven pages in two themes, each scanned by axe.
   test.setTimeout(300_000);
-  const { page } = await newPersonWithWorkspace(browser, "A11y Organizer");
+  const { page } = await newPerson(browser, "A11y Organizer");
   await showFolders(page);
   const views = ["/tasks/all", "/tasks/completed", "/settings/workspace", "/settings/members", "/templates", "/folders/01NOTAREALFOLDER0000000000", "/documents"];
   for (const scheme of ["light", "dark"] as const) {

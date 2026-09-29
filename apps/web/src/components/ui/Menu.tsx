@@ -11,8 +11,23 @@ export interface MenuItem {
   onSelect: () => void;
   danger?: boolean;
   disabled?: boolean;
-  /** A choice among several (e.g. which workspace): shows a check and is announced as checked. */
+  /** A choice among several (e.g. Personal or a workspace): shows a check and is announced as checked. */
   checked?: boolean;
+  /** A second, quieter line under the label (e.g. your name and plan). */
+  description?: string;
+  /** Quiet text at the end of the row (e.g. your role in a workspace). */
+  detail?: string;
+}
+
+/** A small caps label above a group of items (not focusable). */
+export interface MenuHeading {
+  heading: string;
+}
+
+export type MenuEntry = MenuItem | MenuHeading | "separator";
+
+function isHeading(entry: MenuEntry): entry is MenuHeading {
+  return typeof entry !== "string" && "heading" in entry;
 }
 
 /**
@@ -33,7 +48,7 @@ export function MenuButton({
 }: {
   label: string;
   trigger: ReactNode;
-  items: (MenuItem | "separator")[];
+  items: MenuEntry[];
   align?: "start" | "end";
   /** Open below the trigger (default) or above it (for controls at the bottom of the screen). */
   side?: "bottom" | "top";
@@ -135,7 +150,7 @@ function MenuPanel({
 }: {
   id: string;
   label: string;
-  items: (MenuItem | "separator")[];
+  items: MenuEntry[];
   host: HTMLElement;
   anchor: () => DOMRect | null;
   /** Clicks here don't count as "outside" (the trigger toggles the menu itself). */
@@ -145,7 +160,7 @@ function MenuPanel({
   menuClassName?: string;
   onClose: (refocus?: boolean) => void;
 }) {
-  const actionable = items.map((it, i) => (it === "separator" || it.disabled ? -1 : i)).filter((i) => i >= 0);
+  const actionable = items.map((it, i) => (it === "separator" || isHeading(it) || it.disabled ? -1 : i)).filter((i) => i >= 0);
   const [active, setActive] = useState(actionable[0] ?? 0);
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<CSSProperties | null>(null);
@@ -235,12 +250,20 @@ function MenuPanel({
       {items.map((item, i) =>
         item === "separator" ? (
           <div key={`sep-${i}`} role="separator" className="mx-2 my-1.5 h-px bg-line" />
+        ) : isHeading(item) ? (
+          // Visual only: the items it labels name themselves (a menu may only hold items, groups and separators).
+          <div key={`heading-${i}`} aria-hidden className="ui-caps px-2.5 pb-1 pt-2">
+            {item.heading}
+          </div>
         ) : (
           <button
             key={`${item.label}-${i}`}
             type="button"
             role={item.checked === undefined ? "menuitem" : "menuitemradio"}
             aria-checked={item.checked}
+            // The label names the item; the quieter lines are read as its description.
+            aria-label={item.description || item.detail ? item.label : undefined}
+            aria-description={[item.description, item.detail].filter(Boolean).join(" · ") || undefined}
             data-index={i}
             tabIndex={i === active ? 0 : -1}
             disabled={item.disabled}
@@ -251,7 +274,15 @@ function MenuPanel({
             className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.danger ? "!text-danger" : ""}`}
           >
             {item.icon ? <span className="text-muted" aria-hidden>{item.icon}</span> : null}
-            <span className="flex-1">{item.label}</span>
+            {item.description ? (
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block truncate">{item.label}</span>
+                <span className="block truncate text-[11.5px] text-muted">{item.description}</span>
+              </span>
+            ) : (
+              <span className="flex-1">{item.label}</span>
+            )}
+            {item.detail ? <span className="flex-none text-xs text-muted">{item.detail}</span> : null}
             {item.shortcut ? <span className="text-xs text-faint">{item.shortcut}</span> : null}
             {item.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="text-heading" /> : null}
           </button>

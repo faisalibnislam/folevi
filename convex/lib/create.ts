@@ -15,6 +15,7 @@ import { DEFAULTS, lastRootRank, newDocumentRank, refreshDerived, sanitizeTitle,
 import { fail } from "./errors";
 import { bump } from "./metrics";
 import { nextSeq } from "./seq";
+import { insertScoped, type Scope } from "./scope";
 
 /** Compact authoring format for seed content, templates and programmatic documents. */
 export interface BlockSpec {
@@ -46,7 +47,8 @@ export function specsToWireBlocks(specs: BlockSpec[], parentId: string | null = 
 }
 
 export interface CreateDocumentInput {
-  workspaceId: Id<"workspaces">;
+  /** Where the document lives: a Personal or a team workspace (authorized by the caller). */
+  scope: Scope;
   actor: Doc<"profiles">;
   publicId?: string;
   title: string;
@@ -66,9 +68,8 @@ export interface CreateDocumentInput {
 
 export async function createDocument(ctx: MutationCtx, input: CreateDocumentInput): Promise<Doc<"documents">> {
   const now = Date.now();
-  const seq = await nextSeq(ctx, input.workspaceId);
-  const workspace = await ctx.db.get(input.workspaceId);
-  if (!workspace) fail("not_found", "Workspace not found.");
+  const scope = input.scope;
+  const seq = await nextSeq(ctx, scope);
   const publicId = input.publicId ?? ulid();
   const existing = await ctx.db
     .query("documents")
@@ -80,9 +81,8 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
     const issues = validateWireBlock(b);
     if (issues.length) fail("invalid_block", `${issues[0]!.path}: ${issues[0]!.message}`);
   }
-  const docId = await ctx.db.insert("documents", {
+  const docId = await insertScoped(ctx, "documents", scope, {
     publicId,
-    workspaceId: input.workspaceId,
     parentDocumentId: input.parentDocumentId,
     folderId: input.folderId,
     kind: input.kind ?? "document",
@@ -97,7 +97,7 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
     templateKey: input.templateKey,
     collectionId: input.collectionId,
     accessMode: input.accessMode ?? "workspace",
-    rank: newDocumentRank(await lastRootRank(ctx, input.workspaceId)),
+    rank: newDocumentRank(await lastRootRank(ctx, scope)),
     createdBy: input.actor._id,
     lastEditedBy: input.actor._id,
     createdAt: now,
@@ -115,10 +115,9 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
   });
   const rows: Doc<"blocks">[] = [];
   for (const b of blocks) {
-    const rowId = await ctx.db.insert("blocks", {
+    const rowId = await insertScoped(ctx, "blocks", scope, {
       blockId: b.id,
       documentId: docId,
-      workspaceId: input.workspaceId,
       parentId: b.parentId,
       rank: b.rank,
       type: b.type,
@@ -138,9 +137,20 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
   const doc = (await ctx.db.get(docId))!;
   for (const row of rows) if (row.type === "todo") await syncTaskProjection(ctx, row, doc, input.actor._id);
   await refreshDerived(ctx, doc, rows);
-  await ctx.db.patch(input.workspaceId, { documentCount: workspace.documentCount + 1 });
+  await adjustDocumentCount(ctx, scope, 1);
   await bump(ctx, "documents_total");
   return (await ctx.db.get(docId))!;
+}
+
+/** Keeps a scope's document counter (admin views) in step. */
+export async function adjustDocumentCount(ctx: MutationCtx, scope: Scope, delta: number): Promise<void> {
+  if (scope.kind === "personal") {
+    const owner = await ctx.db.get(scope.profileId);
+    if (owner) await ctx.db.patch(owner._id, { personalDocumentCount: Math.max(0, (owner.personalDocumentCount ?? 0) + delta) });
+    return;
+  }
+  const ws = await ctx.db.get(scope.workspaceId);
+  if (ws) await ctx.db.patch(ws._id, { documentCount: Math.max(0, ws.documentCount + delta) });
 }
 
 /** Deep-copies blocks with fresh ids, preserving the tree. */

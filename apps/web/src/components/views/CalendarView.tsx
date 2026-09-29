@@ -29,7 +29,7 @@ function weekdayOf(date: string): number {
 
 /** Month grid and agenda for dated tasks. Drag a task to a day to reschedule it (with Undo). */
 export function CalendarView({ month }: { month: string | null }) {
-  const { workspace, today, deviceId } = useAppState();
+  const { scope, today, deviceId } = useAppState();
   const { navigate } = useAppRouter();
   const current = month ?? today.slice(0, 7);
   const [mode, setMode] = useState<"month" | "agenda">("month");
@@ -38,10 +38,10 @@ export function CalendarView({ month }: { month: string | null }) {
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
   const from = mode === "month" ? days[0]! : today;
   const to = mode === "month" ? days[41]! : addDays(today, 30);
-  const tasks = useQuery(api.tasks.range, { workspaceId: workspace.id, from, to, includeCompleted: true });
+  const tasks = useQuery(api.tasks.range, { scope, from, to, includeCompleted: true });
   // The agenda starts with anything still open from before today; undated tasks can be scheduled from here.
-  const overdue = useQuery(api.tasks.range, mode === "agenda" ? { workspaceId: workspace.id, from: "0000-01-01", to: addDays(today, -1) } : "skip");
-  const open = useQuery(api.tasks.list, { workspaceId: workspace.id, view: "all", today });
+  const overdue = useQuery(api.tasks.range, mode === "agenda" ? { scope, from: "0000-01-01", to: addDays(today, -1) } : "skip");
+  const open = useQuery(api.tasks.list, { scope, view: "all", today });
   const unscheduled = useMemo(() => (open ?? []).filter((t) => !t.dueDate), [open]);
   const [editing, setEditing] = useState<TaskRow | null>(null);
   const update = useMutation(api.tasks.update);

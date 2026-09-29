@@ -29,7 +29,8 @@ const SHADOW = "shadow-[0_8px_24px_rgb(0_0_0/0.1),0_2px_6px_rgb(0_0_0/0.1),inset
  * Ask AI (⌘J): a chat with your notes that pops out from a floating button in the bottom-right corner.
  * It isn't modal — you can keep reading and writing while it's open. Each answer cites the notes it used;
  * follow-ups keep the conversation. Also opened from the command palette, a folder's menu and the note's
- * AI panel. When AI isn't part of the person's plan, the same button explains how to get it.
+ * AI panel. When AI isn't included where they are, the same button explains how to get it: in Personal,
+ * the Pro plan; in a team workspace, that workspace's plan.
  */
 export function AskAiChat({
   open,
@@ -38,6 +39,7 @@ export function AskAiChat({
   initial,
   folder,
   entitled,
+  context = "personal",
 }: {
   open: boolean;
   onOpen: () => void;
@@ -45,8 +47,10 @@ export function AskAiChat({
   initial?: string;
   /** Only this folder's notes. */
   folder?: { id: string; name: string };
-  /** False: AI is switched on but not included in their plan — the panel offers the upgrade instead. */
+  /** False: AI is switched on but not included where they are — the panel explains how to get it instead. */
   entitled: boolean;
+  /** Where they are (useAiAccess): decides which plan the explanation points to. */
+  context?: "personal" | "workspace" | "shared";
 }) {
   const [mounted, setMounted] = useState(false);
   const { route } = useAppRouter();
@@ -90,7 +94,7 @@ export function AskAiChat({
               <X size={16} aria-hidden />
             </button>
           </header>
-          {entitled ? <Conversation open={open} initial={initial} folder={folder} onNavigate={close} /> : <Upsell onNavigate={close} />}
+          {entitled ? <Conversation open={open} initial={initial} folder={folder} onNavigate={close} /> : <Upsell context={context} onNavigate={close} />}
       </section>
       {onNote ? null : (
       <button
@@ -111,7 +115,19 @@ export function AskAiChat({
   );
 }
 
-function Upsell({ onNavigate }: { onNavigate: () => void }) {
+function Upsell({ context, onNavigate }: { context: "personal" | "workspace" | "shared"; onNavigate: () => void }) {
+  if (context !== "personal") {
+    // A Personal plan never covers a workspace: say what does, honestly (workspace plans aren't on sale yet).
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
+        <p className="ui-display text-[22px] text-heading">Ask your notes anything</p>
+        <p className="text-[13.5px] text-muted">
+          {context === "workspace" ? "AI Assistant comes with the Team and Business workspace plans. They're coming soon." : "The AI Assistant isn't available on notes shared with you from someone else's Personal or a workspace you're not in."}
+        </p>
+        <p className="text-[12.5px] text-faint">Your own Pro plan includes AI in Personal.</p>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
       <p className="ui-display text-[22px] text-heading">Ask your notes anything</p>

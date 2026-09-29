@@ -10,13 +10,14 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 
-const STEPS = ["Your workspace", "Choose an appearance", "Open your first page"] as const;
+const STEPS = ["Your Personal space", "Choose an appearance", "Open your first page"] as const;
 
 export function Onboarding() {
-  const { profile, workspace, setAppearance, appearance } = useAppState();
+  const { profile, setContext, setAppearance, appearance } = useAppState();
   const { navigate } = useAppRouter();
   const complete = useMutation(api.users.completeOnboardingStep);
-  const docs = useQuery(api.documents.list, { workspaceId: workspace.id, view: "all", paginationOpts: { numItems: 20, cursor: null } });
+  // A new account starts in Personal, where its first pages were added.
+  const docs = useQuery(api.documents.list, { scope: { kind: "personal" }, view: "all", paginationOpts: { numItems: 20, cursor: null } });
   const stepIndex = profile.onboardingStep === "workspace" ? 0 : profile.onboardingStep === "appearance" ? 1 : 2;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,7 +68,7 @@ export function Onboarding() {
                 className="mt-6"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  void run(() => complete({ step: "workspace", workspaceName: "Personal" }));
+                  void run(() => complete({ step: "workspace" }));
                 }}
               >
                 <div className="flex items-center gap-3 rounded-[6px] bg-sunken px-4 py-3">
@@ -76,7 +77,7 @@ export function Onboarding() {
                   </span>
                   <span>
                     <span className="block text-sm font-semibold text-heading">Personal</span>
-                    <span className="block text-sm text-muted">Your own workspace for notes and folders. Invite collaborators any time from the menu at the bottom of the sidebar.</span>
+                    <span className="block text-sm text-muted">Your own space for notes, folders and tasks. Share single pages with anyone, or create a workspace for a team any time from the menu at the bottom of the sidebar.</span>
                   </span>
                 </div>
                 <div className="mt-6 flex justify-end">
@@ -133,6 +134,7 @@ export function Onboarding() {
                     onClick={() =>
                       void run(async () => {
                         await complete({ step: "welcome" });
+                        setContext({ kind: "personal" });
                         navigate(welcome ? `/d/${welcome.id}` : "/documents", { replace: true });
                       })
                     }

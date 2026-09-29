@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace } from "./helpers";
+import { newPerson } from "./helpers";
 
 // These call Google Gemini for real (the backend's GEMINI_API_KEY), so they only run when asked:
 //   E2E_AI=1 pnpm exec playwright test e2e/ai.spec.ts
@@ -7,7 +7,7 @@ test.skip(!process.env.E2E_AI, "Set E2E_AI=1 to run the AI tests (they call Gemi
 test.describe.configure({ timeout: 120_000 });
 
 test("Ask AI answers from your notes, with sources", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Ask Tester");
+  const { page } = await newPerson(browser, "Ask Tester");
   await page.keyboard.press("Meta+j");
   const dialog = page.getByRole("dialog", { name: "Ask AI" });
   await expect(dialog).toBeVisible();
@@ -23,7 +23,7 @@ test("Ask AI answers from your notes, with sources", async ({ browser }) => {
 });
 
 test("rewrite a selection and write from a prompt in a note", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Writer Tester");
+  const { page } = await newPerson(browser, "Writer Tester");
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("AI test");
@@ -69,7 +69,7 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
 });
 
 test("AI text streams in word by word, and Stop keeps what's written so far", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Stream Tester");
+  const { page } = await newPerson(browser, "Stream Tester");
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Streaming");
@@ -92,14 +92,14 @@ test("AI text streams in word by word, and Stop keeps what's written so far", as
 });
 
 test("Catch me up on Home, and Ask AI about one folder", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Brief Tester");
+  const { page } = await newPerson(browser, "Brief Tester");
   await page.goto("/documents");
   await page.getByRole("button", { name: "Catch me up" }).click();
   const brief = page.getByRole("region", { name: "Catch-up brief" });
   await expect(brief.getByRole("heading", { name: "Your week" })).toBeVisible();
   await expect(brief.locator(".fb-ai-answer")).toContainText(/\w{4,}/, { timeout: 60_000 });
 
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const nav = page.getByRole("navigation", { name: "Folio" });
   await nav.getByRole("link", { name: "Projects" }).hover();
   await nav.getByRole("button", { name: "Folder options for Projects" }).click();
   await page.getByRole("menuitem", { name: "Ask AI about this folder…" }).click();

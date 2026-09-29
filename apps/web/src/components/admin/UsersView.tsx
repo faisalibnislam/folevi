@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { ROLE_LABEL } from "./permissions";
 import { PlanBadge } from "./UserBillingPanel";
-import type { PlanId } from "@/lib/plans";
+import type { PersonalTier } from "@/lib/plans";
 import { Badge, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, PageHeader, Pager, StatusBadge, Time, inputCls, selectCls, td, th } from "./ui";
 import { Select } from "@/components/ui/Select";
 
@@ -146,8 +146,8 @@ export function UsersView() {
                   </td>
                   <td className={td}>
                     <span className="flex flex-wrap gap-1">
-                      <PlanBadge plan={u.plan as PlanId} trialing={u.trialing} />
-                      {u.ai && u.plan !== "pro" && !u.trialing ? <Badge tone="plum">AI</Badge> : null}
+                      <PlanBadge plan={u.plan as PersonalTier} trialing={u.trialing} />
+                      {u.aiSource === "grant" ? <Badge tone="plum">AI</Badge> : null}
                     </span>
                   </td>
                   <td className={td}>{u.platformRole ? <Badge tone="plum">{ROLE_LABEL[u.platformRole]}</Badge> : <span className="text-muted">—</span>}</td>

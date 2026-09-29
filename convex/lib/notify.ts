@@ -197,13 +197,26 @@ export async function notify(
 // ---------------------------------------------------------------- access changes
 
 const SHARE_ROLE_LABELS: Record<string, string> = { editor: "Can edit", commenter: "Can comment", viewer: "Can view" };
-const WORKSPACE_ROLE_LABELS: Record<string, string> = { owner: "Owner", admin: "Admin", editor: "Editor", commenter: "Commenter", viewer: "Viewer" };
+/** Roles as people read them; a member's access restriction is part of the label ("member:view"). */
+const WORKSPACE_ROLE_LABELS: Record<string, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+  "member:edit": "Member",
+  "member:comment": "Member (can comment)",
+  "member:view": "Member (view only)",
+  editor: "Member",
+  commenter: "Member (can comment)",
+  viewer: "Member (view only)",
+};
 
 export function shareRoleLabel(role: string): string {
   return SHARE_ROLE_LABELS[role] ?? "Can view";
 }
-export function workspaceRoleLabel(role: string): string {
-  return WORKSPACE_ROLE_LABELS[role] ?? "Member";
+/** "Owner", "Admin", "Member", "Member (can comment)" or "Member (view only)". */
+export function workspaceRoleLabel(role: string, memberAccess?: string): string {
+  const key = role === "member" && memberAccess ? `member:${memberAccess}` : role;
+  return WORKSPACE_ROLE_LABELS[key] ?? "Member";
 }
 
 const quote = (s: string, max: number) => `“${(s.trim() || "Untitled").slice(0, max)}”`;
@@ -213,7 +226,9 @@ export type AccessChange =
   | { type: "document_revoked"; doc: Doc<"documents"> }
   | { type: "document_restricted"; doc: Doc<"documents"> }
   | { type: "workspace_role"; workspace: Doc<"workspaces">; role: string }
-  | { type: "workspace_removed"; workspace: Doc<"workspaces"> };
+  | { type: "workspace_removed"; workspace: Doc<"workspaces"> }
+  | { type: "workspace_guest"; workspace: Doc<"workspaces"> }
+  | { type: "workspace_deletion_scheduled"; workspace: Doc<"workspaces">; at: number };
 
 /** Plain-language description of an access change (without the actor), e.g. "changed your access to “Plan” to Can edit." */
 export function describeAccessChange(change: AccessChange): string {
@@ -228,6 +243,10 @@ export function describeAccessChange(change: AccessChange): string {
       return `changed your role in ${quote(change.workspace.name, 80)} to ${workspaceRoleLabel(change.role)}.`;
     case "workspace_removed":
       return `removed you from ${quote(change.workspace.name, 80)}.`;
+    case "workspace_guest":
+      return `made you a guest in ${quote(change.workspace.name, 80)}: you keep the pages you created or were given, and nothing else there.`;
+    case "workspace_deletion_scheduled":
+      return `scheduled ${quote(change.workspace.name, 80)} for deletion on ${new Date(change.at).toUTCString().slice(0, 16)}. Export anything you need before then.`;
   }
 }
 
@@ -255,7 +274,8 @@ export async function notifyAccessChange(ctx: MutationCtx, input: { recipientId:
   const now = Date.now();
   const notificationId = await ctx.db.insert("notifications", {
     profileId: recipient._id,
-    workspaceId: change.type === "workspace_removed" ? undefined : workspaceId,
+    // Not tied to a workspace the person may no longer be in (or that is going away).
+    workspaceId: change.type === "workspace_removed" || change.type === "workspace_guest" || change.type === "workspace_deletion_scheduled" ? undefined : workspaceId,
     kind: "share_change",
     actorId: input.actor._id,
     documentId: stillReadable ? doc!._id : undefined,
@@ -286,10 +306,12 @@ export async function notifyAccessChange(ctx: MutationCtx, input: { recipientId:
  */
 export async function notifyAccessLostOnRestrict(ctx: MutationCtx, actor: Doc<"profiles">, before: Doc<"documents">): Promise<number> {
   const after = await ctx.db.get(before._id);
-  if (!after) return 0;
+  // Personal has no members: only its owner and the people pages were shared with (grants still apply).
+  const workspaceId = before.workspaceId;
+  if (!after || !workspaceId) return 0;
   const members = await ctx.db
     .query("workspaceMembers")
-    .withIndex("by_workspace", (q) => q.eq("workspaceId", before.workspaceId))
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     .take(500);
   let notified = 0;
   for (const m of members) {

@@ -31,7 +31,7 @@ Every block row on the server has:
 - `revision` — increments on every accepted change.
 - `contentRev` — the `revision` at which `type`, `text` or `props` last changed.
 - `positionRev` — the `revision` at which `parentId` or `rank` last changed.
-- `seq` — the workspace change sequence number at which the row last changed (see *Pull*).
+- `seq` — the change sequence number of the row's **scope** at which it last changed (see *Pull*).
 - `deletedAt` — tombstone timestamp or absent.
 
 Documents carry the same fields; `titleRev` plays the role of `contentRev` for the title, and style/icon/
@@ -57,40 +57,59 @@ type SyncOp =
 ```
 
 `fields` states what the client changed relative to `baseRevision`. `baseRevision: null` means "create".
-`WireDocumentCreate` may carry an optional `workspaceId` (see *Routing*).
+`WireDocumentCreate` may carry an optional `scope` (or, from older clients, `workspaceId`) — see *Routing*.
+
+## Scopes
+
+Content lives in exactly one **scope**: a person's **Personal** (rows carry `ownerProfileId`) or a team
+**workspace** (rows carry `workspaceId`). Personal is not a workspace. Clients name a scope as
+`{ kind: "personal" }` — always the caller's own Personal; a profile id is never accepted — or
+`{ kind: "workspace", workspaceId }` (the workspace's public id; membership required). Each scope has its
+own change counter: `profiles.personalChangeSeq` for Personal, `workspaces.changeSeq` for a workspace.
 
 ## Routing
 
-A batch is sent as `sync.push({ workspaceId, deviceId, ops })`. The `workspaceId` is only the batch's
-**routing workspace**; it does not scope the batch:
+A batch is sent as `sync.push({ scope, deviceId, ops })`. The `scope` is only the batch's **routing
+scope**; it does not scope the batch:
 
-- `block.*` and `document.update` ops are authorized against **the document they touch** (its
-  workspace role or an explicit grant — see `documentAccess`). One batch may mix documents from several
-  workspaces, so a person editing a page shared from another workspace ("Can edit" grant, no
-  membership) or opened from a deep link while another workspace is selected uses the same queue.
-  Every accepted change stamps the **document's** workspace `changeSeq`.
+- `block.*` and `document.update` ops are authorized against **the document they touch** (its owner,
+  its workspace role, or an explicit grant — see `documentAccess`). One batch may mix documents from
+  several scopes, so a person editing a page shared with them from someone's Personal or another
+  workspace ("Can edit" grant, no membership) or opened from a deep link while another scope is selected
+  uses the same queue. Every accepted change stamps the **document's** scope counter.
 - `document.create` goes, in order of precedence: under `parentDocumentId` (a nested page always lives
-  in its parent's workspace; the caller needs write access to the parent), else into
-  `document.workspaceId`, else into the routing workspace. In every case the caller must be an editor
-  (or higher) **member** of that workspace — a grant on one page never lets a guest add pages to
-  someone else's workspace (`forbidden`). An unknown workspace or one the caller doesn't belong to →
-  `not_found` (existence isn't revealed).
-- `document.update` may only re-parent a page under a page of the same workspace.
+  in its parent's scope; the caller needs write access to the parent), else into `document.scope` (or
+  the older `document.workspaceId`), else into the routing scope. Personal takes new pages from its owner
+  only; a workspace from **members** who can edit (owner, admin, or member with edit access) — a grant on one page never lets a guest add pages
+  to someone else's Personal or workspace (`forbidden`). An unknown workspace or one the caller doesn't
+  belong to → `not_found` (existence isn't revealed); a malformed `scope` → `invalid_argument`.
+- `document.update` may only re-parent a page under a page of the same scope, and only move it into a
+  folder of the same scope. Pages never move between Personal and a workspace this way. A guest (grant,
+  no membership) may only re-parent a page under another page they can edit — never to the top level or
+  into a folder — and taking a page out from under a restricted page needs manage access (`forbidden`).
+- A resent op id is answered from the first delivery only when it names the same entity and kind; an op
+  id reused for anything else is `rejected` (`invalid_op`), and a replay never returns a page or block the
+  caller can no longer open.
 - If the caller isn't a member of the routing workspace (e.g. removed since the ops were queued), the
   batch still runs: each op succeeds or is rejected on its own merits. Nothing is thrown for the batch.
 
-Clients keep **one durable queue per account**, not per workspace. The web client stamps each queued
-`document.create` without a parent with the workspace selected when it was queued, so switching
-workspaces before the op syncs can't change where the page lands. (Older web builds kept one queue per
+Clients keep **one durable queue per account**, not per scope. The web client stamps each queued
+`document.create` without a parent with the scope selected when it was queued, so switching between
+Personal and workspaces before the op syncs can't change where the page lands. (Older web builds kept one queue per
 workspace id; on first open they are folded into the account queue in a single IndexedDB transaction,
-preserving per-queue order and stamping their creates with their workspace.)
+preserving per-queue order and stamping their creates with their workspace.) Creates queued by builds from
+before Personal stopped being a workspace name a `workspaceId`; when the engine opens, each is re-stamped
+with a `scope` — a workspace the person still belongs to keeps it, anything else (the old personal
+workspace, or one they've left) becomes their Personal — so nothing is sent naming a workspace that no
+longer exists. The web's local database (v3) keys its document cache by scope key (`scopeIdKey`) and never
+drops the queue or waiting uploads on upgrade.
 
 ## Server rules (`convex/sync.ts#applyOperations`)
 
 For each operation, in order, inside one mutation per batch (max 100 ops):
 
 1. **Authorize** the caller for write access on the document the op touches (derived server-side from
-   the JWT subject and the document's own workspace/grants; client-supplied user/workspace ids are never
+   the JWT subject and the document's own scope/grants; client-supplied user/workspace ids are never
    trusted — see *Routing*).
 2. **Idempotency**: if `syncOperations` already contains `opId` for this user, return the stored result
    with status `duplicate` and the current entity state. No other effect.
@@ -108,7 +127,7 @@ For each operation, in order, inside one mutation per batch (max 100 ops):
    - Updating a tombstoned block → `conflict` with `reason: "deleted"`.
 6. **Delete** sets `deletedAt` (tombstone) on the block and its descendants. Always `applied`; the
    content stays recoverable from Trash/version history until the retention job removes it.
-7. Every accepted change increments the workspace `changeSeq`, stamps rows with `seq`, updates the task
+7. Every accepted change increments its scope's counter, stamps rows with `seq`, updates the task
    projection for `todo` blocks, updates the document search text, and records the op result in
    `syncOperations` (retained 30 days).
 
@@ -180,11 +199,13 @@ The client state is `{ entities, pending, inflight, conflicts, status }`, persis
 
 ## Pull
 
-`sync.pull({ workspaceId, cursor, limit })` is per workspace (members only) and returns rows (documents and blocks, including tombstones)
-with `seq > cursor` ordered by `seq`, plus `nextCursor` and `hasMore`. Because each accepted mutation
-reads and writes the workspace `changeSeq`, Convex's serializable transactions guarantee sequence
-numbers are assigned in commit order; a cursor can never skip a committed change. The Mac app
-subscribes to `sync.head` (just the workspace `changeSeq`) and pulls when it advances.
+`sync.pull({ scope, cursor, limit })` is per scope (your own Personal, or a workspace you're a member of)
+and returns the rows you can read (documents and blocks, including tombstones) with `seq > cursor`
+ordered by `seq`, plus `nextCursor`, `hasMore` and `head`. Because each accepted mutation reads and
+writes its scope's counter, Convex's serializable transactions guarantee sequence numbers are assigned in
+commit order; a cursor can never skip a committed change. Pages shared with you from someone else's
+Personal aren't in your Personal feed (they're in theirs); open them by id. The Mac app subscribes to
+`sync.head({ scope })` (just the scope's counter) and pulls when it advances.
 
 ## Attachments
 

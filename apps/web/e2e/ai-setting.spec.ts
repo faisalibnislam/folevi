@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace } from "./helpers";
+import { newPerson } from "./helpers";
 
 test("turning the AI Assistant off hides every AI entry point; turning it on brings them back", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "AI Switcher");
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const { page } = await newPerson(browser, "AI Switcher");
+  const nav = page.getByRole("navigation", { name: "Folio" });
   const dock = page.getByRole("toolbar", { name: "Page tools" });
   // On by default: the note's dock and the floating chat button offer AI (not the sidebar).
   const launcher = page.getByRole("button", { name: "AI Assistant", exact: true });

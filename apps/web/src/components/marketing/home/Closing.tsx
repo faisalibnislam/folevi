@@ -1,4 +1,4 @@
-import { PLANS, PLAN_ORDER, formatPrice } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, TRIAL_DAYS, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, formatPrice, isPaidPlan } from "@/lib/plans";
 import Link from "next/link";
 import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
@@ -9,7 +9,7 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   {
     icon: "mail",
     title: "Verified email first",
-    body: "You confirm your email address before you can open a workspace.",
+    body: "You confirm your email address before you can open Folevi.",
   },
   {
     icon: "key",
@@ -29,7 +29,7 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   {
     icon: "export",
     title: "Take everything with you",
-    body: "Export any page as Markdown, HTML or PDF, or your whole workspace as a ZIP.",
+    body: "Export any page as Markdown, HTML or PDF, or everything in your Personal or a workspace as a ZIP.",
   },
   {
     icon: "trash",
@@ -82,14 +82,16 @@ export function SecuritySection() {
   );
 }
 
-/** The three plans side by side (marketing home and /pricing). Prices come from lib/plans. */
+/** The three Personal plans side by side (marketing home and /pricing). Prices come from lib/plans. */
 export function PricingCard({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3" }) {
   const Heading = headingLevel;
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {PLAN_ORDER.map((id) => {
         const plan = PLANS[id];
-        const pro = id === "pro";
+        // The plan with AI is the one highlighted (and the one the trial gives).
+        const pro = plan.ai;
+        const paid = isPaidPlan(plan.monthly);
         return (
           <div key={id} className={cx("mk-panel flex flex-col overflow-hidden p-7", pro && "mk-wash--soft")}>
             <div className="flex items-center gap-2">
@@ -97,13 +99,13 @@ export function PricingCard({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3
                 <span aria-hidden="true" className="mk-dot" />
                 {plan.name}
               </Heading>
-              {pro ? <span className="ml-auto text-[12.5px] font-semibold text-(--color-heading)">7-day free trial</span> : null}
+              {pro ? <span className="ml-auto text-[12.5px] font-semibold text-(--color-heading)">{TRIAL_DAYS}-day free trial</span> : null}
             </div>
             <p className="mt-6">
               <span className="mk-display text-[56px] leading-none">{formatPrice(plan.monthlyCents)}</span>
               <span className="text-[15px] text-muted"> / month</span>
             </p>
-            <p className="mt-2 min-h-[22px] text-[14px] text-muted">{id === "free" ? "No card required" : `or ${formatPrice(plan.yearlyCents)} a year`}</p>
+            <p className="mt-2 min-h-[22px] text-[14px] text-muted">{!paid ? "No card required" : `or ${formatPrice(plan.yearlyCents)} a year`}</p>
             <p className="mt-4 text-[15px] leading-relaxed text-ink">{plan.blurb}</p>
             <ul className="mt-5 flex-1 space-y-3">
               {plan.features.map((item) => (
@@ -116,8 +118,50 @@ export function PricingCard({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3
               ))}
             </ul>
             <ButtonLink href={SIGN_UP_URL} className="mt-8 w-full" icon="arrow-right" size="lg" variant={pro ? undefined : "secondary"}>
-              {id === "free" ? "Start free" : pro ? "Try Pro free for 7 days" : "Start with Basic"}
+              {!paid ? "Start free" : pro ? `Try ${plan.name} free for ${TRIAL_DAYS} days` : `Start with ${plan.name}`}
             </ButtonLink>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Workspace plans (the /pricing page). Each workspace has its own plan, separate from anyone's Personal
+ * plan; paid plans are per member. Only what exists is listed, and plans that can't be bought yet say so.
+ */
+export function WorkspacePlans({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3" }) {
+  const Heading = headingLevel;
+  return (
+    <div className="grid gap-4 md:grid-cols-3">
+      {WORKSPACE_PLAN_ORDER.map((id) => {
+        const plan = WORKSPACE_PLANS[id];
+        return (
+          <div key={id} className="mk-panel flex flex-col overflow-hidden p-7">
+            <div className="flex items-center gap-2">
+              <Heading className="mk-chip mk-chip--raised w-fit">
+                <span aria-hidden="true" className="mk-dot" />
+                {plan.name}
+              </Heading>
+              {!plan.available ? <span className="ml-auto text-[12.5px] font-semibold text-muted">Coming soon</span> : null}
+            </div>
+            <p className="mt-6">
+              <span className="mk-display text-[44px] leading-none">{formatPrice(plan.monthlyCents)}</span>
+              <span className="text-[15px] text-muted">{plan.perSeat ? " per member / month" : " / month"}</span>
+            </p>
+            <p className="mt-2 min-h-[22px] text-[14px] text-muted">{plan.perSeat ? `or ${formatPrice(plan.yearlyCents)} per member / year` : "No card required"}</p>
+            <p className="mt-4 text-[15px] leading-relaxed text-ink">{plan.blurb}</p>
+            <ul className="mt-5 flex-1 space-y-3">
+              {plan.features.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-[15px] leading-snug text-ink">
+                  <span aria-hidden="true" className="mk-tone--moss mt-[-1px] flex size-[22px] shrink-0 items-center justify-center rounded-full bg-(--color-moss-soft) text-(--color-moss-ink) shadow-[inset_0_1px_0_var(--mk-rim)]">
+                    <Icon name="check" size={13} strokeWidth={2.2} />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
         );
       })}

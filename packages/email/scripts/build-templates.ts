@@ -128,7 +128,7 @@ const CONTENT: Record<TemplateKey, Content> = {
     blocks: [
       {
         kind: "p",
-        text: "As requested, your Folevi account and everything in it, including notes, documents and the workspaces you own, will be permanently deleted on [[scheduledFor]].",
+        text: "As requested, your Folevi account will be permanently deleted on [[scheduledFor]], together with everything in your Personal and any workspace only you use. Workspaces other people use aren’t deleted.",
       },
       { kind: "p", text: "Until then, you can change your mind." },
       { kind: "button", label: "Cancel account deletion", urlVar: "cancelUrl" },

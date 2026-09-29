@@ -1,7 +1,7 @@
 "use client";
 
 import type { ConvexReactClient } from "convex/react";
-import { ulid } from "@folevi/editor-schema";
+import { ulid, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { localDb, type PendingUpload } from "./db";
 import type { SyncEngine } from "./engine";
@@ -13,14 +13,15 @@ export async function sha256Hex(blob: Blob): Promise<string> {
 
 /**
  * Uploads one file right away (online only) and returns its file id — for imports, where the file must
- * exist before the document that references it is created. Errors carry the server's message.
+ * exist before the document that references it is created. With a `documentId` the page's scope decides
+ * where it's stored; without one it goes to `scope`. Errors carry the server's message.
  */
 export async function uploadFileNow(
   client: ConvexReactClient,
-  input: { workspaceId: string; blob: Blob; filename: string; mimeType: string; kind: "image" | "file" | "cover"; documentId?: string },
+  input: { scope?: WireScope; blob: Blob; filename: string; mimeType: string; kind: "image" | "file" | "cover"; documentId?: string },
 ): Promise<string> {
   const { uploadUrl, intentId } = await client.mutation(api.files.generateUploadUrl, {
-    workspaceId: input.workspaceId,
+    scope: input.scope,
     documentId: input.documentId,
     filename: input.filename,
     size: input.blob.size,
@@ -57,7 +58,6 @@ export async function enqueueUpload(
   const uploadId = ulid();
   const record: PendingUpload = {
     uploadId,
-    workspaceId: engine.workspaceId,
     documentId: input.documentId,
     blockId: input.blockId,
     kind: input.kind,
@@ -122,8 +122,8 @@ export class Uploader {
           continue;
         }
         try {
+          // The page's scope decides where the file is stored (the server checks access to the page).
           const { uploadUrl, intentId } = await this.client.mutation(api.files.generateUploadUrl, {
-            workspaceId: u.workspaceId,
             documentId: u.documentId,
             filename: u.filename,
             size: u.size,

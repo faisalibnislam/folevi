@@ -29,7 +29,6 @@ export function WorkspacesView() {
             <tr>
               <th scope="col" className={th}>Name</th>
               <th scope="col" className={th}>ID</th>
-              <th scope="col" className={th}>Kind</th>
               <th scope="col" className={th}>Status</th>
               <th scope="col" className={thNum}>Documents</th>
               <th scope="col" className={thNum}>Storage</th>
@@ -39,12 +38,12 @@ export function WorkspacesView() {
           <tbody>
             {page === undefined ? (
               error ? (
-                <EmptyRow colSpan={7}>Workspaces couldn’t be loaded.</EmptyRow>
+                <EmptyRow colSpan={6}>Workspaces couldn’t be loaded.</EmptyRow>
               ) : (
-                <LoadingRows colSpan={7} />
+                <LoadingRows colSpan={6} />
               )
             ) : page.workspaces.length === 0 ? (
-              <EmptyRow colSpan={7}>No workspaces yet.</EmptyRow>
+              <EmptyRow colSpan={6}>No team workspaces yet.</EmptyRow>
             ) : (
               page.workspaces.map((w) => (
                 <tr key={w.id} className="hover:bg-surface">
@@ -56,7 +55,6 @@ export function WorkspacesView() {
                   <td className={td}>
                     <Mono>{w.id}</Mono>
                   </td>
-                  <td className={td}>{w.kind === "personal" ? "Personal" : "Team"}</td>
                   <td className={td}>
                     <StatusBadge status={w.status} />
                   </td>

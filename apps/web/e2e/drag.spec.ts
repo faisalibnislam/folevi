@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved, openTool } from "./helpers";
+import { newPerson, waitForSaved, openTool } from "./helpers";
 
 const blocks = (page: Page) => page.locator(".fb-editor > .fb");
 const texts = async (page: Page) => (await blocks(page).allTextContents()).map((t) => t.trim()).filter(Boolean);
@@ -32,7 +32,7 @@ async function dragBlock(page: Page, text: string, to: { x: number; y: number },
 }
 
 test("blocks can be dragged to reorder and re-indent, and the order syncs", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Drag Tester");
+  const { page } = await newPerson(browser, "Drag Tester");
   await newPage(page, ["Alpha", "Bravo", "Charlie"]);
   expect(await texts(page)).toEqual(["Alpha", "Bravo", "Charlie"]);
 
@@ -70,7 +70,7 @@ test("blocks can be dragged to reorder and re-indent, and the order syncs", asyn
 });
 
 test("blocks can be dragged from the Insert panel into the page", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Insert Tester");
+  const { page } = await newPerson(browser, "Insert Tester");
   await newPage(page, ["First", "Second"]);
   await openTool(page, "Insert");
   const tile = page.getByRole("button", { name: /^To-do/ });

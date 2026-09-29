@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { newPersonWithWorkspace } from "./helpers";
+import { newPerson } from "./helpers";
 
 const mod = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -24,7 +24,7 @@ async function expectOnTop(page: Page, popup: Locator, name: string) {
 }
 
 test("menus, panels and editor popups are never clipped or covered", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Popup Tester");
+  const { page } = await newPerson(browser, "Popup Tester");
   await page.setViewportSize({ width: 1280, height: 800 });
 
   // Home: a note card's menu (the card sits inside the clipped content panel, next to the sidebar).
@@ -43,13 +43,13 @@ test("menus, panels and editor popups are never clipped or covered", async ({ br
   await page.keyboard.press("Escape");
 
   // Sidebar: folder row menu, account menu, notifications, sync details.
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const nav = page.getByRole("navigation", { name: "Folio" });
   await nav.getByRole("link", { name: "Projects" }).hover();
   await nav.getByRole("button", { name: "Folder options for Projects" }).click();
   await expectOnTop(page, page.getByRole("menu", { name: "Folder options for Projects" }), "sidebar folder menu");
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: /workspace and account/ }).click();
-  await expectOnTop(page, page.getByRole("menu", { name: /workspace and account/ }), "account menu");
+  await page.getByRole("button", { name: /Personal, workspaces and account/ }).click();
+  await expectOnTop(page, page.getByRole("menu", { name: /Personal, workspaces and account/ }), "account menu");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /^Notifications/ }).click();
   await expectOnTop(page, page.getByRole("dialog", { name: "Notifications" }), "notifications");

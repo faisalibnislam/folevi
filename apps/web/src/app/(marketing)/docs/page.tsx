@@ -53,7 +53,7 @@ export default function DocsPage() {
           <li>
             <a href={SIGN_UP_URL}>Create an account</a> and confirm your email address.
           </li>
-          <li>Your workspace opens. Create a page with the New page button (or ⌘N in the Mac app) and start typing.</li>
+          <li>Your Personal space opens — it’s just yours. Create a page with the New page button (or ⌘N in the Mac app) and start typing. To work with a team, create a workspace from the menu at the bottom of the sidebar and switch between Personal and your workspaces there.</li>
           <li>
             Type <code>/</code> on any line to turn it into a heading, checklist, quote or any other block.
           </li>
@@ -115,7 +115,7 @@ export default function DocsPage() {
         <p>
           Any checklist item is a task. Give it a due date — and optionally a time and a priority — and it appears in
           <strong> Today</strong> on that day, and in <strong>Tasks</strong> alongside every other open task in your
-          workspace. Overdue tasks show up there too, so nothing slips quietly past.
+          Personal (or the workspace you’re in). Overdue tasks show up there too, so nothing slips quietly past.
         </p>
         <p>
           The <strong>Calendar</strong> shows dated tasks by day. <strong>Quick Add</strong> (⇧⌘A) saves a task straight into
@@ -124,7 +124,7 @@ export default function DocsPage() {
 
         <h2 id="sync">Sync & offline</h2>
         <p>
-          Folevi saves every change on your device first, then syncs it. On the web, your workspace is kept in the browser’s
+          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s
           storage; on the Mac, in a local database. You can keep writing with no connection at all.
         </p>
         <p>Each page shows one of these statuses:</p>
@@ -172,7 +172,7 @@ export default function DocsPage() {
         </p>
 
         <h2 id="sharing">Sharing & permissions</h2>
-        <p>Pages are private to your workspace by default. From a page’s Share menu you can:</p>
+        <p>Pages in your Personal are private to you, and pages in a workspace are open to its members, by default. From a page’s Share menu you can:</p>
         <ul>
           <li>
             <strong>Restrict a page</strong> so only the people you add can open it.
@@ -193,13 +193,13 @@ export default function DocsPage() {
         <h3>Export</h3>
         <ul>
           <li>Any page as Markdown, HTML or PDF.</li>
-          <li>Your whole workspace as a ZIP archive.</li>
+          <li>Everything in your Personal, or in a workspace, as a ZIP archive.</li>
         </ul>
         <p>Exports are yours to keep. Nothing in Folevi is locked to Folevi.</p>
 
         <h2 id="account-security">Account security</h2>
         <ul>
-          <li>Email verification is required before you can open a workspace.</li>
+          <li>Email verification is required before you can open Folevi.</li>
           <li>Two-step verification with an authenticator app (TOTP) is optional; turn it on in Settings → Security.</li>
           <li>
             When you set up two-step verification you receive one-time recovery codes. Each works once. Store them somewhere

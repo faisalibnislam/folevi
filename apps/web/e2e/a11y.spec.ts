@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace, settle } from "./helpers";
+import { newPerson, settle } from "./helpers";
 
 const VIEWS = ["/documents", "/tasks/today", "/calendar", "/settings/account", "/settings/security", "/settings/devices", "/help"];
 
@@ -8,7 +8,7 @@ for (const scheme of ["light", "dark"] as const) {
   test(`no serious accessibility violations in the app (${scheme})`, async ({ browser }) => {
     // Eight pages, each scanned by axe: slower CI machines need more than the default minute.
     test.setTimeout(180_000);
-    const { context, page } = await newPersonWithWorkspace(browser, "A11y Tester");
+    const { context, page } = await newPerson(browser, "A11y Tester");
     await page.evaluate((s) => localStorage.setItem("folevi:appearance", s), scheme);
     const pages = [...VIEWS, page.url().replace(/^https?:\/\/[^/]+/, "")];
     for (const path of pages) {
@@ -30,7 +30,7 @@ test("marketing home has no serious accessibility violations", async ({ page }) 
 });
 
 test("keyboard: skip link, command palette and editor are reachable without a pointer", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Keyboard Tester");
+  const { page } = await newPerson(browser, "Keyboard Tester");
   await page.goto("/documents");
   await page.waitForTimeout(1000);
   // In development, Next's dev-tools button may take the first tab stop; the skip link must come right after.

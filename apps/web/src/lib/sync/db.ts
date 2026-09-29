@@ -6,10 +6,14 @@ import { ulid, type SyncState, type WireBlock } from "@folevi/editor-schema";
 /**
  * Per-account local store (IndexedDB). Holds the durable operation log (sync state), last-known
  * documents and blocks for offline reading, and the device id. Cleared on sign-out.
+ *
+ * Cached lists are keyed by a scope key (`scopeIdKey`: "personal" for your Personal, or the team
+ * workspace's id) — never a workspace id standing in for Personal.
  */
 export interface CachedDocument {
   id: string;
-  workspaceId: string;
+  /** `scopeIdKey` of the context whose list it was cached from. */
+  scopeKey: string;
   title: string;
   icon: string | null;
   kind: string;
@@ -23,14 +27,14 @@ export interface CachedDocument {
 interface FoleviDB extends DBSchema {
   meta: { key: string; value: unknown };
   syncState: { key: string; value: SyncState };
-  documents: { key: string; value: CachedDocument; indexes: { by_workspace: string } };
-  blocks: { key: string; value: { documentId: string; workspaceId: string; blocks: WireBlock[]; cachedAt: number } };
+  documents: { key: string; value: CachedDocument; indexes: { by_scope: string } };
+  blocks: { key: string; value: { documentId: string; blocks: WireBlock[]; cachedAt: number } };
   uploads: { key: string; value: PendingUpload };
 }
 
+/** An attachment waiting to upload. Its page decides where it's stored (the server checks), so no scope. */
 export interface PendingUpload {
   uploadId: string;
-  workspaceId: string;
   documentId: string;
   blockId: string;
   kind: "image" | "file";
@@ -42,6 +46,9 @@ export interface PendingUpload {
   nextAttemptAt: number;
 }
 
+/** v1 stores · v2 uploads · v3 scope-keyed document cache (Personal is not a workspace). */
+export const DB_VERSION = 3;
+
 /** Key of the single, account-wide sync state (older builds keyed one state per workspace id). */
 export const ACCOUNT_SYNC_KEY = "account";
 
@@ -51,16 +58,31 @@ export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {
   const name = `folevi-${accountKey}`;
   let db = dbs.get(name);
   if (!db) {
-    db = openDB<FoleviDB>(name, 2, {
-      upgrade(database, oldVersion) {
+    db = openDB<FoleviDB>(name, DB_VERSION, {
+      async upgrade(database, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           database.createObjectStore("meta");
           database.createObjectStore("syncState");
-          const docs = database.createObjectStore("documents", { keyPath: "id" });
-          docs.createIndex("by_workspace", "workspaceId");
           database.createObjectStore("blocks", { keyPath: "documentId" });
         }
         if (oldVersion < 2) database.createObjectStore("uploads", { keyPath: "uploadId" });
+        if (oldVersion < 3) {
+          // v3 — Personal is not a workspace. The document-list cache was indexed by workspace id (Personal's
+          // was the old personal workspace's id); it's only a cache, so it's rebuilt, keyed by scope. The sync
+          // queue (syncState) and waiting uploads are never dropped: queued page creates get a scope when the
+          // engine opens (engine.ts adoptLegacyCreates), and waiting uploads lose their workspace id (their
+          // page decides where they're stored).
+          if (oldVersion >= 1) database.deleteObjectStore("documents");
+          database.createObjectStore("documents", { keyPath: "id" }).createIndex("by_scope", "scopeKey");
+          if (oldVersion >= 2) {
+            let cursor = await transaction.objectStore("uploads").openCursor();
+            while (cursor) {
+              const { workspaceId, ...upload } = cursor.value as PendingUpload & { workspaceId?: string };
+              if (workspaceId !== undefined) await cursor.update(upload);
+              cursor = await cursor.continue();
+            }
+          }
+        }
       },
     });
     dbs.set(name, db);

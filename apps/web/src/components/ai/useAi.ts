@@ -43,62 +43,70 @@ export interface AiAccess {
   setting: boolean;
 }
 
+/** Where a note lives, as documents.get reports it: a team workspace, or someone's Personal (workspaceId null). */
+export interface NoteHome {
+  workspaceId: string | null;
+  ownerProfileId?: string | null;
+}
+
 /**
- * AI where you are — the current workspace, or `workspaceId` (e.g. the workspace a note belongs to). The
- * server decides again on every request.
+ * AI where you are — the current context (Personal or a team workspace), or `note`'s home (a note may be
+ * open from elsewhere: shared from someone's Personal or another workspace). The server decides again on
+ * every request.
  */
-export function useAiAccess(workspaceId?: string): AiAccess {
-  const { profile, workspace, workspaces } = useAppState();
+export function useAiAccess(note?: NoteHome | null): AiAccess {
+  const { profile, context: current, workspaces } = useAppState();
   const p = profile as { aiEnabled?: boolean; entitlements?: { ai: boolean } };
   const setting = p.aiEnabled !== false;
   const personalEntitled = p.entitlements ? p.entitlements.ai : true;
-  const here = (workspaceId ? workspaces.find((w) => w.id === workspaceId) : workspace) as
-    | { kind: string; ownerName: string | null; plan?: { scope: string } | null; aiIncluded?: boolean }
-    | undefined;
-  // Not a member (a note shared with you), or someone else's Personal: AI isn't included there for you.
-  const context: AiAccess["context"] = !here
-    ? "shared"
-    : here.plan === undefined
-      ? here.kind === "personal" && !here.ownerName
-        ? "personal"
-        : here.kind === "personal"
-          ? "shared"
-          : "workspace"
-      : !here.plan
-        ? "shared"
-        : here.plan.scope === "personal"
-          ? "personal"
-          : "workspace";
-  // Older cached workspace lists have no aiIncluded: fall back to the Personal plan in Personal.
-  const entitled = here?.aiIncluded ?? (context === "personal" ? personalEntitled : false);
+  let context: AiAccess["context"];
+  let entitled: boolean;
+  if (!note) {
+    // The current context: your Personal plan in Personal, the workspace's plan in a workspace.
+    context = current.kind;
+    entitled = current.kind === "personal" ? personalEntitled : current.workspace.aiIncluded;
+  } else if (note.workspaceId === null) {
+    // Personal: your own (your Personal plan), or someone else's shared with you (not included for you).
+    const own = !note.ownerProfileId || note.ownerProfileId === profile.id;
+    context = own ? "personal" : "shared";
+    entitled = own ? personalEntitled : false;
+  } else {
+    // A workspace you belong to follows its plan; one you're only a guest in isn't included for you.
+    const w = workspaces.find((x) => x.id === note.workspaceId);
+    context = w ? "workspace" : "shared";
+    entitled = w?.aiIncluded ?? false;
+  }
   return { on: setting && entitled, entitled, personalEntitled, context, setting };
 }
 
 /** Whether AI is available and turned on (every AI entry point checks this; the server enforces it). */
-export function useAiEnabled(workspaceId?: string): boolean {
-  return useAiAccess(workspaceId).on;
+export function useAiEnabled(note?: NoteHome | null): boolean {
+  return useAiAccess(note).on;
 }
 
-/** The AI actions, bound to the current workspace. */
+/**
+ * The AI actions, made from the current context (its `scope`). Asking about "all notes" searches the
+ * current context; writing help on a note follows that note's own scope (the server decides).
+ */
 export function useAi() {
-  const { workspace } = useAppState();
+  const { scope } = useAppState();
   const askAction = useAction(api.ai.ask);
   const writeAction = useAction(api.ai.write);
   const flowchartAction = useAction(api.ai.flowchart);
   const ask = useCallback(
-    (question: string, opts: { documentId?: string; scope?: "note" | "workspace"; folderId?: string; history?: AskTurn[]; streamId?: Id<"aiStreams"> } = {}) =>
-      askAction({ workspaceId: workspace.id, question, documentId: opts.documentId, scope: opts.scope, folderId: opts.folderId, history: opts.history, streamId: opts.streamId }),
-    [askAction, workspace.id],
+    (question: string, opts: { documentId?: string; range?: "note" | "all"; folderId?: string; history?: AskTurn[]; streamId?: Id<"aiStreams"> } = {}) =>
+      askAction({ scope, question, documentId: opts.documentId, range: opts.range, folderId: opts.folderId, history: opts.history, streamId: opts.streamId }),
+    [askAction, scope],
   );
   const write = useCallback(
     (task: AiTask, opts: { documentId?: string; text?: string; instruction?: string; language?: string; streamId?: Id<"aiStreams"> } = {}) =>
-      writeAction({ workspaceId: workspace.id, task, ...opts }),
-    [writeAction, workspace.id],
+      writeAction({ scope, task, ...opts }),
+    [writeAction, scope],
   );
   /** A flowchart draft (nodes and connectors, no positions) from a description, or the current chart changed. */
   const flowchart = useCallback(
-    (mode: "create" | "update", instruction: string, current?: string) => flowchartAction({ workspaceId: workspace.id, mode, instruction, current }),
-    [flowchartAction, workspace.id],
+    (mode: "create" | "update", instruction: string, current?: string) => flowchartAction({ scope, mode, instruction, current }),
+    [flowchartAction, scope],
   );
   return { ask, write, flowchart };
 }

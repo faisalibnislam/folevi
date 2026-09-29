@@ -16,14 +16,15 @@ interface Brief {
   sources: { id: string; title: string }[];
   at: number;
 }
-const key = (workspaceId: string) => `folevi:catchup:${workspaceId}`;
+// Per context: "personal" or the workspace id (scopeIdKey).
+const key = (scopeKey: string) => `folevi:catchup:${scopeKey}`;
 
 /**
  * Home's "Catch me up": a short AI brief of this week's notes and what's due, citing the notes. Generated
  * on request (never automatically), kept for this browser session.
  */
 export function CatchUp() {
-  const { workspace, today } = useAppState();
+  const { scope, scopeKey, today } = useAppState();
   const brief = useAction(api.ai.brief);
   const stream = useAiStream();
   const [data, setData] = useState<Brief | null>(null);
@@ -32,24 +33,24 @@ export function CatchUp() {
 
   useEffect(() => {
     try {
-      const saved = sessionStorage.getItem(key(workspace.id));
+      const saved = sessionStorage.getItem(key(scopeKey));
       setData(saved ? (JSON.parse(saved) as Brief) : null);
     } catch {
       setData(null);
     }
-  }, [workspace.id]);
+  }, [scopeKey]);
 
   const run = async () => {
     setBusy(true);
     setError(null);
     try {
       const streamId = await stream.begin().catch(() => undefined);
-      const r = await brief({ workspaceId: workspace.id, today, streamId });
+      const r = await brief({ scope, today, streamId });
       await stream.finish(r.answer);
       const next = { ...r, at: Date.now() };
       setData(next);
       try {
-        sessionStorage.setItem(key(workspace.id), JSON.stringify(next));
+        sessionStorage.setItem(key(scopeKey), JSON.stringify(next));
       } catch {
         /* storage unavailable: keep it in memory */
       }
@@ -64,7 +65,7 @@ export function CatchUp() {
   const clear = () => {
     setData(null);
     try {
-      sessionStorage.removeItem(key(workspace.id));
+      sessionStorage.removeItem(key(scopeKey));
     } catch {
       /* ignore */
     }

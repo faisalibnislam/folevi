@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPersonWithWorkspace } from "./helpers";
+import { APP, newPerson } from "./helpers";
 
 // Header and service-worker checks. Most run against any server; the strict ones need a production
 // build (`next build && next start`), which CI runs with E2E_PRODUCTION=1.
@@ -51,7 +51,7 @@ test("the service worker is served for the whole origin and never cached", async
 
 test("production builds register the offline service worker once signed in", async ({ browser }) => {
   test.skip(!PROD, "The service worker only registers in production builds.");
-  const { page } = await newPersonWithWorkspace(browser, "Worker Tester");
+  const { page } = await newPerson(browser, "Worker Tester");
   const active = await page.evaluate(async () => {
     const reg = await Promise.race([navigator.serviceWorker.ready, new Promise<null>((r) => setTimeout(() => r(null), 15_000))]);
     return reg ? { scope: new URL(reg.scope).pathname, active: Boolean(reg.active) } : null;

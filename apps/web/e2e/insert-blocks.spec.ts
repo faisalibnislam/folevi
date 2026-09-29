@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved, openTool, settle } from "./helpers";
+import { newPerson, waitForSaved, openTool, settle } from "./helpers";
 
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -27,7 +27,7 @@ test.describe("Insert panel", () => {
   test.setTimeout(150_000);
 
   test("inserts lines, a page break, a picked table, a formula, a Mermaid diagram and a whiteboard — all persist and publish", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Insert Blocks Tester");
+    const { context, page } = await newPerson(browser, "Insert Blocks Tester");
     await newPage(page, "Insert blocks");
     const panel = await openInsert(page);
 
@@ -144,7 +144,7 @@ test.describe("Insert panel", () => {
   });
 
   test("rows drag into the page; gallery, kanban and card pages insert", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Insert Rows Tester");
+    const { context, page } = await newPerson(browser, "Insert Rows Tester");
     await newPage(page, "Insert rows");
     const panel = await openInsert(page);
 

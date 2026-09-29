@@ -3,17 +3,17 @@
 import { useMutation, useQuery } from "convex/react";
 import { useId, useState } from "react";
 import { api } from "@/lib/convex/api";
-import { useAppState } from "@/lib/app/state";
+import type { Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 
 type Role = "admin" | "editor" | "commenter" | "viewer";
+type InviteWorkspace = Pick<Workspace, "id" | "name">;
 
-/** Invite someone to the current workspace by email, with a role. Used in settings and the invite modal. */
-export function InviteForm({ onSent }: { onSent?: () => void }) {
-  const { workspace } = useAppState();
+/** Invite someone to a team workspace by email, with a role. Used in settings and the invite modal. Personal has no members. */
+export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; onSent?: () => void }) {
   const data = useQuery(api.workspaces.members, { workspaceId: workspace.id });
   const invite = useMutation(api.workspaces.invite);
   const toast = useToast();
@@ -82,8 +82,7 @@ export function InviteForm({ onSent }: { onSent?: () => void }) {
 }
 
 /** "Invite people…" as a modal: collaborators join the whole workspace (notes and folders). */
-export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { workspace } = useAppState();
+export function InviteDialog({ workspace, open, onClose }: { workspace: InviteWorkspace; open: boolean; onClose: () => void }) {
   return (
     <Dialog
       open={open}
@@ -92,7 +91,7 @@ export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => 
       description="Collaborators can work on the notes and folders in this workspace. Invitations are tied to the email address you enter and expire after 7 days."
       size="md"
     >
-      <InviteForm />
+      <InviteForm workspace={workspace} />
     </Dialog>
   );
 }

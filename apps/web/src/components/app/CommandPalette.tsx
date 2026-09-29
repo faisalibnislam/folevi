@@ -32,7 +32,7 @@ function useDebounced<T>(value: T, ms: number): T {
 
 /** ⌘K palette: recent documents, full-text search with highlighted matches, and actions (combobox pattern). */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { workspace, appearance, setAppearance } = useAppState();
+  const { scope, workspace, appearance, setAppearance } = useAppState();
   const { navigate } = useAppRouter();
   const createDocument = useCreateDocument();
   const [query, setQuery] = useState("");
@@ -41,14 +41,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const dialogRef = useRef<HTMLDialogElement>(null);
   const listId = useId();
   const [filters, setFilters] = useState<{ folderId?: string; tagId?: string; creatorId?: string; updated?: "7" | "30" | "365" }>({});
-  const org = useQuery(api.organization.sidebar, open ? { workspaceId: workspace.id } : "skip");
-  const members = useQuery(api.workspaces.members, open ? { workspaceId: workspace.id } : "skip");
-  const recent = useQuery(api.documents.recent, open ? { workspaceId: workspace.id, limit: 8 } : "skip");
+  // Search, recents and filters follow the current context (Personal or a workspace).
+  const org = useQuery(api.organization.sidebar, open ? { scope } : "skip");
+  // Personal has no members: everything in it is yours, so the "Created by" filter is for workspaces.
+  const members = useQuery(api.workspaces.members, open && workspace ? { workspaceId: workspace.id } : "skip");
+  const recent = useQuery(api.documents.recent, open ? { scope, limit: 8 } : "skip");
   // Coarse "updated after" so the query stays cacheable.
   const updatedAfter = filters.updated ? Math.floor((Date.now() - Number(filters.updated) * 86_400_000) / 3_600_000) * 3_600_000 : undefined;
   const results = useQuery(
     api.search.documents,
-    open && debounced ? { workspaceId: workspace.id, query: debounced, limit: 20, folderId: filters.folderId, tagId: filters.tagId, creatorId: filters.creatorId, updatedAfter } : "skip",
+    open && debounced ? { scope, query: debounced, limit: 20, folderId: filters.folderId, tagId: filters.tagId, creatorId: filters.creatorId, updatedAfter } : "skip",
   );
 
   useEffect(() => {
@@ -188,21 +190,23 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 </option>
               ))}
             </Select>
-            <Select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
-              <option value="">Anyone</option>
-              {members?.members.map((m) => (
-                <option key={m.profileId} value={m.profileId}>
-                  {m.isYou ? "Me" : m.displayName}
-                </option>
-              ))}
-            </Select>
+            {workspace ? (
+              <Select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
+                <option value="">Anyone</option>
+                {members?.members.map((m) => (
+                  <option key={m.profileId} value={m.profileId}>
+                    {m.isYou ? "Me" : m.displayName}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
             <Select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
               <option value="">Any time</option>
               <option value="7">Past week</option>
               <option value="30">Past month</option>
               <option value="365">Past year</option>
             </Select>
-            <span className="ml-auto text-faint">{workspace.name}</span>
+            <span className="ml-auto text-faint">{workspace ? workspace.name : "Personal"}</span>
           </div>
           <div className="max-h-[55vh] overflow-y-auto p-2">
             {debounced && results === undefined ? <p className="px-3 py-2 text-sm text-muted">Searching…</p> : null}

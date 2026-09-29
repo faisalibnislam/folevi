@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved, showFolders, pick } from "./helpers";
+import { newPerson, waitForSaved, showFolders, pick } from "./helpers";
 
 test("share a page with another person, comment, and publish a revocable public link", async ({ browser }) => {
-  const owner = await newPersonWithWorkspace(browser, "Owner Person");
+  const owner = await newPerson(browser, "Owner Person");
   await showFolders(owner.page);
-  const guest = await newPersonWithWorkspace(browser, "Guest Person");
+  const guest = await newPerson(browser, "Guest Person");
   await showFolders(guest.page);
 
   // Owner opens the brief and shares it with the guest as a commenter.
-  await owner.page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Home" }).click();
+  await owner.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Home" }).click();
   await owner.page.getByRole("link", { name: /Project Atlas Brief/ }).first().click();
   await owner.page.getByRole("button", { name: "Share" }).click();
   const share = owner.page.getByRole("dialog", { name: /Share/ });

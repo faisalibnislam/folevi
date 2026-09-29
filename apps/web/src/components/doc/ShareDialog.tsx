@@ -10,7 +10,8 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
 
-export function ShareDialog({ open, onClose, documentId, title }: { open: boolean; onClose: () => void; documentId: string; title: string }) {
+/** `personal`: the page is in someone's Personal, which has no members — only the people added here (and its owner) can open it. */
+export function ShareDialog({ open, onClose, documentId, title, personal = false }: { open: boolean; onClose: () => void; documentId: string; title: string; personal?: boolean }) {
   const data = useQuery(api.sharing.get, open ? { documentId } : "skip");
   const setMode = useMutation(api.sharing.setAccessMode);
   const grant = useMutation(api.sharing.grant);
@@ -41,32 +42,39 @@ export function ShareDialog({ open, onClose, documentId, title }: { open: boolea
         <div className="space-y-6 text-sm">
           <section>
             <h3 className="mb-2 font-semibold">Who has access</h3>
-            <div role="radiogroup" aria-label="Access" className="grid gap-2 sm:grid-cols-2">
-              {(
-                [
-                  ["workspace", "Workspace", "Everyone in this workspace, by their role", <Users key="u" size={16} />],
-                  ["restricted", "Only invited people", "Owners, admins, the creator and people added below", <Lock key="l" size={16} />],
-                ] as const
-              ).map(([mode, label, desc, icon]) => (
-                <button
-                  key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={data.accessMode === mode}
-                  disabled={!canManage}
-                  onClick={() => void run(setMode({ documentId, mode }))}
-                  className={`flex items-start gap-2 rounded-[6px] border p-3 text-left disabled:opacity-60 ${data.accessMode === mode ? "border-accent bg-accent-soft" : "border-line"}`}
-                >
-                  <span className="mt-0.5 text-muted" aria-hidden>
-                    {icon}
-                  </span>
-                  <span>
-                    <span className="block font-medium">{label}</span>
-                    <span className="block text-xs text-muted">{desc}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
+            {personal ? (
+              <p className="flex items-start gap-2 rounded-[6px] border border-line p-3 text-muted">
+                <Lock size={16} aria-hidden className="mt-0.5 flex-none" />
+                <span>This page is in a Personal space: only its owner and the people added below can open it.</span>
+              </p>
+            ) : (
+              <div role="radiogroup" aria-label="Access" className="grid gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    ["workspace", "Workspace", "Everyone in this workspace, by their role", <Users key="u" size={16} />],
+                    ["restricted", "Only invited people", "Owners, admins, the creator and people added below", <Lock key="l" size={16} />],
+                  ] as const
+                ).map(([mode, label, desc, icon]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={data.accessMode === mode}
+                    disabled={!canManage}
+                    onClick={() => void run(setMode({ documentId, mode }))}
+                    className={`flex items-start gap-2 rounded-[6px] border p-3 text-left disabled:opacity-60 ${data.accessMode === mode ? "border-accent bg-accent-soft" : "border-line"}`}
+                  >
+                    <span className="mt-0.5 text-muted" aria-hidden>
+                      {icon}
+                    </span>
+                    <span>
+                      <span className="block font-medium">{label}</span>
+                      <span className="block text-xs text-muted">{desc}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
 
           <section>

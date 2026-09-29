@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { APP, newPersonWithWorkspace, showFolders, waitForSaved } from "./helpers";
+import { APP, newPerson, showFolders, waitForSaved } from "./helpers";
 
 const mod = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -7,11 +7,11 @@ async function newFolder(page: Page, name: string) {
   await page.getByRole("button", { name: "New folder" }).click();
   await page.getByLabel("Folder name").fill(name);
   await page.getByRole("button", { name: "Create folder" }).click();
-  await expect(page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name })).toBeVisible();
 }
 
 test("note menu: move to folder, and find & replace inside the note", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Finder");
+  const { page } = await newPerson(browser, "Finder");
   await showFolders(page);
   await newFolder(page, "Guides");
 
@@ -53,10 +53,10 @@ test("note menu: move to folder, and find & replace inside the note", async ({ b
 });
 
 test("a new note on a folder page starts in that folder; the tab strip shows the folder", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Filer");
+  const { page } = await newPerson(browser, "Filer");
   await showFolders(page);
   await newFolder(page, "Recipes");
-  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Recipes" }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Recipes" }).click();
   const strip = page.getByRole("navigation", { name: "Open pages" });
   await expect(strip.locator('[aria-current="page"]')).toHaveText("Recipes");
 
@@ -69,10 +69,10 @@ test("a new note on a folder page starts in that folder; the tab strip shows the
 });
 
 test("select several notes, act on them together; drag notes onto a folder; Empty Trash", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Selector");
+  const { page } = await newPerson(browser, "Selector");
   await showFolders(page);
   await newFolder(page, "Archive box");
-  const nav = page.getByRole("navigation", { name: "Workspace" });
+  const nav = page.getByRole("navigation", { name: "Folio" });
   await nav.getByRole("link", { name: "All notes" }).click();
   await page.getByRole("radio", { name: "List" }).click();
 
@@ -123,7 +123,7 @@ test("select several notes, act on them together; drag notes onto a folder; Empt
 });
 
 test("Home: right-click a recent note to remove it from Recent notes (Undo brings it back)", async ({ browser }) => {
-  const { page } = await newPersonWithWorkspace(browser, "Tidier");
+  const { page } = await newPerson(browser, "Tidier");
   await page.goto(`${APP}/documents`);
   const recent = page.getByRole("region", { name: "Recent notes" });
   const card = recent.getByRole("listitem").filter({ hasText: "Reading Shelf" });

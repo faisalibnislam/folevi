@@ -32,12 +32,15 @@ export async function loadAccountSnapshot(): Promise<AccountSnapshot | null> {
     const accountKey = localStorage.getItem(LAST_ACCOUNT_KEY);
     if (!accountKey) return null;
     const snapshot = (await (await localDb(accountKey)).get("meta", SNAPSHOT_KEY)) as AccountSnapshot | undefined;
-    if (snapshot?.profile?.id !== accountKey || !snapshot.workspaces?.length) return null;
-    // Snapshots saved before pictures existed lack these fields; the UI expects null, not undefined.
+    if (snapshot?.profile?.id !== accountKey || !Array.isArray(snapshot.workspaces)) return null;
+    // Snapshots saved before pictures existed lack logoUrl; the UI expects null, not undefined. Snapshots
+    // saved before Personal stopped being a workspace list it as one (kind "personal"): it's left out —
+    // Personal is always there, and the list holds team workspaces only.
+    const workspaces = (snapshot.workspaces as (Workspace & { kind?: string })[]).filter((w) => w.kind !== "personal");
     return {
       ...snapshot,
       profile: { ...snapshot.profile, avatarUrl: snapshot.profile.avatarUrl ?? null },
-      workspaces: snapshot.workspaces.map((w) => ({ ...w, logoUrl: w.logoUrl ?? null, ownerName: w.ownerName ?? null })),
+      workspaces: workspaces.map(({ kind: _kind, ...w }) => ({ ...w, logoUrl: w.logoUrl ?? null })),
     };
   } catch {
     return null;

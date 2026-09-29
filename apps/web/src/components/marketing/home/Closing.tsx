@@ -9,7 +9,7 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   {
     icon: "mail",
     title: "Verified email first",
-    body: "You confirm your email address before you can open a workspace.",
+    body: "You confirm your email address before you can open Folevi.",
   },
   {
     icon: "key",
@@ -29,7 +29,7 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   {
     icon: "export",
     title: "Take everything with you",
-    body: "Export any page as Markdown, HTML or PDF, or your whole workspace as a ZIP.",
+    body: "Export any page as Markdown, HTML or PDF, or everything in your Personal or a workspace as a ZIP.",
   },
   {
     icon: "trash",

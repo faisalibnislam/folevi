@@ -1,5 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 import { SyncEngine } from "@/lib/sync/engine";
+import type { WireScope } from "@folevi/editor-schema";
+
+const PERSONAL: WireScope = { kind: "personal" };
 import type { ConvexReactClient } from "convex/react";
 
 function fakeClient(respond: (ops: { opId: string; kind: string; block?: { id: string } }[]) => unknown[]) {
@@ -22,18 +25,18 @@ describe("web sync engine", () => {
     const { client } = fakeClient(() => {
       throw new Error("offline");
     });
-    const engine = await SyncEngine.open(client, "acct-1", "ws-1", "web-dev-1");
+    const engine = await SyncEngine.open(client, "acct-1", PERSONAL, "web-dev-1");
     engine.setOnline(false);
     engine.upsertBlock("doc-1", block("b1", "offline words"), ["content", "position"]);
     await engine.persisted();
-    const reopened = await SyncEngine.open(client, "acct-1", "ws-1", "web-dev-1");
+    const reopened = await SyncEngine.open(client, "acct-1", PERSONAL, "web-dev-1");
     expect(reopened.state.pending).toHaveLength(1);
     expect(reopened.documentBlocks("doc-1")[0]!.text[0]).toEqual({ type: "text", text: "offline words" });
   });
 
   test("flush sends ops in order, applies acknowledgements and reports Saved", async () => {
     const { client, calls } = fakeClient((ops) => ops.map((o) => ({ opId: o.opId, status: "applied", revision: 1, block: { ...block(o.block!.id, "x"), revision: 1 } })));
-    const engine = await SyncEngine.open(client, "acct-2", "ws-1", "web-dev-2");
+    const engine = await SyncEngine.open(client, "acct-2", PERSONAL, "web-dev-2");
     engine.setOnline(true);
     engine.upsertBlock("doc-1", block("b1", "x"), ["content", "position"]);
     engine.upsertBlock("doc-1", block("b2", "x"), ["content", "position"]);
@@ -48,7 +51,7 @@ describe("web sync engine", () => {
     const { client } = fakeClient(() => {
       throw new ConvexError({ code: "unauthenticated" });
     });
-    const engine = await SyncEngine.open(client, "acct-3", "ws-1", "web-dev-3");
+    const engine = await SyncEngine.open(client, "acct-3", PERSONAL, "web-dev-3");
     engine.setOnline(true);
     engine.upsertBlock("doc-1", block("b1", "x"), ["content", "position"]);
     await engine.flush();

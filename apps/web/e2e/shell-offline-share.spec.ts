@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved } from "./helpers";
 
 async function newDocument(page: Page) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -8,7 +8,7 @@ async function newDocument(page: Page) {
 }
 
 test("phone-width navigation drawer is a modal dialog with a focus trap", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Drawer Tester");
+  const { page, context } = await newPerson(browser, "Drawer Tester");
   await page.setViewportSize({ width: 390, height: 844 });
   await waitForSaved(page);
   const toggle = page.getByRole("button", { name: "Show sidebar" });
@@ -33,7 +33,7 @@ test("phone-width navigation drawer is a modal dialog with a focus trap", async 
 });
 
 test("the sync popover lists pages with changes waiting on this device", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Queue Viewer");
+  const { page, context } = await newPerson(browser, "Queue Viewer");
   await newDocument(page);
   await page.getByRole("textbox", { name: "Title" }).fill("Notes from the ferry");
   await page.keyboard.press("Enter");
@@ -67,7 +67,7 @@ test("the sync popover lists pages with changes waiting on this device", async (
 });
 
 test("password-protected links keep only a sealed grant, never the password, in cookies", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Link Owner");
+  const { page, context } = await newPerson(browser, "Link Owner");
   await newDocument(page);
   await page.getByRole("textbox", { name: "Title" }).fill("Protected plans");
   await waitForSaved(page);

@@ -56,7 +56,6 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         eyebrow={
           <>
             <StatusBadge status={w.status} />
-            <Badge>{w.kind === "personal" ? "Personal workspace" : "Team workspace"}</Badge>
           </>
         }
         title={w.name}

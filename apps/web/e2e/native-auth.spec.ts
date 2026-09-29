@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { expect, request as playwrightRequest, test, type APIRequestContext, type Page } from "@playwright/test";
-import { APP, newPersonWithWorkspace, signIn } from "./helpers";
+import { APP, newPerson, signIn } from "./helpers";
 
 // Folevi for Mac signs in with Authorization Code + PKCE (convex/lib/nativeAuth.ts): the app opens /connect,
 // the person approves, and the app trades the one-time code and its verifier for a session of its own.
@@ -37,7 +37,7 @@ async function exchange(api: APIRequestContext, code: string, verifier: string) 
 }
 
 test("the Mac app signs in with a one-time code and PKCE, as a device of its own", async ({ browser }) => {
-  const person = await newPersonWithWorkspace(browser, "Mac Person");
+  const person = await newPerson(browser, "Mac Person");
   // The app is a separate client: no browser cookies.
   const app = await playwrightRequest.newContext();
 
@@ -83,7 +83,7 @@ test("the Mac app signs in with a one-time code and PKCE, as a device of its own
 });
 
 test("signed-out people sign in first and come back to approve the app", async ({ browser }) => {
-  const person = await newPersonWithWorkspace(browser, "Mac Returner");
+  const person = await newPerson(browser, "Mac Returner");
   const fresh = await browser.newContext();
   const { challenge } = pkce();
   const page = await signIn(fresh, person.account, { returnTo: new URL(connectUrl(challenge)).pathname + new URL(connectUrl(challenge)).search });
@@ -92,7 +92,7 @@ test("signed-out people sign in first and come back to approve the app", async (
 });
 
 test("unregistered apps and return addresses are refused", async ({ browser }) => {
-  const person = await newPersonWithWorkspace(browser, "Mac Refuser");
+  const person = await newPerson(browser, "Mac Refuser");
   const { challenge } = pkce();
   await person.page.goto(connectUrl(challenge).replace(encodeURIComponent(REDIRECT), encodeURIComponent("https://evil.example/cb")));
   await expect(person.page.getByRole("heading", { name: "This link doesn't work" })).toBeVisible({ timeout: 30_000 });

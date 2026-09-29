@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { strToU8, unzipSync, zipSync } from "fflate";
-import { newPersonWithWorkspace, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved } from "./helpers";
 
 // 1×1 PNG.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
@@ -18,7 +18,7 @@ async function newPage(page: Page, title: string) {
 
 test.describe("documents", () => {
   test("an inserted image uploads right away (no reload needed) and survives a reload", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Upload Tester");
+    const { context, page } = await newPerson(browser, "Upload Tester");
     await newPage(page, "Photos");
     await page.keyboard.type("/image");
     const chooser = page.waitForEvent("filechooser");
@@ -34,7 +34,7 @@ test.describe("documents", () => {
   });
 
   test("comments: @mention suggestions, editing a comment, and resolve", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Mira Comment");
+    const { context, page } = await newPerson(browser, "Mira Comment");
     await newPage(page, "Discussed");
     await page.keyboard.type("Something to discuss");
     await waitForSaved(page);
@@ -69,7 +69,7 @@ test.describe("documents", () => {
   });
 
   test("comments on a block: ⌘⌥M opens a thread under it, and the comment line reopens it", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Block Commenter");
+    const { context, page } = await newPerson(browser, "Block Commenter");
     await newPage(page, "Launch review");
     await page.keyboard.type("Ship the beta on Friday");
     await waitForSaved(page);
@@ -98,7 +98,7 @@ test.describe("documents", () => {
   });
 
   test("move a page under another page; exports use current titles of linked pages", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Mover");
+    const { context, page } = await newPerson(browser, "Mover");
     const parentPath = await newPage(page, "Harbor parent");
     await page.keyboard.type("Parent body");
     await waitForSaved(page);
@@ -145,7 +145,7 @@ test.describe("documents", () => {
   });
 
   test("import a ZIP: relative images are uploaded, dropped front matter is reported, display math becomes a formula", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Zip Importer");
+    const { context, page } = await newPerson(browser, "Zip Importer");
     await page.goto("/settings/data");
     const zip = zipSync({
       "notes/trip.md": strToU8(["---", "title: Island trip", "tags: travel", "---", "", "Intro", "", "![Dot](img/dot.png)", "", "$$", "e = mc^2", "$$", ""].join("\n")),
@@ -166,11 +166,11 @@ test.describe("documents", () => {
     await context.close();
   });
 
-  test("workspace export streams a ZIP with Markdown in sidebar folders and a manifest", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Exporter");
+  test("Personal export streams a ZIP with Markdown in sidebar folders and a manifest", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Exporter");
     await page.goto("/settings/data");
     const download = page.waitForEvent("download", { timeout: 60_000 });
-    await page.getByRole("button", { name: "Export workspace (.zip)" }).click();
+    await page.getByRole("button", { name: "Export Personal (.zip)" }).click();
     const file = await download;
     const bytes = Buffer.concat(await (await file.createReadStream()).toArray());
     const files = unzipSync(new Uint8Array(bytes));
@@ -183,7 +183,7 @@ test.describe("documents", () => {
   });
 
   test("page tools live in a bottom dock: each opens a floating panel; Escape returns focus; no side panel", async ({ browser }) => {
-    const { context, page } = await newPersonWithWorkspace(browser, "Dock Tester");
+    const { context, page } = await newPerson(browser, "Dock Tester");
     await newPage(page, "Dock");
     const dock = page.getByRole("toolbar", { name: "Page tools" });
     for (const name of ["Insert", "Format", "Style", "Info"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();

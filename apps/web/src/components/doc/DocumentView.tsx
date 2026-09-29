@@ -34,6 +34,7 @@ import {
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
+import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scope";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineState } from "@/lib/hooks/useEngine";
 import { localDb } from "@/lib/sync/db";
@@ -69,7 +70,7 @@ import { Select } from "@/components/ui/Select";
 const IDLE_SNAPSHOT_MS = 2 * 60_000;
 
 export function DocumentView({ documentId }: { documentId: string }) {
-  const { engine, profile, online, workspace } = useAppState();
+  const { engine, profile, online, scopeKey } = useAppState();
   const convex = useConvex();
   const meta = useQuery(api.documents.get, { documentId });
   const server = useQuery(api.blocks.list, { documentId });
@@ -137,7 +138,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     setReconciled(true);
     void (async () => {
       const db = await localDb(profile.id);
-      await db.put("blocks", { documentId, workspaceId: engine.workspaceId, blocks: server.blocks, cachedAt: Date.now() });
+      await db.put("blocks", { documentId, blocks: server.blocks, cachedAt: Date.now() });
     })();
   }, [engine, server, documentId, profile.id]);
 
@@ -260,7 +261,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [editor, threads, hashTick, documentId, setInspectorOpen]);
 
   // A folder inside another folder shows its parent in the breadcrumb too (folders nest one level).
-  const org = useQuery(api.organization.sidebar, meta?.folder && meta.isMember ? { workspaceId: workspace.id } : "skip");
+  // Read from the note's own scope (it may be open from another context than the current one).
+  const org = useQuery(api.organization.sidebar, meta?.folder && meta.isMember ? { scope: documentScope(meta.document) } : "skip");
   const folderInfo = meta?.folder ? org?.folders.find((f) => f.id === meta.folder!.id) : undefined;
   const parentFolder = folderInfo?.parentFolderId ? (org?.folders.find((f) => f.id === folderInfo.parentFolderId) ?? null) : null;
 
@@ -340,8 +342,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // AI: a selection rewrite from the editor's toolbar, or "ask AI to write" from the slash menu, opens the
   // AI panel (and runs the rewrite there).
   const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
-  // AI follows the note's own workspace (Personal: your Personal plan; a team: its workspace plan).
-  const aiOn = useAiEnabled(meta?.document.workspaceId);
+  // AI follows the note's own scope (your Personal: your Personal plan; a team: its workspace plan).
+  const aiOn = useAiEnabled(meta?.document);
   // AI turned off while its panel is open: show another tool instead.
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
@@ -426,9 +428,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
     onFind: editor ? () => openFind(!readOnly) : undefined,
-    // Top-level notes of this workspace can be filed; nested pages follow their parent page.
+    // Top-level notes of the current context (Personal or a workspace) can be filed; nested pages follow their parent page.
     onMoveToFolder:
-      meta && !readOnly && meta.isMember && meta.document.workspaceId === workspace.id && !meta.document.parentDocumentId && meta.document.kind !== "template" && (meta.access === "write" || meta.access === "manage")
+      meta && !readOnly && inCurrentScope(meta.document, meta.isMember, scopeKey) && !meta.document.parentDocumentId && meta.document.kind !== "template" && (meta.access === "write" || meta.access === "manage")
         ? () => setFolderOpen(true)
         : undefined,
     client: convex,
@@ -568,7 +570,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           >
             <DocumentHeader
               documentId={documentId}
-              workspaceId={meta?.document.workspaceId}
+              note={meta?.document}
               title={summary?.title ?? localTitle}
               cover={summary?.cover ?? DEFAULT_COVER}
               style={style}
@@ -702,10 +704,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
         ) : null}
         </div>
       </div>
-      {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} /> : null}
+      {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} canRestore={!readOnly} />
       {meta && !readOnly ? (
-        <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={summary?.title ?? ""} currentParentId={meta.breadcrumbs[meta.breadcrumbs.length - 1]?.id ?? null} />
+        <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={summary?.title ?? ""} currentParentId={meta.breadcrumbs[meta.breadcrumbs.length - 1]?.id ?? null} home={meta.isMember ? documentScope(meta.document) : null} />
       ) : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
       {meta ? (
@@ -788,7 +790,7 @@ function PresenceAvatars({ people }: { people: { profileId: string; name: string
 
 function DocumentHeader({
   documentId,
-  workspaceId,
+  note,
   title,
   cover,
   style,
@@ -798,8 +800,8 @@ function DocumentHeader({
   hasContent = false,
 }: {
   documentId: string;
-  /** The note's workspace (decides whether AI is included). */
-  workspaceId?: string;
+  /** Where the note lives (decides whether AI is included). */
+  note?: DocumentHome;
   /** The note has body text (so the AI has something to title). */
   hasContent?: boolean;
   title: string;
@@ -849,7 +851,7 @@ function DocumentHeader({
   }, [value]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushTitle = useRef<(() => void) | null>(null);
-  const aiOn = useAiEnabled(workspaceId);
+  const aiOn = useAiEnabled(note);
   const { write } = useAi();
   const toast = useToast();
   const [suggesting, setSuggesting] = useState(false);

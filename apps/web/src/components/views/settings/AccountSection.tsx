@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/Switch";
 import { useAiAccess } from "@/components/ai/useAi";
 
 export function AccountSection() {
-  const { profile, timeZone, workspace } = useAppState();
+  const { profile, timeZone } = useAppState();
   const convex = useConvex();
   const update = useMutation(api.users.updateProfile);
   const setAvatar = useMutation(api.users.setAvatar);
@@ -33,8 +33,8 @@ export function AccountSection() {
             src={profile.avatarUrl ?? null}
             initial={profile.displayName}
             onUpload={async (file) => {
-              // The server stores it in your personal workspace whatever workspace is open.
-              const fileId = await uploadIdentityImage(convex, { kind: "avatar", workspaceId: workspace.id, file });
+              // The server stores it in your Personal (your personal storage), whichever context is open.
+              const fileId = await uploadIdentityImage(convex, { kind: "avatar", file });
               await setAvatar({ fileId });
             }}
             onRemove={async () => {

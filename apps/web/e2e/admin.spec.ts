@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { APP, completeOnboarding, createAccount, grantPlatformRole, newPersonWithWorkspace, pick, settle } from "./helpers";
+import { APP, completeOnboarding, createAccount, createWorkspace, grantPlatformRole, newPerson, pick, settle, switchTo } from "./helpers";
 
 // One fresh super admin per run (granted through the local-only testSupport function), reused by every
 // test through its saved browser session so nobody signs in twice in the same authenticator window.
@@ -11,6 +11,9 @@ test.beforeAll(async ({ browser }) => {
   const context = await browser.newContext();
   const { page, account } = await createAccount(context, { name: "Ada Example" });
   await completeOnboarding(page);
+  // A team workspace, so the workspaces list has one (Personal isn't a workspace and isn't listed).
+  await createWorkspace(page, "Ada Studio");
+  await switchTo(page, "Personal");
   grantPlatformRole(account.email, "super_admin");
   adminEmail = account.email;
   adminState = await context.storageState();
@@ -26,7 +29,7 @@ async function adminPage(browser: Browser, path: string): Promise<Page> {
 }
 
 test("a signed-in person without a platform role gets a plain 404 at /admin", async ({ browser }) => {
-  const { page, context } = await newPersonWithWorkspace(browser, "Not An Admin");
+  const { page, context } = await newPerson(browser, "Not An Admin");
   const response = await page.goto(`${APP}/admin`);
   expect(response?.status()).toBe(404);
   await expect(page.getByText("This page could not be found.")).toBeVisible();
@@ -54,7 +57,7 @@ test("an admin sees the dashboard with aggregate metrics", async ({ browser }) =
 });
 
 test("user search and view are written to the audit log; suspending requires a reason", async ({ browser }) => {
-  const target = await newPersonWithWorkspace(browser, "Audit Target");
+  const target = await newPerson(browser, "Audit Target");
   const page = await adminPage(browser, "/admin/users");
 
   // Search by exact email.
@@ -116,7 +119,7 @@ test("listing workspaces is audited, and identity emails appear in the email log
 });
 
 test("an owner manages a person's plan and AI from their page; analytics and revenue load", async ({ browser }) => {
-  const target = await newPersonWithWorkspace(browser, "Plan Target");
+  const target = await newPerson(browser, "Plan Target");
   const page = await adminPage(browser, "/admin/users");
   await page.getByRole("searchbox", { name: "Email or name" }).fill(target.email);
   await page.getByRole("button", { name: "Search" }).click();
@@ -165,7 +168,7 @@ test("an owner manages a person's plan and AI from their page; analytics and rev
 });
 
 test("support staff see analytics but not revenue, and can't set plans", async ({ browser }) => {
-  const staff = await newPersonWithWorkspace(browser, "Support Person");
+  const staff = await newPerson(browser, "Support Person");
   grantPlatformRole(staff.email, "support_admin");
   const page = staff.page;
   await page.goto(`${APP}/admin`);

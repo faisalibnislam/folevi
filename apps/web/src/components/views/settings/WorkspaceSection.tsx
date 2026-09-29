@@ -3,23 +3,26 @@
 import { useConvex, useMutation } from "convex/react";
 import { useState } from "react";
 import { api } from "@/lib/convex/api";
-import { useAppState } from "@/lib/app/state";
+import { useAppState, type Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatBytes } from "@/lib/format";
 import { uploadIdentityImage } from "@/lib/app/identityImages";
+import { workspaceRoleLabel } from "@/components/app/NewWorkspaceDialog";
 import { Card } from "./Card";
 import { IdentityImageField } from "./IdentityImageField";
 
+/** The current team workspace's general settings. Only shown when a workspace is open (Personal has none). */
 export function WorkspaceSection() {
   const { workspace } = useAppState();
+  if (!workspace) return null;
   // Re-mount per workspace so the rename field never shows the previous workspace's name.
-  return <WorkspaceSettings key={workspace.id} />;
+  return <WorkspaceSettings key={workspace.id} workspace={workspace} />;
 }
 
-function WorkspaceSettings() {
-  const { workspace, workspaces, profile, setWorkspace } = useAppState();
+function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
+  const { profile, setContext } = useAppState();
   const convex = useConvex();
   const rename = useMutation(api.workspaces.rename);
   const setLogo = useMutation(api.workspaces.setLogo);
@@ -30,24 +33,13 @@ function WorkspaceSettings() {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const canAdmin = workspace.role === "owner" || workspace.role === "admin";
-  const personal = workspace.kind === "personal";
-  // Collaborators can leave someone's personal workspace too; owners never leave their own.
+  // Owners never leave their own workspace (they hand it on first).
   const canLeave = workspace.role !== "owner";
   const pct = workspace.storageQuotaBytes ? (workspace.storageUsedBytes / workspace.storageQuotaBytes) * 100 : 0;
   return (
     <>
-      <Card title="Workspace" description={`${workspace.kind === "personal" ? "Personal" : "Team"} workspace · you are ${workspace.role === "owner" ? "the owner" : workspace.role === "admin" || workspace.role === "editor" ? `an ${workspace.role}` : `a ${workspace.role}`}.`}>
-        {personal ? (
-          <div className="max-w-md text-sm">
-            <label htmlFor="ws-name" className="mb-1 block font-medium">
-              Workspace name
-            </label>
-            <input id="ws-name" value="Personal" readOnly aria-describedby="ws-name-hint" className="h-9 w-full ui-well rounded-[6px] px-3 text-muted" />
-            <span id="ws-name-hint" className="mt-1 block text-xs text-muted">
-              Your personal workspace is always called Personal.
-            </span>
-          </div>
-        ) : canAdmin ? (
+      <Card title="Workspace" description={`You're ${workspace.role === "owner" ? "the owner" : workspace.role === "admin" ? "an admin" : "a member"} of this workspace.`}>
+        {canAdmin ? (
           <form
             className="flex max-w-md gap-2"
             onSubmit={(e) => {
@@ -70,9 +62,7 @@ function WorkspaceSettings() {
         )}
         <div className="mt-5">
           <p className="mb-2 text-sm font-medium">Logo</p>
-          {personal ? (
-            <p className="text-sm text-muted">Your personal workspace uses your profile picture. Change it in Settings → Account.</p>
-          ) : canAdmin ? (
+          {canAdmin ? (
             <IdentityImageField
               label="Workspace logo"
               shape="square"
@@ -90,23 +80,20 @@ function WorkspaceSettings() {
             <p className="text-sm text-muted">Owners and admins can change the logo.</p>
           )}
         </div>
-        {/* Each workspace has its own plan and storage: Personal follows your Personal plan, a team its own. */}
-        {workspace.plan ? (
-          <p className="mt-4 text-sm text-muted">
-            Plan: <span className="text-ink">{workspace.plan.scope === "personal" ? `${workspace.plan.name} (your personal plan)` : workspace.plan.name}</span>
-            {workspace.plan.scope === "workspace" ? " · Team and Business workspace plans are coming soon." : null}
-          </p>
-        ) : null}
-        <p className={`${workspace.plan ? "mt-1" : "mt-4"} text-sm text-muted`}>
-          {personal ? "Personal storage" : "Workspace storage"}: {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
+        {/* A workspace has its own plan and storage, separate from anyone's Personal plan. */}
+        <p className="mt-4 text-sm text-muted">
+          Plan: <span className="text-ink">{workspace.plan.name}</span> · Team and Business workspace plans are coming soon.
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          Workspace storage: {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
         </p>
         <div className="mt-2 h-1.5 max-w-md overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${Math.round(pct)}% of storage used`}>
           <div className="h-full bg-accent" style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
+        <p className="mt-3 text-xs text-muted">Your role: {workspaceRoleLabel(workspace.role)}</p>
       </Card>
-      <NewTeamWorkspaceCard />
       {canLeave ? (
-        <Card title="Leave workspace" description="You’ll lose access to its pages, folders and tasks. Pages you wrote stay in the workspace.">
+        <Card title="Leave workspace" description="You’ll lose access to its pages, folders and tasks. Pages you wrote stay in the workspace. Your Personal isn’t affected.">
           <Button variant="danger" onClick={() => setConfirmLeave(true)}>
             Leave {workspace.name}
           </Button>
@@ -128,8 +115,8 @@ function WorkspaceSettings() {
                 setLeaving(true);
                 try {
                   await leave({ workspaceId: workspace.id, profileId: profile.id });
-                  const next = workspaces.find((w) => w.id !== workspace.id && w.isDefault) ?? workspaces.find((w) => w.id !== workspace.id);
-                  if (next) setWorkspace(next.id);
+                  // Back to Personal: it's always there.
+                  setContext({ kind: "personal" });
                   setConfirmLeave(false);
                   toast.show(`You left ${workspace.name}`, { tone: "success" });
                 } catch (e) {
@@ -145,42 +132,5 @@ function WorkspaceSettings() {
         }
       />
     </>
-  );
-}
-
-export function NewTeamWorkspaceCard() {
-  const { setWorkspace } = useAppState();
-  const create = useMutation(api.workspaces.createTeamWorkspace);
-  const toast = useToast();
-  const [teamName, setTeamName] = useState("");
-  return (
-    <Card title="New team workspace" description="Share folders, documents and tasks with other people. Your personal workspace stays private.">
-      <form
-        className="flex max-w-md gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!teamName.trim()) {
-            toast.show("Give the workspace a name.", { tone: "error" });
-            return;
-          }
-          create({ name: teamName }).then(
-            (r) => {
-              setWorkspace(r.id);
-              setTeamName("");
-              toast.show("Workspace created", { tone: "success" });
-            },
-            (err) => toast.show(errorMessage(err), { tone: "error" }),
-          );
-        }}
-      >
-        <label className="sr-only" htmlFor="team-name">
-          Team workspace name
-        </label>
-        <input id="team-name" value={teamName} onChange={(e) => setTeamName(e.target.value)} maxLength={80} placeholder="e.g. Ashgrove Gardens" className="h-9 flex-1 ui-input rounded-[6px] px-3" />
-        <Button type="submit" variant="primary">
-          Create
-        </Button>
-      </form>
-    </Card>
   );
 }

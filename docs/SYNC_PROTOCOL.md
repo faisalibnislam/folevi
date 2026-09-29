@@ -92,7 +92,12 @@ Clients keep **one durable queue per account**, not per scope. The web client st
 `document.create` without a parent with the scope selected when it was queued, so switching between
 Personal and workspaces before the op syncs can't change where the page lands. (Older web builds kept one queue per
 workspace id; on first open they are folded into the account queue in a single IndexedDB transaction,
-preserving per-queue order and stamping their creates with their workspace.)
+preserving per-queue order and stamping their creates with their workspace.) Creates queued by builds from
+before Personal stopped being a workspace name a `workspaceId`; when the engine opens, each is re-stamped
+with a `scope` — a workspace the person still belongs to keeps it, anything else (the old personal
+workspace, or one they've left) becomes their Personal — so nothing is sent naming a workspace that no
+longer exists. The web's local database (v3) keys its document cache by scope key (`scopeIdKey`) and never
+drops the queue or waiting uploads on upgrade.
 
 ## Server rules (`convex/sync.ts#applyOperations`)
 

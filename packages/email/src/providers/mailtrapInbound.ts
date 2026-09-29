@@ -107,7 +107,8 @@ export async function fetchInboundMessage(opts: {
   try {
     const res = await fetchImpl(`${MAILTRAP_INBOUND_API}/inboxes/${opts.inboxId}/messages/${opts.messageId}`, {
       method: "GET",
-      headers: { Authorization: `Bearer ${opts.token}`, Accept: "application/json" },
+      // Mailtrap documents the Api-Token header for API tokens; Bearer is what its other APIs take. Send both.
+      headers: { "Api-Token": opts.token, Authorization: `Bearer ${opts.token}`, Accept: "application/json" },
       signal: controller?.signal,
     });
     if (res.status >= 200 && res.status < 300) {

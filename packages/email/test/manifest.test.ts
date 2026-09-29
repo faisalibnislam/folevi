@@ -135,7 +135,7 @@ describe("manifest contract", () => {
   it.each(ALL_KEYS)("%s: category rules (sender, unsubscribe, preferences)", (key) => {
     const def = emailManifest[key];
     const { html, text } = GENERATED_TEMPLATES[key];
-    expect(def.sender.name).toBe(def.category === "support" && def.sender.address ? "Folevi Support" : "Folevi");
+    expect(def.sender.name).toBe(def.category === "support" && def.replyTo ? "Folevi Support" : "Folevi");
     expect(text).toContain("Folevi · A quieter place for ideas that keep growing.");
     expect(html).toContain("Folevi · A quieter place for ideas that keep growing.");
     if (def.category === "product") {
@@ -149,13 +149,14 @@ describe("manifest contract", () => {
       expect(def.unsubscribable).toBe(false);
       expect(def.preferenceKey).toBeUndefined();
       expect(def.sender.localPart).toBe("support");
-      // Mail to a requester comes from, and answers to, the support mailbox; the subject carries the ticket
-      // number so replies thread. Staff notices have no Reply-To (a reply must never loop into a ticket).
+      // Mail to a requester comes from support@ on the sending domain and answers to the support mailbox; the
+      // subject carries the ticket number so replies thread. Staff notices have no Reply-To (a reply must
+      // never loop into a ticket).
       if (key === "support_staff_notice") {
         expect(def.replyTo).toBeNull();
         expect(def.sender.address).toBeUndefined();
       } else {
-        expect(def.sender.address).toBe("support@folevi.com");
+        expect(def.sender.address).toBeUndefined();
         expect(def.replyTo).toBe("support@folevi.com");
         expect(def.subject.startsWith("[Folevi #{{ticketNumber}}] ")).toBe(true);
       }

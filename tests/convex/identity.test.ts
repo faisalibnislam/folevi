@@ -47,7 +47,7 @@ describe("Personal is not a workspace", () => {
     await a.as.mutation(api.users.completeOnboardingStep, { step: "workspace", workspaceName: "Something else" });
     expect(await a.as.query(api.workspaces.mine, {})).toEqual([]);
     const me = await a.as.query(api.users.me, {});
-    expect(me.state === "ready" && me.profile.onboardingStep).toBe("appearance");
+    expect(me.state === "ready" && me.profile.onboardingStep).toBe("uses");
   });
 });
 

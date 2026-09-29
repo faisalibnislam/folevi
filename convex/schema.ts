@@ -50,7 +50,18 @@ export default defineSchema({
     aiEnabled: v.optional(v.boolean()),
     locale: v.string(),
     timeZone: v.string(),
-    onboardingStep: v.union(v.literal("workspace"), v.literal("appearance"), v.literal("welcome"), v.literal("done")),
+    /** Where onboarding is (convex/lib/onboarding.ts ONBOARDING_STEPS). "workspace" is the first step. */
+    onboardingStep: v.union(
+      v.literal("workspace"),
+      v.literal("uses"),
+      v.literal("style"),
+      v.literal("appearance"),
+      v.literal("ai"),
+      v.literal("welcome"),
+      v.literal("done"),
+    ),
+    /** Use cases picked during onboarding whose starter pages were added (USE_CASES ids; unset = none). */
+    onboardingUseCases: v.optional(v.array(v.string())),
     platformRole: v.optional(vPlatformRole),
     status: vProfileStatus,
     suspendedReason: v.optional(v.string()),

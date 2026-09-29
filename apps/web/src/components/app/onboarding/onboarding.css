@@ -1,0 +1,442 @@
+/*
+ * Onboarding. The app's neutral chrome on the left (white, or near-black in dark mode) and, beside it, a
+ * stage lit by the note styles' artwork with a miniature of the person's own Folevi taking shape.
+ * The miniature is the app's own recipes (globals.css glass, the editor's note colours) rebuilt in HTML,
+ * like the marketing replicas. Scoped with `ob-` so nothing leaks into the app.
+ */
+
+@layer theme, base, components, utilities;
+
+@layer components {
+  .ob-root {
+    --ob-ease: var(--motion-easing, cubic-bezier(0.2, 0.7, 0.2, 1));
+    --ob-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    transition: background-color 320ms var(--ob-ease), color 320ms var(--ob-ease);
+  }
+
+  /* Progress --------------------------------------------------------------------------------------- */
+  .ob-progress-seg {
+    position: relative;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-heading) 12%, transparent);
+  }
+  .ob-progress-seg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--color-heading);
+    transform-origin: left center;
+    transform: scaleX(0);
+    transition: transform 520ms var(--ob-ease);
+  }
+  .ob-progress-seg[data-state="done"]::after,
+  .ob-progress-seg[data-state="current"]::after { transform: scaleX(1); }
+  .ob-progress-seg[data-state="current"]::after { opacity: 0.45; }
+
+  /* Step transitions -------------------------------------------------------------------------------- */
+  .ob-step { animation: ob-step-in 460ms var(--ob-ease) both; }
+  .ob-step[data-dir="back"] { animation-name: ob-step-back; }
+  .ob-rise { animation: ob-rise 520ms var(--ob-ease) both; animation-delay: calc(var(--i, 0) * 55ms + 80ms); }
+
+  /* Choices: a native input, visually hidden, inside a card ------------------------------------------ */
+  .ob-choice {
+    position: relative;
+    display: flex;
+    cursor: pointer;
+    border-radius: 10px;
+    background: var(--color-surface);
+    box-shadow: 0 0 0 1px var(--color-line), 0 1px 2px rgb(0 0 0 / 0.04);
+    transition: box-shadow 180ms var(--ob-ease), transform 180ms var(--ob-ease), background-color 180ms var(--ob-ease);
+  }
+  .ob-choice:hover { box-shadow: 0 0 0 1px var(--color-line-strong), 0 6px 18px -8px rgb(0 0 0 / 0.18); transform: translateY(-1px); }
+  .ob-choice:has(input:checked) {
+    box-shadow: 0 0 0 1.5px var(--color-heading), 0 8px 22px -10px rgb(0 0 0 / 0.25);
+  }
+  .ob-choice:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .ob-choice:active { transform: translateY(0) scale(0.99); }
+
+  /* The native input covers its card (invisible), so pointer and keyboard both reach a real control. */
+  .ob-input {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    appearance: none;
+  }
+  .ob-input:disabled { cursor: default; }
+
+  /* The check in a use-case card, as the editor draws a checkbox. */
+  .ob-check {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    color: var(--color-canvas);
+    box-shadow: inset 0 0 0 1.5px var(--color-line-strong);
+    transition: background-color 160ms var(--ob-ease), box-shadow 160ms var(--ob-ease);
+  }
+  .ob-check svg { transform: scale(0.4); opacity: 0; transition: transform 260ms var(--ob-spring), opacity 160ms; }
+  .ob-choice:has(input:checked) .ob-check { background: var(--color-heading); box-shadow: none; }
+  .ob-choice:has(input:checked) .ob-check svg { transform: none; opacity: 1; }
+
+  /* Art thumbnails in choices */
+  .ob-art {
+    background: var(--ob-art) center / cover no-repeat;
+    transition: transform 420ms var(--ob-ease), filter 420ms var(--ob-ease);
+  }
+  .ob-choice:hover .ob-art,
+  .ob-choice:has(input:checked) .ob-art { transform: scale(1.06); }
+
+  /* Style tiles: the artwork fills the tile; the chosen one gets a ring and a badge. */
+  .ob-tile {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+    transition: box-shadow 200ms var(--ob-ease), transform 200ms var(--ob-ease);
+  }
+  .ob-tile-wrap { position: relative; display: block; cursor: pointer; border-radius: 12px; }
+  .ob-tile-wrap:hover .ob-tile { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), 0 10px 22px -12px rgb(0 0 0 / 0.35); }
+  .ob-tile-wrap:has(input:checked) .ob-tile {
+    box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-heading), 0 12px 24px -12px rgb(0 0 0 / 0.4);
+  }
+  .ob-tile-wrap:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 6px; }
+  .ob-badge {
+    position: absolute;
+    right: 7px;
+    top: 7px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--color-heading);
+    color: var(--color-canvas);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+    transform: scale(0.3);
+    opacity: 0;
+    transition: transform 320ms var(--ob-spring), opacity 180ms;
+  }
+  .ob-tile-wrap:has(input:checked) .ob-badge { transform: none; opacity: 1; }
+
+  /* Appearance cards: miniature windows in fixed light and dark colours. */
+  .ob-mini {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16 / 10;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.1);
+  }
+  .ob-mini[data-mode="light"] { --m-bg: #eeeef1; --m-panel: #ffffff; --m-line: #e2e2e6; --m-ink: #18181b; --m-muted: #c9c9cf; }
+  .ob-mini[data-mode="dark"] { --m-bg: #0c0c0e; --m-panel: #1c1c1e; --m-line: #2c2c2f; --m-ink: #f2f2f3; --m-muted: #4a4a50; }
+
+  /* Summary rows on the last step: the check draws itself. */
+  .ob-draw path { stroke-dasharray: 16; stroke-dashoffset: 16; animation: ob-draw 520ms var(--ob-ease) forwards; animation-delay: calc(var(--i, 0) * 110ms + 360ms); }
+
+  /* The stage ---------------------------------------------------------------------------------------- */
+  .ob-stage {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--glass-canvas);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-line) 70%, transparent);
+  }
+  .ob-stage-art {
+    position: absolute;
+    inset: -80px;
+    z-index: -3;
+    background: var(--ob-art) center / cover no-repeat;
+    filter: blur(60px) saturate(1.35);
+    opacity: 0;
+    transform: scale(1.08);
+    transition: opacity 900ms var(--ob-ease), transform 1400ms var(--ob-ease);
+  }
+  .ob-stage-art[data-on="true"] { opacity: 0.95; transform: none; }
+  .ob-stage::before {
+    /* The neutral ambient light (the app canvas) under everything. */
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -4;
+    background:
+      radial-gradient(70% 60% at 85% -10%, var(--glass-light-a), transparent 70%),
+      radial-gradient(60% 70% at -10% 110%, var(--glass-light-b), transparent 70%);
+  }
+  .ob-stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: var(--glass-veil);
+    pointer-events: none;
+  }
+
+  .ob-scene {
+    position: absolute;
+    inset: 0;
+    transition: opacity 620ms var(--ob-ease), transform 820ms var(--ob-ease), visibility 0s linear 0s;
+  }
+  .ob-scene[data-on="false"] { opacity: 0; transform: scale(0.94) translateY(12px); visibility: hidden; transition: opacity 420ms var(--ob-ease), transform 620ms var(--ob-ease), visibility 0s linear 620ms; }
+  .ob-scene[data-scene="deck"][data-on="false"] { transform: scale(1.06); }
+
+  /* The intro deck: note styles fanned out. */
+  .ob-deck-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 200px;
+    height: 270px;
+    margin: -135px 0 0 -100px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--color-surface);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 30px 60px -24px rgb(0 0 0 / 0.45), 0 10px 20px -10px rgb(0 0 0 / 0.2);
+    transform: translate(var(--x), var(--y)) rotate(var(--r));
+    animation: ob-deal 900ms var(--ob-ease) both, ob-float 7s ease-in-out infinite alternate;
+    animation-delay: calc(var(--i) * 90ms + 120ms), calc(var(--i) * -1.3s);
+  }
+  .ob-deck-card .ob-art { position: absolute; inset: 0 0 64px 0; }
+
+  /* The miniature app window */
+  .ob-win-fit {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(var(--ob-scale, 0.6));
+    transform-origin: center;
+  }
+  .ob-win {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 18px;
+    background: var(--glass-canvas);
+    box-shadow: var(--shadow-lift), 0 50px 100px -40px rgb(0 0 0 / 0.35);
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--color-ink);
+    transition: transform 700ms var(--ob-ease), box-shadow 700ms var(--ob-ease);
+  }
+  .ob-win[data-lift="true"] { transform: translateY(-6px) scale(1.015); }
+  .ob-win-ambient {
+    position: absolute;
+    inset: -96px;
+    z-index: -2;
+    background: var(--ob-art) center / cover no-repeat;
+    filter: blur(56px) saturate(1.4);
+    opacity: 0;
+    transition: opacity 800ms var(--ob-ease);
+  }
+  .ob-win-ambient[data-on="true"] { opacity: 1; }
+  .ob-win::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--glass-veil);
+    pointer-events: none;
+  }
+  .ob-glass {
+    background: var(--glass-sidebar);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
+    box-shadow: var(--glass-edge), var(--glass-shadow);
+  }
+  .ob-pop {
+    background: color-mix(in oklab, var(--color-surface-raised) 94%, transparent);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    backdrop-filter: blur(28px) saturate(1.8);
+    box-shadow: var(--glass-edge), var(--shadow-pop);
+  }
+  .ob-content {
+    background: var(--glass-content);
+    box-shadow: var(--glass-edge), var(--glass-shadow);
+  }
+  .ob-well { background: var(--glass-hover); box-shadow: inset 0 0 0 1px var(--glass-border); }
+  .ob-row-on {
+    background: var(--glass-active);
+    color: var(--color-heading);
+    font-weight: 600;
+    box-shadow: var(--glass-edge), 0 1px 3px rgb(0 0 0 / 0.06);
+  }
+  .ob-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    white-space: nowrap;
+    color: var(--color-ink-muted);
+    background: var(--glass-hover);
+  }
+  .ob-tab[data-on="true"] {
+    color: var(--color-heading);
+    font-weight: 600;
+    background: var(--color-surface-raised);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent);
+  }
+  .ob-dock-on { background: var(--color-accent); color: var(--color-accent-ink); box-shadow: var(--shadow-primary); }
+
+  /* Views inside the window cross-fade. */
+  .ob-view { position: absolute; inset: 0; transition: opacity 480ms var(--ob-ease), transform 620ms var(--ob-ease); }
+  .ob-view[data-on="false"] { opacity: 0; transform: scale(0.985); pointer-events: none; }
+
+  /* A new sidebar row or note card arrives. */
+  .ob-arrive { animation: ob-arrive 520ms var(--ob-spring) both; animation-delay: calc(var(--i, 0) * 60ms); }
+
+  /* The page behind a note and the note itself, coloured by its style (editor.css, data-sheet="art"). */
+  .ob-page {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--glass-content);
+    box-shadow: var(--glass-edge), var(--glass-shadow);
+  }
+  .ob-page-art {
+    position: absolute;
+    inset: 0;
+    background: var(--ob-art) center / cover no-repeat;
+    opacity: 0;
+    transition: opacity 700ms var(--ob-ease);
+  }
+  .ob-page-art[data-on="true"] { opacity: 1; }
+  .ob-note {
+    --n-paper: var(--art-paper, var(--color-surface));
+    --n-ink: var(--art-ink, var(--color-ink));
+    --n-accent: var(--art-accent, var(--color-heading));
+    --n-hl: var(--art-hl, var(--color-highlight-blue));
+    --n-heading: color-mix(in oklab, var(--n-ink) 88%, #000);
+    --n-muted: color-mix(in oklab, var(--n-ink) 70%, var(--n-paper));
+    position: relative;
+    background: var(--n-paper);
+    color: var(--n-ink);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sheet);
+    transition: background-color 600ms var(--ob-ease), color 600ms var(--ob-ease), box-shadow 600ms var(--ob-ease);
+  }
+  :root[data-theme="dark"] .ob-note {
+    --n-paper: var(--art-paper-dark, var(--color-surface));
+    --n-ink: var(--art-ink-dark, var(--color-ink));
+    --n-accent: var(--art-accent-dark, var(--color-heading));
+    --n-hl: var(--art-hl-dark, var(--color-highlight-blue));
+    --n-heading: color-mix(in oklab, var(--n-ink) 80%, #fff);
+    --n-muted: color-mix(in oklab, var(--n-ink) 72%, var(--n-paper));
+  }
+  .ob-note-cover {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px 12px 0 0;
+    transition: height 600ms var(--ob-ease);
+  }
+  .ob-note-cover-art {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(var(--cover-art-tint), var(--cover-art-tint)), var(--ob-art) center / cover no-repeat;
+    opacity: 0;
+    transform: scale(1.04);
+    transition: opacity 600ms var(--ob-ease), transform 900ms var(--ob-ease);
+  }
+  .ob-note-cover-art[data-on="true"] { opacity: 1; transform: none; }
+  .ob-note-title { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.012em; line-height: 1.1; color: var(--n-heading); }
+  .ob-note-h { font-family: var(--font-display); font-weight: 600; color: var(--n-heading); letter-spacing: -0.01em; }
+  .ob-note-callout { background: color-mix(in oklab, var(--n-hl) 70%, var(--n-paper)); border-radius: 8px; transition: background-color 600ms var(--ob-ease); }
+  .ob-note-accent { color: var(--n-accent); }
+  .ob-note-muted { color: var(--n-muted); }
+  .ob-note-check {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    color: var(--n-paper);
+    box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--n-ink) 40%, var(--n-paper));
+  }
+  .ob-note-check[data-checked="true"] { background: var(--n-accent); box-shadow: none; }
+
+  /* A light sweep across the finished preview, once. */
+  .ob-sheen {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.28) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: ob-sheen 1400ms var(--ob-ease) 500ms both;
+  }
+
+  /* The AI mark turns as the assistant switches on. */
+  .ob-ai-mark { transition: transform 700ms var(--ob-spring), filter 400ms var(--ob-ease), opacity 400ms; }
+  .ob-ai-mark[data-on="false"] { transform: rotate(-45deg) scale(0.86); filter: grayscale(1); opacity: 0.55; }
+  .ob-ai-pop { transition: opacity 420ms var(--ob-ease), transform 520ms var(--ob-spring); transform-origin: bottom center; }
+  .ob-ai-pop[data-on="false"] { opacity: 0; transform: translateY(14px) scale(0.96); }
+}
+
+@keyframes ob-step-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ob-step-back {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ob-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ob-deal {
+  from { opacity: 0; transform: translate(0, 60px) rotate(0deg) scale(0.9); }
+  to { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+}
+@keyframes ob-float {
+  from { translate: 0 0; }
+  to { translate: 0 -8px; }
+}
+@keyframes ob-arrive {
+  from { opacity: 0; transform: translateY(8px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ob-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ob-sheen {
+  to { transform: translateX(120%); }
+}
+
+/* The theme change on the Appearance step reveals itself from the chosen card (a view transition). */
+:root.ob-vt::view-transition-old(root),
+:root.ob-vt::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+:root.ob-vt::view-transition-new(root) { animation: ob-reveal 560ms var(--motion-easing, ease) both; }
+@keyframes ob-reveal {
+  from { clip-path: circle(0 at var(--ob-vt-x, 50%) var(--ob-vt-y, 50%)); }
+  to { clip-path: circle(150vmax at var(--ob-vt-x, 50%) var(--ob-vt-y, 50%)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-step, .ob-rise, .ob-deck-card, .ob-arrive, .ob-sheen, .ob-draw path { animation: none !important; }
+  .ob-draw path { stroke-dashoffset: 0; }
+  .ob-sheen { display: none; }
+  .ob-deck-card { transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+  .ob-scene, .ob-scene[data-on="false"], .ob-view[data-on="false"], .ob-win[data-lift="true"], .ob-ai-pop[data-on="false"] { transform: none; }
+  .ob-choice:hover, .ob-tile-wrap:hover .ob-tile, .ob-choice:hover .ob-art, .ob-choice:has(input:checked) .ob-art { transform: none; }
+  :root.ob-vt::view-transition-new(root) { animation: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ob-glass, .ob-pop { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}

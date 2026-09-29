@@ -51,6 +51,7 @@ import type * as lib_metrics from "../lib/metrics.js";
 import type * as lib_nativeAuth from "../lib/nativeAuth.js";
 import type * as lib_nativeClients from "../lib/nativeClients.js";
 import type * as lib_notify from "../lib/notify.js";
+import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_plans from "../lib/plans.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -131,6 +132,7 @@ declare const fullApi: ApiFromModules<{
   "lib/nativeAuth": typeof lib_nativeAuth;
   "lib/nativeClients": typeof lib_nativeClients;
   "lib/notify": typeof lib_notify;
+  "lib/onboarding": typeof lib_onboarding;
   "lib/permissions": typeof lib_permissions;
   "lib/plans": typeof lib_plans;
   "lib/rateLimit": typeof lib_rateLimit;

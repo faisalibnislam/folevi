@@ -27,6 +27,12 @@ import { seedPersonal } from "./seed";
 import { notifyInvite, wantsInApp } from "./lib/notify";
 import { claimIdentityImage, deleteIdentityImage, identityImageUrl, workspaceLabel } from "./lib/identityImages";
 import { personalScope } from "./lib/scope";
+import { nextSeq } from "./lib/seq";
+import { createDocument, specsToWireBlocks } from "./lib/create";
+import { BUILT_IN_TEMPLATES } from "./lib/templates";
+import { builtInTemplateEnabled } from "./lib/syncEngine";
+import { WELCOME_TITLE } from "./lib/seedContent";
+import { PLAIN_STYLE, USE_CASE_IDS, isOnboardingNoteStyle, laterStep, starterPagesFor, stepAfter } from "./lib/onboarding";
 
 const DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -53,6 +59,7 @@ export function publicProfile(p: Doc<"profiles">) {
     locale: p.locale,
     timeZone: p.timeZone,
     onboardingStep: p.onboardingStep,
+    onboardingUseCases: p.onboardingUseCases ?? [],
     platformRole: p.platformRole ?? null,
     status: p.status,
     notificationPrefs: p.notificationPrefs,
@@ -191,26 +198,104 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
   }
 }
 
+/**
+ * Completes one onboarding step and moves to the next (never back: see laterStep). Each step can carry
+ * its choice, applied here after validation:
+ *   uses:       `useCases` (USE_CASES ids) adds each one's starter pages from built-in templates, once
+ *   style:      `noteStyle` ("plain" or an ONBOARDING_NOTE_STYLES art id) styles their Welcome page
+ *   appearance: `appearance`
+ *   ai:         `aiEnabled` turns the AI Assistant on or off
+ * Older clients (the Mac app) send "workspace" (with an ignored `workspaceName`), "appearance" and
+ * "welcome" only; those keep working.
+ */
 export const completeOnboardingStep = mutation({
   args: {
-    step: v.union(v.literal("workspace"), v.literal("appearance"), v.literal("welcome")),
+    step: v.union(v.literal("workspace"), v.literal("uses"), v.literal("style"), v.literal("appearance"), v.literal("ai"), v.literal("welcome")),
     workspaceName: v.optional(v.string()),
     appearance: v.optional(vAppearance),
+    useCases: v.optional(v.array(v.string())),
+    noteStyle: v.optional(v.string()),
+    aiEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    if (args.step === "workspace") {
-      // Personal needs no name; `workspaceName` is accepted from older clients and ignored.
-      await ctx.db.patch(profile._id, { onboardingStep: "appearance" });
-    } else if (args.step === "appearance") {
-      await ctx.db.patch(profile._id, { appearance: args.appearance ?? "system", onboardingStep: "welcome" });
-    } else {
-      await ctx.db.patch(profile._id, { onboardingStep: "done" });
+    // A choice belongs to its own step; anything else is a client error.
+    if (args.useCases !== undefined && args.step !== "uses") fail("invalid_argument", "Use cases belong to the uses step.");
+    if (args.noteStyle !== undefined && args.step !== "style") fail("invalid_argument", "A note style belongs to the style step.");
+    if (args.aiEnabled !== undefined && args.step !== "ai") fail("invalid_argument", "The AI setting belongs to the ai step.");
+    if (args.appearance !== undefined && args.step !== "appearance") fail("invalid_argument", "Appearance belongs to the appearance step.");
+
+    const patch: Partial<Doc<"profiles">> = {};
+    if (args.step === "uses" && args.useCases !== undefined) {
+      const ids = args.useCases;
+      if (ids.length > USE_CASE_IDS.length) fail("invalid_argument", "Too many use cases.");
+      for (const id of ids) if (!USE_CASE_IDS.includes(id)) fail("invalid_argument", "Unknown use case.");
+      const applied = profile.onboardingUseCases ?? [];
+      const fresh = [...new Set(ids)].filter((id) => !applied.includes(id));
+      if (fresh.length) {
+        await addStarterPages(ctx, profile, applied, fresh);
+        patch.onboardingUseCases = [...applied, ...fresh];
+      }
     }
+    if (args.step === "style" && args.noteStyle !== undefined) {
+      if (!isOnboardingNoteStyle(args.noteStyle)) fail("invalid_argument", "Unknown note style.");
+      await styleWelcomePage(ctx, profile, args.noteStyle);
+    }
+    // Personal needs no name; `workspaceName` is accepted from older clients and ignored.
+    if (args.appearance) patch.appearance = args.appearance;
+    if (args.aiEnabled !== undefined) patch.aiEnabled = args.aiEnabled;
+    patch.onboardingStep = laterStep(profile.onboardingStep, stepAfter(args.step));
+    await ctx.db.patch(profile._id, patch);
     return null;
   },
 });
+
+/**
+ * Adds the starter pages of `fresh` use cases to the person's Personal: one page per built-in template,
+ * skipping templates an earlier choice (`applied`) already added and templates an admin switched off.
+ * New pages start Plain, like every new note.
+ */
+async function addStarterPages(ctx: MutationCtx, profile: Doc<"profiles">, applied: string[], fresh: string[]) {
+  const done = new Set(starterPagesFor(applied).map((p) => p.template));
+  for (const page of starterPagesFor(fresh)) {
+    if (done.has(page.template)) continue;
+    done.add(page.template);
+    const template = BUILT_IN_TEMPLATES.find((t) => t.key === page.template);
+    if (!template || !(await builtInTemplateEnabled(ctx, template.key))) continue;
+    await createDocument(ctx, {
+      scope: personalScope(profile._id),
+      actor: profile,
+      title: template.name,
+      templateKey: `builtin:${template.key}`,
+      blocks: specsToWireBlocks(template.blocks()),
+    });
+  }
+}
+
+/** Gives the person's own "Welcome to Folevi" page (from their seed content) a note style, if it's still there. */
+async function styleWelcomePage(ctx: MutationCtx, profile: Doc<"profiles">, noteStyle: string) {
+  const candidates = await ctx.db
+    .query("documents")
+    .withIndex("by_owner_trash_title", (q) => q.eq("ownerProfileId", profile._id).eq("inTrash", false).eq("title", WELCOME_TITLE))
+    .take(20);
+  const doc = candidates.find((d) => d.kind === "document" && d.createdBy === profile._id && !d.deletedAt);
+  if (!doc) return;
+  const cover: Doc<"documents">["cover"] = noteStyle === PLAIN_STYLE ? { kind: "none" } : { kind: "art", value: noteStyle };
+  if (doc.cover.kind === cover.kind && doc.cover.value === cover.value) return;
+  // The backdrop follows the style (as when a style is picked in the page tools).
+  const style = { ...doc.style };
+  delete style.backdrop;
+  const revision = doc.revision + 1;
+  await ctx.db.patch(doc._id, {
+    cover,
+    style,
+    revision,
+    seq: await nextSeq(ctx, personalScope(profile._id)),
+    updatedAt: Date.now(),
+    lastEditedBy: profile._id,
+  });
+}
 
 export const updateProfile = mutation({
   args: {

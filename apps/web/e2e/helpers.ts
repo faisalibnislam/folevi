@@ -99,11 +99,9 @@ export async function signIn(context: BrowserContext, account: Pick<Account, "em
   return page;
 }
 
-/** Walks the three-step onboarding and opens the Welcome document. */
+/** Skips onboarding's choices (nothing is added or changed) and opens the Welcome document. */
 export async function completeOnboarding(page: Page) {
-  await page.getByRole("button", { name: "Continue" }).click({ timeout: 30_000 });
-  await page.getByRole("radio", { name: "Light" }).click();
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Skip setup" }).click({ timeout: 30_000 });
   await page.getByRole("button", { name: "Open “Welcome to Folevi”" }).click();
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");
 }

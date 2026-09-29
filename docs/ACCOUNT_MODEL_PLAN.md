@@ -1,6 +1,6 @@
 # Personal, Workspaces, seats and billing — audit and plan
 
-Status: **Phase A shipped; Phase B server and web implemented on the `account-model` branch** (the
+Status: **Phase A shipped; Phases B and C implemented on the `account-model` branch** (the
 production migration run is next — see the Phase B runbook in §3a). Written 2026-09-29 against
 commit `9d25368`. It answers the
 "account, subscription, workspace, seat, guest, storage, AI and billing" specification in two parts:
@@ -160,6 +160,53 @@ the local database (v3) keys its document cache by scope and keeps the queue and
 **Phase C — Workspace plans, seats and billing.** Workspace plan & billing page (Free / Team /
 Business, monthly/yearly, seats × price, guests "not billed", renewal, manage/cancel), Stripe per-seat
 checkout and quantity sync, billing permission for admins, end-of-period downgrade, over-limit state.
+
+*As built (Phase C):*
+- **Rows.** `subscriptions` and `payments` hold both kinds: `ownerType` ("user" | "workspace"; unset on
+  older rows = user) and exactly one of `profileId` / `workspaceId`, written only through
+  `insertSubscription` / `insertPayment` (`convex/lib/billing.ts`; a static test forbids other inserts).
+  Personal rows keep `plan` (tier); workspace rows store `planId`, `quantity` (billed seats),
+  `stripeSubscriptionItemId`, `currentPeriodStart`, `paymentMethod`. Indexes `by_workspace`,
+  `by_owner_type`, `payments.by_workspace_created`. Existing Personal rows are unchanged.
+- **Seats** (`convex/lib/seats.ts`): every membership role counts (owner, admin, and today's
+  editor/commenter/viewer "members"); guests, pending invitations, removed people and suspended/deleted
+  accounts count 0. *Suspended workspaces keep their count* (suspension is a temporary platform action; an
+  admin changes or cancels the plan if billing should stop). Every membership change (accept, remove,
+  leave, role change, transfer, account suspension or deletion) calls `seatsChanged`: test/manual plans
+  store the new count at once; Stripe plans set `seatSyncScheduledAt` and schedule one
+  `workspaceBilling.syncSeatQuantity` (5 s later), which reads the current count and updates the Stripe
+  subscription item (`proration_behavior=create_prorations`) only when Stripe's quantity differs —
+  duplicates and races converge (a mark older than 15 minutes counts as lost). A subscription event whose quantity differs from the count schedules a
+  sync too (e.g. members joined while Checkout was open, or a quantity edited in Stripe).
+- **Entitlements.** `workspaceEntitlements` reads the workspace's row: in force while active, past due
+  (Stripe's retry schedule is the grace; when Stripe gives up it cancels or marks the subscription unpaid,
+  which we treat as ended), or canceled but paid through the period; else Workspace Free. Team: AI +
+  100 GB; Business: AI with higher fair use + 1 TB; an admin storage override still wins.
+- **Permission.** `canManageWorkspaceBilling` (`convex/lib/permissions.ts`): the owner, or an admin with
+  `workspaceMembers.canManageBilling` (set by the owner in Members; cleared when they stop being admin
+  or ownership moves). Every function in `convex/workspaceBilling.ts` checks it on the server.
+- **Functions.** `workspaceBilling.summary`, `testPurchase` (not in production), `checkout` (quantity =
+  seats, `client_reference_id` `ws:<id>`, metadata `workspaceId`), `portal`, `changePlan` (Team ↔
+  Business, monthly ↔ yearly, prorated), `cancel` / `resume` (period end); `workspaces.setBillingManager`;
+  admin `adminBilling.setWorkspacePlan` (provider "manual", reason + audit). The webhook routes a
+  workspace's events (by stored subscription id, `ws:` reference or metadata, or customer) to
+  `applyWorkspaceStripeEvent`; access is granted only there. The hourly `settleExpiredPlans` also moves
+  expired manual/test workspace plans to Workspace Free. Purging a workspace stops its subscription
+  renewing.
+- **Web.** Settings → (workspace) Plan & billing (`/settings/workspace-billing`, listed only for people
+  who can manage billing; "Not found" otherwise); seats and the per-seat note in Members; "Can manage
+  billing" switch for admins; "Owner · Team" in the switcher; over-limit notices; admin workspace page
+  shows plan, seats and payments and can set the plan. The public pricing page keeps "Coming soon" until
+  `WORKSPACE_PLANS[*].available` is flipped once Stripe is configured.
+
+*Stripe setup for workspace plans (account owner):* create a product per plan with recurring **per-unit**
+prices — Team $5/month and $49/year, Business $10/month and $99/year — and set
+`STRIPE_PRICE_WS_TEAM_MONTH`, `STRIPE_PRICE_WS_TEAM_YEAR`, `STRIPE_PRICE_WS_BUSINESS_MONTH`,
+`STRIPE_PRICE_WS_BUSINESS_YEAR` on Convex. The webhook endpoint (`<convex-site>/webhooks/stripe`) must
+send `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`,
+`invoice.payment_failed`, `charge.succeeded` (payment method line) and `charge.refunded`. Optionally
+create a customer-portal configuration for workspaces that lists only the workspace prices and doesn't
+allow quantity edits, and set its id as `STRIPE_PORTAL_CONFIG_WS`.
 
 **Phase D — Members vs guests.** Roles collapse to owner/admin/member (+ billing flag); Guests list;
 guest email invites for people without an account (pending share → grant on sign-up/accept); member ↔

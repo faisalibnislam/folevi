@@ -387,8 +387,8 @@ export default defineSchema({
     planId: v.optional(vWorkspacePlanId),
     /** Workspace rows: member seats billed (the provider's subscription quantity). */
     quantity: v.optional(v.number()),
-    /** Workspace rows: set while a seat-quantity sync is scheduled (convex/workspaceBilling.ts). */
-    seatSyncPending: v.optional(v.boolean()),
+    /** Workspace rows: when a seat-quantity sync was scheduled (cleared when it runs; lib/seats.ts). */
+    seatSyncScheduledAt: v.optional(v.number()),
     /** Workspace rows: the Stripe subscription item, for seat and plan changes. */
     stripeSubscriptionItemId: v.optional(v.string()),
     /** "Visa •••• 4242", when the provider has told us (workspace rows). */

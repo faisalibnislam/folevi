@@ -223,7 +223,9 @@ export const portal = action({
     if (!stripeKey()) fail("maintenance", "Payments aren't set up on this server yet.");
     const c = await contextFor(ctx, args.workspaceId);
     if (!c.customerId) fail("invalid_argument", "There's no paid subscription to manage yet.");
-    const session = await stripePost("billing_portal/sessions", { customer: c.customerId, return_url: `${appUrl()}/settings/workspace-billing` });
+    // A portal configuration of its own keeps Personal plans out of a workspace's portal (optional).
+    const configuration = process.env.STRIPE_PORTAL_CONFIG_WS;
+    const session = await stripePost("billing_portal/sessions", { customer: c.customerId, return_url: `${appUrl()}/settings/workspace-billing`, ...(configuration ? { configuration } : {}) });
     return { url: String(session.url) };
   },
 });
@@ -309,7 +311,7 @@ export const beginSeatSync = internalMutation({
   handler: async (ctx, args): Promise<{ itemId: string; seats: number } | null> => {
     const sub = await workspaceSubscriptionOf(ctx, args.workspaceId);
     if (!sub) return null;
-    if (sub.seatSyncPending) await ctx.db.patch(sub._id, { seatSyncPending: false });
+    if (sub.seatSyncScheduledAt !== undefined) await ctx.db.patch(sub._id, { seatSyncScheduledAt: undefined });
     if (!livePaid(sub) || sub.status === "canceled") return null;
     const seats = await billableSeatCount(ctx, args.workspaceId);
     if (sub.provider !== "stripe") {

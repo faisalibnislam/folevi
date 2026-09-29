@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatBytes } from "@/lib/format";
+import { AppLink } from "@/lib/app/router";
 import { uploadIdentityImage } from "@/lib/app/identityImages";
 import { workspaceRoleLabel } from "@/components/app/NewWorkspaceDialog";
 import { Card } from "./Card";
@@ -82,7 +83,15 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
         </div>
         {/* A workspace has its own plan and storage, separate from anyone's Personal plan. */}
         <p className="mt-4 text-sm text-muted">
-          Plan: <span className="text-ink">{workspace.plan.name}</span> · Team and Business workspace plans are coming soon.
+          Plan: <span className="text-ink">{workspace.plan.name}</span>
+          {workspace.canManageBilling ? (
+            <>
+              {" · "}
+              <AppLink href="/settings/workspace-billing" className="font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
+                Plan &amp; billing
+              </AppLink>
+            </>
+          ) : null}
         </p>
         <p className="mt-1 text-sm text-muted">
           Workspace storage: {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
@@ -90,6 +99,11 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
         <div className="mt-2 h-1.5 max-w-md overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${Math.round(pct)}% of storage used`}>
           <div className="h-full bg-accent" style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
+        {workspace.storageUsedBytes > workspace.storageQuotaBytes ? (
+          <p role="status" className="mt-2 max-w-md text-sm text-danger">
+            Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed{workspace.canManageBilling ? " or the plan is upgraded" : ""}.
+          </p>
+        ) : null}
         <p className="mt-3 text-xs text-muted">Your role: {workspaceRoleLabel(workspace.role)}</p>
       </Card>
       {canLeave ? (

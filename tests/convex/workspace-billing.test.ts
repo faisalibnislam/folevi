@@ -286,14 +286,15 @@ describe("seats (10–17)", () => {
     // One sync is scheduled for both accepts.
     const pending = await t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((f) => f.name.includes("syncSeatQuantity") && f.state.kind === "pending"));
     expect(pending).toHaveLength(1);
-    expect((await workspaceSub(t, id))!.seatSyncPending).toBe(true);
+    expect((await workspaceSub(t, id))!.seatSyncScheduledAt).toBeTypeOf("number");
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     const posts = calls.filter((x) => x.method === "POST" && x.url.includes("subscription_items/si_ws"));
     expect(posts).toHaveLength(1);
     expect(new URLSearchParams(posts[0]!.body).get("quantity")).toBe("3");
     expect(new URLSearchParams(posts[0]!.body).get("proration_behavior")).toBe("create_prorations");
     expect(stripeQuantity).toBe(3);
-    expect(await workspaceSub(t, id)).toMatchObject({ quantity: 3, seatSyncPending: false });
+    expect(await workspaceSub(t, id)).toMatchObject({ quantity: 3 });
+    expect((await workspaceSub(t, id))!.seatSyncScheduledAt).toBeUndefined();
     // A duplicate sync (or one racing another) reads the current count, sees Stripe agrees, changes nothing.
     expect(await t.action(internal.workspaceBilling.syncSeatQuantity, { workspaceId: wid })).toEqual({ status: "unchanged", seats: 3 });
     expect(calls.filter((x) => x.method === "POST")).toHaveLength(1);
@@ -494,7 +495,8 @@ describe("Stripe workspace events", () => {
       type: "customer.subscription.created",
       object: { object: "subscription", id: "sub_m", customer: "cus_m", status: "active", metadata: { workspaceId: wid }, items: { data: [{ id: "si_m", price: { id: "price_team_m" }, quantity: 4, current_period_end: sec + 86_400 }] } },
     });
-    expect(await workspaceSub(t, id)).toMatchObject({ quantity: 4, seatSyncPending: true });
+    expect(await workspaceSub(t, id)).toMatchObject({ quantity: 4 });
+    expect((await workspaceSub(t, id))!.seatSyncScheduledAt).toBeTypeOf("number");
   });
 });
 

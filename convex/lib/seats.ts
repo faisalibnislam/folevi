@@ -11,7 +11,7 @@
 //
 // Whenever a membership starts, ends or changes billable status, call `seatsChanged`. It stores the new
 // count at once for plans without a payment provider (test and manual plans), and for Stripe plans marks
-// the workspace and schedules one `workspaceBilling.syncSeatQuantity`, which reads the *current* count
+// the workspace (seatSyncScheduledAt) and schedules one `workspaceBilling.syncSeatQuantity`, which reads the *current* count
 // and sets Stripe's quantity only if it differs. Duplicate or racing triggers therefore converge.
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -28,6 +28,8 @@ export const isBillableRole = (role: WorkspaceRole) => BILLABLE_ROLES[role];
 
 /** How long seat changes are gathered before Stripe is updated (a burst of accepts → one update). */
 export const SEAT_SYNC_DELAY_MS = 5_000;
+/** A scheduled sync that hasn't run by now is assumed lost, and a new one may be scheduled. */
+const SEAT_SYNC_STALE_MS = 15 * 60_000;
 
 async function takesSeat(ctx: Ctx, m: Doc<"workspaceMembers">): Promise<boolean> {
   if (!isBillableRole(m.role)) return false;
@@ -91,7 +93,8 @@ export async function seatsChanged(ctx: MutationCtx, workspaceId: Id<"workspaces
     if (sub.quantity !== seats) await ctx.db.patch(sub._id, { quantity: seats, updatedAt: Date.now() });
     return;
   }
-  if (sub.seatSyncPending) return;
-  await ctx.db.patch(sub._id, { seatSyncPending: true });
+  const now = Date.now();
+  if (sub.seatSyncScheduledAt !== undefined && now - sub.seatSyncScheduledAt < SEAT_SYNC_STALE_MS) return;
+  await ctx.db.patch(sub._id, { seatSyncScheduledAt: now });
   await ctx.scheduler.runAfter(SEAT_SYNC_DELAY_MS, internal.workspaceBilling.syncSeatQuantity, { workspaceId });
 }

@@ -8,6 +8,8 @@ import type { MutationCtx } from "./_generated/server";
 import { bump } from "./lib/metrics";
 import { adjustStorageUsed } from "./lib/entitlements";
 import { adjustDocumentCount } from "./lib/create";
+import { seatsChanged } from "./lib/seats";
+import { workspaceClosing } from "./workspaceBilling";
 import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, type Scope } from "./lib/scope";
 
 const BUDGET = 400;
@@ -211,7 +213,11 @@ async function purgePersonal(ctx: MutationCtx, profileId: Id<"profiles">, budget
 async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, budget: Budget): Promise<boolean> {
   const ws = await ctx.db.get(workspaceId);
   if (!ws) return true;
-  if (ws.status !== "deleting") await ctx.db.patch(ws._id, { status: "deleting" });
+  if (ws.status !== "deleting") {
+    await ctx.db.patch(ws._id, { status: "deleting" });
+    // Its plan stops renewing (a Stripe subscription runs to the end of the paid period).
+    await workspaceClosing(ctx, ws._id);
+  }
   const doc = await ctx.db
     .query("documents")
     .withIndex("by_workspace_created", (q) => q.eq("workspaceId", workspaceId))
@@ -279,15 +285,17 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
       ).filter((x) => x.profileId !== profileId);
       const heir = others.find((x) => x.role === "admin") ?? others.find((x) => x.role === "editor");
       if (ws.kind === "team" && heir) {
-        await ctx.db.patch(heir._id, { role: "owner" });
+        await ctx.db.patch(heir._id, { role: "owner", canManageBilling: undefined });
         await ctx.db.patch(ws._id, { ownerId: heir.profileId });
         await ctx.db.delete(m._id);
+        await seatsChanged(ctx, ws._id);
       } else {
         await purgeWorkspace(ctx, ws._id, budget);
         return false;
       }
     } else {
       await ctx.db.delete(m._id);
+      await seatsChanged(ctx, ws._id);
     }
     if (budget.exhausted) return false;
   }

@@ -3,7 +3,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { recordAiUsage } from "../../convex/lib/entitlements";
 import { authSession, identity, inWorkspace, person, PERSONAL, setup, ulid, type T } from "./helpers";
 
 const MB = 1024 ** 2;
@@ -126,14 +125,17 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     await pro.as.mutation(internal.ai.begin, { scope: PERSONAL });
   });
 
-  test("a Free user in a workspace with a paid plan keeps Free in Personal (5)", async () => {
-    // Workspace plans can't be bought yet; the resolver keeps them apart either way.
+  test("a Free user in a Business workspace: Business inside it, Free in Personal (5)", async () => {
     const t = setup();
+    const owner = await person(t, "biz-owner@example.com");
     const a = await person(t, "free-member@example.com");
     await endTrial(t, a);
-    const teamId = await a.as.mutation(api.workspaces.createTeamWorkspace, { name: "Paid later" });
-    expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", ai: false });
-    expect(await mineEntry(a, teamId.id)).toMatchObject({ plan: { scope: "workspace" } });
+    const teamId = await team(owner, "Biz", { p: a, email: "free-member@example.com" });
+    await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_business_monthly" });
+    expect(await mineEntry(a, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_business_monthly", shortName: "Business" }, aiIncluded: true, storageQuotaBytes: 1024 * GB });
+    await a.as.mutation(internal.ai.begin, { scope: inWorkspace(teamId) });
+    expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", ai: false, storageBytes: 1 * GB });
+    await expect(a.as.mutation(internal.ai.begin, { scope: PERSONAL })).rejects.toThrow(/part of Pro/);
   });
 
   test("switching Personal → workspace → Personal leaks nothing either way (24)", async () => {
@@ -188,7 +190,7 @@ describe("storage is separate per scope (18, 19, 22, 23)", () => {
     await setUsage(t, teamId, 5 * GB);
     await setUsage(t, a, 100 * MB);
     expect((await upload(a, personalNote, 10 * MB)).uploadUrl).toBeTruthy();
-    await expect(upload(a, teamNote, 10 * MB)).rejects.toThrow(/This workspace has used all of its 5 GB of storage on Workspace Free/);
+    await expect(upload(a, teamNote, 10 * MB)).rejects.toThrow(/This workspace has used all of its storage \(5 GB of 5 GB on Workspace Free\)/);
     expect((await a.as.query(api.billing.mine, {})).storageUsedBytes).toBe(100 * MB);
     // Personal full, the team with 3 GB in it: the team still has room, though its owner is out of personal storage.
     await setUsage(t, teamId, 3 * GB);
@@ -250,7 +252,7 @@ describe("storage is separate per scope (18, 19, 22, 23)", () => {
     const teamId = (await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Over" })).id;
     const note = await newDoc(owner, inWorkspace(teamId));
     await setUsage(t, teamId, 6 * GB);
-    await expect(upload(owner, note, 1 * MB)).rejects.toThrow(/Workspace Free/);
+    await expect(upload(owner, note, 1 * MB)).rejects.toThrow(/is over its storage limit \(6 GB of 5 GB on Workspace Free\)/);
     expect(await owner.as.query(api.documents.get, { documentId: note })).not.toBeNull();
     // Changing only the member limit keeps the plan's storage (no accidental override).
     await admin.as.mutation(api.admin.setWorkspaceQuota, { workspaceId: teamId, storageQuotaBytes: 5 * GB, memberLimit: 60, reason: "Support ticket 1234 for this team" });
@@ -261,7 +263,7 @@ describe("storage is separate per scope (18, 19, 22, 23)", () => {
     expect((await mineEntry(owner, teamId)).storageQuotaBytes).toBe(50 * GB);
     expect((await upload(owner, note, 10 * MB)).uploadUrl).toBeTruthy();
     await setUsage(t, teamId, 50 * GB - 5 * MB);
-    await expect(upload(owner, note, 10 * MB)).rejects.toThrow(/50 GB of storage\. Free/);
+    await expect(upload(owner, note, 10 * MB)).rejects.toThrow(/\(50 GB of 50 GB\)\. Everything already stored stays available; free some up to add more/);
   });
 
   test("workspaces from before overrides had a field: an admin-set quota still counts as an override", async () => {
@@ -301,9 +303,10 @@ describe("AI usage is recorded per scope (20, 21)", () => {
     const teamId = (await a.as.mutation(api.workspaces.createTeamWorkspace, { name: "Usage" })).id;
     await a.as.mutation(internal.ai.begin, { scope: a.scope });
     await a.as.mutation(internal.ai.begin, { scope: a.scope });
-    // No workspace plan includes AI yet, so record a workspace request the way ai.begin would.
+    // A Team workspace includes AI: its requests are recorded against the workspace.
+    await a.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_team_monthly" });
+    await a.as.mutation(internal.ai.begin, { scope: inWorkspace(teamId) });
     const teamDbId = await t.run(async (ctx) => (await ctx.db.query("workspaces").collect()).find((w) => w.publicId === teamId)!._id);
-    await t.run(async (ctx) => recordAiUsage(ctx, a.profileId as Id<"profiles">, { kind: "workspace", workspaceId: teamDbId }));
     const rows = await t.run(async (ctx) => ctx.db.query("aiUsage").collect());
     expect(rows.find((r) => r.scope === "personal")).toMatchObject({ count: 2 });
     expect(rows.find((r) => r.scope === "personal")!.workspaceId).toBeUndefined();

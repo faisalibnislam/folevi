@@ -12,6 +12,7 @@ import {
   vNotificationPrefs,
   vProfileStatus,
   vShareRole,
+  vWorkspacePlanId,
   vWorkspaceRole,
 } from "./lib/validators";
 
@@ -101,6 +102,8 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     profileId: v.id("profiles"),
     role: vWorkspaceRole,
+    /** An admin the owner allowed to manage the workspace's plan and billing (unset = no). Owners always can. */
+    canManageBilling: v.optional(v.boolean()),
     joinedAt: v.number(),
   })
     .index("by_workspace", ["workspaceId"])
@@ -362,13 +365,35 @@ export default defineSchema({
   }).index("by_snapshot", ["snapshotId", "index"]),
 
   /**
-   * Each person's plan (one row per profile; see convex/lib/plans.ts for what plans include). Created at
-   * sign-up with a 7-day Pro trial. Paid plans come from the payment provider (Stripe webhooks) or are set
-   * by an admin ("manual"); admins can also grant AI or override storage.
+   * Plans: a person's Personal plan (one row per profile) or a team workspace's plan (one row per workspace).
+   * Exactly one of `profileId` / `workspaceId` is set, matching `ownerType` (rows from before workspace
+   * billing have no `ownerType` and are Personal); rows are written only through convex/lib/billing.ts.
+   *
+   * Personal rows are created at sign-up with a 7-day Pro trial and store the tier in `plan`. Workspace rows
+   * store the catalog id in `planId` and the billed seat count in `quantity`. Paid plans come from the
+   * payment provider (Stripe webhooks), a development test purchase ("test"), or an admin ("manual");
+   * admins can also grant AI or override storage on Personal plans.
    */
   subscriptions: defineTable({
-    profileId: v.id("profiles"),
-    plan: v.union(v.literal("free"), v.literal("basic"), v.literal("pro")),
+    /** "user" (Personal) or "workspace"; unset on older rows = "user". */
+    ownerType: v.optional(v.union(v.literal("user"), v.literal("workspace"))),
+    /** Personal rows: the person. */
+    profileId: v.optional(v.id("profiles")),
+    /** Workspace rows: the workspace (the plan belongs to it, not to whoever owns it). */
+    workspaceId: v.optional(v.id("workspaces")),
+    /** Personal rows: the tier. Workspace rows leave it unset (they use planId). */
+    plan: v.optional(v.union(v.literal("free"), v.literal("basic"), v.literal("pro"))),
+    /** Workspace rows: the catalog plan id (convex/lib/plans.ts). */
+    planId: v.optional(vWorkspacePlanId),
+    /** Workspace rows: member seats billed (the provider's subscription quantity). */
+    quantity: v.optional(v.number()),
+    /** Workspace rows: set while a seat-quantity sync is scheduled (convex/workspaceBilling.ts). */
+    seatSyncPending: v.optional(v.boolean()),
+    /** Workspace rows: the Stripe subscription item, for seat and plan changes. */
+    stripeSubscriptionItemId: v.optional(v.string()),
+    /** "Visa •••• 4242", when the provider has told us (workspace rows). */
+    paymentMethod: v.optional(v.string()),
+    currentPeriodStart: v.optional(v.number()),
     interval: v.optional(v.union(v.literal("month"), v.literal("year"))),
     status: v.union(v.literal("active"), v.literal("past_due"), v.literal("canceled")),
     provider: v.union(v.literal("none"), v.literal("stripe"), v.literal("manual"), v.literal("test")),
@@ -392,16 +417,26 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner_type", ["ownerType"])
     .index("by_plan", ["plan"])
     .index("by_stripe_customer", ["stripeCustomerId"])
     .index("by_stripe_subscription", ["stripeSubscriptionId"]),
 
-  /** Money received (and refunds), for billing history and revenue analytics. Amounts in cents. */
+  /**
+   * Money received (and refunds), for billing history and revenue analytics. Amounts in cents. Exactly one
+   * of `profileId` (a Personal plan) / `workspaceId` (a workspace plan), so the two histories never mix.
+   */
   payments: defineTable({
-    profileId: v.id("profiles"),
+    profileId: v.optional(v.id("profiles")),
+    workspaceId: v.optional(v.id("workspaces")),
     amountCents: v.number(),
     currency: v.string(),
-    plan: v.union(v.literal("basic"), v.literal("pro")),
+    /** The tier paid for: Personal (basic, pro) or workspace (team, business). */
+    plan: v.union(v.literal("basic"), v.literal("pro"), v.literal("team"), v.literal("business")),
+    /** Workspace payments: the catalog plan id and the seats billed. */
+    planId: v.optional(vWorkspacePlanId),
+    quantity: v.optional(v.number()),
     interval: v.union(v.literal("month"), v.literal("year")),
     status: v.union(v.literal("paid"), v.literal("refunded"), v.literal("failed")),
     provider: v.union(v.literal("stripe"), v.literal("manual"), v.literal("test")),
@@ -409,6 +444,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_profile_created", ["profileId", "createdAt"])
+    .index("by_workspace_created", ["workspaceId", "createdAt"])
     .index("by_created", ["createdAt"])
     .index("by_provider_ref", ["providerRef"]),
 

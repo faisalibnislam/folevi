@@ -16,7 +16,17 @@ export const vWorkspaceRole = v.union(
   v.literal("commenter"),
   v.literal("viewer"),
 );
-export const vShareRole = v.union(v.literal("editor"), v.literal("commenter"), v.literal("viewer"));
+/** A workspace plan's catalog id (convex/lib/plans.ts). */
+export const vWorkspacePlanId = v.union(
+  v.literal("workspace_free"),
+  v.literal("workspace_team_monthly"),
+  v.literal("workspace_team_yearly"),
+  v.literal("workspace_business_monthly"),
+  v.literal("workspace_business_yearly"),
+);
+/** A paid workspace plan's catalog id (what can be bought). */
+export const vPaidWorkspacePlanId = v.union(v.literal("workspace_team_monthly"), v.literal("workspace_team_yearly"), v.literal("workspace_business_monthly"), v.literal("workspace_business_yearly"));
+export const vShareRole =v.union(v.literal("editor"), v.literal("commenter"), v.literal("viewer"));
 /** Which kinds of notification appear in the bell (Settings → Notifications). */
 export const vInAppPrefs = v.object({
   comments: v.boolean(),

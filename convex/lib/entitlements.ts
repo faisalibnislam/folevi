@@ -9,8 +9,8 @@
 // is the person's subscription (lib/scope.ts).
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { subscriptionOf } from "./billing";
-import { PLANS, personalEntitlementsOf, planName, workspaceEntitlementsOf, type Entitlements, type PersonalEntitlements, type WorkspaceEntitlements, type WorkspaceSubscriptionLike } from "./plans";
+import { subscriptionOf, workspaceSubscriptionOf, type WorkspaceSubscription } from "./billing";
+import { PLANS, PLAN_CATALOG, personalEntitlementsOf, planName, workspaceEntitlementsOf, type Entitlements, type PersonalEntitlements, type WorkspaceEntitlements, type WorkspaceSubscriptionLike, type WorkspaceTier } from "./plans";
 import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
 
@@ -35,13 +35,21 @@ export function workspaceStorageOverride(workspace: Doc<"workspaces">): number |
   return workspace.storageQuotaBytes !== DEFAULT_WORKSPACE_QUOTA_BYTES ? workspace.storageQuotaBytes : undefined;
 }
 
+/** A workspace subscription row in the shape the entitlement rules read. */
+export function workspaceSubscriptionLike(sub: WorkspaceSubscription | null): WorkspaceSubscriptionLike | null {
+  if (!sub) return null;
+  const plan = PLAN_CATALOG[sub.planId];
+  return { tier: plan.tier as WorkspaceTier, interval: plan.interval ?? undefined, status: sub.status, currentPeriodEnd: sub.currentPeriodEnd };
+}
+
 /**
- * What a team workspace's plan gives. Workspace subscriptions don't exist yet, so every team workspace is
- * on Workspace Free; per-seat billing plugs its subscription row in here.
+ * What a team workspace's plan gives: its own subscription (Team or Business while active, past due within
+ * the provider's retry window, or canceled but paid through the period's end), else Workspace Free. An
+ * admin's storage override replaces the plan's storage. Nobody's Personal plan is consulted.
  */
 export async function workspaceEntitlements(ctx: Ctx, workspace: Id<"workspaces"> | Doc<"workspaces">, now = Date.now()): Promise<WorkspaceEntitlements> {
   const w = typeof workspace === "string" ? await ctx.db.get(workspace) : workspace;
-  const subscription: WorkspaceSubscriptionLike | null = null;
+  const subscription = w ? workspaceSubscriptionLike(await workspaceSubscriptionOf(ctx, w._id)) : null;
   return workspaceEntitlementsOf(subscription, { storageBytes: w ? workspaceStorageOverride(w) : undefined }, now);
 }
 
@@ -100,7 +108,8 @@ export async function assertStorageFor(ctx: Ctx, scope: Scope, bytes: number, ac
     return `You've used all the personal storage on your ${e.trialing ? "Pro trial" : `${PLANS[e.plan].name} plan`}. Upgrade for more room, or free some up.`;
   }
   const e = await workspaceEntitlements(ctx, scope.workspaceId);
-  return `This workspace has used all of its ${gb(limitBytes)} of storage${e.storageOverridden ? "" : ` on ${planName(e.planId)}`}. Free some up to add more.`;
+  const over = usedBytes > limitBytes;
+  return `This workspace ${over ? "is over its storage limit" : "has used all of its storage"} (${gb(usedBytes)} of ${gb(limitBytes)}${e.storageOverridden ? "" : ` on ${planName(e.planId)}`}). Everything already stored stays available; free some up${e.storageOverridden ? "" : " or upgrade the workspace plan"} to add more.`;
 }
 
 // ---------------------------------------------------------------------------------------------------

@@ -6,7 +6,9 @@ import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { redactEmail } from "./lib/crypto";
-import { DAY_MS, PLANS, monthlyValueCents, personalEntitlementsOf, type PersonalTier } from "./lib/plans";
+import { DAY_MS, PLANS, monthlyValueCents, personalEntitlementsOf, workspaceEntitlementsOf, type PersonalTier } from "./lib/plans";
+import { isPersonalPayment, isPersonalSubscription, isWorkspaceSubscription } from "./lib/billing";
+import { workspaceSubscriptionLike } from "./lib/entitlements";
 
 const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
 const ADMIN: PlatformRole[] = ["super_admin", "ops_admin"];
@@ -33,7 +35,8 @@ export const users = query({
     const days = Math.min(Math.max(Math.round(args.days), 7), 180);
     const since = now - days * DAY_MS;
     const profiles = (await ctx.db.query("profiles").collect()).filter((p) => p.status !== "deleted");
-    const subs = await ctx.db.query("subscriptions").collect();
+    // Personal plans only (workspace plans are counted in `revenue`).
+    const subs = (await ctx.db.query("subscriptions").collect()).filter(isPersonalSubscription);
     const subByProfile = new Map(subs.map((s) => [s.profileId as string, s]));
 
     const signupsByDay = new Map(lastDays(days, now).map((d) => [d, 0]));
@@ -99,7 +102,18 @@ export const revenue = query({
     const now = Date.now();
     const months = Math.min(Math.max(Math.round(args.months), 3), 24);
     const counts = (p: Doc<"payments"> | Doc<"subscriptions">) => args.includeTest || p.provider !== "test";
-    const subs = (await ctx.db.query("subscriptions").collect()).filter(counts);
+    const allSubs = (await ctx.db.query("subscriptions").collect()).filter(counts);
+    const subs = allSubs.filter(isPersonalSubscription);
+
+    // Workspace plans: paying workspaces, their seats and recurring revenue (per seat × seats).
+    const workspaceTotals = { paying: 0, seats: 0, mrrCents: 0 };
+    for (const s of allSubs.filter(isWorkspaceSubscription)) {
+      const e = workspaceEntitlementsOf(workspaceSubscriptionLike(s), {}, now);
+      if (!e.paid || s.status === "canceled") continue;
+      workspaceTotals.paying++;
+      workspaceTotals.seats += s.quantity ?? 0;
+      if (s.provider !== "manual") workspaceTotals.mrrCents += monthlyValueCents(e.planId) * (s.quantity ?? 0);
+    }
 
     // Recurring revenue from plans in effect today (paid, not canceled; manual comps count at list price).
     let mrr = 0;
@@ -124,7 +138,9 @@ export const revenue = query({
         .query("payments")
         .withIndex("by_created", (q) => q.gte("createdAt", since))
         .collect()
-    ).filter(counts);
+    )
+      .filter(counts)
+      .filter(isPersonalPayment);
     const monthsList = lastMonths(months, now);
     const revenueByMonth = new Map(monthsList.map((m) => [m, { gross: 0, refunded: 0 }]));
     for (const p of payments) {
@@ -168,6 +184,7 @@ export const revenue = query({
       },
       recent: recent.map((p) => ({ id: p._id as string, profileId: p.profileId as string, ...names.get(p.profileId)!, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval, status: p.status, provider: p.provider, createdAt: p.createdAt })),
       prices: { basic: { month: PLANS.basic.monthlyCents, year: PLANS.basic.yearlyCents }, pro: { month: PLANS.pro.monthlyCents, year: PLANS.pro.yearlyCents } },
+      workspaces: workspaceTotals,
       testIncluded: Boolean(args.includeTest),
     };
   },

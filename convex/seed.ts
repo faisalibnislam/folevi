@@ -7,6 +7,7 @@ import { nextSeq } from "./lib/seq";
 import { insertScoped, personalScope } from "./lib/scope";
 import { bump } from "./lib/metrics";
 import { DEFAULT_WORKSPACE_QUOTA_BYTES } from "./lib/entitlements";
+import { seatsChanged } from "./lib/seats";
 import {
   READING_SHELF,
   WELCOME_TITLE,
@@ -36,6 +37,7 @@ export async function createWorkspace(ctx: MutationCtx, owner: Doc<"profiles">, 
     updatedAt: now,
   });
   await ctx.db.insert("workspaceMembers", { workspaceId, profileId: owner._id, role: "owner", joinedAt: now });
+  await seatsChanged(ctx, workspaceId);
   await bump(ctx, "workspaces_total");
   return workspaceId;
 }

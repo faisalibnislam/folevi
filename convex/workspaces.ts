@@ -13,7 +13,9 @@ import { claimIdentityImage, deleteIdentityImage, workspaceLabel, workspaceLogoU
 import { isFeatureEnabled } from "./lib/flags";
 import { aiAccessIn, storageUsage, workspaceEntitlements } from "./lib/entitlements";
 import { workspaceScope } from "./lib/scope";
-import { planName } from "./lib/plans";
+import { PLAN_CATALOG, WORKSPACE_PLANS, planName, type WorkspaceTier } from "./lib/plans";
+import { memberCanManageBilling } from "./lib/permissions";
+import { billableSeatCount, seatsChanged } from "./lib/seats";
 import { notifyAccessChange, notifyInvite } from "./lib/notify";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -38,6 +40,7 @@ export const mine = query({
       const scope = workspaceScope(w._id);
       const storage = await storageUsage(ctx, scope);
       const plan = (await workspaceEntitlements(ctx, w)).planId;
+      const tier = PLAN_CATALOG[plan].tier as WorkspaceTier;
       out.push({
         id: w.publicId,
         name: w.name,
@@ -48,7 +51,9 @@ export const mine = query({
         storageUsedBytes: storage.usedBytes,
         /** The storage limit that applies here (the workspace's plan, or an admin override). */
         storageQuotaBytes: storage.limitBytes,
-        plan: { scope: "workspace" as const, id: plan, name: planName(plan) },
+        plan: { scope: "workspace" as const, id: plan, name: planName(plan), tier, shortName: WORKSPACE_PLANS[tier].name },
+        /** Whether you may see and change this workspace's plan and billing (the server checks again). */
+        canManageBilling: memberCanManageBilling(m),
         /** Whether you can use the AI Assistant here (the server checks again on every request). */
         aiIncluded: (await aiAccessIn(ctx, profile, scope)).allowed,
       });
@@ -70,7 +75,7 @@ export const members = query({
     for (const r of rows) {
       const p = await ctx.db.get(r.profileId);
       if (!p || p.status === "deleted") continue;
-      out.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, role: r.role, joinedAt: r.joinedAt, isYou: p._id === profile._id });
+      out.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, role: r.role, canManageBilling: memberCanManageBilling(r), joinedAt: r.joinedAt, isYou: p._id === profile._id });
     }
     const invites = roleAtLeast(member.role, "admin")
       ? (
@@ -82,7 +87,14 @@ export const members = query({
           .filter((i) => i.status === "pending")
           .map((i) => ({ id: i.publicId, email: i.email, role: i.role, expiresAt: i.expiresAt, expired: i.expiresAt < Date.now() }))
       : [];
-    return { members: out, invites, yourRole: member.role };
+    // Seats and the price of one more, for the people who invite (owners and admins).
+    let seats = null;
+    if (roleAtLeast(member.role, "admin")) {
+      const e = await workspaceEntitlements(ctx, workspace);
+      const plan = PLAN_CATALOG[e.planId];
+      seats = { billable: await billableSeatCount(ctx, workspace._id), paid: e.paid, planName: WORKSPACE_PLANS[plan.tier as WorkspaceTier].name, seatPriceCents: plan.priceCents, interval: plan.interval };
+    }
+    return { members: out, invites, yourRole: member.role, yourCanManageBilling: memberCanManageBilling(member), seats };
   },
 });
 
@@ -283,6 +295,8 @@ export const acceptInvite = mutation({
     if (!workspace || workspace.kind !== "team" || workspace.status !== "active") fail("not_found", "This workspace is unavailable.");
     if (!(await membership(ctx, profile._id, workspace._id))) {
       await ctx.db.insert("workspaceMembers", { workspaceId: workspace._id, profileId: profile._id, role: invite.role, joinedAt: Date.now() });
+      // A new member takes a seat once they accept (pending invitations are free).
+      await seatsChanged(ctx, workspace._id);
     }
     await ctx.db.patch(invite._id, { status: "accepted", acceptedBy: profile._id });
     const notes = await ctx.db
@@ -305,7 +319,9 @@ export const changeRole = mutation({
     if (!target) fail("not_found", "Member not found.");
     if (target.role === "owner" || args.role === "owner") fail("forbidden", "Ownership can't be changed here.");
     if ((args.role === "admin" || target.role === "admin") && member.role !== "owner") fail("forbidden", "Only the owner can change admins.");
-    await ctx.db.patch(target._id, { role: args.role });
+    // Billing access is an admin's; it ends when they stop being one.
+    await ctx.db.patch(target._id, { role: args.role, ...(args.role !== "admin" ? { canManageBilling: undefined } : {}) });
+    await seatsChanged(ctx, workspace._id);
     await notifyAccessChange(ctx, { recipientId: target.profileId, actor: profile, change: { type: "workspace_role", workspace, role: args.role } });
     return null;
   },
@@ -329,6 +345,7 @@ export const removeMember = mutation({
       .withIndex("by_profile", (q) => q.eq("profileId", target.profileId))
       .collect();
     for (const g of grants) if (g.workspaceId === workspace._id) await ctx.db.delete(g._id);
+    await seatsChanged(ctx, workspace._id);
     if (!leaving) await notifyAccessChange(ctx, { recipientId: target.profileId, actor: profile, change: { type: "workspace_removed", workspace } });
     return null;
   },
@@ -354,10 +371,31 @@ export const transferOwnership = mutation({
       .withIndex("by_owner", (q) => q.eq("ownerId", targetId))
       .collect();
     if (owned.filter((w) => w.kind === "team" && w.status !== "deleting").length >= 10) fail("limit_exceeded", `${targetProfile.displayName} already owns 10 workspaces.`);
-    await ctx.db.patch(target._id, { role: "owner" });
-    await ctx.db.patch(member._id, { role: "admin" });
+    // The workspace's subscription belongs to the workspace, so it stays as it is; only who owns it changes.
+    await ctx.db.patch(target._id, { role: "owner", canManageBilling: undefined });
+    await ctx.db.patch(member._id, { role: "admin", canManageBilling: undefined });
     await ctx.db.patch(workspace._id, { ownerId: targetId, updatedAt: Date.now() });
+    await seatsChanged(ctx, workspace._id);
     await notifyAccessChange(ctx, { recipientId: targetId, actor: profile, change: { type: "workspace_role", workspace, role: "owner" } });
+    return null;
+  },
+});
+
+/**
+ * The owner lets an admin manage the workspace's plan and billing (or stops them). Members and guests can
+ * never be given it; owners always have it.
+ */
+export const setBillingManager = mutation({
+  args: { workspaceId: v.string(), profileId: v.string(), allowed: v.boolean() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "owner");
+    const targetId = ctx.db.normalizeId("profiles", args.profileId);
+    const target = targetId ? await membership(ctx, targetId, workspace._id) : null;
+    if (!target) fail("not_found", "Member not found.");
+    if (target.role !== "admin") fail("invalid_argument", "Only admins can be allowed to manage billing.");
+    await ctx.db.patch(target._id, { canManageBilling: args.allowed || undefined });
     return null;
   },
 });

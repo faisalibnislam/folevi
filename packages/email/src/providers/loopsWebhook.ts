@@ -1,4 +1,5 @@
-import type { LoopsWebhookEvent } from "./types";
+// LEGACY — Loops webhook verification. Remove after the Mailtrap cutover (with the /webhooks/loops route).
+import type { LoopsWebhookEvent } from "../types";
 
 const TOLERANCE_SECONDS = 5 * 60;
 const MAX_ID_LENGTH = 256;

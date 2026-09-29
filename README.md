@@ -13,11 +13,11 @@ workspaces with their own plans, seats and billing (`docs/ACCOUNT_MODEL_PLAN.md`
 | Native Mac app | `apps/macos` | Swift 6, SwiftUI + AppKit, Convex Swift client, SQLite |
 | Backend | `convex/` | Convex (queries, mutations, actions, crons, HTTP) |
 | Identity | Built-in accounts: Better Auth inside Convex (email + password, verified email, optional authenticator-app 2FA) | `convex/auth.ts`, `convex/betterAuth` |
-| Transactional email | Loops | `packages/email` |
+| Transactional email | Mailtrap (templates rendered in the repo) | `packages/email` |
 
 Shared packages: `packages/editor-schema` (canonical block schema → TypeScript, Swift, JSON Schema;
 fractional ranks; tree/Markdown/HTML/search/task helpers; the sync reducer), `packages/design-tokens`
-(tokens → CSS + Swift), `packages/email` (Loops manifest, MJML + text templates, validation, sender,
+(tokens → CSS + Swift), `packages/email` (email manifest, compiled HTML + text templates, rendering, validation, Mailtrap sender,
 webhook verification), `packages/config` (lint config).
 
 ## Quick start (local, no third-party accounts needed)
@@ -105,8 +105,8 @@ See `docs/TESTING.md` for what each suite covers, and the Mac tests in `docs/MAC
 - `docs/DESIGN_SYSTEM.md` — “The Living Folio”: tokens, type, motion, accessibility
 - `docs/SECURITY.md` — threat model, controls, data handling, retention, subprocessors
 - `docs/ADMIN.md` — admin roles, actions, audit log
-- `docs/EMAIL_DECISION.md`, `docs/EMAIL_OPERATIONS.md` — Loops email path (identity, security, product) and operations
-- `docs/DEPLOYMENT.md` — Vercel, Convex (including accounts), Loops, DNS, environments, backups, incidents
+- `docs/EMAIL_DECISION.md`, `docs/EMAIL_OPERATIONS.md` — email via Mailtrap (identity, security, product), templates and operations
+- `docs/DEPLOYMENT.md` — Vercel, Convex (including accounts), Mailtrap, DNS, environments, backups, incidents
 - `docs/TESTING.md` — test suites and manual QA checklists
 - `docs/MACOS.md` — native app architecture and build
 - `docs/FUTURE_IOS.md` — how an iOS client would be added (intentionally not built)

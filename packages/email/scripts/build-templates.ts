@@ -1,59 +1,64 @@
-// Generates packages/email/templates/<key>.mjml and <key>.txt from the manifest plus the
-// copy below, so every template shares one audited layout (the neutral Folevi look, matching the app).
+// Compiles every Folevi email to final HTML + plain text in src/generated/templates.ts, from the
+// manifest plus the copy below, so all templates share one audited layout (the neutral Folevi look,
+// matching the app).
 //
-//   node scripts/build-templates.ts          # write files
-//   node scripts/build-templates.ts --check  # exit 1 if files are stale (used by `typecheck`)
+//   node scripts/build-templates.ts          # write the generated module
+//   node scripts/build-templates.ts --check  # exit 1 if it is stale (used by `typecheck`)
 //
 // Runs with Node >= 22.18 / 24 native type stripping (no build step, no dependencies).
-// MJML is compiled by Loops on import — mjml is NOT a dependency of this repo.
 //
-// Loops transactional placeholders use `{DATA_VARIABLE:name}` (verified against
-// https://loops.so/docs/creating-emails/uploading-custom-email, Sept 2026).
+// Why hand-written tables rather than MJML: the layout is one centred column (logo, card, footer), which
+// is a few dozen lines of table markup; writing it directly keeps the package dependency-free (mjml
+// pulls in a large tree — html-minifier, juice, cheerio, js-beautify — for what we'd use of it), makes the
+// output deterministic for `--check`, and gives us exact control over the dark-mode classes and the
+// Outlook conditionals. Everything that matters for email clients is here: role="presentation" tables,
+// inline styles on every element, a 560 px max width (with an MSO fixed-width wrapper), bgcolor
+// attributes, and a <style> block used only for progressive enhancement (dark mode, small screens).
+//
+// Placeholders: `{{name}}` is a template variable (renderEmail HTML-escapes it, validates URLs and turns
+// newlines into <br> in HTML); `{{@brand}}` is the logo base URL. In the copy below, `[[name]]` is a bold
+// variable.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { emailManifest, TEMPLATE_KEYS } from "../src/manifest.ts";
-import type { TemplateDefinition, TemplateKey } from "../src/types.ts";
+import { EMAIL_LOGO, emailManifest, TEMPLATE_KEYS } from "../src/manifest.ts";
+import type { GeneratedTemplate, TemplateDefinition, TemplateKey } from "../src/types.ts";
 
 // ---------------------------------------------------------------------------
 // Brand tokens
 // ---------------------------------------------------------------------------
-// Neutral, like the app: white card on a soft grey canvas, near-black ink and a black button.
-const C = {
+// Neutral, like the app: a white card on the soft canvas, near-black ink, hairlines and a black button.
+export const C = {
   canvas: "#F4F4F5",
   card: "#FFFFFF",
   ink: "#0B0B0C",
   muted: "#63636B",
-  accent: "#111114",
   hairline: "#E4E4E7",
-  // The mark (brand files: a white F on a black disc) stays the same in dark mode.
-  tile: "#0B0B0C",
-  tileEdge: "#1F2227",
-  // Dark-mode counterparts (applied only by clients that honour prefers-color-scheme).
+  panel: "#FAFAFA",
+  buttonInk: "#FFFFFF",
+  // Dark-mode counterparts (only for clients that honour prefers-color-scheme, e.g. Apple Mail).
   darkCanvas: "#0B0B0C",
   darkCard: "#18181B",
   darkInk: "#F2F2F3",
   darkMuted: "#A1A1AA",
-  darkAccent: "#F2F2F3",
   darkHairline: "#2A2A2D",
+  darkPanel: "#111113",
 } as const;
 
-const SERIF = "'Iowan Old Style', 'Palatino Linotype', Georgia, ui-serif, 'Times New Roman', serif";
-const SANS =
-  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif";
-const MONO = "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace";
+// Spectral and Instrument Sans in the app; email-safe stacks here (no web fonts: nothing remote but the logo).
+const SERIF = "Georgia, 'Times New Roman', Times, serif";
+const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
 // ---------------------------------------------------------------------------
 // Copy
 // ---------------------------------------------------------------------------
-// Inline syntax inside strings:  {{name}} → placeholder,  [[name]] → bold placeholder.
+// Inline syntax inside strings:  {{name}} → variable,  [[name]] → bold variable.
 type Block =
   | { kind: "p"; text: string; muted?: boolean }
   | { kind: "details"; rows: Array<[label: string, value: string]> }
-  | { kind: "button"; label: string; urlVar: string }
-  | { kind: "code"; variable: string }
-  | { kind: "quote"; variable: string };
+  | { kind: "panel"; text: string }
+  | { kind: "button"; label: string; urlVar: string };
 
 interface Content {
   eyebrow: string;
@@ -63,10 +68,12 @@ interface Content {
   reason?: string;
 }
 
-const SECURITY_FOOTER =
+export const SECURITY_FOOTER =
   "This is a required email about the security of your Folevi account, so it is sent even if you have turned off notifications.";
+export const SIGN_OFF = "Folevi · A quieter place for ideas that keep growing.";
+const NO_CONTENT_NOTE = "Open the page to read it. Folevi never puts your notes or comments in email.";
 
-const CONTENT: Record<TemplateKey, Content> = {
+export const CONTENT: Record<TemplateKey, Content> = {
   auth_verify_email: {
     eyebrow: "Your account",
     heading: "Confirm your email address",
@@ -156,60 +163,69 @@ const CONTENT: Record<TemplateKey, Content> = {
   },
   workspace_invite: {
     eyebrow: "Invitation",
-    heading: "You have been invited to a workspace",
+    heading: "You’re invited to a workspace",
     blocks: [
       {
         kind: "p",
         text: "[[inviterName]] invited you to join the workspace [[workspaceName]] as [[role]].",
       },
+      {
+        kind: "p",
+        text: "A workspace is a shared space for a team. Joining it doesn’t share anything from your Personal.",
+      },
       { kind: "button", label: "Accept invitation", urlVar: "acceptUrl" },
       {
         kind: "p",
         muted: true,
-        text: "This invitation expires in {{expiresInDays}} day(s). If you were not expecting it, you can ignore this email.",
+        text: "This invitation expires in {{expiresInDays}} day(s). If you don’t have a Folevi account yet, you can create one with this email address when you accept. If you were not expecting it, you can ignore this email.",
       },
     ],
-    reason: "You received this because someone invited this email address to Folevi.",
+    reason: "You received this because someone invited this email address to a Folevi workspace.",
   },
   mention_notification: {
     eyebrow: "Mention",
     heading: "You were mentioned",
     blocks: [
-      { kind: "p", text: "[[actorName]] mentioned you in [[documentTitle]]." },
-      { kind: "p", muted: true, text: "Open the document to read it. Folevi never puts your notes or comments in email." },
+      { kind: "p", text: "[[actorName]] mentioned you on [[documentTitle]]." },
+      { kind: "p", muted: true, text: NO_CONTENT_NOTE },
       { kind: "button", label: "View the mention", urlVar: "documentUrl" },
     ],
     reason: "You received this because mention emails are turned on for your Folevi account.",
   },
   comment_notification: {
     eyebrow: "Comment",
-    heading: "New comment on a document",
+    heading: "New comment on a page",
     blocks: [
       { kind: "p", text: "[[actorName]] commented on [[documentTitle]]." },
-      { kind: "p", muted: true, text: "Open the document to read it. Folevi never puts your notes or comments in email." },
+      { kind: "p", muted: true, text: NO_CONTENT_NOTE },
       { kind: "button", label: "View the comment", urlVar: "documentUrl" },
     ],
     reason: "You received this because comment emails are turned on for your Folevi account.",
   },
   comment_digest: {
-    eyebrow: "Digest",
+    eyebrow: "Daily digest",
     heading: "Recent comments",
     blocks: [
-      { kind: "p", text: "There are [[count]] new comment(s) on documents you follow." },
-      { kind: "p", text: "{{summary}}" },
-      { kind: "button", label: "Open your inbox", urlVar: "inboxUrl" },
+      { kind: "p", text: "There are [[count]] new comment(s) and mention(s) on pages you follow." },
+      { kind: "panel", text: "{{summary}}" },
+      { kind: "button", label: "Open Folevi", urlVar: "inboxUrl" },
     ],
-    reason: "You received this because the comment digest is turned on for your Folevi account.",
+    reason: "You received this because the daily digest is turned on for your Folevi account.",
   },
   share_notification: {
     eyebrow: "Shared with you",
-    heading: "A document was shared with you",
+    heading: "A page was shared with you",
     blocks: [
       { kind: "p", text: "[[actorName]] shared [[documentTitle]] with you." },
       { kind: "details", rows: [["Your access", "{{role}}"]] },
-      { kind: "button", label: "Open the document", urlVar: "documentUrl" },
+      { kind: "button", label: "Open the page", urlVar: "documentUrl" },
+      {
+        kind: "p",
+        muted: true,
+        text: "No Folevi account yet? You can create one with this email address to open it. You’ll see only what was shared with you.",
+      },
     ],
-    reason: "You received this because share emails are turned on for your Folevi account.",
+    reason: "You received this because someone shared a page in Folevi with this email address.",
   },
   access_changed: {
     eyebrow: "Access",
@@ -230,17 +246,18 @@ const CONTENT: Record<TemplateKey, Content> = {
 // ---------------------------------------------------------------------------
 // Rendering helpers
 // ---------------------------------------------------------------------------
-const placeholder = (name: string) => `{DATA_VARIABLE:${name}}`;
+const placeholder = (name: string) => `{{${name}}}`;
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
-/** Static copy → HTML, expanding {{var}} / [[var]]. Placeholders are never escaped. */
+/** Static copy → HTML, keeping {{var}} and turning [[var]] into a bold {{var}}. */
 function inlineHtml(s: string): string {
   return s
     .split(/(\{\{\w+\}\}|\[\[\w+\]\])/)
@@ -248,16 +265,14 @@ function inlineHtml(s: string): string {
       const plain = /^\{\{(\w+)\}\}$/.exec(part);
       if (plain) return placeholder(plain[1]!);
       const bold = /^\[\[(\w+)\]\]$/.exec(part);
-      if (bold) return `<strong>${placeholder(bold[1]!)}</strong>`;
+      if (bold) return `<strong style="font-weight:600;">${placeholder(bold[1]!)}</strong>`;
       return escapeHtml(part);
     })
     .join("");
 }
 
 function inlineText(s: string): string {
-  return s.replace(/\{\{(\w+)\}\}|\[\[(\w+)\]\]/g, (_m, a: string, b: string) =>
-    placeholder(a ?? b),
-  );
+  return s.replace(/\[\[(\w+)\]\]/g, (_m, name: string) => placeholder(name));
 }
 
 function wrap(text: string, width = 72): string {
@@ -277,147 +292,150 @@ function wrap(text: string, width = 72): string {
   return out.join("\n");
 }
 
-// The Folevi mark (packages/design-tokens/brand): a white F on a black disc. Emails carry no images, so
-// it's drawn with table cells from mark-pixels.json — a 28 x 28 grid of grey levels written by
-// packages/design-tokens/scripts/brand-icons.mjs from the brand file, anti-aliased, with runs of equal
-// cells merged. The disc is the table's rounded background. Hidden from assistive tech (the wordmark is text).
-const MARK_PIXELS = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "mark-pixels.json"), "utf8")) as { size: number; levels: number; rows: string[] };
-/** Grey level → colour, from the disc (0) to white. */
-function markLevel(level: number): string {
-  const t = level / MARK_PIXELS.levels;
-  const [r, g, b] = [0x0b, 0x0b, 0x0c].map((c) => Math.round(c + (255 - c) * t));
-  return `#${[r, g, b].map((c) => c!.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
-}
-const LOGO_MARK = [
-  `<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" border="0" class="fv-mark" style="border-collapse:separate;border:1px solid ${C.tileEdge};border-radius:50%;background-color:${C.tile};overflow:hidden;width:${MARK_PIXELS.size}px;height:${MARK_PIXELS.size}px;">`,
-  ...MARK_PIXELS.rows.map((row) => {
-    const runs: { level: number; w: number }[] = [];
-    for (const ch of row) {
-      const level = Number(ch);
-      const last = runs[runs.length - 1];
-      if (last && last.level === level) last.w++;
-      else runs.push({ level, w: 1 });
-    }
-    const cells = runs.map(({ level, w }) => {
-      const colour = level ? `background-color:${markLevel(level)};` : "";
-      const cls = level ? ` class="fv-m${level}"` : "";
-      return `<td${cls}${w > 1 ? ` colspan="${w}"` : ""} style="width:${w}px;height:1px;${colour}font-size:0;line-height:0;">&nbsp;</td>`;
-    });
-    return `<tr>${cells.join("")}</tr>`;
-  }),
-  `</table>`,
-].join("");
-/** Dark-mode clients that honour prefers-color-scheme keep the mark's own colours. */
-const MARK_DARK_CSS = Array.from({ length: MARK_PIXELS.levels }, (_, i) => `.fv-canvas table.fv-mark td.fv-m${i + 1} { background-color: ${markLevel(i + 1)} !important; }`).join("\n        ");
+const font = (size: number, lineHeight: number, colour: string, family = SANS) =>
+  `font-family:${family};font-size:${size}px;line-height:${lineHeight}px;color:${colour};`;
 
-function renderBlockMjml(block: Block): string {
+function paragraph(html: string, muted = false): string {
+  return muted
+    ? `<p class="fv-muted" style="margin:0 0 16px 0;${font(14, 22, C.muted)}">${html}</p>`
+    : `<p class="fv-ink" style="margin:0 0 16px 0;${font(16, 26, C.ink)}">${html}</p>`;
+}
+
+function renderBlockHtml(block: Block): string {
   switch (block.kind) {
     case "p":
-      return block.muted
-        ? `        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="22px">${inlineHtml(block.text)}</mj-text>`
-        : `        <mj-text>${inlineHtml(block.text)}</mj-text>`;
+      return paragraph(inlineHtml(block.text), block.muted);
     case "details": {
       const rows = block.rows
-        .map(
-          ([label, value]) =>
-            `<tr><td class="fv-muted-cell" style="padding:6px 16px 6px 0;color:${C.muted};font-size:14px;white-space:nowrap;vertical-align:top;">${escapeHtml(label)}</td><td style="padding:6px 0;font-size:15px;vertical-align:top;">${inlineHtml(value)}</td></tr>`,
-        )
+        .map(([label, value], i) => {
+          const border = i > 0 ? `border-top:1px solid ${C.hairline};` : "";
+          return (
+            `<tr>` +
+            `<td class="fv-muted fv-hair fv-label" valign="top" width="1%" style="${border}width:1%;padding:12px 24px 12px 0;${font(14, 22, C.muted)}white-space:nowrap;">${escapeHtml(label)}</td>` +
+            `<td class="fv-ink fv-hair" valign="top" style="${border}padding:12px 0;${font(15, 22, C.ink)}word-break:break-word;">${inlineHtml(value)}</td>` +
+            `</tr>`
+          );
+        })
         .join("");
-      return `        <mj-table css-class="fv-details" color="${C.ink}" font-family="${SANS}" padding="4px 32px 12px 32px">${rows}</mj-table>`;
+      return (
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fv-panel" bgcolor="${C.panel}" style="width:100%;margin:4px 0 20px 0;background-color:${C.panel};border:1px solid ${C.hairline};border-radius:12px;border-collapse:separate;">` +
+        `<tr><td class="fv-panel-pad" style="padding:4px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">${rows}</table></td></tr></table>`
+      );
     }
+    case "panel":
+      return (
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fv-panel" bgcolor="${C.panel}" style="width:100%;margin:4px 0 20px 0;background-color:${C.panel};border:1px solid ${C.hairline};border-radius:12px;border-collapse:separate;">` +
+        `<tr><td class="fv-ink" style="padding:16px 20px;${font(15, 24, C.ink)}">${inlineHtml(block.text)}</td></tr></table>`
+      );
     case "button": {
       const href = placeholder(block.urlVar);
-      return [
-        `        <mj-button href="${href}" css-class="fv-button" background-color="${C.accent}" color="${C.card}" font-size="16px" font-weight="600" border-radius="8px" inner-padding="13px 24px" align="left" padding="12px 32px 8px 32px">${escapeHtml(block.label)}</mj-button>`,
-        `        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="22px" padding="4px 32px 16px 32px">Button not working? Paste this link into your browser:<br /><a href="${href}" class="fv-link" style="color:${C.accent};word-break:break-all;">${href}</a></mj-text>`,
-      ].join("\n");
+      return (
+        `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 16px 0;border-collapse:separate;"><tr>` +
+        `<td class="fv-btn" align="center" bgcolor="${C.ink}" style="border-radius:10px;background-color:${C.ink};mso-padding-alt:14px 26px;">` +
+        `<a href="${href}" target="_blank" rel="noopener" class="fv-btn-a" style="display:inline-block;padding:14px 26px;${font(16, 20, C.buttonInk)}font-weight:600;text-decoration:none;border-radius:10px;">${escapeHtml(block.label)}</a>` +
+        `</td></tr></table>` +
+        paragraph(
+          `Button not working? Paste this link into your browser:<br><a href="${href}" target="_blank" rel="noopener" class="fv-link" style="color:${C.ink};text-decoration:underline;word-break:break-all;">${href}</a>`,
+          true,
+        )
+      );
     }
-    case "code":
-      return `        <mj-text css-class="fv-code" align="left" font-family="${MONO}" font-size="30px" line-height="40px" letter-spacing="6px" padding="8px 32px 16px 32px"><span style="display:inline-block;padding:10px 18px;border:1px solid ${C.hairline};border-radius:8px;background-color:${C.canvas};" class="fv-code-box">${placeholder(block.variable)}</span></mj-text>`;
-    case "quote":
-      return `        <mj-text css-class="fv-muted" color="${C.muted}" font-size="15px" line-height="24px" font-style="italic" padding="0 32px 12px 32px">${placeholder(block.variable)}</mj-text>`;
   }
 }
 
-function renderMjml(def: TemplateDefinition, content: Content): string {
-  const body = content.blocks.map(renderBlockMjml).join("\n");
-  const product = def.category === "product";
-  const footer = product
-    ? `        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="22px">${escapeHtml(content.reason ?? "")} <a href="${placeholder("preferencesUrl")}" class="fv-link" style="color:${C.accent};">Manage notification preferences</a></mj-text>`
-    : `        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="22px">${escapeHtml(SECURITY_FOOTER)}</mj-text>`;
-
-  // The provenance comment sits inside <mj-head> so MJML parses it but it never reaches the
-  // rendered HTML body.
-  return `<mjml lang="en" dir="ltr">
-  <mj-head>
-    <!--
-      GENERATED by packages/email/scripts/build-templates.ts; edit the script, not this file.
-      Template: ${def.key} (${def.category}). Loops env var: ${def.envVar}.
-      Sender: ${def.sender.name} <${def.sender.localPart}@LOOPS_SENDING_DOMAIN>.
-      Import: copy to index.mjml, zip, upload via Loops editor > Code (docs/EMAIL_OPERATIONS.md).
-    -->
-    <mj-title>${escapeHtml(def.subject)}</mj-title>
-    <mj-preview>${escapeHtml(def.previewText)}</mj-preview>
-    <mj-raw>
-      <meta name="color-scheme" content="light dark" />
-      <meta name="supported-color-schemes" content="light dark" />
-    </mj-raw>
-    <mj-attributes>
-      <mj-all font-family="${SANS}" />
-      <mj-text color="${C.ink}" font-size="16px" line-height="26px" padding="0 32px 16px 32px" />
-      <mj-section padding="0" />
-    </mj-attributes>
-    <mj-style>
-      :root { color-scheme: light dark; supported-color-schemes: light dark; }
-      .fv-link { color: ${C.accent}; text-decoration: underline; }
+const DARK_CSS = `
       @media (prefers-color-scheme: dark) {
-        body, .fv-body, .fv-canvas, .fv-canvas table, .fv-canvas td { background-color: ${C.darkCanvas} !important; }
-        /* The mark keeps its brand colours: a white F on a black disc. */
-        .fv-canvas table.fv-mark, .fv-canvas table.fv-mark td { background-color: ${C.tile} !important; }
-        ${MARK_DARK_CSS}
-        .fv-card, .fv-card table, .fv-card td { background-color: ${C.darkCard} !important; border-color: ${C.darkHairline} !important; }
-        .fv-card div, .fv-card td, .fv-card strong, .fv-wordmark div { color: ${C.darkInk} !important; }
-        .fv-muted div, .fv-muted-cell, .fv-canvas .fv-muted div { color: ${C.darkMuted} !important; }
-        .fv-link, .fv-card a.fv-link { color: ${C.darkAccent} !important; }
-        .fv-button td, .fv-button a, .fv-button p { background-color: ${C.darkAccent} !important; color: ${C.darkCanvas} !important; }
-        .fv-code-box { background-color: ${C.darkCanvas} !important; border-color: ${C.darkHairline} !important; }
-      }
-    </mj-style>
-  </mj-head>
-  <mj-body background-color="${C.canvas}" width="600px" css-class="fv-body">
-    <mj-wrapper css-class="fv-canvas" background-color="${C.canvas}" padding="32px 12px 8px 12px">
-      <mj-section>
-        <mj-column>
-          <mj-raw>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 20px;">
-              <tr>
-                <td style="vertical-align:middle;padding-right:10px;">${LOGO_MARK}</td>
-                <td class="fv-wordmark" style="vertical-align:middle;font-family:${SANS};font-size:22px;font-weight:700;line-height:24px;color:${C.ink};letter-spacing:-0.6px;"><div style="color:${C.ink};">Folevi</div></td>
-              </tr>
-            </table>
-          </mj-raw>
-        </mj-column>
-      </mj-section>
-    </mj-wrapper>
-    <mj-wrapper css-class="fv-canvas" background-color="${C.canvas}" padding="0 12px">
-      <mj-section css-class="fv-card" background-color="${C.card}" border="1px solid ${C.hairline}" border-radius="12px" padding="28px 0 16px 0">
-        <mj-column>
-        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="20px" letter-spacing="1px" text-transform="uppercase" padding="0 32px 8px 32px">${escapeHtml(content.eyebrow)}</mj-text>
-        <mj-text font-family="${SERIF}" font-size="28px" line-height="36px" padding="0 32px 16px 32px"><h1 style="margin:0;font-size:28px;line-height:36px;font-weight:normal;font-family:${SERIF};">${inlineHtml(content.heading)}</h1></mj-text>
+        body, .fv-canvas { background-color: ${C.darkCanvas} !important; }
+        .fv-card { background-color: ${C.darkCard} !important; border-color: ${C.darkHairline} !important; }
+        .fv-panel { background-color: ${C.darkPanel} !important; border-color: ${C.darkHairline} !important; }
+        .fv-hair { border-color: ${C.darkHairline} !important; }
+        .fv-ink, .fv-ink strong, h1.fv-ink { color: ${C.darkInk} !important; }
+        .fv-muted { color: ${C.darkMuted} !important; }
+        .fv-link { color: ${C.darkInk} !important; }
+        .fv-btn { background-color: ${C.darkInk} !important; }
+        .fv-btn-a { color: ${C.darkCanvas} !important; }
+        .fv-logo-light { display: none !important; }
+        .fv-logo-dark { display: block !important; max-height: none !important; overflow: visible !important; }
+      }`;
+
+// Outlook.com / Outlook apps rewrite colours in dark mode and mark the elements with data-ogsc / data-ogsb;
+// swapping the logo there keeps the letters readable.
+const OUTLOOK_DARK_CSS = `
+      [data-ogsc] .fv-logo-light { display: none !important; }
+      [data-ogsc] .fv-logo-dark { display: block !important; max-height: none !important; overflow: visible !important; }`;
+
+function logoHtml(): string {
+  const img = (file: string) =>
+    `<img src="{{@brand}}/${file}" width="${EMAIL_LOGO.width}" height="${EMAIL_LOGO.height}" alt="Folevi" border="0" style="display:block;width:${EMAIL_LOGO.width}px;height:auto;max-width:${EMAIL_LOGO.width}px;border:0;outline:none;text-decoration:none;">`;
+  const light = img(EMAIL_LOGO.light).replace("<img ", '<img class="fv-logo-light" ');
+  // The dark variant is hidden unless the client applies the dark-mode rules above; Outlook desktop never sees it.
+  const dark = `<!--[if !mso]><!--><div class="fv-logo-dark" style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${img(EMAIL_LOGO.dark)}</div><!--<![endif]-->`;
+  return light + dark;
+}
+
+/** Preview text, padded so clients don't pull body copy into the inbox preview. */
+function preheader(text: string): string {
+  const pad = "&#847;&zwnj;&nbsp;".repeat(40);
+  return `<div style="display:none;max-height:0;max-width:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:${C.canvas};opacity:0;">${escapeHtml(text)}${pad}</div>`;
+}
+
+function renderHtml(def: TemplateDefinition, content: Content): string {
+  const body = content.blocks.map(renderBlockHtml).join("\n");
+  const footer =
+    def.category === "product"
+      ? `${escapeHtml(content.reason ?? "")} <a href="${placeholder("preferencesUrl")}" target="_blank" rel="noopener" class="fv-muted" style="color:${C.muted};text-decoration:underline;">Manage notification preferences</a>`
+      : escapeHtml(SECURITY_FOOTER);
+
+  return `<!DOCTYPE html>
+<html lang="en" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<!-- GENERATED by packages/email/scripts/build-templates.ts (${def.key}, ${def.category}); edit the script, not this output. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>${escapeHtml(def.subject)}</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+<style>
+      :root { color-scheme: light dark; supported-color-schemes: light dark; }
+      body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+      table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+      img { -ms-interpolation-mode: bicubic; }
+      a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+      @media only screen and (max-width: 600px) {
+        .fv-outer { padding: 24px 12px !important; }
+        .fv-card-pad { padding: 28px 20px 24px 20px !important; }
+        .fv-h1 { font-size: 26px !important; line-height: 32px !important; }
+        .fv-panel-pad { padding: 4px 14px !important; }
+        .fv-label { white-space: normal !important; padding-right: 14px !important; }
+      }${DARK_CSS}${OUTLOOK_DARK_CSS}
+</style>
+</head>
+<body class="fv-canvas" style="margin:0;padding:0;background-color:${C.canvas};">
+${preheader(def.previewText)}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fv-canvas" bgcolor="${C.canvas}" style="width:100%;background-color:${C.canvas};">
+<tr><td align="center" class="fv-outer" style="padding:40px 16px;">
+<!--[if mso]><table role="presentation" width="560" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;margin:0 auto;">
+<tr><td style="padding:0 4px 24px 4px;">${logoHtml()}</td></tr>
+<tr><td class="fv-card fv-card-pad" bgcolor="${C.card}" style="background-color:${C.card};border:1px solid ${C.hairline};border-radius:16px;padding:40px 40px 28px 40px;">
+<p class="fv-muted" style="margin:0 0 10px 0;${font(14, 20, C.muted)}font-weight:500;">${escapeHtml(content.eyebrow)}</p>
+<h1 class="fv-ink fv-h1" style="margin:0 0 20px 0;${font(30, 38, C.ink, SERIF)}font-weight:normal;letter-spacing:-0.3px;">${inlineHtml(content.heading)}</h1>
 ${body}
-        </mj-column>
-      </mj-section>
-    </mj-wrapper>
-    <mj-wrapper css-class="fv-canvas" background-color="${C.canvas}" padding="16px 12px 32px 12px">
-      <mj-section>
-        <mj-column>
-${footer}
-        <mj-text css-class="fv-muted" color="${C.muted}" font-size="14px" line-height="22px">Folevi · A quieter place for ideas that keep growing.</mj-text>
-        </mj-column>
-      </mj-section>
-    </mj-wrapper>
-  </mj-body>
-</mjml>
+</td></tr>
+<tr><td style="padding:24px 8px 0 8px;">
+<p class="fv-muted" style="margin:0 0 12px 0;${font(14, 22, C.muted)}">${footer}</p>
+<p class="fv-muted" style="margin:0;${font(14, 22, C.muted)}">${escapeHtml(SIGN_OFF)}</p>
+</td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
+</html>
 `;
 }
 
@@ -426,6 +444,7 @@ function renderText(def: TemplateDefinition, content: Content): string {
   for (const block of content.blocks) {
     switch (block.kind) {
       case "p":
+      case "panel":
         parts.push(wrap(inlineText(block.text)), "");
         break;
       case "details":
@@ -434,12 +453,6 @@ function renderText(def: TemplateDefinition, content: Content): string {
         break;
       case "button":
         parts.push(`${block.label}:`, placeholder(block.urlVar), "");
-        break;
-      case "code":
-        parts.push(`    ${placeholder(block.variable)}`, "");
-        break;
-      case "quote":
-        parts.push(`> ${placeholder(block.variable)}`, "");
         break;
     }
   }
@@ -452,19 +465,52 @@ function renderText(def: TemplateDefinition, content: Content): string {
   } else {
     parts.push(wrap(SECURITY_FOOTER));
   }
-  parts.push("Folevi · A quieter place for ideas that keep growing.", "");
+  parts.push(SIGN_OFF, "");
   return parts.join("\n");
 }
 
-export function renderAll(): Map<string, string> {
-  const files = new Map<string, string>();
+export function buildTemplates(): Record<TemplateKey, GeneratedTemplate> {
+  const out = {} as Record<TemplateKey, GeneratedTemplate>;
   for (const key of TEMPLATE_KEYS) {
     const def = emailManifest[key];
     const content = CONTENT[key];
-    files.set(def.source.path, renderMjml(def, content));
-    files.set(def.source.path.replace(/\.mjml$/, ".txt"), renderText(def, content));
+    out[key] = {
+      subject: def.subject,
+      previewText: def.previewText,
+      html: renderHtml(def, content),
+      text: renderText(def, content),
+    };
   }
-  return files;
+  return out;
+}
+
+export const GENERATED_PATH = "src/generated/templates.ts";
+
+/** The generated module's contents, keyed by path relative to packages/email. */
+export function renderAll(): Map<string, string> {
+  const templates = buildTemplates();
+  const entries = TEMPLATE_KEYS.map((key) => {
+    const t = templates[key];
+    return [
+      `  ${key}: {`,
+      `    subject: ${JSON.stringify(t.subject)},`,
+      `    previewText: ${JSON.stringify(t.previewText)},`,
+      `    html: ${JSON.stringify(t.html)},`,
+      `    text: ${JSON.stringify(t.text)},`,
+      `  },`,
+    ].join("\n");
+  });
+  const module = `// GENERATED by packages/email/scripts/build-templates.ts — do not edit.
+// Regenerate with: pnpm --filter @folevi/email templates
+// Placeholders: {{variable}} (filled and escaped by renderEmail), {{@brand}} (logo base URL).
+
+import type { GeneratedTemplate, TemplateKey } from "../types";
+
+export const GENERATED_TEMPLATES: Readonly<Record<TemplateKey, GeneratedTemplate>> = {
+${entries.join("\n")}
+};
+`;
+  return new Map([[GENERATED_PATH, module]]);
 }
 
 function main(): void {
@@ -490,7 +536,7 @@ function main(): void {
   }
   if (check && stale.length > 0) {
     console.error(
-      `Stale email templates (run: pnpm --filter @folevi/email templates):\n  ${stale.join("\n  ")}`,
+      `Stale generated email templates (run: pnpm --filter @folevi/email templates):\n  ${stale.join("\n  ")}`,
     );
     process.exit(1);
   }

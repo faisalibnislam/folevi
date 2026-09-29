@@ -58,7 +58,7 @@ function rateLimitRules() {
 
 type Scheduler = { runAfter: (delay: number, fn: never, args: never) => Promise<unknown> };
 
-/** Identity email goes through Folevi's Loops pipeline (never Better Auth's or a second vendor). */
+/** Identity email goes through Folevi's own email pipeline (internal.email.sendTemplate → Mailtrap), never Better Auth's sender. */
 async function queueIdentityEmail(
   ctx: GenericCtx<DataModel>,
   args: { key: "auth_verify_email" | "auth_password_reset"; to: string; actionUrl: string; expiresInHours: number; idempotencyKey: string },

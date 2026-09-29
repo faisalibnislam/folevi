@@ -74,7 +74,7 @@ export default function PrivacyPage() {
         <ul>
           <li>To provide Folevi: store, sync, search, share and export your content as you ask.</li>
           <li>To keep your account secure: verify your email, offer two-step verification, detect abuse.</li>
-          <li>To send you service emails, such as verification, security notices and share invitations.</li>
+          <li>To send you service emails, such as verification, security notices and share invitations. They carry no tracking pixels, and their links aren’t rewritten to track clicks.</li>
           <li>To run plans: apply your personal plan’s storage, device and AI limits and each workspace plan’s own limits, and bill paid plans (workspace plans per member seat).</li>
           <li>When you ask it to, to answer with the AI Assistant (below).</li>
           <li>To fix problems and improve Folevi, using technical data rather than the content of your notes.</li>

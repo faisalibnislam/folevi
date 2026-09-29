@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   emailManifest,
   hashRecipient,
+  loopsEnvVarFor,
   redactEmail,
   transactionalIdFor,
   validateDataVariables,
@@ -140,9 +141,10 @@ describe("validateDataVariables", () => {
   });
 });
 
-describe("transactionalIdFor", () => {
-  it("reads the manifest env var and rejects blank/garbage values", () => {
-    const envVar = emailManifest.auth_verify_email.envVar;
+describe("transactionalIdFor (legacy Loops)", () => {
+  it("reads the per-template Loops env var and rejects blank/garbage values", () => {
+    const envVar = loopsEnvVarFor("auth_verify_email");
+    expect(envVar).toBe("LOOPS_TRANSACTIONAL_AUTH_VERIFY_EMAIL_ID");
     expect(transactionalIdFor("auth_verify_email", { [envVar]: " clabc123xyz " })).toBe(
       "clabc123xyz",
     );

@@ -19,6 +19,22 @@ const STATUSES = ["queued", "accepted", "failed", "skipped"] as const;
 type EmailStatus = (typeof STATUSES)[number];
 type Attempt = FunctionReturnType<typeof api.admin.listEmails>["attempts"][number];
 
+const PROVIDER_LABELS: Record<string, string> = { mailtrap: "Mailtrap", mailtrap_sandbox: "Mailtrap sandbox", loops: "Loops (legacy)" };
+const DELIVERY_LABELS: Record<string, string> = {
+  delivered: "Delivered",
+  soft_bounced: "Soft bounce",
+  bounced: "Bounced",
+  spam_complaint: "Spam complaint",
+  rejected: "Rejected",
+  suspended: "Suspended",
+};
+
+function deliveryTone(status: string): "success" | "danger" | "neutral" {
+  if (status === "delivered") return "success";
+  if (/bounce|complain|spam|reject|suspend|fail/i.test(status)) return status === "soft_bounced" ? "neutral" : "danger";
+  return "neutral";
+}
+
 export function EmailsView() {
   const admin = useAdmin();
   const uid = useId();
@@ -49,22 +65,32 @@ export function EmailsView() {
       <div className="mb-5 grid gap-3 xl:grid-cols-[3fr_2fr]">
         <Callout tone="plum" icon={<Info size={16} aria-hidden className="mt-0.5 flex-none text-plum-ink" />} title="What “accepted” means">
           <p>
-            <strong>Accepted</strong> means Loops accepted the message for sending; it does <strong>not</strong> mean delivered. Delivery, bounce and complaint states appear only when the
-            signed Loops webhook is configured, and only for events whose signature was verified.
+            <strong>Accepted</strong> means the email provider accepted the message for sending; it does <strong>not</strong> mean delivered. Delivery, bounce and complaint states appear only
+            when the signed provider webhook is configured, and only for events whose signature was verified.
           </p>
           <p className="mt-1.5">
-            To check delivery for a template: open the Loops dashboard → <strong>Transactional</strong> → choose the template → <strong>Metrics</strong>.
+            Addresses that hard-bounce, complain or unsubscribe stop getting product email (<Mono>recipient_suppressed</Mono>); security and sign-in email still goes. To look deeper, open
+            Mailtrap → <strong>Email Logs</strong> and search by message id.
           </p>
         </Callout>
         {data ? (
-          data.webhooksConfigured ? (
-            <Callout title="Loops webhook configured">
-              Provider events (delivered, bounced, complained…) from signature-verified webhooks are listed per attempt below. Each event is matched to one send: by the provider message id when
-              Loops returned one, otherwise by recipient, template and time.
+          data.activeProvider === "none" ? (
+            <Callout tone="warning" title="No email provider configured">
+              Nothing can be sent from this environment. Set <Mono>MAILTRAP_API_TOKEN</Mono> (or the sandbox pair outside production) on the Convex deployment — see docs/EMAIL_OPERATIONS.md.
+            </Callout>
+          ) : data.activeProvider === "loops" ? (
+            <Callout tone="warning" title="Still sending through Loops">
+              Loops is the legacy provider and is only used until <Mono>MAILTRAP_API_TOKEN</Mono> is set. Finish the Mailtrap cutover in docs/EMAIL_OPERATIONS.md.
+            </Callout>
+          ) : data.webhooksConfigured ? (
+            <Callout title={`Sending through ${PROVIDER_LABELS[data.activeProvider] ?? data.activeProvider}; webhook configured`}>
+              Delivery events from signature-verified webhooks are shown per attempt below. Each event is matched to one send: by the provider message id, otherwise by the attempt id the email
+              carries.
             </Callout>
           ) : (
-            <Callout tone="warning" title="Loops webhook not configured">
-              No delivery, bounce or complaint information is available in this environment. Set <Mono>LOOPS_WEBHOOK_SECRET</Mono> and register the webhook in Loops (see docs/EMAIL_OPERATIONS.md).
+            <Callout tone="warning" title="Delivery webhook not configured">
+              Sending through {PROVIDER_LABELS[data.activeProvider] ?? data.activeProvider}, but no delivery, bounce or complaint information is available. Set{" "}
+              <Mono>MAILTRAP_WEBHOOK_SECRET</Mono> and create the webhook in Mailtrap (see docs/EMAIL_OPERATIONS.md).
             </Callout>
           )
         ) : null}
@@ -102,7 +128,7 @@ export function EmailsView() {
               <th scope="col" className={th}>Status</th>
               <th scope="col" className={thNum}>Attempts</th>
               <th scope="col" className={th}>Error</th>
-              <th scope="col" className={th}>Provider events</th>
+              <th scope="col" className={th}>Delivery</th>
               <th scope="col" className={th}>Request · env</th>
               <th scope="col" className={th}>Time</th>
               <th scope="col" className={th}>
@@ -129,6 +155,7 @@ export function EmailsView() {
                     </td>
                     <td className={td}>
                       <StatusBadge status={a.status} />
+                      {a.provider ? <div className="mt-0.5 text-xs text-muted">{PROVIDER_LABELS[a.provider] ?? a.provider}</div> : null}
                     </td>
                     <td className={tdNum}>{a.attempts}</td>
                     <td className={td}>
@@ -136,13 +163,18 @@ export function EmailsView() {
                       {a.httpStatus ? <div className="mt-0.5 text-xs text-muted">HTTP {a.httpStatus}</div> : null}
                     </td>
                     <td className={td}>
+                      {a.deliveryStatus ? (
+                        <div className="mb-1">
+                          <Badge tone={deliveryTone(a.deliveryStatus)}>{DELIVERY_LABELS[a.deliveryStatus] ?? humanize(a.deliveryStatus)}</Badge>
+                        </div>
+                      ) : null}
                       {a.providerEvents.length ? (
                         <span className="flex flex-wrap gap-1">
                           {a.providerEvents.map((e) => (
                             <Badge
                               key={`${e.eventName}-${e.eventTime}`}
                               title={formatDateTime(e.eventTime)}
-                              tone={/bounce|complain|fail/i.test(e.eventName) ? "danger" : /deliver/i.test(e.eventName) ? "success" : "neutral"}
+                              tone={deliveryTone(e.eventName.replace(/^email\./, ""))}
                             >
                               {humanize(e.eventName.replace(/^email\./, ""))}
                             </Badge>

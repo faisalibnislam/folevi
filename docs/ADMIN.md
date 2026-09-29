@@ -163,14 +163,17 @@ attempts, quotas and the audit trail.
 
 ## 7. Email operations: honesty rules
 
-- **"Accepted" is not "delivered".** `accepted` means Loops accepted the message for
+- **"Accepted" is not "delivered".** `accepted` means Mailtrap accepted the message for
   sending. The console says so on the Emails page and the dashboard.
-- Delivery, bounce and complaint states appear only when the **signed Loops webhook** is
-  configured (`LOOPS_WEBHOOK_SECRET`), and only for events whose signature was verified. If
+- Delivery, bounce and complaint states appear only when the **signed Mailtrap webhook** is
+  configured (`MAILTRAP_WEBHOOK_SECRET`), and only for events whose signature was verified. If
   it isn't configured, the Emails page says so plainly rather than showing empty states as
   good news.
-- To check delivery for a template, use the Loops dashboard → **Transactional** → the
-  template → **Metrics**.
+- Each attempt shows its **Delivery** state (delivered, soft bounce, bounced, spam complaint,
+  rejected) and the provider events behind it. For more detail, search Mailtrap's **Email
+  Logs** by message id.
+- Product email to an address that hard-bounced, complained or unsubscribed is skipped as
+  `recipient_suppressed`; security and sign-in email still goes.
 - Recipients are shown only as redacted hints (`a***@e***.com`). Invite emails on workspace
   pages are redacted the same way.
 - Identity emails (verification, password reset) carry one-time links and are never

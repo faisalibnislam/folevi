@@ -1,4 +1,4 @@
-// Identity email (verification, password reset) for Better Auth, delivered through Folevi's Loops
+// Identity email (verification, password reset) for Better Auth, delivered through Folevi's email
 // pipeline (`internal.email.sendTemplate`). Outside production every message is also written to a
 // local-only "dev mailbox" so people and automated tests can follow the links without a mail
 // provider. The dev mailbox is unreadable in production (and never written there).

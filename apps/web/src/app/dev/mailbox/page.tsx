@@ -16,7 +16,7 @@ export default async function DevMailboxPage() {
       <div className="mx-auto max-w-2xl">
         <h1 className="ui-display text-3xl">Development mailbox</h1>
         <p className="mt-2 text-sm text-muted">
-          Identity emails captured on this non-production deployment (they are also handed to Loops when it&apos;s configured). Newest first.
+          Identity emails captured on this non-production deployment (they are also handed to the email provider when one is configured; outside production that is the Mailtrap sandbox or test addresses only). Newest first.
         </p>
         <ul className="mt-6 space-y-3">
           {messages.length === 0 ? <li className="ui-card p-4 text-sm text-muted">No messages yet.</li> : null}

@@ -4,4 +4,3 @@ apps/macos
 **/.next
 **/dist
 **/generated
-packages/email/templates/**/*.mjml

@@ -23,8 +23,23 @@ if (env === "production") {
       const get = (k) => new RegExp(`^${k}=(.*)$`, "m").exec(out)?.[1];
       if (get("FOLEVI_ENV") !== "production") problems.push("Convex FOLEVI_ENV must be 'production'.");
       if (!/^https:\/\//.test(get("SITE_URL") ?? "")) problems.push("Convex SITE_URL must be the https app origin (e.g. https://app.folevi.com).");
-      for (const k of ["BETTER_AUTH_SECRET", "FOLEVI_HASH_SALT", "FOLEVI_FILE_URL_SECRET", "FOLEVI_SERVER_SECRET", "LOOPS_API_KEY"]) {
-        if (!get(k) || get(k) === "none") problems.push(`Convex ${k} is not set.`);
+      const has = (k) => Boolean(get(k)) && get(k) !== "none";
+      for (const k of ["BETTER_AUTH_SECRET", "FOLEVI_HASH_SALT", "FOLEVI_FILE_URL_SECRET", "FOLEVI_SERVER_SECRET"]) {
+        if (!has(k)) problems.push(`Convex ${k} is not set.`);
+      }
+      // Email: Mailtrap is required. During the cutover only, a complete legacy Loops setup is accepted
+      // (with a loud warning) so sign-up email keeps working until the Mailtrap token is in place.
+      const loopsIds = ["AUTH_VERIFY_EMAIL", "AUTH_PASSWORD_RESET", "SECURITY_NEW_DEVICE", "ACCOUNT_DELETION_SCHEDULED", "ACCOUNT_DELETION_COMPLETED", "WORKSPACE_INVITE", "MENTION_NOTIFICATION", "COMMENT_NOTIFICATION", "COMMENT_DIGEST", "SHARE_NOTIFICATION", "ACCESS_CHANGED"].map((t) => `LOOPS_TRANSACTIONAL_${t}_ID`);
+      if (has("MAILTRAP_API_TOKEN")) {
+        if (!has("MAILTRAP_WEBHOOK_SECRET")) warn.push("Convex MAILTRAP_WEBHOOK_SECRET is not set: no delivery, bounce or complaint tracking, and bounced addresses are never suppressed.");
+        if (has("LOOPS_API_KEY")) warn.push("Convex LOOPS_API_KEY is still set but unused (Mailtrap is active). Remove the LOOPS_* variables to finish the cutover.");
+      } else if (has("LOOPS_API_KEY") && loopsIds.every(has)) {
+        warn.push("!!! EMAIL IS STILL SENT THROUGH LOOPS (legacy). Set Convex MAILTRAP_API_TOKEN to finish the Mailtrap cutover (docs/EMAIL_OPERATIONS.md). !!!");
+      } else {
+        problems.push("Convex MAILTRAP_API_TOKEN is not set (no email provider: sign-up confirmation and password reset emails can't be sent).");
+      }
+      for (const k of ["MAILTRAP_SANDBOX_INBOX_ID", "MAILTRAP_SANDBOX_TOKEN"]) {
+        if (has(k)) warn.push(`Convex ${k} is set in production; it is ignored there (the sandbox is for non-production only). Remove it.`);
       }
       if ((get("BETTER_AUTH_SECRET") ?? "").length < 32) problems.push("Convex BETTER_AUTH_SECRET must be at least 32 characters.");
       for (const k of ["FOLEVI_DEV_MAILBOX_SECRET", "FOLEVI_AUTH_RATE_LIMIT_SCALE"]) {

@@ -21,14 +21,16 @@
 //   apps/macos/…/Assets.xcassets/FoleviMenuBar.imageset    the F alone (template) for the menu bar
 //   apps/macos/…/Assets.xcassets/FoleviWordmark.imageset   the logo's letters (template), for FoleviLogo
 //   apps/macos/…/Assets.xcassets/FoleviAI.imageset         the AI mark (AiIcon in Swift; the web draws it inline)
-//   packages/email/scripts/mark-pixels.json        the mark as a 28 px grid, drawn with table cells in emails
+//   apps/web/public/brand/email/folevi-logo@2x.png       the logo for emails (dark letters, light backgrounds)
+//   apps/web/public/brand/email/folevi-logo-dark@2x.png  the same with light letters (dark mode)
 //   packages/design-tokens/brand/app-icon/
 //     Folevi.icon                                  the Liquid Glass icon (macOS and iOS)
 //     folevi-macos-1024.png, folevi-ios-1024.png   renders of it (default appearance)
 //     previews/                                    macOS dark, clear and tinted renders
 //     macos.iconset/ + Folevi.icns                 every macOS size, for DMGs and older tools
 //
-//   node packages/design-tokens/scripts/brand-icons.mjs
+//   node packages/design-tokens/scripts/brand-icons.mjs               everything
+//   node packages/design-tokens/scripts/brand-icons.mjs --only=email  just the email logos
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -60,6 +62,33 @@ if (!glyphPath) throw new Error("app-icon.svg: couldn't find the white F path.")
 const render = (svg, px) => sharp(svg, { density: Math.ceil((72 * px) / 512) + 1 }).resize(px, px).png();
 const save = (img, file) => img.png({ compressionLevel: 9 }).toFile(file);
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
+
+// ---------------------------------------------------------------- email
+
+// Emails show the logo as an image, served from https://folevi.com/brand/email/ (packages/email). It is
+// the logo file itself — the mark (black disc, white F, faint edge) and the letters — at 240 px wide,
+// shown at 120 px (2x for sharp text on high-density screens). Transparent, so it sits on the email's
+// canvas; the dark variant only changes the letters to the app's dark-mode ink (#F2F2F3), exactly as
+// FoleviLogo does in the app (the mark keeps its colours).
+const EMAIL_LOGO_WIDTH = 240;
+const EMAIL_LOGO_HEIGHT = 61;
+async function emailLogos() {
+  const dir = resolve(web, "brand/email");
+  mkdirSync(dir, { recursive: true });
+  for (const [file, ink] of [["folevi-logo@2x.png", "black"], ["folevi-logo-dark@2x.png", "#F2F2F3"]]) {
+    const svg = Buffer.from(logoSvg.replace(/<path d="([^"]+)" fill="black"\/>/g, `<path d="$1" fill="${ink}"/>`));
+    await sharp(svg, { density: 72 * 2 })
+      .resize(EMAIL_LOGO_WIDTH, EMAIL_LOGO_HEIGHT, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png({ compressionLevel: 9, palette: true, quality: 100, effort: 10 })
+      .toFile(resolve(dir, file));
+  }
+}
+
+if (process.argv.includes("--only=email")) {
+  await emailLogos();
+  console.log("Email logos written.");
+  process.exit(0);
+}
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(resolve(out, "macos.iconset"), { recursive: true });
@@ -196,20 +225,6 @@ await save(render(favicon, 192), resolve(web, "icons/icon-192.png"));
 await save(render(favicon, 512), resolve(web, "icons/icon-512.png"));
 await save(render(appIcon, 512), resolve(web, "icons/icon-maskable-512.png"));
 
-// ---------------------------------------------------------------- email
-
-// Emails carry no images, so the mark is drawn with table cells: the F on the black disc as a 28 x 28
-// grid of grey levels (0 = the disc, 4 = white), anti-aliased and quantised so runs of cells merge.
-const EMAIL_PX = 28;
-const LEVELS = 4;
-const glyphOnly = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#000"/><path d="${glyphPath}" fill="#fff"/></svg>`);
-const { data } = await sharp(glyphOnly, { density: 144 }).resize(EMAIL_PX, EMAIL_PX).greyscale().raw().toBuffer({ resolveWithObject: true });
-const rows = [];
-for (let y = 0; y < EMAIL_PX; y++) {
-  let row = "";
-  for (let x = 0; x < EMAIL_PX; x++) row += Math.round((data[y * EMAIL_PX + x] / 255) * LEVELS);
-  rows.push(row);
-}
-writeFileSync(resolve(repo, "packages/email/scripts/mark-pixels.json"), json({ size: EMAIL_PX, levels: LEVELS, rows }));
+await emailLogos();
 
 console.log(`Brand icons written${glass ? " (Liquid Glass renders by Icon Composer)" : ""}.`);

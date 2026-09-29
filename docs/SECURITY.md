@@ -143,7 +143,7 @@ Exhausted windows are recorded in `rateLimitEvents` and every rejection is logge
 ## Encryption
 
 Traffic is encrypted in transit (TLS/HSTS). Data at rest is encrypted by the infrastructure providers
-(Convex, Vercel, Loops). Folevi is **not** end-to-end encrypted — server-side search, sharing,
+(Convex, Vercel, Mailtrap). Folevi is **not** end-to-end encrypted — server-side search, sharing,
 exports and abuse handling require the server to process content.
 
 ## Data retention
@@ -171,7 +171,7 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 | --- | --- | --- |
 | Convex | Database, backend functions, file storage, accounts (Better Auth runs here) | Account, workspace and document data, files, password hashes, encrypted two-step secrets, sessions |
 | Vercel | Web hosting | Request metadata, logs |
-| Loops | Transactional email delivery | Recipient email, template variables (no note bodies) |
+| Mailtrap | Transactional email delivery (open/click tracking off) | Recipient email and the rendered email (names, titles, links — no note bodies) |
 | Google (Gemini API) | AI Assistant, only when used | The request and the notes it needs (not stored or used for training) |
 | Stripe | Payments for paid personal and workspace plans (not configured yet) | Billing email, plan, seat quantity, payment status; card details stay with Stripe |
 
@@ -182,4 +182,5 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
   `docs/AUTH_DECISION.md`, known gaps).
 - The native Mac app isn't distributed and still expects the old account model (Personal as a workspace).
 - Auth0 was previously a subprocessor; it is no longer used.
-- Loops does not document a plain-text email part; text versions are kept in the repo for review.
+- Loops (the previous email provider) is still configured on production until the Mailtrap cutover
+  is finished (`docs/EMAIL_OPERATIONS.md` §9); it then stops being a subprocessor.

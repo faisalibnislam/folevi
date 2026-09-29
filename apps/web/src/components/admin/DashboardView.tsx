@@ -49,7 +49,7 @@ export function DashboardView() {
             value={d ? (d.activeUsers.weekly ?? "—") : "…"}
             hint={metricsMissing ? "Waiting for the daily metrics job" : "Active in the last 7 days"}
           />
-          <StatTile label="Emails accepted" value={t ? n(t.emailsAccepted) : "…"} hint="Accepted by Loops (not “delivered”)" />
+          <StatTile label="Emails accepted" value={t ? n(t.emailsAccepted) : "…"} hint="Accepted by the email provider (not “delivered”)" />
           <StatTile label="Emails failed" value={t ? n(t.emailsFailed) : "…"} hint="All time" />
           <StatTile label="Failed emails, 7 days" value={d ? n(d.failedEmailsLast7d) : "…"} hint={<Link className="underline underline-offset-2 hover:text-ink" href="/admin/emails?status=failed">Open the email log</Link>} />
           <StatTile label="Sync ops rejected" value={t ? n(t.syncRejected) : "…"} hint="All time" />

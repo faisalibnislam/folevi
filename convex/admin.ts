@@ -6,6 +6,8 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
+import { selectProvider } from "@folevi/email";
+import { environment as emailEnvironment } from "./email";
 import { ALL_ADMIN_ROLES, normalizeMembership, requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { recordAudit } from "./lib/audit";
 import { fail } from "./lib/errors";
@@ -554,8 +556,8 @@ export const listEmails = mutation({
       : await ctx.db.query("emailSendAttempts").withIndex("by_created").order("desc").take(100);
     const out = [];
     for (const r of rows) {
-      // Provider delivery state appears only if a signature-verified Loops webhook reported it, and only
-      // events matched to this exact send (provider id, or recipient + template + time) at receipt.
+      // Provider delivery state appears only if a signature-verified webhook (Mailtrap, or legacy Loops)
+      // reported it, and only for events matched to this exact send at receipt.
       const events = await ctx.db
         .query("emailProviderEvents")
         .withIndex("by_attempt", (q) => q.eq("attemptId", r._id))
@@ -573,10 +575,18 @@ export const listEmails = mutation({
         requestId: r.requestId,
         createdAt: r.createdAt,
         hasProviderId: Boolean(r.providerMessageId),
+        provider: r.provider ?? (r.transactionalId ? "loops" : null),
+        deliveryStatus: r.deliveryStatus ?? null,
         providerEvents: events.map((e) => ({ eventName: e.eventName, eventTime: e.eventTime < 1e12 ? e.eventTime * 1000 : e.eventTime })),
       });
     }
-    return { attempts: out, webhooksConfigured: Boolean(process.env.LOOPS_WEBHOOK_SECRET) };
+    const active = selectProvider(process.env as Record<string, string | undefined>, emailEnvironment()).kind;
+    const webhookSecret = (name: string) => Boolean(process.env[name]) && process.env[name] !== "none";
+    return {
+      attempts: out,
+      activeProvider: active,
+      webhooksConfigured: active === "loops" ? webhookSecret("LOOPS_WEBHOOK_SECRET") : webhookSecret("MAILTRAP_WEBHOOK_SECRET"),
+    };
   },
 });
 

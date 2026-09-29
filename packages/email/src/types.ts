@@ -27,13 +27,10 @@ export interface VariableSpec {
 export interface TemplateDefinition {
   key: TemplateKey;
   category: TemplateCategory;
-  /** Name of the env var / secret holding the published Loops transactionalId. */
-  envVar: string;
   subject: string;
   previewText: string;
-  /** Domain comes from LOOPS_SENDING_DOMAIN (configured in Loops per environment). */
+  /** From: `${localPart}@${EMAIL_SENDING_DOMAIN}` (the domain can be overridden per deployment). */
   sender: { name: string; localPart: string };
-  replyTo?: string;
   /** false for identity/security (never unsubscribable); product notifications honor Folevi preferences. */
   unsubscribable: boolean;
   /** Folevi-side preference enforced by the caller before sending. */
@@ -41,12 +38,89 @@ export interface TemplateDefinition {
   variables: Record<string, VariableSpec>;
   /** Preview/test data. Fictional; only @example.com addresses. */
   fixture: Record<string, string | number>;
-  /** Relative to packages/email. */
-  source: { kind: "mjml"; path: string };
 }
 
 export type ValidationResult =
   { ok: true; dataVariables: Record<string, string | number> } | { ok: false; errors: string[] };
+
+/** One template as compiled by scripts/build-templates.ts, with `{{variable}}` placeholders. */
+export interface GeneratedTemplate {
+  subject: string;
+  previewText: string;
+  html: string;
+  text: string;
+}
+
+/** A template with its variables filled in, ready to hand to a provider. */
+export interface RenderedEmail {
+  subject: string;
+  previewText: string;
+  html: string;
+  text: string;
+}
+
+export interface SendPolicy {
+  environment: "production" | "preview" | "development" | "test";
+  allowlist?: string[];
+}
+
+/** Which provider a send went through. `loops` is the legacy path (remove after the Mailtrap cutover). */
+export type EmailProviderKind = "mailtrap" | "mailtrap_sandbox" | "loops";
+
+export interface SendEmailInput {
+  key: TemplateKey;
+  to: string;
+  dataVariables: Record<string, unknown>;
+  /** Our send-attempt id (emailSendAttempts): sent as a custom variable so webhooks can be matched. */
+  attemptId: string;
+  /** Only the legacy Loops path uses it (as its Idempotency-Key); Mailtrap has none — the attempt row is the guard. */
+  idempotencyKey: string;
+}
+
+export interface SendOutcome {
+  status: "accepted" | "failed" | "skipped";
+  provider?: EmailProviderKind;
+  httpStatus?: number;
+  errorCode?: string;
+  retryable: boolean;
+  attempts: number;
+  /** Provider message id, when the provider returned one with its 2xx response. */
+  providerMessageId?: string;
+}
+
+// ------------------------------------------------------------------ Mailtrap webhooks
+
+/** Mailtrap event names, normalised (Mailtrap sends e.g. "soft bounce"; we store "soft_bounced"). */
+export type MailtrapEventName =
+  | "delivered"
+  | "soft_bounced"
+  | "bounced"
+  | "suspended"
+  | "unsubscribed"
+  | "opened"
+  | "clicked"
+  | "spam_complaint"
+  | "rejected"
+  | "other";
+
+/** The fields Folevi keeps from one Mailtrap webhook event (never IPs, user agents, URLs or SMTP text). */
+export interface MailtrapEvent {
+  eventId: string;
+  eventName: MailtrapEventName;
+  /** Milliseconds since the epoch. */
+  eventTime: number;
+  messageId?: string;
+  /** Hashed by the caller before storage; never stored or logged as is. */
+  recipient?: string;
+  /** Our template key (sent as the Mailtrap category). */
+  category?: string;
+  /** Our attempt id (sent as custom variable `attempt`). */
+  attemptId?: string;
+  bounceCategory?: string;
+  responseCode?: number;
+}
+
+// ------------------------------------------------------------------ legacy Loops (remove after cutover)
 
 export interface LoopsSendInput {
   key: TemplateKey;
@@ -56,20 +130,7 @@ export interface LoopsSendInput {
   addToAudience?: false;
 }
 
-export interface LoopsSendOutcome {
-  status: "accepted" | "failed" | "skipped";
-  httpStatus?: number;
-  errorCode?: string;
-  retryable: boolean;
-  attempts: number;
-  /** Provider message id, only when Loops returned one with the 200 response. */
-  providerMessageId?: string;
-}
-
-export interface SendPolicy {
-  environment: "production" | "preview" | "development" | "test";
-  allowlist?: string[];
-}
+export type LoopsSendOutcome = SendOutcome;
 
 export type LoopsWebhookEvent = {
   eventName: string;

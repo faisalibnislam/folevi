@@ -22,12 +22,24 @@ const RESENDABLE = new Set(["security_new_device", "account_deletion_scheduled"]
 const DIGESTED = new Set<string>(["mention_notification", "comment_notification"]);
 
 /**
+ * Finer preferences a template may be sent under instead of its manifest `preferenceKey`, with the key
+ * they fall back to while unset (a reply uses the comment email but has its own switch). Anything not
+ * listed here is ignored, so a caller can never pick a looser preference.
+ */
+const REFINED_PREFERENCES: Record<string, Record<string, string>> = {
+  comment_notification: { replies: "comments" },
+  access_changed: { access: "shares" },
+};
+
+/**
  * Folevi-side preference check for product email. Mirrors lib/notify.ts#wantsImmediateEmail and is
  * enforced here again so no caller can bypass it.
  */
-export function productEmailAllowed(key: string, preferenceKey: string, prefs: Record<string, unknown>): boolean {
+export function productEmailAllowed(key: string, preferenceKey: string, prefs: Record<string, unknown>, refined?: string): boolean {
   if (preferenceKey === "digest") return prefs.digest === "daily";
-  if (prefs[preferenceKey] === false) return false;
+  const fallback = refined ? REFINED_PREFERENCES[key]?.[refined] : undefined;
+  const choice = fallback ? (prefs[refined!] ?? prefs[fallback]) : prefs[preferenceKey];
+  if (choice === false) return false;
   if (DIGESTED.has(key) && prefs.digest === "daily") return false;
   return true;
 }
@@ -49,6 +61,8 @@ export const sendTemplate = internalAction({
     dataVariables: v.record(v.string(), v.union(v.string(), v.number())),
     idempotencyKey: v.string(),
     resendOf: v.optional(v.id("emailSendAttempts")),
+    /** A finer preference for this send (see REFINED_PREFERENCES), e.g. "replies" for a reply's comment email. */
+    preference: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const key = args.key as TemplateKey;
@@ -62,7 +76,7 @@ export const sendTemplate = internalAction({
       const linked = await ctx.runQuery(internal.email.profileByEmail, { email: to });
       if (linked) {
         profileId = linked.profileId;
-        if (def.category === "product" && def.preferenceKey && !productEmailAllowed(key, def.preferenceKey, linked.prefs)) return { status: "skipped" as const };
+        if (def.category === "product" && def.preferenceKey && !productEmailAllowed(key, def.preferenceKey, linked.prefs, args.preference)) return { status: "skipped" as const };
       }
     }
     if (args.profileId) {
@@ -71,7 +85,7 @@ export const sendTemplate = internalAction({
       to = recipient.email;
       // Product notifications honor Folevi-side preferences; security/identity mail is never suppressible.
       if (def.category === "product" && def.preferenceKey) {
-        if (!productEmailAllowed(key, def.preferenceKey, recipient.prefs as Record<string, unknown>)) return { status: "skipped" as const };
+        if (!productEmailAllowed(key, def.preferenceKey, recipient.prefs as Record<string, unknown>, args.preference)) return { status: "skipped" as const };
       }
     }
     if (!to) throw new Error("no recipient");

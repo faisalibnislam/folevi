@@ -9,6 +9,7 @@ import {
   vDocumentKind,
   vDocumentStyle,
   vPlatformRole,
+  vNotificationPrefs,
   vProfileStatus,
   vShareRole,
   vWorkspaceRole,
@@ -39,14 +40,7 @@ export default defineSchema({
     status: vProfileStatus,
     suspendedReason: v.optional(v.string()),
     defaultWorkspaceId: v.optional(v.id("workspaces")),
-    notificationPrefs: v.object({
-      mentions: v.boolean(),
-      comments: v.boolean(),
-      shares: v.boolean(),
-      invites: v.boolean(),
-      digest: v.union(v.literal("off"), v.literal("daily")),
-      productEmail: v.boolean(),
-    }),
+    notificationPrefs: vNotificationPrefs,
     createdAt: v.number(),
     lastActiveAt: v.number(),
     deletionScheduledFor: v.optional(v.number()),
@@ -516,7 +510,8 @@ export default defineSchema({
     lastReadAt: v.number(),
   })
     .index("by_profile_thread", ["profileId", "threadId"])
-    .index("by_profile_document", ["profileId", "documentId"]),
+    .index("by_profile_document", ["profileId", "documentId"])
+    .index("by_thread", ["threadId"]),
 
   documentPermissions: defineTable({
     documentId: v.id("documents"),
@@ -569,13 +564,34 @@ export default defineSchema({
     fileId: v.optional(v.string()),
     title: v.string(),
     body: v.optional(v.string()),
+    /** The block the event happened on (a mention in the note, a comment thread's block). */
+    blockId: v.optional(v.string()),
+    /** Public id of the comment that caused it (for jumping to it). */
+    commentId: v.optional(v.string()),
+    /** How many events were folded into this one (a burst of comments from one person). */
+    count: v.optional(v.number()),
+    /** Kept only for email (the digest); the person turned this kind off in the bell. Never listed. */
+    silent: v.optional(v.boolean()),
     createdAt: v.number(),
     readAt: v.optional(v.number()),
     emailedAt: v.optional(v.number()),
   })
     .index("by_profile_created", ["profileId", "createdAt"])
     .index("by_profile_unread", ["profileId", "readAt"])
+    .index("by_thread", ["threadId"])
     .index("by_created", ["createdAt"]),
+
+  /** Per-note notification choice: follow (comments on it notify you) or mute (no comment/reply notifications). */
+  noteSubscriptions: defineTable({
+    profileId: v.id("profiles"),
+    documentId: v.id("documents"),
+    workspaceId: v.id("workspaces"),
+    mode: v.union(v.literal("follow"), v.literal("mute")),
+    updatedAt: v.number(),
+  })
+    .index("by_profile_document", ["profileId", "documentId"])
+    .index("by_document_mode", ["documentId", "mode"])
+    .index("by_profile", ["profileId"]),
 
   files: defineTable({
     publicId: v.string(),

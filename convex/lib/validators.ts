@@ -16,6 +16,29 @@ export const vWorkspaceRole = v.union(
   v.literal("viewer"),
 );
 export const vShareRole = v.union(v.literal("editor"), v.literal("commenter"), v.literal("viewer"));
+/** Which kinds of notification appear in the bell (Settings → Notifications). */
+export const vInAppPrefs = v.object({
+  comments: v.boolean(),
+  replies: v.boolean(),
+  mentions: v.boolean(),
+  shares: v.boolean(),
+  access: v.boolean(),
+});
+/** Notification preferences. The top-level booleans are email choices (kept for existing rows). */
+export const vNotificationPrefs = v.object({
+  mentions: v.boolean(),
+  comments: v.boolean(),
+  shares: v.boolean(),
+  invites: v.boolean(),
+  digest: v.union(v.literal("off"), v.literal("daily")),
+  productEmail: v.boolean(),
+  /** Email for replies in threads you took part in. Unset = follows `comments`. */
+  replies: v.optional(v.boolean()),
+  /** Email when your access to a page or workspace changes. Unset = follows `shares`. */
+  access: v.optional(v.boolean()),
+  /** In-app (bell) notifications per kind. Unset = all on. */
+  inApp: v.optional(vInAppPrefs),
+});
 export const vDocumentKind = v.union(
   v.literal("document"),
   v.literal("daily"),

@@ -11,7 +11,7 @@ import { vWorkspaceRole } from "./lib/validators";
 import { createWorkspace, PERSONAL_WORKSPACE_NAME } from "./seed";
 import { claimIdentityImage, deleteIdentityImage, workspaceLabel, workspaceLogoUrl } from "./lib/identityImages";
 import { isFeatureEnabled } from "./lib/flags";
-import { notifyAccessChange } from "./lib/notify";
+import { notifyAccessChange, notifyInvite } from "./lib/notify";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[a-z]{2,}$/i;
@@ -191,15 +191,7 @@ export const invite = mutation({
       createdAt: now,
     });
     if (existingProfile) {
-      await ctx.db.insert("notifications", {
-        profileId: existingProfile._id,
-        workspaceId: workspace._id,
-        kind: "invite",
-        actorId: profile._id,
-        inviteId,
-        title: `${profile.displayName} invited you to ${label}`,
-        createdAt: now,
-      });
+      await notifyInvite(ctx, { recipient: existingProfile, actorId: profile._id, workspaceId: workspace._id, inviteId, title: `${profile.displayName} invited you to ${label}` });
     }
     await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
       key: "workspace_invite",

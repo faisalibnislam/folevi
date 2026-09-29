@@ -557,7 +557,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 closeInspector();
               }
             }}
-            className="ui-pop absolute bottom-[84px] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col min-[1400px]:left-auto min-[1400px]:right-6 min-[1400px]:translate-x-0 overflow-hidden rounded-[14px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
+            className="ui-pop absolute bottom-[84px] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-[14px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
           >
             <Inspector
               documentId={documentId}
@@ -601,9 +601,8 @@ const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
 
 /**
  * The page tools, docked at the bottom of the note: Insert, Format, Style and Info. Each opens its panel
- * floating above the dock (on very wide windows, in the free margin at the bottom right so it never
- * covers the text column) (pressing it again, Escape or × closes it), so the note keeps the full
- * width. ⌘⌥I toggles the last panel.
+ * floating just above the dock, centred on it (pressing it again, Escape or × closes it), so the note
+ * keeps the full width. ⌘⌥I toggles the last panel.
  */
 function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { tab: InspectorTab; open: boolean; onPick: (t: InspectorTab) => void; buttonRef: (t: InspectorTab, el: HTMLButtonElement | null) => void; /** The page's own actions (comments, share, more), after a divider. */ extra?: React.ReactNode; /** Show the AI tool (off when the person turned the assistant off). */ ai?: boolean }) {
   return (

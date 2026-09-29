@@ -56,6 +56,28 @@ describe("backend invariants", () => {
     }
   });
 
+  test("content rows are written only through insertScoped (exactly one of ownerProfileId / workspaceId)", () => {
+    const scopeSource = readFileSync(join(root, "lib", "scope.ts"), "utf8");
+    const list = /export const SCOPED_TABLES = \[([\s\S]*?)\]/.exec(scopeSource)![1]!;
+    const scopedTables = [...list.matchAll(/"(\w+)"/g)].map((m) => m[1]!);
+    expect(scopedTables.length).toBeGreaterThanOrEqual(20);
+    // Every table that spreads the scope fields in the schema is in SCOPED_TABLES, and vice versa.
+    const schema = readFileSync(join(root, "schema.ts"), "utf8");
+    const inSchema = [...schema.matchAll(/^ {2}(\w+): defineTable\(\{([\s\S]*?)^ {2}\}\)/gm)].filter((m) => /\.\.\.scoped,/.test(m[2]!)).map((m) => m[1]!);
+    expect(inSchema.sort()).toEqual([...scopedTables].sort());
+    // …and none of them declares its own workspaceId (it would bypass the "exactly one" rule).
+    for (const m of schema.matchAll(/^ {2}(\w+): defineTable\(\{([\s\S]*?)^ {2}\}\)/gm)) {
+      if (scopedTables.includes(m[1]!)) expect(m[2], m[1]).not.toMatch(/\bworkspaceId: v\./);
+    }
+    for (const { p, s } of sources) {
+      if (p.endsWith(join("lib", "scope.ts"))) continue;
+      for (const table of scopedTables) {
+        const direct = new RegExp(`\\.insert\\(\\s*"${table}"`);
+        if (direct.test(s)) throw new Error(`${p}: inserts into "${table}" directly; use insertScoped(ctx, "${table}", scope, …)`);
+      }
+    }
+  });
+
   test("no module logs note content, tokens or raw emails", () => {
     for (const { p, s } of sources) {
       for (const m of s.matchAll(/console\.(log|warn|error)\(([^;]*)\);/g)) {

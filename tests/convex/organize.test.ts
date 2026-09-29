@@ -1,15 +1,15 @@
 // Organizing notes: bulk actions, "Remove from recent", and Empty Trash.
 import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
-import { person, setup, ulid, type T } from "./helpers";
+import { inWorkspace, person, PERSONAL, setup, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
-async function newDocs(p: Person, titles: string[], workspaceId = p.workspaceId) {
+async function newDocs(p: Person, titles: string[], workspaceId?: string) {
   const ids = titles.map(() => ulid());
   for (let i = 0; i < titles.length; i += 100) {
     const results = await p.as.mutation(api.sync.push, {
-      workspaceId,
+      scope: workspaceId ? inWorkspace(workspaceId) : PERSONAL,
       deviceId: "device-organize-1",
       ops: titles.slice(i, i + 100).map((title, k) => ({
         opId: ulid(),
@@ -37,15 +37,15 @@ async function team(owner: Person, member: Person, role: "editor" | "admin" | "v
   return id;
 }
 
-const titlesOf = async (p: Person, view: "all" | "starred" | "archive" | "trash" | "folder", folderId?: string, workspaceId = p.workspaceId) =>
-  (await p.as.query(api.documents.list, { workspaceId, view, folderId, paginationOpts: { numItems: 200, cursor: null } })).page.map((d) => d.title).sort();
+const titlesOf = async (p: Person, view: "all" | "starred" | "archive" | "trash" | "folder", folderId?: string, workspaceId?: string) =>
+  (await p.as.query(api.documents.list, { scope: workspaceId ? inWorkspace(workspaceId) : PERSONAL, view, folderId, paginationOpts: { numItems: 200, cursor: null } })).page.map((d) => d.title).sort();
 
 describe("bulk actions", () => {
   test("move, star, archive, trash and restore several notes at once", async () => {
     const t = setup();
     const a = await personAs(t, "bulk-a@example.com");
     const [n1, n2, n3] = await newDocs(a, ["One", "Two", "Three"]);
-    const { id: folderId } = await a.as.mutation(api.organization.createFolder, { workspaceId: a.workspaceId, name: "Box" });
+    const { id: folderId } = await a.as.mutation(api.organization.createFolder, { scope: a.scope, name: "Box" });
 
     const moved = await a.as.mutation(api.documents.bulkUpdate, { documentIds: [n1!, n2!], action: { kind: "move", folderId } });
     expect(moved.done.sort()).toEqual([n1, n2].sort());
@@ -78,7 +78,7 @@ describe("bulk actions", () => {
     const [parent] = await newDocs(a, ["Parent"]);
     const child = ulid();
     await a.as.mutation(api.sync.push, {
-      workspaceId: a.workspaceId,
+      scope: a.scope,
       deviceId: "device-organize-1",
       ops: [{ opId: ulid(), kind: "document.create", document: { id: child, parentDocumentId: parent!, folderId: null, kind: "document", title: "Child", icon: null } }],
     });
@@ -112,7 +112,7 @@ describe("bulk actions", () => {
     const s = await stranger.as.mutation(api.documents.bulkUpdate, { documentIds: [shared!, "missing-id"], action: { kind: "archive", archived: true } });
     expect(s).toMatchObject({ done: [], skipped: 2 });
     // A folder from another workspace isn't a valid target.
-    const { id: foreignFolder } = await stranger.as.mutation(api.organization.createFolder, { workspaceId: stranger.workspaceId, name: "Elsewhere" });
+    const { id: foreignFolder } = await stranger.as.mutation(api.organization.createFolder, { scope: stranger.scope, name: "Elsewhere" });
     const [ownerNote] = await newDocs(owner, ["Owner note"]);
     expect(await owner.as.mutation(api.documents.bulkUpdate, { documentIds: [ownerNote!], action: { kind: "move", folderId: foreignFolder } })).toMatchObject({ done: [], skipped: 1 });
   });
@@ -156,7 +156,7 @@ describe("remove from recent", () => {
     const editor = await personAs(t, "recent-editor@example.com");
     const teamId = await team(owner, editor, "editor");
     const [a1, a2] = await newDocs(owner, ["Alpha", "Beta"], teamId);
-    const recent = async (p: Person) => (await p.as.query(api.documents.recentNotes, { workspaceId: teamId, limit: 10 })).map((d) => d.title);
+    const recent = async (p: Person) => (await p.as.query(api.documents.recentNotes, { scope: inWorkspace(teamId), limit: 10 })).map((d) => d.title);
     expect(await recent(owner)).toEqual(expect.arrayContaining(["Alpha", "Beta"]));
 
     expect(await owner.as.mutation(api.documents.hideFromRecent, { documentIds: [a1!] })).toEqual({ hidden: 1 });
@@ -173,7 +173,7 @@ describe("remove from recent", () => {
     expect(await recent(owner)).not.toContain("Beta");
     await new Promise((r) => setTimeout(r, 5));
     await editor.as.mutation(api.sync.push, {
-      workspaceId: teamId,
+      scope: inWorkspace(teamId),
       deviceId: "device-organize-2",
       ops: [{ opId: ulid(), kind: "document.update", documentId: a2!, patch: { title: "Beta 2" }, baseRevision: null }],
     });
@@ -192,7 +192,8 @@ describe("remove from recent", () => {
     expect(await b.as.mutation(api.documents.hideFromRecent, { documentIds: [secret!] })).toEqual({ hidden: 0 });
     const rows = await t.run(async (ctx) => await ctx.db.query("recentHidden").collect());
     expect(rows).toHaveLength(0);
-    await expect(b.as.query(api.documents.recentNotes, { workspaceId: a.workspaceId })).rejects.toThrow(/not_found|Workspace not found/);
+    // B's "Personal" is B's own: A's note never shows up there.
+    expect((await b.as.query(api.documents.recentNotes, { scope: PERSONAL, limit: 30 })).map((d) => d.id)).not.toContain(secret);
   });
 });
 
@@ -208,10 +209,10 @@ describe("empty trash", () => {
     await owner.as.mutation(api.documents.bulkUpdate, { documentIds: [ownerDoc!], action: { kind: "trash" } });
     await editor.as.mutation(api.documents.bulkUpdate, { documentIds: [e1!, e2!], action: { kind: "trash" } });
 
-    expect(await editor.as.query(api.documents.trashSummary, { workspaceId: teamId })).toEqual({ total: 3, deletable: 2, more: false });
-    expect(await owner.as.query(api.documents.trashSummary, { workspaceId: teamId })).toEqual({ total: 3, deletable: 3, more: false });
+    expect(await editor.as.query(api.documents.trashSummary, { scope: inWorkspace(teamId) })).toEqual({ total: 3, deletable: 2, more: false });
+    expect(await owner.as.query(api.documents.trashSummary, { scope: inWorkspace(teamId) })).toEqual({ total: 3, deletable: 3, more: false });
 
-    const r = await editor.as.mutation(api.documents.emptyTrash, { workspaceId: teamId });
+    const r = await editor.as.mutation(api.documents.emptyTrash, { scope: inWorkspace(teamId) });
     expect(r).toEqual({ scheduled: 2, continuing: false });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     for (let i = 0; i < 5; i++) await t.mutation(internal.maintenance.runDeletionJobs, {});
@@ -227,7 +228,7 @@ describe("empty trash", () => {
     const a = await personAs(t, "empty-big@example.com");
     const ids = await newDocs(a, Array.from({ length: 130 }, (_, i) => `Old ${i}`));
     for (let i = 0; i < ids.length; i += 50) await a.as.mutation(api.documents.bulkUpdate, { documentIds: ids.slice(i, i + 50), action: { kind: "trash" } });
-    const r = await a.as.mutation(api.documents.emptyTrash, { workspaceId: a.workspaceId });
+    const r = await a.as.mutation(api.documents.emptyTrash, { scope: a.scope });
     expect(r).toEqual({ scheduled: 100, continuing: true });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     for (let i = 0; i < 40; i++) await t.mutation(internal.maintenance.runDeletionJobs, {});
@@ -241,7 +242,7 @@ describe("empty trash", () => {
     const owner = await personAs(t, "empty-v-owner@example.com");
     const viewer = await personAs(t, "empty-v-viewer@example.com");
     const teamId = await team(owner, viewer, "viewer");
-    await expect(viewer.as.mutation(api.documents.emptyTrash, { workspaceId: teamId })).rejects.toThrow(/forbidden|permission/);
-    expect((await viewer.as.query(api.documents.trashSummary, { workspaceId: teamId })).deletable).toBe(0);
+    await expect(viewer.as.mutation(api.documents.emptyTrash, { scope: inWorkspace(teamId) })).rejects.toThrow(/forbidden|permission/);
+    expect((await viewer.as.query(api.documents.trashSummary, { scope: inWorkspace(teamId) })).deletable).toBe(0);
   });
 });

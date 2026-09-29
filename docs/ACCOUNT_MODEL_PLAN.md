@@ -1,6 +1,8 @@
 # Personal, Workspaces, seats and billing — audit and plan
 
-Status: **proposal, not implemented.** Written 2026-09-29 against commit `9d25368`. It answers the
+Status: **Phase A shipped; Phase B server implemented on the `account-model` branch** (web client and
+the production migration run are next — see the Phase B runbook in §3a). Written 2026-09-29 against
+commit `9d25368`. It answers the
 "account, subscription, workspace, seat, guest, storage, AI and billing" specification in two parts:
 what exists today (Phase 1) and how to get to the specified model (Phase 2 onwards).
 
@@ -134,6 +136,17 @@ fast, before the risky part.*
 6. Web: context switcher (Personal first, then Workspaces with role labels), context-aware Home,
    search, tasks, trash, export and settings.
 
+*As built (server, part 1):* steps 1, 2 and 4 are one change. There is no dual-read window: the new code
+reads Personal only by `ownerProfileId` and refuses any workspace of kind "personal", so it is deployed
+with the site in read-only maintenance and the migration runs right after (§3a). Content tables carry
+`ownerProfileId` xor `workspaceId`, written only through `insertScoped` (`convex/lib/scope.ts`); every
+public function that took a `workspaceId` for content takes a `scope`
+(`{ kind: "personal" } | { kind: "workspace", workspaceId }`, Personal always the caller's own);
+`profiles.personalChangeSeq`, `personalStorageUsedBytes` and `personalDocumentCount` are Personal's
+counters; `users.bootstrap` seeds Personal directly; `workspaces.mine` lists team workspaces only;
+`documentAccess` gives the owner `manage` on their Personal and everyone else only page grants (guests).
+`defaultWorkspaceId` and `workspaces.kind` stay in the schema until step 5.
+
 **Phase C — Workspace plans, seats and billing.** Workspace plan & billing page (Free / Team /
 Business, monthly/yearly, seats × price, guests "not billed", renewal, manage/cancel), Stripe per-seat
 checkout and quantity sync, billing permission for admins, end-of-period downgrade, over-limit state.
@@ -149,6 +162,51 @@ the UI paths), then the codebase sweep listed in the spec.
 
 **Later — Mac app.** It syncs one workspace at a time and would stop seeing Personal after Phase B. It
 isn't distributed yet and Mac work is paused, so it's updated in the Mac catch-up.
+
+## 3a. Phase B runbook (production migration)
+
+Production today: 2 profiles, 2 personal workspaces, 1 team workspace, 29 documents. The migration is
+written for any size (batched, self-continuing) and is idempotent: every step can be run again.
+
+What `migrations:migratePersonalWorkspaces` does, one personal workspace at a time
+(`convex/migrations.ts`):
+
+1. **Guests.** Every collaborator (member other than the owner) gets page grants on what they could open
+   — editor/admin → editor, commenter → commenter, viewer → viewer. A grant reaches every page under its
+   page, so a page gets one only when nothing under it was less open to that person (restricted pages
+   they couldn't open stay closed; a restricted page they created becomes an editor grant; grants they
+   already had are kept). Nobody gains access; a page whose subtree holds something they couldn't open
+   is left out (logged as `migration.personal_guest_gaps`, to re-share by hand if wanted).
+2. **Move.** Every row in every content table with that `workspaceId` moves to the owner's Personal
+   (`ownerProfileId` set, `workspaceId` removed) — `seq` values unchanged, so change order is kept. Its
+   notifications lose the workspace (invitation notices are deleted with the invitations), its AI usage
+   rows become Personal.
+3. **Finish.** `changeSeq` → `profiles.personalChangeSeq`, `storageUsedBytes` →
+   `personalStorageUsedBytes`, `documentCount` → `personalDocumentCount`, an admin storage quota on the
+   old workspace → the owner's `subscriptions.storageOverrideBytes`; memberships and the workspace row are
+   deleted; then `defaultWorkspaceId` is cleared on every profile.
+
+Steps (run from a checkout of the approved `account-model` commit, with production credentials):
+
+1. **Read-only.** Admin console → Maintenance → turn on read-only with a banner ("Folevi is being
+   updated; your changes wait on this device"). Writes are refused server-side (`assertWritable`).
+2. **Backup** (includes uploaded files):
+   `npx convex export --prod --include-file-storage --path backups/folevi-prod-$(date +%Y%m%d-%H%M).zip`
+   and check the ZIP opens and lists every table.
+3. **Deploy** the backend: `npx convex deploy` (schema: optional `workspaceId`, new `ownerProfileId`
+   fields and `by_owner*` indexes; existing rows stay valid). Deploy the web app from the same commit.
+4. **Migrate:** `npx convex run --prod migrations:migratePersonalWorkspaces`. It continues itself; watch
+   the logs (`npx convex logs --prod`) until the scheduled `migrations:*` runs stop.
+5. **Verify:** `npx convex run --prod migrations:verifyAccountModel`. It must return `ok: true` with
+   every count 0: rows with both/neither owner field, rows left in a personal workspace, rows outside
+   their document's scope, orphaned grants, personal workspaces, profiles with a default workspace.
+   Spot-check in the app: each account's Personal has its notes; the team workspace is unchanged.
+6. **Lift read-only.**
+
+**Rollback** = restore the backup: redeploy the previous backend commit (`main`) and the previous web
+build, then `npx convex import --prod --replace-all backups/<file>.zip`. Anything written after the
+backup is lost, which is why the site stays read-only from step 1 until verification passes. The
+migration never deletes content (only the emptied workspace rows, their memberships and invitations).
 
 ## 4. Decisions (made 2026-09-29)
 
@@ -183,3 +241,11 @@ isn't distributed yet and Mac work is paused, so it's updated in the Mac catch-u
 - Stripe per-seat prices must be created in the Stripe dashboard (Team/Business × month/year) and set as
   Convex env vars by the account owner.
 - The Mac app breaks for Personal content after Phase B until its catch-up.
+- Phase B has no dual-read window: between deploying and migrating, Personal looks empty. The runbook
+  keeps the site read-only through that window (minutes at production's size).
+- A Personal change stamps the owner's profile row (`personalChangeSeq`). Every query that reads the
+  profile (most do, through `requireProfile`) re-runs on each Personal edit — the same fan-out a workspace
+  edit already had through the workspace row. If it shows up in costs, the counter can move to its own
+  table without changing the protocol.
+- Collaborators in someone's Personal keep access only to pages whose whole subtree they could open;
+  pages mixing open and restricted sub-pages are reported by the migration for manual re-sharing.

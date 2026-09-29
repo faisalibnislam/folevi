@@ -64,7 +64,7 @@ async function world(t: T, prefs: { member?: Partial<Prefs>; guest?: Partial<Pre
     const guest = await insertProfile(ctx, "guest@example.com", prefs.guest);
     const workspaceId = await insertWorkspace(ctx, owner, [[member, "editor"]]);
     const actor = (await ctx.db.get(owner))!;
-    const doc = await createDocument(ctx, { workspaceId, actor, title: "Spring planting plan" });
+    const doc = await createDocument(ctx, { scope: { kind: "workspace", workspaceId }, actor, title: "Spring planting plan" });
     return { owner, member, guest, workspaceId, docId: doc._id };
   });
 }

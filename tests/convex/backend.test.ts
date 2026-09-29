@@ -1,11 +1,12 @@
 import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
-import { authSession, identity, signedIn, para, person, setup, ulid } from "./helpers";
+import type { Id } from "../../convex/_generated/dataModel";
+import { authSession, identity, inWorkspace, signedIn, para, person, PERSONAL, setup, ulid } from "./helpers";
 
 async function newDoc(p: Awaited<ReturnType<typeof person>>, title = "Doc") {
   const id = ulid();
   const [r] = await p.as.mutation(api.sync.push, {
-    workspaceId: p.workspaceId,
+    scope: p.scope,
     deviceId: "device-test-1",
     ops: [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title, icon: null } }],
   });
@@ -14,19 +15,36 @@ async function newDoc(p: Awaited<ReturnType<typeof person>>, title = "Doc") {
 }
 
 async function upsert(p: Awaited<ReturnType<typeof person>>, documentId: string, block: ReturnType<typeof para>, baseRevision: number | null, fields: ("content" | "position")[] = ["content", "position"], opId = ulid()) {
-  const [r] = await p.as.mutation(api.sync.push, { workspaceId: p.workspaceId, deviceId: "device-test-1", ops: [{ opId, kind: "block.upsert", documentId, block, baseRevision, fields }] });
+  const [r] = await p.as.mutation(api.sync.push, { scope: p.scope, deviceId: "device-test-1", ops: [{ opId, kind: "block.upsert", documentId, block, baseRevision, fields }] });
   return r!;
 }
 
 describe("accounts", () => {
-  test("bootstrap creates a profile, personal workspace and seed documents; is idempotent", async () => {
+  test("bootstrap creates a profile and seeds Personal — no workspace; is idempotent", async () => {
     const t = setup();
     const a = await person(t, "ada@example.com");
     const again = await a.as.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" });
     expect(again.created).toBe(false);
-    const docs = await a.as.query(api.documents.list, { workspaceId: a.workspaceId, view: "all", paginationOpts: { numItems: 50, cursor: null } });
+    // Personal is not a workspace: no workspace row, membership or default workspace exists (spec 26).
+    expect(await a.as.query(api.workspaces.mine, {})).toEqual([]);
+    await t.run(async (ctx) => {
+      expect(await ctx.db.query("workspaces").collect()).toEqual([]);
+      expect(await ctx.db.query("workspaceMembers").collect()).toEqual([]);
+      const p = (await ctx.db.query("profiles").collect()).find((x) => x.email === "ada@example.com")!;
+      expect(p.defaultWorkspaceId).toBeUndefined();
+      expect(p.personalChangeSeq).toBeGreaterThan(0);
+      expect(p.personalDocumentCount).toBeGreaterThan(0);
+      // Every seeded row is in their Personal, and only there.
+      for (const table of ["documents", "blocks", "folders", "tags", "documentTags", "collections", "tasks"] as const) {
+        for (const row of await ctx.db.query(table).collect()) {
+          expect(row.workspaceId, table).toBeUndefined();
+          expect(row.ownerProfileId, table).toBe(p._id);
+        }
+      }
+    });
+    const docs = await a.as.query(api.documents.list, { scope: a.scope, view: "all", paginationOpts: { numItems: 50, cursor: null } });
     expect(docs.page.map((d) => d.title)).toEqual(expect.arrayContaining(["Welcome to Folevi", "Project Atlas Brief", "Trip Sketch: Coastal Weekend", "Reading Shelf", "Field Notes: A Quiet Morning"]));
-    const templates = await a.as.query(api.documents.list, { workspaceId: a.workspaceId, view: "templates", paginationOpts: { numItems: 50, cursor: null } });
+    const templates = await a.as.query(api.documents.list, { scope: a.scope, view: "templates", paginationOpts: { numItems: 50, cursor: null } });
     expect(templates.page.map((d) => d.title)).toContain("Weekly Reset");
   });
 
@@ -126,19 +144,22 @@ describe("tenant isolation", () => {
     const docId = await newDoc(a, "Private plans");
     expect(await b.as.query(api.documents.get, { documentId: docId })).toBeNull();
     expect(await b.as.query(api.blocks.list, { documentId: docId })).toBeNull();
-    await expect(b.as.query(api.documents.list, { workspaceId: a.workspaceId, view: "all", paginationOpts: { numItems: 5, cursor: null } })).rejects.toThrow(/not_found/);
-    // Writing into A's document through B's own workspace is rejected per operation.
+    // B naming "Personal" only ever gets B's own Personal.
+    const bList = await b.as.query(api.documents.list, { scope: PERSONAL, view: "all", paginationOpts: { numItems: 200, cursor: null } });
+    expect(bList.page.map((d) => d.id)).not.toContain(docId);
+    // Writing into A's document through B's own Personal is rejected per operation.
     const [r] = await b.as.mutation(api.sync.push, {
-      workspaceId: b.workspaceId,
+      scope: b.scope,
       deviceId: "device-b-1",
       ops: [{ opId: ulid(), kind: "block.upsert", documentId: docId, block: para(ulid(), "intrusion"), baseRevision: null, fields: ["content", "position"] }],
     });
     expect(r!.status).toBe("rejected");
     expect(r!.error?.code).toBe("not_found");
-    // Pull never returns another workspace's rows.
-    await expect(b.as.query(api.sync.pull, { workspaceId: a.workspaceId, cursor: 0 })).rejects.toThrow(/not_found/);
+    // Pull never returns another person's rows.
+    const pulled = await b.as.query(api.sync.pull, { scope: PERSONAL, cursor: 0, limit: 500 });
+    expect(pulled.documents.map((d) => d.id)).not.toContain(docId);
     // Search is scoped too.
-    const hits = await b.as.query(api.search.documents, { workspaceId: b.workspaceId, query: "Private plans" });
+    const hits = await b.as.query(api.search.documents, { scope: b.scope, query: "Private plans" });
     expect(hits).toEqual([]);
   });
 
@@ -151,7 +172,7 @@ describe("tenant isolation", () => {
     const notes = await member.as.query(api.notifications.list, {});
     const invite = notes.find((n) => n.kind === "invite")!;
     await member.as.mutation(api.workspaces.acceptInvite, { inviteId: invite.inviteId! });
-    const teamOwner = { ...owner, workspaceId: teamId };
+    const teamOwner = { ...owner, scope: inWorkspace(teamId) };
     const docId = await newDoc(teamOwner, "Salary review");
     expect(await member.as.query(api.documents.get, { documentId: docId })).not.toBeNull();
     await owner.as.mutation(api.sharing.setAccessMode, { documentId: docId, mode: "restricted" });
@@ -169,11 +190,11 @@ describe("tenant isolation", () => {
     await owner.as.mutation(api.workspaces.invite, { workspaceId: teamId, email: "v2@example.com", role: "editor" });
     const invite = (await other.as.query(api.notifications.list, {})).find((n) => n.kind === "invite")!;
     await other.as.mutation(api.workspaces.acceptInvite, { inviteId: invite.inviteId! });
-    const docId = await newDoc({ ...owner, workspaceId: teamId }, "Shared");
-    const ok = await upsert({ ...other, workspaceId: teamId }, docId, para(ulid(), "editor write"), null);
+    const docId = await newDoc({ ...owner, scope: inWorkspace(teamId) }, "Shared");
+    const ok = await upsert({ ...other, scope: inWorkspace(teamId) }, docId, para(ulid(), "editor write"), null);
     expect(ok.status).toBe("applied");
     await owner.as.mutation(api.workspaces.changeRole, { workspaceId: teamId, profileId: other.profileId, role: "viewer" });
-    const denied = await upsert({ ...other, workspaceId: teamId }, docId, para(ulid(), "viewer write"), null);
+    const denied = await upsert({ ...other, scope: inWorkspace(teamId) }, docId, para(ulid(), "viewer write"), null);
     expect(denied.status).toBe("rejected");
     expect(denied.error?.code).toBe("forbidden");
   });
@@ -250,7 +271,7 @@ describe("sync protocol", () => {
     const child = para(ulid(), "child", "V", parent.id);
     await upsert(a, docId, parent, null);
     await upsert(a, docId, child, null);
-    const [del] = await a.as.mutation(api.sync.push, { workspaceId: a.workspaceId, deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.delete", documentId: docId, blockId: parent.id, baseRevision: 1 }] });
+    const [del] = await a.as.mutation(api.sync.push, { scope: a.scope, deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.delete", documentId: docId, blockId: parent.id, baseRevision: 1 }] });
     expect(del!.status).toBe("applied");
     expect((await a.as.query(api.blocks.list, { documentId: docId }))!.blocks).toHaveLength(0);
     expect(await a.as.query(api.blocks.deleted, { documentId: docId })).toHaveLength(2);
@@ -258,7 +279,7 @@ describe("sync protocol", () => {
     const edit = await upsert(a, docId, { ...child, text: [{ type: "text", text: "late edit" }] }, 1, ["content"]);
     expect(edit.status).toBe("conflict");
     expect(edit.conflict?.reason).toBe("deleted");
-    await a.as.mutation(api.sync.push, { workspaceId: a.workspaceId, deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.restore", documentId: docId, blockId: parent.id }] });
+    await a.as.mutation(api.sync.push, { scope: a.scope, deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.restore", documentId: docId, blockId: parent.id }] });
     expect((await a.as.query(api.blocks.list, { documentId: docId }))!.blocks).toHaveLength(2);
   });
 
@@ -281,18 +302,18 @@ describe("sync protocol", () => {
   test("pull returns changes since a cursor in commit order, including tombstones", async () => {
     const t = setup();
     const a = await person(t, "sync6@example.com");
-    const head = (await a.as.query(api.sync.head, { workspaceId: a.workspaceId })).seq;
+    const head = (await a.as.query(api.sync.head, { scope: a.scope })).seq;
     const docId = await newDoc(a, "Pulled");
     const b = para(ulid(), "fresh");
     await upsert(a, docId, b, null);
-    const page = await a.as.query(api.sync.pull, { workspaceId: a.workspaceId, cursor: head });
+    const page = await a.as.query(api.sync.pull, { scope: a.scope, cursor: head });
     expect(page.documents.map((d) => d.id)).toContain(docId);
     expect(page.blocks.map((x) => x.block.id)).toContain(b.id);
     expect(page.hasMore).toBe(false);
-    const empty = await a.as.query(api.sync.pull, { workspaceId: a.workspaceId, cursor: page.nextCursor });
+    const empty = await a.as.query(api.sync.pull, { scope: a.scope, cursor: page.nextCursor });
     expect(empty.blocks).toHaveLength(0);
     // JSON variant used by the native client returns the same data.
-    const json = JSON.parse(await a.as.query(api.sync.pullJson, { workspaceId: a.workspaceId, cursor: head }));
+    const json = JSON.parse(await a.as.query(api.sync.pullJson, { scope: a.scope, cursor: head }));
     expect(json.blocks.length).toBe(page.blocks.length);
   });
 
@@ -301,7 +322,7 @@ describe("sync protocol", () => {
     const a = await person(t, "sync7@example.com");
     const docId = await newDoc(a, "Draft");
     const push = (title: string, base: number) =>
-      a.as.mutation(api.sync.push, { workspaceId: a.workspaceId, deviceId: "device-test-2", ops: [{ opId: ulid(), kind: "document.update", documentId: docId, patch: { title }, baseRevision: base }] });
+      a.as.mutation(api.sync.push, { scope: a.scope, deviceId: "device-test-2", ops: [{ opId: ulid(), kind: "document.update", documentId: docId, patch: { title }, baseRevision: base }] });
     expect((await push("Web title", 1))[0]!.status).toBe("applied");
     const r = (await push("Mac title", 1))[0]!;
     expect(r.status).toBe("conflict");
@@ -309,25 +330,25 @@ describe("sync protocol", () => {
 });
 
 describe("note style images", () => {
-  test("a note's cover can only be an image uploaded into its own workspace", async () => {
+  test("a note's cover can only be an image uploaded into its own scope", async () => {
     const t = setup();
     const a = await person(t, "cover-a@example.com");
     const b = await person(t, "cover-b@example.com");
     const docId = await newDoc(a, "Styled");
-    // One image in each person's personal workspace (as if uploaded and verified).
+    // One image in each person's Personal (as if uploaded and verified).
     const addFile = (p: typeof a, publicId: string) =>
       t.run(async (ctx) => {
-        const ws = (await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", p.workspaceId)).unique())!;
+        const owner = p.profileId as Id<"profiles">;
         const storageId = await ctx.storage.store(new Blob(["x"], { type: "image/png" }));
         await ctx.db.insert("files", {
-          publicId, storageId, workspaceId: ws._id, uploadedBy: ws.ownerId, filename: "c.png", mimeType: "image/png",
+          publicId, storageId, ownerProfileId: owner, uploadedBy: owner, filename: "c.png", mimeType: "image/png",
           size: 1, sha256: "0".repeat(64), kind: "cover", status: "ready", createdAt: Date.now(),
         });
       });
     await addFile(a, "file_mine");
     await addFile(b, "file_theirs");
     const setCover = (value: string) =>
-      a.as.mutation(api.sync.push, { workspaceId: a.workspaceId, deviceId: "device-cover", ops: [{ opId: ulid(), kind: "document.update", documentId: docId, patch: { cover: { kind: "image", value } }, baseRevision: null }] });
+      a.as.mutation(api.sync.push, { scope: a.scope, deviceId: "device-cover", ops: [{ opId: ulid(), kind: "document.update", documentId: docId, patch: { cover: { kind: "image", value } }, baseRevision: null }] });
     expect((await setCover("file_theirs"))[0]!.status).not.toBe("applied");
     expect((await setCover("file_missing"))[0]!.status).not.toBe("applied");
     const ok = (await setCover("file_mine"))[0]!;
@@ -350,32 +371,32 @@ describe("tasks", () => {
     const docId = await newDoc(a, "Chores");
     const todo = { ...para(ulid(), "Water plants"), type: "todo", props: { checked: false, dueDate: "2026-09-25" } };
     await upsert(a, docId, todo, null);
-    let today = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "today", today: "2026-09-25" });
+    let today = await a.as.query(api.tasks.list, { scope: a.scope, view: "today", today: "2026-09-25" });
     expect(today.map((x) => x.title)).toContain("Water plants");
     await a.as.mutation(api.tasks.update, { blockId: todo.id, checked: true });
     const block = (await a.as.query(api.blocks.list, { documentId: docId }))!.blocks.find((b) => b.id === todo.id)!;
     expect((block.props as { checked: boolean }).checked).toBe(true);
-    today = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "today", today: "2026-09-25" });
+    today = await a.as.query(api.tasks.list, { scope: a.scope, view: "today", today: "2026-09-25" });
     expect(today.map((x) => x.title)).not.toContain("Water plants");
-    const done = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "completed", today: "2026-09-25" });
+    const done = await a.as.query(api.tasks.list, { scope: a.scope, view: "completed", today: "2026-09-25" });
     expect(done.map((x) => x.title)).toContain("Water plants");
   });
 
   test("quick add puts tasks into the person's Inbox page (deterministic id, restored from Trash, listed on Home)", async () => {
     const t = setup();
     const a = await person(t, "qa@example.com");
-    const r1 = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "First", today: "2026-09-25" });
-    const r2 = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "Second", today: "2026-09-26" });
+    const r1 = await a.as.mutation(api.tasks.quickAdd, { scope: a.scope, title: "First", today: "2026-09-25" });
+    const r2 = await a.as.mutation(api.tasks.quickAdd, { scope: a.scope, title: "Second", today: "2026-09-26" });
     expect(r1.documentId).toBe(r2.documentId);
     expect(r1.documentId).toMatch(/^inbox-[0-9a-f]{16}$/);
-    const home = await a.as.query(api.documents.list, { workspaceId: a.workspaceId, view: "all", paginationOpts: { numItems: 50, cursor: null } });
+    const home = await a.as.query(api.documents.list, { scope: a.scope, view: "all", paginationOpts: { numItems: 50, cursor: null } });
     const inbox = home.page.find((d) => d.id === r1.documentId);
     expect(inbox?.title).toBe("Inbox");
     // Trashing the Inbox and adding another task brings it back.
     await a.as.mutation(api.documents.moveToTrash, { documentId: r1.documentId });
-    const r3 = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "Third", today: "2026-09-26" });
+    const r3 = await a.as.mutation(api.tasks.quickAdd, { scope: a.scope, title: "Third", today: "2026-09-26" });
     expect(r3.documentId).toBe(r1.documentId);
-    const tasks = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "all", today: "2026-09-26" });
+    const tasks = await a.as.query(api.tasks.list, { scope: a.scope, view: "all", today: "2026-09-26" });
     expect(tasks.filter((x) => x.documentId === r1.documentId).map((x) => x.title).sort()).toEqual(["First", "Second", "Third"]);
   });
 });
@@ -420,7 +441,7 @@ describe("deletion", () => {
     await a.as.mutation(api.comments.create, { documentId: docId, body: [{ type: "text", text: "note" }] });
     const childId = ulid();
     await a.as.mutation(api.sync.push, {
-      workspaceId: a.workspaceId,
+      scope: a.scope,
       deviceId: "device-test-2",
       ops: [{ opId: ulid(), kind: "document.create", document: { id: childId, parentDocumentId: docId, folderId: null, kind: "document", title: "Child", icon: null } }],
     });
@@ -449,12 +470,12 @@ describe("files", () => {
     const b = await person(t, "files-b@example.com");
     const docId = await newDoc(a);
     await expect(
-      b.as.mutation(api.files.generateUploadUrl, { workspaceId: a.workspaceId, documentId: docId, filename: "x.png", size: 10, mimeType: "image/png", kind: "image" }),
+      b.as.mutation(api.files.generateUploadUrl, { scope: a.scope, documentId: docId, filename: "x.png", size: 10, mimeType: "image/png", kind: "image" }),
     ).rejects.toThrow(/not_found/);
     await expect(
-      a.as.mutation(api.files.generateUploadUrl, { workspaceId: a.workspaceId, documentId: docId, filename: "huge.png", size: 500 * 1024 * 1024, mimeType: "image/png", kind: "image" }),
+      a.as.mutation(api.files.generateUploadUrl, { scope: a.scope, documentId: docId, filename: "huge.png", size: 500 * 1024 * 1024, mimeType: "image/png", kind: "image" }),
     ).rejects.toThrow(/up to/);
-    const ok = await a.as.mutation(api.files.generateUploadUrl, { workspaceId: a.workspaceId, documentId: docId, filename: "ok.png", size: 1024, mimeType: "image/png", kind: "image" });
+    const ok = await a.as.mutation(api.files.generateUploadUrl, { scope: a.scope, documentId: docId, filename: "ok.png", size: 1024, mimeType: "image/png", kind: "image" });
     expect(ok.uploadUrl).toBeTruthy();
   });
 });
@@ -492,8 +513,12 @@ describe("admin", () => {
     const serialized = JSON.stringify(detail);
     expect(serialized).not.toContain("Welcome to Folevi");
     expect(serialized).not.toContain("quiet place for ideas");
-    const ws = await a.as.mutation(api.admin.viewWorkspace, { workspaceId: a.workspaceId });
+    const { id: teamId } = await a.as.mutation(api.workspaces.createTeamWorkspace, { name: "Ops" });
+    const ws = await a.as.mutation(api.admin.viewWorkspace, { workspaceId: teamId });
     expect(JSON.stringify(ws)).not.toContain("quiet place for ideas");
+    // Personal isn't a workspace: admin lists only team workspaces.
+    const list = await a.as.mutation(api.admin.listWorkspaces, {});
+    expect(list.workspaces.map((w) => w.id)).toEqual([teamId]);
   });
 });
 

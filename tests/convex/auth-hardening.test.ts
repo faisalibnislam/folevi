@@ -2,7 +2,7 @@
 import { describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { CLIENT_IP_HEADER, CLIENT_IP_SIGNATURE_HEADER, clientIpSignature, verifiedClientIp, withTrustedClientIp } from "../../convex/lib/clientIp";
-import { person, setup, ulid } from "./helpers";
+import { inWorkspace, person, PERSONAL, setup, ulid } from "./helpers";
 
 const SECRET = "test-server-secret";
 
@@ -47,7 +47,7 @@ describe("uploads into shared pages", () => {
   async function createDoc(p: Awaited<ReturnType<typeof person>>, title: string) {
     const id = ulid();
     await p.as.mutation(api.sync.push, {
-      workspaceId: p.workspaceId,
+      scope: p.scope,
       deviceId: "device-upload",
       ops: [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title, icon: null } as never }],
     });
@@ -65,12 +65,18 @@ describe("uploads into shared pages", () => {
     await owner.as.mutation(api.sharing.grant, { documentId: docId, email: "upload-editor@example.com", role: "editor" });
     await owner.as.mutation(api.sharing.grant, { documentId: docId, email: "upload-commenter@example.com", role: "commenter" });
 
-    // The guest's own workspace id is what their client sends; the page decides where the file lives.
-    const ok = await editor.as.mutation(api.files.generateUploadUrl, { workspaceId: editor.workspaceId, documentId: docId, ...upload });
+    // The guest's own scope is what their client sends; the page decides where the file lives.
+    const ok = await editor.as.mutation(api.files.generateUploadUrl, { scope: editor.scope, documentId: docId, ...upload });
     expect(ok.uploadUrl).toBeTruthy();
-    await expect(commenter.as.mutation(api.files.generateUploadUrl, { workspaceId: commenter.workspaceId, documentId: docId, ...upload })).rejects.toThrow();
-    await expect(stranger.as.mutation(api.files.generateUploadUrl, { workspaceId: stranger.workspaceId, documentId: docId, ...upload })).rejects.toThrow();
-    // Without a page, uploads still need editor membership of the named workspace.
-    await expect(stranger.as.mutation(api.files.generateUploadUrl, { workspaceId: owner.workspaceId, ...upload })).rejects.toThrow();
+    await expect(commenter.as.mutation(api.files.generateUploadUrl, { scope: commenter.scope, documentId: docId, ...upload })).rejects.toThrow();
+    await expect(stranger.as.mutation(api.files.generateUploadUrl, { scope: stranger.scope, documentId: docId, ...upload })).rejects.toThrow();
+    // Without a page, uploads need editor membership of the named workspace…
+    const { id: teamId } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Uploads" });
+    await expect(stranger.as.mutation(api.files.generateUploadUrl, { scope: inWorkspace(teamId), ...upload })).rejects.toThrow(/Workspace not found/);
+    // …and "Personal" is always the caller's own.
+    expect((await stranger.as.mutation(api.files.generateUploadUrl, { scope: PERSONAL, ...upload })).uploadUrl).toBeTruthy();
+    const intents = await t.run(async (ctx) => await ctx.db.query("uploadIntents").collect());
+    const strangers = intents.filter((i) => i.profileId === stranger.profileId);
+    expect(strangers.every((i) => i.ownerProfileId === stranger.profileId && i.workspaceId === undefined)).toBe(true);
   });
 });

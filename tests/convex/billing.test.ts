@@ -12,7 +12,7 @@ type Person = Awaited<ReturnType<typeof person>>;
 async function newDoc(p: Person) {
   const id = ulid();
   await p.as.mutation(api.sync.push, {
-    workspaceId: p.workspaceId,
+    scope: p.scope,
     deviceId: "device-billing",
     ops: [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title: "Doc", icon: null } }],
   });
@@ -102,11 +102,11 @@ describe("plans and entitlements", () => {
     const a = await person(t, "no-ai@example.com");
     const sub = await subOf(t, a);
     await t.run(async (ctx) => ctx.db.patch(sub!._id, { trialEndsAt: Date.now() - 1 }));
-    await expect(a.as.mutation(internal.ai.begin, { workspaceId: a.workspaceId })).rejects.toThrow(/part of Pro/);
+    await expect(a.as.mutation(internal.ai.begin, { scope: a.scope })).rejects.toThrow(/part of Pro/);
     expect(await t.run(async (ctx) => ctx.db.query("aiUsage").collect())).toHaveLength(0);
     // An admin grant turns it back on.
     await t.run(async (ctx) => ctx.db.patch(sub!._id, { aiGrant: true }));
-    await a.as.mutation(internal.ai.begin, { workspaceId: a.workspaceId });
+    await a.as.mutation(internal.ai.begin, { scope: a.scope });
   });
 
   test("personal storage counts only Personal, against the Personal plan (team workspaces never add to it)", async () => {
@@ -118,12 +118,11 @@ describe("plans and entitlements", () => {
     const { id: teamId } = await a.as.mutation(api.workspaces.createTeamWorkspace, { name: "Team" });
     // 1010 MB in Personal (of the Free plan's 1024 MB) and 4 GB in the team workspace.
     await t.run(async (ctx) => {
-      for (const w of await ctx.db.query("workspaces").collect()) {
-        if (w.ownerId !== a.profileId) continue;
-        await ctx.db.patch(w._id, { storageUsedBytes: w.publicId === teamId ? 4 * GB : 1010 * MB });
-      }
+      await ctx.db.patch(a.profileId as Id<"profiles">, { personalStorageUsedBytes: 1010 * MB });
+      const team = (await ctx.db.query("workspaces").collect()).find((w) => w.publicId === teamId)!;
+      await ctx.db.patch(team._id, { storageUsedBytes: 4 * GB });
     });
-    const upload = (size: number) => a.as.mutation(api.files.generateUploadUrl, { workspaceId: a.workspaceId, documentId: docId, filename: "a.png", size, mimeType: "image/png", kind: "image" });
+    const upload = (size: number) => a.as.mutation(api.files.generateUploadUrl, { scope: a.scope, documentId: docId, filename: "a.png", size, mimeType: "image/png", kind: "image" });
     await expect(upload(15 * MB)).rejects.toThrow(/personal storage on your Free plan/);
     expect((await upload(10 * MB)).uploadUrl).toBeTruthy();
     // Basic has room.
@@ -394,7 +393,7 @@ describe("device limits", () => {
       expect((await a.as.query(api.users.me, {})).state).toBe("ready");
       expect((await second.as.query(api.users.me, {})).state).toBe("ready");
       expect(await third.as.query(api.users.me, {})).toMatchObject({ state: "device_limit", limit: 2, active: 3 });
-      await expect(third.as.query(api.organization.sidebar, { workspaceId: a.workspaceId })).rejects.toThrow(/device_limit/);
+      await expect(third.as.query(api.organization.sidebar, { scope: a.scope })).rejects.toThrow(/device_limit/);
       await expect(third.as.mutation(api.users.updateProfile, { displayName: "Held" })).rejects.toThrow(/device_limit/);
       // From the held device they can see their devices and sign one out…
       const sessions = await third.as.query(api.users.listSessions, {});

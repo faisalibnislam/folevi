@@ -66,13 +66,46 @@ export async function signedIn(t: T, email: string, extra: Record<string, unknow
   return { as: t.withIdentity(base), userId, sessionId };
 }
 
-/** Signs up a person (bootstrap → personal workspace with seed content). */
+/** The signed-in person's own Personal, as clients name it. */
+export const PERSONAL = { kind: "personal" } as const;
+
+/** A team workspace scope, as clients name it. */
+export function inWorkspace(workspaceId: string) {
+  return { kind: "workspace" as const, workspaceId };
+}
+
+/** A scope as clients name it. */
+export type ScopeArg = typeof PERSONAL | ReturnType<typeof inWorkspace>;
+
+/** Signs up a person (bootstrap → their Personal with seed content; no workspace). */
 export async function person(t: T, email: string) {
   const { as, userId, sessionId } = await signedIn(t, email);
   await as.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" });
   const me = await as.query(api.users.me, {});
   if (me.state !== "ready") throw new Error(`not ready: ${me.state}`);
-  return { as, profileId: me.profile.id, workspaceId: me.profile.defaultWorkspaceId!, userId, sessionId };
+  // `scope` is where their own actions go by default: their Personal (tests re-point it at a workspace).
+  return { as, profileId: me.profile.id, scope: PERSONAL as ScopeArg, userId, sessionId };
+}
+
+type Person = Awaited<ReturnType<typeof person>>;
+
+/** Creates a team workspace owned by `owner`; returns its public id and scope. */
+export async function teamWorkspace(owner: Person, name = "Team") {
+  const { id } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name });
+  return { workspaceId: id, scope: inWorkspace(id) };
+}
+
+/** Invites `who` into a workspace with `role` and has them accept (the workspace_invites flag must allow it). */
+export async function join(t: T, owner: Person, who: Person, email: string, workspaceId: string, role: "admin" | "editor" | "commenter" | "viewer") {
+  await owner.as.mutation(api.workspaces.invite, { workspaceId, email, role });
+  const inviteId = await t.run(async (ctx) => {
+    const rows = await ctx.db
+      .query("workspaceInvites")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+    return rows.find((r) => r.status === "pending")!.publicId;
+  });
+  await who.as.mutation(api.workspaces.acceptInvite, { inviteId });
 }
 
 export function para(id: string, text: string, rank = "V", parentId: string | null = null): WireBlock {

@@ -12,7 +12,7 @@ import { ensureSubscription, startTrial } from "./lib/billing";
 import { roleToAccess, type Access, type WorkspaceRole } from "./lib/auth";
 import { workspaceStorageOverride } from "./lib/entitlements";
 import { bump } from "./lib/metrics";
-import { hasValidScope, insertScoped, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope, type ScopedTable } from "./lib/scope";
+import { hasValidScope, insertScoped, SCOPED_TABLES, sameScope, scopedRows, scopeOfRow, workspaceScope, type ScopedTable } from "./lib/scope";
 
 /** Fills in the card preview (documents.preview) for pages saved before previews existed. */
 export const backfillDocumentPreviews = internalMutation({
@@ -461,12 +461,7 @@ export const verifyAccountModelPage = internalQuery({
       if (documentId) {
         if (!docs.has(documentId)) docs.set(documentId, await ctx.db.get(documentId));
         const doc = docs.get(documentId);
-        if (doc && hasValidScope(doc) && hasValidScope(raw)) {
-          const a = scopeOfRow(doc);
-          const b = scopeOfRow(raw);
-          const same = a.kind === "personal" ? b.kind === "personal" && a.profileId === b.profileId : b.kind === "workspace" && a.workspaceId === b.workspaceId;
-          if (!same) check.outOfScope++;
-        }
+        if (doc && hasValidScope(doc) && hasValidScope(raw) && !sameScope(scopeOfRow(doc), scopeOfRow(raw))) check.outOfScope++;
         if (table === "documentPermissions" && (!doc || !(await ctx.db.get(raw.profileId as Id<"profiles">)))) check.orphanedGrants++;
       }
     }

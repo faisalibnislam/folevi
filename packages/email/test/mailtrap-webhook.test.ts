@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { MAX_MAILTRAP_EVENTS, normaliseMailtrapEventName, parseMailtrapWebhook, verifyMailtrapSignature } from "../src/index";
 
-const SECRET = "mailtrap-signing-secret-0123456789";
+const SECRET = "mailtrap-signing-secret-0123456789"; // gitleaks:allow (fake test value)
 const event = (overrides: Record<string, unknown> = {}) => ({
   event: "delivery",
   message_id: "1d7a4a6e-0000-4000-8000-00000000abcd",

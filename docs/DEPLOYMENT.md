@@ -5,15 +5,15 @@ exact steps the account owner follows to set up or rebuild it. Every secret live
 
 ## Environments
 
-| Environment | Web | Convex (incl. accounts) | Identity emails | Loops |
+| Environment | Web | Convex (incl. accounts) | Identity emails | Email provider (Mailtrap) |
 | --- | --- | --- | --- | --- |
-| Local | `localhost:3000`, `app.localhost:3000` | anonymous local backend; Better Auth runs inside it | captured in the development mailbox (`/dev/mailbox`) | not configured, or a test team with `@example.com` recipients |
-| Preview | Vercel preview URLs | Convex preview deployment per branch | development mailbox if `FOLEVI_DEV_MAILBOX_SECRET` is set; Loops only to allowed test addresses | test team / allowlist (`FOLEVI_ENV=preview`) |
-| Production | `folevi.com`, `app.folevi.com` | production deployment | Loops only; no mailbox | production team, `mail.folevi.com` |
+| Local | `localhost:3000`, `app.localhost:3000` | anonymous local backend; Better Auth runs inside it | captured in the development mailbox (`/dev/mailbox`) | not configured, or the Mailtrap sandbox |
+| Preview | Vercel preview URLs | Convex preview deployment per branch | development mailbox if `FOLEVI_DEV_MAILBOX_SECRET` is set | Mailtrap **sandbox** (`MAILTRAP_SANDBOX_*`), or a live token restricted to test addresses (`FOLEVI_ENV=preview`) |
+| Production | `folevi.com`, `app.folevi.com` | production deployment | Mailtrap only; no mailbox | Mailtrap Email API, `mail.folevi.com` |
 
-Non-production Convex deployments (`FOLEVI_ENV` ≠ `production`) only ever send email to `@example.com`,
-`@test.com` or explicitly allowlisted addresses, so non-production identity email never reaches real
-people. Accounts are built in (Better Auth inside Convex, `docs/AUTH_DECISION.md`); there is no separate
+Non-production Convex deployments (`FOLEVI_ENV` ≠ `production`) send either to the Mailtrap Email Sandbox
+(captured, never delivered) or only to `@example.com`, `@test.com` or explicitly allowlisted addresses, so
+non-production email never reaches real people. Accounts are built in (Better Auth inside Convex, `docs/AUTH_DECISION.md`); there is no separate
 identity service to deploy.
 
 ## 1. Convex
@@ -27,24 +27,25 @@ identity service to deploy.
    it and identity-email links point to it), `BETTER_AUTH_SECRET` (at least 32 random bytes, e.g.
    `openssl rand -base64 32`; read "Rotating `BETTER_AUTH_SECRET`" in `docs/AUTH_DECISION.md` before
    ever changing it), `FOLEVI_HASH_SALT`, `FOLEVI_FILE_URL_SECRET`, `FOLEVI_SERVER_SECRET`,
-   `LOOPS_API_KEY`, the `LOOPS_TRANSACTIONAL_*_ID` variables named in `packages/email/src/manifest.ts`,
-   optionally `LOOPS_WEBHOOK_SECRET`. Optionally `UNSPLASH_ACCESS_KEY` (an Unsplash developer app's
+   `MAILTRAP_API_TOKEN` and `MAILTRAP_WEBHOOK_SECRET` (section 4), optionally `EMAIL_REPLY_TO`. Optionally `UNSPLASH_ACCESS_KEY` (an Unsplash developer app's
    access key) turns on Insert → Image from Unsplash: searches run server-side in `convex/unsplash.ts`,
    rate-limited per person, and chosen photos are hotlinked and credited per the Unsplash API
    guidelines. Without it the picker explains that Unsplash isn't set up on this server.
    **Must not be set in production:** `FOLEVI_DEV_MAILBOX_SECRET`, `FOLEVI_AUTH_RATE_LIMIT_SCALE`, and
-   `FOLEVI_REQUIRE_VERIFIED_EMAIL=false`. `scripts/check-prod-env.mjs`
+   `FOLEVI_REQUIRE_VERIFIED_EMAIL=false` (and `MAILTRAP_SANDBOX_*`, which production ignores). `scripts/check-prod-env.mjs`
    reads the Convex environment during the Vercel production build and fails it if any of these is
    wrong or a required variable is missing.
 4. Preview deployments: set the same names as project **default environment variables** for previews with
    non-production values (`FOLEVI_ENV=preview`, its own `BETTER_AUTH_SECRET`, `SITE_URL` = the preview
-   origin). `FOLEVI_DEV_MAILBOX_SECRET` and `FOLEVI_AUTH_RATE_LIMIT_SCALE` are allowed here.
+   origin). `FOLEVI_DEV_MAILBOX_SECRET` and `FOLEVI_AUTH_RATE_LIMIT_SCALE` are allowed here, and
+   `MAILTRAP_SANDBOX_INBOX_ID` + `MAILTRAP_SANDBOX_TOKEN` route every preview email into a Mailtrap sandbox
+   inbox.
 
 Shortcut: with your Convex production deploy key exported as `CONVEX_DEPLOY_KEY`, run
 `bash scripts/setup-production-env.sh`. It sets the plain settings, generates the random secrets
 (server secret — the same value in Vercel and Convex — Better Auth secret, hash salt, file-URL secret)
 straight into Vercel and Convex without printing them, adds the deploy key to Vercel, and asks for the
-Loops key with hidden input. Existing values are kept unless you pass `--rotate`.
+Mailtrap sending token and webhook signing secret with hidden input. Existing values are kept unless you pass `--rotate`.
 
 ## 2. Vercel
 
@@ -78,18 +79,21 @@ through the web app's `/api/auth/*` proxy so cookies are first-party on `app.fol
 
 - `SITE_URL` and `BETTER_AUTH_SECRET` set on the Convex production deployment (above). Store a copy of
   the secret in the team's password manager: losing it makes every stored TOTP secret unreadable.
-- The Loops identity templates (`auth_verify_email`, `auth_password_reset`) are published and their ids
-  set (section 4); without them nobody can confirm an address or reset a password in production.
+- `MAILTRAP_API_TOKEN` is set and `mail.folevi.com` is verified in Mailtrap (section 4); without them
+  nobody can confirm an address or reset a password in production.
 - Admin → Configuration → Feature flags → `new_signups` controls whether new accounts can be created.
 - There is no DNS for identity (no `auth.folevi.com`); sign-in lives at `https://app.folevi.com/signin`.
 
-## 4. Loops
+## 4. Email (Mailtrap)
 
-Follow `docs/EMAIL_OPERATIONS.md`: verify the `mail.folevi.com` sending domain (add the exact MX/TXT/CNAME
-records Loops shows), SPF/DKIM alignment, DMARC (`p=none` with reporting, then `quarantine`), import and
-**publish** every template from `packages/email/templates` (currently 11, including the two identity
-templates), and store each `transactionalId` in the matching Convex env var. Optionally configure the
-webhook `https://<deployment>.convex.site/webhooks/loops` and set `LOOPS_WEBHOOK_SECRET`.
+Follow `docs/EMAIL_OPERATIONS.md` §1: add `mail.folevi.com` as a Mailtrap sending domain, add the exact
+records Mailtrap shows at Namecheap (one merged SPF record; keep our DMARC), verify, **turn off open and
+click tracking**, create a sending API token and set `MAILTRAP_API_TOKEN` on Convex production, create the
+webhook `https://<deployment>.convex.site/webhooks/mailtrap` (delivery, bounces, spam complaint, reject,
+suspension) and set `MAILTRAP_WEBHOOK_SECRET`, then send a test. The templates are compiled in the
+repository and ship with the Convex deploy; nothing is uploaded to Mailtrap. While `MAILTRAP_API_TOKEN` is
+unset, a complete legacy Loops configuration keeps sending (the build warns); remove it after the cutover
+(EMAIL_OPERATIONS.md §9).
 
 ## 5. Payments (Stripe)
 
@@ -127,7 +131,7 @@ read-only mode, a backup with `--include-file-storage`, deploy, `migrations:migr
 3. Vercel production deploy runs automatically (or promote a verified preview).
 4. Verify: `curl -I https://folevi.com` (HSTS, CSP), `https://app.folevi.com/signin` shows Folevi's own
    sign-in page, `https://app.folevi.com/dev/mailbox` returns 404, sign up with a real address →
-   confirmation email arrives (Loops) → onboarding → Welcome
+   confirmation email arrives (Mailtrap; admin Emails log shows it delivered) → onboarding → Welcome
    document; turn on two-step verification in Settings → Security (authenticator + backup codes); sign
    in on a second browser and revoke that session from Settings → Security (it must sign out at once); reset the password by email; `/admin` returns 404 for non-admins; create and revoke a public link; export a page.
 5. Bootstrap the first super admin: `npx convex run --deployment <prod-deployment> admin:bootstrapSuperAdmin '{"email":"…"}'`.
@@ -162,7 +166,7 @@ Folevi's own accounts, `docs/AUTH_DECISION.md`). To ship it: set the production 
 2. **Contain access:** suspend affected accounts/workspaces (this also ends their sessions); revoke
    sessions (Admin → user → Revoke all sessions — takes effect on the next backend call); pause new
    sign-ups with the `new_signups` flag; rotate `FOLEVI_SERVER_SECRET`, `FOLEVI_FILE_URL_SECRET`
-   (invalidates signed file URLs), `LOOPS_API_KEY` as needed. Do **not** simply replace
+   (invalidates signed file URLs), `MAILTRAP_API_TOKEN` / `MAILTRAP_WEBHOOK_SECRET` as needed. Do **not** simply replace
    `BETTER_AUTH_SECRET`: it also encrypts every stored TOTP secret (see `docs/AUTH_DECISION.md`,
    "Rotating `BETTER_AUTH_SECRET`").
 3. **Investigate:** Convex logs (structured, content-free; identity actions log `identity.*` events),

@@ -311,15 +311,15 @@ function renderBlockHtml(block: Block): string {
           const border = i > 0 ? `border-top:1px solid ${C.hairline};` : "";
           return (
             `<tr>` +
-            `<td class="fv-muted fv-hair" valign="top" width="1%" style="${border}width:1%;padding:12px 24px 12px 0;${font(14, 22, C.muted)}white-space:nowrap;">${escapeHtml(label)}</td>` +
-            `<td class="fv-ink fv-hair" valign="top" style="${border}padding:12px 0;${font(15, 22, C.ink)}">${inlineHtml(value)}</td>` +
+            `<td class="fv-muted fv-hair fv-label" valign="top" width="1%" style="${border}width:1%;padding:12px 24px 12px 0;${font(14, 22, C.muted)}white-space:nowrap;">${escapeHtml(label)}</td>` +
+            `<td class="fv-ink fv-hair" valign="top" style="${border}padding:12px 0;${font(15, 22, C.ink)}word-break:break-word;">${inlineHtml(value)}</td>` +
             `</tr>`
           );
         })
         .join("");
       return (
         `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fv-panel" bgcolor="${C.panel}" style="width:100%;margin:4px 0 20px 0;background-color:${C.panel};border:1px solid ${C.hairline};border-radius:12px;border-collapse:separate;">` +
-        `<tr><td style="padding:4px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">${rows}</table></td></tr></table>`
+        `<tr><td class="fv-panel-pad" style="padding:4px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">${rows}</table></td></tr></table>`
       );
     }
     case "panel":
@@ -407,8 +407,10 @@ function renderHtml(def: TemplateDefinition, content: Content): string {
       a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
       @media only screen and (max-width: 600px) {
         .fv-outer { padding: 24px 12px !important; }
-        .fv-card-pad { padding: 32px 24px 28px 24px !important; }
+        .fv-card-pad { padding: 28px 20px 24px 20px !important; }
         .fv-h1 { font-size: 26px !important; line-height: 32px !important; }
+        .fv-panel-pad { padding: 4px 14px !important; }
+        .fv-label { white-space: normal !important; padding-right: 14px !important; }
       }${DARK_CSS}${OUTLOOK_DARK_CSS}
 </style>
 </head>

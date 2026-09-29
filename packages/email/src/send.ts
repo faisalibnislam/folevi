@@ -104,9 +104,12 @@ export async function sendEmail(
   let rendered;
   try {
     const brand = value(opts.env, "EMAIL_BRAND_BASE_URL");
+    const appUrl = value(opts.env, "FOLEVI_APP_URL");
     rendered = renderEmail(input.key, input.dataVariables, {
       // A deployment may point the logo elsewhere (e.g. a staging host), but only over https.
       ...(brand && brand.startsWith("https://") ? { brandBaseUrl: brand } : {}),
+      // App-relative links ("/settings/…") resolve against the app origin.
+      ...(appUrl && /^https?:\/\//.test(appUrl) ? { appUrl } : {}),
     });
   } catch (error) {
     if (error instanceof EmailRenderError) return fail("invalid_payload", provider.kind);

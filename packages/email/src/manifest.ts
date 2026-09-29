@@ -219,7 +219,7 @@ const definitions: Record<TemplateKey, TemplateDefinition> = {
     fixture: {
       count: 3,
       summary: "• Maya Okafor commented on Spring planting plan\n• Jonas Lindqvist mentioned you on Q4 reading list\n• Maya Okafor replied on Spring planting plan",
-      inboxUrl: `${FIX_APP}/inbox`,
+      inboxUrl: `${FIX_APP}/documents`,
       preferencesUrl: `${FIX_APP}/settings/notifications`,
     },
   },

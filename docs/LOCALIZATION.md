@@ -40,8 +40,8 @@ Rules:
 - Always include an `other` branch (the parser rejects messages without one). `test/i18n.test.ts`
   parses every catalog entry, so a malformed message fails CI.
 - Keep names, titles and other user content as placeholders; never translate them.
-- Emails are English-only for now: Loops templates are authored in `packages/email` and don't use this
-  catalog.
+- Emails are English-only for now: their copy is authored in `packages/email/scripts/build-templates.ts`
+  and doesn't use this catalog.
 
 ## Adding a language
 

@@ -6,8 +6,8 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { emailManifest, hashRecipient } from "@folevi/email";
 import { setup, type T } from "./helpers";
 
-const TOKEN = "mt-test-token-SECRET";
-const WEBHOOK_SECRET = "mt-webhook-signing-secret";
+const TOKEN = "mt-test-token-SECRET"; // gitleaks:allow (fake test value)
+const WEBHOOK_SECRET = "mt-webhook-signing-secret"; // gitleaks:allow (fake test value)
 const EMAIL_ENV = [
   "MAILTRAP_API_TOKEN",
   "MAILTRAP_WEBHOOK_SECRET",

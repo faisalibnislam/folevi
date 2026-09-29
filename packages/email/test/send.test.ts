@@ -10,8 +10,8 @@ import {
   type SendPolicy,
 } from "../src/index";
 
-const TOKEN = "mt_live_token_SECRET_1234567890";
-const SANDBOX_TOKEN = "mt_sandbox_token_SECRET_abcdef";
+const TOKEN = "mt_live_token_SECRET_1234567890"; // gitleaks:allow (fake test value)
+const SANDBOX_TOKEN = "mt_sandbox_token_SECRET_abcdef"; // gitleaks:allow (fake test value)
 const PROD: SendPolicy = { environment: "production" };
 const LIVE_ENV = { MAILTRAP_API_TOKEN: TOKEN };
 
@@ -171,6 +171,13 @@ describe("sendEmail via Mailtrap", () => {
     const out = await sendEmail(input({ dataVariables: { ...emailManifest.mention_notification.fixture, documentUrl: "javascript:alert(1)" } }), { env: LIVE_ENV, policy: PROD, fetchImpl });
     expect(out).toEqual({ status: "failed", errorCode: "invalid_payload", retryable: false, attempts: 0, provider: "mailtrap" });
     expect(calls).toHaveLength(0);
+  });
+
+  it("resolves app-relative links against FOLEVI_APP_URL", async () => {
+    const { fetchImpl, calls } = setup([res(200)]);
+    const out = await sendEmail(input({ dataVariables: { ...emailManifest.mention_notification.fixture, documentUrl: "/d/abc" } }), { env: { ...LIVE_ENV, FOLEVI_APP_URL: "https://app.folevi.com" }, policy: PROD, fetchImpl });
+    expect(out.status).toBe("accepted");
+    expect(JSON.parse(String(calls[0]![1].body)).html).toContain('href="https://app.folevi.com/d/abc"');
   });
 
   it("rejects bad recipients and attempt ids", async () => {

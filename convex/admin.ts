@@ -14,7 +14,8 @@ import { KNOWN_FLAGS, knownFlag } from "./lib/flags";
 import { BUILT_IN_TEMPLATES } from "./lib/templates";
 import { keyedHash, redactEmail } from "./lib/crypto";
 import { vPlatformRole } from "./lib/validators";
-import { entitlementsFor } from "./lib/billing";
+import { DEFAULT_WORKSPACE_QUOTA_BYTES, personalEntitlements, resolveEntitlements, scopeOfWorkspace, storageUsage, workspaceStorageOverride } from "./lib/entitlements";
+import { planName } from "./lib/plans";
 
 // Three tiers (stored names kept for existing admins and audit records):
 //   Owner (super_admin)      — everything, including admin roles and money matters
@@ -162,10 +163,10 @@ export const searchUsers = mutation({
       rows = page.page.filter((p) => !q || p.displayName.toLowerCase().includes(q) || p.email.includes(q) || (p._id as string) === q);
       continueCursor = page.isDone ? null : page.continueCursor;
     }
-    const plans = new Map<string, { plan: string; trialing: boolean; ai: boolean }>();
+    const plans = new Map<string, { plan: string; trialing: boolean; ai: boolean; aiSource: string | null }>();
     for (const p of rows) {
-      const e = await entitlementsFor(ctx, p._id);
-      plans.set(p._id, { plan: e.paidPlan, trialing: e.trialing, ai: e.ai });
+      const e = await personalEntitlements(ctx, p._id);
+      plans.set(p._id, { plan: e.paidPlan, trialing: e.trialing, ai: e.ai, aiSource: e.aiSource });
     }
     return {
       users: rows.map((p) => ({
@@ -245,7 +246,8 @@ export const viewUser = mutation({
       usage: {
         workspaces: workspaces.length,
         documents: workspaces.filter((w) => w.role === "owner").reduce((n, w) => n + w.documentCount, 0),
-        storageBytes: workspaces.filter((w) => w.role === "owner").reduce((n, w) => n + w.storageUsedBytes, 0),
+        /** Personal storage (team workspaces count on their own). */
+        storageBytes: workspaces.filter((w) => w.role === "owner" && w.kind === "personal").reduce((n, w) => n + w.storageUsedBytes, 0),
       },
       emails: emails.map((e) => ({ id: e._id as string, templateKey: e.templateKey, status: e.status, attempts: e.attempts, errorCode: e.errorCode ?? null, createdAt: e.createdAt })),
       audit: history.map((h) => ({ action: h.action, actor: actorNames.get(h.actorId) ?? "Admin", reason: h.reason ?? null, createdAt: h.createdAt, requestId: h.requestId })),
@@ -426,7 +428,10 @@ export const viewWorkspace = mutation({
       createdAt: w.createdAt,
       documentCount: w.documentCount,
       storageUsedBytes: w.storageUsedBytes,
-      storageQuotaBytes: w.storageQuotaBytes,
+      /** The limit that applies: its plan's (Personal plan for a personal workspace), or an admin override. */
+      storageQuotaBytes: (await storageUsage(ctx, scopeOfWorkspace(w))).limitBytes,
+      storageOverridden: workspaceStorageOverride(w) !== undefined,
+      planName: planName((await resolveEntitlements(ctx, scopeOfWorkspace(w))).planId),
       memberLimit: w.memberLimit,
       members: people,
       invites: invites.map((i) => ({ email: redactEmail(i.email), role: i.role, status: i.status, expiresAt: i.expiresAt, createdAt: i.createdAt })),
@@ -464,9 +469,14 @@ export const setWorkspaceQuota = mutation({
       .unique();
     if (!w) fail("not_found", "Workspace not found.");
     if (args.storageQuotaBytes < 0 || args.memberLimit < 1 || args.memberLimit > 10_000) fail("invalid_argument", "Invalid quota.");
-    const before = { storageQuotaBytes: w.storageQuotaBytes, memberLimit: w.memberLimit };
-    await ctx.db.patch(w._id, { storageQuotaBytes: args.storageQuotaBytes, memberLimit: args.memberLimit });
-    await audit(ctx, admin, "workspace.set_quota", { type: "workspace", id: w._id }, { reason, before, after: { storageQuotaBytes: args.storageQuotaBytes, memberLimit: args.memberLimit }, requestId: args.requestId, clientHash: args.clientHash });
+    // A storage value different from the limit in effect becomes this workspace's override (it replaces the
+    // plan's); sending the current limit back (e.g. when only the member limit changes) keeps things as they are.
+    const current = (await storageUsage(ctx, scopeOfWorkspace(w))).limitBytes;
+    const overrideBefore = workspaceStorageOverride(w);
+    const override = args.storageQuotaBytes === current ? overrideBefore : args.storageQuotaBytes;
+    const before = { storageQuotaBytes: current, storageOverride: overrideBefore ?? null, memberLimit: w.memberLimit };
+    await ctx.db.patch(w._id, { storageQuotaOverrideBytes: override, storageQuotaBytes: override ?? DEFAULT_WORKSPACE_QUOTA_BYTES, memberLimit: args.memberLimit });
+    await audit(ctx, admin, "workspace.set_quota", { type: "workspace", id: w._id }, { reason, before, after: { storageQuotaBytes: override ?? current, storageOverride: override ?? null, memberLimit: args.memberLimit }, requestId: args.requestId, clientHash: args.clientHash });
     return null;
   },
 });

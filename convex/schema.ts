@@ -62,7 +62,10 @@ export default defineSchema({
     changeSeq: v.number(),
     status: v.union(v.literal("active"), v.literal("suspended"), v.literal("deleting")),
     storageUsedBytes: v.number(),
+    /** The limit shown to older clients (convex/lib/entitlements.ts decides the real one). */
     storageQuotaBytes: v.number(),
+    /** A storage limit set by an admin for this workspace; replaces its plan's. */
+    storageQuotaOverrideBytes: v.optional(v.number()),
     memberLimit: v.number(),
     documentCount: v.number(),
     createdAt: v.number(),
@@ -330,6 +333,8 @@ export default defineSchema({
     /** When the current paid plan started (for conversion and churn analytics). */
     paidSince: v.optional(v.number()),
     canceledAt: v.optional(v.number()),
+    /** Stripe's `created` time (seconds) of the last subscription event applied; older events are ignored. */
+    stripeEventCreatedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -354,14 +359,30 @@ export default defineSchema({
     .index("by_created", ["createdAt"])
     .index("by_provider_ref", ["providerRef"]),
 
-  /** AI requests per person per day (UTC), for usage limits and analytics. No content. */
+  /** Stripe webhook events already applied (by event id), so a redelivered event is applied once. */
+  billingEvents: defineTable({
+    eventId: v.string(),
+    type: v.string(),
+    /** Stripe's `created` time (seconds). */
+    created: v.optional(v.number()),
+    processedAt: v.number(),
+  }).index("by_event_id", ["eventId"]),
+
+  /**
+   * AI requests per person per day (UTC), per scope, for usage limits and analytics. No content. Rows
+   * without a scope predate scopes (all were Personal).
+   */
   aiUsage: defineTable({
     profileId: v.id("profiles"),
     day: v.string(),
     count: v.number(),
+    scope: v.optional(v.union(v.literal("personal"), v.literal("workspace"))),
+    /** The team workspace the requests were made in (scope "workspace"). */
+    workspaceId: v.optional(v.id("workspaces")),
   })
     .index("by_profile_day", ["profileId", "day"])
-    .index("by_day", ["day"]),
+    .index("by_day", ["day"])
+    .index("by_workspace_day", ["workspaceId", "day"]),
 
   /**
    * Live AI output while it's being written (convex/ai.ts), so the app can show it word by word. Holds only

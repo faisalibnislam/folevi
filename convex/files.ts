@@ -6,7 +6,7 @@ import type { MutationCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, requireDocument, requireProfile, requireWorkspace } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { assertStorageFor } from "./lib/billing";
+import { assertStorageFor } from "./lib/entitlements";
 import { vImagePalette } from "./lib/validators";
 import { consume } from "./lib/rateLimit";
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, safeFilename, sameBytes, sniff, stripImageMetadata } from "./lib/images";
@@ -57,7 +57,9 @@ export const generateUploadUrl = mutation({
     await consume(ctx, "upload", profile._id);
     const max = maxBytesFor(args.kind);
     if (!Number.isFinite(args.size) || args.size <= 0 || args.size > max) fail("invalid_argument", `Files can be up to ${Math.round(max / 1024 / 1024)} MB.`);
-    const storageProblem = await assertStorageFor(ctx, workspace, args.size);
+    // Against the scope's own limit: Personal uploads count toward the Personal plan, a team workspace's
+    // toward that workspace's plan.
+    const storageProblem = await assertStorageFor(ctx, workspace, args.size, profile._id);
     if (storageProblem) fail("quota_exceeded", storageProblem);
     const intentId = await ctx.db.insert("uploadIntents", {
       profileId: profile._id,
@@ -99,7 +101,7 @@ export const commitFile = internalMutation({
     const intent = await ctx.db.get(args.intentId);
     if (!intent || intent.consumedAt || intent.profileId !== args.profileId || intent.expiresAt < Date.now()) fail("expired", "Upload expired. Try again.");
     const workspace = (await ctx.db.get(intent.workspaceId))!;
-    const storageProblem = await assertStorageFor(ctx, workspace, args.size);
+    const storageProblem = await assertStorageFor(ctx, workspace, args.size, args.profileId);
     if (storageProblem) fail("quota_exceeded", storageProblem);
     await ctx.db.patch(intent._id, { consumedAt: Date.now() });
     const publicId = ulid();

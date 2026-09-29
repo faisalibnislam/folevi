@@ -5,6 +5,7 @@ import { createDocument, specsToWireBlocks } from "./lib/create";
 import { addView, createCollection } from "./lib/collections";
 import { nextSeq } from "./lib/seq";
 import { bump } from "./lib/metrics";
+import { DEFAULT_WORKSPACE_QUOTA_BYTES } from "./lib/entitlements";
 import {
   READING_SHELF,
   WELCOME_TITLE,
@@ -16,7 +17,6 @@ import {
   welcomeBlocks,
 } from "./lib/seedContent";
 
-export const DEFAULT_STORAGE_QUOTA = 5 * 1024 * 1024 * 1024;
 /** Every personal workspace has this fixed name (it can't be renamed). */
 export const PERSONAL_WORKSPACE_NAME = "Personal";
 
@@ -35,7 +35,7 @@ export async function createWorkspace(
     changeSeq: 0,
     status: "active",
     storageUsedBytes: 0,
-    storageQuotaBytes: DEFAULT_STORAGE_QUOTA,
+    storageQuotaBytes: DEFAULT_WORKSPACE_QUOTA_BYTES,
     memberLimit: kind === "personal" ? 10 : 50,
     documentCount: 0,
     createdAt: now,

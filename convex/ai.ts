@@ -18,7 +18,7 @@ import { blocksToMarkdown } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, requireWorkspace } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
-import { entitlementsFor } from "./lib/billing";
+import { aiAccessIn, recordAiUsage } from "./lib/entitlements";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { FLOWCHART_SYSTEM, flowchartForPrompt, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
 
@@ -253,23 +253,37 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
   }
 }
 
-/** Auth, workspace membership, and a per-person budget (the free Gemini tier is shared by everyone). */
+/**
+ * Auth, workspace membership, whether AI is included where it's asked for, and a per-person budget (the
+ * free Gemini tier is shared by everyone). The scope decides: Personal follows the person's Personal plan;
+ * a team workspace follows that workspace's plan. A request about one note (`noteOnly`) is made in that
+ * note's workspace; otherwise in the workspace given — and, when it also reads a note from elsewhere, AI
+ * must be included there too, so one scope's plan never covers another's content.
+ */
 export const begin = internalMutation({
-  args: { workspaceId: v.string() },
+  args: { workspaceId: v.string(), documentId: v.optional(v.string()), noteOnly: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
-    if (!(await entitlementsFor(ctx, profile._id)).ai) fail("forbidden", "The AI Assistant is part of Pro. Upgrade in Settings → Plan & billing.");
-    await requireWorkspace(ctx, profile, args.workspaceId);
-    await consume(ctx, "ai", profile._id);
-    // Count it (per person per day; no content) for usage analytics.
-    const day = new Date().toISOString().slice(0, 10);
-    const usage = await ctx.db
-      .query("aiUsage")
-      .withIndex("by_profile_day", (q) => q.eq("profileId", profile._id).eq("day", day))
-      .unique();
-    if (usage) await ctx.db.patch(usage._id, { count: usage.count + 1 });
-    else await ctx.db.insert("aiUsage", { profileId: profile._id, day, count: 1 });
+    const { workspace: context } = await requireWorkspace(ctx, profile, args.workspaceId);
+    let target: Doc<"workspaces"> = context;
+    let also: Doc<"workspaces"> | null = null;
+    if (args.documentId) {
+      const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+      const home = doc.workspaceId === context._id ? context : await ctx.db.get(doc.workspaceId);
+      if (!home) fail("not_found", "Note not found.");
+      if (args.noteOnly) target = home;
+      else if (home._id !== context._id) also = home;
+    }
+    const access = await aiAccessIn(ctx, profile, target);
+    if (!access.allowed) fail("forbidden", access.message ?? "The AI Assistant isn't available here.");
+    if (also) {
+      const other = await aiAccessIn(ctx, profile, also);
+      if (!other.allowed) fail("forbidden", other.message ?? "The AI Assistant isn't available here.");
+    }
+    await consume(ctx, access.rateRule, access.rateSubject);
+    // Count it against the scope it was made in (per person per day; no content).
+    await recordAiUsage(ctx, profile._id, access.scope);
     return null;
   },
 });
@@ -385,7 +399,7 @@ export const ask = action({
     await requireIdentity(ctx);
     const question = args.question.trim().slice(0, MAX_QUESTION);
     if (!question) fail("invalid_argument", "Ask a question first.");
-    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId });
+    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId, documentId: args.documentId, noteOnly: args.scope === "note" });
     if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
     const history = (args.history ?? []).slice(-6).map((t) => ({ role: t.role, text: t.text.slice(0, 3000) }));
 
@@ -466,7 +480,8 @@ export const write = action({
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
     if (SELECTION_TASKS.has(task) && !text.trim()) fail("invalid_argument", "Select some text first.");
     if ((task === "draft" || task === "refine") && !instruction) fail("invalid_argument", "Tell the AI what to write.");
-    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId });
+    // Writing help works on one note (or text from it), so that note's workspace decides.
+    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId, documentId: args.documentId, noteOnly: true });
     if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
 
     const note = args.documentId && !SELECTION_TASKS.has(task) ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }) : null;

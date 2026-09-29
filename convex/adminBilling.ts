@@ -9,8 +9,9 @@ import type { MutationCtx } from "./_generated/server";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { recordAudit } from "./lib/audit";
 import { fail } from "./lib/errors";
-import { ensureSubscription, entitlementsFor, storageUsedBy } from "./lib/billing";
-import { DAY_MS } from "./lib/plans";
+import { ensureSubscription } from "./lib/billing";
+import { personalAiUsage, personalEntitlements, storageUsage } from "./lib/entitlements";
+import { DAY_MS, isPaidPlan, personalPlanId } from "./lib/plans";
 import { listUserSessions } from "./lib/authStore";
 
 const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
@@ -45,7 +46,7 @@ const snapshot = (s: Doc<"subscriptions">) => ({
   deviceLimitOverride: s.deviceLimitOverride ?? null,
 });
 
-/** One person's plan, entitlements, storage, AI use and payments (an audited read). */
+/** One person's Personal plan, entitlements, personal storage, AI use in Personal and payments (an audited read). */
 export const userBilling = mutation({
   args: { profileId: v.string(), ...vMeta },
   handler: async (ctx, args) => {
@@ -59,17 +60,19 @@ export const userBilling = mutation({
       .order("desc")
       .take(50);
     const since = new Date(Date.now() - 30 * DAY_MS).toISOString().slice(0, 10);
-    const usage = await ctx.db
-      .query("aiUsage")
-      .withIndex("by_profile_day", (q) => q.eq("profileId", p._id).gte("day", since))
-      .collect();
+    const usage = await personalAiUsage(ctx, p._id, since);
+    const byDay = new Map<string, number>();
+    for (const u of usage) byDay.set(u.day, (byDay.get(u.day) ?? 0) + u.count);
+    const storage = await storageUsage(ctx, { kind: "personal", profileId: p._id });
     return {
       subscription: { ...snapshot(sub), stripeCustomerId: sub.stripeCustomerId ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), paidSince: sub.paidSince ?? null },
-      entitlements: await entitlementsFor(ctx, p._id),
-      storageUsedBytes: await storageUsedBy(ctx, p._id),
+      entitlements: await personalEntitlements(ctx, p._id),
+      /** Personal storage only (team workspaces have their own). */
+      storageUsedBytes: storage.usedBytes,
+      storageLimitBytes: storage.limitBytes,
       devicesActive: (await listUserSessions(ctx, p.authSubject)).length,
       aiRequests30d: usage.reduce((n, u) => n + u.count, 0),
-      aiByDay: usage.map((u) => ({ day: u.day, count: u.count })),
+      aiByDay: [...byDay].sort(([a], [b]) => a.localeCompare(b)).map(([day, count]) => ({ day, count })),
       payments: payments.map((x) => ({ id: x._id as string, amountCents: x.amountCents, currency: x.currency, plan: x.plan, interval: x.interval, status: x.status, provider: x.provider, createdAt: x.createdAt })),
       personalWorkspaceId: (await ctx.db.get(p.defaultWorkspaceId ?? ("" as Id<"workspaces">)))?.publicId ?? null,
     };
@@ -87,19 +90,20 @@ export const setPlan = mutation({
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
     const sub = await ensureSubscription(ctx, p._id);
-    if (sub.provider === "stripe" && sub.status !== "canceled" && sub.plan !== "free") fail("invalid_argument", "This plan is billed through Stripe — change or cancel it there, then set it here if needed.");
+    const paid = isPaidPlan(personalPlanId(args.plan, args.interval));
+    if (sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval))) fail("invalid_argument", "This plan is billed through Stripe — change or cancel it there, then set it here if needed.");
     if (args.until !== undefined && args.until !== null && args.until <= Date.now()) fail("invalid_argument", "The end date must be in the future.");
     const before = snapshot(sub);
     const now = Date.now();
     await ctx.db.patch(sub._id, {
       plan: args.plan,
-      interval: args.plan === "free" ? undefined : (args.interval ?? "month"),
-      status: args.plan === "free" ? "active" : "active",
-      provider: args.plan === "free" ? "none" : "manual",
-      currentPeriodEnd: args.plan === "free" ? undefined : (args.until ?? undefined),
+      interval: paid ? (args.interval ?? "month") : undefined,
+      status: "active",
+      provider: paid ? "manual" : "none",
+      currentPeriodEnd: paid ? (args.until ?? undefined) : undefined,
       cancelAtPeriodEnd: false,
-      paidSince: args.plan === "free" ? undefined : sub.plan === args.plan && sub.paidSince ? sub.paidSince : now,
-      canceledAt: args.plan === "free" && sub.plan !== "free" ? now : undefined,
+      paidSince: !paid ? undefined : sub.plan === args.plan && sub.paidSince ? sub.paidSince : now,
+      canceledAt: !paid && isPaidPlan(personalPlanId(sub.plan, sub.interval)) ? now : undefined,
       updatedAt: now,
     });
     await recordAudit(ctx, admin, { action: "billing.set_plan", targetType: "profile", targetId: p._id, reason, before, after: snapshot((await ctx.db.get(sub._id))!), requestId: args.requestId, clientHash: args.clientHash });

@@ -1,5 +1,7 @@
-// Billing for the signed-in person: their plan, usage and history; upgrading through Stripe Checkout;
-// managing a subscription in Stripe's billing portal; and the Stripe webhook that keeps plans in step.
+// Personal billing for the signed-in person: their Personal plan, personal usage and history; upgrading
+// through Stripe Checkout; managing a subscription in Stripe's billing portal; and the Stripe webhook that
+// keeps plans in step (each event applied once; stale subscription events ignored). Workspace plans are
+// billed separately and never change a Personal plan.
 // Stripe is optional: without STRIPE_* settings, upgrades explain that payments aren't set up, and
 // development builds offer test purchases instead (never in production).
 import { v } from "convex/values";
@@ -9,21 +11,29 @@ import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { ensureSubscription, entitlementsFor, storageUsedBy, subscriptionOf } from "./lib/billing";
-import { DAY_MS, PLANS, type BillingInterval, type PlanId } from "./lib/plans";
+import { ensureSubscription, subscriptionOf } from "./lib/billing";
+import { personalAiUsage, personalEntitlements, storageUsage } from "./lib/entitlements";
+import { DAY_MS, PLAN_CATALOG, PLAN_ORDER, isPaidPlan, personalPlanId, type BillingInterval, type PersonalTier } from "./lib/plans";
 import { timingSafeEqualHex } from "./lib/crypto";
 import { listUserSessions } from "./lib/authStore";
 
 const vPaidPlan = v.union(v.literal("basic"), v.literal("pro"));
 const vInterval = v.union(v.literal("month"), v.literal("year"));
 
+type PaidTier = Exclude<PersonalTier, "free">;
+const isPaidTier = (t: PersonalTier): t is PaidTier => isPaidPlan(personalPlanId(t, "month"));
+/** The Personal tiers that are paid for (from the catalog). */
+const PAID_TIERS = PLAN_ORDER.filter(isPaidTier);
+/** Whether a billing row stores a paid Personal plan (whether it's still in force is the entitlements' job). */
+const onPaidPlan = (s: Pick<Doc<"subscriptions">, "plan" | "interval">) => isPaidPlan(personalPlanId(s.plan, s.interval));
+
 const stripeKey = () => process.env.STRIPE_SECRET_KEY ?? "";
 /** Stripe price ids for each paid plan and interval (Stripe dashboard → Products). */
-function priceIdFor(plan: "basic" | "pro", interval: BillingInterval): string | undefined {
+function priceIdFor(plan: PaidTier, interval: BillingInterval): string | undefined {
   return process.env[`STRIPE_PRICE_${plan.toUpperCase()}_${interval === "month" ? "MONTH" : "YEAR"}`];
 }
-function planForPrice(priceId: string): { plan: "basic" | "pro"; interval: BillingInterval } | null {
-  for (const plan of ["basic", "pro"] as const) for (const interval of ["month", "year"] as const) if (priceIdFor(plan, interval) === priceId) return { plan, interval };
+function planForPrice(priceId: string): { plan: PaidTier; interval: BillingInterval } | null {
+  for (const plan of PAID_TIERS) for (const interval of ["month", "year"] as const) if (priceIdFor(plan, interval) === priceId) return { plan, interval };
   return null;
 }
 const stripeReady = () => Boolean(stripeKey() && priceIdFor("basic", "month") && priceIdFor("pro", "month"));
@@ -34,27 +44,26 @@ const appUrl = () => (process.env.FOLEVI_APP_URL ?? "http://app.localhost:3000")
 // The person's own billing
 // ---------------------------------------------------------------------------------------------------
 
-/** Plan, what it includes, storage used, AI use this month and payment history. */
+/** Personal plan, what it includes, personal storage used, AI use in Personal this month and payment history. */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const profile = await requireProfile(ctx, { allowOverDeviceLimit: true });
     const sub = await subscriptionOf(ctx, profile._id);
-    const entitlements = await entitlementsFor(ctx, profile._id);
+    const entitlements = await personalEntitlements(ctx, profile._id);
     const payments = await ctx.db
       .query("payments")
       .withIndex("by_profile_created", (q) => q.eq("profileId", profile._id))
       .order("desc")
       .take(24);
     const month = new Date().toISOString().slice(0, 7);
-    const usage = await ctx.db
-      .query("aiUsage")
-      .withIndex("by_profile_day", (q) => q.eq("profileId", profile._id).gte("day", `${month}-01`))
-      .collect();
+    const usage = await personalAiUsage(ctx, profile._id, `${month}-01`);
+    const storage = await storageUsage(ctx, { kind: "personal", profileId: profile._id });
     return {
       entitlements,
       subscription: sub
         ? {
+            planId: personalPlanId(sub.plan, sub.interval),
             plan: sub.plan,
             interval: sub.interval ?? null,
             status: sub.status,
@@ -65,7 +74,9 @@ export const mine = query({
             aiGrantUntil: sub.aiGrantUntil ?? null,
           }
         : null,
-      storageUsedBytes: await storageUsedBy(ctx, profile._id),
+      /** Personal storage only: team workspaces have their own. */
+      storageUsedBytes: storage.usedBytes,
+      storageLimitBytes: storage.limitBytes,
       devicesActive: (await listUserSessions(ctx, profile.authSubject)).length,
       aiRequestsThisMonth: usage.reduce((n, u) => n + u.count, 0),
       payments: payments.map((p) => ({ id: p._id, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval, status: p.status, createdAt: p.createdAt })),
@@ -96,7 +107,7 @@ export const testPurchase = mutation({
       trialEndsAt: sub.trialEndsAt && sub.trialEndsAt > now ? now : sub.trialEndsAt,
       updatedAt: now,
     });
-    const price = args.interval === "year" ? PLANS[args.plan].yearlyCents : PLANS[args.plan].monthlyCents;
+    const price = PLAN_CATALOG[personalPlanId(args.plan, args.interval)].priceCents;
     await ctx.db.insert("payments", { profileId: profile._id, amountCents: price, currency: "usd", plan: args.plan, interval: args.interval, status: "paid", provider: "test", createdAt: now });
     return null;
   },
@@ -108,7 +119,7 @@ export const cancelPlan = mutation({
   handler: async (ctx) => {
     const profile = await requireProfile(ctx);
     const sub = await subscriptionOf(ctx, profile._id);
-    if (!sub || sub.plan === "free") fail("invalid_argument", "You're on the Free plan.");
+    if (!sub || !onPaidPlan(sub)) fail("invalid_argument", "You're on the Free plan.");
     if (sub.provider === "stripe") fail("invalid_argument", "Manage your subscription in the billing portal.");
     await ctx.db.patch(sub._id, { cancelAtPeriodEnd: true, updatedAt: Date.now() });
     return null;
@@ -120,7 +131,7 @@ export const resumePlan = mutation({
   handler: async (ctx) => {
     const profile = await requireProfile(ctx);
     const sub = await subscriptionOf(ctx, profile._id);
-    if (!sub || sub.plan === "free" || sub.provider === "stripe") fail("invalid_argument", "Nothing to resume.");
+    if (!sub || !onPaidPlan(sub) || sub.provider === "stripe") fail("invalid_argument", "Nothing to resume.");
     await ctx.db.patch(sub._id, { cancelAtPeriodEnd: false, updatedAt: Date.now() });
     return null;
   },
@@ -132,7 +143,7 @@ export const settleExpiredPlans = internalMutation({
   handler: async (ctx) => {
     const now = Date.now();
     let changed = 0;
-    for (const plan of ["basic", "pro"] as const) {
+    for (const plan of PAID_TIERS) {
       const subs = await ctx.db
         .query("subscriptions")
         .withIndex("by_plan", (q) => q.eq("plan", plan))
@@ -179,7 +190,7 @@ export const checkoutContext = internalQuery({
   },
 });
 
-/** Starts Stripe Checkout for a plan; returns the page to send the person to. */
+/** Starts Stripe Checkout for a Personal plan; returns the page to send the person to. */
 export const checkout = action({
   args: { plan: vPaidPlan, interval: vInterval },
   handler: async (ctx, args): Promise<{ url: string }> => {
@@ -233,14 +244,19 @@ export async function verifyStripeSignature(body: string, header: string | null,
   return signatures.some((s) => s.length === expected.length && timingSafeEqualHex(s, expected));
 }
 
-/** POST /webhooks/stripe — signature-checked, then applied. */
+/** POST /webhooks/stripe — signature-checked, then applied (once per event id). */
 export const stripeWebhook = httpAction(async (ctx, request) => {
   const body = await request.text();
   if (!(await verifyStripeSignature(body, request.headers.get("stripe-signature"), process.env.STRIPE_WEBHOOK_SECRET ?? ""))) {
     return new Response("Invalid signature", { status: 400 });
   }
-  const event = JSON.parse(body) as { id: string; type: string; data: { object: Record<string, unknown> } };
-  await ctx.runMutation(internal.billing.applyStripeEvent, { type: event.type, object: event.data.object });
+  const event = JSON.parse(body) as { id?: string; type: string; created?: number; data: { object: Record<string, unknown> } };
+  await ctx.runMutation(internal.billing.applyStripeEvent, {
+    eventId: typeof event.id === "string" ? event.id : undefined,
+    created: typeof event.created === "number" ? event.created : undefined,
+    type: event.type,
+    object: event.data.object,
+  });
   return new Response(null, { status: 200 });
 });
 
@@ -268,70 +284,95 @@ async function findStripeRow(ctx: MutationCtx, o: Record<string, unknown>): Prom
 
 const STATUS: Record<string, Doc<"subscriptions">["status"]> = { active: "active", trialing: "active", past_due: "past_due", unpaid: "past_due", incomplete: "past_due", canceled: "canceled", incomplete_expired: "canceled", paused: "canceled" };
 
-/** Applies one Stripe event to the matching person's plan (idempotent: payments are keyed by invoice). */
+type ApplyResult = { status: "applied" | "duplicate" | "stale" | "unmatched" };
+
+/**
+ * Applies one Stripe event to the matching person's plan. Idempotent: an event id is applied once (Stripe
+ * redelivers events), payments are keyed by invoice, and a subscription event older than the last one
+ * applied to that subscription is ignored (Stripe doesn't promise delivery order). Checking and recording
+ * the event id happen in this one transaction, so two deliveries of the same event can't both apply.
+ */
 export const applyStripeEvent = internalMutation({
-  args: { type: v.string(), object: v.any() },
-  handler: async (ctx, args) => {
-    const o = args.object as Record<string, unknown>;
-    const row = await findStripeRow(ctx, o);
-    if (!row) {
-      console.warn(JSON.stringify({ event: "billing.webhook_unmatched", type: args.type }));
-      return null;
+  args: { eventId: v.optional(v.string()), created: v.optional(v.number()), type: v.string(), object: v.any() },
+  handler: async (ctx, args): Promise<ApplyResult> => {
+    const eventId = args.eventId;
+    if (eventId) {
+      const seen = await ctx.db
+        .query("billingEvents")
+        .withIndex("by_event_id", (q) => q.eq("eventId", eventId))
+        .unique();
+      if (seen) return { status: "duplicate" };
     }
-    const now = Date.now();
-    if (args.type === "checkout.session.completed") {
-      await ctx.db.patch(row._id, {
-        provider: "stripe",
-        stripeCustomerId: typeof o.customer === "string" ? o.customer : row.stripeCustomerId,
-        stripeSubscriptionId: typeof o.subscription === "string" ? o.subscription : row.stripeSubscriptionId,
-        updatedAt: now,
-      });
-    } else if (args.type === "customer.subscription.created" || args.type === "customer.subscription.updated" || args.type === "customer.subscription.deleted") {
-      const items = (o.items as { data?: { price?: { id?: string } }[] } | undefined)?.data ?? [];
-      const mapped = items.map((i) => planForPrice(i.price?.id ?? "")).find(Boolean) ?? null;
-      const status = args.type === "customer.subscription.deleted" ? "canceled" : (STATUS[String(o.status)] ?? "past_due");
-      const periodEnd = typeof o.current_period_end === "number" ? o.current_period_end * 1000 : row.currentPeriodEnd;
-      const plan: PlanId = mapped?.plan ?? (row.plan === "free" ? "free" : row.plan);
-      await ctx.db.patch(row._id, {
-        provider: "stripe",
-        plan,
-        interval: mapped?.interval ?? row.interval,
-        status,
-        currentPeriodEnd: status === "canceled" ? Math.min(periodEnd ?? now, now) : periodEnd,
-        cancelAtPeriodEnd: Boolean(o.cancel_at_period_end),
-        stripeCustomerId: typeof o.customer === "string" ? o.customer : row.stripeCustomerId,
-        stripeSubscriptionId: typeof o.id === "string" ? o.id : row.stripeSubscriptionId,
-        paidSince: row.paidSince && row.plan === plan ? row.paidSince : status === "active" ? now : row.paidSince,
-        canceledAt: status === "canceled" ? now : undefined,
-        trialEndsAt: status === "active" && row.trialEndsAt && row.trialEndsAt > now ? now : row.trialEndsAt,
-        updatedAt: now,
-      });
-    } else if (args.type === "invoice.paid" || args.type === "invoice.payment_failed") {
-      const ref = typeof o.id === "string" ? o.id : undefined;
-      const existing = ref
-        ? await ctx.db
-            .query("payments")
-            .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
-            .unique()
-        : null;
-      const paid = args.type === "invoice.paid";
-      const amount = Number(paid ? o.amount_paid : o.amount_due) || 0;
-      if (row.plan !== "free" && row.interval && amount > 0) {
-        if (existing) await ctx.db.patch(existing._id, { status: paid ? "paid" : "failed" });
-        else await ctx.db.insert("payments", { profileId: row.profileId, amountCents: amount, currency: String(o.currency ?? "usd"), plan: row.plan, interval: row.interval, status: paid ? "paid" : "failed", provider: "stripe", providerRef: ref, createdAt: now });
-      }
-      if (!paid) await ctx.db.patch(row._id, { status: "past_due", updatedAt: now });
-    } else if (args.type === "charge.refunded") {
-      const ref = typeof o.invoice === "string" ? o.invoice : undefined;
-      const payment = ref
-        ? await ctx.db
-            .query("payments")
-            .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
-            .unique()
-        : null;
-      if (payment) await ctx.db.patch(payment._id, { status: "refunded" });
-    }
-    return null;
+    const result = await applyEvent(ctx, args.type, args.created, args.object as Record<string, unknown>);
+    if (eventId) await ctx.db.insert("billingEvents", { eventId, type: args.type.slice(0, 100), created: args.created, processedAt: Date.now() });
+    return result;
   },
 });
 
+async function applyEvent(ctx: MutationCtx, type: string, created: number | undefined, o: Record<string, unknown>): Promise<ApplyResult> {
+  const row = await findStripeRow(ctx, o);
+  if (!row) {
+    console.warn(JSON.stringify({ event: "billing.webhook_unmatched", type }));
+    return { status: "unmatched" };
+  }
+  const now = Date.now();
+  if (type === "checkout.session.completed") {
+    await ctx.db.patch(row._id, {
+      provider: "stripe",
+      stripeCustomerId: typeof o.customer === "string" ? o.customer : row.stripeCustomerId,
+      stripeSubscriptionId: typeof o.subscription === "string" ? o.subscription : row.stripeSubscriptionId,
+      updatedAt: now,
+    });
+  } else if (type === "customer.subscription.created" || type === "customer.subscription.updated" || type === "customer.subscription.deleted") {
+    if (created !== undefined && row.stripeEventCreatedAt !== undefined && created < row.stripeEventCreatedAt) {
+      console.warn(JSON.stringify({ event: "billing.webhook_stale", type }));
+      return { status: "stale" };
+    }
+    const items = (o.items as { data?: { price?: { id?: string } }[] } | undefined)?.data ?? [];
+    const mapped = items.map((i) => planForPrice(i.price?.id ?? "")).find(Boolean) ?? null;
+    const status = type === "customer.subscription.deleted" ? "canceled" : (STATUS[String(o.status)] ?? "past_due");
+    const periodEnd = typeof o.current_period_end === "number" ? o.current_period_end * 1000 : row.currentPeriodEnd;
+    const plan: PersonalTier = mapped?.plan ?? row.plan;
+    await ctx.db.patch(row._id, {
+      provider: "stripe",
+      plan,
+      interval: mapped?.interval ?? row.interval,
+      status,
+      currentPeriodEnd: status === "canceled" ? Math.min(periodEnd ?? now, now) : periodEnd,
+      cancelAtPeriodEnd: Boolean(o.cancel_at_period_end),
+      stripeCustomerId: typeof o.customer === "string" ? o.customer : row.stripeCustomerId,
+      stripeSubscriptionId: typeof o.id === "string" ? o.id : row.stripeSubscriptionId,
+      paidSince: row.paidSince && row.plan === plan ? row.paidSince : status === "active" ? now : row.paidSince,
+      canceledAt: status === "canceled" ? now : undefined,
+      trialEndsAt: status === "active" && row.trialEndsAt && row.trialEndsAt > now ? now : row.trialEndsAt,
+      stripeEventCreatedAt: created ?? row.stripeEventCreatedAt,
+      updatedAt: now,
+    });
+  } else if (type === "invoice.paid" || type === "invoice.payment_failed") {
+    const ref = typeof o.id === "string" ? o.id : undefined;
+    const existing = ref
+      ? await ctx.db
+          .query("payments")
+          .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
+          .unique()
+      : null;
+    const paid = type === "invoice.paid";
+    const amount = Number(paid ? o.amount_paid : o.amount_due) || 0;
+    const tier = row.plan;
+    if (isPaidTier(tier) && row.interval && amount > 0) {
+      if (existing) await ctx.db.patch(existing._id, { status: paid ? "paid" : "failed" });
+      else await ctx.db.insert("payments", { profileId: row.profileId, amountCents: amount, currency: String(o.currency ?? "usd"), plan: tier, interval: row.interval, status: paid ? "paid" : "failed", provider: "stripe", providerRef: ref, createdAt: now });
+    }
+    if (!paid) await ctx.db.patch(row._id, { status: "past_due", updatedAt: now });
+  } else if (type === "charge.refunded") {
+    const ref = typeof o.invoice === "string" ? o.invoice : undefined;
+    const payment = ref
+      ? await ctx.db
+          .query("payments")
+          .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
+          .unique()
+      : null;
+    if (payment) await ctx.db.patch(payment._id, { status: "refunded" });
+  }
+  return { status: "applied" };
+}

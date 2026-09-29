@@ -1086,6 +1086,9 @@ public enum FoleviLimits {
     public static let maxWhiteboardDataLength = 200000
     public static let minWhiteboardHeight = 120
     public static let maxWhiteboardHeight = 2400
+    public static let maxFlowchartDataLength = 200000
+    public static let minFlowchartHeight = 200
+    public static let maxFlowchartHeight = 1600
 }
 
 public let foleviCodeLanguages: [String] = ["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"]

@@ -260,20 +260,24 @@ ${encodeCases}
 }`;
 }
 
+// Blocks marked "webOnly" stay out of the Swift schema (the native apps keep them as unknown blocks, verbatim).
+const nativeBlocks = () => Object.fromEntries(Object.entries(spec.blocks).filter(([, d]) => !d.webOnly));
+
 function genSwift() {
+  const blocks = nativeBlocks();
   const out = [`// ${HEADER}`, "import Foundation", "", `public let foleviSchemaVersion = ${spec.schemaVersion}`, ""];
   for (const [n, e] of Object.entries(spec.enums)) out.push(swiftEnum(n, e), "");
   for (const [n, u] of Object.entries(spec.unions)) out.push(swiftUnion(n, u), "");
   for (const [n, f] of Object.entries(spec.structs)) out.push(swiftStruct(n, f), "");
-  for (const [t, d] of Object.entries(spec.blocks)) out.push(swiftStruct(propsName(t), d.props), "");
-  const types = Object.keys(spec.blocks);
+  for (const [t, d] of Object.entries(blocks)) out.push(swiftStruct(propsName(t), d.props), "");
+  const types = Object.keys(blocks);
   out.push(`/// Typed block content. Unknown types (written by a newer client) are preserved verbatim.
 public enum BlockContent: Sendable, Hashable {
 ${types.map((t) => `    case ${esc(t)}(${propsName(t)})`).join("\n")}
     case unknown(type: String, props: JSONValue)
 
     public static let knownTypes: Set<String> = [${types.map((t) => `"${t}"`).join(", ")}]
-    public static let textTypes: Set<String> = [${Object.entries(spec.blocks)
+    public static let textTypes: Set<String> = [${Object.entries(blocks)
       .filter(([, d]) => d.text)
       .map(([t]) => `"${t}"`)
       .join(", ")}]

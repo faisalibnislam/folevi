@@ -3,6 +3,7 @@ import type { WireBlock } from "./types";
 import { flattenTree } from "./tree";
 import { sanitizeHref } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
+import { flowchartToSvg } from "./flowchartSvg";
 
 export function escapeHtml(value: string): string {
   return value
@@ -97,6 +98,7 @@ mark{background:#F7E7A6;color:inherit}
 .page-break{break-after:page;page-break-after:always;height:0;margin:32px 0;border-top:1px dashed var(--line)}
 .formula{margin:16px 0;text-align:center;overflow-x:auto}.formula pre{text-align:left}
 .whiteboard svg{width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
+.flowchart{margin:16px 0}.flowchart svg{display:block;max-width:100%;height:auto;margin:0 auto}
 hr.divider-extralight{border:0;border-top:2px dotted var(--line);opacity:.7}hr.divider-light{border:0;border-top:1px dotted var(--muted)}
 hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{border:0;border-top:3px solid var(--ink)}
 @media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
@@ -162,6 +164,9 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
       }
       case "whiteboard":
         parts.push(`<figure class="whiteboard">${whiteboardToSvg(String(p.data ?? ""), Number(p.height))}</figure>`);
+        break;
+      case "flowchart":
+        if (String(p.data ?? "")) parts.push(`<figure class="flowchart">${flowchartToSvg(String(p.data))}</figure>`);
         break;
       case "code":
         parts.push(`<pre><code class="language-${escapeHtml(String(p.language))}">${escapeHtml(String(p.code ?? ""))}</code></pre>`);

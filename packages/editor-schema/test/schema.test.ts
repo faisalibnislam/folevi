@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import golden from "../fixtures/document-golden.json";
 import {
   BLOCK_TYPES,
+  SPEC,
   canonicalJson,
   migrateWireBlock,
   parseBlock,
@@ -15,7 +16,10 @@ const blocks = golden.blocks as unknown as WireBlock[];
 describe("canonical schema", () => {
   it("golden fixture covers every known block type", () => {
     const types = new Set(blocks.map((b) => b.type));
-    for (const t of BLOCK_TYPES) expect(types.has(t)).toBe(true);
+    // The fixture is shared with the native apps' tests; web-only blocks (not yet in the Swift schema) are
+    // covered by their own tests (flowchart.test.ts).
+    const webOnly = (t: string) => Boolean((SPEC.blocks as Record<string, { webOnly?: boolean }>)[t]?.webOnly);
+    for (const t of BLOCK_TYPES) if (!webOnly(t)) expect(types.has(t), t).toBe(true);
   });
 
   it("every known golden block validates", () => {

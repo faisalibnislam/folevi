@@ -1,5 +1,5 @@
 {
-  "$description": "Canonical Folevi block schema. Source of truth for generated TypeScript (src/generated/schema.ts), Swift (apps/macos/Folevi/Domain/Generated/BlockSchema.swift) and JSON Schema (generated/folevi-blocks.schema.json). Bump schemaVersion and add a migration in src/migrations.ts for any breaking change.",
+  "$description": "Canonical Folevi block schema. Source of truth for generated TypeScript (src/generated/schema.ts), Swift (apps/macos/Folevi/Domain/Generated/BlockSchema.swift) and JSON Schema (generated/folevi-blocks.schema.json). Bump schemaVersion and add a migration in src/migrations.ts for any breaking change. Blocks marked \"webOnly\" are left out of the Swift types until the native apps draw them; native clients keep them verbatim as unknown blocks.",
   "schemaVersion": 1,
   "enums": {
     "HeadingLevel": { "type": "int", "values": [1, 2, 3] },
@@ -186,7 +186,8 @@
       "props": { "collectionId": "string", "viewId": "string?" }
     },
     "formula": { "text": false, "props": { "latex": "string" } },
-    "whiteboard": { "text": false, "props": { "data": "string", "height": "number" } }
+    "whiteboard": { "text": false, "props": { "data": "string", "height": "number" } },
+    "flowchart": { "text": false, "webOnly": true, "props": { "data": "string", "height": "number" } }
   },
   "limits": {
     "maxTextLength": 20000,
@@ -199,7 +200,10 @@
     "maxFormulaLength": 10000,
     "maxWhiteboardDataLength": 200000,
     "minWhiteboardHeight": 120,
-    "maxWhiteboardHeight": 2400
+    "maxWhiteboardHeight": 2400,
+    "maxFlowchartDataLength": 200000,
+    "minFlowchartHeight": 200,
+    "maxFlowchartHeight": 1600
   },
   "codeLanguages": [
     "plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java",

@@ -976,6 +976,37 @@ export default defineSchema({
     .index("by_status_scheduled", ["status", "scheduledFor"])
     .index("by_target", ["kind", "targetId"]),
 
+  /**
+   * Progress and result of a resumable data check (migrations.verifyAccountModel): where the job has got to
+   * (`stage` + `cursor`) and what it has found so far. Read with migrations.accountModelReport.
+   */
+  migrationReports: defineTable({
+    name: v.string(),
+    stage: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    done: v.boolean(),
+    /** Set when done: every count is 0. */
+    ok: v.optional(v.boolean()),
+    counts: v.object({
+      rowsWithBothScopes: v.number(),
+      rowsWithNoScope: v.number(),
+      rowsInLegacyWorkspaces: v.number(),
+      rowsOutOfTheirDocumentsScope: v.number(),
+      orphanedGrants: v.number(),
+      personalWorkspaces: v.number(),
+      profilesWithDefaultWorkspace: v.number(),
+      legacyRoles: v.number(),
+    }),
+    tables: v.record(
+      v.string(),
+      v.object({ rows: v.number(), both: v.number(), neither: v.number(), legacyWorkspace: v.number(), outOfScope: v.number(), orphanedGrants: v.number() }),
+    ),
+    runs: v.number(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  }).index("by_name_started", ["name", "startedAt"]),
+
   metrics: defineTable({
     key: v.string(),
     value: v.number(),

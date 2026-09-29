@@ -2,7 +2,8 @@ import { convexTest } from "convex-test";
 import schema from "../../convex/schema";
 import authSchema from "../../convex/betterAuth/schema";
 import { authModules, modules } from "./setup";
-import { api, components } from "../../convex/_generated/api";
+import { vi } from "vitest";
+import { api, components, internal } from "../../convex/_generated/api";
 import { SCHEMA_VERSION, ulid, type WireBlock } from "@folevi/editor-schema";
 
 process.env.FOLEVI_HASH_SALT = "test-salt";
@@ -106,6 +107,24 @@ export async function join(t: T, owner: Person, who: Person, email: string, work
     return rows.find((r) => r.status === "pending")!.publicId;
   });
   await who.as.mutation(api.workspaces.acceptInvite, { inviteId });
+}
+
+/**
+ * Runs the account-model check to the end (it's a background job: start, let it run, read the report).
+ * Small pages force it through many runs, the way it works on a big database.
+ */
+export async function verifyAccountModel(t: T, opts: { pageSize?: number; pagesPerRun?: number } = {}) {
+  const fake = vi.isFakeTimers();
+  if (!fake) vi.useFakeTimers();
+  try {
+    const { reportId } = await t.mutation(internal.migrations.verifyAccountModel, opts);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const report = await t.query(internal.migrations.accountModelReport, { reportId });
+    if (!report?.done) throw new Error("the account-model check didn't finish");
+    return report;
+  } finally {
+    if (!fake) vi.useRealTimers();
+  }
 }
 
 export function para(id: string, text: string, rank = "V", parentId: string | null = null): WireBlock {

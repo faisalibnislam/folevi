@@ -12,7 +12,7 @@ import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { ensureSubscription, ensureWorkspaceSubscription, insertPayment, isPersonalPayment, markInvoiceRefunded, isPersonalSubscription, isWorkspaceSubscription, subscriptionOf, type PersonalSubscription } from "./lib/billing";
+import { ensureSubscription, ensureWorkspaceSubscription, failedInvoiceMarksPastDue, insertPayment, invoicePaymentStatus, isPersonalPayment, markInvoiceRefunded, isPersonalSubscription, isWorkspaceSubscription, subscriptionOf, type PersonalSubscription } from "./lib/billing";
 import { personalAiUsage, personalEntitlements, storageUsage } from "./lib/entitlements";
 import { DAY_MS, PLAN_CATALOG, PLAN_ORDER, isPaidPlan, personalPlanId, type BillingInterval, type PersonalTier } from "./lib/plans";
 import { timingSafeEqualHex } from "./lib/crypto";
@@ -245,8 +245,10 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
     return new Response("Invalid signature", { status: 400 });
   }
   const event = JSON.parse(body) as { id?: string; type: string; created?: number; data: { object: Record<string, unknown> } };
+  // Every Stripe event has an id; without one it couldn't be applied exactly once.
+  if (typeof event.id !== "string" || !event.id) return new Response("Missing event id", { status: 400 });
   await ctx.runMutation(internal.billing.applyStripeEvent, {
-    eventId: typeof event.id === "string" ? event.id : undefined,
+    eventId: event.id,
     created: typeof event.created === "number" ? event.created : undefined,
     type: event.type,
     object: event.data.object,
@@ -374,11 +376,14 @@ async function applyEvent(ctx: MutationCtx, type: string, created: number | unde
     const paid = type === "invoice.paid";
     const amount = Number(paid ? o.amount_paid : o.amount_due) || 0;
     const tier = row.plan;
-    if (isPaidTier(tier) && row.interval && amount > 0) {
-      if (existing) await ctx.db.patch(existing._id, { status: paid ? "paid" : "failed" });
-      else await insertPayment(ctx, { kind: "user", profileId: row.profileId }, { amountCents: amount, currency: String(o.currency ?? "usd"), plan: tier, interval: row.interval, status: paid ? "paid" : "failed", provider: "stripe", providerRef: ref, createdAt: now });
+    // Payments are keyed by invoice id (a redelivered or late event updates the same row, never adds one).
+    if (isPaidTier(tier) && row.interval && amount > 0 && ref) {
+      const status = invoicePaymentStatus(existing, paid);
+      if (existing) {
+        if (existing.status !== status) await ctx.db.patch(existing._id, { status });
+      } else await insertPayment(ctx, { kind: "user", profileId: row.profileId }, { amountCents: amount, currency: String(o.currency ?? "usd"), plan: tier, interval: row.interval, status, provider: "stripe", providerRef: ref, createdAt: now });
     }
-    if (!paid) await ctx.db.patch(row._id, { status: "past_due", updatedAt: now });
+    if (!paid && failedInvoiceMarksPastDue(existing, created, row)) await ctx.db.patch(row._id, { status: "past_due", updatedAt: now });
   } else if (type === "charge.refunded") {
     await markInvoiceRefunded(ctx, o);
   }

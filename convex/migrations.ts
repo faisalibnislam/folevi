@@ -1,6 +1,6 @@
 // One-off data backfills. Each runs in small batches and reschedules itself until done, so it is safe on
 // large deployments. Run with `npx convex run migrations:<name>`.
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -145,7 +145,13 @@ export const startBillingForExistingUsers = internalMutation({
 // Account model, phase B: Personal is not a workspace (docs/ACCOUNT_MODEL_PLAN.md, "Phase B runbook").
 //
 //   npx convex run migrations:migratePersonalWorkspaces    starts it; it continues itself in batches
-//   npx convex run migrations:verifyAccountModel           every count must be 0 (`ok: true`)
+//   npx convex run migrations:verifyAccountModel           starts the check (a background job)
+//   npx convex run migrations:accountModelReport           `done: true`, then every count must be 0 (`ok: true`)
+//
+// Every step is a bounded mutation that schedules the next: grants look at up to GRANT_PAGE top-level
+// pages and stop starting new page trees after GRANT_STEP_NODES pages (resuming in the same page with
+// `skip`), a single tree is capped at MAX_GRANT_TREE, moves patch at most MOVE_BUDGET rows. A failed step
+// can simply be run again (or the whole migration restarted): every step is idempotent.
 //
 // For each workspace of kind "personal", one at a time:
 //   1. grants — each collaborator (a member other than the owner) becomes a page guest on what they could
@@ -164,8 +170,16 @@ export const startBillingForExistingUsers = internalMutation({
 
 const MOVE_BUDGET = 400;
 const GRANT_PAGE = 10;
-/** Pages under one top-level page considered at once; a bigger tree gets no grants (reported, never over-granted). */
-const MAX_GRANT_TREE = 5000;
+/**
+ * Pages under one top-level page considered at once; a bigger tree gets no grants (reported, never
+ * over-granted). Each page costs two reads (its grant, its children), so one tree stays well inside a
+ * mutation's limits.
+ */
+const MAX_GRANT_TREE = 1000;
+/** Members of one personal workspace considered for guest grants (its member limit was far lower). */
+const MAX_COLLABORATORS = 1000;
+/** After this many pages in one step, no new tree is started in it (the next step resumes). */
+const GRANT_STEP_NODES = 250;
 
 const vPhase = v.union(v.literal("grants"), v.literal("move"), v.literal("finish"));
 
@@ -188,7 +202,14 @@ export const migratePersonalWorkspaces = internalMutation({
 
 /** One bounded step of one personal workspace's migration; schedules the next step. */
 export const migratePersonalWorkspace = internalMutation({
-  args: { workspaceId: v.id("workspaces"), phase: vPhase, member: v.number(), cursor: v.union(v.string(), v.null()) },
+  args: {
+    workspaceId: v.id("workspaces"),
+    phase: vPhase,
+    member: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    /** Grants: pages of this batch (`cursor`) already handled by the previous step. */
+    skip: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const ws = await ctx.db.get(args.workspaceId);
     if (!ws || ws.kind !== "personal") {
@@ -196,11 +217,12 @@ export const migratePersonalWorkspace = internalMutation({
       return { phase: "gone" as const };
     }
     if (args.phase === "grants") {
+      // A personal workspace had a small member limit; the cap only keeps a corrupt one bounded.
       const collaborators = (
         await ctx.db
           .query("workspaceMembers")
           .withIndex("by_workspace", (q) => q.eq("workspaceId", ws._id))
-          .collect()
+          .take(MAX_COLLABORATORS)
       ).filter((m) => m.profileId !== ws.ownerId);
       const member = collaborators[args.member];
       if (!member) {
@@ -213,10 +235,19 @@ export const migratePersonalWorkspace = internalMutation({
         .withIndex("by_workspace_created", (q) => q.eq("workspaceId", ws._id))
         .paginate({ cursor: args.cursor, numItems: GRANT_PAGE });
       const stats = { granted: 0, notReachable: 0, tooLarge: 0 };
+      let next: { member: number; cursor: string | null; skip?: number } = page.isDone ? { member: args.member + 1, cursor: null } : { member: args.member, cursor: page.continueCursor };
       if (person && person.status !== "deleted") {
-        for (const doc of page.page) if (!doc.parentDocumentId) await grantGuestAccess(ctx, ws, member, person, doc, stats);
+        let visited = 0;
+        for (let i = args.skip ?? 0; i < page.page.length; i++) {
+          if (visited >= GRANT_STEP_NODES) {
+            // Enough for one step: the next one reads the same batch and carries on from here.
+            next = { member: args.member, cursor: args.cursor, skip: i };
+            break;
+          }
+          const doc = page.page[i]!;
+          if (!doc.parentDocumentId) visited += await grantGuestAccess(ctx, ws, member, person, doc, stats);
+        }
       }
-      const next = page.isDone ? { member: args.member + 1, cursor: null } : { member: args.member, cursor: page.continueCursor };
       await ctx.scheduler.runAfter(0, internal.migrations.migratePersonalWorkspace, { workspaceId: ws._id, phase: "grants", ...next });
       if (stats.notReachable || stats.tooLarge) console.log(JSON.stringify({ event: "migration.personal_guest_gaps", workspace: ws.publicId, ...stats }));
       return { phase: "grants" as const, ...stats };
@@ -226,9 +257,10 @@ export const migratePersonalWorkspace = internalMutation({
       await ctx.scheduler.runAfter(0, internal.migrations.migratePersonalWorkspace, { workspaceId: ws._id, phase: done ? "finish" : "move", member: 0, cursor: null });
       return { phase: "move" as const, done };
     }
-    await finishWorkspace(ctx, ws);
-    await ctx.scheduler.runAfter(0, internal.migrations.migratePersonalWorkspaces, {});
-    return { phase: "finish" as const, done: true };
+    const gone = await finishWorkspace(ctx, ws);
+    if (gone) await ctx.scheduler.runAfter(0, internal.migrations.migratePersonalWorkspaces, {});
+    else await ctx.scheduler.runAfter(0, internal.migrations.migratePersonalWorkspace, { workspaceId: ws._id, phase: "finish", member: 0, cursor: null });
+    return { phase: "finish" as const, done: gone };
   },
 });
 
@@ -252,7 +284,13 @@ interface GrantNode {
  * Builds a top-level page's tree with the collaborator's pre-migration access to each page, computed top
  * down with the rules documentAccess applied to members (role, restricted pages, creator, grants).
  */
-async function grantTree(ctx: MutationCtx, ws: Doc<"workspaces">, member: Doc<"workspaceMembers">, person: Doc<"profiles">, root: Doc<"documents">): Promise<GrantNode | null> {
+async function grantTree(
+  ctx: MutationCtx,
+  ws: Doc<"workspaces">,
+  member: Doc<"workspaceMembers">,
+  person: Doc<"profiles">,
+  root: Doc<"documents">,
+): Promise<{ tree: GrantNode | null; visited: number }> {
   let count = 0;
   const role = normalizeMembership(member).role;
   const build = async (doc: Doc<"documents">, parentRestricted: boolean, parentGrant: number): Promise<GrantNode | null> => {
@@ -268,10 +306,13 @@ async function grantTree(ctx: MutationCtx, ws: Doc<"workspaces">, member: Doc<"w
     else if (role === "admin" || role === "owner") old = ACCESS_RANK.manage;
     else if (restricted) old = doc.createdBy === person._id ? ACCESS_RANK.manage : grant;
     else old = Math.max(ACCESS_RANK[memberToAccess(member)], grant);
+    // Never read more children than the tree may still hold.
+    const room = MAX_GRANT_TREE - count;
     const kids = await ctx.db
       .query("documents")
       .withIndex("by_parent", (q) => q.eq("parentDocumentId", doc._id))
-      .collect();
+      .take(room + 1);
+    if (kids.length > room) return null;
     const children: GrantNode[] = [];
     let min = capped(old);
     for (const kid of kids) {
@@ -282,11 +323,13 @@ async function grantTree(ctx: MutationCtx, ws: Doc<"workspaces">, member: Doc<"w
     }
     return { doc, old, existing, children, min };
   };
-  return await build(root, false, -1);
+  const tree = await build(root, false, -1);
+  return { tree, visited: Math.min(count, MAX_GRANT_TREE) };
 }
 
 /**
- * Makes a collaborator in someone's personal workspace a guest on the pages they could open. A grant on a
+ * Makes a collaborator in someone's personal workspace a guest on the pages they could open (returns the
+ * number of pages looked at). A grant on a
  * page reaches every page under it, so a page gets a grant only when nothing under it was less open to
  * them — nobody gains access; a page whose subtree holds something they couldn't open (a restricted page)
  * is left to the grants below it, and counted in `notReachable` when it ends up less open than before.
@@ -298,11 +341,11 @@ async function grantGuestAccess(
   person: Doc<"profiles">,
   root: Doc<"documents">,
   stats: { granted: number; notReachable: number; tooLarge: number },
-): Promise<void> {
-  const tree = await grantTree(ctx, ws, member, person, root);
+): Promise<number> {
+  const { tree, visited } = await grantTree(ctx, ws, member, person, root);
   if (!tree) {
     stats.tooLarge++;
-    return;
+    return visited;
   }
   const plan = async (node: GrantNode, inherited: number) => {
     const existing = node.existing ? ACCESS_RANK[roleToAccess(node.existing.role)] : -1;
@@ -322,6 +365,7 @@ async function grantGuestAccess(
     for (const child of node.children) await plan(child, have);
   };
   await plan(tree, -1);
+  return visited;
 }
 
 /** Moves a bounded batch of the workspace's rows to the owner's Personal. True when nothing is left. */
@@ -369,8 +413,18 @@ async function moveRows(ctx: MutationCtx, ws: Doc<"workspaces">): Promise<boolea
   return budget > 0;
 }
 
-/** Moves the workspace's counters to its owner and deletes it with its memberships. */
-async function finishWorkspace(ctx: MutationCtx, ws: Doc<"workspaces">): Promise<void> {
+/**
+ * Deletes the workspace's memberships (a bounded batch per call), then — in the same mutation as the last
+ * batch — moves its counters to its owner and deletes it. True when the workspace is gone. The counters
+ * move exactly once: only the call that deletes the workspace moves them.
+ */
+async function finishWorkspace(ctx: MutationCtx, ws: Doc<"workspaces">): Promise<boolean> {
+  const members = await ctx.db
+    .query("workspaceMembers")
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", ws._id))
+    .take(MOVE_BUDGET + 1);
+  for (const m of members.slice(0, MOVE_BUDGET)) await ctx.db.delete(m._id);
+  if (members.length > MOVE_BUDGET) return false;
   const owner = await ctx.db.get(ws.ownerId);
   if (owner) {
     await ctx.db.patch(owner._id, {
@@ -387,13 +441,9 @@ async function finishWorkspace(ctx: MutationCtx, ws: Doc<"workspaces">): Promise
       if (sub.storageOverrideBytes === undefined) await ctx.db.patch(sub._id, { storageOverrideBytes: override, updatedAt: Date.now() });
     }
   }
-  const members = await ctx.db
-    .query("workspaceMembers")
-    .withIndex("by_workspace", (q) => q.eq("workspaceId", ws._id))
-    .collect();
-  for (const m of members) await ctx.db.delete(m._id);
   await ctx.db.delete(ws._id);
   await bump(ctx, "workspaces_total", -1);
+  return true;
 }
 
 /** Clears the old model's defaultWorkspaceId on every profile (the last step of the migration). */
@@ -444,18 +494,20 @@ export const normalizeWorkspaceRoles = internalMutation({
   },
 });
 
-/** One page of membership or invitation rows still holding an old member role. */
-export const verifyRolesPage = internalQuery({
-  args: { table: v.union(v.literal("workspaceMembers"), v.literal("workspaceInvites")), cursor: v.union(v.string(), v.null()) },
-  handler: async (ctx, args): Promise<{ legacy: number; isDone: boolean; continueCursor: string }> => {
-    const page = await ctx.db.query(args.table).paginate({ cursor: args.cursor, numItems: VERIFY_PAGE });
-    return { legacy: page.page.filter((r) => isLegacyRole(r.role)).length, isDone: page.isDone, continueCursor: page.continueCursor };
-  },
-});
-
 // ---------------------------------------------------------------- verification
+//
+//   npx convex run migrations:verifyAccountModel     starts a check (a background job; returns at once)
+//   npx convex run migrations:accountModelReport     the latest check: `done`, then `ok` and every count
+//
+// The check pages through every scoped table, profiles, memberships, invitations and workspaces. Each run
+// of the job reads a bounded number of pages (queries, so it never conflicts with live writes), adds what
+// it found to its `migrationReports` row and schedules the next run, so it finishes at any database size.
+// A run only saves if the row is still where it started (stage + cursor), so a duplicate run can't count a
+// page twice.
 
 const VERIFY_PAGE = 500;
+const VERIFY_PAGES_PER_RUN = 10;
+const ACCOUNT_MODEL_REPORT = "accountModel";
 
 interface TableCheck {
   rows: number;
@@ -470,6 +522,36 @@ interface TableCheck {
   /** documentPermissions only: the page or the person is gone. */
   orphanedGrants: number;
 }
+const vTableCheck = v.object({ rows: v.number(), both: v.number(), neither: v.number(), legacyWorkspace: v.number(), outOfScope: v.number(), orphanedGrants: v.number() });
+const emptyCheck = (): TableCheck => ({ rows: 0, both: 0, neither: 0, legacyWorkspace: 0, outOfScope: 0, orphanedGrants: 0 });
+
+/** The report's totals (all must be 0 for `ok`). */
+const vReportCounts = v.object({
+  rowsWithBothScopes: v.number(),
+  rowsWithNoScope: v.number(),
+  rowsInLegacyWorkspaces: v.number(),
+  rowsOutOfTheirDocumentsScope: v.number(),
+  orphanedGrants: v.number(),
+  personalWorkspaces: v.number(),
+  profilesWithDefaultWorkspace: v.number(),
+  /** Memberships and invitations still holding editor / commenter / viewer (Phase D: normalizeWorkspaceRoles). */
+  legacyRoles: v.number(),
+});
+type ReportCounts = Infer<typeof vReportCounts>;
+const emptyCounts = (): ReportCounts => ({
+  rowsWithBothScopes: 0,
+  rowsWithNoScope: 0,
+  rowsInLegacyWorkspaces: 0,
+  rowsOutOfTheirDocumentsScope: 0,
+  orphanedGrants: 0,
+  personalWorkspaces: 0,
+  profilesWithDefaultWorkspace: 0,
+  legacyRoles: 0,
+});
+
+/** What the job reads, in order: every scoped table, then the account-level checks. */
+const VERIFY_STAGES = [...SCOPED_TABLES, "profiles", "workspaceMembers", "workspaceInvites", "personalWorkspaces"] as const;
+type VerifyStage = (typeof VERIFY_STAGES)[number];
 
 type LooseRow = Record<string, unknown> & { workspaceId?: Id<"workspaces">; ownerProfileId?: Id<"profiles"> };
 interface LoosePages {
@@ -479,17 +561,20 @@ interface LoosePages {
 const documentOf = (table: ScopedTable, row: Record<string, unknown>): Id<"documents"> | undefined =>
   table === "documents" ? undefined : ((row.documentId ?? row.sourceDocumentId) as Id<"documents"> | undefined);
 
-/** One page of one scoped table's checks (see verifyAccountModel). */
+const vPageArgs = { cursor: v.union(v.string(), v.null()), numItems: v.optional(v.number()) };
+
+/** One page of one scoped table's checks. */
 export const verifyAccountModelPage = internalQuery({
-  args: { table: v.string(), cursor: v.union(v.string(), v.null()) },
+  args: { table: v.string(), ...vPageArgs },
   handler: async (ctx, args): Promise<TableCheck & { isDone: boolean; continueCursor: string }> => {
     const table = SCOPED_TABLES.find((t) => t === args.table);
     if (!table) throw new Error(`Not a scoped table: ${args.table}`);
     // The table is a variable, so the query is typed loosely (every scoped table has the scope fields).
-    const page = await (ctx.db.query(table) as unknown as LoosePages).paginate({ cursor: args.cursor, numItems: VERIFY_PAGE });
-    const check: TableCheck = { rows: 0, both: 0, neither: 0, legacyWorkspace: 0, outOfScope: 0, orphanedGrants: 0 };
+    const page = await (ctx.db.query(table) as unknown as LoosePages).paginate({ cursor: args.cursor, numItems: args.numItems ?? VERIFY_PAGE });
+    const check = emptyCheck();
     const docs = new Map<string, Doc<"documents"> | null>();
     const kinds = new Map<string, string | null>();
+    const people = new Map<string, boolean>();
     for (const raw of page.page) {
       check.rows++;
       if (raw.workspaceId !== undefined && raw.ownerProfileId !== undefined) check.both++;
@@ -503,7 +588,11 @@ export const verifyAccountModelPage = internalQuery({
         if (!docs.has(documentId)) docs.set(documentId, await ctx.db.get(documentId));
         const doc = docs.get(documentId);
         if (doc && hasValidScope(doc) && hasValidScope(raw) && !sameScope(scopeOfRow(doc), scopeOfRow(raw))) check.outOfScope++;
-        if (table === "documentPermissions" && (!doc || !(await ctx.db.get(raw.profileId as Id<"profiles">)))) check.orphanedGrants++;
+        if (table === "documentPermissions") {
+          const profileId = raw.profileId as Id<"profiles">;
+          if (!people.has(profileId)) people.set(profileId, (await ctx.db.get(profileId)) !== null);
+          if (!doc || !people.get(profileId)) check.orphanedGrants++;
+        }
       }
     }
     return { ...check, isDone: page.isDone, continueCursor: page.continueCursor };
@@ -512,90 +601,198 @@ export const verifyAccountModelPage = internalQuery({
 
 /** One page of profiles: how many still point at a default workspace. */
 export const verifyProfilesPage = internalQuery({
-  args: { cursor: v.union(v.string(), v.null()) },
+  args: vPageArgs,
   handler: async (ctx, args): Promise<{ withDefaultWorkspace: number; isDone: boolean; continueCursor: string }> => {
-    const page = await ctx.db.query("profiles").paginate({ cursor: args.cursor, numItems: VERIFY_PAGE });
+    const page = await ctx.db.query("profiles").paginate({ cursor: args.cursor, numItems: args.numItems ?? VERIFY_PAGE });
     return { withDefaultWorkspace: page.page.filter((p) => p.defaultWorkspaceId !== undefined).length, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 
-/** Personal workspaces still left (capped at 1000). */
-export const verifyPersonalWorkspaces = internalQuery({
-  args: {},
-  handler: async (ctx): Promise<number> =>
-    (
-      await ctx.db
-        .query("workspaces")
-        .withIndex("by_kind", (q) => q.eq("kind", "personal"))
-        .take(1000)
-    ).length,
+/** One page of membership or invitation rows still holding an old member role. */
+export const verifyRolesPage = internalQuery({
+  args: { table: v.union(v.literal("workspaceMembers"), v.literal("workspaceInvites")), ...vPageArgs },
+  handler: async (ctx, args): Promise<{ legacy: number; isDone: boolean; continueCursor: string }> => {
+    const page = await ctx.db.query(args.table).paginate({ cursor: args.cursor, numItems: args.numItems ?? VERIFY_PAGE });
+    return { legacy: page.page.filter((r) => isLegacyRole(r.role)).length, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
 });
 
-export interface AccountModelReport {
+/** One page of personal workspaces still left. */
+export const verifyPersonalWorkspacesPage = internalQuery({
+  args: vPageArgs,
+  handler: async (ctx, args): Promise<{ personal: number; isDone: boolean; continueCursor: string }> => {
+    const page = await ctx.db
+      .query("workspaces")
+      .withIndex("by_kind", (q) => q.eq("kind", "personal"))
+      .paginate({ cursor: args.cursor, numItems: args.numItems ?? VERIFY_PAGE });
+    return { personal: page.page.length, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
+
+/**
+ * Starts a check of the account model over the whole deployment, as a background job (see above): every
+ * content row has exactly one of ownerProfileId / workspaceId, none is left in a personal workspace, rows
+ * are in their document's scope, no grant is orphaned, no personal workspace, defaultWorkspaceId or old
+ * member role remains. Read the result with `migrations:accountModelReport` (`ok` only when every count
+ * is 0). `pageSize` / `pagesPerRun` are for tests.
+ */
+export const verifyAccountModel = internalMutation({
+  args: { pageSize: v.optional(v.number()), pagesPerRun: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<{ reportId: Id<"migrationReports">; started: true; next: string }> => {
+    const now = Date.now();
+    const reportId = await ctx.db.insert("migrationReports", {
+      name: ACCOUNT_MODEL_REPORT,
+      stage: 0,
+      cursor: null,
+      done: false,
+      counts: emptyCounts(),
+      tables: {},
+      runs: 0,
+      startedAt: now,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(0, internal.migrations.verifyAccountModelRun, { reportId, pageSize: args.pageSize, pagesPerRun: args.pagesPerRun });
+    return { reportId, started: true, next: "npx convex run migrations:accountModelReport" };
+  },
+});
+
+/** Where a check has got to (for its next run). */
+export const verifyAccountModelState = internalQuery({
+  args: { reportId: v.id("migrationReports") },
+  handler: async (ctx, args) => {
+    const r = await ctx.db.get(args.reportId);
+    return r ? { stage: r.stage, cursor: r.cursor, done: r.done } : null;
+  },
+});
+
+/** Adds one run's findings to the report, if nobody else has moved it on meanwhile. */
+export const saveAccountModelProgress = internalMutation({
+  args: {
+    reportId: v.id("migrationReports"),
+    from: v.object({ stage: v.number(), cursor: v.union(v.string(), v.null()) }),
+    to: v.object({ stage: v.number(), cursor: v.union(v.string(), v.null()) }),
+    counts: vReportCounts,
+    tables: v.record(v.string(), vTableCheck),
+  },
+  handler: async (ctx, args): Promise<{ saved: boolean; done: boolean }> => {
+    const r = await ctx.db.get(args.reportId);
+    if (!r || r.done || r.stage !== args.from.stage || r.cursor !== args.from.cursor) return { saved: false, done: r?.done ?? true };
+    const counts = { ...r.counts };
+    for (const key of Object.keys(counts) as (keyof ReportCounts)[]) counts[key] += args.counts[key];
+    const tables = { ...r.tables };
+    for (const [name, add] of Object.entries(args.tables)) {
+      const total = { ...(tables[name] ?? emptyCheck()) };
+      for (const key of Object.keys(total) as (keyof TableCheck)[]) total[key] += add[key];
+      tables[name] = total;
+    }
+    const done = args.to.stage >= VERIFY_STAGES.length;
+    const now = Date.now();
+    await ctx.db.patch(r._id, {
+      stage: args.to.stage,
+      cursor: args.to.cursor,
+      counts,
+      tables,
+      runs: r.runs + 1,
+      done,
+      updatedAt: now,
+      ...(done ? { finishedAt: now, ok: Object.values(counts).every((n) => n === 0) } : {}),
+    });
+    if (done) console.log(JSON.stringify({ event: "migration.account_model_verified", ok: Object.values(counts).every((n) => n === 0), ...counts }));
+    return { saved: true, done };
+  },
+});
+
+/** One run of a check: up to `pagesPerRun` pages, then it saves and schedules the next run. */
+export const verifyAccountModelRun = internalAction({
+  args: { reportId: v.id("migrationReports"), pageSize: v.optional(v.number()), pagesPerRun: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<{ done: boolean; saved: boolean }> => {
+    const state: { stage: number; cursor: string | null; done: boolean } | null = await ctx.runQuery(internal.migrations.verifyAccountModelState, { reportId: args.reportId });
+    if (!state || state.done) return { done: true, saved: false };
+    const numItems = args.pageSize ?? VERIFY_PAGE;
+    const counts = emptyCounts();
+    const tables: Record<string, TableCheck> = {};
+    let stage = state.stage;
+    let cursor = state.cursor;
+    for (let pages = 0; pages < (args.pagesPerRun ?? VERIFY_PAGES_PER_RUN) && stage < VERIFY_STAGES.length; pages++) {
+      const name: VerifyStage = VERIFY_STAGES[stage]!;
+      let page: { isDone: boolean; continueCursor: string };
+      if (name === "profiles") {
+        const p: { withDefaultWorkspace: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyProfilesPage, { cursor, numItems });
+        counts.profilesWithDefaultWorkspace += p.withDefaultWorkspace;
+        page = p;
+      } else if (name === "workspaceMembers" || name === "workspaceInvites") {
+        const p: { legacy: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyRolesPage, { table: name, cursor, numItems });
+        counts.legacyRoles += p.legacy;
+        page = p;
+      } else if (name === "personalWorkspaces") {
+        const p: { personal: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyPersonalWorkspacesPage, { cursor, numItems });
+        counts.personalWorkspaces += p.personal;
+        page = p;
+      } else {
+        const p: TableCheck & { isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyAccountModelPage, { table: name, cursor, numItems });
+        const total = (tables[name] ??= emptyCheck());
+        for (const key of Object.keys(total) as (keyof TableCheck)[]) total[key] += p[key];
+        counts.rowsWithBothScopes += p.both;
+        counts.rowsWithNoScope += p.neither;
+        counts.rowsInLegacyWorkspaces += p.legacyWorkspace;
+        counts.rowsOutOfTheirDocumentsScope += p.outOfScope;
+        counts.orphanedGrants += p.orphanedGrants;
+        page = p;
+      }
+      if (page.isDone) {
+        stage++;
+        cursor = null;
+      } else cursor = page.continueCursor;
+    }
+    const saved: { saved: boolean; done: boolean } = await ctx.runMutation(internal.migrations.saveAccountModelProgress, {
+      reportId: args.reportId,
+      from: { stage: state.stage, cursor: state.cursor },
+      to: { stage, cursor },
+      counts,
+      tables,
+    });
+    // Another run got there first (a duplicate): let that chain carry on alone.
+    if (saved.saved && !saved.done) await ctx.scheduler.runAfter(0, internal.migrations.verifyAccountModelRun, args);
+    return saved;
+  },
+});
+
+export interface AccountModelReport extends ReportCounts {
+  reportId: Id<"migrationReports">;
+  /** The check has read everything. Until then the counts are partial and `ok` is false. */
+  done: boolean;
+  /** Done, and every count is 0. */
   ok: boolean;
-  rowsWithBothScopes: number;
-  rowsWithNoScope: number;
-  rowsInLegacyWorkspaces: number;
-  rowsOutOfTheirDocumentsScope: number;
-  orphanedGrants: number;
-  personalWorkspaces: number;
-  profilesWithDefaultWorkspace: number;
-  /** Memberships and invitations still holding editor / commenter / viewer (Phase D: normalizeWorkspaceRoles). */
-  legacyRoles: number;
+  /** What the job is reading now (while not done). */
+  reading: string | null;
+  runs: number;
+  startedAt: number;
+  finishedAt: number | null;
   tables: Record<string, TableCheck>;
 }
 
-/**
- * Checks the account model over the whole deployment (paged, so it works at any size): every content row
- * has exactly one of ownerProfileId / workspaceId, none is left in a personal workspace, rows are in their
- * document's scope, no grant is orphaned, no personal workspace or defaultWorkspaceId remains. `ok` only
- * when every count is 0.
- */
-export const verifyAccountModel = internalAction({
-  args: {},
-  handler: async (ctx): Promise<AccountModelReport> => {
-    const tables: Record<string, TableCheck> = {};
-    for (const table of SCOPED_TABLES) {
-      const total: TableCheck = { rows: 0, both: 0, neither: 0, legacyWorkspace: 0, outOfScope: 0, orphanedGrants: 0 };
-      let cursor: string | null = null;
-      for (;;) {
-        const page: TableCheck & { isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyAccountModelPage, { table, cursor });
-        for (const key of Object.keys(total) as (keyof TableCheck)[]) total[key] += page[key];
-        if (page.isDone) break;
-        cursor = page.continueCursor;
-      }
-      tables[table] = total;
-    }
-    let profilesWithDefaultWorkspace = 0;
-    let cursor: string | null = null;
-    for (;;) {
-      const page: { withDefaultWorkspace: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyProfilesPage, { cursor });
-      profilesWithDefaultWorkspace += page.withDefaultWorkspace;
-      if (page.isDone) break;
-      cursor = page.continueCursor;
-    }
-    const personalWorkspaces: number = await ctx.runQuery(internal.migrations.verifyPersonalWorkspaces, {});
-    let legacyRoles = 0;
-    for (const table of ["workspaceMembers", "workspaceInvites"] as const) {
-      let roleCursor: string | null = null;
-      for (;;) {
-        const page: { legacy: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyRolesPage, { table, cursor: roleCursor });
-        legacyRoles += page.legacy;
-        if (page.isDone) break;
-        roleCursor = page.continueCursor;
-      }
-    }
-    const sum = (key: keyof TableCheck) => Object.values(tables).reduce((n, t) => n + t[key], 0);
-    const report = {
-      rowsWithBothScopes: sum("both"),
-      rowsWithNoScope: sum("neither"),
-      rowsInLegacyWorkspaces: sum("legacyWorkspace"),
-      rowsOutOfTheirDocumentsScope: sum("outOfScope"),
-      orphanedGrants: sum("orphanedGrants"),
-      personalWorkspaces,
-      profilesWithDefaultWorkspace,
-      legacyRoles,
+/** The latest account-model check (or the one named), or null if none was started. */
+export const accountModelReport = internalQuery({
+  args: { reportId: v.optional(v.id("migrationReports")) },
+  handler: async (ctx, args): Promise<AccountModelReport | null> => {
+    const r = args.reportId
+      ? await ctx.db.get(args.reportId)
+      : await ctx.db
+          .query("migrationReports")
+          .withIndex("by_name_started", (q) => q.eq("name", ACCOUNT_MODEL_REPORT))
+          .order("desc")
+          .first();
+    if (!r) return null;
+    return {
+      reportId: r._id,
+      done: r.done,
+      ok: r.done && r.ok === true,
+      reading: r.done ? null : (VERIFY_STAGES[r.stage] ?? null),
+      runs: r.runs,
+      startedAt: r.startedAt,
+      finishedAt: r.finishedAt ?? null,
+      ...r.counts,
+      tables: r.tables,
     };
-    return { ok: Object.values(report).every((n) => n === 0), ...report, tables };
   },
 });

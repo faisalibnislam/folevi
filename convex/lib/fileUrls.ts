@@ -8,8 +8,12 @@ export async function signFileUrl(value: string): Promise<string> {
   return toHex(await crypto.subtle.sign("HMAC", key, enc.encode(value))).slice(0, 40);
 }
 
+/** No link we sign lasts longer than this (identity images: 8 days, rounded to the day). */
+const MAX_LINK_LIFETIME_MS = 9 * 86_400_000;
+
 export async function verifyFileSignature(fileId: string, exp: number, sig: string, now = Date.now()): Promise<boolean> {
-  if (!Number.isFinite(exp) || exp < now) return false;
+  // Expired, or further out than any link we hand out (e.g. one minted from a client's far-future clock).
+  if (!Number.isFinite(exp) || exp < now || exp > now + MAX_LINK_LIFETIME_MS) return false;
   const expected = await signFileUrl(`${fileId}:${exp}`);
   if (expected.length !== sig.length) return false;
   let diff = 0;

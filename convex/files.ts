@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, membership, requireDocument, requireProfile, requireWorkspace, resolveScope, memberAtLeast } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, isScheduledForDeletion, membership, memberLevel, requireDocument, requireProfile, requireWorkspace, resolveScope, memberAtLeast } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { adjustStorageUsed, assertStorageFor } from "./lib/entitlements";
 import { insertScoped, personalScope, scopeOfRow, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
@@ -193,20 +193,35 @@ export const finalize = action({
   },
 });
 
-/** A file not attached to a page: its Personal's owner, or a member of its workspace, may see it. */
+/**
+ * A file not attached to a page: its Personal's owner, or a member of its workspace, may see it (a
+ * workspace scheduled for deletion: only its owner). An export ZIP only ever goes to the person it was
+ * made for (a workspace export holds everything its admin could see, restricted pages included).
+ */
 async function canSeeLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: Doc<"files">): Promise<boolean> {
+  if (file.kind === "export") return file.uploadedBy === profile._id;
   const scope = scopeOfRow(file);
   if (scope.kind === "personal") return scope.profileId === profile._id;
-  return Boolean(await membership(ctx, profile._id, scope.workspaceId));
+  const workspace = await ctx.db.get(scope.workspaceId);
+  if (!workspace || workspace.status === "deleting") return false;
+  const m = await membership(ctx, profile._id, scope.workspaceId);
+  if (!m) return false;
+  return !isScheduledForDeletion(workspace) || memberLevel(m) === "owner";
 }
 
-/** …and its Personal's owner, or a workspace member who can edit, may change it. */
+/** …and its Personal's owner, or a workspace member who can edit (not while it's closing), may change it. */
 async function canEditLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: Doc<"files">): Promise<boolean> {
+  if (file.kind === "export") return false;
   const scope = scopeOfRow(file);
   if (scope.kind === "personal") return scope.profileId === profile._id;
+  const workspace = await ctx.db.get(scope.workspaceId);
+  if (!workspace || workspace.status === "deleting" || isScheduledForDeletion(workspace)) return false;
   const m = await membership(ctx, profile._id, scope.workspaceId);
   return memberAtLeast(m, "edit");
 }
+
+/** How far a client's clock may run ahead of the server's when it asks for file links. */
+const MAX_CLOCK_SKEW_MS = 5 * 60_000;
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
@@ -262,8 +277,10 @@ export const urls = query({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const site = process.env.CONVEX_SITE_URL ?? "";
-    // Round expiry to the hour so the query result is cacheable and stable for re-renders.
-    const exp = Math.floor(args.now / 3_600_000) * 3_600_000 + 2 * 3_600_000;
+    // Round expiry to the hour so the query result is cacheable and stable for re-renders. The client's
+    // clock is only trusted up to a few minutes ahead of the server's: a link never lasts more than ~2 hours.
+    const now = Math.min(args.now, Date.now() + MAX_CLOCK_SKEW_MS);
+    const exp = Math.floor(now / 3_600_000) * 3_600_000 + 2 * 3_600_000;
     const out: Record<string, { url: string; mimeType: string; filename: string; size: number; width: number | null; height: number | null; palette: Doc<"files">["palette"] | null }> = {};
     for (const id of args.fileIds.slice(0, 200)) {
       const file = await ctx.db

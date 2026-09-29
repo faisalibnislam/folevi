@@ -109,10 +109,15 @@ export async function canManageWorkspaceBilling(ctx: Ctx, profile: Doc<"profiles
 
 export const BILLING_FORBIDDEN = "Only the workspace owner, or an admin they allow, can manage its plan and billing.";
 
-/** The workspace (by public id) when the caller may manage its billing; refuses everyone else. */
-export async function requireWorkspaceBilling(ctx: Ctx, profile: Doc<"profiles">, workspacePublicId: string): Promise<{ workspace: Doc<"workspaces">; member: Doc<"workspaceMembers"> }> {
+/**
+ * The workspace (by public id) when the caller may manage its billing; refuses everyone else. `write`
+ * (buying, changing or resuming a plan, the billing portal) also refuses a workspace scheduled for
+ * deletion: its plan is set to end, and only canceling the deletion brings billing back.
+ */
+export async function requireWorkspaceBilling(ctx: Ctx, profile: Doc<"profiles">, workspacePublicId: string, opts: { write?: boolean } = {}): Promise<{ workspace: Doc<"workspaces">; member: Doc<"workspaceMembers"> }> {
   const found = await requireWorkspace(ctx, profile, workspacePublicId);
   if (!memberCanManageBilling(found.member)) fail("forbidden", BILLING_FORBIDDEN);
+  if (opts.write && isScheduledForDeletion(found.workspace)) fail("forbidden", DELETION_SCHEDULED_MESSAGE);
   return found;
 }
 

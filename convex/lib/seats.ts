@@ -18,7 +18,10 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { WorkspaceRole } from "./auth";
 import { workspaceSubscriptionOf } from "./billing";
-import { isPaidPlan } from "./plans";
+import { billedQuantity, isPaidPlan } from "./plans";
+
+// The pure price arithmetic lives in the shared catalog (the web app shows the same numbers).
+export { billedQuantity, seatChargeCents } from "./plans";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -55,6 +58,11 @@ export async function billableSeatCount(ctx: Ctx, workspaceId: Id<"workspaces">)
   return await countSeats(ctx, await membersOf(ctx, workspaceId));
 }
 
+/** The quantity a paid plan bills this workspace for right now (billableSeatCount, at least one). */
+export async function billableQuantity(ctx: Ctx, workspaceId: Id<"workspaces">): Promise<number> {
+  return billedQuantity(await billableSeatCount(ctx, workspaceId));
+}
+
 export interface SeatSummary {
   /** Billed seats (see the rules above). */
   seats: number;
@@ -89,7 +97,7 @@ export async function seatsChanged(ctx: MutationCtx, workspaceId: Id<"workspaces
   if (!sub || !isPaidPlan(sub.planId) || sub.status === "canceled") return;
   if (sub.provider !== "stripe") {
     // Test and manual plans have no provider to tell: the stored quantity is the bill.
-    const seats = await billableSeatCount(ctx, workspaceId);
+    const seats = await billableQuantity(ctx, workspaceId);
     if (sub.quantity !== seats) await ctx.db.patch(sub._id, { quantity: seats, updatedAt: Date.now() });
     return;
   }

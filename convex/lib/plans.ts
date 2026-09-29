@@ -124,6 +124,16 @@ export function workspacePlanId(tier: WorkspaceTier, interval?: BillingInterval 
 /** Whether a plan is paid for (anything but the free plans). */
 export const isPaidPlan = (id: CatalogPlanId) => PLAN_CATALOG[id].billingModel !== "free";
 
+/**
+ * The quantity a paid per-seat plan is billed for, given the billable seats (counted only by
+ * convex/lib/seats.ts): never fewer than one — a paid plan always bills at least its owner's seat, even
+ * while the owner's account is suspended. Every quantity sent to Stripe, stored or shown comes from here.
+ */
+export const billedQuantity = (seats: number) => Math.max(1, seats);
+
+/** What a per-seat plan charges per billing interval for `seats` billable seats. */
+export const seatChargeCents = (seatPriceCents: number, seats: number) => seatPriceCents * billedQuantity(seats);
+
 // ---------------------------------------------------------------------------------------------------
 // How plans are shown (settings, pricing page, admin). Prices and limits come from the catalog above.
 // ---------------------------------------------------------------------------------------------------
@@ -303,10 +313,7 @@ export function personalEntitlementsOf(sub: SubscriptionLike | null, now: number
 // Workspace entitlements
 // ---------------------------------------------------------------------------------------------------
 
-/**
- * A workspace's subscription (none exist yet: workspace billing arrives with per-seat checkout). Until
- * then every team workspace resolves to Workspace Free.
- */
+/** A workspace's subscription, as the entitlement rules read it (none: Workspace Free). */
 export interface WorkspaceSubscriptionLike {
   tier: WorkspaceTier;
   interval?: BillingInterval;

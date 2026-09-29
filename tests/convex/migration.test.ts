@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { SCOPED_TABLES } from "../../convex/lib/scope";
-import { para, person, PERSONAL, setup, ulid, type T } from "./helpers";
+import { para, person, PERSONAL, setup, ulid, verifyAccountModel, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 const GB = 1024 ** 3;
@@ -178,7 +178,7 @@ describe("migrating personal workspaces to Personal", () => {
       expect(legacyRows.documents!.length).toBeGreaterThan(8);
       expect(legacyRows.files).toHaveLength(1);
 
-      const before = await t.action(internal.migrations.verifyAccountModel, {});
+      const before = await verifyAccountModel(t);
       expect(before.ok).toBe(false);
       expect(before).toMatchObject({ personalWorkspaces: 1, profilesWithDefaultWorkspace: 1 });
       expect(before.rowsInLegacyWorkspaces).toBeGreaterThan(0);
@@ -186,7 +186,7 @@ describe("migrating personal workspaces to Personal", () => {
       await migrate(t);
 
       // Nothing of the old model is left, and every row is where it should be.
-      const after = await t.action(internal.migrations.verifyAccountModel, {});
+      const after = await verifyAccountModel(t);
       expect(after).toMatchObject({ ok: true, rowsWithBothScopes: 0, rowsWithNoScope: 0, rowsInLegacyWorkspaces: 0, rowsOutOfTheirDocumentsScope: 0, orphanedGrants: 0, personalWorkspaces: 0, profilesWithDefaultWorkspace: 0 });
       const moved = await rowsByTable(t, "ownerProfileId", a.profileId);
       for (const table of SCOPED_TABLES) {
@@ -261,7 +261,7 @@ describe("migrating personal workspaces to Personal", () => {
       await t.mutation(internal.migrations.migratePersonalWorkspace, { workspaceId: ws, phase: "finish", member: 0, cursor: null });
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       expect(await snapshot()).toEqual(once);
-      expect((await t.action(internal.migrations.verifyAccountModel, {})).ok).toBe(true);
+      expect((await verifyAccountModel(t)).ok).toBe(true);
     } finally {
       vi.useRealTimers();
     }
@@ -291,7 +291,7 @@ describe("migrating personal workspaces to Personal", () => {
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       await migrate(t);
 
-      const report = await t.action(internal.migrations.verifyAccountModel, {});
+      const report = await verifyAccountModel(t);
       expect(report.ok).toBe(true);
       expect((await guestGrants(t, c))[page]).toBe("commenter");
       // Exactly one grant per page for the collaborator, whatever ran twice.
@@ -314,7 +314,7 @@ describe("migrating personal workspaces to Personal", () => {
     const t = setup();
     const a = await person(t, "verify@example.com");
     const page = await create(a, "Checked");
-    expect((await t.action(internal.migrations.verifyAccountModel, {})).ok).toBe(true);
+    expect((await verifyAccountModel(t)).ok).toBe(true);
     const d = await docRow(t, page);
     const { id: teamId } = await a.as.mutation(api.workspaces.createTeamWorkspace, { name: "T" });
     await t.run(async (ctx) => {
@@ -330,7 +330,7 @@ describe("migrating personal workspaces to Personal", () => {
       await ctx.db.delete(other._id);
       void grant;
     });
-    const report = await t.action(internal.migrations.verifyAccountModel, {});
+    const report = await verifyAccountModel(t);
     expect(report.ok).toBe(false);
     expect(report.rowsWithBothScopes).toBe(1);
     expect(report.rowsWithNoScope).toBe(1);
@@ -338,5 +338,100 @@ describe("migrating personal workspaces to Personal", () => {
     expect(report.rowsOutOfTheirDocumentsScope).toBeGreaterThanOrEqual(1);
     expect(report.tables.tags!.both).toBe(1);
     expect(report.tables.folders!.neither).toBe(1);
+  });
+
+  test("at scale every step runs in bounded batches, resumes, and the check needs many runs", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = setup();
+      const a = await person(t, "scale-owner@example.com");
+      const ed = await person(t, "scale-editor@example.com");
+      const vw = await person(t, "scale-viewer@example.com");
+      // One big page (a tree of 301 pages: more than one grants step looks at) and 25 more top-level pages
+      // (three grants batches), ~350 pages in all plus blocks: more than one move batch.
+      const template = await create(a, "Template");
+      const ids = await t.run(async (ctx) => {
+        const base = (await ctx.db
+          .query("documents")
+          .withIndex("by_public_id", (q) => q.eq("publicId", template))
+          .unique())!;
+        const { _id, _creationTime, ...row } = base;
+        void _id;
+        void _creationTime;
+        const t0 = Date.now() + 1000;
+        const big = await ctx.db.insert("documents", { ...row, publicId: ulid(), title: "Big", createdAt: t0 });
+        for (let i = 0; i < 300; i++) await ctx.db.insert("documents", { ...row, publicId: ulid(), title: `Child ${i}`, parentDocumentId: big, createdAt: t0 + 100_000 + i });
+        const tops: Id<"documents">[] = [];
+        for (let i = 0; i < 25; i++) tops.push(await ctx.db.insert("documents", { ...row, publicId: ulid(), title: `Top ${i}`, createdAt: t0 + 1 + i }));
+        const lastChild = (await ctx.db
+          .query("documents")
+          .withIndex("by_parent", (q) => q.eq("parentDocumentId", big))
+          .collect())
+          .at(-1)!;
+        await ctx.db.patch(a.profileId as Id<"profiles">, { personalDocumentCount: (await ctx.db.query("documents").withIndex("by_owner_created", (q) => q.eq("ownerProfileId", a.profileId as Id<"profiles">)).collect()).length });
+        return {
+          big: (await ctx.db.get(big))!.publicId,
+          lastChild: lastChild.publicId,
+          tops: await Promise.all(tops.map(async (id) => (await ctx.db.get(id))!.publicId)),
+        };
+      });
+      const ws = await toLegacy(t, a, [
+        [ed, "editor"],
+        [vw, "viewer"],
+      ]);
+      // 450 old-style memberships (Phase D role migration: more than two of its batches) and 250 profiles
+      // still pointing at a default workspace (more than one clearDefaultWorkspaces batch).
+      const team = await t.run(async (ctx) => {
+        const { _id, _creationTime, ...profile } = (await ctx.db.get(ed.profileId as Id<"profiles">))!;
+        void _id;
+        void _creationTime;
+        const now = Date.now();
+        const teamId = await ctx.db.insert("workspaces", { publicId: ulid(), name: "Big team", kind: "team", ownerId: ed.profileId as Id<"profiles">, changeSeq: 0, status: "active", storageUsedBytes: 0, storageQuotaBytes: 5 * GB, memberLimit: 1000, documentCount: 0, createdAt: now, updatedAt: now });
+        for (let i = 0; i < 450; i++) await ctx.db.insert("workspaceMembers", { workspaceId: teamId, profileId: vw.profileId as Id<"profiles">, role: "viewer", joinedAt: now });
+        for (let i = 0; i < 250; i++) await ctx.db.insert("profiles", { ...profile, tokenIdentifier: `scale-${i}`, authSubject: `scale-${i}`, email: `scale-${i}@example.com`, defaultWorkspaceId: teamId });
+        return teamId;
+      });
+
+      const before = await verifyAccountModel(t, { pageSize: 50, pagesPerRun: 3 });
+      expect(before).toMatchObject({ done: true, ok: false, personalWorkspaces: 1, profilesWithDefaultWorkspace: 251, legacyRoles: 452 }); // + the two collaborators in the personal workspace
+      expect(before.runs).toBeGreaterThan(10);
+      expect(before.tables.documents!.rows).toBeGreaterThan(330);
+      // Small pages or big ones: the same answer.
+      expect(await verifyAccountModel(t)).toMatchObject({ ...before, reportId: expect.anything(), runs: expect.any(Number), startedAt: expect.any(Number), finishedAt: expect.any(Number) });
+
+      await migrate(t);
+      await t.mutation(internal.migrations.normalizeWorkspaceRoles, {});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      // Every step ran in batches: several grants steps (one resumed inside a batch), several moves, and
+      // several role and default-workspace batches.
+      const runs = await t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).map((f) => ({ name: f.name, args: f.args[0] as Record<string, unknown> })));
+      const steps = (phase: string) => runs.filter((r) => r.name.includes("migratePersonalWorkspace") && !r.name.endsWith("Workspaces") && r.args.phase === phase);
+      expect(steps("grants").length).toBeGreaterThan(6);
+      expect(steps("grants").some((r) => typeof r.args.skip === "number" && (r.args.skip as number) > 0)).toBe(true);
+      expect(steps("move").length).toBeGreaterThan(1);
+      expect(runs.filter((r) => r.name.includes("clearDefaultWorkspaces")).length).toBeGreaterThan(1);
+      expect(runs.filter((r) => r.name.includes("normalizeWorkspaceRoles")).length).toBeGreaterThan(2);
+
+      const after = await verifyAccountModel(t, { pageSize: 50, pagesPerRun: 3 });
+      expect(after).toMatchObject({ done: true, ok: true, personalWorkspaces: 0, profilesWithDefaultWorkspace: 0, legacyRoles: 0, rowsInLegacyWorkspaces: 0 });
+      // Collaborators became guests on everything they could open, deep pages included.
+      for (const id of [ids.big, ids.lastChild, ...ids.tops]) {
+        expect((await ed.as.query(api.documents.get, { documentId: id }))!.access).toBe("write");
+        expect((await vw.as.query(api.documents.get, { documentId: id }))!.access).toBe("read");
+      }
+      // Exactly one grant per page per person.
+      await t.run(async (ctx) => {
+        const grants = await ctx.db.query("documentPermissions").collect();
+        expect(new Set(grants.map((g) => `${g.documentId}:${g.profileId}`)).size).toBe(grants.length);
+        expect(await ctx.db.get(ws)).toBeNull();
+        const profile = (await ctx.db.get(a.profileId as Id<"profiles">))!;
+        const docs = await ctx.db.query("documents").withIndex("by_owner_created", (q) => q.eq("ownerProfileId", a.profileId as Id<"profiles">)).collect();
+        expect(profile.personalDocumentCount).toBe(docs.length);
+        expect((await ctx.db.query("workspaceMembers").withIndex("by_workspace", (q) => q.eq("workspaceId", team)).collect()).every((m) => m.role === "member" && m.memberAccess === "view")).toBe(true);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -49,6 +49,7 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | collection | no | `collectionId`, `viewId?` |
 | formula | no | `latex` (≤ `LIMITS.maxFormulaLength`; rendered with KaTeX, `trust: false`) |
 | whiteboard | no | `data` (JSON `{ v: 1, strokes: [{ points: [[x, y]…] \| d, color, width, opacity? }] }`, ≤ `LIMITS.maxWhiteboardDataLength`; x in 0–1000, y in 0–`height`), `height` (logical units, `minWhiteboardHeight`–`maxWhiteboardHeight`) |
+| flowchart | no | `data` (JSON `{ v: 1, nodes: [{ id, shape, x, y, w, h, text?, color? }], edges: [{ id, from, to, fromSide?, toSide?, label?, style?, arrow? }] }`, ≤ `LIMITS.maxFlowchartDataLength`; shapes process/decision/terminator/io/circle/note/text, colours neutral/accent/blue/green/yellow/pink/purple, sides top/right/bottom/left, style solid/dashed, arrow end/both/none; see `src/flowchart.ts`), `height` (canvas height, `minFlowchartHeight`–`maxFlowchartHeight`). **Web only** (`"webOnly"` in the spec): left out of the Swift types, so native clients keep it verbatim as an unknown block. |
 
 Mermaid diagrams are `code` blocks with `language: "mermaid"`; editors render a live SVG preview.
 
@@ -107,4 +108,4 @@ front matter; HTML blocks, footnotes, reference links and unresolved images are 
 text and reported as warnings. Markdown/HTML export (`blocksToMarkdown`, `blocksToHtml`) is used for page
 exports, workspace ZIPs and version previews. Formulas export as `$$…$$` (HTML: MathML from KaTeX when
 the caller passes `renderMath`, otherwise the LaTeX source), whiteboards as an inline SVG (Markdown: an SVG
-data-URL image) and page breaks as a `page-break-after` div.
+data-URL image), flowcharts as an inline SVG (Markdown: a ` ```mermaid ` flowchart, so they stay portable) and page breaks as a `page-break-after` div.

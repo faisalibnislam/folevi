@@ -228,7 +228,7 @@ describe("access change notifications", () => {
       await notifyAccessChange(ctx, { recipientId: w.owner, actor, change: { type: "workspace_removed", workspace } });
     });
     const rows = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
-    expect(rows.map((r) => r.title)).toEqual(["owner changed your role in “Field Notes” to Viewer.", "owner removed you from “Field Notes”."]);
+    expect(rows.map((r) => r.title)).toEqual(["owner changed your role in “Field Notes” to Member (view only).", "owner removed you from “Field Notes”."]);
     expect(rows[1]!.workspaceId).toBeUndefined();
   });
 });

@@ -252,7 +252,7 @@ export const quickAdd = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { scope, workspace } = await resolveScope(ctx, profile, args.scope, "editor");
+    const { scope, workspace } = await resolveScope(ctx, profile, args.scope, "edit");
     const scopeArg: ScopeArg = workspace ? { kind: "workspace", workspaceId: workspace.publicId } : { kind: "personal" };
     const title = args.title.trim().slice(0, 500);
     if (!title) fail("invalid_argument", "Write the task first.");

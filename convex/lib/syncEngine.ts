@@ -11,7 +11,7 @@ import {
   type WireDocumentCreate,
   type WireDocumentPatch,
 } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, getDocumentByPublicId, membership, roleAtLeast } from "./auth";
+import { accessAtLeast, documentAccess, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE } from "./auth";
 import { IdResolver, liveBlocks, refreshDerived, sanitizeTitle, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary } from "./documents";
 import { createDocument, cloneBlocks } from "./create";
 import { builtInTemplateBlocks } from "./templates";
@@ -493,8 +493,9 @@ export class SyncEngine {
     const workspace = await this.ctx.db.get(scope.workspaceId);
     if (!workspace || workspace.status === "deleting") fail("not_found", "Workspace not found.");
     const member = await membership(this.ctx, this.profile._id, workspace._id);
-    if (!member || !roleAtLeast(member.role, "editor")) fail("forbidden", "You can't add pages to this workspace.");
-    if (workspace.status === "suspended" && member.role !== "owner") fail("suspended", "This workspace is suspended.");
+    if (!memberAtLeast(member, "edit")) fail("forbidden", "You can't add pages to this workspace.");
+    if (isScheduledForDeletion(workspace)) fail("forbidden", DELETION_SCHEDULED_MESSAGE);
+    if (workspace.status === "suspended" && memberLevel(member!) !== "owner") fail("suspended", "This workspace is suspended.");
     return { scope, parent };
   }
 

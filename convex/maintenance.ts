@@ -9,6 +9,7 @@ import { bump } from "./lib/metrics";
 import { adjustStorageUsed } from "./lib/entitlements";
 import { adjustDocumentCount } from "./lib/create";
 import { seatsChanged } from "./lib/seats";
+import { normalizeMembership } from "./lib/auth";
 import { workspaceClosing } from "./workspaceBilling";
 import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, type Scope } from "./lib/scope";
 
@@ -49,6 +50,7 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     () => ctx.db.query("recentHidden").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("documentPermissions").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("publicLinks").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("pageInvites").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("documentLinks").withIndex("by_source", (q) => q.eq("sourceDocumentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("noteSubscriptions").withIndex("by_document_mode", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
   ] as never;
@@ -276,19 +278,35 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
       await ctx.db.delete(m._id);
       continue;
     }
-    if (m.role === "owner") {
+    if (normalizeMembership(m).role === "owner") {
       const others = (
         await ctx.db
           .query("workspaceMembers")
           .withIndex("by_workspace", (q) => q.eq("workspaceId", ws._id))
           .collect()
-      ).filter((x) => x.profileId !== profileId);
-      const heir = others.find((x) => x.role === "admin") ?? others.find((x) => x.role === "editor");
-      if (ws.kind === "team" && heir) {
-        await ctx.db.patch(heir._id, { role: "owner", canManageBilling: undefined });
+      )
+        .filter((x) => x.profileId !== profileId)
+        .sort((a, b) => a.joinedAt - b.joinedAt);
+      // Deleting an account never deletes other people's work. The owner had to hand on (or delete) every
+      // workspace other people use before asking (users.requestAccountDeletion); if someone joined during
+      // the grace period — or support scheduled the deletion — the workspace passes to its longest-standing
+      // admin, else its longest-standing member, who is told. Only a workspace nobody else is in is purged.
+      const heir = ws.kind === "team" && ws.deletionScheduledFor === undefined ? (others.find((x) => normalizeMembership(x).role === "admin") ?? others[0]) : undefined;
+      if (heir) {
+        await ctx.db.patch(heir._id, { role: "owner", memberAccess: undefined, canManageBilling: undefined });
         await ctx.db.patch(ws._id, { ownerId: heir.profileId });
         await ctx.db.delete(m._id);
         await seatsChanged(ctx, ws._id);
+        const heirProfile = await ctx.db.get(heir.profileId);
+        if (heirProfile && heirProfile.status === "active") {
+          await ctx.db.insert("notifications", {
+            profileId: heir.profileId,
+            workspaceId: ws._id,
+            kind: "system",
+            title: `You now own “${ws.name.slice(0, 80)}”: its previous owner deleted their account.`,
+            createdAt: Date.now(),
+          });
+        }
       } else {
         await purgeWorkspace(ctx, ws._id, budget);
         return false;
@@ -359,8 +377,15 @@ export const runDeletionJobs = internalMutation({
       let done: boolean;
       try {
         if (job.kind === "document") done = await purgeDocument(ctx, job.targetId as Id<"documents">, budget);
-        else if (job.kind === "workspace") done = await purgeWorkspace(ctx, job.targetId as Id<"workspaces">, budget);
-        else {
+        else if (job.kind === "workspace") {
+          const ws = await ctx.db.get(job.targetId as Id<"workspaces">);
+          // Canceled by the owner before the grace period ended (or never scheduled through the owner flow).
+          if (ws && ws.status !== "deleting" && ws.deletionScheduledFor === undefined) {
+            await ctx.db.patch(job._id, { status: "canceled" });
+            continue;
+          }
+          done = await purgeWorkspace(ctx, job.targetId as Id<"workspaces">, budget);
+        } else {
           const profile = await ctx.db.get(job.targetId as Id<"profiles">);
           // Canceled by the person before the grace period ended.
           if (profile && profile.status === "active") {
@@ -464,6 +489,11 @@ export const housekeeping = internalMutation({
       .filter((q) => q.and(q.eq(q.field("status"), "pending"), q.lt(q.field("expiresAt"), now)))
       .take(200);
     for (const i of invites) await ctx.db.patch(i._id, { status: "expired" });
+    const pageInvites = await ctx.db
+      .query("pageInvites")
+      .filter((q) => q.and(q.eq(q.field("status"), "pending"), q.lt(q.field("expiresAt"), now)))
+      .take(200);
+    for (const i of pageInvites) await ctx.db.patch(i._id, { status: "expired" });
     const notes = await ctx.db
       .query("notifications")
       .withIndex("by_created", (q) => q.lt("createdAt", now - 180 * 24 * 60 * 60 * 1000))

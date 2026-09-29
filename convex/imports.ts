@@ -26,7 +26,7 @@ export const importText = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { scope } = await resolveScope(ctx, profile, args.scope, "editor");
+    const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     if (args.content.length > MAX_IMPORT_CHARS) fail("limit_exceeded", "That file is too large to import (2 MB of text max).");
     let folderId;
     if (args.folderId) {

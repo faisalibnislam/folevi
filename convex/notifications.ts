@@ -44,6 +44,7 @@ export const list = query({
       const actor = n.actorId ? await actorOf(n.actorId) : null;
       const doc = n.documentId ? await docOf(n.documentId) : null;
       const invite = n.inviteId ? await ctx.db.get(n.inviteId) : null;
+      const pageInvite = n.pageInviteId ? await ctx.db.get(n.pageInviteId) : null;
       const thread = doc && n.threadId ? await ctx.db.get(n.threadId) : null;
       out.push({
         id: n._id as string,
@@ -62,6 +63,8 @@ export const list = query({
         commentId: thread ? (n.commentId ?? null) : null,
         count: n.count ?? 1,
         inviteId: invite && invite.status === "pending" ? invite.publicId : null,
+        /** A page shared with this person before they had an account, waiting to be accepted. */
+        pageInviteId: pageInvite && pageInvite.status === "pending" && pageInvite.expiresAt > Date.now() ? pageInvite.publicId : null,
         createdAt: n.createdAt,
         read: n.readAt !== undefined,
       });

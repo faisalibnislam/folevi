@@ -9,7 +9,7 @@ import { refreshDerived } from "./lib/documents";
 import { randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
 import { isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { ensureSubscription, startTrial } from "./lib/billing";
-import { roleToAccess, type Access, type WorkspaceRole } from "./lib/auth";
+import { isLegacyRole, memberToAccess, normalizeMembership, roleToAccess, type Access } from "./lib/auth";
 import { workspaceStorageOverride } from "./lib/entitlements";
 import { bump } from "./lib/metrics";
 import { hasValidScope, insertScoped, SCOPED_TABLES, sameScope, scopedRows, scopeOfRow, workspaceScope, type ScopedTable } from "./lib/scope";
@@ -254,7 +254,7 @@ interface GrantNode {
  */
 async function grantTree(ctx: MutationCtx, ws: Doc<"workspaces">, member: Doc<"workspaceMembers">, person: Doc<"profiles">, root: Doc<"documents">): Promise<GrantNode | null> {
   let count = 0;
-  const role = member.role as WorkspaceRole;
+  const role = normalizeMembership(member).role;
   const build = async (doc: Doc<"documents">, parentRestricted: boolean, parentGrant: number): Promise<GrantNode | null> => {
     if (++count > MAX_GRANT_TREE) return null;
     const existing = await ctx.db
@@ -267,7 +267,7 @@ async function grantTree(ctx: MutationCtx, ws: Doc<"workspaces">, member: Doc<"w
     if (ws.status === "suspended" && role !== "owner") old = ACCESS_RANK.read;
     else if (role === "admin" || role === "owner") old = ACCESS_RANK.manage;
     else if (restricted) old = doc.createdBy === person._id ? ACCESS_RANK.manage : grant;
-    else old = Math.max(ACCESS_RANK[roleToAccess(role)], grant);
+    else old = Math.max(ACCESS_RANK[memberToAccess(member)], grant);
     const kids = await ctx.db
       .query("documents")
       .withIndex("by_parent", (q) => q.eq("parentDocumentId", doc._id))
@@ -412,6 +412,47 @@ export const clearDefaultWorkspaces = internalMutation({
   },
 });
 
+// ---------------------------------------------------------------------------------------------------
+// Account model, phase D: membership roles are owner | admin | member (docs/ACCOUNT_MODEL_PLAN.md).
+//
+//   npx convex run migrations:normalizeWorkspaceRoles      rewrites old member roles; continues itself
+//
+// editor → member (edit), commenter → member + memberAccess "comment", viewer → member + memberAccess
+// "view", on workspaceMembers and workspaceInvites. Nobody's access changes: the code already reads the old
+// names that way (lib/auth.ts normalizeMembership), so it's safe to deploy first and migrate after. Seats
+// don't change (every membership role takes one). Idempotent: rows already migrated are skipped.
+// ---------------------------------------------------------------------------------------------------
+
+const ROLE_PAGE = 200;
+
+export const normalizeWorkspaceRoles = internalMutation({
+  args: { table: v.optional(v.union(v.literal("workspaceMembers"), v.literal("workspaceInvites"))), cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args): Promise<{ table: string; updated: number; done: boolean }> => {
+    const table = args.table ?? "workspaceMembers";
+    const page = await ctx.db.query(table).paginate({ cursor: args.cursor ?? null, numItems: ROLE_PAGE });
+    let updated = 0;
+    for (const row of page.page) {
+      if (!isLegacyRole(row.role)) continue;
+      const { memberAccess } = normalizeMembership(row);
+      await ctx.db.patch(row._id, { role: "member", memberAccess: memberAccess === "edit" ? undefined : memberAccess });
+      updated++;
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.normalizeWorkspaceRoles, { table, cursor: page.continueCursor });
+    else if (table === "workspaceMembers") await ctx.scheduler.runAfter(0, internal.migrations.normalizeWorkspaceRoles, { table: "workspaceInvites", cursor: null });
+    if (updated) console.log(JSON.stringify({ event: "migration.roles_normalized", table, updated }));
+    return { table, updated, done: page.isDone && table === "workspaceInvites" };
+  },
+});
+
+/** One page of membership or invitation rows still holding an old member role. */
+export const verifyRolesPage = internalQuery({
+  args: { table: v.union(v.literal("workspaceMembers"), v.literal("workspaceInvites")), cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, args): Promise<{ legacy: number; isDone: boolean; continueCursor: string }> => {
+    const page = await ctx.db.query(args.table).paginate({ cursor: args.cursor, numItems: VERIFY_PAGE });
+    return { legacy: page.page.filter((r) => isLegacyRole(r.role)).length, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
+
 // ---------------------------------------------------------------- verification
 
 const VERIFY_PAGE = 500;
@@ -499,6 +540,8 @@ export interface AccountModelReport {
   orphanedGrants: number;
   personalWorkspaces: number;
   profilesWithDefaultWorkspace: number;
+  /** Memberships and invitations still holding editor / commenter / viewer (Phase D: normalizeWorkspaceRoles). */
+  legacyRoles: number;
   tables: Record<string, TableCheck>;
 }
 
@@ -532,6 +575,16 @@ export const verifyAccountModel = internalAction({
       cursor = page.continueCursor;
     }
     const personalWorkspaces: number = await ctx.runQuery(internal.migrations.verifyPersonalWorkspaces, {});
+    let legacyRoles = 0;
+    for (const table of ["workspaceMembers", "workspaceInvites"] as const) {
+      let roleCursor: string | null = null;
+      for (;;) {
+        const page: { legacy: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.verifyRolesPage, { table, cursor: roleCursor });
+        legacyRoles += page.legacy;
+        if (page.isDone) break;
+        roleCursor = page.continueCursor;
+      }
+    }
     const sum = (key: keyof TableCheck) => Object.values(tables).reduce((n, t) => n + t[key], 0);
     const report = {
       rowsWithBothScopes: sum("both"),
@@ -541,6 +594,7 @@ export const verifyAccountModel = internalAction({
       orphanedGrants: sum("orphanedGrants"),
       personalWorkspaces,
       profilesWithDefaultWorkspace,
+      legacyRoles,
     };
     return { ok: Object.values(report).every((n) => n === 0), ...report, tables };
   },

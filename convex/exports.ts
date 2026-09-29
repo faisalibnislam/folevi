@@ -11,6 +11,7 @@ import { liveBlocks, toWireBlock } from "./lib/documents";
 import { safeFilename } from "./lib/images";
 import { signFileUrl } from "./lib/fileUrls";
 import { insertScoped, vScope, vScopeArg, type Scope } from "./lib/scope";
+import { canExportWorkspace } from "./lib/permissions";
 
 /** What an export of Personal is called (a workspace export is named after the workspace). */
 const PERSONAL_EXPORT_NAME = "Personal";
@@ -19,8 +20,10 @@ export const prepare = internalMutation({
   args: { scope: vScopeArg },
   handler: async (ctx, args): Promise<Prep> => {
     const profile = await requireProfile(ctx);
-    // Personal is always your own; a workspace needs membership (a guest on a page can't export anything).
-    const { scope, workspace } = await resolveScope(ctx, profile, args.scope);
+    // Personal is always your own. Exporting a whole workspace is for its owner and admins only (not
+    // members; a guest can't reach a workspace scope at all).
+    const { scope, workspace, member } = await resolveScope(ctx, profile, args.scope);
+    if (workspace && !canExportWorkspace(member)) fail("forbidden", "Only the workspace's owner and admins can export it.");
     const flag = await ctx.db
       .query("featureFlags")
       .withIndex("by_key", (q) => q.eq("key", "workspace_export"))

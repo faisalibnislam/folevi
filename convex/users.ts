@@ -2,8 +2,8 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { deviceStatus } from "./lib/devices";
-import type { Doc } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { localDate } from "@folevi/editor-schema";
 import {
   assertIdentityClaims,
@@ -24,7 +24,7 @@ import { bump } from "./lib/metrics";
 import { keyedHash } from "./lib/crypto";
 import { vAppearance, vNotificationPrefs } from "./lib/validators";
 import { seedPersonal } from "./seed";
-import { notifyInvite } from "./lib/notify";
+import { notifyInvite, wantsInApp } from "./lib/notify";
 import { claimIdentityImage, deleteIdentityImage, identityImageUrl, workspaceLabel } from "./lib/identityImages";
 import { personalScope } from "./lib/scope";
 
@@ -168,6 +168,26 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
     const workspace = await ctx.db.get(invite.workspaceId);
     if (!workspace) continue;
     await notifyInvite(ctx, { recipient: profile, actorId: invite.invitedBy, workspaceId: invite.workspaceId, inviteId: invite._id, title: `You're invited to ${workspaceLabel(workspace)}` });
+  }
+  // Pages shared with this address before the account existed: a notice to accept each (nothing is
+  // granted until they do).
+  const pageInvites = await ctx.db
+    .query("pageInvites")
+    .withIndex("by_email", (q) => q.eq("email", profile.email))
+    .take(100);
+  for (const invite of pageInvites) {
+    if (invite.status !== "pending" || invite.expiresAt < Date.now()) continue;
+    const doc = await ctx.db.get(invite.documentId);
+    if (!doc || doc.inTrash || !wantsInApp(profile.notificationPrefs, "share")) continue;
+    const inviter = await ctx.db.get(invite.invitedBy);
+    await ctx.db.insert("notifications", {
+      profileId: profile._id,
+      kind: "share",
+      actorId: invite.invitedBy,
+      pageInviteId: invite._id,
+      title: `${inviter?.displayName ?? "Someone"} shared “${(doc.title || "Untitled").slice(0, 100)}” with you`.slice(0, 200),
+      createdAt: Date.now(),
+    });
   }
 }
 
@@ -400,12 +420,50 @@ function browserLabel(ua: string): string {
 
 // ---------------------------------------------------------------- account deletion
 
+/**
+ * Team workspaces `profileId` owns that still have other members (and aren't already being deleted).
+ * Deleting the account needs each of them handed on or deleted first; owned workspaces with nobody else
+ * in them are deleted with the account.
+ */
+export async function ownedWorkspacesWithMembers(ctx: QueryCtx, profileId: Id<"profiles">): Promise<{ id: string; name: string; otherMembers: number }[]> {
+  const owned = await ctx.db
+    .query("workspaces")
+    .withIndex("by_owner", (q) => q.eq("ownerId", profileId))
+    .collect();
+  const out = [];
+  for (const w of owned) {
+    if (w.kind !== "team" || w.status === "deleting" || w.deletionScheduledFor !== undefined) continue;
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", w._id))
+      .collect();
+    const others = members.filter((m) => m.profileId !== profileId).length;
+    if (others > 0) out.push({ id: w.publicId, name: w.name, otherMembers: others });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** What stands in the way of deleting your account (Settings → Security shows it before you confirm). */
+export const deletionBlockers = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    return { workspaces: await ownedWorkspacesWithMembers(ctx, profile._id) };
+  },
+});
+
 export const requestAccountDeletion = mutation({
   args: { confirmEmail: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     if (args.confirmEmail.trim().toLowerCase() !== profile.email) fail("invalid_argument", "Type your email address exactly to confirm.");
     if (profile.status === "pending_deletion") return { scheduledFor: profile.deletionScheduledFor ?? Date.now() };
+    // Other people's work is never deleted with your account: hand those workspaces on (or delete them) first.
+    const blockers = await ownedWorkspacesWithMembers(ctx, profile._id);
+    if (blockers.length) {
+      const names = blockers.map((b) => `“${b.name}”`).join(", ");
+      fail("forbidden", `You own ${blockers.length === 1 ? "a workspace" : "workspaces"} other people use: ${names}. Transfer ownership to another member or delete ${blockers.length === 1 ? "it" : "them"} first.`);
+    }
     const scheduledFor = Date.now() + DELETION_GRACE_MS;
     await ctx.db.patch(profile._id, { status: "pending_deletion", deletionScheduledFor: scheduledFor });
     await ctx.db.insert("deletionJobs", {

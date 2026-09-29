@@ -18,7 +18,7 @@ import { action, internalAction, internalMutation, internalQuery, mutation, quer
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx } from "./_generated/server";
-import { requireIdentity, requireProfile } from "./lib/auth";
+import { normalizeMembership, requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { ensureWorkspaceSubscription, insertPayment, isWorkspaceSubscription, markInvoiceRefunded, workspaceSubscriptionOf, type WorkspaceSubscription } from "./lib/billing";
 import { storageUsage, workspaceEntitlements } from "./lib/entitlements";
@@ -61,7 +61,7 @@ export const summary = query({
       .take(24);
     return {
       workspace: { id: workspace.publicId, name: workspace.name },
-      yourRole: member.role,
+      yourRole: normalizeMembership(member).role,
       entitlements: e,
       plan: { id: e.planId, tier, name: WORKSPACE_PLANS[tier].name, interval: plan.interval, seatPriceCents: plan.priceCents },
       subscription:

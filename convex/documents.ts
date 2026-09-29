@@ -16,7 +16,8 @@ import {
   requireProfile,
   requireRowScope,
   resolveScope,
-  roleAtLeast,
+  levelAtLeast,
+  memberAtLeast,
 } from "./lib/auth";
 import { HomeFolders, IdResolver, liveBlocks, refreshDerived, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary, type HomeFolder } from "./lib/documents";
 import { SyncEngine, refreshLinkLabels, syncLinks } from "./lib/syncEngine";
@@ -255,15 +256,23 @@ export const get = query({
       }
       cursor = cursor.parentDocumentId ? await ctx.db.get(cursor.parentDocumentId) : null;
     }
-    const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
-    const [extras] = await withExtras(ctx, profile, ids, [doc]);
     const scope = scopeOfRow(doc);
     // In the document's scope (its Personal's owner, or a member of its workspace), not only a guest on it.
     const inItsScope = scope.kind === "personal" ? scope.profileId === profile._id : Boolean(await membership(ctx, profile._id, scope.workspaceId));
+    const [extras] = await withExtras(ctx, profile, ids, [doc]);
+    // A guest sees the page, not how the workspace (or someone's Personal) is organized: no folder, tag
+    // or home-folder names, and no parent they can't open.
+    let document = extras!;
+    if (!inItsScope) {
+      const parent = doc.parentDocumentId ? await ctx.db.get(doc.parentDocumentId) : null;
+      const parentReadable = parent !== null && accessAtLeast(await documentAccess(ctx, profile, parent), "read");
+      document = { ...document, folderId: null, tags: [], homeFolder: null, parentDocumentId: parentReadable ? document.parentDocumentId : null };
+    }
+    const folder = inItsScope && doc.folderId ? await ctx.db.get(doc.folderId) : null;
     const lastEditor = await ctx.db.get(doc.lastEditedBy);
     const creator = await ctx.db.get(doc.createdBy);
     return {
-      document: extras!,
+      document,
       access,
       isMember: inItsScope,
       folder: folder && !folder.deletedAt ? { id: folder.publicId, name: folder.name } : null,
@@ -550,7 +559,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    await resolveScope(ctx, profile, args.scope, "editor");
+    await resolveScope(ctx, profile, args.scope, "edit");
     const engine = new SyncEngine(ctx, profile, "server");
     const [result] = await engine.applyAll(args.scope, [
       {
@@ -742,10 +751,10 @@ export const trashSummary = query({
   args: { scope: vScopeArg },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { scope, role } = await resolveScope(ctx, profile, args.scope);
+    const { scope, level } = await resolveScope(ctx, profile, args.scope);
     const trashed = await scopeDocuments(ctx, scope, true, "created").take(TRASH_COUNT_CAP + 1);
     let deletable = 0;
-    if (roleAtLeast(role, "editor")) {
+    if (levelAtLeast(level, "edit")) {
       const verdicts = new Map<Id<"documents">, boolean>();
       for (const d of trashed.slice(0, TRASH_COUNT_CAP)) {
         const root = await trashRoot(ctx, d);
@@ -789,7 +798,7 @@ export const emptyTrash = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { scope } = await resolveScope(ctx, profile, args.scope, "editor");
+    const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     await consume(ctx, "bulk", profile._id);
     const r = await emptyTrashPage(ctx, profile, scope, null);
     return { scheduled: r.queued, continuing: !r.done };
@@ -807,7 +816,7 @@ export const emptyTrashContinue = internalMutation({
       if (scope.profileId !== profile._id) return null;
     } else {
       const member = await membership(ctx, profile._id, scope.workspaceId);
-      if (!member || !roleAtLeast(member.role, "editor")) return null;
+      if (!memberAtLeast(member, "edit")) return null;
     }
     await emptyTrashPage(ctx, profile, scope, args.cursor);
     return null;
@@ -976,7 +985,7 @@ export const duplicate = mutation({
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
     // A copy stays in the page's scope, so it needs the right to add pages there (a guest can't).
-    const { scope } = await requireRowScope(ctx, profile, doc, "editor", "Document not found.");
+    const { scope } = await requireRowScope(ctx, profile, doc, "edit", "Document not found.");
     const blocks = cloneBlocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
     const copy = await createDocument(ctx, {
       scope,

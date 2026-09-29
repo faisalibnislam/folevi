@@ -50,6 +50,6 @@ test("the public pricing page lists Free, Basic and Pro, then the workspace plan
   for (const name of ["Free", "Team", "Business"]) await expect(workspaces.getByRole("heading", { level: 3, name, exact: true })).toBeVisible();
   await expect(workspaces.getByText("or $49 per member / year")).toBeVisible();
   await expect(workspaces.getByText("or $99 per member / year")).toBeVisible();
-  await expect(workspaces.getByText("Coming soon")).toHaveCount(2);
+  await expect(workspaces.getByText("Coming soon", { exact: true })).toHaveCount(2);
   await expect(page.getByText(/across every workspace|workspaces you own/)).toHaveCount(0);
 });

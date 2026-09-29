@@ -47,7 +47,7 @@ function rateLimitRules() {
     "/two-factor/verify-totp": rule(60, 5),
     "/two-factor/verify-backup-code": rule(60, 5),
     "/two-factor/enable": rule(60, 5),
-    "/request-password-reset": rule(60 * 60, 3),
+    "/request-password-reset": rule(15 * 60, 3),
     "/reset-password": rule(60 * 60, 5),
     "/send-verification-email": rule(5 * 60, 3),
     "/change-password": rule(60 * 60, 5),

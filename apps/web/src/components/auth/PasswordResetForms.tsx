@@ -27,7 +27,7 @@ export function ForgotPasswordForm() {
             const { error: err } = await authClient.requestPasswordReset({ email: email.trim(), redirectTo: "/reset-password" });
             setBusy(false);
             // Same answer whether or not the account exists; only rate limiting is reported.
-            if (err && err.status === 429) setError(authErrorMessage(err, undefined, "up to an hour"));
+            if (err && err.status === 429) setError(authErrorMessage(err, undefined, "up to 15 minutes"));
             else setDone(true);
           }}
         >

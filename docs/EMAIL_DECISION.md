@@ -73,7 +73,7 @@ Not verified:
    template, the redacted recipient (`j***@e***.com`) and the status, never the link.
 4. **No enumeration.** "Forgot password" and "resend confirmation" answer the same way whether or not
    the address has an account; an email is only sent when it does.
-5. **Rate limits.** Better Auth limits these requests per IP (3 reset requests per hour, 3 confirmation
+5. **Rate limits.** Better Auth limits these requests per IP (3 reset requests per 15 minutes, 3 confirmation
    resends per 5 minutes; see `rateLimitRules()` in `convex/auth.ts`).
 6. **Non-production isolation.** Unless `FOLEVI_ENV=production`, Loops only receives mail for
    `@example.com`, `@test.com` and addresses in `FOLEVI_EMAIL_ALLOWLIST`; everything else is refused,

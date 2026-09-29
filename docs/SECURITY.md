@@ -22,7 +22,7 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
 - “Trust this device for 30 days” skips the TOTP step on that browser; signing out, revoking the session
   or changing the password ends it.
 - Brute-force limits: per-IP rate limits stored in the database (for example 5 sign-ins per minute, 5
-  sign-ups per hour, 5 two-step codes per minute, 3 password-reset requests per hour); a sign-in
+  sign-ups per hour, 5 two-step codes per minute, 3 password-reset requests per 15 minutes); a sign-in
   challenge allows 5 code attempts and Better Auth locks two-step verification for the account after
   repeated failures. `FOLEVI_AUTH_RATE_LIMIT_SCALE` loosens the limits for automated tests and is ignored
   when `FOLEVI_ENV=production`.

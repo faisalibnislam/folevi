@@ -104,7 +104,7 @@ suspension).
   `/two-factor/setup`. `FOLEVI_REQUIRE_VERIFIED_EMAIL=false` exists for automated tests only; the
   production build check fails if it is set.
 - **Brute force:** per-IP limits stored in the database, so they hold across Convex instances (5
-  sign-ins per minute, 5 sign-ups per hour, 5 two-step codes per minute, 3 reset requests per hour, 3
+  sign-ins per minute, 5 sign-ups per hour, 5 two-step codes per minute, 3 reset requests per 15 minutes, 3
   confirmation resends per 5 minutes, among others; `rateLimitRules()`). Each sign-in challenge allows 5
   code attempts, and Better Auth's defaults lock two-step verification for an account for 15 minutes
   after 10 consecutive failures. `FOLEVI_AUTH_RATE_LIMIT_SCALE` multiplies the limits in non-production

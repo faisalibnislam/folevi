@@ -12,12 +12,16 @@ import {
   type InlineNode,
   type WireBlock,
 } from "@folevi/editor-schema";
+import { insertScoped, scopeOfRow, type Scope } from "./scope";
 
 type Ctx = QueryCtx | MutationCtx;
 
 export interface DocumentSummary {
   id: string;
-  workspaceId: string;
+  /** The team workspace it's in (public id); null when it's in someone's Personal. */
+  workspaceId: string | null;
+  /** Whose Personal it's in (profile id); null in a team workspace. */
+  ownerProfileId: string | null;
   parentDocumentId: string | null;
   folderId: string | null;
   kind: Doc<"documents">["kind"];
@@ -60,9 +64,10 @@ export class IdResolver {
     if (!this.folders.has(id)) this.folders.set(id, (await this.ctx.db.get(id))?.publicId ?? null);
     return this.folders.get(id) ?? null;
   }
-  async workspace(id: Id<"workspaces">): Promise<string> {
+  async workspace(id: Id<"workspaces"> | undefined): Promise<string | null> {
+    if (!id) return null;
     if (!this.workspaces.has(id)) this.workspaces.set(id, (await this.ctx.db.get(id))?.publicId ?? null);
-    return this.workspaces.get(id) ?? "";
+    return this.workspaces.get(id) ?? null;
   }
   async profile(id: Id<"profiles">): Promise<string> {
     if (!this.profiles.has(id)) this.profiles.set(id, (await this.ctx.db.get(id)) ? id : null);
@@ -117,6 +122,7 @@ export async function toSummary(ids: IdResolver, doc: Doc<"documents">): Promise
   return {
     id: doc.publicId,
     workspaceId: await ids.workspace(doc.workspaceId),
+    ownerProfileId: doc.ownerProfileId ?? null,
     parentDocumentId: await ids.document(doc.parentDocumentId),
     folderId: await ids.folder(doc.folderId),
     kind: doc.kind,
@@ -241,7 +247,6 @@ export async function syncTaskProjection(
     blockId: row.blockId,
     blockDocId: row._id,
     documentId: doc._id,
-    workspaceId: doc.workspaceId,
     title: projection.title,
     status: projection.status,
     dueDate: projection.dueDate ?? undefined,
@@ -253,14 +258,18 @@ export async function syncTaskProjection(
     updatedAt: Date.now(),
     documentInTrash: doc.inTrash,
   };
+  // A task is in its document's scope (documents never change scope).
   if (existing) await ctx.db.patch(existing._id, fields);
-  else await ctx.db.insert("tasks", { ...fields, createdBy: actorId });
+  else await insertScoped(ctx, "tasks", scopeOfRow(doc), { ...fields, createdBy: actorId });
 }
 
-export async function lastRootRank(ctx: Ctx, workspaceId: Id<"workspaces">): Promise<string | null> {
-  const latest = await ctx.db
-    .query("documents")
-    .withIndex("by_workspace_created", (q) => q.eq("workspaceId", workspaceId))
+export async function lastRootRank(ctx: Ctx, scope: Scope): Promise<string | null> {
+  const base = ctx.db.query("documents");
+  const latest = await (
+    scope.kind === "personal"
+      ? base.withIndex("by_owner_created", (q) => q.eq("ownerProfileId", scope.profileId))
+      : base.withIndex("by_workspace_created", (q) => q.eq("workspaceId", scope.workspaceId))
+  )
     .order("desc")
     .first();
   return latest?.rank ?? null;

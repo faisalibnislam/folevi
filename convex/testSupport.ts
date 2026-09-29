@@ -8,6 +8,7 @@ import type { Id } from "./_generated/dataModel";
 import { SCHEMA_VERSION, normalizeForSearch, randomNoteCover, rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
 import { createDocument } from "./lib/create";
 import { nextSeq } from "./lib/seq";
+import { insertScoped, personalScope } from "./lib/scope";
 import { FOLDER_COLORS } from "./lib/folderColors";
 
 function assertNotProduction() {
@@ -169,22 +170,23 @@ async function demoProfile(ctx: { db: import("./_generated/server").MutationCtx[
     .query("profiles")
     .withIndex("by_email", (q) => q.eq("email", email.trim().toLowerCase()))
     .unique();
-  if (!profile || !profile.defaultWorkspaceId) throw new Error("No profile (with a workspace) for that email. Sign in and finish onboarding first.");
-  return { profile, workspaceId: profile.defaultWorkspaceId };
+  if (!profile) throw new Error("No profile for that email. Sign in and finish onboarding first.");
+  // Demo content goes into the person's Personal.
+  return { profile, scope: personalScope(profile._id) };
 }
 
 export const seedDemoContent = internalMutation({
   args: { email: v.string(), notes: v.optional(v.number()), folders: v.optional(v.number()), tags: v.optional(v.number()), seed: v.optional(v.number()) },
   handler: async (ctx, args) => {
     assertNotProduction();
-    const { profile, workspaceId } = await demoProfile(ctx, args.email);
+    const { profile, scope } = await demoProfile(ctx, args.email);
     const rand = rng(args.seed ?? 20260926);
     const now = Date.now();
 
     // Folders: mostly top level, some nested one level (the product allows one level).
     const existingFolders = await ctx.db
       .query("folders")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+      .withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))
       .collect();
     const folderNames = new Set(existingFolders.map((f) => f.name.toLowerCase()));
     let lastRank = existingFolders.map((f) => f.rank).sort().pop() ?? null;
@@ -198,9 +200,8 @@ export const seedDemoContent = internalMutation({
       folderNames.add(name.toLowerCase());
       const nested = made >= Math.round(folderTarget * 0.8) && roots.length > 0;
       lastRank = rankBetween(lastRank, null);
-      const id = await ctx.db.insert("folders", {
+      const id = await insertScoped(ctx, "folders", scope, {
         publicId: ulid(),
-        workspaceId,
         parentFolderId: nested ? roots[Math.floor(rand() * roots.length)] : undefined,
         name,
         color: FOLDER_COLORS[Math.floor(rand() * FOLDER_COLORS.length)],
@@ -208,7 +209,7 @@ export const seedDemoContent = internalMutation({
         createdBy: profile._id,
         createdAt: now - Math.floor(rand() * 200) * 86_400_000,
         updatedAt: now - Math.floor(rand() * 60) * 86_400_000,
-        seq: await nextSeq(ctx, workspaceId),
+        seq: await nextSeq(ctx, scope),
       });
       if (!nested) roots.push(id);
       made++;
@@ -217,7 +218,7 @@ export const seedDemoContent = internalMutation({
     // Tags.
     const existingTags = await ctx.db
       .query("tags")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+      .withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))
       .collect();
     const tagNames = new Set(existingTags.map((t) => t.normalizedName));
     const colors = ["accent", "moss", "marigold", "plum", "coral", "muted"];
@@ -230,7 +231,7 @@ export const seedDemoContent = internalMutation({
         const normalized = normalizeForSearch(name);
         if (tagNames.has(normalized)) continue;
         tagNames.add(normalized);
-        await ctx.db.insert("tags", { publicId: ulid(), workspaceId, name, normalizedName: normalized, color: colors[tagsMade % colors.length]!, createdAt: now - tagsMade * 3_600_000, seq: await nextSeq(ctx, workspaceId) });
+        await insertScoped(ctx, "tags", scope, { publicId: ulid(), name, normalizedName: normalized, color: colors[tagsMade % colors.length]!, createdAt: now - tagsMade * 3_600_000, seq: await nextSeq(ctx, scope) });
         tagsMade++;
       }
     }
@@ -284,21 +285,21 @@ export const seedDemoNotes = internalMutation({
   args: { email: v.string(), remaining: v.number(), seed: v.number() },
   handler: async (ctx, args) => {
     assertNotProduction();
-    const { profile, workspaceId } = await demoProfile(ctx, args.email);
+    const { profile, scope } = await demoProfile(ctx, args.email);
     const rand = rng(args.seed);
     const folders = (
       await ctx.db
         .query("folders")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))
         .collect()
     ).filter((f) => !f.deletedAt);
     const tags = await ctx.db
       .query("tags")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+      .withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))
       .collect();
     const recent = await ctx.db
       .query("documents")
-      .withIndex("by_workspace_updated", (q) => q.eq("workspaceId", workspaceId))
+      .withIndex("by_owner_updated", (q) => q.eq("ownerProfileId", scope.profileId))
       .order("desc")
       .take(40);
     const parents = recent.filter((d) => d.kind === "document" && !d.parentDocumentId && !d.inTrash);
@@ -312,7 +313,7 @@ export const seedDemoNotes = internalMutation({
       const nested = rand() < 0.08 && parents.length > 0;
       const cover = randomNoteCover(rand);
       const doc = await createDocument(ctx, {
-        workspaceId,
+        scope,
         actor: profile,
         title,
         icon: ICONS[Math.floor(rand() * ICONS.length)] ?? null,
@@ -332,8 +333,8 @@ export const seedDemoNotes = internalMutation({
       const tagCount = Math.floor(rand() * 5);
       const chosen = new Set<Id<"tags">>();
       for (let t = 0; t < tagCount && tags.length; t++) chosen.add(tags[Math.floor(rand() * tags.length)]!._id);
-      for (const tagId of chosen) await ctx.db.insert("documentTags", { workspaceId, documentId: doc._id, tagId });
-      if (rand() < 0.1) await ctx.db.insert("stars", { profileId: profile._id, documentId: doc._id, workspaceId, createdAt: updatedAt });
+      for (const tagId of chosen) await insertScoped(ctx, "documentTags", scope, { documentId: doc._id, tagId });
+      if (rand() < 0.1) await insertScoped(ctx, "stars", scope, { profileId: profile._id, documentId: doc._id, createdAt: updatedAt });
       if (!nested) parents.push(doc);
     }
     const remaining = args.remaining - batch;

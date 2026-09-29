@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { vScopeArg } from "./scope";
 
 export const vPlatformRole = v.union(v.literal("super_admin"), v.literal("support_admin"), v.literal("ops_admin"));
 export const vProfileStatus = v.union(
@@ -118,6 +119,7 @@ export const vDocumentCreate = v.object({
   dailyDate: v.optional(v.union(v.string(), v.null())),
   templateId: v.optional(v.union(v.string(), v.null())),
   collectionId: v.optional(v.union(v.string(), v.null())),
+  scope: v.optional(v.union(vScopeArg, v.null())),
   workspaceId: v.optional(v.union(v.string(), v.null())),
 });
 

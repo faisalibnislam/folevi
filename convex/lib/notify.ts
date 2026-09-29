@@ -286,10 +286,12 @@ export async function notifyAccessChange(ctx: MutationCtx, input: { recipientId:
  */
 export async function notifyAccessLostOnRestrict(ctx: MutationCtx, actor: Doc<"profiles">, before: Doc<"documents">): Promise<number> {
   const after = await ctx.db.get(before._id);
-  if (!after) return 0;
+  // Personal has no members: only its owner and the people pages were shared with (grants still apply).
+  const workspaceId = before.workspaceId;
+  if (!after || !workspaceId) return 0;
   const members = await ctx.db
     .query("workspaceMembers")
-    .withIndex("by_workspace", (q) => q.eq("workspaceId", before.workspaceId))
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     .take(500);
   let notified = 0;
   for (const m of members) {

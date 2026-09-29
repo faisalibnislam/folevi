@@ -8,16 +8,21 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { randomToken, sha256Hex } from "./lib/crypto";
 import { vWorkspaceRole } from "./lib/validators";
-import { createWorkspace, PERSONAL_WORKSPACE_NAME } from "./seed";
+import { createWorkspace } from "./seed";
 import { claimIdentityImage, deleteIdentityImage, workspaceLabel, workspaceLogoUrl } from "./lib/identityImages";
 import { isFeatureEnabled } from "./lib/flags";
-import { aiAccessIn, resolveEntitlements, scopeOfWorkspace, storageUsage } from "./lib/entitlements";
+import { aiAccessIn, storageUsage, workspaceEntitlements } from "./lib/entitlements";
+import { workspaceScope } from "./lib/scope";
 import { planName } from "./lib/plans";
 import { notifyAccessChange, notifyInvite } from "./lib/notify";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[a-z]{2,}$/i;
 
+/**
+ * The team workspaces you're a member of, with your role and each workspace's own plan and limits.
+ * Personal is not listed here: it isn't a workspace (its plan and storage are on users.me / billing).
+ */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
@@ -29,35 +34,26 @@ export const mine = query({
     const out = [];
     for (const m of memberships) {
       const w = await ctx.db.get(m.workspaceId);
-      if (!w || w.status === "deleting") continue;
-      // Someone else's personal workspace is told apart by its owner's name ("Personal · Ada").
-      const othersPersonal = w.kind === "personal" && w.ownerId !== profile._id;
-      const owner = othersPersonal ? await ctx.db.get(w.ownerId) : null;
-      // Each workspace's own plan and limits: Personal follows your Personal plan, a team its workspace plan.
-      const scope = scopeOfWorkspace(w);
+      if (!w || w.kind !== "team" || w.status === "deleting") continue;
+      const scope = workspaceScope(w._id);
       const storage = await storageUsage(ctx, scope);
-      const plan = othersPersonal ? null : (await resolveEntitlements(ctx, scope)).planId;
+      const plan = (await workspaceEntitlements(ctx, w)).planId;
       out.push({
         id: w.publicId,
         name: w.name,
-        kind: w.kind,
         icon: w.icon ?? null,
-        ownerName: owner?.displayName ?? null,
-        /** Team: the workspace logo. Personal: the owner's profile picture. */
         logoUrl: await workspaceLogoUrl(ctx, w),
         role: m.role,
         status: w.status,
-        isDefault: profile.defaultWorkspaceId === w._id,
         storageUsedBytes: storage.usedBytes,
-        /** The storage limit that applies here (the scope's plan, or an admin override). */
+        /** The storage limit that applies here (the workspace's plan, or an admin override). */
         storageQuotaBytes: storage.limitBytes,
-        /** Whose plan applies here; null in someone else's Personal. */
-        plan: plan ? { scope: scope.kind, id: plan, name: planName(plan) } : null,
+        plan: { scope: "workspace" as const, id: plan, name: planName(plan) },
         /** Whether you can use the AI Assistant here (the server checks again on every request). */
-        aiIncluded: (await aiAccessIn(ctx, profile, w)).allowed,
+        aiIncluded: (await aiAccessIn(ctx, profile, scope)).allowed,
       });
     }
-    return out.sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name));
+    return out.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 
@@ -101,8 +97,8 @@ export const createTeamWorkspace = mutation({
       .query("workspaces")
       .withIndex("by_owner", (q) => q.eq("ownerId", profile._id))
       .collect();
-    if (owned.length >= 10) fail("limit_exceeded", "You can own up to 10 workspaces.");
-    const id = await createWorkspace(ctx, profile, name, "team");
+    if (owned.filter((w) => w.kind === "team" && w.status !== "deleting").length >= 10) fail("limit_exceeded", "You can own up to 10 workspaces.");
+    const id = await createWorkspace(ctx, profile, name);
     return { id: (await ctx.db.get(id))!.publicId };
   },
 });
@@ -115,8 +111,6 @@ export const rename = mutation({
     const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "admin");
     const name = args.name.trim().slice(0, 80);
     if (!name) fail("invalid_argument", "Give the workspace a name.");
-    // Everyone's personal workspace has the same fixed name (the icon can still change).
-    if (workspace.kind === "personal" && name !== PERSONAL_WORKSPACE_NAME) fail("invalid_argument", "Your personal workspace is always called Personal.");
     await ctx.db.patch(workspace._id, { name, icon: args.icon?.slice(0, 16) ?? workspace.icon, updatedAt: Date.now() });
     return null;
   },
@@ -124,7 +118,7 @@ export const rename = mutation({
 
 /**
  * Sets a team workspace's logo to an image just uploaded with `files.generateUploadUrl` (kind "logo").
- * Owners and admins only; the previous logo is deleted. Personal workspaces use the owner's avatar.
+ * Owners and admins only; the previous logo is deleted.
  */
 export const setLogo = mutation({
   args: { workspaceId: v.string(), fileId: v.string() },
@@ -132,8 +126,7 @@ export const setLogo = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "admin");
-    if (workspace.kind !== "team") fail("invalid_argument", "Your personal workspace uses your profile picture.");
-    const file = await claimIdentityImage(ctx, profile, args.fileId, "logo", workspace._id);
+    const file = await claimIdentityImage(ctx, profile, args.fileId, "logo", workspaceScope(workspace._id));
     const previous = workspace.logoFileId;
     await ctx.db.patch(workspace._id, { logoFileId: file._id, updatedAt: Date.now() });
     if (previous && previous !== file._id) await deleteIdentityImage(ctx, previous);
@@ -170,7 +163,7 @@ export const invite = mutation({
     if (args.role === "owner") fail("invalid_argument", "Invite them first, then transfer ownership from the member list.");
     if (args.role === "admin" && member.role !== "owner") fail("forbidden", "Only the owner can invite admins.");
     if (email === profile.email) fail("invalid_argument", "You’re already in this workspace.");
-    const label = await workspaceLabel(ctx, workspace);
+    const label = workspaceLabel(workspace);
     const count = await ctx.db
       .query("workspaceMembers")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
@@ -253,7 +246,7 @@ export const previewInvite = query({
     const inviter = await ctx.db.get(found.invitedBy);
     return {
       valid: true as const,
-      workspaceName: workspace ? await workspaceLabel(ctx, workspace) : "a workspace",
+      workspaceName: workspace ? workspaceLabel(workspace) : "a workspace",
       inviterName: inviter?.displayName ?? "Someone",
       role: found.role,
       emailMatches: found.email === profile.email,
@@ -287,7 +280,7 @@ export const acceptInvite = mutation({
     // Invitations are bound to the verified address they were sent to.
     if (invite.email !== profile.email) fail("forbidden", "This invitation was sent to a different email address.");
     const workspace = await ctx.db.get(invite.workspaceId);
-    if (!workspace || workspace.status !== "active") fail("not_found", "This workspace is unavailable.");
+    if (!workspace || workspace.kind !== "team" || workspace.status !== "active") fail("not_found", "This workspace is unavailable.");
     if (!(await membership(ctx, profile._id, workspace._id))) {
       await ctx.db.insert("workspaceMembers", { workspaceId: workspace._id, profileId: profile._id, role: invite.role, joinedAt: Date.now() });
     }
@@ -343,7 +336,7 @@ export const removeMember = mutation({
 
 /**
  * Hands a team workspace to another member. The new owner must already be a member; the previous
- * owner stays on as an admin. Personal workspaces can't change hands.
+ * owner stays on as an admin.
  */
 export const transferOwnership = mutation({
   args: { workspaceId: v.string(), profileId: v.string() },
@@ -351,7 +344,6 @@ export const transferOwnership = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { workspace, member } = await requireWorkspace(ctx, profile, args.workspaceId, "owner");
-    if (workspace.kind === "personal") fail("invalid_argument", "A personal workspace can't be transferred.");
     const targetId = ctx.db.normalizeId("profiles", args.profileId);
     if (!targetId || targetId === profile._id) fail("invalid_argument", "Choose another member.");
     const target = await membership(ctx, targetId, workspace._id);
@@ -361,7 +353,7 @@ export const transferOwnership = mutation({
       .query("workspaces")
       .withIndex("by_owner", (q) => q.eq("ownerId", targetId))
       .collect();
-    if (owned.filter((w) => w.status !== "deleting").length >= 10) fail("limit_exceeded", `${targetProfile.displayName} already owns 10 workspaces.`);
+    if (owned.filter((w) => w.kind === "team" && w.status !== "deleting").length >= 10) fail("limit_exceeded", `${targetProfile.displayName} already owns 10 workspaces.`);
     await ctx.db.patch(target._id, { role: "owner" });
     await ctx.db.patch(member._id, { role: "admin" });
     await ctx.db.patch(workspace._id, { ownerId: targetId, updatedAt: Date.now() });

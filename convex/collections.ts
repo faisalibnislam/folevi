@@ -8,6 +8,7 @@ import { fail } from "./lib/errors";
 import { addView, createCollection, normalizeValue } from "./lib/collections";
 import { createDocument, specsToWireBlocks } from "./lib/create";
 import { nextSeq } from "./lib/seq";
+import { scopeOfRow } from "./lib/scope";
 import { vCollectionPropertyType, vCollectionViewType } from "./lib/validators";
 import { SyncEngine } from "./lib/syncEngine";
 
@@ -80,23 +81,32 @@ export const get = query({
         updatedAt: doc.updatedAt,
       });
     }
-    // Names for person values (display + picker). Members of the collection's workspace only; no emails.
-    const memberRows = await ctx.db
-      .query("workspaceMembers")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", collection.workspaceId))
-      .take(300);
+    // Names for person values (display + picker): the members of the collection's workspace — or, in
+    // Personal, its owner. No emails.
+    const scope = scopeOfRow(collection);
+    const personIds =
+      scope.kind === "personal"
+        ? [scope.profileId]
+        : (
+            await ctx.db
+              .query("workspaceMembers")
+              .withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))
+              .take(300)
+          ).map((m) => m.profileId);
     const people: { id: string; name: string }[] = [];
-    for (const m of memberRows) {
-      const p = await ctx.db.get(m.profileId);
+    for (const id of personIds) {
+      const p = await ctx.db.get(id);
       if (p && p.status !== "deleted") people.push({ id: p._id as string, name: p.displayName });
     }
     people.sort((a, b) => a.name.localeCompare(b.name));
-    const workspace = await ctx.db.get(collection.workspaceId);
+    const workspace = scope.kind === "workspace" ? await ctx.db.get(scope.workspaceId) : null;
     return {
       id: collection.publicId,
       name: collection.name,
+      /** The team workspace it's in; null in Personal. */
       workspaceId: workspace?.publicId ?? null,
-      isMember: Boolean(await membership(ctx, profile._id, collection.workspaceId)),
+      /** In the collection's scope: its Personal's owner, or a member of its workspace. */
+      isMember: scope.kind === "personal" ? scope.profileId === profile._id : Boolean(await membership(ctx, profile._id, scope.workspaceId)),
       people,
       hostDocumentId: (await ctx.db.get(collection.documentId))!.publicId,
       canEdit: accessAtLeast(access, "write"),
@@ -115,9 +125,9 @@ export const create = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
-    const seq = await nextSeq(ctx, doc.workspaceId);
+    const seq = await nextSeq(ctx, scopeOfRow(doc));
     const coll = await createCollection(ctx, {
-      workspaceId: doc.workspaceId,
+      scope: scopeOfRow(doc),
       documentId: doc._id,
       name: (args.name ?? "Collection").slice(0, 80),
       seq,
@@ -255,7 +265,7 @@ export const addRow = mutation({
       rank = rankBetween(rows[idx]?.rank ?? null, rows[idx + 1]?.rank ?? null);
     } else rank = rankBetween(rows[rows.length - 1]?.rank ?? null, null);
     const doc = await createDocument(ctx, {
-      workspaceId: collection.workspaceId,
+      scope: scopeOfRow(collection),
       actor: profile,
       title: (args.title ?? "").slice(0, 300),
       kind: "collectionRow",
@@ -425,7 +435,7 @@ export const deleteRow = mutation({
     await ctx.db.patch(row._id, { deletedAt: Date.now() });
     const doc = await ctx.db.get(row.documentId);
     if (doc && !doc.inTrash) {
-      await ctx.db.patch(doc._id, { inTrash: true, deletedAt: Date.now(), deletedBy: profile._id, seq: await nextSeq(ctx, doc.workspaceId) });
+      await ctx.db.patch(doc._id, { inTrash: true, deletedAt: Date.now(), deletedBy: profile._id, seq: await nextSeq(ctx, scopeOfRow(doc)) });
     }
     return null;
   },

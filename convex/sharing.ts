@@ -10,6 +10,7 @@ import { signFileUrl } from "./lib/fileUrls";
 import { notify, notifyAccessChange, notifyAccessLostOnRestrict } from "./lib/notify";
 import { vShareRole } from "./lib/validators";
 import { isFeatureEnabled } from "./lib/flags";
+import { insertScoped, scopeOfRow } from "./lib/scope";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
@@ -98,6 +99,16 @@ async function publicCollections(ctx: MutationCtx, doc: Doc<"documents">, blocks
   return out;
 }
 
+/** Whether a page's scope still serves public links: an active workspace, or a Personal whose account is in good standing. */
+async function scopeIsOpen(ctx: MutationCtx, doc: Doc<"documents">): Promise<boolean> {
+  if (doc.ownerProfileId) {
+    const owner = await ctx.db.get(doc.ownerProfileId);
+    return Boolean(owner && (owner.status === "active" || owner.status === "pending_deletion"));
+  }
+  const workspace = doc.workspaceId ? await ctx.db.get(doc.workspaceId) : null;
+  return Boolean(workspace && workspace.status === "active");
+}
+
 export const get = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
@@ -176,7 +187,7 @@ export const grant = mutation({
       .withIndex("by_document_profile", (q) => q.eq("documentId", doc._id).eq("profileId", target._id))
       .unique();
     if (existing) await ctx.db.patch(existing._id, { role: args.role });
-    else await ctx.db.insert("documentPermissions", { documentId: doc._id, workspaceId: doc.workspaceId, profileId: target._id, role: args.role, grantedBy: profile._id, createdAt: Date.now() });
+    else await insertScoped(ctx, "documentPermissions", scopeOfRow(doc), { documentId: doc._id, profileId: target._id, role: args.role, grantedBy: profile._id, createdAt: Date.now() });
     if (existing) {
       if (existing.role !== args.role) {
         await notifyAccessChange(ctx, { recipientId: target._id, actor: profile, change: { type: "document_role", doc, role: args.role } });
@@ -230,8 +241,21 @@ export const sharedWithMe = query({
       if (!d || d.inTrash) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
       const by = await ctx.db.get(g.grantedBy);
-      const ws = await ctx.db.get(d.workspaceId);
-      out.push({ id: d.publicId, title: d.title, icon: d.icon ?? null, role: g.role, sharedBy: by?.displayName ?? "Someone", sharedAt: g.createdAt, workspaceName: ws?.name ?? "", updatedAt: d.updatedAt, excerpt: d.excerpt });
+      // Where it lives: a team workspace (its name), or someone's Personal (whose).
+      const ws = d.workspaceId ? await ctx.db.get(d.workspaceId) : null;
+      const owner = d.ownerProfileId ? await ctx.db.get(d.ownerProfileId) : null;
+      out.push({
+        id: d.publicId,
+        title: d.title,
+        icon: d.icon ?? null,
+        role: g.role,
+        sharedBy: by?.displayName ?? "Someone",
+        sharedAt: g.createdAt,
+        workspaceName: ws?.name ?? null,
+        ownerName: owner && owner.status !== "deleted" ? owner.displayName : null,
+        updatedAt: d.updatedAt,
+        excerpt: d.excerpt,
+      });
     }
     return out.sort((a, b) => b.sharedAt - a.sharedAt);
   },
@@ -258,10 +282,9 @@ export const createPublicLink = mutation({
     }
     const token = randomToken(32);
     const publicId = ulid();
-    await ctx.db.insert("publicLinks", {
+    await insertScoped(ctx, "publicLinks", scopeOfRow(doc), {
       publicId,
       documentId: doc._id,
-      workspaceId: doc.workspaceId,
       tokenHash: await sha256Hex(token),
       tokenHint: token.slice(0, 4),
       expiresAt: args.expiresAt,
@@ -315,8 +338,7 @@ export const openPublicLink = mutation({
     if (!found || found.revokedAt) return { status: "not_found" as const };
     if (found.expiresAt !== undefined && found.expiresAt < Date.now()) return { status: "expired" as const };
     const doc = await ctx.db.get(found.documentId);
-    const workspace = doc ? await ctx.db.get(doc.workspaceId) : null;
-    if (!doc || doc.inTrash || !workspace || workspace.status !== "active") return { status: "not_found" as const };
+    if (!doc || doc.inTrash || !(await scopeIsOpen(ctx, doc))) return { status: "not_found" as const };
     if (found.passwordHash) {
       if (!args.password) return { status: "password_required" as const };
       await consume(ctx, "publicLinkPassword", `${client}:${found._id}`);

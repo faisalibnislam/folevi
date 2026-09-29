@@ -6,6 +6,9 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { bump } from "./lib/metrics";
+import { adjustStorageUsed } from "./lib/entitlements";
+import { adjustDocumentCount } from "./lib/create";
+import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, type Scope } from "./lib/scope";
 
 const BUDGET = 400;
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -98,8 +101,7 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     .take(50);
   for (const f of files) {
     await ctx.storage.delete(f.storageId);
-    const ws = await ctx.db.get(f.workspaceId);
-    if (ws) await ctx.db.patch(ws._id, { storageUsedBytes: Math.max(0, ws.storageUsedBytes - f.size) });
+    if (hasValidScope(f)) await adjustStorageUsed(ctx, scopeOfRow(f), -f.size);
     await bump(ctx, "storage_bytes", -f.size);
     await ctx.db.delete(f._id);
     budget.spend();
@@ -135,11 +137,74 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     .withIndex("by_document", (q) => q.eq("documentId", docId))
     .collect();
   for (const p of presence) await ctx.db.delete(p._id);
-  const ws = await ctx.db.get(doc.workspaceId);
-  if (ws) await ctx.db.patch(ws._id, { documentCount: Math.max(0, ws.documentCount - 1), changeSeq: ws.changeSeq + 1 });
+  if (hasValidScope(doc)) {
+    const scope = scopeOfRow(doc);
+    await adjustDocumentCount(ctx, scope, -1);
+    await bumpChangeSeq(ctx, scope);
+  }
   await ctx.db.delete(docId);
   await bump(ctx, "documents_total", -1);
   budget.spend();
+  return true;
+}
+
+/** Advances a scope's change counter (clients re-pull); a scope already gone is left alone. */
+async function bumpChangeSeq(ctx: MutationCtx, scope: Scope): Promise<void> {
+  if (scope.kind === "personal") {
+    const owner = await ctx.db.get(scope.profileId);
+    if (owner) await ctx.db.patch(owner._id, { personalChangeSeq: (owner.personalChangeSeq ?? 0) + 1 });
+    return;
+  }
+  const ws = await ctx.db.get(scope.workspaceId);
+  if (ws) await ctx.db.patch(ws._id, { changeSeq: ws.changeSeq + 1 });
+}
+
+/**
+ * Deletes everything in someone's Personal: its pages (each with its blocks, versions, comments, grants
+ * given on it — its guests' access — and public links), then folders, tags, files and anything else left
+ * in it. Bounded per call; returns true when nothing is left.
+ */
+async function purgePersonal(ctx: MutationCtx, profileId: Id<"profiles">, budget: Budget): Promise<boolean> {
+  const scope = personalScope(profileId);
+  const [doc] = await scopedRows(ctx, "documents", scope, 1);
+  if (doc) {
+    // Start from a root so parents never outlive (or block) their children's purge.
+    let root = (await ctx.db.get(doc._id as Id<"documents">))!;
+    for (let i = 0; root.parentDocumentId && i < 32; i++) {
+      const parent = await ctx.db.get(root.parentDocumentId);
+      if (!parent) break;
+      root = parent;
+    }
+    await purgeDocument(ctx, root._id, budget);
+    return false;
+  }
+  const files = await ctx.db
+    .query("files")
+    .withIndex("by_owner", (q) => q.eq("ownerProfileId", profileId))
+    .take(100);
+  for (const f of files) {
+    await ctx.storage.delete(f.storageId);
+    await bump(ctx, "storage_bytes", -f.size);
+    await ctx.db.delete(f._id);
+  }
+  if (files.length) return false;
+  // Whatever else is still in this Personal (folders, tags, and rows pages no longer hold).
+  for (const table of SCOPED_TABLES) {
+    if (table === "documents" || table === "files") continue;
+    const rows = await scopedRows(ctx, table, scope, 200);
+    for (const r of rows) {
+      if (table === "documentSnapshots") {
+        const chunks = await ctx.db
+          .query("snapshotChunks")
+          .withIndex("by_snapshot", (q) => q.eq("snapshotId", r._id as Id<"documentSnapshots">))
+          .collect();
+        for (const c of chunks) await ctx.db.delete(c._id);
+      }
+      await ctx.db.delete(r._id);
+      budget.spend();
+    }
+    if (rows.length) return false;
+  }
   return true;
 }
 
@@ -226,6 +291,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     }
     if (budget.exhausted) return false;
   }
+  // Their Personal: everything in it (other people's access to it goes with it).
+  if (!(await purgePersonal(ctx, profileId, budget))) return false;
   const personalBatches: (() => Promise<{ _id: Id<never> }[]>)[] = [
     () => ctx.db.query("stars").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("recents").withIndex("by_profile_viewed", (q) => q.eq("profileId", profileId)).take(200),
@@ -257,6 +324,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     platformRole: undefined,
     defaultWorkspaceId: undefined,
     avatarFileId: undefined,
+    personalStorageUsedBytes: undefined,
+    personalDocumentCount: undefined,
     deletionScheduledFor: undefined,
   });
   await bump(ctx, "users_total", -1);

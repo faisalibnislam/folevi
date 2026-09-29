@@ -2,7 +2,8 @@
 //
 //   ai.ask    — answer a question from the person's own notes (optionally focused on one note), with the
 //               notes it drew on as sources. Retrieval: Gemini turns the question into search terms, the
-//               workspace full-text index finds notes, and only notes this person can read are used.
+//               scope's full-text index (Personal or a workspace) finds notes, and only notes this person
+//               can read are used.
 //   ai.write  — writing help: rewrite a selection (improve, fix, shorten, …), or write from a note (summary,
 //               continuation, outline, action items, title) or from an instruction.
 //   ai.flowchart — a flowchart block from a description, or the current flowchart changed as asked (strict
@@ -15,11 +16,12 @@ import { action, internalMutation, internalQuery, mutation, query } from "./_gen
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, requireWorkspace } from "./lib/auth";
+import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { aiAccessIn, recordAiUsage } from "./lib/entitlements";
 import { liveBlocks, toWireBlock } from "./lib/documents";
+import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
 import { FLOWCHART_SYSTEM, flowchartForPrompt, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -254,26 +256,25 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
 }
 
 /**
- * Auth, workspace membership, whether AI is included where it's asked for, and a per-person budget (the
- * free Gemini tier is shared by everyone). The scope decides: Personal follows the person's Personal plan;
- * a team workspace follows that workspace's plan. A request about one note (`noteOnly`) is made in that
- * note's workspace; otherwise in the workspace given — and, when it also reads a note from elsewhere, AI
- * must be included there too, so one scope's plan never covers another's content.
+ * Auth, scope access, whether AI is included where it's asked for, and a per-person budget (the free
+ * Gemini tier is shared by everyone). The scope decides: Personal follows the person's Personal plan; a
+ * team workspace follows that workspace's plan. A request about one note (`noteOnly`) is made in that
+ * note's scope; otherwise in the scope given — and, when it also reads a note from elsewhere, AI must be
+ * included there too, so one scope's plan never covers another's content.
  */
 export const begin = internalMutation({
-  args: { workspaceId: v.string(), documentId: v.optional(v.string()), noteOnly: v.optional(v.boolean()) },
+  args: { scope: vScopeArg, documentId: v.optional(v.string()), noteOnly: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
-    const { workspace: context } = await requireWorkspace(ctx, profile, args.workspaceId);
-    let target: Doc<"workspaces"> = context;
-    let also: Doc<"workspaces"> | null = null;
+    const { scope: context } = await resolveScope(ctx, profile, args.scope);
+    let target: Scope = context;
+    let also: Scope | null = null;
     if (args.documentId) {
       const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
-      const home = doc.workspaceId === context._id ? context : await ctx.db.get(doc.workspaceId);
-      if (!home) fail("not_found", "Note not found.");
+      const home = scopeOfRow(doc);
       if (args.noteOnly) target = home;
-      else if (home._id !== context._id) also = home;
+      else if (!sameScope(home, context)) also = home;
     }
     const access = await aiAccessIn(ctx, profile, target);
     if (!access.allowed) fail("forbidden", access.message ?? "The AI Assistant isn't available here.");
@@ -308,18 +309,18 @@ export const noteText = internalQuery({
 
 /** Notes matching the search terms that this person can read (best first), falling back to recent notes. */
 export const gather = internalQuery({
-  args: { workspaceId: v.string(), queries: v.array(v.string()), exclude: v.optional(v.string()), limit: v.number(), folderId: v.optional(v.string()) },
+  args: { scope: vScopeArg, queries: v.array(v.string()), exclude: v.optional(v.string()), limit: v.number(), folderId: v.optional(v.string()) },
   handler: async (ctx, args): Promise<SourceNote[]> => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
-    // Optionally only notes in one folder (of this workspace).
+    const { scope } = await resolveScope(ctx, profile, args.scope);
+    // Optionally only notes in one folder (of this scope).
     const folder = args.folderId
       ? await ctx.db
           .query("folders")
           .withIndex("by_public_id", (q) => q.eq("publicId", args.folderId!))
           .unique()
       : null;
-    if (args.folderId && (!folder || folder.workspaceId !== workspace._id || folder.deletedAt)) fail("not_found", "Folder not found.");
+    if (args.folderId && (!folder || !inScope(folder, scope) || folder.deletedAt)) fail("not_found", "Folder not found.");
     const score = new Map<string, { doc: Doc<"documents">; hits: number; rank: number }>();
     let rank = 0;
     for (const q of args.queries.slice(0, 4)) {
@@ -328,7 +329,8 @@ export const gather = internalQuery({
       const found = await ctx.db
         .query("documents")
         .withSearchIndex("search_text", (s) => {
-          const b = s.search("searchText", text).eq("workspaceId", workspace._id).eq("inTrash", false);
+          const found = s.search("searchText", text);
+          const b = (scope.kind === "personal" ? found.eq("ownerProfileId", scope.profileId) : found.eq("workspaceId", scope.workspaceId)).eq("inTrash", false);
           return folder ? b.eq("folderId", folder._id) : b;
         })
         .take(12);
@@ -348,9 +350,11 @@ export const gather = internalQuery({
             .filter((d) => !d.inTrash)
             .sort((a, b) => b.updatedAt - a.updatedAt)
             .slice(0, 12)
-        : await ctx.db
-            .query("documents")
-            .withIndex("by_workspace_trash", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", false))
+        : await (
+            scope.kind === "personal"
+              ? ctx.db.query("documents").withIndex("by_owner_trash", (q) => q.eq("ownerProfileId", scope.profileId).eq("inTrash", false))
+              : ctx.db.query("documents").withIndex("by_workspace_trash", (q) => q.eq("workspaceId", scope.workspaceId).eq("inTrash", false))
+          )
             .order("desc")
             .take(10);
     }
@@ -379,15 +383,17 @@ function parseQueries(raw: string, fallback: string): string[] {
 }
 
 /**
- * Answers a question from the person's notes. With `documentId`, that note comes first ("ask about this
- * note"); `scope: "note"` uses only it. Returns Markdown with [n] citations and the notes cited.
+ * Answers a question from the person's notes in `scope` (their Personal or a workspace). With
+ * `documentId`, that note comes first ("ask about this note"); `range: "note"` uses only it. Returns
+ * Markdown with [n] citations and the notes cited.
  */
 export const ask = action({
   args: {
-    workspaceId: v.string(),
+    scope: vScopeArg,
     question: v.string(),
     documentId: v.optional(v.string()),
-    scope: v.optional(v.union(v.literal("note"), v.literal("workspace"))),
+    /** "note": only the note being asked about; "all" (default): the scope's notes too. */
+    range: v.optional(v.union(v.literal("note"), v.literal("all"))),
     /** Only notes in this folder. */
     folderId: v.optional(v.string()),
     history: v.optional(v.array(vTurn)),
@@ -395,17 +401,17 @@ export const ask = action({
     streamId: v.optional(v.id("aiStreams")),
   },
   handler: async (ctx, args): Promise<{ answer: string; sources: { id: string; title: string }[] }> => {
-    // Signed in (checked here), then profile, workspace membership and budget (ai.begin).
+    // Signed in (checked here), then profile, scope access and budget (ai.begin).
     await requireIdentity(ctx);
     const question = args.question.trim().slice(0, MAX_QUESTION);
     if (!question) fail("invalid_argument", "Ask a question first.");
-    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId, documentId: args.documentId, noteOnly: args.scope === "note" });
+    await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note" });
     if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
     const history = (args.history ?? []).slice(-6).map((t) => ({ role: t.role, text: t.text.slice(0, 3000) }));
 
     const notes: SourceNote[] = [];
     if (args.documentId) notes.push(await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }));
-    if (args.scope !== "note") {
+    if (args.range !== "note") {
       const context = history.map((t) => t.text).join("\n").slice(-1500);
       const raw = await gemini({
         fast: true,
@@ -415,7 +421,7 @@ export const ask = action({
         system: "You turn a question about someone's personal notes into full-text search queries.",
         prompt: `Conversation so far (may be empty):\n${context}\n\nQuestion: ${question}\n\nReturn JSON {"queries": [...]} with 2 to 4 short keyword queries (1-4 words each, no punctuation) likely to match the words used in the relevant notes. Include synonyms. Use the question's language.`,
       });
-      notes.push(...(await ctx.runQuery(internal.ai.gather, { workspaceId: args.workspaceId, queries: parseQueries(raw, question), exclude: args.documentId, limit: 8, folderId: args.folderId })));
+      notes.push(...(await ctx.runQuery(internal.ai.gather, { scope: args.scope, queries: parseQueries(raw, question), exclude: args.documentId, limit: 8, folderId: args.folderId })));
     }
 
     const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
@@ -463,7 +469,7 @@ const SELECTION_TASKS = new Set<Task>(["improve", "fix", "shorter", "longer", "s
 /** Writing help. Returns Markdown to insert or to replace the selection with. */
 export const write = action({
   args: {
-    workspaceId: v.string(),
+    scope: vScopeArg,
     task: v.string(),
     documentId: v.optional(v.string()),
     text: v.optional(v.string()),
@@ -480,8 +486,8 @@ export const write = action({
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
     if (SELECTION_TASKS.has(task) && !text.trim()) fail("invalid_argument", "Select some text first.");
     if ((task === "draft" || task === "refine") && !instruction) fail("invalid_argument", "Tell the AI what to write.");
-    // Writing help works on one note (or text from it), so that note's workspace decides.
-    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId, documentId: args.documentId, noteOnly: true });
+    // Writing help works on one note (or text from it), so that note's scope decides.
+    await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true });
     if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
 
     const note = args.documentId && !SELECTION_TASKS.has(task) ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }) : null;
@@ -512,7 +518,7 @@ export const write = action({
  */
 export const flowchart = action({
   args: {
-    workspaceId: v.string(),
+    scope: vScopeArg,
     mode: v.union(v.literal("create"), v.literal("update")),
     instruction: v.string(),
     current: v.optional(v.string()),
@@ -523,7 +529,7 @@ export const flowchart = action({
     if (!instruction) fail("invalid_argument", args.mode === "create" ? "Describe the process first." : "Say what to change.");
     const current = args.mode === "update" ? flowchartForPrompt(args.current ?? "") : null;
     if (args.mode === "update" && !current) fail("invalid_argument", "There's no flowchart to update yet.");
-    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId });
+    await ctx.runMutation(internal.ai.begin, { scope: args.scope });
     const prompt = current
       ? `<flowchart>\n${current}\n</flowchart>\n\nChange the flowchart as the person asks, and return the complete updated flowchart. Keep the ids, text and colours of everything they didn't ask to change.\n\nRequest: ${instruction}`
       : `Draw a flowchart of this process.\n\nRequest: ${instruction}`;
@@ -536,14 +542,16 @@ export const flowchart = action({
 
 /** What's been happening: recently edited notes and open tasks this person can read. */
 export const recent = internalQuery({
-  args: { workspaceId: v.string(), today: v.string() },
+  args: { scope: vScopeArg, today: v.string() },
   handler: async (ctx, args): Promise<{ notes: SourceNote[]; tasks: { title: string; due: string | null; note: string }[] }> => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     const since = Date.now() - 7 * 86_400_000;
-    const docs = await ctx.db
-      .query("documents")
-      .withIndex("by_workspace_updated", (q) => q.eq("workspaceId", workspace._id).gt("updatedAt", since))
+    const docs = await (
+      scope.kind === "personal"
+        ? ctx.db.query("documents").withIndex("by_owner_updated", (q) => q.eq("ownerProfileId", scope.profileId).gt("updatedAt", since))
+        : ctx.db.query("documents").withIndex("by_workspace_updated", (q) => q.eq("workspaceId", scope.workspaceId).gt("updatedAt", since))
+    )
       .order("desc")
       .take(40);
     const notes: SourceNote[] = [];
@@ -553,10 +561,11 @@ export const recent = internalQuery({
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
       notes.push({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, 2500) });
     }
-    const open = await ctx.db
-      .query("tasks")
-      .withIndex("by_workspace_status_due", (q) => q.eq("workspaceId", workspace._id).eq("status", "open"))
-      .take(200);
+    const open = await (
+      scope.kind === "personal"
+        ? ctx.db.query("tasks").withIndex("by_owner_status_due", (q) => q.eq("ownerProfileId", scope.profileId).eq("status", "open"))
+        : ctx.db.query("tasks").withIndex("by_workspace_status_due", (q) => q.eq("workspaceId", scope.workspaceId).eq("status", "open"))
+    ).take(200);
     const tasks: { title: string; due: string | null; note: string }[] = [];
     const docCache = new Map<string, Doc<"documents"> | null>();
     // Overdue and soon-due first, then undated.
@@ -578,13 +587,13 @@ export const recent = internalQuery({
 
 /** "Catch me up": a short brief of recent notes and what's due, citing the notes. */
 export const brief = action({
-  args: { workspaceId: v.string(), today: v.string(), streamId: v.optional(v.id("aiStreams")) },
+  args: { scope: vScopeArg, today: v.string(), streamId: v.optional(v.id("aiStreams")) },
   handler: async (ctx, args): Promise<{ answer: string; sources: { id: string; title: string }[] }> => {
     await requireIdentity(ctx);
-    await ctx.runMutation(internal.ai.begin, { workspaceId: args.workspaceId });
+    await ctx.runMutation(internal.ai.begin, { scope: args.scope });
     if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
     const today = /^\d{4}-\d{2}-\d{2}$/.test(args.today) ? args.today : new Date().toISOString().slice(0, 10);
-    const { notes, tasks } = await ctx.runQuery(internal.ai.recent, { workspaceId: args.workspaceId, today });
+    const { notes, tasks } = await ctx.runQuery(internal.ai.recent, { scope: args.scope, today });
     if (!notes.length && !tasks.length) {
       const answer = "Nothing new this week — no recently edited notes or open tasks yet.";
       if (args.streamId) await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: answer, status: "done" });

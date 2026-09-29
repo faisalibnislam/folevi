@@ -2,18 +2,19 @@ import { v } from "convex/values";
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, requireDocument, requireProfile, requireWorkspace } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, membership, requireDocument, requireProfile, requireWorkspace, resolveScope, roleAtLeast } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { assertStorageFor } from "./lib/entitlements";
+import { adjustStorageUsed, assertStorageFor } from "./lib/entitlements";
+import { insertScoped, personalScope, scopeOfRow, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
 import { vImagePalette } from "./lib/validators";
 import { consume } from "./lib/rateLimit";
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, safeFilename, sameBytes, sniff, stripImageMetadata } from "./lib/images";
 import { toHex } from "./lib/crypto";
 import { signFileUrl as sign } from "./lib/fileUrls";
 import { bump } from "./lib/metrics";
-import { MAX_IDENTITY_IMAGE_BYTES, personalWorkspaceOf } from "./lib/identityImages";
+import { MAX_IDENTITY_IMAGE_BYTES } from "./lib/identityImages";
 
 const INTENT_TTL_MS = 10 * 60_000;
 const vKind = v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("logo"), v.literal("cover"));
@@ -22,48 +23,52 @@ function maxBytesFor(kind: Doc<"uploadIntents">["kind"]): number {
   return kind === "file" ? MAX_FILE_BYTES : kind === "avatar" || kind === "logo" ? MAX_IDENTITY_IMAGE_BYTES : MAX_IMAGE_BYTES;
 }
 
-/** Step 1: authorize and issue a short-lived upload URL. */
+/**
+ * Step 1: authorize and issue a short-lived upload URL. Every file belongs to exactly one scope and counts
+ * toward that scope's storage only: a page attachment to the page's scope; a profile picture to your
+ * Personal; a workspace logo to that workspace; anything else to `scope`.
+ */
 export const generateUploadUrl = mutation({
-  args: { workspaceId: v.string(), documentId: v.optional(v.string()), filename: v.string(), size: v.number(), mimeType: v.string(), kind: vKind },
+  args: { scope: v.optional(vScopeArg), documentId: v.optional(v.string()), filename: v.string(), size: v.number(), mimeType: v.string(), kind: vKind },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    // Uploading into a page needs write access to that page, and the file belongs to the page's
-    // workspace — so someone a page was shared with ("Can edit") can add images to it without being a
-    // member of its workspace. Uploads not tied to a page need editor membership.
-    let workspace: Doc<"workspaces">;
+    // Uploading into a page needs write access to that page, and the file belongs to the page's scope —
+    // so someone a page was shared with ("Can edit") can add images to it without being in its
+    // workspace (or being its Personal's owner). Uploads not tied to a page need to be able to edit there.
+    let scope: Scope;
     let documentId: Id<"documents"> | undefined;
     if (args.kind === "avatar" || args.kind === "logo") {
       // Profile pictures and workspace logos are never page attachments; the server decides where they live.
       if (args.documentId) fail("invalid_argument", "Profile pictures and logos can't be attached to a page.");
       if (args.kind === "avatar") {
-        // Your profile picture is stored in (and counts toward) your personal workspace.
-        const personal = await personalWorkspaceOf(ctx, profile._id);
-        if (!personal || personal.status !== "active") fail("not_found", "Workspace not found.");
-        workspace = personal;
+        // Your profile picture is a Personal file (it counts toward your personal storage).
+        scope = personalScope(profile._id);
       } else {
-        workspace = (await requireWorkspace(ctx, profile, args.workspaceId, "admin")).workspace;
-        if (workspace.kind !== "team") fail("invalid_argument", "Your personal workspace uses your profile picture.");
+        if (args.scope?.kind !== "workspace") fail("invalid_argument", "Logos belong to a workspace.");
+        scope = workspaceScope((await requireWorkspace(ctx, profile, args.scope.workspaceId, "admin")).workspace._id);
       }
     } else if (args.documentId) {
       const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
-      const owner = await ctx.db.get(doc.workspaceId);
-      if (!owner || owner.status !== "active") fail("not_found", "Workspace not found.");
-      workspace = owner;
+      scope = scopeOfRow(doc);
+      if (scope.kind === "workspace") {
+        const owner = await ctx.db.get(scope.workspaceId);
+        if (!owner || owner.status !== "active") fail("not_found", "Workspace not found.");
+      }
       documentId = doc._id;
     } else {
-      workspace = (await requireWorkspace(ctx, profile, args.workspaceId, "editor")).workspace;
+      if (!args.scope) fail("invalid_argument", "Say where the file goes.");
+      scope = (await resolveScope(ctx, profile, args.scope, "editor")).scope;
     }
     await consume(ctx, "upload", profile._id);
     const max = maxBytesFor(args.kind);
     if (!Number.isFinite(args.size) || args.size <= 0 || args.size > max) fail("invalid_argument", `Files can be up to ${Math.round(max / 1024 / 1024)} MB.`);
     // Against the scope's own limit: Personal uploads count toward the Personal plan, a team workspace's
     // toward that workspace's plan.
-    const storageProblem = await assertStorageFor(ctx, workspace, args.size, profile._id);
+    const storageProblem = await assertStorageFor(ctx, scope, args.size, profile._id);
     if (storageProblem) fail("quota_exceeded", storageProblem);
-    const intentId = await ctx.db.insert("uploadIntents", {
+    const intentId = await insertScoped(ctx, "uploadIntents", scope, {
       profileId: profile._id,
-      workspaceId: workspace._id,
       documentId,
       kind: args.kind,
       filename: safeFilename(args.filename),
@@ -100,15 +105,14 @@ export const commitFile = internalMutation({
   handler: async (ctx, args) => {
     const intent = await ctx.db.get(args.intentId);
     if (!intent || intent.consumedAt || intent.profileId !== args.profileId || intent.expiresAt < Date.now()) fail("expired", "Upload expired. Try again.");
-    const workspace = (await ctx.db.get(intent.workspaceId))!;
-    const storageProblem = await assertStorageFor(ctx, workspace, args.size, args.profileId);
+    const scope = scopeOfRow(intent);
+    const storageProblem = await assertStorageFor(ctx, scope, args.size, args.profileId);
     if (storageProblem) fail("quota_exceeded", storageProblem);
     await ctx.db.patch(intent._id, { consumedAt: Date.now() });
     const publicId = ulid();
-    await ctx.db.insert("files", {
+    await insertScoped(ctx, "files", scope, {
       publicId,
       storageId: args.storageId,
-      workspaceId: intent.workspaceId,
       documentId: intent.documentId,
       uploadedBy: args.profileId,
       filename: intent.filename,
@@ -121,7 +125,7 @@ export const commitFile = internalMutation({
       status: "ready",
       createdAt: Date.now(),
     });
-    await ctx.db.patch(workspace._id, { storageUsedBytes: workspace.storageUsedBytes + args.size });
+    await adjustStorageUsed(ctx, scope, args.size);
     await bump(ctx, "storage_bytes", args.size);
     return publicId;
   },
@@ -189,6 +193,21 @@ export const finalize = action({
   },
 });
 
+/** A file not attached to a page: its Personal's owner, or a member of its workspace, may see it. */
+async function canSeeLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: Doc<"files">): Promise<boolean> {
+  const scope = scopeOfRow(file);
+  if (scope.kind === "personal") return scope.profileId === profile._id;
+  return Boolean(await membership(ctx, profile._id, scope.workspaceId));
+}
+
+/** …and its Personal's owner, or a workspace member who can edit, may change it. */
+async function canEditLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: Doc<"files">): Promise<boolean> {
+  const scope = scopeOfRow(file);
+  if (scope.kind === "personal") return scope.profileId === profile._id;
+  const m = await membership(ctx, profile._id, scope.workspaceId);
+  return Boolean(m && roleAtLeast(m.role, "editor"));
+}
+
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /**
@@ -208,13 +227,7 @@ export const setPalette = mutation({
     if (file.documentId) {
       const doc = await ctx.db.get(file.documentId);
       if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "write")) fail("not_found", "File not found.");
-    } else {
-      const m = await ctx.db
-        .query("workspaceMembers")
-        .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", file.workspaceId).eq("profileId", profile._id))
-        .unique();
-      if (!m || m.role === "viewer" || m.role === "commenter") fail("not_found", "File not found.");
-    }
+    } else if (!(await canEditLooseFile(ctx, profile, file))) fail("not_found", "File not found.");
     const p = args.palette;
     const lower = (list: string[] | undefined) => list?.map((c) => c.toLowerCase());
     const colours = [p.paper, p.ink, p.paperDark, p.inkDark, p.accent, p.accentDark, ...(p.text ?? []), ...(p.textDark ?? []), ...(p.highlight ?? []), ...(p.highlightDark ?? [])].filter((c): c is string => c !== undefined);
@@ -262,13 +275,7 @@ export const urls = query({
       if (file.documentId) {
         const doc = await ctx.db.get(file.documentId);
         allowed = Boolean(doc && accessAtLeast(await documentAccess(ctx, profile, doc), "read"));
-      } else {
-        const m = await ctx.db
-          .query("workspaceMembers")
-          .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", file.workspaceId).eq("profileId", profile._id))
-          .unique();
-        allowed = Boolean(m);
-      }
+      } else allowed = await canSeeLooseFile(ctx, profile, file);
       if (!allowed) continue;
       const sig = await sign(`${file.publicId}:${exp}`);
       out[id] = {

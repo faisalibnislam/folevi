@@ -41,6 +41,7 @@ import type * as lib_documents from "../lib/documents.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_fileUrls from "../lib/fileUrls.js";
 import type * as lib_flags from "../lib/flags.js";
+import type * as lib_flowchartAi from "../lib/flowchartAi.js";
 import type * as lib_folderColors from "../lib/folderColors.js";
 import type * as lib_identityImages from "../lib/identityImages.js";
 import type * as lib_images from "../lib/images.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   "lib/errors": typeof lib_errors;
   "lib/fileUrls": typeof lib_fileUrls;
   "lib/flags": typeof lib_flags;
+  "lib/flowchartAi": typeof lib_flowchartAi;
   "lib/folderColors": typeof lib_folderColors;
   "lib/identityImages": typeof lib_identityImages;
   "lib/images": typeof lib_images;

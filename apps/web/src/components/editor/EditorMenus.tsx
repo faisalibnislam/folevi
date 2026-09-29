@@ -46,13 +46,14 @@ import {
   SeparatorHorizontal,
   Sigma,
   Workflow,
+  Network,
   PenTool,
   SquareStack,
   ImagePlus,
   LayoutGrid,
   Columns3,
 } from "lucide-react";
-import { WHITEBOARD_DEFAULT_HEIGHT, addDays, sanitizeHref, ulid } from "@folevi/editor-schema";
+import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -482,6 +483,7 @@ export function EditorMenus({
       },
       { id: "formula", label: "TeX formula", keywords: "formula math latex tex equation katex", icon: <Sigma size={15} />, run: () => void insertBlockAfterCurrent(editor, "formula", newFormulaAttrs()) },
       { id: "mermaid", label: "Mermaid diagram", keywords: "mermaid diagram flowchart chart graph sequence", icon: <Workflow size={15} />, run: () => void insertBlockAfterCurrent(editor, "code", { language: "mermaid" }, MERMAID_SAMPLE) },
+      { id: "flowchart", label: "Flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows", icon: <Network size={15} />, run: () => void insertBlockAfterCurrent(editor, "flowchart", { data: "", height: FLOWCHART_DEFAULT_HEIGHT }) },
       { id: "whiteboard", label: "Whiteboard", keywords: "whiteboard drawing sketch draw pen canvas", icon: <PenTool size={15} />, run: () => void insertBlockAfterCurrent(editor, "whiteboard", { data: "", height: WHITEBOARD_DEFAULT_HEIGHT }) },
       { id: "page", label: "Page", keywords: "page nested subpage child link", icon: <FileText size={15} />, run: special.page },
       { id: "card", label: "Card", keywords: "card page nested subpage child", icon: <SquareStack size={15} />, run: special.card },

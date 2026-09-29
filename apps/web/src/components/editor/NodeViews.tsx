@@ -11,9 +11,10 @@ import { AppLink } from "@/lib/app/router";
 import { useEngineState } from "@/lib/hooks/useEngine";
 import { localPreviewUrl } from "@/lib/sync/uploads";
 import { formatBytes } from "@/lib/format";
-import { BookmarkBlock, CollectionBlock, FileBlock, FormulaBlock, ImageBlock, PageBlock, TableBlock, UnknownBlock, WhiteboardBlock } from "./extensions";
+import { BookmarkBlock, CollectionBlock, FileBlock, FlowchartBlock, FormulaBlock, ImageBlock, PageBlock, TableBlock, UnknownBlock, WhiteboardBlock } from "./extensions";
 import { FormulaView } from "./FormulaView";
 import { WhiteboardView } from "./WhiteboardView";
+import { FlowchartView } from "./flowchart/FlowchartView";
 import { CollectionEmbed } from "./CollectionEmbed";
 
 function useNow(bucketMs: number): number {
@@ -367,4 +368,6 @@ export const NODE_VIEW_EXTENSIONS = [
   }),
   // Drawing needs every pointer event; the toolbar needs its clicks.
   WhiteboardBlock.extend({ addNodeView: () => ReactNodeViewRenderer(WhiteboardView, { stopEvent: () => true }) }),
+  // The canvas handles its own pointer, wheel and keyboard input (and its own undo while focused).
+  FlowchartBlock.extend({ addNodeView: () => ReactNodeViewRenderer(FlowchartView, { stopEvent: () => true }) }),
 ];

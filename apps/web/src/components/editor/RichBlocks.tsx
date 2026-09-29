@@ -2,7 +2,7 @@
 
 // Rendered (read-only) forms of the formula, Mermaid and whiteboard blocks. Used by the editor's node
 // views and by public share pages.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WHITEBOARD_WIDTH, LIMITS, parseWhiteboard, strokeD, type WhiteboardStroke } from "@folevi/editor-schema";
 import { onThemeChange, renderLatex, renderMermaid, svgDataUrl, type MermaidResult } from "./richRender";
 import "katex/dist/katex.min.css";
@@ -30,16 +30,22 @@ export function FormulaRender({ latex, className = "" }: { latex: string; classN
   return <div className={`fb-formula-render ${className}`} dangerouslySetInnerHTML={{ __html: html.html }} />;
 }
 
-/** A Mermaid diagram rendered to an SVG image, or a friendly error. */
+/**
+ * A Mermaid diagram rendered to an SVG image (styled after the note around it), or a friendly error that
+ * keeps the last good drawing.
+ */
 export function MermaidDiagram({ code, label = "Diagram" }: { code: string; label?: string }) {
-  const [state, setState] = useState<{ code: string; result: MermaidResult } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState<{ code: string; result: MermaidResult; last: { svg: string; width: number; height: number } | null } | null>(null);
   const [theme, setTheme] = useState(0);
-  useEffect(() => onThemeChange(() => setTheme((t) => t + 1)), []);
+  useEffect(() => onThemeChange(() => setTheme((t) => t + 1), ref.current), []);
   useEffect(() => {
     if (!code.trim()) return;
     let live = true;
     const t = window.setTimeout(() => {
-      void renderMermaid(code).then((result) => live && setState({ code, result }));
+      void renderMermaid(code, ref.current).then(
+        (result) => live && setState((prev) => ({ code, result, last: "error" in result ? (prev?.last ?? null) : result })),
+      );
     }, 250);
     return () => {
       live = false;
@@ -48,23 +54,24 @@ export function MermaidDiagram({ code, label = "Diagram" }: { code: string; labe
   }, [code, theme]);
   if (!code.trim()) return null;
   const result = state?.result;
-  if (!result) {
-    return (
-      <p className="fb-mermaid-status" role="status">
-        Rendering diagram…
-      </p>
-    );
-  }
-  if ("error" in result) {
-    return (
-      <p className="fb-mermaid-error" role="status">
-        Couldn’t draw this diagram. {result.error}
-      </p>
-    );
-  }
+  const last = state?.last;
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img className="fb-mermaid-svg" src={svgDataUrl(result.svg)} width={result.width} height={result.height} alt={label} draggable={false} />
+    <div ref={ref} className="fb-mermaid-view" data-stale={result && "error" in result && last ? "true" : undefined}>
+      {!result ? (
+        <p className="fb-mermaid-status" role="status">
+          Rendering diagram…
+        </p>
+      ) : null}
+      {last ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="fb-mermaid-svg" src={svgDataUrl(last.svg)} width={last.width} height={last.height} alt={label} draggable={false} />
+      ) : null}
+      {result && "error" in result ? (
+        <p className="fb-mermaid-error" role="status">
+          Couldn’t draw this diagram. {result.error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

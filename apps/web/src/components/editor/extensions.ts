@@ -2,7 +2,7 @@
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
 import { Extension, Mark, Node, mergeAttributes, type Attributes } from "@tiptap/core";
 import { sanitizeHref } from "@folevi/editor-schema";
-import { codeBlockNodeView } from "./codeView";
+import { codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
 
 const blockAttrs = (extra: Attributes = {}): Attributes => ({
   id: { default: null, keepOnSplit: false, parseHTML: (el) => el.getAttribute("data-block-id"), renderHTML: (a) => (a.id ? { "data-block-id": a.id } : {}) },
@@ -270,8 +270,9 @@ export const Code = Node.create({
   addAttributes: () => blockAttrs({ language: { default: "plaintext", parseHTML: (el) => el.getAttribute("data-language") ?? el.querySelector("code")?.className.replace(/^language-/, "") ?? "plaintext", renderHTML: (a) => ({ "data-language": a.language }) } }),
   parseHTML: () => [{ tag: "pre", preserveWhitespace: "full" }],
   renderHTML: ({ HTMLAttributes }) => ["pre", mergeAttributes(HTMLAttributes, { "data-block": "code", class: "fb fb-code" }), ["code", {}, 0]],
-  // Same DOM as renderHTML, plus a live diagram preview for Mermaid blocks (codeView.ts).
+  // Same DOM as renderHTML; Mermaid blocks become a diagram card with foldable source (codeView.ts).
   addNodeView: () => codeBlockNodeView,
+  addProseMirrorPlugins: () => [mermaidFocusPlugin],
   addKeyboardShortcuts() {
     return {
       Tab: () => (this.editor.isActive("codeBlock") ? this.editor.commands.insertContent("  ") : false),
@@ -338,7 +339,7 @@ export const TableBlock = atom("table", { rows: { default: [[[], []], [[], []]],
 export const PageBlock = atom("page", { documentId: r("documentId"), display: { ...r("display"), default: "card" }, titleCache: r("titleCache"), iconCache: r("iconCache") });
 export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName") });
 export const CollectionBlock = atom("collection", { collectionId: r("collectionId"), viewId: r("viewId") });
-// Formula and whiteboard content is written to data-* attributes so copy & paste inside Folevi keeps it.
+// Formula, whiteboard and flowchart content is written to data-* attributes so copy & paste inside Folevi keeps it.
 const kept = (name: string, fallback: string | number) => ({
   default: fallback,
   parseHTML: (el: HTMLElement) => {
@@ -349,6 +350,7 @@ const kept = (name: string, fallback: string | number) => ({
 });
 export const FormulaBlock = atom("formula", { latex: kept("latex", "") });
 export const WhiteboardBlock = atom("whiteboard", { data: kept("data", ""), height: kept("height", 420) });
+export const FlowchartBlock = atom("flowchart", { data: kept("data", ""), height: kept("height", 440) });
 export const UnknownBlock = atom("unknownBlock", { wire: { default: null, rendered: false } });
 
 // ------------------------------------------------------------------ inline atoms
@@ -476,6 +478,7 @@ export const ALL_NODES = [
   CollectionBlock,
   FormulaBlock,
   WhiteboardBlock,
+  FlowchartBlock,
   UnknownBlock,
   Mention,
   DateMention,

@@ -1,0 +1,224 @@
+/* Flowchart block (flowchart/FlowchartView.tsx, render.tsx). Loaded with the editor styles by the document
+ * view and share pages. Shapes mix their tint into the page colour (--color-surface), so charts sit well
+ * on any note style, in light and dark; "accent" follows the note's palette (--doc-accent). */
+
+.fc-root, .fc-card {
+  --fc-node-bg: var(--color-surface-raised);
+  --fc-node-line: color-mix(in oklab, var(--color-ink) 22%, var(--color-surface));
+  --fc-edge: color-mix(in oklab, var(--color-ink) 50%, var(--color-surface));
+  --fc-select: #3d6ee8;
+  --fc-dot-color: color-mix(in oklab, var(--color-ink) 16%, transparent);
+  --fc-blue: #3b82f6;
+  --fc-green: #22a05a;
+  --fc-yellow: #e0a800;
+  --fc-pink: #e05a8a;
+  --fc-purple: #8b5cf6;
+  --fc-accent: var(--doc-accent, var(--color-accent));
+}
+:root[data-theme="dark"] :is(.fc-root, .fc-card),
+.fb-sheet[data-sheet="night"] :is(.fc-root, .fc-card) {
+  --fc-select: #7aa2ff;
+  --fc-blue: #6ea8fe;
+  --fc-green: #4cc38a;
+  --fc-yellow: #f0c24b;
+  --fc-pink: #f07aa5;
+  --fc-purple: #a78bfa;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.fc-root, .fc-card) {
+    --fc-select: #7aa2ff;
+    --fc-blue: #6ea8fe;
+    --fc-green: #4cc38a;
+    --fc-yellow: #f0c24b;
+    --fc-pink: #f07aa5;
+    --fc-purple: #a78bfa;
+  }
+}
+
+/* ---------------------------------------------------------------- shapes */
+.fc-root { font-family: var(--font-sans); overflow: visible; }
+.fc-node {
+  --fc-fill: var(--fc-node-bg);
+  --fc-line: var(--fc-node-line);
+  --fc-ink: var(--color-ink);
+  outline: none;
+}
+:is(.fc-node, .fc-text-input)[data-color="accent"] { --fc-tint: var(--fc-accent); }
+:is(.fc-node, .fc-text-input)[data-color="blue"] { --fc-tint: var(--fc-blue); }
+:is(.fc-node, .fc-text-input)[data-color="green"] { --fc-tint: var(--fc-green); }
+:is(.fc-node, .fc-text-input):is([data-color="yellow"], [data-shape="note"][data-color="neutral"]) { --fc-tint: var(--fc-yellow); }
+:is(.fc-node, .fc-text-input)[data-color="pink"] { --fc-tint: var(--fc-pink); }
+:is(.fc-node, .fc-text-input)[data-color="purple"] { --fc-tint: var(--fc-purple); }
+.fc-node:is([data-color]:not([data-color="neutral"]), [data-shape="note"]) {
+  --fc-fill: color-mix(in oklab, var(--fc-tint) 13%, var(--color-surface));
+  --fc-line: color-mix(in oklab, var(--fc-tint) 48%, var(--color-surface));
+  --fc-ink: color-mix(in oklab, var(--fc-tint) 32%, var(--color-ink));
+}
+.fc-shape {
+  fill: var(--fc-fill);
+  stroke: var(--fc-line);
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.05)) drop-shadow(0 3px 8px rgb(0 0 0 / 0.04));
+}
+.fc-node[data-shape="note"] .fc-shape { stroke: color-mix(in oklab, var(--fc-tint) 22%, transparent); stroke-width: 1px; filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.08)); }
+.fc-note-fold { fill: none; stroke: color-mix(in oklab, var(--fc-tint) 40%, transparent); stroke-width: 1px; }
+.fc-shape-bare { fill: transparent; stroke: none; filter: none; }
+.fc-label { fill: var(--fc-ink); font-weight: 500; letter-spacing: -0.005em; pointer-events: none; user-select: none; }
+.fc-node[data-shape="text"] .fc-label { font-weight: 450; }
+.fc-focus { fill: none; stroke: none; pointer-events: none; }
+.fc-node:focus-visible .fc-focus { stroke: var(--fc-select); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; }
+
+/* ---------------------------------------------------------------- connectors */
+.fc-edge-line { fill: none; stroke: var(--fc-edge); stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round; }
+.fc-edge-head { fill: var(--fc-edge); stroke: var(--fc-edge); stroke-width: 1px; stroke-linejoin: round; }
+.fc-edge-hit { fill: none; stroke: transparent; stroke-width: 14px; pointer-events: stroke; cursor: pointer; }
+.fc-edge-label-bg { fill: var(--color-surface); stroke: color-mix(in oklab, var(--color-ink) 10%, transparent); stroke-width: 1px; }
+.fc-edge-label { fill: color-mix(in oklab, var(--color-ink) 78%, var(--color-surface)); font-weight: 500; user-select: none; }
+.fc-edge:hover .fc-edge-line { stroke: color-mix(in oklab, var(--color-ink) 70%, var(--color-surface)); }
+.fc-edge[data-selected] .fc-edge-line { stroke: var(--fc-select); stroke-width: 2px; }
+.fc-edge[data-selected] .fc-edge-head { fill: var(--fc-select); stroke: var(--fc-select); }
+.fc-edge[data-selected] .fc-edge-label-bg { stroke: var(--fc-select); }
+
+/* ---------------------------------------------------------------- the block */
+.fc-card {
+  margin: 0.5em 0; border-radius: 14px; overflow: hidden;
+  background: color-mix(in oklab, var(--color-surface-sunken) 30%, var(--color-surface));
+  box-shadow: 0 0 0 1px var(--color-line);
+  font-family: var(--font-sans);
+  transition: box-shadow 140ms;
+}
+.fc-card[data-active] { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-ink) 28%, var(--color-line)); }
+.fc-card-static { padding: 8px 0; background: var(--color-surface); }
+.fc-canvas { position: relative; overflow: hidden; outline: none; touch-action: pan-y; }
+.fc-card[data-active] .fc-canvas { touch-action: none; }
+.fc-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--color-focus); }
+.fc-svg { display: block; cursor: default; user-select: none; -webkit-user-select: none; }
+.fc-canvas[data-space] .fc-svg { cursor: grab; }
+.fc-canvas[data-panning] .fc-svg { cursor: grabbing; }
+.fc-canvas[data-panning] .fc-shape { filter: none; }
+.fc-dot { fill: var(--fc-dot-color); }
+.fc-node { cursor: move; }
+.fc-node[data-shape] .fc-shape:hover { stroke: color-mix(in oklab, var(--fc-line) 60%, var(--color-ink)); }
+
+/* Selection, handles and guides keep a constant on-screen size at any zoom. */
+.fc-overlay * { vector-effect: non-scaling-stroke; }
+.fc-sel-box { fill: none; stroke: var(--fc-select); stroke-width: 1.5px; pointer-events: none; }
+.fc-resize { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 1.5px; }
+.fc-resize[data-dir="n"], .fc-resize[data-dir="s"] { cursor: ns-resize; }
+.fc-resize[data-dir="e"], .fc-resize[data-dir="w"] { cursor: ew-resize; }
+.fc-resize[data-dir="nw"], .fc-resize[data-dir="se"] { cursor: nwse-resize; }
+.fc-resize[data-dir="ne"], .fc-resize[data-dir="sw"] { cursor: nesw-resize; }
+.fc-port { cursor: crosshair; }
+.fc-port-hit { fill: transparent; }
+.fc-port-dot { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 1.5px; transition: r 100ms; }
+.fc-port:hover .fc-port-dot { fill: var(--fc-select); }
+.fc-end { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 2px; cursor: grab; }
+.fc-guide { stroke: #e5484d; stroke-width: 1px; stroke-dasharray: 3 3; pointer-events: none; }
+.fc-link-preview { fill: none; stroke: var(--fc-select); stroke-width: 1.75px; stroke-dasharray: 5 4; stroke-linecap: round; pointer-events: none; }
+.fc-drop-target { fill: color-mix(in oklab, var(--fc-select) 8%, transparent); stroke: var(--fc-select); stroke-width: 1.5px; pointer-events: none; }
+.fc-marquee { fill: color-mix(in oklab, var(--fc-select) 8%, transparent); stroke: color-mix(in oklab, var(--fc-select) 70%, transparent); stroke-width: 1px; pointer-events: none; }
+
+/* Writing in a shape: the textarea sits exactly over the label. */
+.fc-text-input, .fc-label-input {
+  position: absolute; z-index: 2; margin: 0; padding: 0; border: 0; outline: none; resize: none; overflow: hidden;
+  background: transparent; color: var(--color-ink);
+  font-family: var(--font-sans); font-weight: 500; text-align: center; white-space: pre-wrap;
+  caret-color: var(--fc-select);
+}
+.fc-text-input[data-color]:not([data-color="neutral"]), .fc-text-input[data-shape="note"] { color: color-mix(in oklab, var(--fc-tint, var(--fc-yellow)) 32%, var(--color-ink)); }
+.fc-label-input {
+  border-radius: 6px; padding: 0 6px; background: var(--color-surface);
+  box-shadow: 0 0 0 1.5px var(--fc-select); line-height: 1;
+}
+
+/* ---------------------------------------------------------------- floating chrome */
+.fc-bar {
+  position: absolute; z-index: 3; display: flex; align-items: center; gap: 2px;
+  padding: 4px; border-radius: 12px;
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+  font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+}
+.fc-bar-main { top: 10px; left: 10px; max-width: calc(100% - 20px); overflow-x: auto; scrollbar-width: none; }
+.fc-bar-zoom { right: 10px; bottom: 10px; }
+.fc-bar-float { transform: translateX(-50%); white-space: nowrap; }
+.fc-group { display: inline-flex; align-items: center; gap: 2px; }
+.fc-sep { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--color-line-strong); }
+.fc-btn {
+  flex: none; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 5px;
+  min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px;
+  color: var(--color-ink-muted); transition: background-color 100ms, color 100ms;
+}
+.fc-btn:hover:not(:disabled), .fc-btn[aria-pressed="true"], .fc-btn[aria-expanded="true"] { background: var(--glass-hover); color: var(--color-heading); }
+.fc-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--glass-border); }
+.fc-btn:disabled { opacity: 0.35; }
+.fc-btn-text { padding: 0 9px; font-weight: 550; color: var(--color-ink); }
+.fc-ai-mark { color: #7c6cf0; }
+.fc-zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+.fc-swatch {
+  flex: none; width: 22px; height: 22px; margin: 0 1px; border-radius: 999px;
+  background: color-mix(in oklab, var(--fc-tint, var(--color-surface-raised)) 22%, var(--color-surface));
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--fc-tint, var(--color-ink)) 55%, var(--color-surface));
+}
+.fc-swatch[data-color="neutral"] { --fc-tint: var(--color-ink-faint); background: var(--color-surface-raised); }
+.fc-swatch[data-color="accent"] { --fc-tint: var(--fc-accent); }
+.fc-swatch[data-color="blue"] { --fc-tint: var(--fc-blue); }
+.fc-swatch[data-color="green"] { --fc-tint: var(--fc-green); }
+.fc-swatch[data-color="yellow"] { --fc-tint: var(--fc-yellow); }
+.fc-swatch[data-color="pink"] { --fc-tint: var(--fc-pink); }
+.fc-swatch[data-color="purple"] { --fc-tint: var(--fc-purple); }
+.fc-swatch[aria-pressed="true"] { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+.fc-btn:focus-visible, .fc-swatch:focus-visible, .fc-ai button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+.fc-empty {
+  position: absolute; inset: 52px 16px 16px; display: grid; place-content: center; justify-items: center; gap: 10px;
+  pointer-events: none; text-align: center; font: 13.5px/1.5 var(--font-sans); color: var(--color-ink-muted);
+}
+.fc-empty p { margin: 0; }
+.fc-empty-ai { pointer-events: auto; background: var(--glass-pop); box-shadow: var(--glass-edge); }
+.fc-warning {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: 8px;
+  font: 500 12.5px/1.4 var(--font-sans); color: var(--color-danger, #b42318); background: var(--color-surface-raised);
+  box-shadow: var(--glass-edge);
+}
+
+/* AI */
+.fc-ai {
+  position: absolute; z-index: 4; top: 54px; right: 10px; width: min(380px, calc(100% - 20px));
+  border-radius: 12px; overflow: hidden; font-family: var(--font-sans); color: var(--color-ink);
+}
+.fc-ai-modes { display: flex; gap: 4px; padding: 8px 10px 0; }
+.fc-ai-modes button { padding: 4px 9px; border-radius: 999px; font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.fc-ai-modes button[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1px var(--glass-border); }
+.fc-ai-form { display: flex; align-items: flex-start; gap: 8px; padding: 10px; }
+.fc-ai-form .fc-ai-mark { margin-top: 5px; }
+.fc-ai-form textarea {
+  flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent;
+  font: 14px/1.45 var(--font-sans); color: var(--color-ink);
+}
+.fc-ai-form textarea::placeholder { color: var(--color-ink-faint); }
+.fc-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: var(--color-heading); color: var(--color-canvas); }
+.fc-ai-send:disabled { opacity: 0.3; }
+.fc-ai-ideas { margin: 0; padding: 4px 6px 6px; list-style: none; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); }
+.fc-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: 8px; text-align: left; font-size: 13px; color: var(--color-ink-muted); }
+.fc-ai-ideas button:hover { background: var(--glass-hover); color: var(--color-heading); }
+.fc-ai-status, .fc-ai-error { margin: 0; padding: 4px 14px 10px; font-size: 13px; color: var(--color-ink-muted); }
+.fc-ai-error { color: var(--color-danger, #b42318); }
+.fc-ai-foot { margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
+
+/* ---------------------------------------------------------------- read-only */
+.fc-static { display: flex; justify-content: center; padding: 8px 12px; }
+.fc-static svg { height: auto; }
+.fc-static-empty { padding: 20px; font: 13px var(--font-sans); color: var(--color-ink-muted); }
+.fb-readonly-flowchart { margin: 0.6em 0; border-radius: 14px; box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); }
+
+@media (forced-colors: active) {
+  .fc-shape, .fc-edge-line { stroke: CanvasText; }
+  .fc-edge-head { fill: CanvasText; }
+  .fc-sel-box, .fc-edge[data-selected] .fc-edge-line { stroke: Highlight; }
+  .fc-btn[aria-pressed="true"], .fc-swatch[aria-pressed="true"] { outline: 2px solid Highlight; }
+}
+@media print {
+  .fc-bar, .fc-empty, .fb-flowchart .fb-wb-resize { display: none; }
+}

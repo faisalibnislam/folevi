@@ -58,6 +58,7 @@ import { MovePageDialog } from "./MovePageDialog";
 import { exportHtml, exportMarkdown, exportPdf } from "./export";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
+import "@/components/editor/flowchart/flowchart.css";
 import { Select } from "@/components/ui/Select";
 
 const IDLE_SNAPSHOT_MS = 2 * 60_000;

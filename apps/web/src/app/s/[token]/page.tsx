@@ -101,8 +101,9 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   const result = await load(token);
   const locale = localeFromAcceptLanguage((await headers()).get("accept-language"));
 
+  // ui-neutral-chrome: the app's neutral colours around the page, as in the app.
   const shell = (children: React.ReactNode) => (
-    <div className="min-h-dvh bg-canvas">
+    <div className="ui-neutral-chrome min-h-dvh bg-canvas">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
         <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
           <FoleviLogo height={22} />

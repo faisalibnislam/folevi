@@ -142,15 +142,18 @@
 /* ------------------------------------------------------------------------------------------------
  * Neutral app chrome. Inside the product (not the marketing site) the interface stays neutral
  * (white/grey in light, near-black in dark), so colour comes from the notes themselves: their covers,
- * artwork and accent colours. AccountGate sets data-chrome="neutral" on <html> while the app is open.
+ * artwork and accent colours. AccountGate sets data-chrome="neutral" on <html> while the app is open;
+ * server-rendered product pages (sign in, shared notes) include a .ui-neutral-chrome element instead.
  * --------------------------------------------------------------------------------------------- */
-:root[data-chrome="neutral"] {
+:root[data-chrome="neutral"],
+:root:has(.ui-neutral-chrome) {
   /* Colours: tokens.chrome (packages/design-tokens). Shadows stay here. */
   --shadow-hairline: 0 0 0 1px rgba(0, 0, 0, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
   --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 14px 32px -14px rgba(0, 0, 0, 0.18);
 }
-:root[data-chrome="neutral"][data-theme="dark"] {
+:root[data-chrome="neutral"][data-theme="dark"],
+:root[data-theme="dark"]:has(.ui-neutral-chrome) {
   --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
   --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 32px -14px rgba(0, 0, 0, 0.7);

@@ -237,8 +237,10 @@
   --shadow-lift: 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 10px 24px -6px rgba(0, 0, 0, 0.6), 0px 30px 60px -20px rgba(0, 0, 0, 0.6);
 }
 
-/* Neutral app chrome (tokens.chrome): inside the product; AccountGate sets data-chrome="neutral". */
-:root[data-chrome="neutral"] {
+/* Neutral app chrome (tokens.chrome): inside the product. AccountGate and the admin console set
+   data-chrome="neutral"; server-rendered pages (sign in, shared notes) carry a .ui-neutral-chrome element. */
+:root[data-chrome="neutral"],
+:root:has(.ui-neutral-chrome) {
   --color-canvas: #FFFFFF;
   --color-sidebar: #FFFFFF;
   --color-surface: #FFFFFF;
@@ -261,7 +263,8 @@
   --color-selection: #D9DEE8;
 }
 
-:root[data-chrome="neutral"][data-theme="dark"] {
+:root[data-chrome="neutral"][data-theme="dark"],
+:root[data-theme="dark"]:has(.ui-neutral-chrome) {
   --color-canvas: #101011;
   --color-sidebar: #18181A;
   --color-surface: #1C1C1E;

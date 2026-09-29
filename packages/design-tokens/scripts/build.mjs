@@ -62,12 +62,15 @@ ${dark.replace(/^ {2}/gm, "    ")}
 ${dark}
 }
 
-/* Neutral app chrome (tokens.chrome): inside the product; AccountGate sets data-chrome="neutral". */
-:root[data-chrome="neutral"] {
+/* Neutral app chrome (tokens.chrome): inside the product. AccountGate and the admin console set
+   data-chrome="neutral"; server-rendered pages (sign in, shared notes) carry a .ui-neutral-chrome element. */
+:root[data-chrome="neutral"],
+:root:has(.ui-neutral-chrome) {
 ${chromeLight}
 }
 
-:root[data-chrome="neutral"][data-theme="dark"] {
+:root[data-chrome="neutral"][data-theme="dark"],
+:root[data-theme="dark"]:has(.ui-neutral-chrome) {
 ${chromeDark}
 }
 

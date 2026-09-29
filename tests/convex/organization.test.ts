@@ -1,14 +1,14 @@
 // Organization, collections, tasks, sharing and workspace membership (gap list: Agent O).
 import { describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
-import { para, person, setup, ulid, type T } from "./helpers";
+import { inWorkspace, para, person, setup, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
 async function newDoc(p: Person, title = "Doc", extra: Record<string, unknown> = {}) {
   const id = ulid();
   const [r] = await p.as.mutation(api.sync.push, {
-    workspaceId: p.workspaceId,
+    scope: p.scope,
     deviceId: "device-org-1",
     ops: [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title, icon: null, ...extra } as never }],
   });
@@ -18,7 +18,7 @@ async function newDoc(p: Person, title = "Doc", extra: Record<string, unknown> =
 
 async function upsert(p: Person, documentId: string, block: unknown) {
   const [r] = await p.as.mutation(api.sync.push, {
-    workspaceId: p.workspaceId,
+    scope: p.scope,
     deviceId: "device-org-1",
     ops: [{ opId: ulid(), kind: "block.upsert", documentId, block: block as never, baseRevision: null, fields: ["content", "position"] }],
   });
@@ -35,10 +35,11 @@ async function team(t: T, owner: Person, member: Person, email: string, role: "e
 }
 
 describe("workspace membership", () => {
-  test("personal workspaces take invites too; invites respect the platform flag", async () => {
+  test("invites go to team workspaces only and respect the platform flag", async () => {
     const t = setup();
     const a = await person(t, "ws-a@example.com");
-    await a.as.mutation(api.workspaces.invite, { workspaceId: a.workspaceId, email: "x@example.com", role: "editor" });
+    // Personal has no members: there's no workspace to invite to (a stray id reads as not found).
+    await expect(a.as.mutation(api.workspaces.invite, { workspaceId: ulid(), email: "x@example.com", role: "editor" })).rejects.toThrow(/Workspace not found/);
     const { id: teamId } = await a.as.mutation(api.workspaces.createTeamWorkspace, { name: "Crew" });
     await t.run(async (ctx) => {
       await ctx.db.insert("featureFlags", { key: "workspace_invites", enabled: false, description: "", updatedAt: Date.now() });
@@ -79,7 +80,7 @@ describe("workspace membership", () => {
     await expect(member.as.mutation(api.workspaces.removeMember, { workspaceId: teamId, profileId: member.profileId })).rejects.toThrow(/owner/);
     await owner.as.mutation(api.workspaces.removeMember, { workspaceId: teamId, profileId: owner.profileId });
     expect((await owner.as.query(api.workspaces.mine, {})).map((w) => w.id)).not.toContain(teamId);
-    await expect(owner.as.mutation(api.workspaces.transferOwnership, { workspaceId: owner.workspaceId, profileId: member.profileId })).rejects.toThrow();
+    await expect(owner.as.mutation(api.workspaces.transferOwnership, { workspaceId: teamId, profileId: member.profileId })).rejects.toThrow();
   });
 });
 
@@ -95,7 +96,7 @@ describe("document lists", () => {
       let cursor: string | null = null;
       for (let i = 0; i < 20; i++) {
         const page: { page: { id: string; title: string; updatedAt: number }[]; isDone: boolean; continueCursor: string } = await a.as.query(api.documents.list, {
-          workspaceId: a.workspaceId,
+          scope: a.scope,
           view: "all",
           sort,
           paginationOpts: { numItems, cursor },
@@ -126,12 +127,12 @@ describe("document lists", () => {
   test("tags can be renamed and recolored, but not onto another tag's name", async () => {
     const t = setup();
     const a = await person(t, "tags@example.com");
-    const { id: one } = await a.as.mutation(api.organization.createTag, { workspaceId: a.workspaceId, name: "garden" });
-    await a.as.mutation(api.organization.createTag, { workspaceId: a.workspaceId, name: "kitchen" });
+    const { id: one } = await a.as.mutation(api.organization.createTag, { scope: a.scope, name: "garden" });
+    await a.as.mutation(api.organization.createTag, { scope: a.scope, name: "kitchen" });
     await a.as.mutation(api.organization.updateTag, { tagId: one, name: "Garden plans", color: "moss" });
     await expect(a.as.mutation(api.organization.updateTag, { tagId: one, name: "#Kitchen" })).rejects.toThrow(/already a tag/);
     await expect(a.as.mutation(api.organization.updateTag, { tagId: one, color: "neon" })).rejects.toThrow(/color/);
-    const tags = (await a.as.query(api.organization.sidebar, { workspaceId: a.workspaceId })).tags;
+    const tags = (await a.as.query(api.organization.sidebar, { scope: a.scope })).tags;
     expect(tags.find((x) => x.id === one)).toMatchObject({ name: "Garden plans", color: "moss" });
   });
 
@@ -147,22 +148,22 @@ describe("document lists", () => {
 });
 
 describe("tasks", () => {
-  test("in a personal workspace unassigned tasks are mine; canceled tasks are closed", async () => {
+  test("in Personal unassigned tasks are mine; canceled tasks are closed", async () => {
     const t = setup();
     const a = await person(t, "mytasks@example.com");
-    const r = await a.as.mutation(api.tasks.quickAdd, { workspaceId: a.workspaceId, title: "Call the plumber", today: "2026-09-25", priority: "high" });
-    const mine = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "mine", today: "2026-09-25" });
+    const r = await a.as.mutation(api.tasks.quickAdd, { scope: a.scope, title: "Call the plumber", today: "2026-09-25", priority: "high" });
+    const mine = await a.as.query(api.tasks.list, { scope: a.scope, view: "mine", today: "2026-09-25" });
     expect(mine.map((x) => x.title)).toContain("Call the plumber");
     expect(mine.find((x) => x.blockId === r.blockId)?.priority).toBe("high");
-    const counts = await a.as.query(api.tasks.counts, { workspaceId: a.workspaceId, today: "2026-09-25" });
+    const counts = await a.as.query(api.tasks.counts, { scope: a.scope, today: "2026-09-25" });
     expect(counts.mine).toBeGreaterThan(0);
 
     await a.as.mutation(api.tasks.update, { blockId: r.blockId, canceled: true });
-    expect((await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "all", today: "2026-09-25" })).map((x) => x.blockId)).not.toContain(r.blockId);
-    const closed = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "completed", today: "2026-09-25" });
+    expect((await a.as.query(api.tasks.list, { scope: a.scope, view: "all", today: "2026-09-25" })).map((x) => x.blockId)).not.toContain(r.blockId);
+    const closed = await a.as.query(api.tasks.list, { scope: a.scope, view: "completed", today: "2026-09-25" });
     expect(closed.find((x) => x.blockId === r.blockId)?.status).toBe("canceled");
     await a.as.mutation(api.tasks.update, { blockId: r.blockId, canceled: false, dueDate: "2026-09-20" });
-    const today = await a.as.query(api.tasks.list, { workspaceId: a.workspaceId, view: "today", today: "2026-09-25" });
+    const today = await a.as.query(api.tasks.list, { scope: a.scope, view: "today", today: "2026-09-25" });
     expect(today.find((x) => x.blockId === r.blockId)?.status).toBe("open");
     await expect(a.as.mutation(api.tasks.update, { blockId: r.blockId, dueDate: "tomorrow" })).rejects.toThrow(/Invalid date/);
   });
@@ -172,10 +173,10 @@ describe("tasks", () => {
     const owner = await person(t, "team-tasks@example.com");
     const member = await person(t, "team-tasks2@example.com");
     const teamId = await team(t, owner, member, "team-tasks2@example.com");
-    const r = await owner.as.mutation(api.tasks.quickAdd, { workspaceId: teamId, title: "Unassigned", today: "2026-09-25" });
-    expect((await owner.as.query(api.tasks.list, { workspaceId: teamId, view: "mine", today: "2026-09-25" })).map((x) => x.blockId)).not.toContain(r.blockId);
+    const r = await owner.as.mutation(api.tasks.quickAdd, { scope: inWorkspace(teamId), title: "Unassigned", today: "2026-09-25" });
+    expect((await owner.as.query(api.tasks.list, { scope: inWorkspace(teamId), view: "mine", today: "2026-09-25" })).map((x) => x.blockId)).not.toContain(r.blockId);
     await owner.as.mutation(api.tasks.update, { blockId: r.blockId, assigneeId: owner.profileId });
-    expect((await owner.as.query(api.tasks.list, { workspaceId: teamId, view: "mine", today: "2026-09-25" })).map((x) => x.blockId)).toContain(r.blockId);
+    expect((await owner.as.query(api.tasks.list, { scope: inWorkspace(teamId), view: "mine", today: "2026-09-25" })).map((x) => x.blockId)).toContain(r.blockId);
   });
 });
 

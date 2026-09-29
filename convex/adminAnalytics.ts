@@ -71,8 +71,9 @@ export const users = query({
       // Rows from before scopes were recorded were all Personal.
       aiByScope[u.scope ?? "personal"] += u.count;
     }
+    // Team workspaces plus every Personal (each counts on its own; nothing is double counted).
     const workspaces = await ctx.db.query("workspaces").collect();
-    const storageBytes = workspaces.reduce((n, w) => n + w.storageUsedBytes, 0);
+    const storageBytes = workspaces.reduce((n, w) => n + w.storageUsedBytes, 0) + profiles.reduce((n, p) => n + (p.personalStorageUsedBytes ?? 0), 0);
 
     return {
       totals: { users: profiles.length, verified: profiles.filter((p) => p.emailVerified).length, suspended: profiles.filter((p) => p.status === "suspended").length },

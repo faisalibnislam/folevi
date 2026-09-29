@@ -23,9 +23,10 @@ import { consume } from "./lib/rateLimit";
 import { bump } from "./lib/metrics";
 import { keyedHash } from "./lib/crypto";
 import { vAppearance, vNotificationPrefs } from "./lib/validators";
-import { seedPersonalWorkspace } from "./seed";
+import { seedPersonal } from "./seed";
 import { notifyInvite } from "./lib/notify";
-import { claimIdentityImage, deleteIdentityImage, identityImageUrl, personalWorkspaceOf, workspaceLabel } from "./lib/identityImages";
+import { claimIdentityImage, deleteIdentityImage, identityImageUrl, workspaceLabel } from "./lib/identityImages";
+import { personalScope } from "./lib/scope";
 
 const DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -54,7 +55,6 @@ export function publicProfile(p: Doc<"profiles">) {
     onboardingStep: p.onboardingStep,
     platformRole: p.platformRole ?? null,
     status: p.status,
-    defaultWorkspaceId: null as string | null,
     notificationPrefs: p.notificationPrefs,
     deletionScheduledFor: p.deletionScheduledFor ?? null,
     createdAt: p.createdAt,
@@ -81,12 +81,10 @@ export const me = query({
     // Over the plan's device limit: this device waits until another signs out or the plan is upgraded.
     const devices = await deviceStatus(ctx, profile, sessionId);
     if (!devices.allowed) return { state: "device_limit" as const, limit: devices.limit ?? 0, active: devices.active };
-    const workspace = profile.defaultWorkspaceId ? await ctx.db.get(profile.defaultWorkspaceId) : null;
     return {
       state: "ready" as const,
       profile: {
         ...publicProfile(profile),
-        defaultWorkspaceId: workspace?.publicId ?? null,
         avatarUrl: await identityImageUrl(ctx, profile.avatarFileId),
         // What their Personal plan includes right now (AI in Personal, storage, devices, trial) — the server
         // enforces it again. A team workspace's own plan is on workspaces.mine.
@@ -97,8 +95,9 @@ export const me = query({
 });
 
 /**
- * First sign-in: creates the profile and a personal workspace with seed content. Idempotent — a second
- * call returns the existing profile. Identity data comes only from the verified token.
+ * First sign-in: creates the profile and seeds their Personal with example content (no workspace is
+ * created: Personal is not a workspace). Idempotent — a second call returns the existing profile.
+ * Identity data comes only from the verified token.
  */
 export const bootstrap = mutation({
   args: { timeZone: v.string(), locale: v.string() },
@@ -148,8 +147,7 @@ export const bootstrap = mutation({
       lastActiveAt: now,
     });
     const profile = (await ctx.db.get(profileId))!;
-    const workspaceId = await seedPersonalWorkspace(ctx, profile, localDate(now, timeZone));
-    await ctx.db.patch(profileId, { defaultWorkspaceId: workspaceId });
+    await seedPersonal(ctx, profile, localDate(now, timeZone));
     // Every new account starts with a Pro trial.
     await startTrial(ctx, profileId);
     await bump(ctx, "users_total");
@@ -169,7 +167,7 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
     if (invite.status !== "pending" || invite.expiresAt < Date.now()) continue;
     const workspace = await ctx.db.get(invite.workspaceId);
     if (!workspace) continue;
-    await notifyInvite(ctx, { recipient: profile, actorId: invite.invitedBy, workspaceId: invite.workspaceId, inviteId: invite._id, title: `You're invited to ${await workspaceLabel(ctx, workspace)}` });
+    await notifyInvite(ctx, { recipient: profile, actorId: invite.invitedBy, workspaceId: invite.workspaceId, inviteId: invite._id, title: `You're invited to ${workspaceLabel(workspace)}` });
   }
 }
 
@@ -183,13 +181,7 @@ export const completeOnboardingStep = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     if (args.step === "workspace") {
-      // A personal workspace keeps its fixed name ("Personal"); only a team workspace takes the name given here.
-      const workspace = profile.defaultWorkspaceId ? await ctx.db.get(profile.defaultWorkspaceId) : null;
-      if (workspace && workspace.kind === "team") {
-        const name = sanitizeName(args.workspaceName ?? "");
-        if (!name) fail("invalid_argument", "Give your workspace a name.");
-        await ctx.db.patch(workspace._id, { name, updatedAt: Date.now() });
-      }
+      // Personal needs no name; `workspaceName` is accepted from older clients and ignored.
       await ctx.db.patch(profile._id, { onboardingStep: "appearance" });
     } else if (args.step === "appearance") {
       await ctx.db.patch(profile._id, { appearance: args.appearance ?? "system", onboardingStep: "welcome" });
@@ -231,16 +223,14 @@ export const updateProfile = mutation({
 
 /**
  * Sets your profile picture to an image just uploaded with `files.generateUploadUrl` (kind "avatar"),
- * which stores it in your personal workspace. The previous picture is deleted.
+ * which stores it as a Personal file (counted in your personal storage). The previous picture is deleted.
  */
 export const setAvatar = mutation({
   args: { fileId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const personal = await personalWorkspaceOf(ctx, profile._id);
-    if (!personal) fail("not_found", "Workspace not found.");
-    const file = await claimIdentityImage(ctx, profile, args.fileId, "avatar", personal._id);
+    const file = await claimIdentityImage(ctx, profile, args.fileId, "avatar", personalScope(profile._id));
     const previous = profile.avatarFileId;
     await ctx.db.patch(profile._id, { avatarFileId: file._id });
     if (previous && previous !== file._id) await deleteIdentityImage(ctx, previous);

@@ -4,6 +4,7 @@ import { addDays, rankSequence, ulid } from "@folevi/editor-schema";
 import { createDocument, specsToWireBlocks } from "./lib/create";
 import { addView, createCollection } from "./lib/collections";
 import { nextSeq } from "./lib/seq";
+import { insertScoped, personalScope } from "./lib/scope";
 import { bump } from "./lib/metrics";
 import { DEFAULT_WORKSPACE_QUOTA_BYTES } from "./lib/entitlements";
 import {
@@ -17,26 +18,19 @@ import {
   welcomeBlocks,
 } from "./lib/seedContent";
 
-/** Every personal workspace has this fixed name (it can't be renamed). */
-export const PERSONAL_WORKSPACE_NAME = "Personal";
-
-export async function createWorkspace(
-  ctx: MutationCtx,
-  owner: Doc<"profiles">,
-  name: string,
-  kind: "personal" | "team",
-): Promise<Id<"workspaces">> {
+/** Creates a team workspace owned by `owner` (Personal is not a workspace: it needs no row). */
+export async function createWorkspace(ctx: MutationCtx, owner: Doc<"profiles">, name: string): Promise<Id<"workspaces">> {
   const now = Date.now();
   const workspaceId = await ctx.db.insert("workspaces", {
     publicId: ulid(),
     name,
-    kind,
+    kind: "team",
     ownerId: owner._id,
     changeSeq: 0,
     status: "active",
     storageUsedBytes: 0,
     storageQuotaBytes: DEFAULT_WORKSPACE_QUOTA_BYTES,
-    memberLimit: kind === "personal" ? 10 : 50,
+    memberLimit: 50,
     documentCount: 0,
     createdAt: now,
     updatedAt: now,
@@ -47,43 +41,42 @@ export async function createWorkspace(
 }
 
 /**
- * Creates the person's one personal workspace (always named "Personal") and its seed documents. Only
- * `users.bootstrap` calls this, once per profile. `today` is the person's local date.
+ * Seeds a new person's Personal with folders, tags and example documents (straight into their Personal:
+ * no workspace is created). Only `users.bootstrap` calls this, once per profile. `today` is the person's
+ * local date.
  */
-export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profiles">, today: string): Promise<Id<"workspaces">> {
-  const workspaceId = await createWorkspace(ctx, owner, PERSONAL_WORKSPACE_NAME, "personal");
+export async function seedPersonal(ctx: MutationCtx, owner: Doc<"profiles">, today: string): Promise<void> {
+  const scope = personalScope(owner._id);
   const now = Date.now();
 
   const folderRanks = rankSequence(2);
-  const projects = await ctx.db.insert("folders", {
+  const projects = await insertScoped(ctx, "folders", scope, {
     publicId: ulid(),
-    workspaceId,
     name: "Projects",
     icon: "🗂",
     rank: folderRanks[0]!,
     createdBy: owner._id,
     createdAt: now,
     updatedAt: now,
-    seq: await nextSeq(ctx, workspaceId),
+    seq: await nextSeq(ctx, scope),
   });
-  const personal = await ctx.db.insert("folders", {
+  const personal = await insertScoped(ctx, "folders", scope, {
     publicId: ulid(),
-    workspaceId,
     name: "Personal",
     icon: "🌿",
     rank: folderRanks[1]!,
     createdBy: owner._id,
     createdAt: now,
     updatedAt: now,
-    seq: await nextSeq(ctx, workspaceId),
+    seq: await nextSeq(ctx, scope),
   });
 
-  const tagSeq = await nextSeq(ctx, workspaceId);
-  const travel = await ctx.db.insert("tags", { publicId: ulid(), workspaceId, name: "travel", normalizedName: "travel", color: "coral", createdAt: now, seq: tagSeq });
-  const reading = await ctx.db.insert("tags", { publicId: ulid(), workspaceId, name: "reading", normalizedName: "reading", color: "plum", createdAt: now, seq: tagSeq });
+  const tagSeq = await nextSeq(ctx, scope);
+  const travel = await insertScoped(ctx, "tags", scope, { publicId: ulid(), name: "travel", normalizedName: "travel", color: "coral", createdAt: now, seq: tagSeq });
+  const reading = await insertScoped(ctx, "tags", scope, { publicId: ulid(), name: "reading", normalizedName: "reading", color: "plum", createdAt: now, seq: tagSeq });
 
   await createDocument(ctx, {
-    workspaceId,
+    scope,
     actor: owner,
     title: "Field Notes: A Quiet Morning",
     icon: "☕️",
@@ -93,7 +86,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
   });
 
   const atlas = await createDocument(ctx, {
-    workspaceId,
+    scope,
     actor: owner,
     title: "Project Atlas Brief",
     icon: "🧭",
@@ -102,7 +95,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     blocks: specsToWireBlocks(atlasBriefBlocks(today)),
   });
   const questions = await createDocument(ctx, {
-    workspaceId,
+    scope,
     actor: owner,
     title: "Atlas: Open Questions",
     icon: "❓",
@@ -115,10 +108,9 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     .withIndex("by_document", (q) => q.eq("documentId", atlas._id))
     .collect();
   const lastRootRank = atlasBlocks.filter((b) => b.parentId === null).map((b) => b.rank).sort().pop() ?? "V";
-  await ctx.db.insert("blocks", {
+  await insertScoped(ctx, "blocks", scope, {
     blockId: ulid(),
     documentId: atlas._id,
-    workspaceId,
     parentId: null,
     rank: `${lastRootRank}V`,
     type: "page",
@@ -135,7 +127,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
   });
 
   const trip = await createDocument(ctx, {
-    workspaceId,
+    scope,
     actor: owner,
     title: "Trip Sketch: Coastal Weekend",
     icon: "⛴",
@@ -143,11 +135,11 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     style: { font: "sans", width: "wide", background: "paper", accent: "coral", card: "tinted" },
     blocks: specsToWireBlocks(tripSketchBlocks(today)),
   });
-  await ctx.db.insert("documentTags", { workspaceId, documentId: trip._id, tagId: travel });
+  await insertScoped(ctx, "documentTags", scope, { documentId: trip._id, tagId: travel });
 
   // Reading Shelf: a document hosting a collection with table/board/gallery views.
   const shelf = await createDocument(ctx, {
-    workspaceId,
+    scope,
     actor: owner,
     title: READING_SHELF.title,
     icon: "📚",
@@ -155,9 +147,9 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     style: { font: "serif", width: "wide", background: "paper", accent: "plum", card: "folio" },
     blocks: specsToWireBlocks([{ type: "paragraph", md: READING_SHELF.intro }]),
   });
-  await ctx.db.insert("documentTags", { workspaceId, documentId: shelf._id, tagId: reading });
+  await insertScoped(ctx, "documentTags", scope, { documentId: shelf._id, tagId: reading });
   const coll = await createCollection(ctx, {
-    workspaceId,
+    scope,
     documentId: shelf._id,
     name: "Books",
     seq: shelf.seq,
@@ -182,7 +174,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
   const rowRanks = rankSequence(READING_SHELF.rows.length);
   for (const [i, row] of READING_SHELF.rows.entries()) {
     const rowDoc = await createDocument(ctx, {
-      workspaceId,
+      scope,
       actor: owner,
       title: row.title,
       icon: "📖",
@@ -222,10 +214,9 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
     .query("blocks")
     .withIndex("by_document", (q) => q.eq("documentId", shelf._id))
     .collect();
-  await ctx.db.insert("blocks", {
+  await insertScoped(ctx, "blocks", scope, {
     blockId: ulid(),
     documentId: shelf._id,
-    workspaceId,
     parentId: null,
     rank: `${shelfBlocks[0]?.rank ?? "V"}V`,
     type: "collection",
@@ -242,7 +233,7 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
   });
 
   await createDocument(ctx, {
-    workspaceId,
+    scope,
     actor: owner,
     title: "Weekly Reset",
     icon: "🔁",
@@ -253,12 +244,11 @@ export async function seedPersonalWorkspace(ctx: MutationCtx, owner: Doc<"profil
 
   // Created last so it sorts first by recency.
   await createDocument(ctx, {
-    workspaceId,
+    scope,
     actor: owner,
     title: WELCOME_TITLE,
     icon: "🌿",
     style: { font: "serif", width: "wide", background: "paper", accent: "accent", card: "folio" },
     blocks: specsToWireBlocks(welcomeBlocks(today)),
   });
-  return workspaceId;
 }

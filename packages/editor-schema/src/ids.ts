@@ -1,4 +1,6 @@
 // Crockford base32 ULIDs. Works in browsers, Node, the Convex runtime and matches Swift `ULID`.
+import type { WireScope } from "./types";
+
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 function randomBytes(n: number): Uint8Array {
@@ -40,18 +42,26 @@ function fnv1a64(input: string): string {
   return h.toString(16).padStart(16, "0");
 }
 
-/**
- * The id of a person's Daily Note for a date. Deterministic so every device (even offline) creates or
- * opens the same document instead of racing to create duplicates.
- */
-export function dailyDocumentId(profileId: string, workspaceId: string, date: string): string {
-  return `daily-${date}-${fnv1a64(`${profileId}:${workspaceId}`)}`;
+/** The key `dailyDocumentId` / `inboxDocumentId` use for a person's own Personal. */
+export const PERSONAL_SCOPE_KEY = "personal";
+
+/** The key of a scope for deterministic ids: "personal", or the team workspace's public id. */
+export function scopeIdKey(scope: WireScope): string {
+  return scope.kind === "personal" ? PERSONAL_SCOPE_KEY : scope.workspaceId;
 }
 
 /**
- * The person's Inbox page in a workspace — where Quick Add puts tasks. Deterministic for the same reason
- * as daily ids: two offline devices adding a task create the same page instead of two Inboxes.
+ * The id of a person's Daily Note for a date in a scope (`scopeIdKey`). Deterministic so every device
+ * (even offline) creates or opens the same document instead of racing to create duplicates.
  */
-export function inboxDocumentId(profileId: string, workspaceId: string): string {
-  return `inbox-${fnv1a64(`${profileId}:${workspaceId}`)}`;
+export function dailyDocumentId(profileId: string, scopeKey: string, date: string): string {
+  return `daily-${date}-${fnv1a64(`${profileId}:${scopeKey}`)}`;
+}
+
+/**
+ * The person's Inbox page in a scope (`scopeIdKey`) — where Quick Add puts tasks. Deterministic for the
+ * same reason as daily ids: two offline devices adding a task create the same page instead of two Inboxes.
+ */
+export function inboxDocumentId(profileId: string, scopeKey: string): string {
+  return `inbox-${fnv1a64(`${profileId}:${scopeKey}`)}`;
 }

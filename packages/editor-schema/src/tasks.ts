@@ -59,22 +59,22 @@ export function addDays(date: string, days: number): string {
  * - today: open and due today or overdue
  * - upcoming: open and due after today
  * - completed: done
- * - mine: open and assigned to the viewer — or, in a personal workspace (where the viewer is the only
- *   member), open and unassigned, since every unassigned task there is theirs
+ * - mine: open and assigned to the viewer — or, in the viewer's own Personal (where they're the only one
+ *   who plans work), open and unassigned, since every unassigned task there is theirs
  * - completed: done or canceled (closed tasks)
  */
 export function taskViews(
   task: Pick<TaskProjection, "status" | "dueDate" | "assigneeId">,
   today: string,
   viewerId: string,
-  options: { personalWorkspace?: boolean } = {},
+  options: { personal?: boolean } = {},
 ): TaskView[] {
   const views: TaskView[] = ["all"];
   if (task.status === "done" || task.status === "canceled") return ["completed"];
   if (!task.dueDate && (!task.assigneeId || task.assigneeId === viewerId)) views.push("inbox");
   if (task.dueDate && task.dueDate <= today) views.push("today");
   if (task.dueDate && task.dueDate > today) views.push("upcoming");
-  if (task.assigneeId === viewerId || (options.personalWorkspace && !task.assigneeId)) views.push("mine");
+  if (task.assigneeId === viewerId || (options.personal && !task.assigneeId)) views.push("mine");
   return views;
 }
 

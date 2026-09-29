@@ -8,6 +8,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { identityImageUrl } from "./lib/identityImages";
 import { mentionedIds, notify } from "./lib/notify";
+import { insertScoped, scopeOfRow } from "./lib/scope";
 
 function cleanBody(body: unknown): InlineNode[] {
   const issues = validateInline(body, "body");
@@ -143,21 +144,26 @@ export const mentionable = query({
     // Never throws for a page that isn't on the server yet (created offline / still syncing).
     const doc = await getDocumentByPublicId(ctx, args.documentId);
     if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return [];
-    const isMember = Boolean(
-      await ctx.db
-        .query("workspaceMembers")
-        .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", doc.workspaceId).eq("profileId", profile._id))
-        .unique(),
-    );
+    // Personal has no members: its owner, plus the people pages were shared with.
+    const workspaceId = doc.workspaceId;
+    const isMember = workspaceId
+      ? Boolean(
+          await ctx.db
+            .query("workspaceMembers")
+            .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId).eq("profileId", profile._id))
+            .unique(),
+        )
+      : false;
     const candidates = new Map<string, { guest: boolean }>();
-    if (isMember) {
+    if (workspaceId && isMember) {
       const members = await ctx.db
         .query("workspaceMembers")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", doc.workspaceId))
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
         .take(300);
       for (const m of members) candidates.set(m.profileId, { guest: false });
     } else {
-      candidates.set(doc.createdBy, { guest: false });
+      if (doc.ownerProfileId) candidates.set(doc.ownerProfileId, { guest: false });
+      if (!candidates.has(doc.createdBy)) candidates.set(doc.createdBy, { guest: false });
     }
     // Explicit grants on the page and its ancestors.
     let cursor: Doc<"documents"> | null = doc;
@@ -283,9 +289,8 @@ export const create = mutation({
     const now = Date.now();
     const threadPublic = ulid();
     const commentPublic = ulid();
-    const threadId = await ctx.db.insert("commentThreads", {
+    const threadId = await insertScoped(ctx, "commentThreads", scopeOfRow(doc), {
       publicId: threadPublic,
-      workspaceId: doc.workspaceId,
       documentId: doc._id,
       blockId: args.blockId,
       status: "open",
@@ -294,7 +299,7 @@ export const create = mutation({
       lastActivityAt: now,
       commentCount: 1,
     });
-    await ctx.db.insert("comments", { publicId: commentPublic, threadId, workspaceId: doc.workspaceId, documentId: doc._id, authorId: profile._id, body, createdAt: now });
+    await insertScoped(ctx, "comments", scopeOfRow(doc), { publicId: commentPublic, threadId, documentId: doc._id, authorId: profile._id, body, createdAt: now });
     const thread = (await ctx.db.get(threadId))!;
     await setThreadRead(ctx, profile._id, thread);
     await notifyActivity(ctx, { actor: profile, doc, thread, commentId: commentPublic, body, reply: false });
@@ -326,7 +331,7 @@ export const reply = mutation({
     const body = cleanBody(args.body);
     const now = Date.now();
     const commentPublic = ulid();
-    await ctx.db.insert("comments", { publicId: commentPublic, threadId: thread._id, workspaceId: thread.workspaceId, documentId: thread.documentId, authorId: profile._id, body, createdAt: now });
+    await insertScoped(ctx, "comments", scopeOfRow(thread), { publicId: commentPublic, threadId: thread._id, documentId: thread.documentId, authorId: profile._id, body, createdAt: now });
     await ctx.db.patch(thread._id, { lastActivityAt: now, commentCount: thread.commentCount + 1, status: "open", resolvedAt: undefined, resolvedBy: undefined });
     await setThreadRead(ctx, profile._id, thread);
     await notifyActivity(ctx, { actor: profile, doc, thread, commentId: commentPublic, body, reply: true });

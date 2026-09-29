@@ -2,16 +2,18 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { normalizeForSearch, searchSnippet } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, requireProfile, requireWorkspace } from "./lib/auth";
+import { accessAtLeast, documentAccess, requireProfile, resolveScope } from "./lib/auth";
 import { HomeFolders } from "./lib/documents";
+import { inScope, vScopeArg } from "./lib/scope";
 
 /**
- * Full-text search over titles, text blocks (incl. code, captions, table cells), attachment names and
- * tag names, with filters. Results carry a short snippet; the client highlights matches.
+ * Full-text search of one scope (your Personal, or a workspace you're in) over titles, text blocks (incl.
+ * code, captions, table cells), attachment names and tag names, with filters. Only notes the person can
+ * read are returned. Results carry a short snippet; the client highlights matches.
  */
 export const documents = query({
   args: {
-    workspaceId: v.string(),
+    scope: vScopeArg,
     query: v.string(),
     folderId: v.optional(v.string()),
     tagId: v.optional(v.string()),
@@ -22,7 +24,7 @@ export const documents = query({
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     const q = args.query.trim().slice(0, 200);
     if (!q) return [];
     const limit = Math.min(args.limit ?? 30, 50);
@@ -32,7 +34,7 @@ export const documents = query({
         .query("folders")
         .withIndex("by_public_id", (x) => x.eq("publicId", args.folderId!))
         .unique();
-      if (!f || f.workspaceId !== workspace._id) return [];
+      if (!f || !inScope(f, scope)) return [];
       folderId = f._id;
     }
     const creator = args.creatorId ? ctx.db.normalizeId("profiles", args.creatorId) : null;
@@ -42,7 +44,7 @@ export const documents = query({
         .query("tags")
         .withIndex("by_public_id", (x) => x.eq("publicId", args.tagId!))
         .unique();
-      if (!tag || tag.workspaceId !== workspace._id) return [];
+      if (!tag || !inScope(tag, scope)) return [];
       const links = await ctx.db
         .query("documentTags")
         .withIndex("by_tag", (x) => x.eq("tagId", tag._id))
@@ -53,7 +55,8 @@ export const documents = query({
     const byText = await ctx.db
       .query("documents")
       .withSearchIndex("search_text", (s) => {
-        let b = s.search("searchText", q).eq("workspaceId", workspace._id).eq("inTrash", false);
+        const text = s.search("searchText", q);
+        let b = (scope.kind === "personal" ? text.eq("ownerProfileId", scope.profileId) : text.eq("workspaceId", scope.workspaceId)).eq("inTrash", false);
         if (folderId) b = b.eq("folderId", folderId);
         if (creator) b = b.eq("createdBy", creator);
         return b;
@@ -61,16 +64,19 @@ export const documents = query({
       .take(100);
     const byTitle = await ctx.db
       .query("documents")
-      .withSearchIndex("search_title", (s) => s.search("title", q).eq("workspaceId", workspace._id).eq("inTrash", false))
+      .withSearchIndex("search_title", (s) => {
+        const title = s.search("title", q);
+        return (scope.kind === "personal" ? title.eq("ownerProfileId", scope.profileId) : title.eq("workspaceId", scope.workspaceId)).eq("inTrash", false);
+      })
       .take(30);
 
     // Tag-name matches: documents carrying a tag whose name matches the query.
     const tagMatches: Doc<"documents">[] = [];
     const nq = normalizeForSearch(q);
-    const tags = await ctx.db
-      .query("tags")
-      .withIndex("by_workspace", (x) => x.eq("workspaceId", workspace._id))
-      .take(500);
+    const tagBase = ctx.db.query("tags");
+    const tags = await (
+      scope.kind === "personal" ? tagBase.withIndex("by_owner", (x) => x.eq("ownerProfileId", scope.profileId)) : tagBase.withIndex("by_workspace", (x) => x.eq("workspaceId", scope.workspaceId))
+    ).take(500);
     for (const t of tags.filter((t) => t.normalizedName.includes(nq)).slice(0, 5)) {
       const links = await ctx.db
         .query("documentTags")
@@ -78,7 +84,7 @@ export const documents = query({
         .take(20);
       for (const l of links) {
         const d = await ctx.db.get(l.documentId);
-        if (d && !d.inTrash) tagMatches.push(d);
+        if (d && !d.inTrash && inScope(d, scope)) tagMatches.push(d);
       }
     }
 

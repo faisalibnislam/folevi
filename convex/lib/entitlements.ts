@@ -5,26 +5,21 @@
 //   { kind: "personal", profileId }    a person's own notes, storage and AI (their Personal plan)
 //   { kind: "workspace", workspaceId } a team workspace (its Workspace plan)
 //
-// Personal is still stored as a workspace row of kind "personal"; `scopeOfWorkspace` is the one place
-// that maps a workspace row to its scope, so callers keep working when Personal stops being a workspace.
+// Personal is not a workspace: its counters live on the profile (personalStorageUsedBytes) and its plan
+// is the person's subscription (lib/scope.ts).
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { subscriptionOf } from "./billing";
-import { personalWorkspaceOf } from "./identityImages";
 import { PLANS, personalEntitlementsOf, planName, workspaceEntitlementsOf, type Entitlements, type PersonalEntitlements, type WorkspaceEntitlements, type WorkspaceSubscriptionLike } from "./plans";
 import type { RateRuleName } from "./rateLimit";
+import type { Scope } from "./scope";
 
 type Ctx = QueryCtx | MutationCtx;
 
-export type Scope = { kind: "personal"; profileId: Id<"profiles"> } | { kind: "workspace"; workspaceId: Id<"workspaces"> };
+export type { Scope } from "./scope";
 
 /** The storage quota every workspace row was created with (before per-workspace overrides had a field). */
 export const DEFAULT_WORKSPACE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024;
-
-/** The scope a workspace row stands for: a personal workspace is its owner's Personal; a team is itself. */
-export function scopeOfWorkspace(workspace: Doc<"workspaces">): Scope {
-  return workspace.kind === "personal" ? { kind: "personal", profileId: workspace.ownerId } : { kind: "workspace", workspaceId: workspace._id };
-}
 
 export async function personalEntitlements(ctx: Ctx, profileId: Id<"profiles">, now = Date.now()): Promise<PersonalEntitlements> {
   return personalEntitlementsOf(await subscriptionOf(ctx, profileId), now);
@@ -66,12 +61,23 @@ export interface StorageUsage {
 /** Bytes used in a scope and its limit. Personal counts only the person's own Personal. */
 export async function storageUsage(ctx: Ctx, scope: Scope): Promise<StorageUsage> {
   if (scope.kind === "personal") {
-    const personal = await personalWorkspaceOf(ctx, scope.profileId);
-    const override = personal ? workspaceStorageOverride(personal) : undefined;
-    return { usedBytes: personal?.storageUsedBytes ?? 0, limitBytes: override ?? (await personalEntitlements(ctx, scope.profileId)).storageBytes };
+    const owner = await ctx.db.get(scope.profileId);
+    // An admin's storage override is on the person's subscription (personalEntitlementsOf applies it).
+    return { usedBytes: owner?.personalStorageUsedBytes ?? 0, limitBytes: (await personalEntitlements(ctx, scope.profileId)).storageBytes };
   }
   const workspace = await ctx.db.get(scope.workspaceId);
   return { usedBytes: workspace?.storageUsedBytes ?? 0, limitBytes: (await workspaceEntitlements(ctx, scope.workspaceId)).storageBytes };
+}
+
+/** Adds (or, negative, gives back) stored bytes to a scope's own counter. Never below zero. */
+export async function adjustStorageUsed(ctx: MutationCtx, scope: Scope, delta: number): Promise<void> {
+  if (scope.kind === "personal") {
+    const owner = await ctx.db.get(scope.profileId);
+    if (owner) await ctx.db.patch(owner._id, { personalStorageUsedBytes: Math.max(0, (owner.personalStorageUsedBytes ?? 0) + delta) });
+    return;
+  }
+  const ws = await ctx.db.get(scope.workspaceId);
+  if (ws) await ctx.db.patch(ws._id, { storageUsedBytes: Math.max(0, ws.storageUsedBytes + delta) });
 }
 
 const gb = (bytes: number) => {
@@ -80,20 +86,20 @@ const gb = (bytes: number) => {
 };
 
 /**
- * Whether `bytes` more may be added to a workspace, against its scope's limit. Returns the reason when
+ * Whether `bytes` more may be added to a scope, against that scope's own limit. Returns the reason when
  * not. Over the limit only growth is refused: everything already stored stays readable, and deleting
  * frees room.
  */
-export async function assertStorageFor(ctx: Ctx, workspace: Doc<"workspaces">, bytes: number, actorId?: Id<"profiles">): Promise<string | null> {
-  const scope = scopeOfWorkspace(workspace);
+export async function assertStorageFor(ctx: Ctx, scope: Scope, bytes: number, actorId?: Id<"profiles">): Promise<string | null> {
   const { usedBytes, limitBytes } = await storageUsage(ctx, scope);
   if (usedBytes + bytes <= limitBytes) return null;
   if (scope.kind === "personal") {
-    if (actorId && actorId !== scope.profileId) return "The owner of this workspace is out of storage.";
+    // Someone adding to a page shared with them: it's the owner's Personal that's full.
+    if (actorId && actorId !== scope.profileId) return "The owner of this note is out of storage.";
     const e = await personalEntitlements(ctx, scope.profileId);
     return `You've used all the personal storage on your ${e.trialing ? "Pro trial" : `${PLANS[e.plan].name} plan`}. Upgrade for more room, or free some up.`;
   }
-  const e = await workspaceEntitlements(ctx, workspace);
+  const e = await workspaceEntitlements(ctx, scope.workspaceId);
   return `This workspace has used all of its ${gb(limitBytes)} of storage${e.storageOverridden ? "" : ` on ${planName(e.planId)}`}. Free some up to add more.`;
 }
 
@@ -115,21 +121,20 @@ export const AI_PERSONAL_UPSELL = "The AI Assistant is part of Pro. Upgrade in S
 export const AI_WORKSPACE_UPSELL = "AI Assistant comes with the Team and Business workspace plans.";
 
 /**
- * Whether `profile` may use the AI Assistant in `workspace`. Personal: their own Personal plan (Pro, the
+ * Whether `profile` may use the AI Assistant in `scope`. Personal: their own Personal plan (Pro, the
  * trial or an admin grant) — and only in their own Personal. A team workspace: that workspace's plan.
  */
-export async function aiAccessIn(ctx: Ctx, profile: Doc<"profiles">, workspace: Doc<"workspaces">, now = Date.now()): Promise<AiAccess> {
-  const scope = scopeOfWorkspace(workspace);
+export async function aiAccessIn(ctx: Ctx, profile: Doc<"profiles">, scope: Scope, now = Date.now()): Promise<AiAccess> {
   if (scope.kind === "personal") {
     const rateSubject = profile._id as string;
-    // Someone else's Personal: neither their plan nor the owner's covers it.
+    // Someone else's Personal (a page shared with you): neither your plan nor the owner's covers it.
     if (scope.profileId !== profile._id) return { allowed: false, scope, message: "The AI Assistant isn't available in someone else's Personal.", rateRule: "ai", rateSubject };
     const e = await personalEntitlements(ctx, profile._id, now);
     return { allowed: e.ai, scope, message: e.ai ? null : AI_PERSONAL_UPSELL, rateRule: e.aiFairUse === "high" ? "aiHigh" : "ai", rateSubject };
   }
-  const e = await workspaceEntitlements(ctx, workspace, now);
+  const e = await workspaceEntitlements(ctx, scope.workspaceId, now);
   // Budgets are per person per workspace, so AI in one place never uses up another's.
-  return { allowed: e.ai, scope, message: e.ai ? null : AI_WORKSPACE_UPSELL, rateRule: e.aiFairUse === "high" ? "aiHigh" : "ai", rateSubject: `${profile._id}:${workspace._id}` };
+  return { allowed: e.ai, scope, message: e.ai ? null : AI_WORKSPACE_UPSELL, rateRule: e.aiFairUse === "high" ? "aiHigh" : "ai", rateSubject: `${profile._id}:${scope.workspaceId}` };
 }
 
 /** Counts one AI request against the scope it was made in (per person per day; no content). */

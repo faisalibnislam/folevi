@@ -7,6 +7,7 @@ import { fail } from "./errors";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./claims";
 import { findActiveSession } from "./authStore";
 import { deviceStatus } from "./devices";
+import { hasValidScope, personalScope, scopeOfRow, workspaceScope, type Scope, type ScopeArg, type ScopedRow } from "./scope";
 
 type Ctx = QueryCtx | MutationCtx;
 export type WorkspaceRole = Doc<"workspaceMembers">["role"];
@@ -155,6 +156,10 @@ export async function membership(
     .unique();
 }
 
+/**
+ * A team workspace the caller is a member of (at least `minRole`). Workspaces left over from the old model's
+ * Personal (kind "personal") are never a workspace scope: they read as not found.
+ */
 export async function requireWorkspace(
   ctx: Ctx,
   profile: Doc<"profiles">,
@@ -165,7 +170,7 @@ export async function requireWorkspace(
     .query("workspaces")
     .withIndex("by_public_id", (q) => q.eq("publicId", workspacePublicId))
     .unique();
-  if (!workspace) fail("not_found", "Workspace not found.");
+  if (!workspace || workspace.kind !== "team" || workspace.status === "deleting") fail("not_found", "Workspace not found.");
   const member = await membership(ctx, profile._id, workspace._id);
   // Same error for "does not exist" and "not a member" to avoid leaking workspace existence.
   if (!member) fail("not_found", "Workspace not found.");
@@ -174,18 +179,43 @@ export async function requireWorkspace(
   return { workspace, member };
 }
 
-/**
- * Effective access of `profile` to `doc`:
- * - workspace-mode documents: the member's workspace role, raised by any explicit grant;
- * - restricted documents (or descendants of one): owners/admins and the creator manage, everyone else
- *   needs an explicit grant on the document or an ancestor.
- */
-export async function documentAccess(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<Access> {
-  const workspace = await ctx.db.get(doc.workspaceId);
-  if (!workspace || workspace.status === "deleting") return "none";
-  const member = await membership(ctx, profile._id, doc.workspaceId);
+/** A scope the caller may act in, and their role there (they own their Personal). */
+export interface ScopeAccess {
+  scope: Scope;
+  /** The team workspace; null in Personal. */
+  workspace: Doc<"workspaces"> | null;
+  member: Doc<"workspaceMembers"> | null;
+  role: WorkspaceRole;
+}
 
-  // Walk ancestors (bounded) to find restriction and explicit grants.
+/**
+ * Resolves a client-named scope. Personal is always the caller's own (no profile id is accepted from the
+ * client), where they are the owner; a workspace needs membership of at least `minRole`.
+ */
+export async function resolveScope(ctx: Ctx, profile: Doc<"profiles">, arg: ScopeArg, minRole: WorkspaceRole = "viewer"): Promise<ScopeAccess> {
+  if (arg.kind === "personal") return { scope: personalScope(profile._id), workspace: null, member: null, role: "owner" };
+  const { workspace, member } = await requireWorkspace(ctx, profile, arg.workspaceId, minRole);
+  return { scope: workspaceScope(workspace._id), workspace, member, role: member.role };
+}
+
+/**
+ * The scope of an existing row (a folder, a tag, a collection…) when the caller may act in it: their own
+ * Personal, or a workspace they're a member of (at least `minRole`). Anything else reads as not found.
+ */
+export async function requireRowScope(ctx: Ctx, profile: Doc<"profiles">, row: ScopedRow, minRole: WorkspaceRole = "viewer", notFound = "Not found."): Promise<ScopeAccess> {
+  if (!hasValidScope(row)) fail("not_found", notFound);
+  const scope = scopeOfRow(row);
+  if (scope.kind === "personal") {
+    if (scope.profileId !== profile._id) fail("not_found", notFound);
+    return { scope, workspace: null, member: null, role: "owner" };
+  }
+  const workspace = await ctx.db.get(scope.workspaceId);
+  if (!workspace) fail("not_found", notFound);
+  return await resolveScope(ctx, profile, { kind: "workspace", workspaceId: workspace.publicId }, minRole);
+}
+
+/** The highest page grant `profile` holds on `doc` or any of its ancestors (grants are inherited). */
+async function inheritedGrant(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<{ grant: Access; restricted: boolean }> {
   let restricted = false;
   let grant: Access = "none";
   let cursor: Doc<"documents"> | null = doc;
@@ -199,6 +229,33 @@ export async function documentAccess(ctx: Ctx, profile: Doc<"profiles">, doc: Do
     if (permission) grant = maxAccess(grant, roleToAccess(permission.role));
     cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
   }
+  return { grant, restricted };
+}
+
+/**
+ * Effective access of `profile` to `doc`:
+ * - Personal: the owner manages everything in it; anyone else only through a page grant on the page or
+ *   an ancestor (a guest). Personal has no members.
+ * - workspace-mode documents: the member's workspace role, raised by any explicit grant;
+ * - restricted documents (or descendants of one): owners/admins and the creator manage, everyone else
+ *   needs an explicit grant on the document or an ancestor.
+ */
+export async function documentAccess(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<Access> {
+  if (!hasValidScope(doc)) return "none";
+  const scope = scopeOfRow(doc);
+  if (scope.kind === "personal") {
+    if (scope.profileId === profile._id) return "manage";
+    const owner = await ctx.db.get(scope.profileId);
+    if (!owner || owner.status === "deleted") return "none";
+    const { grant } = await inheritedGrant(ctx, profile, doc);
+    // A suspended account's Personal stays readable to the people it was shared with, nothing more.
+    if (owner.status === "suspended") return grant !== "none" ? "read" : "none";
+    return grant;
+  }
+  const workspace = await ctx.db.get(scope.workspaceId);
+  if (!workspace || workspace.status === "deleting") return "none";
+  const member = await membership(ctx, profile._id, workspace._id);
+  const { grant, restricted } = await inheritedGrant(ctx, profile, doc);
 
   if (workspace.status === "suspended" && !(member && member.role === "owner")) {
     return member || grant !== "none" ? "read" : "none";

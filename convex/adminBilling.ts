@@ -4,7 +4,7 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { recordAudit } from "./lib/audit";
@@ -12,6 +12,7 @@ import { fail } from "./lib/errors";
 import { ensureSubscription } from "./lib/billing";
 import { personalAiUsage, personalEntitlements, storageUsage } from "./lib/entitlements";
 import { DAY_MS, isPaidPlan, personalPlanId } from "./lib/plans";
+import { personalScope } from "./lib/scope";
 import { listUserSessions } from "./lib/authStore";
 
 const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
@@ -74,7 +75,8 @@ export const userBilling = mutation({
       aiRequests30d: usage.reduce((n, u) => n + u.count, 0),
       aiByDay: [...byDay].sort(([a], [b]) => a.localeCompare(b)).map(([day, count]) => ({ day, count })),
       payments: payments.map((x) => ({ id: x._id as string, amountCents: x.amountCents, currency: x.currency, plan: x.plan, interval: x.interval, status: x.status, provider: x.provider, createdAt: x.createdAt })),
-      personalWorkspaceId: (await ctx.db.get(p.defaultWorkspaceId ?? ("" as Id<"workspaces">)))?.publicId ?? null,
+      /** Documents in their Personal (an export of it can be prepared for them). */
+      personalDocuments: p.personalDocumentCount ?? 0,
     };
   },
 });
@@ -194,8 +196,8 @@ export const markRefunded = mutation({
 });
 
 /**
- * Prepares an export of the person's personal workspace for them, at their request. The ZIP is delivered
- * only to the person (a notification with a download); staff never see note content.
+ * Prepares an export of the person's Personal for them, at their request. The ZIP is delivered only to
+ * the person (a notification with a download); staff never see note content.
  */
 export const requestUserExport = mutation({
   args: { profileId: v.string(), ...vRequest },
@@ -203,8 +205,8 @@ export const requestUserExport = mutation({
     const admin = await requirePlatformRole(ctx, STAFF);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
-    if (!p.defaultWorkspaceId) fail("not_found", "This person has no personal workspace.");
-    await ctx.scheduler.runAfter(0, internal.exports.exportForUser, { profileId: p._id, workspaceId: p.defaultWorkspaceId });
+    if (p.status === "deleted") fail("not_found", "User not found.");
+    await ctx.scheduler.runAfter(0, internal.exports.exportForUser, { profileId: p._id, scope: personalScope(p._id) });
     await recordAudit(ctx, admin, { action: "user.request_export", targetType: "profile", targetId: p._id, reason, requestId: args.requestId, clientHash: args.clientHash });
     return null;
   },

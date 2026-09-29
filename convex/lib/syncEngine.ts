@@ -26,6 +26,7 @@ function checkedStyle<T extends { backdrop?: string }>(style: T): T {
   return rest as T;
 }
 import { SeqAllocator } from "./seq";
+import { hasValidScope, inScope, insertScoped, personalScope, sameScopeRows, scopeOfRow, workspaceScope, type Scope, type ScopeArg } from "./scope";
 import { fail } from "./errors";
 import { mentionedIds, notify } from "./notify";
 
@@ -44,8 +45,11 @@ export class SyncEngine {
   /** People newly @-mentioned in block text during this batch (notified after the batch applies). */
   private newMentions: { doc: Doc<"documents">; blockId: string; userIds: string[]; excerpt: string }[] = [];
   private ids: IdResolver;
-  /** The batch's routing workspace (see docs/SYNC_PROTOCOL.md §Routing); null when the caller isn't a member. */
-  private routing: Doc<"workspaces"> | null = null;
+  /**
+   * The batch's routing scope (see docs/SYNC_PROTOCOL.md §Routing): the caller's Personal, or a workspace
+   * they're a member of; null when they named a workspace they aren't in.
+   */
+  private routing: Scope | null = null;
   constructor(
     private ctx: MutationCtx,
     private profile: Doc<"profiles">,
@@ -57,13 +61,12 @@ export class SyncEngine {
 
   /**
    * Applies a batch. Operations are authorized one by one against the document they touch, so a batch
-   * may freely mix documents from several workspaces (shared pages, deep links from another workspace).
-   * `routingWorkspacePublicId` only decides where a `document.create` without a parent (and without its
-   * own `workspaceId`) is created.
+   * may freely mix documents from several scopes (shared pages, deep links from a workspace). `routing`
+   * only decides where a `document.create` without a parent (and without its own scope) is created.
    */
-  async applyAll(routingWorkspacePublicId: string | null, ops: SyncOp[]): Promise<ServerOpResult[]> {
+  async applyAll(routing: ScopeArg | null, ops: SyncOp[]): Promise<ServerOpResult[]> {
     if (ops.length > MAX_BATCH) fail("limit_exceeded", `At most ${MAX_BATCH} operations per batch.`);
-    this.routing = routingWorkspacePublicId ? await this.memberWorkspace(routingWorkspacePublicId) : null;
+    this.routing = routing ? await this.memberScope(routing) : null;
     const results: ServerOpResult[] = [];
     for (const op of ops) {
       results.push(await this.applyOne(op));
@@ -72,42 +75,59 @@ export class SyncEngine {
     return results;
   }
 
-  /** A workspace the caller belongs to, or null (never reveals whether a foreign workspace exists). */
-  private async memberWorkspace(publicId: string): Promise<Doc<"workspaces"> | null> {
+  /**
+   * A scope the caller may create in, or null: their own Personal (a client never names someone else's),
+   * or a team workspace they belong to (never reveals whether a foreign workspace exists).
+   */
+  private async memberScope(arg: ScopeArg): Promise<Scope | null> {
+    if (arg.kind === "personal") return personalScope(this.profile._id);
     const workspace = await this.ctx.db
       .query("workspaces")
-      .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
+      .withIndex("by_public_id", (q) => q.eq("publicId", arg.workspaceId))
       .unique();
-    if (!workspace || workspace.status === "deleting") return null;
-    return (await membership(this.ctx, this.profile._id, workspace._id)) ? workspace : null;
+    if (!workspace || workspace.kind !== "team" || workspace.status === "deleting") return null;
+    return (await membership(this.ctx, this.profile._id, workspace._id)) ? workspaceScope(workspace._id) : null;
   }
 
-  /** Workspace an op is recorded under: the touched document's, else the routing/default workspace. */
-  private async recordWorkspace(op: SyncOp): Promise<Id<"workspaces"> | null> {
+  /**
+   * The scope a create op names itself: `scope`, or the older `workspaceId` field. Ops pushed as JSON
+   * (pushJson) aren't checked by Convex validators, so the shape is checked here; a malformed scope is
+   * null (createTarget refuses it).
+   */
+  private createScopeArg(input: WireDocumentCreate): ScopeArg | null {
+    const scope = input.scope as unknown;
+    if (scope && typeof scope === "object") {
+      const s = scope as { kind?: unknown; workspaceId?: unknown };
+      if (s.kind === "personal") return { kind: "personal" };
+      if (s.kind === "workspace" && typeof s.workspaceId === "string") return { kind: "workspace", workspaceId: s.workspaceId };
+      return null;
+    }
+    return typeof input.workspaceId === "string" && input.workspaceId ? { kind: "workspace", workspaceId: input.workspaceId } : null;
+  }
+
+  /** Scope an op is recorded under: the touched document's, else the one it names, the routing scope or the caller's Personal. */
+  private async recordScope(op: SyncOp): Promise<Scope> {
     const candidates = op.kind === "document.create" ? [op.document.id, op.document.parentDocumentId] : [op.documentId];
     for (const id of candidates) {
       const doc = typeof id === "string" ? await getDocumentByPublicId(this.ctx, id) : null;
-      if (doc) return doc.workspaceId;
+      if (doc && hasValidScope(doc)) return scopeOfRow(doc);
     }
-    if (op.kind === "document.create" && op.document.workspaceId) {
-      const target = await this.memberWorkspace(op.document.workspaceId);
-      if (target) return target._id;
+    const named = op.kind === "document.create" ? this.createScopeArg(op.document) : null;
+    if (named) {
+      const target = await this.memberScope(named);
+      if (target) return target;
     }
-    return this.routing?._id ?? this.profile.defaultWorkspaceId ?? null;
+    return this.routing ?? personalScope(this.profile._id);
   }
 
   private async record(op: SyncOp, result: ServerOpResult): Promise<void> {
     const entityId =
       op.kind === "block.upsert" ? op.block.id : op.kind === "document.create" ? op.document.id : "blockId" in op ? op.blockId : op.documentId;
     if (result.status === "duplicate") return;
-    const workspaceId = await this.recordWorkspace(op);
-    // Every signed-in profile has a default workspace; without one there is nothing to attribute the op to.
-    if (!workspaceId) return;
-    await this.ctx.db.insert("syncOperations", {
+    await insertScoped(this.ctx, "syncOperations", await this.recordScope(op), {
       opId: op.opId,
       profileId: this.profile._id,
       deviceId: this.deviceId,
-      workspaceId,
       entityId,
       kind: op.kind,
       baseRevision: "baseRevision" in op ? op.baseRevision : undefined,
@@ -268,15 +288,14 @@ export class SyncEngine {
       return { opId: op.opId, status: "rejected", error: { code: "wrong_document", message: "Block belongs to another document." } };
     }
     const { parentId, normalized } = await this.checkParent(doc, incoming);
-    const seq = await this.seq.for(doc.workspaceId);
+    const seq = await this.seq.for(scopeOfRow(doc));
     const now = Date.now();
 
     if (!existing) {
       if (doc.blockCount >= LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "This document has too many blocks.");
-      const rowId = await this.ctx.db.insert("blocks", {
+      const rowId = await insertScoped(this.ctx, "blocks", scopeOfRow(doc), {
         blockId: incoming.id,
         documentId: doc._id,
-        workspaceId: doc.workspaceId,
         parentId,
         rank: incoming.rank,
         type: incoming.type,
@@ -399,7 +418,7 @@ export class SyncEngine {
     const row = await this.findBlock(op.blockId);
     if (!row || row.documentId !== doc._id) return { opId: op.opId, status: "applied", block: null, deleted: true };
     if (row.deletedAt !== undefined) return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: true };
-    const seq = await this.seq.for(doc.workspaceId);
+    const seq = await this.seq.for(scopeOfRow(doc));
     const now = Date.now();
     const revision = row.revision + 1;
     await this.ctx.db.patch(row._id, { deletedAt: now, revision, positionRev: revision, seq, updatedAt: now, updatedBy: this.profile._id });
@@ -419,7 +438,7 @@ export class SyncEngine {
     if (!row || row.documentId !== doc._id) return { opId: op.opId, status: "rejected", error: { code: "not_found", message: "Block not found." } };
     if (row.deletedAt === undefined) return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: false };
     const deletedAt = row.deletedAt;
-    const seq = await this.seq.for(doc.workspaceId);
+    const seq = await this.seq.for(scopeOfRow(doc));
     const now = Date.now();
     let parentId = row.parentId;
     if (parentId) {
@@ -447,28 +466,36 @@ export class SyncEngine {
   }
 
   /**
-   * Where a new page goes: under its parent (same workspace), else the op's own `workspaceId`, else the
-   * batch's routing workspace. Creating pages needs editor membership of that workspace — people who
-   * only hold a grant on a shared page can edit it but not add pages to someone else's workspace.
+   * Where a new page goes: under its parent (always the parent's scope), else the scope the op names,
+   * else the batch's routing scope. Adding pages to Personal is for its owner only; to a workspace it
+   * needs editor membership — people who only hold a grant on a shared page (guests) can edit it but not
+   * add pages to someone else's Personal or workspace.
    */
-  private async createTarget(input: WireDocumentCreate): Promise<{ workspace: Doc<"workspaces">; parent: Doc<"documents"> | null }> {
+  private async createTarget(input: WireDocumentCreate): Promise<{ scope: Scope; parent: Doc<"documents"> | null }> {
     let parent: Doc<"documents"> | null = null;
-    let workspace: Doc<"workspaces"> | null;
+    let scope: Scope | null;
+    const named = this.createScopeArg(input);
     if (input.parentDocumentId) {
       parent = await this.writableDoc(input.parentDocumentId);
-      workspace = await this.ctx.db.get(parent.workspaceId);
-    } else if (input.workspaceId) {
-      workspace = await this.memberWorkspace(input.workspaceId);
-      if (!workspace) fail("not_found", "Workspace not found.");
+      scope = scopeOfRow(parent);
+    } else if (input.scope && !named) {
+      fail("invalid_argument", "Unknown place to create the page in.");
+    } else if (named) {
+      scope = await this.memberScope(named);
     } else {
-      workspace = this.routing;
-      if (!workspace) fail("not_found", "Workspace not found.");
+      scope = this.routing;
     }
-    if (!workspace) fail("not_found", "Workspace not found.");
+    if (!scope) fail("not_found", "Workspace not found.");
+    if (scope.kind === "personal") {
+      if (scope.profileId !== this.profile._id) fail("forbidden", "You can't add pages here.");
+      return { scope, parent };
+    }
+    const workspace = await this.ctx.db.get(scope.workspaceId);
+    if (!workspace || workspace.status === "deleting") fail("not_found", "Workspace not found.");
     const member = await membership(this.ctx, this.profile._id, workspace._id);
     if (!member || !roleAtLeast(member.role, "editor")) fail("forbidden", "You can't add pages to this workspace.");
     if (workspace.status === "suspended" && member.role !== "owner") fail("suspended", "This workspace is suspended.");
-    return { workspace, parent };
+    return { scope, parent };
   }
 
   private async createDoc(op: Extract<SyncOp, { kind: "document.create" }>): Promise<ServerOpResult> {
@@ -481,7 +508,7 @@ export class SyncEngine {
       }
       return { opId: op.opId, status: "rejected", error: { code: "exists", message: "A document with this id already exists." } };
     }
-    const { workspace, parent } = await this.createTarget(input);
+    const { scope, parent } = await this.createTarget(input);
     let parentDocumentId: Id<"documents"> | undefined;
     let accessMode: Doc<"documents">["accessMode"] = "workspace";
     if (parent) {
@@ -494,15 +521,18 @@ export class SyncEngine {
         .query("folders")
         .withIndex("by_public_id", (q) => q.eq("publicId", input.folderId!))
         .unique();
-      if (!folder || folder.workspaceId !== workspace._id || folder.deletedAt) fail("not_found", "Folder not found.");
+      if (!folder || !inScope(folder, scope) || folder.deletedAt) fail("not_found", "Folder not found.");
       folderId = folder._id;
     }
     if (input.kind === "daily") {
-      if (!input.dailyDate || !/^\d{4}-\d{2}-\d{2}$/.test(input.dailyDate)) fail("invalid_argument", "Daily notes need a date.");
-      const dup = await this.ctx.db
-        .query("documents")
-        .withIndex("by_daily", (q) => q.eq("workspaceId", workspace._id).eq("dailyOwnerId", this.profile._id).eq("dailyDate", input.dailyDate!))
-        .first();
+      const date = input.dailyDate;
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) fail("invalid_argument", "Daily notes need a date.");
+      const base = this.ctx.db.query("documents");
+      const dup = await (
+        scope.kind === "personal"
+          ? base.withIndex("by_owner_daily", (q) => q.eq("ownerProfileId", scope.profileId).eq("dailyOwnerId", this.profile._id).eq("dailyDate", date))
+          : base.withIndex("by_daily", (q) => q.eq("workspaceId", scope.workspaceId).eq("dailyOwnerId", this.profile._id).eq("dailyDate", date))
+      ).first();
       if (dup) {
         return {
           opId: op.opId,
@@ -532,7 +562,7 @@ export class SyncEngine {
       }
     }
     const doc = await createDocument(this.ctx, {
-      workspaceId: workspace._id,
+      scope,
       actor: this.profile,
       publicId: input.id,
       title: input.title,
@@ -541,7 +571,7 @@ export class SyncEngine {
       parentDocumentId,
       folderId,
       style: input.style ? checkedStyle(input.style) : undefined,
-      cover: input.cover ? await this.checkedCover(input.cover, workspace._id) : undefined,
+      cover: input.cover ? await this.checkedCover(input.cover, scope) : undefined,
       dailyDate: input.kind === "daily" ? (input.dailyDate ?? undefined) : undefined,
       dailyOwnerId: input.kind === "daily" ? this.profile._id : undefined,
       templateKey,
@@ -552,10 +582,10 @@ export class SyncEngine {
   }
 
   /**
-   * A note style image must be an image already uploaded into this workspace; anything else is refused
-   * (the client never gets to point a note at someone else's file).
+   * A note style image must be an image already uploaded into the note's own scope; anything else is
+   * refused (the client never gets to point a note at someone else's file).
    */
-  private async checkedCover(cover: Doc<"documents">["cover"], workspaceId: Id<"workspaces">): Promise<Doc<"documents">["cover"]> {
+  private async checkedCover(cover: Doc<"documents">["cover"], scope: Scope): Promise<Doc<"documents">["cover"]> {
     if (cover.kind !== "image") return cover;
     const fileId = cover.value;
     const file = fileId
@@ -564,7 +594,7 @@ export class SyncEngine {
           .withIndex("by_public_id", (q) => q.eq("publicId", fileId))
           .unique()
       : null;
-    if (!file || file.workspaceId !== workspaceId || file.status !== "ready" || (file.kind !== "cover" && file.kind !== "image")) fail("invalid_argument", "That image can't be used as a note style.");
+    if (!file || !inScope(file, scope) || file.status !== "ready" || (file.kind !== "cover" && file.kind !== "image")) fail("invalid_argument", "That image can't be used as a note style.");
     return { kind: "image", value: file.publicId };
   }
 
@@ -583,7 +613,7 @@ export class SyncEngine {
     }
     // Notes always keep an icon: an icon can be changed, not removed.
     if (patch.icon) update.icon = patch.icon;
-    if (patch.cover !== undefined) update.cover = await this.checkedCover(patch.cover, doc.workspaceId);
+    if (patch.cover !== undefined) update.cover = await this.checkedCover(patch.cover, scopeOfRow(doc));
     if (patch.style !== undefined) update.style = checkedStyle(patch.style);
     if (patch.folderId !== undefined) {
       if (patch.folderId === null) update.folderId = undefined;
@@ -592,7 +622,7 @@ export class SyncEngine {
           .query("folders")
           .withIndex("by_public_id", (q) => q.eq("publicId", patch.folderId!))
           .unique();
-        if (!folder || folder.workspaceId !== doc.workspaceId || folder.deletedAt) fail("not_found", "Folder not found.");
+        if (!folder || !sameScopeRows(folder, doc) || folder.deletedAt) fail("not_found", "Folder not found.");
         update.folderId = folder._id;
       }
     }
@@ -600,7 +630,8 @@ export class SyncEngine {
       if (patch.parentDocumentId === null) update.parentDocumentId = undefined;
       else {
         const parent = await this.writableDoc(patch.parentDocumentId);
-        if (parent.workspaceId !== doc.workspaceId) fail("invalid_argument", "A page can only be moved under a page in the same workspace.");
+        // Pages never move between Personal and a workspace (or between workspaces) by moving them.
+        if (!sameScopeRows(parent, doc)) fail("invalid_argument", "A page can only be moved under a page in the same place.");
         // Reject cycles: the new parent may not be a descendant of this document.
         let cursor: Doc<"documents"> | null = parent;
         for (let i = 0; cursor && i < 32; i++) {
@@ -612,7 +643,7 @@ export class SyncEngine {
     }
     const changed = Object.keys(update).length > 0;
     if (changed) {
-      const seq = await this.seq.for(doc.workspaceId);
+      const seq = await this.seq.for(scopeOfRow(doc));
       const revision = doc.revision + 1;
       await this.ctx.db.patch(doc._id, {
         ...update,
@@ -664,7 +695,7 @@ export class SyncEngine {
     for (const { doc, changedBlocks } of this.touched.values()) {
       if (changedBlocks.size === 0) continue;
       const fresh = (await this.ctx.db.get(doc._id))!;
-      const seq = await this.seq.for(fresh.workspaceId);
+      const seq = await this.seq.for(scopeOfRow(fresh));
       await this.ctx.db.patch(fresh._id, {
         updatedAt: Date.now(),
         lastEditedBy: this.profile._id,
@@ -709,7 +740,7 @@ export async function syncLinks(ctx: MutationCtx, doc: Doc<"documents">, row: Do
   const have = new Set(existing.map((l) => l.targetPublicId));
   for (const l of existing) if (!targets.has(l.targetPublicId)) await ctx.db.delete(l._id);
   for (const t of targets) {
-    if (!have.has(t)) await ctx.db.insert("documentLinks", { workspaceId: doc.workspaceId, sourceDocumentId: doc._id, targetPublicId: t, blockId: row.blockId });
+    if (!have.has(t)) await insertScoped(ctx, "documentLinks", scopeOfRow(doc), { sourceDocumentId: doc._id, targetPublicId: t, blockId: row.blockId });
   }
 }
 
@@ -786,7 +817,7 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
       if (changed) patch.props = { ...((patch.props as Record<string, unknown> | undefined) ?? props), rows: nextRows };
     }
     if (!Object.keys(patch).length) continue;
-    const seq = await seqs.for(row.workspaceId);
+    const seq = await seqs.for(scopeOfRow(row));
     await ctx.db.patch(row._id, { ...patch, revision: row.revision + 1, seq, updatedAt: Date.now(), updatedBy: actor });
     touchedDocs.add(row.documentId);
   }

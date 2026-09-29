@@ -14,7 +14,8 @@ import {
   optionalProfile,
   requireDocument,
   requireProfile,
-  requireWorkspace,
+  requireRowScope,
+  resolveScope,
   roleAtLeast,
 } from "./lib/auth";
 import { HomeFolders, IdResolver, liveBlocks, refreshDerived, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary, type HomeFolder } from "./lib/documents";
@@ -23,11 +24,53 @@ import { cloneBlocks, createDocument } from "./lib/create";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { SeqAllocator, nextSeq } from "./lib/seq";
+import { inScope, insertScoped, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { vDocumentKind } from "./lib/validators";
 
 export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 type ListView = "all" | "starred" | "archive" | "trash" | "templates" | "daily" | "unsorted" | "folder" | "tag";
+type ListSort = "updated" | "created" | "title" | "manual";
+
+/**
+ * A scope's documents in or out of Trash, walked in `sort` order through its own index (Personal rows are
+ * indexed by owner, workspace rows by workspace), so pagination covers the whole list in order.
+ */
+function scopeDocuments(ctx: QueryCtx | MutationCtx, scope: Scope, inTrash: boolean, sort: ListSort) {
+  const base = ctx.db.query("documents");
+  if (scope.kind === "personal") {
+    const owner = scope.profileId;
+    switch (sort) {
+      case "created":
+        return base.withIndex("by_owner_trash_created", (q) => q.eq("ownerProfileId", owner).eq("inTrash", inTrash)).order("desc");
+      case "title":
+        return base.withIndex("by_owner_trash_title", (q) => q.eq("ownerProfileId", owner).eq("inTrash", inTrash)).order("asc");
+      case "manual":
+        return base.withIndex("by_owner_trash_rank", (q) => q.eq("ownerProfileId", owner).eq("inTrash", inTrash)).order("asc");
+      default:
+        return base.withIndex("by_owner_trash", (q) => q.eq("ownerProfileId", owner).eq("inTrash", inTrash)).order("desc");
+    }
+  }
+  const ws = scope.workspaceId;
+  switch (sort) {
+    case "created":
+      return base.withIndex("by_workspace_trash_created", (q) => q.eq("workspaceId", ws).eq("inTrash", inTrash)).order("desc");
+    case "title":
+      return base.withIndex("by_workspace_trash_title", (q) => q.eq("workspaceId", ws).eq("inTrash", inTrash)).order("asc");
+    case "manual":
+      return base.withIndex("by_workspace_trash_rank", (q) => q.eq("workspaceId", ws).eq("inTrash", inTrash)).order("asc");
+    default:
+      return base.withIndex("by_workspace_trash", (q) => q.eq("workspaceId", ws).eq("inTrash", inTrash)).order("desc");
+  }
+}
+
+/** A scope's daily notes of `owner` (retired feature; read-only). */
+function scopeDailies(ctx: QueryCtx, scope: Scope, owner: Id<"profiles">, from: string, to: string) {
+  const base = ctx.db.query("documents");
+  return scope.kind === "personal"
+    ? base.withIndex("by_owner_daily", (q) => q.eq("ownerProfileId", scope.profileId).eq("dailyOwnerId", owner).gte("dailyDate", from).lte("dailyDate", to))
+    : base.withIndex("by_daily", (q) => q.eq("workspaceId", scope.workspaceId).eq("dailyOwnerId", owner).gte("dailyDate", from).lte("dailyDate", to));
+}
 
 async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolver, docs: Doc<"documents">[]) {
   const out: (DocumentSummary & { starred: boolean; tags: { id: string; name: string; color: string }[]; homeFolder: HomeFolder | null })[] = [];
@@ -57,10 +100,10 @@ async function filterReadable(ctx: QueryCtx, profile: Doc<"profiles">, docs: Doc
   return out;
 }
 
-/** Document lists for the browser (All, Starred, Archive, Trash, Templates, Daily, Drafts (no folder), folder, tag). */
+/** Document lists of a scope (All, Starred, Archive, Trash, Templates, Daily, Drafts (no folder), folder, tag). */
 export const list = query({
   args: {
-    workspaceId: v.string(),
+    scope: vScopeArg,
     view: v.union(
       v.literal("all"),
       v.literal("starred"),
@@ -79,7 +122,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     const view = args.view as ListView;
     const ids = new IdResolver(ctx);
     const sort = args.sort ?? "updated";
@@ -95,7 +138,7 @@ export const list = query({
           .take(500);
         for (const s of stars) {
           const d = await ctx.db.get(s.documentId);
-          if (d && d.workspaceId === workspace._id && !d.inTrash) docs.push(d);
+          if (d && inScope(d, scope) && !d.inTrash) docs.push(d);
         }
       } else if (view === "folder") {
         const folder = args.folderId
@@ -104,7 +147,7 @@ export const list = query({
               .withIndex("by_public_id", (q) => q.eq("publicId", args.folderId!))
               .unique()
           : null;
-        if (!folder || folder.workspaceId !== workspace._id) fail("not_found", "Folder not found.");
+        if (!folder || !inScope(folder, scope)) fail("not_found", "Folder not found.");
         docs = (
           await ctx.db
             .query("documents")
@@ -118,7 +161,7 @@ export const list = query({
               .withIndex("by_public_id", (q) => q.eq("publicId", args.tagId!))
               .unique()
           : null;
-        if (!tag || tag.workspaceId !== workspace._id) fail("not_found", "Tag not found.");
+        if (!tag || !inScope(tag, scope)) fail("not_found", "Tag not found.");
         const links = await ctx.db
           .query("documentTags")
           .withIndex("by_tag", (q) => q.eq("tagId", tag._id))
@@ -143,16 +186,7 @@ export const list = query({
     const inTrash = view === "trash";
     // Each sort has its own index so pagination walks the whole list in the requested order (sorting
     // one page at a time would only order within that page).
-    const base = ctx.db.query("documents");
-    const ordered =
-      sort === "created"
-        ? base.withIndex("by_workspace_trash_created", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("desc")
-        : sort === "title"
-          ? base.withIndex("by_workspace_trash_title", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("asc")
-          : sort === "manual"
-            ? base.withIndex("by_workspace_trash_rank", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("asc")
-            : base.withIndex("by_workspace_trash", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", inTrash)).order("desc");
-    const result = await ordered
+    const result = await scopeDocuments(ctx, scope, inTrash, sort)
       .filter((q) => {
         switch (view) {
           case "archive":
@@ -188,7 +222,7 @@ export const list = query({
   },
 });
 
-function sorter(sort: "updated" | "created" | "title" | "manual") {
+function sorter(sort: ListSort) {
   return (a: Doc<"documents">, b: Doc<"documents">) => {
     switch (sort) {
       case "created":
@@ -223,13 +257,15 @@ export const get = query({
     }
     const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
     const [extras] = await withExtras(ctx, profile, ids, [doc]);
-    const member = await membership(ctx, profile._id, doc.workspaceId);
+    const scope = scopeOfRow(doc);
+    // In the document's scope (its Personal's owner, or a member of its workspace), not only a guest on it.
+    const inItsScope = scope.kind === "personal" ? scope.profileId === profile._id : Boolean(await membership(ctx, profile._id, scope.workspaceId));
     const lastEditor = await ctx.db.get(doc.lastEditedBy);
     const creator = await ctx.db.get(doc.createdBy);
     return {
       document: extras!,
       access,
-      isMember: Boolean(member),
+      isMember: inItsScope,
       folder: folder && !folder.deletedAt ? { id: folder.publicId, name: folder.name } : null,
       breadcrumbs,
       lastEditedBy: lastEditor?.displayName ?? null,
@@ -299,9 +335,15 @@ export const backlinks = query({
     const unlinked: typeof linked = [];
     const title = doc.title.trim();
     if (title.length >= 3) {
+      const scope = scopeOfRow(doc);
+      const phrase = `"${title.replace(/"/g, "")}"`;
       const hits = await ctx.db
         .query("documents")
-        .withSearchIndex("search_text", (q) => q.search("searchText", `"${title.replace(/"/g, "")}"`).eq("workspaceId", doc.workspaceId).eq("inTrash", false))
+        .withSearchIndex("search_text", (q) =>
+          scope.kind === "personal"
+            ? q.search("searchText", phrase).eq("ownerProfileId", scope.profileId).eq("inTrash", false)
+            : q.search("searchText", phrase).eq("workspaceId", scope.workspaceId).eq("inTrash", false),
+        )
         .take(30);
       const needle = title.toLowerCase();
       for (const h of hits) {
@@ -347,10 +389,10 @@ export const info = query({
 });
 
 export const recent = query({
-  args: { workspaceId: v.string(), limit: v.optional(v.number()) },
+  args: { scope: vScopeArg, limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     const rows = await ctx.db
       .query("recents")
       .withIndex("by_profile_viewed", (q) => q.eq("profileId", profile._id))
@@ -360,7 +402,7 @@ export const recent = query({
     const homes = new HomeFolders(ctx);
     const out: (DocumentSummary & { homeFolder: HomeFolder | null })[] = [];
     for (const r of rows) {
-      if (r.workspaceId !== workspace._id) continue;
+      if (!inScope(r, scope)) continue;
       const d = await ctx.db.get(r.documentId);
       if (!d || d.inTrash) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
@@ -385,7 +427,7 @@ export const recordView = mutation({
     if (existing) {
       if (now - existing.viewedAt > 30_000) await ctx.db.patch(existing._id, { viewedAt: now });
     } else {
-      await ctx.db.insert("recents", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, viewedAt: now });
+      await insertScoped(ctx, "recents", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, viewedAt: now });
     }
     // Opening a note removed from Recent notes brings it back there.
     const hidden = await ctx.db
@@ -398,24 +440,23 @@ export const recordView = mutation({
 });
 
 /**
- * Home's "Recent notes": the workspace's most recently edited notes, minus the ones this person removed
+ * Home's "Recent notes": the scope's most recently edited notes, minus the ones this person removed
  * from the list (until they're edited again or reopened — see recentHidden in the schema).
  */
 export const recentNotes = query({
-  args: { workspaceId: v.string(), limit: v.optional(v.number()) },
+  args: { scope: vScopeArg, limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     const limit = Math.max(1, Math.min(args.limit ?? 10, 30));
-    const hiddenRows = await ctx.db
-      .query("recentHidden")
-      .withIndex("by_profile_workspace", (q) => q.eq("profileId", profile._id).eq("workspaceId", workspace._id))
-      .take(500);
+    const hiddenBase = ctx.db.query("recentHidden");
+    const hiddenRows = await (
+      scope.kind === "personal"
+        ? hiddenBase.withIndex("by_profile_owner", (q) => q.eq("profileId", profile._id).eq("ownerProfileId", scope.profileId))
+        : hiddenBase.withIndex("by_profile_workspace", (q) => q.eq("profileId", profile._id).eq("workspaceId", scope.workspaceId))
+    ).take(500);
     const hidden = new Map(hiddenRows.map((h) => [h.documentId, h.hiddenAt]));
-    const candidates = await ctx.db
-      .query("documents")
-      .withIndex("by_workspace_trash", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", false))
-      .order("desc")
+    const candidates = await scopeDocuments(ctx, scope, false, "updated")
       .filter((q) =>
         q.and(
           q.or(q.eq(q.field("kind"), "document"), q.eq(q.field("kind"), "daily")),
@@ -451,7 +492,7 @@ export const hideFromRecent = mutation({
         .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
         .unique();
       if (existing) await ctx.db.patch(existing._id, { hiddenAt: now });
-      else await ctx.db.insert("recentHidden", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, hiddenAt: now });
+      else await insertScoped(ctx, "recentHidden", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, hiddenAt: now });
       hidden++;
     }
     return { hidden };
@@ -487,14 +528,17 @@ async function writableDoc(ctx: MutationCtx, publicId: string, need: "write" | "
 }
 
 async function touchDoc(ctx: MutationCtx, doc: Doc<"documents">, patch: Partial<Doc<"documents">>, actor: Id<"profiles">) {
-  const seq = await nextSeq(ctx, doc.workspaceId);
+  const seq = await nextSeq(ctx, scopeOfRow(doc));
   await ctx.db.patch(doc._id, { ...patch, seq, revision: doc.revision + 1, updatedAt: Date.now(), lastEditedBy: actor });
 }
 
-/** Online document creation (offline clients use sync.push with a document.create op). */
+/**
+ * Online document creation in a scope — the caller's Personal, or a workspace where they can edit (offline
+ * clients use sync.push with a document.create op). A nested page goes to its parent's scope.
+ */
 export const create = mutation({
   args: {
-    workspaceId: v.string(),
+    scope: vScopeArg,
     id: v.optional(v.string()),
     title: v.optional(v.string()),
     icon: v.optional(v.string()),
@@ -506,9 +550,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "editor");
+    await resolveScope(ctx, profile, args.scope, "editor");
     const engine = new SyncEngine(ctx, profile, "server");
-    const [result] = await engine.applyAll(workspace.publicId, [
+    const [result] = await engine.applyAll(args.scope, [
       {
         opId: ulid(),
         kind: "document.create",
@@ -538,7 +582,7 @@ export const setStarred = mutation({
       .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
       .unique();
     if (args.starred && !existing) {
-      await ctx.db.insert("stars", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, createdAt: Date.now() });
+      await insertScoped(ctx, "stars", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, createdAt: Date.now() });
     } else if (!args.starred && existing) {
       await ctx.db.delete(existing._id);
     }
@@ -574,7 +618,7 @@ async function descendantsOf(ctx: QueryCtx | MutationCtx, root: Doc<"documents">
 
 export async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">, inTrash: boolean, stamp: number | undefined) {
   const seq = new SeqAllocator(ctx);
-  const s = await seq.for(doc.workspaceId);
+  const s = await seq.for(scopeOfRow(doc));
   const all = [doc, ...(await descendantsOf(ctx, doc))];
   for (const d of all) {
     // Restoring only brings back pages trashed together with the root.
@@ -691,20 +735,17 @@ async function trashRoot(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">): Pr
 const TRASH_COUNT_CAP = 500;
 
 /**
- * How many pages in this workspace's Trash emptying it would delete for the caller (pages they can't
- * delete stay), capped at TRASH_COUNT_CAP with `more` set beyond it. For the "Empty Trash" confirmation.
+ * How many pages in this scope's Trash emptying it would delete for the caller (pages they can't delete
+ * stay), capped at TRASH_COUNT_CAP with `more` set beyond it. For the "Empty Trash" confirmation.
  */
 export const trashSummary = query({
-  args: { workspaceId: v.string() },
+  args: { scope: vScopeArg },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace, member } = await requireWorkspace(ctx, profile, args.workspaceId);
-    const trashed = await ctx.db
-      .query("documents")
-      .withIndex("by_workspace_trash_created", (q) => q.eq("workspaceId", workspace._id).eq("inTrash", true))
-      .take(TRASH_COUNT_CAP + 1);
+    const { scope, role } = await resolveScope(ctx, profile, args.scope);
+    const trashed = await scopeDocuments(ctx, scope, true, "created").take(TRASH_COUNT_CAP + 1);
     let deletable = 0;
-    if (roleAtLeast(member.role, "editor")) {
+    if (roleAtLeast(role, "editor")) {
       const verdicts = new Map<Id<"documents">, boolean>();
       for (const d of trashed.slice(0, TRASH_COUNT_CAP)) {
         const root = await trashRoot(ctx, d);
@@ -726,11 +767,8 @@ const EMPTY_TRASH_PAGE = 100;
  * One page of "Empty Trash": queues deletion of the trashed pages (roots of trashed trees) the person may
  * delete. A large Trash continues in follow-up mutations so no single one runs into Convex's limits.
  */
-async function emptyTrashPage(ctx: MutationCtx, profile: Doc<"profiles">, workspaceId: Id<"workspaces">, cursor: string | null) {
-  const page = await ctx.db
-    .query("documents")
-    .withIndex("by_workspace_trash_created", (q) => q.eq("workspaceId", workspaceId).eq("inTrash", true))
-    .paginate({ cursor, numItems: EMPTY_TRASH_PAGE });
+async function emptyTrashPage(ctx: MutationCtx, profile: Doc<"profiles">, scope: Scope, cursor: string | null) {
+  const page = await scopeDocuments(ctx, scope, true, "created").paginate({ cursor, numItems: EMPTY_TRASH_PAGE });
   let queued = 0;
   for (const d of page.page) {
     if (d.parentDocumentId) {
@@ -742,31 +780,36 @@ async function emptyTrashPage(ctx: MutationCtx, profile: Doc<"profiles">, worksp
     queued++;
   }
   if (queued) await ctx.scheduler.runAfter(0, internal.maintenance.runDeletionJobs, {});
-  if (!page.isDone) await ctx.scheduler.runAfter(0, internal.documents.emptyTrashContinue, { profileId: profile._id, workspaceId, cursor: page.continueCursor });
+  if (!page.isDone) await ctx.scheduler.runAfter(0, internal.documents.emptyTrashContinue, { profileId: profile._id, scope, cursor: page.continueCursor });
   return { queued, done: page.isDone };
 }
 
 export const emptyTrash = mutation({
-  args: { workspaceId: v.string() },
+  args: { scope: vScopeArg },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId, "editor");
+    const { scope } = await resolveScope(ctx, profile, args.scope, "editor");
     await consume(ctx, "bulk", profile._id);
-    const r = await emptyTrashPage(ctx, profile, workspace._id, null);
+    const r = await emptyTrashPage(ctx, profile, scope, null);
     return { scheduled: r.queued, continuing: !r.done };
   },
 });
 
 /** Follow-up pages of emptyTrash. Re-checks that the person may still do this before each page. */
 export const emptyTrashContinue = internalMutation({
-  args: { profileId: v.id("profiles"), workspaceId: v.id("workspaces"), cursor: v.string() },
+  args: { profileId: v.id("profiles"), scope: vScope, cursor: v.string() },
   handler: async (ctx, args) => {
     const profile = await ctx.db.get(args.profileId);
     if (!profile || profile.status !== "active") return null;
-    const member = await membership(ctx, profile._id, args.workspaceId);
-    if (!member || !roleAtLeast(member.role, "editor")) return null;
-    await emptyTrashPage(ctx, profile, args.workspaceId, args.cursor);
+    const scope = args.scope;
+    if (scope.kind === "personal") {
+      if (scope.profileId !== profile._id) return null;
+    } else {
+      const member = await membership(ctx, profile._id, scope.workspaceId);
+      if (!member || !roleAtLeast(member.role, "editor")) return null;
+    }
+    await emptyTrashPage(ctx, profile, scope, args.cursor);
     return null;
   },
 });
@@ -777,12 +820,11 @@ export const move = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
-    const workspace = (await ctx.db.get(doc.workspaceId))!;
     const engine = new SyncEngine(ctx, profile, "server");
     const patch: { folderId?: string | null; parentDocumentId?: string | null } = {};
     if (args.folderId !== undefined) patch.folderId = args.folderId;
     if (args.parentDocumentId !== undefined) patch.parentDocumentId = args.parentDocumentId;
-    const [r] = await engine.applyAll(workspace.publicId, [
+    const [r] = await engine.applyAll(null, [
       { opId: ulid(), kind: "document.update", documentId: doc.publicId, patch, baseRevision: doc.revision },
     ]);
     if (r?.status === "rejected") fail("invalid_argument", r.error?.message ?? "Could not move the document.");
@@ -863,7 +905,7 @@ export const bulkUpdate = mutation({
             .query("stars")
             .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
             .unique();
-          if (action.starred && !existing) await ctx.db.insert("stars", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, createdAt: Date.now() });
+          if (action.starred && !existing) await insertScoped(ctx, "stars", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, createdAt: Date.now() });
           else if (!action.starred && existing) await ctx.db.delete(existing._id);
           break;
         }
@@ -922,7 +964,7 @@ export const reorder = mutation({
       rank = rankBetween(after?.rank ?? null, null);
     }
     // Arranging pages is not an edit: bump revision/seq so clients refresh, but keep "last edited" as is.
-    await ctx.db.patch(doc._id, { rank, seq: await nextSeq(ctx, doc.workspaceId), revision: doc.revision + 1 });
+    await ctx.db.patch(doc._id, { rank, seq: await nextSeq(ctx, scopeOfRow(doc)), revision: doc.revision + 1 });
     return { rank };
   },
 });
@@ -933,10 +975,11 @@ export const duplicate = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
-    await requireWorkspace(ctx, profile, (await ctx.db.get(doc.workspaceId))!.publicId, "editor");
+    // A copy stays in the page's scope, so it needs the right to add pages there (a guest can't).
+    const { scope } = await requireRowScope(ctx, profile, doc, "editor", "Document not found.");
     const blocks = cloneBlocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
     const copy = await createDocument(ctx, {
-      workspaceId: doc.workspaceId,
+      scope,
       actor: profile,
       title: args.asTemplate ? doc.title : `${doc.title || "Untitled"} (copy)`,
       icon: doc.icon,
@@ -955,30 +998,22 @@ export const duplicate = mutation({
 // Retired feature: kept read-only for clients that haven't updated yet. Quick Add uses the Inbox page.
 
 export const daily = query({
-  args: { workspaceId: v.string(), date: v.string() },
+  args: { scope: vScopeArg, date: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(args.date)) fail("invalid_argument", "Invalid date.");
-    const doc = await ctx.db
-      .query("documents")
-      .withIndex("by_daily", (q) => q.eq("workspaceId", workspace._id).eq("dailyOwnerId", profile._id).eq("dailyDate", args.date))
-      .first();
+    const doc = await scopeDailies(ctx, scope, profile._id, args.date, args.date).first();
     return doc && !doc.inTrash ? await toSummary(new IdResolver(ctx), doc) : null;
   },
 });
 
 export const dailyDates = query({
-  args: { workspaceId: v.string(), from: v.string(), to: v.string() },
+  args: { scope: vScopeArg, from: v.string(), to: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { workspace } = await requireWorkspace(ctx, profile, args.workspaceId);
-    const docs = await ctx.db
-      .query("documents")
-      .withIndex("by_daily", (q) =>
-        q.eq("workspaceId", workspace._id).eq("dailyOwnerId", profile._id).gte("dailyDate", args.from).lte("dailyDate", args.to),
-      )
-      .take(400);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const docs = await scopeDailies(ctx, scope, profile._id, args.from, args.to).take(400);
     return docs.filter((d) => !d.inTrash).map((d) => ({ id: d.publicId, date: d.dailyDate!, title: d.title, wordCount: d.wordCount }));
   },
 });
@@ -1030,9 +1065,8 @@ async function snapshot(
   const inline = content.length > MAX_INLINE_SNAPSHOT ? undefined : content;
   const chunks = inline ? [] : (content.match(new RegExp(`[\\s\\S]{1,${MAX_INLINE_SNAPSHOT}}`, "g")) ?? []);
   const publicId = ulid();
-  const snapshotId = await ctx.db.insert("documentSnapshots", {
+  const snapshotId = await insertScoped(ctx, "documentSnapshots", scopeOfRow(doc), {
     documentId: doc._id,
-    workspaceId: doc.workspaceId,
     publicId,
     reason,
     title: doc.title,
@@ -1099,7 +1133,7 @@ export const restoreSnapshot = mutation({
     if (!raw) fail("not_found", "Version content is unavailable.");
     const parsed = JSON.parse(raw) as { title: string; icon: string | null; blocks: WireBlock[] };
     await snapshot(ctx, writable, profile._id, "before_restore");
-    const seq = await nextSeq(ctx, writable.workspaceId);
+    const seq = await nextSeq(ctx, scopeOfRow(writable));
     const now = Date.now();
     const current = await ctx.db
       .query("blocks")
@@ -1127,10 +1161,9 @@ export const restoreSnapshot = mutation({
           updatedBy: profile._id,
         });
       } else {
-        await ctx.db.insert("blocks", {
+        await insertScoped(ctx, "blocks", scopeOfRow(writable), {
           blockId: b.id,
           documentId: writable._id,
-          workspaceId: writable.workspaceId,
           parentId: b.parentId,
           rank: b.rank,
           type: b.type,

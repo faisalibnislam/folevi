@@ -14,7 +14,8 @@ import { KNOWN_FLAGS, knownFlag } from "./lib/flags";
 import { BUILT_IN_TEMPLATES } from "./lib/templates";
 import { keyedHash, redactEmail } from "./lib/crypto";
 import { vPlatformRole } from "./lib/validators";
-import { DEFAULT_WORKSPACE_QUOTA_BYTES, personalEntitlements, resolveEntitlements, scopeOfWorkspace, storageUsage, workspaceStorageOverride } from "./lib/entitlements";
+import { DEFAULT_WORKSPACE_QUOTA_BYTES, personalEntitlements, storageUsage, workspaceEntitlements, workspaceStorageOverride } from "./lib/entitlements";
+import { personalScope, workspaceScope } from "./lib/scope";
 import { planName } from "./lib/plans";
 
 // Three tiers (stored names kept for existing admins and audit records):
@@ -203,11 +204,13 @@ export const viewUser = mutation({
       .query("workspaceMembers")
       .withIndex("by_profile", (q) => q.eq("profileId", p._id))
       .collect();
+    // Team workspaces only: Personal isn't a workspace (its numbers are under `usage`).
     const workspaces = [];
     for (const m of memberships) {
       const w = await ctx.db.get(m.workspaceId);
-      if (w) workspaces.push({ id: w.publicId, name: w.name, kind: w.kind, role: m.role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes });
+      if (w && w.kind === "team") workspaces.push({ id: w.publicId, name: w.name, kind: w.kind, role: m.role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes });
     }
+    const personalStorage = await storageUsage(ctx, personalScope(p._id));
     const history = await ctx.db
       .query("adminAuditLogs")
       .withIndex("by_target", (q) => q.eq("targetType", "profile").eq("targetId", p._id))
@@ -245,9 +248,12 @@ export const viewUser = mutation({
       workspaces,
       usage: {
         workspaces: workspaces.length,
-        documents: workspaces.filter((w) => w.role === "owner").reduce((n, w) => n + w.documentCount, 0),
+        /** Documents in their Personal plus the team workspaces they own. */
+        documents: (p.personalDocumentCount ?? 0) + workspaces.filter((w) => w.role === "owner").reduce((n, w) => n + w.documentCount, 0),
+        /** Documents in their Personal. */
+        personalDocuments: p.personalDocumentCount ?? 0,
         /** Personal storage (team workspaces count on their own). */
-        storageBytes: workspaces.filter((w) => w.role === "owner" && w.kind === "personal").reduce((n, w) => n + w.storageUsedBytes, 0),
+        storageBytes: personalStorage.usedBytes,
       },
       emails: emails.map((e) => ({ id: e._id as string, templateKey: e.templateKey, status: e.status, attempts: e.attempts, errorCode: e.errorCode ?? null, createdAt: e.createdAt })),
       audit: history.map((h) => ({ action: h.action, actor: actorNames.get(h.actorId) ?? "Admin", reason: h.reason ?? null, createdAt: h.createdAt, requestId: h.requestId })),
@@ -428,10 +434,10 @@ export const viewWorkspace = mutation({
       createdAt: w.createdAt,
       documentCount: w.documentCount,
       storageUsedBytes: w.storageUsedBytes,
-      /** The limit that applies: its plan's (Personal plan for a personal workspace), or an admin override. */
-      storageQuotaBytes: (await storageUsage(ctx, scopeOfWorkspace(w))).limitBytes,
+      /** The limit that applies: its workspace plan's, or an admin override. */
+      storageQuotaBytes: (await storageUsage(ctx, workspaceScope(w._id))).limitBytes,
       storageOverridden: workspaceStorageOverride(w) !== undefined,
-      planName: planName((await resolveEntitlements(ctx, scopeOfWorkspace(w))).planId),
+      planName: planName((await workspaceEntitlements(ctx, w)).planId),
       memberLimit: w.memberLimit,
       members: people,
       invites: invites.map((i) => ({ email: redactEmail(i.email), role: i.role, status: i.status, expiresAt: i.expiresAt, createdAt: i.createdAt })),
@@ -471,7 +477,7 @@ export const setWorkspaceQuota = mutation({
     if (args.storageQuotaBytes < 0 || args.memberLimit < 1 || args.memberLimit > 10_000) fail("invalid_argument", "Invalid quota.");
     // A storage value different from the limit in effect becomes this workspace's override (it replaces the
     // plan's); sending the current limit back (e.g. when only the member limit changes) keeps things as they are.
-    const current = (await storageUsage(ctx, scopeOfWorkspace(w))).limitBytes;
+    const current = (await storageUsage(ctx, workspaceScope(w._id))).limitBytes;
     const overrideBefore = workspaceStorageOverride(w);
     const override = args.storageQuotaBytes === current ? overrideBefore : args.storageQuotaBytes;
     const before = { storageQuotaBytes: current, storageOverride: overrideBefore ?? null, memberLimit: w.memberLimit };
@@ -481,13 +487,20 @@ export const setWorkspaceQuota = mutation({
   },
 });
 
-/** Listing workspaces reveals names (user content), so like other identity reads it is an audited mutation. */
+/**
+ * Team workspaces, newest first (Personal isn't a workspace). Listing workspaces reveals names (user
+ * content), so like other identity reads it is an audited mutation.
+ */
 export const listWorkspaces = mutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())), ...vMeta },
   handler: async (ctx, args) => {
     const admin = await requirePlatformRole(ctx, STAFF);
     await audit(ctx, admin, "workspace.list", { type: "workspaces", id: args.cursor ? "page" : "first_page" }, { requestId: args.requestId, clientHash: args.clientHash });
-    const page = await ctx.db.query("workspaces").withIndex("by_created").order("desc").paginate({ cursor: args.cursor ?? null, numItems: 50 });
+    const page = await ctx.db
+      .query("workspaces")
+      .withIndex("by_kind", (q) => q.eq("kind", "team"))
+      .order("desc")
+      .paginate({ cursor: args.cursor ?? null, numItems: 50 });
     // Workspace names are user content but needed to identify records; no document data is exposed.
     return {
       workspaces: page.page.map((w) => ({ id: w.publicId, name: w.name, kind: w.kind, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes, createdAt: w.createdAt })),

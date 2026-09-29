@@ -5,6 +5,7 @@ import type { MutationCtx } from "./_generated/server";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, requireProfile } from "./lib/auth";
 import { identityImageUrl } from "./lib/identityImages";
 import { noteMode } from "./lib/notify";
+import { insertScoped, scopeOfRow } from "./lib/scope";
 
 export const list = query({
   args: { limit: v.optional(v.number()) },
@@ -161,7 +162,7 @@ export const setNoteSubscription = mutation({
     } else if (existing) {
       await ctx.db.patch(existing._id, { mode: args.mode, updatedAt: Date.now() });
     } else {
-      await ctx.db.insert("noteSubscriptions", { profileId: profile._id, documentId: doc._id, workspaceId: doc.workspaceId, mode: args.mode, updatedAt: Date.now() });
+      await insertScoped(ctx, "noteSubscriptions", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, mode: args.mode, updatedAt: Date.now() });
     }
     return null;
   },

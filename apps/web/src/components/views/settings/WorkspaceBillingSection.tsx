@@ -9,21 +9,22 @@ import type { Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
-import { PLAN_CATALOG, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, billedQuantity, formatPrice, isPaidPlan, seatChargeCents, workspacePlanId, type BillingInterval, type WorkspaceTier } from "@/lib/plans";
+import { TIER_NAMES, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, billedQuantity, formatPrice, isPaidPlan, seatChargeCents, workspacePlanId, yearlySavingPercent, type BillingInterval, type PaidWorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
 import { Card } from "./Card";
-import { formatBytes } from "./BillingSection";
+import { CreditLines, Tile, UsageMeter, formatBytes, plural } from "./BillingSection";
+import { BuyCreditsDialog } from "./BuyCreditsDialog";
 
-const dateOnly = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-type PaidWorkspacePlanId = Exclude<ReturnType<typeof workspacePlanId>, "workspace_free">;
+// Billing dates are UTC, like the server and Polar, so a renewal and a credit reset never read a day apart.
+const dateOnly = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const per = (interval: BillingInterval) => (interval === "year" ? "year" : "month");
-const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+type PaidTier = Exclude<WorkspaceTier, "free">;
+const isPaidTier = (t: WorkspaceTier): t is PaidTier => isPaidPlan(workspacePlanId(t, "month"));
 /** The biggest saving from paying yearly across the paid workspace plans (for the Yearly toggle). */
-const BEST_YEARLY_SAVING = Math.max(
-  ...WORKSPACE_PLAN_ORDER.filter((t) => t !== "free").map((t) => Math.round((1 - WORKSPACE_PLANS[t].yearlyCents / (WORKSPACE_PLANS[t].monthlyCents * 12)) * 100)),
-);
+const BEST_YEARLY_SAVING = Math.max(...WORKSPACE_PLAN_ORDER.filter(isPaidTier).map(yearlySavingPercent));
+const rank = (t: WorkspaceTier) => WORKSPACE_PLAN_ORDER.indexOf(t);
 
 /**
- * Settings → (workspace) Plan & billing: the workspace's own plan (Free, Team or Business), billed per
+ * Settings → (workspace) Plan & billing: the workspace's own plan (Free, Core, Pro or Pro AI), billed per
  * member seat. Only its owner and admins the owner allowed can open it; the server refuses everyone else.
  * Nothing here touches anyone's Personal plan.
  */
@@ -38,10 +39,11 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   const toast = useToast();
   const [interval, setInterval] = useState<BillingInterval>("month");
   const [busy, setBusy] = useState<string | null>(null);
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("checkout");
-    if (q === "success") toast.show("Thanks! The workspace plan is being activated. It can take a moment.", { tone: "success" });
+    if (q === "success") toast.show("Thanks. The workspace plan is being activated. It can take a moment.", { tone: "success" });
     if (q === "canceled") toast.show("Checkout canceled. Nothing was charged.");
     if (q) window.history.replaceState(null, "", window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -50,13 +52,13 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   const { entitlements: e, plan, subscription: sub } = data;
   const current = WORKSPACE_PLANS[plan.tier];
   const now = Date.now();
-  const stripeBilled = sub?.provider === "stripe";
+  const polar = sub?.provider === "polar";
   const manual = sub?.provider === "manual";
   const cancelScheduled = e.paid && Boolean(sub?.cancelAtPeriodEnd && sub.currentPeriodEnd);
   const trialing = e.paid && Boolean(sub?.trialEndsAt && sub.trialEndsAt > now);
   const status = !e.paid ? null : sub?.status === "past_due" ? "Past due" : cancelScheduled ? "Cancel scheduled" : trialing ? "Trial" : "Active";
-  const stripeLive = stripeBilled && e.paid;
-  const usedPct = Math.min(100, (data.storageUsedBytes / Math.max(1, data.storageLimitBytes)) * 100);
+  // A Polar subscription that's running: plan changes are subscription updates (Polar prorates).
+  const polarLive = polar && e.paid && sub?.status !== "canceled";
   const seatPrice = formatPrice(plan.seatPriceCents);
   const run = async (key: string, fn: () => Promise<unknown>, done?: string) => {
     setBusy(key);
@@ -71,10 +73,10 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   };
   const openPortal = () => run("portal", async () => window.location.assign((await portal({ workspaceId: workspace.id })).url));
   const endPlan = () => run("cancel", () => cancel({ workspaceId: workspace.id }), `${current.name} will end at the close of this billing period.`);
-  const choose = (tier: Exclude<WorkspaceTier, "free">) => {
+  const choose = (tier: PaidTier) => {
     const planId = workspacePlanId(tier, interval) as PaidWorkspacePlanId;
     const name = WORKSPACE_PLANS[tier].name;
-    if (stripeLive) return run(tier, () => changePlan({ workspaceId: workspace.id, planId }), `Switching to ${name}. Stripe prorates the difference.`);
+    if (polarLive) return run(tier, () => changePlan({ workspaceId: workspace.id, planId }), `Changing to ${name}. Polar prorates the difference.`);
     if (data.checkoutAvailable)
       return run(tier, async () => {
         const { url } = await checkout({ workspaceId: workspace.id, planId });
@@ -82,6 +84,18 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
       });
     if (data.testPurchases) return run(tier, () => testPurchase({ workspaceId: workspace.id, planId }), `${workspace.name} is on ${name} (test purchase).`);
   };
+  const canChoose = polarLive || data.checkoutAvailable || data.testPurchases;
+  const test = !polarLive && !data.checkoutAvailable;
+
+  // Storage: the owner's free pool on Free, each member's own quota on a paid plan, or a limit set by hand.
+  const perMember = data.storageRule === "per_person" && data.storagePerMemberBytes !== null;
+  const storageUsed = perMember ? (data.yourStorageUsedBytes ?? 0) : data.storageUsedBytes;
+  const storageLimit = perMember ? data.storagePerMemberBytes! : data.storageLimitBytes;
+  const overLimit = storageUsed > storageLimit;
+  // The pool counts this workspace too (it's free whenever there's a pool).
+  const otherFree = data.pool ? Math.max(0, data.pool.workspaces - 1) : 0;
+  const sharedWith = data.pool ? [data.pool.includesPersonal ? "their Personal" : null, otherFree ? plural(otherFree, "other free workspace") : null].filter(Boolean).join(" and ") : "";
+  const poolNote = `Uses the owner's free ${formatBytes(data.storageLimitBytes)}${sharedWith ? `, shared with ${sharedWith}` : ""}. Everyone's uploads here count against it.`;
 
   return (
     <>
@@ -97,8 +111,8 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
               {!e.paid
                 ? current.blurb
                 : sub?.status === "past_due"
-                  ? stripeBilled
-                    ? "The last payment failed. Update the payment method to keep the plan. It stays on while payment is retried."
+                  ? polar
+                    ? "The last payment failed. The person who pays can update the payment method in Manage billing. The plan stays on while payment is retried."
                     : "The last payment failed."
                   : cancelScheduled && sub?.currentPeriodEnd
                     ? `Ends ${dateOnly(sub.currentPeriodEnd)}. ${current.name} features remain available until then.`
@@ -116,11 +130,12 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                 {sub?.paymentMethod ? ` · Paid with ${sub.paymentMethod}` : ""}
               </p>
             ) : null}
+            {polar && !sub?.youPay ? <p className="mt-1 text-[12.5px] text-faint">The person who started this subscription pays for it, and only they can open the billing portal for invoices and the payment method. You can still change, cancel or resume the plan here.</p> : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            {stripeBilled ? (
+            {polar && sub?.youPay ? (
               <Button onClick={() => void openPortal()} aria-busy={busy === "portal" || undefined}>
-                <CreditCard size={15} aria-hidden /> Manage subscription
+                <CreditCard size={15} aria-hidden /> Manage billing
               </Button>
             ) : null}
             {e.paid && !manual ? (
@@ -138,50 +153,54 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[10px] bg-[var(--glass-hover)] p-4">
-            <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
-              <Users size={15} aria-hidden /> Billable seats: {data.seats.toLocaleString()}
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              Guests: {data.guests.toLocaleString()} · Not billed
-            </p>
+          <Tile icon={<Users size={15} aria-hidden />} title={`Billable seats: ${data.seats.toLocaleString()}`}>
+            <p className="mt-1 text-sm text-muted">Guests: {data.guests.toLocaleString()} · Not billed</p>
             {data.pendingInvites ? <p className="mt-1 text-[12.5px] text-faint">{plural(data.pendingInvites, "pending invitation")}, billed once accepted.</p> : null}
-          </div>
-          <div className="rounded-[10px] bg-[var(--glass-hover)] p-4">
-            <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
-              <CreditCard size={15} aria-hidden /> Estimated charge
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              {e.paid && plan.interval
-                ? `${data.seats.toLocaleString()} × ${seatPrice} = ${formatPrice(data.estimatedChargeCents)}/${per(plan.interval)}`
-                : "Free. Nothing is charged."}
-            </p>
+          </Tile>
+          <Tile icon={<CreditCard size={15} aria-hidden />} title="Estimated charge">
+            <p className="mt-1 text-sm text-muted">{e.paid && plan.interval ? `${data.seats.toLocaleString()} × ${seatPrice} = ${formatPrice(data.estimatedChargeCents)}/${per(plan.interval)}` : "Free. Nothing is charged."}</p>
             {e.paid && sub?.quantity !== null && sub?.quantity !== undefined && sub.quantity !== billedQuantity(data.seats) ? <p className="mt-1 text-[12.5px] text-faint">Updating the billed seats ({sub.quantity}) to match…</p> : null}
-          </div>
-          <div className="rounded-[10px] bg-[var(--glass-hover)] p-4">
-            <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
-              <HardDrive size={15} aria-hidden /> Workspace storage
-            </p>
+          </Tile>
+          <Tile icon={<HardDrive size={15} aria-hidden />} title={perMember ? "Your storage here" : "Workspace storage"}>
             <p className="mt-1 text-sm text-muted">
-              {formatBytes(data.storageUsedBytes)} of {formatBytes(data.storageLimitBytes)} used
+              {formatBytes(storageUsed)} of {formatBytes(storageLimit)} used
             </p>
-            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label="Workspace storage used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(usedPct)}>
-              <div className={`h-full rounded-full ${usedPct > 90 ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(usedPct, 1.5)}%` }} />
-            </div>
-          </div>
-          <div className="rounded-[10px] bg-[var(--glass-hover)] p-4">
-            <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
-              <AiIcon size={15} aria-hidden className="text-[#7c6cf0]" /> AI Assistant
+            <UsageMeter label={perMember ? "Your storage used here" : "Workspace storage used"} pct={(storageUsed / Math.max(1, storageLimit)) * 100} />
+            <p className="mt-2 text-[12.5px] text-faint">
+              {perMember
+                ? `Each member has ${formatBytes(storageLimit)} here, and their own uploads count against it. Everyone's uploads: ${formatBytes(data.storageUsedBytes)}.`
+                : data.storageRule === "override"
+                  ? "A limit set by the Folevi team."
+                  : poolNote}
             </p>
-            <p className="mt-1 text-sm text-muted">{e.ai ? (e.aiFairUse === "high" ? "Included for every member, with higher fair-use limits." : "Included for every member.") : "Comes with the Team and Business plans."}</p>
-          </div>
+          </Tile>
+          <Tile icon={<AiIcon size={15} aria-hidden className="text-[#7c6cf0]" />} title="AI credits">
+            {!e.ai ? (
+              <p className="mt-1 text-sm text-muted">Core doesn&apos;t include AI, so nothing in this workspace is sent to an AI model.</p>
+            ) : !e.paid ? (
+              <p className="mt-1 text-sm text-muted">On Free, each member uses their own personal AI credits here.</p>
+            ) : data.credits ? (
+              <>
+                <p className="mt-1 text-[12.5px] text-faint">Yours in this workspace. Every member has their own.</p>
+                <CreditLines c={{ ...data.credits, trialing: false }} />
+                {data.credits.canBuy ? (
+                  <Button size="sm" className="mt-3" onClick={() => setBuying(true)}>
+                    Buy credits
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-muted">{`${e.monthlyCredits.toLocaleString()} AI credits per member each month.`}</p>
+            )}
+          </Tile>
         </div>
-        {data.overLimit ? (
+        {overLimit ? (
           <p role="status" className="mt-4 rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">
             <strong className="font-semibold">Over the storage limit.</strong> Everything already stored stays available, but new uploads are paused until space is freed or the plan is upgraded.
           </p>
         ) : null}
       </Card>
+      {buying ? <BuyCreditsDialog open onClose={() => setBuying(false)} target={{ kind: "workspace", workspaceId: workspace.id }} name={workspace.name} /> : null}
 
       <Card title="Choose a workspace plan" description="Workspace plans are billed per member. Guests are free.">
         <div className="ui-seg ui-well mb-4 w-fit" role="group" aria-label="Billing period">
@@ -193,30 +212,27 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             <span className="whitespace-nowrap rounded-full bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
           </button>
         </div>
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {WORKSPACE_PLAN_ORDER.map((tier) => {
             const card = WORKSPACE_PLANS[tier];
             const cardPlan = workspacePlanId(tier, interval);
-            // What a plan includes comes from the catalog (capabilities), never from its name.
-            const paid = isPaidPlan(cardPlan);
+            const paid = isPaidTier(tier);
             const price = interval === "year" ? card.yearlyCents : card.monthlyCents;
+            const sameTier = paid ? e.paid && plan.tier === tier : !e.paid;
             const isCurrent = paid ? e.planId === cardPlan : !e.paid;
-            const ai = PLAN_CATALOG[cardPlan].entitlements.aiAssistant;
-            const canBuy = paid && (stripeLive || data.checkoutAvailable || data.testPurchases);
+            const highlight = tier === "pro_ai";
+            const label = sameTier ? `Switch to ${interval === "year" ? "yearly" : "monthly"}` : !e.paid || rank(tier) > rank(plan.tier) ? `Upgrade to ${card.name}` : `Change to ${card.name}`;
             return (
-              <section key={tier} aria-label={`${card.name} plan`} className={`flex flex-col rounded-[14px] p-5 ${ai ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}>
+              <section key={tier} aria-label={`${card.name} plan`} className={`flex flex-col rounded-[14px] p-5 ${highlight ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}>
                 <div className="flex items-center gap-2">
                   <h4 className="ui-display text-[19px]">{card.name}</h4>
-                  {ai ? <span className="rounded-full bg-[#7c6cf0] px-2 py-0.5 text-[11px] font-semibold text-white">AI</span> : null}
                   {isCurrent ? <span className="ml-auto rounded-full bg-heading px-2 py-0.5 text-[11px] font-semibold text-canvas">Current</span> : null}
                 </div>
                 <p className="mt-2">
                   <span className="text-[30px] font-semibold tracking-tight text-heading">{formatPrice(price)}</span>
-                  <span className="text-sm text-muted">{paid ? ` per member / ${per(interval)}` : ` / ${per(interval)}`}</span>
+                  <span className="text-sm text-muted">{` / ${per(interval)}`}</span>
                 </p>
-                <p className="min-h-[20px] text-[12.5px] text-muted">
-                  {!paid ? "No card required" : `${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(seatChargeCents(price, data.seats))}/${per(interval)}`}
-                </p>
+                <p className="min-h-[36px] text-[12.5px] text-muted">{!paid ? "Nobody is billed" : `Per member. ${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(seatChargeCents(price, data.seats))}/${per(interval)}`}</p>
                 <p className="mt-2 text-[13px] text-ink">{card.blurb}</p>
                 <ul className="mt-3 flex-1 space-y-1.5 text-[13px]">
                   {card.features.map((f) => (
@@ -236,9 +252,9 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                         Switch to Free
                       </Button>
                     ) : null
-                  ) : canBuy ? (
-                    <Button variant={tier === "team" ? "primary" : "secondary"} className="w-full" onClick={() => choose(tier as Exclude<WorkspaceTier, "free">)} aria-busy={busy === tier || undefined}>
-                      {busy === tier ? (stripeLive ? "Switching…" : data.checkoutAvailable ? "Opening checkout…" : "Switching…") : `${e.paid ? "Switch to" : "Upgrade to"} ${card.name}${!stripeLive && !data.checkoutAvailable ? " (test)" : ""}`}
+                  ) : canChoose ? (
+                    <Button variant={highlight ? "primary" : "secondary"} className="w-full" onClick={() => void choose(tier)} aria-busy={busy === tier || undefined} disabled={busy !== null && busy !== tier}>
+                      {busy === tier ? (polarLive ? "Changing…" : data.checkoutAvailable ? "Opening checkout…" : "Switching…") : `${label}${test ? " (test)" : ""}`}
                     </Button>
                   ) : (
                     <Button disabled className="w-full">
@@ -250,11 +266,13 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             );
           })}
         </div>
-        {!data.checkoutAvailable && !stripeLive ? (
-          <p className="mt-3 text-[12.5px] text-faint">
-            {data.testPurchases ? "Payments aren't connected yet, so upgrades here are test purchases (development only), and nothing is charged." : "Online payments for workspaces are coming soon."}
-          </p>
-        ) : null}
+        <p className="mt-3 text-[12.5px] text-faint">
+          {polarLive || data.checkoutAvailable
+            ? "Payments are handled by Polar, which works out any tax. Adding or removing members changes the seats, prorated."
+            : data.testPurchases
+              ? "Payments aren't connected yet, so upgrades here are test purchases (development only), and nothing is charged."
+              : "Online payments for workspaces are coming soon."}
+        </p>
       </Card>
 
       <Card title="Billing history" description={`Payments for ${workspace.name} only.`}>
@@ -273,7 +291,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                 <tr key={p.id} className="border-t border-line/70">
                   <td className="py-2">{formatDateTime(p.createdAt)}</td>
                   <td className="py-2">
-                    {p.plan === "team" || p.plan === "business" ? WORKSPACE_PLANS[p.plan].name : p.plan} · {p.interval === "year" ? "yearly" : "monthly"}
+                    {p.plan ? TIER_NAMES[p.plan] : "Plan"} · {p.interval === "year" ? "yearly" : "monthly"}
                     {p.quantity ? ` · ${plural(p.quantity, "seat")}` : ""}
                   </td>
                   <td className="py-2 text-right tabular-nums">

@@ -1,5 +1,5 @@
 // Device limits. A device is one signed-in browser or app (one live session). Free allows a few at once
-// (lib/plans.ts); Basic, Pro and the Pro trial have no limit.
+// (lib/plans.ts); Core, Pro, Pro AI and the Pro AI trial have no limit.
 //
 // When someone is over the limit, the sessions that signed in first keep working and the newest ones are
 // held at a "device limit" screen (users.me → state "device_limit"), where they can sign another device

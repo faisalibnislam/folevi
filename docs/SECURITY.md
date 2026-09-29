@@ -80,11 +80,24 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   (excerpt, card preview, search text, task titles) and public links show only titles of unrestricted
   pages in the same Personal or workspace, never a restricted page's (`convex/lib/linkLabels.ts`;
   `tests/convex/privacy-gaps.test.ts`).
-- Plans, storage and AI are resolved per scope on the server (`convex/lib/entitlements.ts`); seats per
-  workspace (`convex/lib/seats.ts`). Workspace billing is managed only by the owner and admins the owner
-  allows (`canManageWorkspaceBilling`). Stripe webhooks are signature-checked, applied once per event id,
-  and ordered (stale subscription events ignored; a late invoice failure never undoes a payment or
-  refund).
+- Plans, storage and AI credits are resolved per scope on the server (`convex/lib/entitlements.ts`,
+  `convex/lib/credits.ts`); seats per workspace (`convex/lib/seats.ts`). Core scopes never send anything to
+  AI: every AI request in a Core Personal or workspace is refused on the server, whoever asks.
+- Billing and payments (`docs/BILLING.md`): Polar is the merchant of record; Folevi never sees card data.
+  Workspace billing is managed only by the owner and admins the owner allows (`canManageWorkspaceBilling`);
+  only the person who pays for a workspace can open its Polar customer portal. Checkout is started only by
+  an authenticated action that picks the product, price and seat count on the server (the client names a
+  tier and an interval, never a price, product id, seat count or owner). The Polar token, webhook secret
+  and product ids are Convex environment variables only (the production build fails if a Polar variable
+  is in the web app's environment). Webhooks (`/webhooks/polar`) are verified with the Standard Webhooks
+  signature (HMAC-SHA256, constant-time compare, timestamps older or newer than 5 minutes refused),
+  applied once per delivery id, keyed by order id, and ordered (stale subscription events ignored; an old
+  subscription ending never ends a newer one). Plans and credits change only from these events, never
+  from a browser returning from checkout. Logs carry event types and outcomes only, never addresses,
+  tokens or bodies. Test purchases are refused on production.
+- AI metering records per person per scope per day the requests, credits and token counts; prompts, note
+  text and answers are never stored or logged. Credits are held before a request so parallel requests
+  can't overspend.
 - Workspace roles: Owner, Admin, Member (members may be limited to comment or view); guests are page grants
   without a membership and see only what was shared with them (`convex/lib/permissions.ts` has the matrix;
   `tests/convex/members-guests.test.ts`). Platform roles for the admin console are enforced in
@@ -184,7 +197,7 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 | Vercel | Web hosting | Request metadata, logs |
 | Mailtrap | Transactional email delivery (open/click tracking off); receiving email to support@folevi.com | Recipient email and the rendered email (names, titles, links; no note bodies); support emails people send us |
 | Google (Gemini API) | AI Assistant, only when used | The request and the notes it needs (not stored or used for training) |
-| Stripe | Payments for paid personal and workspace plans (not configured yet) | Billing email, plan, seat quantity, payment status; card details stay with Stripe |
+| Polar | Merchant of record for paid plans and AI credit packs: checkout, tax, receipts, customer portal (not configured yet) | The buyer's email and billing details they enter at checkout, the product bought, seat count, and Folevi's internal ids (profile and workspace ids) in metadata; card details stay with Polar and its processor. Never note content |
 
 ## Known limitations
 

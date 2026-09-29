@@ -155,7 +155,7 @@ export const bootstrap = mutation({
     });
     const profile = (await ctx.db.get(profileId))!;
     await seedPersonal(ctx, profile, localDate(now, timeZone));
-    // Every new account starts with a Pro trial.
+    // Every new account starts with a Pro AI trial.
     await startTrial(ctx, profileId);
     await bump(ctx, "users_total");
     await bump(ctx, "signups");

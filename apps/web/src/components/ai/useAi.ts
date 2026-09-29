@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useCallback } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -32,11 +32,14 @@ export interface AskTurn {
 export interface AiAccess {
   /** Available here and turned on. */
   on: boolean;
-  /** Included where you are: in Personal, your Personal plan (Pro, the Pro trial or a grant from the Folevi
-   * team); in a team workspace, that workspace's plan. */
+  /** Included where you are. Never on Core: in Personal, your Personal plan (every plan but Core, and the
+   * trial); in a team workspace you belong to, that workspace (its plan, or on Free your personal plan); on a
+   * note from elsewhere, the server's answer for that note (a guest uses their own personal plan). */
   entitled: boolean;
-  /** Your Personal plan includes it (for Settings → Account). */
+  /** Your Personal plan includes AI (false only on Core; for Settings → Account). */
   personalEntitled: boolean;
+  /** Your Personal plan is Core (no AI anywhere your personal credits would be used). */
+  personalCore: boolean;
   /** Where you are: "personal" (your own Personal), "workspace" (a team workspace) or "shared" (someone else's). */
   context: "personal" | "workspace" | "shared";
   /** You haven't turned it off (Settings → Account). */
@@ -45,38 +48,46 @@ export interface AiAccess {
 
 /** Where a note lives, as documents.get reports it: a team workspace, or someone's Personal (workspaceId null). */
 export interface NoteHome {
+  /** The note's public id (asks the server about notes from elsewhere). */
+  id?: string;
   workspaceId: string | null;
   ownerProfileId?: string | null;
 }
 
 /**
  * AI where you are: the current context (Personal or a team workspace), or `note`'s home (a note may be
- * open from elsewhere: shared from someone's Personal or another workspace). The server decides again on
- * every request.
+ * open from elsewhere: shared from someone's Personal or a workspace you're a guest in). Core hides AI. The
+ * server decides again on every request.
  */
 export function useAiAccess(note?: NoteHome | null): AiAccess {
-  const { profile, context: current, workspaces } = useAppState();
-  const p = profile as { aiEnabled?: boolean; entitlements?: { ai: boolean } };
+  const { profile, context: current, workspaces, scope } = useAppState();
+  const p = profile as { aiEnabled?: boolean; entitlements?: { ai: boolean; plan?: string } };
   const setting = p.aiEnabled !== false;
   const personalEntitled = p.entitlements ? p.entitlements.ai : true;
+  const personalCore = p.entitlements?.plan === "core";
   let context: AiAccess["context"];
   let entitled: boolean;
   if (!note) {
-    // The current context: your Personal plan in Personal, the workspace's plan in a workspace.
+    // The current context: your Personal plan in Personal, what the server says for you in a workspace.
     context = current.kind;
     entitled = current.kind === "personal" ? personalEntitled : current.workspace.aiIncluded;
   } else if (note.workspaceId === null) {
-    // Personal: your own (your Personal plan), or someone else's shared with you (not included for you).
+    // Personal: your own (your Personal plan), or someone else's shared with you (asked below).
     const own = !note.ownerProfileId || note.ownerProfileId === profile.id;
     context = own ? "personal" : "shared";
     entitled = own ? personalEntitled : false;
   } else {
-    // A workspace you belong to follows its plan; one you're only a guest in isn't included for you.
+    // A workspace you belong to: what the server says for you there. One you're a guest in: asked below.
     const w = workspaces.find((x) => x.id === note.workspaceId);
     context = w ? "workspace" : "shared";
     entitled = w?.aiIncluded ?? false;
   }
-  return { on: setting && entitled, entitled, personalEntitled, context, setting };
+  // A note from elsewhere: guests use their own personal plan unless the page's scope is on Core, so only
+  // the server knows. Asked only when it matters (AI on, and not ruled out by a Core personal plan).
+  const ask = context === "shared" && setting && personalEntitled && Boolean(note?.id);
+  const shared = useQuery(api.billing.credits, ask ? { scope, documentId: note!.id } : "skip");
+  if (context === "shared") entitled = Boolean(ask && shared?.aiIncluded);
+  return { on: setting && entitled, entitled, personalEntitled, personalCore, context, setting };
 }
 
 /** Whether AI is available and turned on (every AI entry point checks this; the server enforces it). */

@@ -162,6 +162,20 @@ the local database (v3) keys its document cache by scope and keeps the queue and
 Business, monthly/yearly, seats × price, guests "not billed", renewal, manage/cancel), Stripe per-seat
 checkout and quantity sync, billing permission for admins, end-of-period downgrade, over-limit state.
 
+*Billing update (2026-09-30, January 2027 plans): this section describes Phase C as first built, with
+Stripe and the Free / Team / Business tiers. Since then:* the plans are Free, Core, Pro and Pro AI for both
+Personal and Team (Team priced per member seat); storage is a shared 1 GB free pool per owner (their
+Personal on Free plus every free workspace they own) or 20/50 GB per person on paid plans (in a paid
+workspace, per member); AI is metered in credits per person per scope (a member's seat in a paid
+workspace, otherwise the person's own Personal, including in free workspaces and as a guest), and Core
+has no AI at all; Polar replaced Stripe (checkout with seats, customer portal for the payer, Standard
+Webhooks at `/webhooks/polar`, seat sync by `PATCH subscriptions/{id} {seats}`); `stripe*` fields on
+subscription rows are legacy and never written. Stored tiers from before are read through
+`personalTierOf` / `workspacePlanIdOf` until `migrations:migratePlanTiers` rewrites them (Basic → Core,
+Pro → Pro AI, Team → Pro, Business → Pro AI). The current rules, the owner's Polar checklist and the
+migration command are in `docs/BILLING.md`; read "Stripe" below as "Polar" and "Team / Business" as the
+paid plans.
+
 *As built (Phase C):*
 - **Rows.** `subscriptions` and `payments` hold both kinds: `ownerType` ("user" | "workspace"; unset on
   older rows = user) and exactly one of `profileId` / `workspaceId`, written only through

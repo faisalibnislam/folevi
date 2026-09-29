@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ChevronsUpDown, CreditCard, HelpCircle, LifeBuoy, LogOut, Monitor, Moon, Sun, Plus, Settings, Shield, ShieldCheck, UserPlus, Users, MonitorSmartphone } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
-import { PLANS } from "@/lib/plans";
+import { PLANS, TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
 import { useAppState, type Profile, type Workspace } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
@@ -40,13 +40,13 @@ function Mark({ src, initial, shape, size, className }: { src: string | null; in
   );
 }
 
-/** Your Personal plan as the switcher shows it: "Pro", "Pro trial · 5 days", "Free". */
+/** Your Personal plan as the switcher shows it: "Pro", "Pro AI trial · 5 days", "Free". */
 export function personalPlanLabel(profile: Profile, now = Date.now()): string | null {
   const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; plan: keyof typeof PLANS } }).entitlements;
   if (!ent) return null;
   if (ent.trialing) {
     const days = ent.trialEndsAt ? Math.max(1, Math.ceil((ent.trialEndsAt - now) / 86_400_000)) : 0;
-    return days ? `Pro trial · ${days} ${days === 1 ? "day" : "days"}` : "Pro trial";
+    return days ? `${TIER_NAMES[TRIAL_TIER]} trial · ${days} ${days === 1 ? "day" : "days"}` : `${TIER_NAMES[TRIAL_TIER]} trial`;
   }
   return PLANS[ent.plan]?.name ?? null;
 }
@@ -88,7 +88,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
     { heading: "Workspaces" },
     ...workspaces.map((w) => ({
       label: w.name,
-      // "Owner · Team": your role here, and this workspace's own plan.
+      // "Owner · Pro": your role here, and this workspace's own plan.
       description: `${workspaceRoleLabel(w.role)} · ${w.plan.shortName}`,
       icon: <WorkspaceLogo workspace={w} size={18} />,
       checked: context.kind === "workspace" && context.workspaceId === w.id,
@@ -125,7 +125,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
   // Personal, since a Personal plan doesn't change what a team workspace includes.
   const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; paid?: boolean } }).entitlements;
   const trialDays = ent?.trialing && ent.trialEndsAt ? Math.max(1, Math.ceil((ent.trialEndsAt - Date.now()) / 86_400_000)) : 0;
-  const pill = !ent || context.kind !== "personal" ? null : ent.trialing ? `Pro trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false ? "Upgrade to Pro" : null;
+  const pill = !ent || context.kind !== "personal" ? null : ent.trialing ? `${TIER_NAMES[TRIAL_TIER]} trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false ? "Upgrade to Pro" : null;
   const title = workspace ? workspace.name : profile.displayName;
 
   return (

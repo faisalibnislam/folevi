@@ -29,7 +29,7 @@ export default function PrivacyPage() {
   return (
     <>
       <PageHeader eyebrow="Legal" title="Privacy policy" lede="How Folevi handles your information, written to be read.">
-        <DraftNotice updated="29 September 2026" />
+        <DraftNotice updated="30 September 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="short">The short version</h2>
@@ -62,10 +62,10 @@ export default function PrivacyPage() {
         </p>
         <h3>Plan and billing</h3>
         <p>
-          Which plan you’re on, trial and renewal dates, storage and AI usage counts, and a record of payments (amount, date,
-          plan). For a workspace on a paid plan, the same for the workspace, plus how many member seats it’s billed for; the
-          workspace’s owner and the admins they allow can see its billing. Card details are handled by Stripe and never
-          reach Folevi.
+          Which plan you’re on, trial and renewal dates, storage use, AI credits used and credit packs bought, and a record
+          of payments (amount, date, plan). For a workspace on a paid plan, the same for the workspace, plus how many member
+          seats it’s billed for; the workspace’s owner and the admins they allow can see its billing. Card details are
+          handled by Polar (see Payments) and never reach Folevi.
         </p>
         <h3>Messages you send us</h3>
         <p>If you email us, we keep the conversation so we can help you and follow up.</p>
@@ -75,7 +75,7 @@ export default function PrivacyPage() {
           <li>To provide Folevi: store, sync, search, share and export your content as you ask.</li>
           <li>To keep your account secure: verify your email, offer two-step verification, detect abuse.</li>
           <li>To send you service emails, such as verification, security notices and share invitations. They carry no tracking pixels, and their links aren’t rewritten to track clicks.</li>
-          <li>To run plans: apply your personal plan’s storage, device and AI limits and each workspace plan’s own limits, and bill paid plans (workspace plans per member seat).</li>
+          <li>To run plans: apply your personal plan’s storage, device and AI credit limits and each workspace plan’s own limits, and bill paid plans (workspace plans per member seat) and credit packs.</li>
           <li>When you ask it to, to answer with the AI Assistant (below).</li>
           <li>To fix problems and improve Folevi, using technical data rather than the content of your notes.</li>
           <li>To meet legal obligations.</li>
@@ -97,9 +97,9 @@ export default function PrivacyPage() {
             is off.
           </li>
           <li>
-            <strong>What we keep:</strong> the answer is shown to you and not stored beyond a few minutes; we keep only a count
-            of requests per day, recorded against your Personal or the workspace you asked in, and short-lived counters for
-            fair-use limits. Your prompts and notes are not logged.
+            <strong>What we keep:</strong> the answer is shown to you and not stored beyond a few minutes; we keep only counts of
+            requests and of the AI credits they used, recorded against your Personal or the workspace you asked in, and
+            short-lived counters for fair-use limits. Your prompts and notes are not logged.
           </li>
           <li>
             We use Google’s paid Gemini API service, under which Google does not use your requests or notes to train or
@@ -109,8 +109,11 @@ export default function PrivacyPage() {
 
         <h2 id="payments">Payments</h2>
         <p>
-          Paid plans are billed by Stripe. Stripe receives the billing email address and handles the card; Folevi receives only
-          what it needs to run the plan (plan, status, dates, amounts and, for a workspace, the number of seats). Personal
+          Paid plans and AI credit packs are sold through Polar, which acts as merchant of record: it processes the payment,
+          handles sales tax or VAT, and sends receipts. Polar receives your email address and billing details, and internal
+          account ids that link a payment to your Folevi account or workspace; it never receives the content of your notes.
+          Folevi receives only what it needs to run the plan (plan, status, dates, amounts and, for a workspace, the number
+          of seats). Personal
           and workspace plans are billed separately. You can manage or cancel your personal plan in Settings → Plan &
           billing; a workspace’s owner (or an admin they allow) manages the workspace’s plan.
         </p>
@@ -127,7 +130,7 @@ export default function PrivacyPage() {
         <h2 id="share">Who we share it with</h2>
         <p>
           We use a small number of service providers to run Folevi. They cover our database and backend, web hosting, email, the AI
-          Assistant (Google’s Gemini API) and payments (Stripe). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
+          Assistant (Google’s Gemini API) and payments (Polar). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
           <Link href="/security#subprocessors">Security</Link> page.
         </p>
         <p>

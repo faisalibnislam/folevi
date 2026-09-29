@@ -95,26 +95,16 @@ repository and ship with the Convex deploy; nothing is uploaded to Mailtrap. Mai
 provider: the production build fails without `MAILTRAP_API_TOKEN` and warns about any leftover `LOOPS_*`
 variable (delete them; EMAIL_OPERATIONS.md §9).
 
-## 5. Payments (Stripe)
+## 5. Payments (Polar)
 
 Optional until paid plans go on sale; without it, upgrades say payments aren't set up (non-production
-deployments offer test purchases instead). All variables are server-only, on Convex (`.env.example`,
-Billing section):
-
-- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
-- Personal plans (flat, per person): `STRIPE_PRICE_BASIC_MONTH` ($2), `STRIPE_PRICE_BASIC_YEAR` ($9),
-  `STRIPE_PRICE_PRO_MONTH` ($5), `STRIPE_PRICE_PRO_YEAR` ($49).
-- Workspace plans (recurring **per-unit** prices; the app sets the quantity to the workspace's billable
-  seats): `STRIPE_PRICE_WS_TEAM_MONTH` ($5), `STRIPE_PRICE_WS_TEAM_YEAR` ($49),
-  `STRIPE_PRICE_WS_BUSINESS_MONTH` ($10), `STRIPE_PRICE_WS_BUSINESS_YEAR` ($99). Workspace checkout turns on
-  only when all four are set; then flip `WORKSPACE_PLANS[*].available` in `convex/lib/plans.ts` for the
-  public pricing page. Optionally `STRIPE_PORTAL_CONFIG_WS`, a customer-portal configuration that lists only
-  workspace prices and doesn't allow quantity edits.
-- Webhook endpoint `https://<deployment>.convex.site/webhooks/stripe`, sending
-  `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`,
-  `invoice.payment_failed`, `charge.succeeded` and `charge.refunded`. Events are signature-checked, applied
-  once per event id and in order; access is granted only by these events (never by returning from
-  Checkout). Details: `docs/ACCOUNT_MODEL_PLAN.md` (Phase C).
+deployments offer test purchases instead). All variables are server-only, on Convex: `POLAR_ACCESS_TOKEN`,
+`POLAR_WEBHOOK_SECRET`, `POLAR_SERVER` (sandbox | production) and one `POLAR_PRODUCT_*` id per plan,
+interval and credit pack (14 in all; `.env.example`, Billing section). The webhook endpoint is
+`https://<deployment>.convex.site/webhooks/polar`. The full checklist (the 14 products with names, prices
+and intervals, the webhook events, the token's scopes, sandbox testing) and the one-time plan migration
+command are in `docs/BILLING.md`. Access is granted only by signed webhook events (never by returning
+from checkout). Remove any leftover `STRIPE_*` variables: Stripe was never live and its code is gone.
 
 ## 6. Account-model migration (done) and clean-up
 

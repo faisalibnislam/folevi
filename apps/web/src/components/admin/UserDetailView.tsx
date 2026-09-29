@@ -52,7 +52,8 @@ export function UserDetailView({ id }: { id: string }) {
   const b = billing.data;
   const canSetPlan = admin.can("billing.manage");
   const onFree = !b || b.entitlements.paidPlan === "free";
-  const planBlocked = !canSetPlan ? rolesFor("billing.manage") : b?.stripeBilled ? "Billed through Stripe. Change it in Stripe." : user.status === "deleted" ? "This account has been deleted." : null;
+  // A plan billed through Polar still opens the dialog, which explains it's changed in Polar.
+  const planBlocked = !canSetPlan ? rolesFor("billing.manage") : user.status === "deleted" ? "This account has been deleted." : null;
   const openPlan = () =>
     b &&
     setPlanFor({
@@ -62,6 +63,7 @@ export function UserDetailView({ id }: { id: string }) {
       interval: b.entitlements.paidPlan === "free" ? null : (b.subscription.interval ?? "month"),
       endsAt: b.entitlements.paidPlan === "free" ? null : b.subscription.currentPeriodEnd,
       trialEndsAt: b.entitlements.trialing ? b.entitlements.trialEndsAt : null,
+      polarBilled: b.polarBilled,
     });
 
   return (
@@ -147,7 +149,7 @@ export function UserDetailView({ id }: { id: string }) {
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <UserBillingPanel profileId={user.id} email={user.email} name={user.displayName} billing={billing} />
+        <UserBillingPanel profileId={user.id} email={user.email} name={user.displayName} workspaces={user.workspaces} billing={billing} />
         <Panel title="Sessions" description={t("admin.user.sessions", { active: user.sessions.filter((s) => !s.revokedAt).length, total: user.sessions.length })} flush>
           <DataTable caption="Sessions" minWidth={520}>
             <thead>
@@ -442,7 +444,7 @@ function UserActionDialogs({ user, action, onClose, onDone }: { user: UserDetail
             options: [
               { value: "", label: "None (regular user)" },
               { value: "support_admin", label: "Support staff: look up people, resend emails, trials, exports" },
-              { value: "ops_admin", label: "Admin: support access plus plans, AI, suspensions, quotas, configuration, revenue" },
+              { value: "ops_admin", label: "Admin: support access plus plans, AI credits, suspensions, quotas, configuration, revenue" },
               { value: "super_admin", label: "Owner: everything, including roles, refunds and maintenance" },
             ],
             validate: (v) => (v === (user.platformRole ?? "") ? "Choose a different role." : null),

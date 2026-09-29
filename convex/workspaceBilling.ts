@@ -1,18 +1,21 @@
-// Workspace plans and billing: a team workspace's own plan (Free, Team or Business), billed per member seat.
-// The subscription belongs to the workspace (not to whoever owns it), so it stays put when ownership moves,
-// and it never changes anyone's Personal plan (nor does a Personal plan change it).
+// Workspace (Team) plans and billing: a team workspace's own plan (Free, Core, Pro or Pro AI), billed per
+// member seat. The subscription belongs to the workspace (not to whoever owns it), so it stays put when
+// ownership moves, and it never changes anyone's Personal plan (nor does a Personal plan change it).
 //
 // Who: the owner, and admins the owner allowed (lib/permissions.ts). Checked here on every function; the
 //   web app only hides what people can't use.
-// Seats: lib/seats.ts decides who takes one; `syncSeatQuantity` keeps Stripe's quantity equal to it.
-// Money: Stripe Checkout with quantity = seats; plan changes and seat changes are Stripe subscription item
-//   updates with proration; cancel/resume set cancel_at_period_end. Access is granted only by webhooks
-//   (convex/billing.ts routes a workspace's events here), never by a browser returning from Checkout.
-// Without Stripe: development builds can make test purchases; admins can set a plan by hand ("manual",
+// Seats: lib/seats.ts decides who takes one; `syncSeatQuantity` keeps the Polar subscription's seats equal
+//   to it (Polar prorates).
+// Money: Polar Checkout with seats = billable members (counted here, never taken from the browser); plan
+//   changes, seat changes and cancel/resume are Polar subscription updates. The subscription is paid by
+//   the person who started it (their own Polar customer); only they can open Polar's customer portal, and
+//   any billing manager can change, cancel or resume the plan from Folevi. Access is granted only by
+//   webhooks (convex/billing.ts routes a workspace's events here), never by a browser returning from Checkout.
+// Without Polar: development builds can make test purchases; admins can set a plan by hand ("manual",
 //   convex/adminBilling.ts). Expired test/manual plans fall back to Workspace Free in the hourly
 //   `billing.settleExpiredPlans` job.
-// Past due: the plan stays in force while Stripe retries the payment (its retry schedule is the grace);
-//   when Stripe gives up it cancels the subscription (or marks it unpaid), and the workspace is on Free.
+// Past due: the plan stays in force while Polar retries the payment; when Polar gives up it cancels the
+//   subscription, and the workspace is on Free.
 import { v } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -20,20 +23,19 @@ import type { Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx } from "./_generated/server";
 import { normalizeMembership, requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { ensureWorkspaceSubscription, failedInvoiceMarksPastDue, insertPayment, invoicePaymentStatus, isWorkspaceSubscription, markInvoiceRefunded, workspaceSubscriptionOf, type WorkspaceSubscription } from "./lib/billing";
-import { storageUsage, workspaceEntitlements } from "./lib/entitlements";
+import { ensureWorkspaceSubscription, insertPayment, isWorkspaceSubscription, periodEndFrom, storedWorkspacePlanId, workspaceSubscriptionOf, type WorkspaceSubscription } from "./lib/billing";
+import { freePool, memberStorageUsed, storageUsage, workspaceEntitlements } from "./lib/entitlements";
+import { creditBalance, seatAccount } from "./lib/credits";
 import { requireWorkspaceBilling } from "./lib/permissions";
-import { DAY_MS, PLAN_CATALOG, WORKSPACE_PLANS, isPaidPlan, type WorkspacePlanId, type WorkspaceTier } from "./lib/plans";
+import { PLAN_CATALOG, TIER_NAMES, isPaidPlan, type PaidWorkspacePlanId, type WorkspacePlanId } from "./lib/plans";
 import { workspaceScope } from "./lib/scope";
 import { billableQuantity, seatChargeCents, seatSummary, seatsChanged } from "./lib/seats";
-import { appUrl, cardLabel, intervalOf, periodOf, stripeGet, stripeKey, stripePost, subscriptionIdOf, subscriptionItems, testPurchasesAllowed, workspacePlanForPrice, workspacePriceId, workspaceStripeReady } from "./lib/stripe";
+import { createCheckout, customerPortal, ms, num, polarGet, polarPatch, polarToken, productId, str, testPurchasesAllowed, workspaceCheckoutReady } from "./lib/polar";
 import { vPaidWorkspacePlanId } from "./lib/validators";
-import type { ApplyResult } from "./billing";
 
-type PaidWorkspacePlanId = Exclude<WorkspacePlanId, "workspace_free">;
-const periodMs = (planId: PaidWorkspacePlanId) => (intervalOf(planId) === "year" ? 365 : 30) * DAY_MS;
+const intervalOf = (planId: PaidWorkspacePlanId) => PLAN_CATALOG[planId].interval!;
 /** Whether a row is a paid plan that hasn't ended (a canceled row still in its paid period counts). */
-const livePaid = (s: WorkspaceSubscription, now = Date.now()) => isPaidPlan(s.planId) && (s.status !== "canceled" || (s.currentPeriodEnd ?? 0) > now);
+const livePaid = (s: WorkspaceSubscription, now = Date.now()) => isPaidPlan(storedWorkspacePlanId(s)) && (s.status !== "canceled" || (s.currentPeriodEnd ?? 0) > now);
 
 // ---------------------------------------------------------------------------------------------------
 // Reading
@@ -41,7 +43,8 @@ const livePaid = (s: WorkspaceSubscription, now = Date.now()) => isPaidPlan(s.pl
 
 /**
  * The workspace's plan and billing page: plan and price, billable seats and the estimated charge, guests
- * (not billed), status and renewal, payment method, and this workspace's payments only.
+ * (not billed), status and renewal, storage (the owner's free pool, or per member), your own AI credits
+ * here, payment method, and this workspace's payments only.
  */
 export const summary = query({
   args: { workspaceId: v.string() },
@@ -51,9 +54,11 @@ export const summary = query({
     const sub = await workspaceSubscriptionOf(ctx, workspace._id);
     const e = await workspaceEntitlements(ctx, workspace);
     const plan = PLAN_CATALOG[e.planId];
-    const tier = plan.tier as WorkspaceTier;
     const seats = await seatSummary(ctx, workspace._id);
-    const storage = await storageUsage(ctx, workspaceScope(workspace._id));
+    const scope = workspaceScope(workspace._id);
+    const storage = await storageUsage(ctx, scope);
+    const pool = e.storageRule === "shared_free" ? await freePool(ctx, workspace.ownerId) : null;
+    const seat = await seatAccount(ctx, profile._id, workspace._id);
     const payments = await ctx.db
       .query("payments")
       .withIndex("by_workspace_created", (q) => q.eq("workspaceId", workspace._id))
@@ -63,11 +68,11 @@ export const summary = query({
       workspace: { id: workspace.publicId, name: workspace.name },
       yourRole: normalizeMembership(member).role,
       entitlements: e,
-      plan: { id: e.planId, tier, name: WORKSPACE_PLANS[tier].name, interval: plan.interval, seatPriceCents: plan.priceCents },
+      plan: { id: e.planId, tier: plan.tier, name: TIER_NAMES[plan.tier], interval: plan.interval, seatPriceCents: plan.priceCents },
       subscription:
         sub && sub.provider !== "none"
           ? {
-              planId: sub.planId,
+              planId: storedWorkspacePlanId(sub),
               provider: sub.provider,
               status: sub.status,
               cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd),
@@ -76,6 +81,8 @@ export const summary = query({
               trialEndsAt: sub.trialEndsAt ?? null,
               quantity: sub.quantity ?? null,
               paymentMethod: sub.paymentMethod ?? null,
+              /** Billed through Polar and paid by you (only the payer can open Polar's portal). */
+              youPay: sub.provider === "polar" && sub.polarBuyerId === profile._id,
             }
           : null,
       seats: seats.seats,
@@ -83,11 +90,24 @@ export const summary = query({
       pendingInvites: seats.pendingInvites,
       /** seats × the plan's price per seat, per billing interval (0 on Free). */
       estimatedChargeCents: e.paid ? seatChargeCents(plan.priceCents, seats.seats) : 0,
+      /** The workspace's total (Free: the owner's whole pool; paid: everyone's uploads here against every member's quota). */
       storageUsedBytes: storage.usedBytes,
       storageLimitBytes: storage.limitBytes,
-      overLimit: storage.usedBytes > storage.limitBytes,
-      payments: payments.map((p) => ({ id: p._id as string, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval, quantity: p.quantity ?? null, status: p.status, createdAt: p.createdAt })),
-      checkoutAvailable: workspaceStripeReady(),
+      storageRule: e.storageRule,
+      /** Paid plans: each member's own quota, and yours. */
+      storagePerMemberBytes: e.storageRule === "per_person" ? e.storageBytes : null,
+      yourStorageUsedBytes: e.storageRule === "per_person" ? await memberStorageUsed(ctx, workspace._id, profile._id) : null,
+      /** Free: how many free workspaces share the owner's pool, and whether their Personal does too. */
+      pool: pool ? { workspaces: pool.workspaces, includesPersonal: pool.includesPersonal } : null,
+      /** Over its limit: on a paid plan, your own quota here; otherwise the pool or the override. */
+      overLimit: e.storageRule === "per_person" ? (await memberStorageUsed(ctx, workspace._id, profile._id)) > e.storageBytes : storage.usedBytes > storage.limitBytes,
+      /** Your own AI credits here (paid plans with AI; on Free members use their personal credits). */
+      credits: seat ? { ...(await creditBalance(ctx, seat)), canBuy: seat.canBuy } : null,
+      payments: payments.map((p) => {
+        const planId = p.planId ? storedWorkspacePlanId({ planId: p.planId }) : null;
+        return { id: p._id as string, amountCents: p.amountCents, currency: p.currency, planId, plan: planId ? PLAN_CATALOG[planId].tier : null, interval: p.interval ?? null, quantity: p.quantity ?? null, status: p.status, createdAt: p.createdAt };
+      }),
+      checkoutAvailable: workspaceCheckoutReady(),
       testPurchases: testPurchasesAllowed(),
     };
   },
@@ -105,7 +125,7 @@ export const testPurchase = mutation({
     if (!testPurchasesAllowed()) fail("forbidden", "Test purchases are only available in development.");
     const { workspace } = await requireWorkspaceBilling(ctx, profile, args.workspaceId, { write: true });
     const sub = await ensureWorkspaceSubscription(ctx, workspace._id);
-    if (sub.provider === "stripe" && livePaid(sub)) fail("invalid_argument", "This workspace is billed through Stripe. Change its plan there.");
+    if (sub.provider === "polar" && livePaid(sub)) fail("invalid_argument", "This workspace is billed through Polar. Change its plan there.");
     const now = Date.now();
     const seats = await billableQuantity(ctx, workspace._id);
     const plan = PLAN_CATALOG[args.planId];
@@ -115,18 +135,18 @@ export const testPurchase = mutation({
       provider: "test",
       quantity: seats,
       currentPeriodStart: now,
-      currentPeriodEnd: now + periodMs(args.planId),
+      currentPeriodEnd: periodEndFrom(now, plan.interval),
       cancelAtPeriodEnd: false,
       paidSince: sub.paidSince && livePaid(sub, now) ? sub.paidSince : now,
       canceledAt: undefined,
       updatedAt: now,
     });
-    await insertPayment(ctx, { kind: "workspace", workspaceId: workspace._id }, { amountCents: seatChargeCents(plan.priceCents, seats), currency: "usd", plan: plan.tier as "team" | "business", planId: args.planId, quantity: seats, interval: intervalOf(args.planId), status: "paid", provider: "test", createdAt: now });
+    await insertPayment(ctx, { kind: "workspace", workspaceId: workspace._id }, { amountCents: seatChargeCents(plan.priceCents, seats), currency: "usd", plan: plan.tier as "core" | "pro" | "pro_ai", planId: args.planId, quantity: seats, interval: intervalOf(args.planId), status: "paid", provider: "test", createdAt: now });
     return null;
   },
 });
 
-/** Cancel (at period end) or resume a plan that isn't billed through Stripe. Called by `cancel` / `resume`. */
+/** Cancel (at period end) or resume a plan that isn't billed through Polar. Called by `cancel` / `resume`. */
 export const setLocalCancel = internalMutation({
   args: { workspaceId: v.string(), cancel: v.boolean() },
   handler: async (ctx, args) => {
@@ -135,33 +155,33 @@ export const setLocalCancel = internalMutation({
     const { workspace } = await requireWorkspaceBilling(ctx, profile, args.workspaceId, { write: !args.cancel });
     const sub = await workspaceSubscriptionOf(ctx, workspace._id);
     if (!sub || !livePaid(sub)) fail("invalid_argument", "This workspace is on the Free plan.");
-    if (sub.provider === "stripe") fail("invalid_argument", "Manage this subscription in the billing portal.");
+    if (sub.provider === "polar") fail("invalid_argument", "Manage this subscription in the billing portal.");
     await ctx.db.patch(sub._id, { cancelAtPeriodEnd: args.cancel, updatedAt: Date.now() });
     return null;
   },
 });
 
 // ---------------------------------------------------------------------------------------------------
-// Stripe: checkout, portal, plan changes, cancel/resume
+// Polar: checkout, portal, plan changes, cancel/resume
 // ---------------------------------------------------------------------------------------------------
 
 interface BillingContext {
   workspaceId: string;
-  publicId: string;
+  profileId: string;
   email: string;
-  customerId: string | null;
-  provider: "none" | "stripe" | "manual" | "test";
-  stripeSubscriptionId: string | null;
-  itemId: string | null;
+  provider: "none" | "polar" | "manual" | "test" | "stripe";
+  polarSubscriptionId: string | null;
   planId: WorkspacePlanId;
   /** A paid plan in force right now. */
   paid: boolean;
-  /** A Stripe subscription that hasn't ended. */
-  stripeLive: boolean;
+  /** A Polar subscription that hasn't ended. */
+  polarLive: boolean;
+  /** Whether the caller is the person whose Polar customer pays. */
+  youPay: boolean;
   seats: number;
 }
 
-/** What the Stripe actions need, after checking the caller may manage this workspace's billing. */
+/** What the Polar actions need, after checking the caller may manage this workspace's billing. */
 export const billingContext = internalQuery({
   args: { workspaceId: v.string(), write: v.boolean() },
   handler: async (ctx, args): Promise<BillingContext> => {
@@ -171,15 +191,14 @@ export const billingContext = internalQuery({
     const e = await workspaceEntitlements(ctx, workspace);
     return {
       workspaceId: workspace._id as string,
-      publicId: workspace.publicId,
+      profileId: profile._id as string,
       email: profile.email,
-      customerId: sub?.stripeCustomerId ?? null,
       provider: sub?.provider ?? "none",
-      stripeSubscriptionId: sub?.stripeSubscriptionId ?? null,
-      itemId: sub?.stripeSubscriptionItemId ?? null,
-      planId: sub?.planId ?? "workspace_free",
+      polarSubscriptionId: sub?.polarSubscriptionId ?? null,
+      planId: sub ? storedWorkspacePlanId(sub) : "workspace_free",
       paid: e.paid,
-      stripeLive: Boolean(sub && sub.provider === "stripe" && sub.stripeSubscriptionId && livePaid(sub)),
+      polarLive: Boolean(sub && sub.provider === "polar" && sub.polarSubscriptionId && livePaid(sub) && sub.status !== "canceled"),
+      youPay: Boolean(sub && sub.polarBuyerId === profile._id),
       seats: await billableQuantity(ctx, workspace._id),
     };
   },
@@ -191,77 +210,65 @@ async function contextFor(ctx: ActionCtx, workspaceId: string, write = true): Pr
   return await ctx.runQuery(internal.workspaceBilling.billingContext, { workspaceId, write });
 }
 
-/** Starts Stripe Checkout for a paid workspace plan, one seat per billable member; returns the page to open. */
+/**
+ * Starts Polar Checkout for a paid workspace plan, one seat per billable member (counted here); returns the
+ * page to open. The caller's own Polar customer pays.
+ */
 export const checkout = action({
   args: { workspaceId: v.string(), planId: vPaidWorkspacePlanId },
   handler: async (ctx, args): Promise<{ url: string }> => {
     await requireIdentity(ctx);
-    if (!workspaceStripeReady()) fail("maintenance", "Workspace payments aren't set up on this server yet.");
     const c = await contextFor(ctx, args.workspaceId);
-    if (c.stripeLive) fail("invalid_argument", "This workspace already has a subscription. Change its plan instead.");
-    const price = workspacePriceId(args.planId);
-    if (!price) fail("maintenance", "That plan isn't available to buy yet.");
-    const session = await stripePost("checkout/sessions", {
-      mode: "subscription",
-      "line_items[0][price]": price,
-      "line_items[0][quantity]": String(c.seats),
-      client_reference_id: `ws:${c.workspaceId}`,
-      "metadata[workspaceId]": c.workspaceId,
-      "subscription_data[metadata][workspaceId]": c.workspaceId,
-      ...(c.customerId ? { customer: c.customerId } : { customer_email: c.email }),
-      allow_promotion_codes: "true",
-      success_url: `${appUrl()}/settings/workspace-billing?checkout=success`,
-      cancel_url: `${appUrl()}/settings/workspace-billing?checkout=canceled`,
+    if (!workspaceCheckoutReady()) fail("maintenance", "Workspace payments aren't set up on this server yet.");
+    if (c.polarLive) fail("invalid_argument", "This workspace already has a subscription. Change its plan instead.");
+    const url = await createCheckout({
+      product: productId(args.planId)!,
+      externalCustomerId: c.profileId,
+      email: c.email,
+      metadata: { kind: "workspace", workspaceId: c.workspaceId, profileId: c.profileId },
+      seats: c.seats,
+      successPath: "/settings/workspace-billing?checkout=success",
+      returnPath: "/settings/workspace-billing",
     });
-    return { url: String(session.url) };
+    return { url };
   },
 });
 
-/** Stripe's billing portal for the workspace's own Stripe customer (card, invoices, cancel). */
+/** Polar's customer portal (payment method, invoices), for the person who pays for this workspace only. */
 export const portal = action({
   args: { workspaceId: v.string() },
   handler: async (ctx, args): Promise<{ url: string }> => {
     await requireIdentity(ctx);
-    if (!stripeKey()) fail("maintenance", "Payments aren't set up on this server yet.");
     const c = await contextFor(ctx, args.workspaceId);
-    if (!c.customerId) fail("invalid_argument", "There's no paid subscription to manage yet.");
-    // A portal configuration of its own keeps Personal plans out of a workspace's portal (optional).
-    const configuration = process.env.STRIPE_PORTAL_CONFIG_WS;
-    const session = await stripePost("billing_portal/sessions", { customer: c.customerId, return_url: `${appUrl()}/settings/workspace-billing`, ...(configuration ? { configuration } : {}) });
-    return { url: String(session.url) };
+    if (c.provider !== "polar") fail("invalid_argument", "There's no paid subscription to manage yet.");
+    if (!c.youPay) fail("forbidden", "Only the person who started this subscription can open its billing portal. You can still change, cancel or resume the plan here.");
+    return { url: await customerPortal(c.profileId, "/settings/workspace-billing") };
   },
 });
 
-/** Team ↔ Business and monthly ↔ yearly on a Stripe subscription (prorated by Stripe). */
+/** Core, Pro and Pro AI, monthly or yearly, on a Polar subscription (prorated by Polar). */
 export const changePlan = action({
   args: { workspaceId: v.string(), planId: vPaidWorkspacePlanId },
   handler: async (ctx, args): Promise<null> => {
     await requireIdentity(ctx);
     const c = await contextFor(ctx, args.workspaceId);
-    if (!c.stripeLive || !c.stripeSubscriptionId) fail("invalid_argument", "There's no subscription to change. Choose a plan to start one.");
+    if (!c.polarLive || !c.polarSubscriptionId) fail("invalid_argument", "There's no subscription to change. Choose a plan to start one.");
     if (c.planId === args.planId) fail("invalid_argument", "The workspace is already on that plan.");
-    const price = workspacePriceId(args.planId);
-    if (!price) fail("maintenance", "That plan isn't available to buy yet.");
-    const itemId = c.itemId ?? (await firstItemId(c.stripeSubscriptionId));
-    await stripePost(`subscription_items/${itemId}`, { price, quantity: String(c.seats), proration_behavior: "create_prorations" });
-    await ctx.runMutation(internal.workspaceBilling.recordStripeChange, { workspaceId: c.workspaceId as Id<"workspaces">, planId: args.planId, quantity: c.seats, itemId });
+    const product = productId(args.planId);
+    if (!product) fail("maintenance", "That plan isn't available to buy yet.");
+    await polarPatch(`subscriptions/${c.polarSubscriptionId}`, { product_id: product, proration_behavior: "prorate" });
+    // Seats are their own update (Polar takes one kind of change at a time); the sync reads the count again.
+    await ctx.runMutation(internal.workspaceBilling.recordPolarChange, { workspaceId: c.workspaceId as Id<"workspaces">, planId: args.planId });
     return null;
   },
 });
 
-async function firstItemId(subscriptionId: string): Promise<string> {
-  const sub = await stripeGet(`subscriptions/${subscriptionId}`);
-  const id = subscriptionItems(sub)[0]?.id;
-  if (!id) fail("maintenance", "The subscription couldn't be read from Stripe. Try again shortly.");
-  return id;
-}
-
 async function setCancel(ctx: ActionCtx, workspaceId: string, cancel: boolean): Promise<null> {
   const c = await contextFor(ctx, workspaceId, !cancel);
   if (!c.paid) fail("invalid_argument", "This workspace is on the Free plan.");
-  if (c.provider === "stripe" && c.stripeSubscriptionId) {
-    await stripePost(`subscriptions/${c.stripeSubscriptionId}`, { cancel_at_period_end: String(cancel) });
-    await ctx.runMutation(internal.workspaceBilling.recordStripeChange, { workspaceId: c.workspaceId as Id<"workspaces">, cancelAtPeriodEnd: cancel });
+  if (c.provider === "polar" && c.polarSubscriptionId) {
+    await polarPatch(`subscriptions/${c.polarSubscriptionId}`, { cancel_at_period_end: cancel });
+    await ctx.runMutation(internal.workspaceBilling.recordPolarChange, { workspaceId: c.workspaceId as Id<"workspaces">, cancelAtPeriodEnd: cancel });
   } else {
     await ctx.runMutation(internal.workspaceBilling.setLocalCancel, { workspaceId, cancel });
   }
@@ -286,16 +293,14 @@ export const resume = action({
   },
 });
 
-/** Reflects a change Stripe just accepted (its webhook confirms it again moments later). */
-export const recordStripeChange = internalMutation({
-  args: { workspaceId: v.id("workspaces"), planId: v.optional(vPaidWorkspacePlanId), quantity: v.optional(v.number()), itemId: v.optional(v.string()), cancelAtPeriodEnd: v.optional(v.boolean()) },
+/** Reflects a change Polar just accepted (its webhook confirms it again moments later). */
+export const recordPolarChange = internalMutation({
+  args: { workspaceId: v.id("workspaces"), planId: v.optional(vPaidWorkspacePlanId), cancelAtPeriodEnd: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const sub = await workspaceSubscriptionOf(ctx, args.workspaceId);
-    if (!sub || sub.provider !== "stripe") return null;
+    if (!sub || sub.provider !== "polar") return null;
     await ctx.db.patch(sub._id, {
       ...(args.planId ? { planId: args.planId } : {}),
-      ...(args.quantity !== undefined ? { quantity: args.quantity } : {}),
-      ...(args.itemId ? { stripeSubscriptionItemId: args.itemId } : {}),
       ...(args.cancelAtPeriodEnd !== undefined ? { cancelAtPeriodEnd: args.cancelAtPeriodEnd } : {}),
       updatedAt: Date.now(),
     });
@@ -304,25 +309,25 @@ export const recordStripeChange = internalMutation({
 });
 
 // ---------------------------------------------------------------------------------------------------
-// Seat quantity sync (scheduled by lib/seats.ts seatsChanged)
+// Seat sync (scheduled by lib/seats.ts seatsChanged)
 // ---------------------------------------------------------------------------------------------------
 
-/** Clears the pending mark and says what Stripe's quantity should be now (null: nothing to tell Stripe). */
+/** Clears the pending mark and says what Polar's seats should be now (null: nothing to tell Polar). */
 export const beginSeatSync = internalMutation({
   args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, args): Promise<{ itemId: string; seats: number } | null> => {
+  handler: async (ctx, args): Promise<{ subscriptionId: string; seats: number } | null> => {
     const sub = await workspaceSubscriptionOf(ctx, args.workspaceId);
     if (!sub) return null;
     if (sub.seatSyncScheduledAt !== undefined) await ctx.db.patch(sub._id, { seatSyncScheduledAt: undefined });
     if (!livePaid(sub) || sub.status === "canceled") return null;
     const seats = await billableQuantity(ctx, args.workspaceId);
-    if (sub.provider !== "stripe") {
+    if (sub.provider !== "polar") {
       if (sub.quantity !== seats) await ctx.db.patch(sub._id, { quantity: seats, updatedAt: Date.now() });
       return null;
     }
-    // No item yet (the subscription events haven't arrived): the created event schedules a sync itself.
-    if (!sub.stripeSubscriptionItemId) return null;
-    return { itemId: sub.stripeSubscriptionItemId, seats };
+    // No subscription id yet (its events haven't arrived): the created event schedules a sync itself.
+    if (!sub.polarSubscriptionId) return null;
+    return { subscriptionId: sub.polarSubscriptionId, seats };
   },
 });
 
@@ -338,8 +343,9 @@ export const recordSeatQuantity = internalMutation({
 const SYNC_RETRIES = 5;
 
 /**
- * Sets the Stripe subscription's quantity to the workspace's current billable seats, with proration.
- * It does nothing when Stripe's quantity already matches, so running it twice (or for two changes at once) is harmless.
+ * Sets the Polar subscription's seats to the workspace's current billable seats (Polar prorates). It does
+ * nothing when Polar already agrees, so running it twice (or for two changes at once) is harmless. A
+ * failure is retried with a growing delay.
  */
 export const syncSeatQuantity = internalAction({
   args: { workspaceId: v.id("workspaces"), attempt: v.optional(v.number()) },
@@ -347,9 +353,9 @@ export const syncSeatQuantity = internalAction({
     const job = await ctx.runMutation(internal.workspaceBilling.beginSeatSync, { workspaceId: args.workspaceId });
     if (!job) return { status: "noop" };
     try {
-      const item = await stripeGet(`subscription_items/${job.itemId}`);
-      const changed = Number(item.quantity) !== job.seats;
-      if (changed) await stripePost(`subscription_items/${job.itemId}`, { quantity: String(job.seats), proration_behavior: "create_prorations" });
+      const current = await polarGet(`subscriptions/${job.subscriptionId}`);
+      const changed = num(current.seats) !== job.seats;
+      if (changed) await polarPatch(`subscriptions/${job.subscriptionId}`, { seats: job.seats, proration_behavior: "prorate" });
       await ctx.runMutation(internal.workspaceBilling.recordSeatQuantity, { workspaceId: args.workspaceId, quantity: job.seats });
       return { status: changed ? "synced" : "unchanged", seats: job.seats };
     } catch {
@@ -361,112 +367,85 @@ export const syncSeatQuantity = internalAction({
   },
 });
 
-/** A workspace being deleted: stop its Stripe subscription renewing (it runs to the end of the paid period). */
+/**
+ * A workspace (or an account) being deleted: stop its Polar subscription renewing (it runs to the end of the
+ * paid period).
+ */
 export const stopForDeletedWorkspace = internalAction({
-  args: { stripeSubscriptionId: v.string() },
+  args: { polarSubscriptionId: v.string() },
   handler: async (_ctx, args) => {
-    if (!stripeKey()) return null;
-    await stripePost(`subscriptions/${args.stripeSubscriptionId}`, { cancel_at_period_end: "true" });
+    if (!polarToken()) return null;
+    await polarPatch(`subscriptions/${args.polarSubscriptionId}`, { cancel_at_period_end: true });
     return null;
   },
 });
 
-/** Called when a workspace is purged: schedules the end of its Stripe subscription, if it has one. */
+/** Called when a workspace is purged: schedules the end of its Polar subscription, if it has one. */
 export async function workspaceClosing(ctx: MutationCtx, workspaceId: Id<"workspaces">): Promise<void> {
   const sub = await workspaceSubscriptionOf(ctx, workspaceId);
   if (!sub || !livePaid(sub)) return;
   await ctx.db.patch(sub._id, { cancelAtPeriodEnd: true, updatedAt: Date.now() });
-  if (sub.provider === "stripe" && sub.stripeSubscriptionId && !sub.cancelAtPeriodEnd) {
-    await ctx.scheduler.runAfter(0, internal.workspaceBilling.stopForDeletedWorkspace, { stripeSubscriptionId: sub.stripeSubscriptionId });
+  if (sub.provider === "polar" && sub.polarSubscriptionId && !sub.cancelAtPeriodEnd) {
+    await ctx.scheduler.runAfter(0, internal.workspaceBilling.stopForDeletedWorkspace, { polarSubscriptionId: sub.polarSubscriptionId });
   }
 }
 
 // ---------------------------------------------------------------------------------------------------
-// Webhook (routed here by convex/billing.ts applyStripeEvent, which dedupes by event id)
+// Webhook (routed here by convex/billing.ts applyPolarEvent, which dedupes by delivery id)
 // ---------------------------------------------------------------------------------------------------
 
-/** Stripe subscription status → ours. Unpaid and incomplete subscriptions give no access. */
-const WS_STATUS: Record<string, WorkspaceSubscription["status"]> = { active: "active", trialing: "active", past_due: "past_due", unpaid: "canceled", incomplete: "canceled", incomplete_expired: "canceled", canceled: "canceled", paused: "canceled" };
-
-export async function applyWorkspaceStripeEvent(ctx: MutationCtx, row: WorkspaceSubscription, type: string, created: number | undefined, o: Record<string, unknown>): Promise<ApplyResult> {
+/** A Polar subscription event for a workspace's plan. */
+export async function applyWorkspaceSubscriptionEvent(ctx: MutationCtx, row: WorkspaceSubscription, planId: PaidWorkspacePlanId, status: WorkspaceSubscription["status"], at: number, o: Record<string, unknown>): Promise<void> {
   const now = Date.now();
-  const customer = typeof o.customer === "string" ? o.customer : row.stripeCustomerId;
-  if (type === "checkout.session.completed") {
-    await ctx.db.patch(row._id, { provider: "stripe", stripeCustomerId: customer, stripeSubscriptionId: subscriptionIdOf(o) ?? row.stripeSubscriptionId, updatedAt: now });
-  } else if (type === "customer.subscription.created" || type === "customer.subscription.updated" || type === "customer.subscription.deleted") {
-    if (created !== undefined && row.stripeEventCreatedAt !== undefined && created < row.stripeEventCreatedAt) {
-      console.warn(JSON.stringify({ event: "billing.webhook_stale", type }));
-      return { status: "stale" };
-    }
-    const items = subscriptionItems(o);
-    const item = items.find((i) => workspacePlanForPrice(i.priceId)) ?? items[0];
-    const mapped = item ? workspacePlanForPrice(item.priceId) : null;
-    if (!mapped) console.warn(JSON.stringify({ event: "billing.webhook_unknown_price", type }));
-    const rawStatus = String(o.status);
-    const status = type === "customer.subscription.deleted" ? "canceled" : (WS_STATUS[rawStatus] ?? "past_due");
-    const period = periodOf(o, item);
-    const periodEnd = period.end ?? row.currentPeriodEnd;
-    const planId: WorkspacePlanId = mapped ?? row.planId;
-    const trialEnd = rawStatus === "trialing" && typeof o.trial_end === "number" ? o.trial_end * 1000 : undefined;
-    await ctx.db.patch(row._id, {
-      provider: "stripe",
-      planId,
-      status,
-      quantity: item?.quantity ?? row.quantity,
-      stripeSubscriptionItemId: item?.id ?? row.stripeSubscriptionItemId,
-      currentPeriodStart: period.start ?? row.currentPeriodStart,
-      currentPeriodEnd: status === "canceled" ? Math.min(periodEnd ?? now, now) : periodEnd,
-      cancelAtPeriodEnd: Boolean(o.cancel_at_period_end),
-      trialEndsAt: trialEnd,
-      stripeCustomerId: customer,
-      stripeSubscriptionId: typeof o.id === "string" ? o.id : row.stripeSubscriptionId,
-      paidSince: row.paidSince && livePaid(row, now) && PLAN_CATALOG[row.planId].tier === PLAN_CATALOG[planId].tier ? row.paidSince : status === "canceled" ? row.paidSince : now,
-      canceledAt: status === "canceled" ? (row.canceledAt ?? now) : undefined,
-      stripeEventCreatedAt: created ?? row.stripeEventCreatedAt,
-      updatedAt: now,
-    });
-    // Members may have joined or left while Checkout was open: bring Stripe's quantity to the current count.
-    if (status !== "canceled" && isPaidPlan(planId) && item?.quantity !== undefined && item.quantity !== (await billableQuantity(ctx, row.workspaceId))) {
-      await seatsChanged(ctx, row.workspaceId);
-    }
-  } else if (type === "invoice.paid" || type === "invoice.payment_failed") {
-    const ref = typeof o.id === "string" ? o.id : undefined;
-    const existing = ref
-      ? await ctx.db
-          .query("payments")
-          .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
-          .unique()
-      : null;
-    const paid = type === "invoice.paid";
-    const amount = Number(paid ? o.amount_paid : o.amount_due) || 0;
-    if (isPaidPlan(row.planId) && amount > 0 && ref) {
-      const planId = row.planId as PaidWorkspacePlanId;
-      const status = invoicePaymentStatus(existing, paid);
-      if (existing) {
-        if (existing.status !== status) await ctx.db.patch(existing._id, { status });
-      } else {
-        await insertPayment(ctx, { kind: "workspace", workspaceId: row.workspaceId }, {
-          amountCents: amount,
-          currency: String(o.currency ?? "usd"),
-          plan: PLAN_CATALOG[planId].tier as "team" | "business",
-          planId,
-          quantity: row.quantity,
-          interval: intervalOf(planId),
-          status,
-          provider: "stripe",
-          providerRef: ref,
-          createdAt: now,
-        });
-      }
-    }
-    if (!paid && failedInvoiceMarksPastDue(existing, created, row)) await ctx.db.patch(row._id, { status: "past_due", updatedAt: now });
-  } else if (type === "charge.succeeded") {
-    const label = cardLabel(o);
-    if (label && label !== row.paymentMethod) await ctx.db.patch(row._id, { paymentMethod: label, updatedAt: now });
-  } else if (type === "charge.refunded") {
-    await markInvoiceRefunded(ctx, o);
+  const periodEnd = ms(o.current_period_end) ?? row.currentPeriodEnd;
+  const seats = num(o.seats);
+  const buyer = (() => {
+    const meta = (o.metadata as Record<string, unknown> | undefined)?.profileId;
+    const ext = (o.customer as Record<string, unknown> | undefined)?.external_id;
+    const ref = typeof meta === "string" ? meta : typeof ext === "string" ? ext : undefined;
+    return ref ? (ctx.db.normalizeId("profiles", ref) ?? undefined) : undefined;
+  })();
+  const wasLive = livePaid(row, now) && row.status !== "canceled";
+  const sameTier = PLAN_CATALOG[storedWorkspacePlanId(row)].tier === PLAN_CATALOG[planId].tier;
+  await ctx.db.patch(row._id, {
+    provider: "polar",
+    planId,
+    status,
+    quantity: seats ?? row.quantity,
+    currentPeriodStart: ms(o.current_period_start) ?? row.currentPeriodStart,
+    currentPeriodEnd: status === "canceled" ? Math.min(periodEnd ?? now, now) : periodEnd,
+    cancelAtPeriodEnd: Boolean(o.cancel_at_period_end),
+    trialEndsAt: o.status === "trialing" ? ms(o.trial_end) : undefined,
+    polarCustomerId: str(o.customer_id) ?? row.polarCustomerId,
+    polarSubscriptionId: str(o.id) ?? row.polarSubscriptionId,
+    polarProductId: str(o.product_id),
+    polarBuyerId: buyer ?? row.polarBuyerId,
+    paidSince: wasLive && row.paidSince && sameTier ? row.paidSince : status === "canceled" ? row.paidSince : now,
+    canceledAt: status === "canceled" ? (row.canceledAt ?? now) : undefined,
+    polarEventAt: at,
+    updatedAt: now,
+  });
+  // Members may have joined or left while Checkout was open: bring Polar's seats to the current count.
+  if (status !== "canceled" && seats !== undefined && seats !== (await billableQuantity(ctx, row.workspaceId))) {
+    await seatsChanged(ctx, row.workspaceId);
   }
-  return { status: "applied" };
+}
+
+/** A paid Polar order for a workspace's plan (first payment, renewal or change), keyed by order id. */
+export async function applyWorkspaceOrder(ctx: MutationCtx, row: WorkspaceSubscription, planId: PaidWorkspacePlanId, orderId: string, amountCents: number, currency: string, seats: number | undefined): Promise<void> {
+  const plan = PLAN_CATALOG[planId];
+  await insertPayment(ctx, { kind: "workspace", workspaceId: row.workspaceId }, {
+    amountCents,
+    currency,
+    plan: plan.tier as "core" | "pro" | "pro_ai",
+    planId,
+    quantity: seats ?? row.quantity,
+    interval: intervalOf(planId),
+    status: "paid",
+    provider: "polar",
+    providerRef: orderId,
+    createdAt: Date.now(),
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -481,9 +460,11 @@ export async function settleExpiredWorkspacePlans(ctx: MutationCtx, now: number)
     .take(2000);
   let changed = 0;
   for (const s of rows) {
-    if (!isWorkspaceSubscription(s) || !isPaidPlan(s.planId) || s.provider === "stripe" || s.currentPeriodEnd === undefined || s.currentPeriodEnd > now) continue;
+    if (!isWorkspaceSubscription(s)) continue;
+    const planId = storedWorkspacePlanId(s);
+    if (!isPaidPlan(planId) || s.provider === "polar" || s.currentPeriodEnd === undefined || s.currentPeriodEnd > now) continue;
     if (s.provider === "test" && !s.cancelAtPeriodEnd) {
-      await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: now + periodMs(s.planId as PaidWorkspacePlanId), updatedAt: now });
+      await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: periodEndFrom(now, PLAN_CATALOG[planId].interval), updatedAt: now });
       continue;
     }
     await ctx.db.patch(s._id, { planId: "workspace_free", status: "canceled", quantity: undefined, canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });

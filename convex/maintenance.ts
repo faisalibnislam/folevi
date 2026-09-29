@@ -7,11 +7,12 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { normalizeEmail } from "./lib/support";
 import { bump } from "./lib/metrics";
-import { adjustStorageUsed } from "./lib/entitlements";
+import { releaseFileStorage } from "./lib/entitlements";
 import { adjustDocumentCount } from "./lib/create";
 import { seatsChanged } from "./lib/seats";
 import { normalizeMembership } from "./lib/auth";
 import { workspaceClosing } from "./workspaceBilling";
+import { subscriptionOf } from "./lib/billing";
 import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, type Scope } from "./lib/scope";
 
 const BUDGET = 400;
@@ -106,7 +107,7 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     .take(50);
   for (const f of files) {
     await ctx.storage.delete(f.storageId);
-    if (hasValidScope(f)) await adjustStorageUsed(ctx, scopeOfRow(f), -f.size);
+    if (hasValidScope(f)) await releaseFileStorage(ctx, f, scopeOfRow(f));
     await bump(ctx, "storage_bytes", -f.size);
     await ctx.db.delete(f._id);
     budget.spend();
@@ -261,6 +262,13 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     await ctx.db.delete(f._id);
   }
   if (files.length) return false;
+  // Per-member storage counters (the workspace's files are gone).
+  const counters = await ctx.db
+    .query("workspaceStorage")
+    .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId))
+    .take(200);
+  for (const c of counters) await ctx.db.delete(c._id);
+  if (counters.length === 200) return false;
   await ctx.db.delete(workspaceId);
   await bump(ctx, "workspaces_total", -1);
   return true;
@@ -328,6 +336,10 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("sessionsMirror").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("documentPermissions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("noteSubscriptions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // AI credits: their periods, packs and holds (billing history stays on `payments`).
+    () => ctx.db.query("aiCreditPeriods").withIndex("by_account_period", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("aiCreditPacks").withIndex("by_account_expires", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("aiCreditHolds").withIndex("by_account", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
   for (const load of personalBatches) {
     const rows = await load();
@@ -353,6 +365,12 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     dataVariables: { completedOn: new Date().toUTCString() },
   });
   await ctx.scheduler.runAfter(0, internal.identity.deleteProviderUser, { authSubject: profile.authSubject });
+  // A Personal plan billed through Polar stops renewing (it runs to the end of the paid period).
+  const sub = await subscriptionOf(ctx, profileId);
+  if (sub?.provider === "polar" && sub.polarSubscriptionId && sub.status !== "canceled" && !sub.cancelAtPeriodEnd) {
+    await ctx.db.patch(sub._id, { cancelAtPeriodEnd: true, updatedAt: Date.now() });
+    await ctx.scheduler.runAfter(0, internal.workspaceBilling.stopForDeletedWorkspace, { polarSubscriptionId: sub.polarSubscriptionId });
+  }
   // Keep an anonymized tombstone so comments elsewhere render as "Former member".
   await ctx.db.patch(profileId, {
     status: "deleted",

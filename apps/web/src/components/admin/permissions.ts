@@ -30,6 +30,7 @@ export type Capability =
   | "billing.view"
   | "billing.trial"
   | "billing.manage"
+  | "billing.credits"
   | "billing.refund"
   | "users.export"
   | "analytics.view"
@@ -63,10 +64,12 @@ export const PERMISSIONS: Record<Capability, AdminRole[]> = {
   "audit.viewAll": OWNER,
   "deletionJobs.view": ADMIN,
   "billing.view": ALL,
-  /** Give or extend a Pro trial (support staff up to 14 days, admins up to 90). */
+  /** Give or extend a Pro AI trial (support staff up to 14 days, admins up to 90). */
   "billing.trial": ALL,
-  /** Set plans by hand, grant AI, override storage. */
+  /** Set plans by hand, override storage and device limits. */
   "billing.manage": ADMIN,
+  /** Grant AI credits (Personal, or a seat in a paid workspace); mirrors adminBilling.grantCredits. */
+  "billing.credits": ADMIN,
   "billing.refund": OWNER,
   "analytics.view": ALL,
   "revenue.view": ADMIN,

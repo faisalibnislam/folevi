@@ -10,12 +10,13 @@ import { createDocument } from "./lib/create";
 import { nextSeq } from "./lib/seq";
 import { insertScoped, personalScope } from "./lib/scope";
 import { FOLDER_COLORS } from "./lib/folderColors";
+import { deductCredits, personalAccount, seatAccount } from "./lib/credits";
 
 function assertNotProduction() {
   if (process.env.FOLEVI_ENV === "production") throw new Error("testSupport functions are disabled in production.");
 }
 
-/** Ends someone's Pro trial now (e2e plan and device-limit tests). */
+/** Ends someone's Pro AI trial now (e2e plan and device-limit tests). */
 export const endTrial = internalMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
@@ -30,6 +31,34 @@ export const endTrial = internalMutation({
       .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
       .unique();
     if (sub) await ctx.db.patch(sub._id, { trialEndsAt: Date.now() - 1, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+/**
+ * Uses up someone's AI credits for this period (their Personal, or their seat in a workspace by public id),
+ * to see the out-of-credits state locally and in e2e tests. Bought credits are left alone.
+ */
+export const exhaustCredits = internalMutation({
+  args: { email: v.string(), workspaceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    assertNotProduction();
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_email", (q) => q.eq("email", args.email.trim().toLowerCase()))
+      .unique();
+    if (!profile) throw new Error("No profile with that email. Sign in once first.");
+    let account = await personalAccount(ctx, profile._id);
+    if (args.workspaceId) {
+      const w = await ctx.db
+        .query("workspaces")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.workspaceId!))
+        .unique();
+      const seat = w ? await seatAccount(ctx, profile._id, w._id) : null;
+      if (!seat) throw new Error("That workspace isn't on a paid plan with AI.");
+      account = seat;
+    }
+    await deductCredits(ctx, account, account.allowance);
     return null;
   },
 });

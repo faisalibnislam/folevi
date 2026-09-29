@@ -10,14 +10,15 @@
 //     owner's back; an admin who wants billing stopped cancels or changes the plan (admin console).
 //
 // Whenever a membership starts, ends or changes billable status, call `seatsChanged`. It stores the new
-// count at once for plans without a payment provider (test and manual plans), and for Stripe plans marks
-// the workspace (seatSyncScheduledAt) and schedules one `workspaceBilling.syncSeatQuantity`, which reads the *current* count
-// and sets Stripe's quantity only if it differs. Duplicate or racing triggers therefore converge.
+// count at once for plans without a payment provider (test and manual plans), and for Polar plans marks
+// the workspace (seatSyncScheduledAt) and schedules one `workspaceBilling.syncSeatQuantity`, which reads the
+// *current* count and sets the Polar subscription's seats only if they differ (Polar prorates). Duplicate or
+// racing triggers therefore converge; a failed sync is retried.
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { WorkspaceRole } from "./auth";
-import { workspaceSubscriptionOf } from "./billing";
+import { storedWorkspacePlanId, workspaceSubscriptionOf } from "./billing";
 import { billedQuantity, isPaidPlan } from "./plans";
 
 // The pure price arithmetic lives in the shared catalog (the web app shows the same numbers).
@@ -29,7 +30,7 @@ type Ctx = QueryCtx | MutationCtx;
 const BILLABLE_ROLES: Record<WorkspaceRole, boolean> = { owner: true, admin: true, member: true };
 export const isBillableRole = (role: WorkspaceRole) => BILLABLE_ROLES[role];
 
-/** How long seat changes are gathered before Stripe is updated (a burst of accepts → one update). */
+/** How long seat changes are gathered before Polar is updated (a burst of accepts → one update). */
 export const SEAT_SYNC_DELAY_MS = 5_000;
 /** A scheduled sync that hasn't run by now is assumed lost, and a new one may be scheduled. */
 const SEAT_SYNC_STALE_MS = 15 * 60_000;
@@ -94,8 +95,8 @@ export async function seatSummary(ctx: Ctx, workspaceId: Id<"workspaces">, now =
  */
 export async function seatsChanged(ctx: MutationCtx, workspaceId: Id<"workspaces">): Promise<void> {
   const sub = await workspaceSubscriptionOf(ctx, workspaceId);
-  if (!sub || !isPaidPlan(sub.planId) || sub.status === "canceled") return;
-  if (sub.provider !== "stripe") {
+  if (!sub || !isPaidPlan(storedWorkspacePlanId(sub)) || sub.status === "canceled") return;
+  if (sub.provider !== "polar") {
     // Test and manual plans have no provider to tell: the stored quantity is the bill.
     const seats = await billableQuantity(ctx, workspaceId);
     if (sub.quantity !== seats) await ctx.db.patch(sub._id, { quantity: seats, updatedAt: Date.now() });

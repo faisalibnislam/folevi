@@ -3,7 +3,7 @@ import { SupportForm } from "@/components/support/SupportForm";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL, absoluteUrl } from "@/components/marketing/site";
 import { PageHeader, container, cx } from "@/components/marketing/ui";
-import { PLANS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
+import { MONTHLY_CREDITS, PLANS, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
 
 export const metadata = pageMetadata({
   title: "Support",
@@ -40,7 +40,7 @@ const faqs: Faq[] = [
   },
   {
     q: "What do the plans cost?",
-    a: `Free includes 1 GB of storage on ${PLANS.free.devices} devices. Basic is ${formatPrice(PLANS.basic.monthlyCents)} a month (or ${formatPrice(PLANS.basic.yearlyCents)} a year) with 20 GB on any number of devices. Pro is ${formatPrice(PLANS.pro.monthlyCents)} a month (or ${formatPrice(PLANS.pro.yearlyCents)} a year) with 100 GB and the AI Assistant. Every new account gets Pro free for ${TRIAL_DAYS} days, with no card; after that you stay on Free unless you choose a plan.`,
+    a: `Free includes 1 GB of storage, ${MONTHLY_CREDITS.free} AI credits a month and ${PLANS.free.devices} devices. Core is ${formatPrice(PLANS.core.monthlyCents)} a month (or ${formatPrice(PLANS.core.yearlyCents)} a year) with 20 GB and no AI. Pro is ${formatPrice(PLANS.pro.monthlyCents)} a month (or ${formatPrice(PLANS.pro.yearlyCents)} a year) with 20 GB and ${MONTHLY_CREDITS.pro} AI credits a month. Pro AI is ${formatPrice(PLANS.pro_ai.monthlyCents)} a month (or ${formatPrice(PLANS.pro_ai.yearlyCents)} a year) with 50 GB and unlimited AI, fair use. Team plans cost the same per member. Every new account gets Pro AI free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card; after that you stay on Free unless you choose a plan.`,
     link: { label: "See pricing", href: "/pricing" },
   },
   {

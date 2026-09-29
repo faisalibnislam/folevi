@@ -6,11 +6,11 @@
 //
 // Every subscription and payment row is inserted here (tests/convex/static checks nothing else inserts into
 // either table), so the "exactly one owner" rule holds. What a plan entitles its owner to is resolved in
-// lib/entitlements.ts; the plans themselves live in lib/plans.ts.
+// lib/entitlements.ts; the plans themselves live in lib/plans.ts. Payments go through Polar (lib/polar.ts).
 import type { WithoutSystemFields } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { DAY_MS, TRIAL_DAYS, isPaidPlan, personalPlanId, type PersonalTier, type WorkspacePlanId } from "./plans";
+import { CATALOG_VERSION, DAY_MS, TRIAL_DAYS, addMonthsUtc, isPaidPlan, personalPlanId, personalTierOf, workspacePlanIdOf, type BillingInterval, type PersonalTier, type StoredPersonalTier, type StoredWorkspacePlanId, type WorkspacePlanId } from "./plans";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -18,19 +18,39 @@ type Ctx = QueryCtx | MutationCtx;
 export type BillingOwner = { kind: "user"; profileId: Id<"profiles"> } | { kind: "workspace"; workspaceId: Id<"workspaces"> };
 
 /** A Personal subscription row (its person and tier are always set). */
-export type PersonalSubscription = Doc<"subscriptions"> & { profileId: Id<"profiles">; plan: PersonalTier };
+export type PersonalSubscription = Doc<"subscriptions"> & { profileId: Id<"profiles">; plan: StoredPersonalTier };
 /** A workspace subscription row (its workspace and catalog plan id are always set). */
-export type WorkspaceSubscription = Doc<"subscriptions"> & { workspaceId: Id<"workspaces">; planId: WorkspacePlanId; ownerType: "workspace" };
+export type WorkspaceSubscription = Doc<"subscriptions"> & { workspaceId: Id<"workspaces">; planId: StoredWorkspacePlanId; ownerType: "workspace" };
 
 export const isWorkspaceSubscription = (s: Doc<"subscriptions">): s is WorkspaceSubscription => s.ownerType === "workspace" && s.workspaceId !== undefined && s.planId !== undefined;
 export const isPersonalSubscription = (s: Doc<"subscriptions">): s is PersonalSubscription => s.ownerType === "user" && s.profileId !== undefined && s.plan !== undefined;
 
-/** A Personal payment row (basic or pro, for a person). */
-export type PersonalPayment = Doc<"payments"> & { profileId: Id<"profiles">; plan: "basic" | "pro" };
-export const isPersonalPayment = (p: Doc<"payments">): p is PersonalPayment => p.profileId !== undefined && p.workspaceId === undefined && (p.plan === "basic" || p.plan === "pro");
+/** A Personal row's tier and catalog id, in today's catalog (legacy rows mapped). */
+export const personalTier = (s: Pick<PersonalSubscription, "plan" | "catalogVersion">): PersonalTier => personalTierOf(s);
+export const storedPersonalPlanId = (s: Pick<PersonalSubscription, "plan" | "catalogVersion" | "interval">) => personalPlanId(personalTier(s), s.interval);
+/** A workspace row's plan in today's catalog (Team → Pro, Business → Pro AI on rows not yet migrated). */
+export const storedWorkspacePlanId = (s: Pick<WorkspaceSubscription, "planId">): WorkspacePlanId => workspacePlanIdOf(s.planId);
 
-type SubscriptionFields = Omit<WithoutSystemFields<Doc<"subscriptions">>, "ownerType" | "profileId" | "workspaceId">;
-type PaymentFields = Omit<WithoutSystemFields<Doc<"payments">>, "profileId" | "workspaceId">;
+/** The fields that set a Personal row's tier (always with the catalog version, so "pro" means Pro). */
+export const personalPlanFields = (tier: PersonalTier) => ({ plan: tier, catalogVersion: CATALOG_VERSION });
+
+/** A person's payment (a Personal plan or credits they bought), never a workspace plan's. */
+export type PersonalPayment = Doc<"payments"> & { profileId: Id<"profiles"> };
+export const isPersonalPayment = (p: Doc<"payments">): p is PersonalPayment => p.profileId !== undefined && p.workspaceId === undefined;
+
+/** A payment's tier in today's catalog ("credits" for a credit pack). */
+export function paymentTier(p: Pick<Doc<"payments">, "plan" | "catalogVersion" | "workspaceId">): Exclude<PersonalTier, "free"> | "credits" {
+  if (p.plan === "credits") return "credits";
+  if (p.plan === "team") return "pro";
+  if (p.plan === "business") return "pro_ai";
+  if (p.plan === "basic") return "core";
+  if (p.catalogVersion === CATALOG_VERSION) return p.plan;
+  // Before January 2027 a Personal "pro" payment was the old Pro (now Pro AI).
+  return p.plan === "pro" && !p.workspaceId ? "pro_ai" : p.plan;
+}
+
+type SubscriptionFields = Omit<WithoutSystemFields<Doc<"subscriptions">>, "ownerType" | "profileId" | "workspaceId" | "catalogVersion">;
+type PaymentFields = Omit<WithoutSystemFields<Doc<"payments">>, "profileId" | "workspaceId" | "catalogVersion">;
 
 function ownerFields(owner: BillingOwner) {
   return owner.kind === "user" ? { ownerType: "user" as const, profileId: owner.profileId } : { ownerType: "workspace" as const, workspaceId: owner.workspaceId };
@@ -40,15 +60,20 @@ function ownerFields(owner: BillingOwner) {
 export async function insertSubscription(ctx: MutationCtx, owner: BillingOwner, fields: SubscriptionFields): Promise<Id<"subscriptions">> {
   if (owner.kind === "user" && (fields.plan === undefined || fields.planId !== undefined)) throw new Error("A Personal subscription stores a personal tier.");
   if (owner.kind === "workspace" && (fields.planId === undefined || fields.plan !== undefined)) throw new Error("A workspace subscription stores a workspace plan id.");
-  return await ctx.db.insert("subscriptions", { ...fields, ...ownerFields(owner) });
+  return await ctx.db.insert("subscriptions", { ...fields, ...ownerFields(owner), catalogVersion: CATALOG_VERSION });
 }
 
-/** The one way a payment row is created: a Personal payment or a workspace payment, never both. */
+/**
+ * The one way a payment row is created: a person's payment (a Personal plan or a credit pack) or a
+ * workspace's (a workspace plan), never both.
+ */
 export async function insertPayment(ctx: MutationCtx, owner: BillingOwner, fields: PaymentFields): Promise<Id<"payments">> {
-  const personalTier = fields.plan === "basic" || fields.plan === "pro";
-  if ((owner.kind === "user") !== personalTier) throw new Error("A payment's plan must belong to its owner's kind.");
+  const workspacePlan = fields.planId !== undefined;
+  if (owner.kind === "user" && workspacePlan) throw new Error("A payment's plan must belong to its owner's kind.");
+  if (owner.kind === "workspace" && (!workspacePlan || fields.plan === "credits")) throw new Error("A payment's plan must belong to its owner's kind.");
+  if ((fields.plan === "credits") !== (fields.credits !== undefined)) throw new Error("A credit pack payment records its credits.");
   const who = owner.kind === "user" ? { profileId: owner.profileId } : { workspaceId: owner.workspaceId };
-  return await ctx.db.insert("payments", { ...fields, ...who });
+  return await ctx.db.insert("payments", { ...fields, ...who, catalogVersion: CATALOG_VERSION });
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -73,14 +98,14 @@ export async function ensureSubscription(ctx: MutationCtx, profileId: Id<"profil
 }
 
 /**
- * Whether a Personal plan is billed through Stripe right now. Admins can't set such a plan by hand
- * (adminBilling.setPlan refuses); it is changed or canceled in Stripe.
+ * Whether a Personal plan is billed through Polar right now. Admins can't set such a plan by hand
+ * (adminBilling.setPlan refuses); it is changed or canceled in Polar.
  */
-export function personalStripeBilled(sub: PersonalSubscription | null): boolean {
-  return Boolean(sub && sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval)));
+export function personalPolarBilled(sub: PersonalSubscription | null): boolean {
+  return Boolean(sub && sub.provider === "polar" && sub.status !== "canceled" && isPaidPlan(storedPersonalPlanId(sub)));
 }
 
-/** A new account's billing row: Free, with a Pro trial. */
+/** A new account's billing row: Free, with a Pro AI trial. */
 export async function startTrial(ctx: MutationCtx, profileId: Id<"profiles">): Promise<void> {
   if (await subscriptionOf(ctx, profileId)) return;
   const now = Date.now();
@@ -101,11 +126,11 @@ export async function workspaceSubscriptionOf(ctx: Ctx, workspaceId: Id<"workspa
 }
 
 /**
- * Whether a workspace's plan is billed through Stripe right now (including a canceled plan still inside its
+ * Whether a workspace's plan is billed through Polar right now (including a canceled plan still inside its
  * paid period). Admins can't set such a plan by hand (adminBilling.setWorkspacePlan refuses).
  */
-export function workspaceStripeBilled(sub: WorkspaceSubscription | null, now = Date.now()): boolean {
-  return Boolean(sub && sub.provider === "stripe" && isPaidPlan(sub.planId) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now));
+export function workspacePolarBilled(sub: WorkspaceSubscription | null, now = Date.now()): boolean {
+  return Boolean(sub && sub.provider === "polar" && isPaidPlan(storedWorkspacePlanId(sub)) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now));
 }
 
 /** A workspace's billing row, created on Workspace Free if it doesn't exist yet. */
@@ -117,38 +142,5 @@ export async function ensureWorkspaceSubscription(ctx: MutationCtx, workspaceId:
   return (await ctx.db.get(id)) as WorkspaceSubscription;
 }
 
-/**
- * The status an invoice event leaves on the payment already recorded for that invoice (Stripe events can
- * arrive late, twice or out of order): a refund stays refunded, and a failure delivered after the invoice
- * was paid doesn't undo the payment.
- */
-export function invoicePaymentStatus(existing: Doc<"payments"> | null, paid: boolean): Doc<"payments">["status"] {
-  if (existing?.status === "refunded") return "refunded";
-  if (existing?.status === "paid" && !paid) return "paid";
-  return paid ? "paid" : "failed";
-}
-
-/**
- * Whether a failed-invoice event may mark the plan past due: not when that invoice has been paid since,
- * nor when a newer subscription event (which carries the real status) was already applied.
- */
-export function failedInvoiceMarksPastDue(existing: Doc<"payments"> | null, created: number | undefined, row: { stripeEventCreatedAt?: number }): boolean {
-  if (existing && existing.status !== "failed") return false;
-  return !(created !== undefined && row.stripeEventCreatedAt !== undefined && created < row.stripeEventCreatedAt);
-}
-
-/**
- * A refund in Stripe marks the payment for that invoice refunded (Personal or workspace alike). A partial
- * refund (Stripe's charge says `refunded: false`) leaves it paid.
- */
-export async function markInvoiceRefunded(ctx: MutationCtx, o: Record<string, unknown>): Promise<void> {
-  if (o.refunded === false) return;
-  const ref = typeof o.invoice === "string" ? o.invoice : undefined;
-  const payment = ref
-    ? await ctx.db
-        .query("payments")
-        .withIndex("by_provider_ref", (q) => q.eq("providerRef", ref))
-        .unique()
-    : null;
-  if (payment) await ctx.db.patch(payment._id, { status: "refunded" });
-}
+/** When a test plan's period that starts at `start` ends: a calendar month or year later (like Polar's). */
+export const periodEndFrom = (start: number, interval: BillingInterval | null | undefined) => addMonthsUtc(start, interval === "year" ? 12 : 1);

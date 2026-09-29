@@ -12,6 +12,7 @@ import { uploadIdentityImage } from "@/lib/app/identityImages";
 import { IdentityImageField } from "./IdentityImageField";
 import { Switch } from "@/components/ui/Switch";
 import { useAiAccess } from "@/components/ai/useAi";
+import { AppLink } from "@/lib/app/router";
 
 export function AccountSection() {
   const { profile, timeZone } = useAppState();
@@ -85,8 +86,8 @@ export function AccountSection() {
 
 /** Turns the AI assistant on or off for this person (the server enforces it). */
 function AiSettingCard() {
-  // Your own setting and Personal plan (team workspaces include AI on their own plans).
-  const { setting: on, personalEntitled: entitled } = useAiAccess();
+  // Your own setting and Personal plan. Core has no AI, so there's nothing to turn on.
+  const { setting: on, personalCore: core } = useAiAccess();
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const descId = useId();
@@ -94,19 +95,20 @@ function AiSettingCard() {
     <Card title="AI Assistant">
       <div className="flex max-w-xl items-start justify-between gap-6">
         <p id={descId} className="text-sm text-muted">
-          Ask AI, writing help and note summaries, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and all AI buttons are hidden.
-          {!entitled ? (
+          {core ? (
             <>
-              {" "}
-              <span className="font-medium text-heading">In Personal, AI is part of Pro.</span>{" "}
-              <a href="/settings/billing" className="underline underline-offset-2">
+              <span className="font-medium text-heading">Not included in Core.</span> Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include the AI Assistant.{" "}
+              <AppLink href="/settings/billing" className="underline underline-offset-2">
                 See plans
-              </a>
+              </AppLink>
             </>
-          ) : null}
+          ) : (
+            "Ask AI, writing help and note summaries, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and all AI buttons are hidden."
+          )}
         </p>
         <Switch
-          checked={on}
+          checked={on && !core}
+          disabled={core}
           label="AI Assistant"
           describedBy={descId}
           onChange={(next) => {

@@ -45,9 +45,9 @@ const subprocessors = [
     data: "Only when you use the AI Assistant: your request and the notes it needs to answer (the open note, or notes found by search that you can already read). Never sent while the AI Assistant is off.",
   },
   {
-    name: "Stripe",
-    role: "Payments",
-    data: "For paid plans: your email address, plan and billing details. Card numbers go straight to Stripe; Folevi never sees or stores them.",
+    name: "Polar",
+    role: "Payments (merchant of record)",
+    data: "For paid plans and AI credit packs: your email address, billing details, the plan or pack, and internal account ids that link a payment to your account or workspace. Never the content of your notes. Card numbers go straight to Polar; Folevi never sees or stores them.",
   },
 ];
 

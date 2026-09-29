@@ -2,54 +2,85 @@ import { expect, test } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
 
 // Personal plans in Settings → Plan & billing. Locally payments aren't connected, so upgrades are test purchases.
+// The public pricing page has its own spec (pricing.spec.ts); AI credits and Core are in credits.spec.ts.
 
-test("a new account is on a 7-day Pro trial, can take a test plan, and cancel it", async ({ browser }) => {
+test("a new account is on a 7-day Pro AI trial, can take a test plan, and cancel it", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Plan Person");
-  // Settings → Plan & billing shows the trial.
+  // Settings → Plan & billing shows the trial, its credits and its storage.
   await page.goto(`${APP}/settings/billing`);
-  await expect(page.getByRole("heading", { name: "Your plan" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Pro trial", { exact: true })).toBeVisible();
-  await expect(page.getByText(/7 days left|6 days left/)).toBeVisible();
-  await expect(page.getByText("Unlimited during your Pro trial.")).toBeVisible();
+  const plan = page.getByRole("region", { name: "Your plan", exact: true });
+  await expect(plan).toBeVisible({ timeout: 30_000 });
+  await expect(plan.getByText("Pro AI trial", { exact: true })).toBeVisible();
+  await expect(plan.getByText("Trial", { exact: true })).toBeVisible();
+  await expect(plan.getByText(/(7|6) days of Pro AI left/)).toBeVisible();
+  await expect(plan.getByText("100 AI credits left")).toBeVisible();
+  await expect(plan.getByText(/100 of 100 trial credits left\. Your trial ends on /)).toBeVisible();
+  await expect(plan.getByText("Your own 50 GB during your trial.")).toBeVisible();
+  await expect(plan.getByText(/Unlimited during your trial/)).toBeVisible();
 
-  // Three personal plans; yearly prices. Nothing about storage pooled across workspaces.
+  // Four personal plans, in order; yearly prices first.
   await expect(page.getByRole("heading", { name: "Choose a personal plan" })).toBeVisible();
   await expect(page.getByText("Your plan applies to your personal account. Workspaces have their own plans, members, limits and billing.")).toBeVisible();
-  await expect(page.getByText(/across (all|your personal)/)).toHaveCount(0);
-  await expect(page.getByText("1 GB personal storage")).toBeVisible();
-  await page.getByRole("group", { name: "Billing period" }).getByRole("button", { name: /Yearly/ }).click();
-  await expect(page.getByText("$49", { exact: true })).toBeVisible();
-  await expect(page.getByText("$0.75/month, billed yearly")).toBeVisible();
-  await expect(page.getByText("$4.08/month, billed yearly")).toBeVisible();
+  const cards = page.getByRole("region", { name: /^(Free|Core|Pro|Pro AI) plan$/ });
+  await expect(cards).toHaveCount(4);
+  await expect(cards.locator("h4")).toHaveText(["Free", "Core", "Pro", "Pro AI"]);
+  const card = (name: string) => page.getByRole("region", { name: `${name} plan`, exact: true });
+  await expect(card("Free").getByRole("button", { name: "Your plan" })).toBeDisabled();
+  await expect(card("Core").getByText("$19", { exact: true })).toBeVisible();
+  await expect(card("Core").getByText("$1.58/month, billed yearly")).toBeVisible();
+  await expect(card("Pro").getByText("$49", { exact: true })).toBeVisible();
+  await expect(card("Pro").getByText("$4.08/month, billed yearly")).toBeVisible();
+  await expect(card("Pro AI").getByText("$149", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$12.41/month, billed yearly")).toBeVisible();
+  await expect(card("Core").getByText("No AI. Your notes stay yours: nothing is sent to an AI model")).toBeVisible();
   await page.getByRole("group", { name: "Billing period" }).getByRole("button", { name: "Monthly" }).click();
+  await expect(card("Core").getByText("$1.99", { exact: true })).toBeVisible();
+  await expect(card("Pro").getByText("$4.99", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$12.99", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: /Upgrade to Basic/ }).click();
-  await expect(page.getByRole("status").filter({ hasText: "You're on Basic (test purchase)." })).toBeVisible();
-  await expect(page.getByText("Basic", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("cell", { name: "$2" })).toBeVisible();
+  // Choosing a plan ends the trial: Pro (test purchase), monthly.
+  await card("Pro").getByRole("button", { name: "Choose Pro (test)" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "You're on Pro (test purchase)." })).toBeVisible();
+  await expect(plan.getByText("Pro", { exact: true })).toBeVisible();
+  await expect(plan.getByText("Active", { exact: true })).toBeVisible();
+  await expect(plan.getByText("180 AI credits left")).toBeVisible();
+  await expect(plan.getByText(/180 of 180 monthly credits left\. Resets on /)).toBeVisible();
+  await expect(plan.getByText("Your own 20 GB on Pro.")).toBeVisible();
+  await expect(card("Pro").getByRole("button", { name: "Your plan" })).toBeDisabled();
+  await expect(card("Pro AI").getByRole("button", { name: "Upgrade to Pro AI (test)" })).toBeVisible();
+  await expect(card("Core").getByRole("button", { name: "Change to Core (test)" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Pro · monthly" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "$4.99 USD" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Cancel plan" }).click();
-  await expect(page.getByText("Cancel scheduled", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Your Basic features remain available until then\./)).toBeVisible();
-  await page.getByRole("button", { name: "Resume subscription" }).click();
-  await expect(page.getByText("Active", { exact: true })).toBeVisible();
+  // Cancel at the end of the period, then resume.
+  await plan.getByRole("button", { name: "Cancel plan" }).click();
+  await expect(plan.getByText("Cancel scheduled", { exact: true })).toBeVisible();
+  await expect(plan.getByText(/Your Pro features remain available until then\./)).toBeVisible();
+  await plan.getByRole("button", { name: "Resume subscription" }).click();
+  await expect(plan.getByText("Active", { exact: true })).toBeVisible();
+
+  // Switching to Free ends the plan at the close of the period.
+  await card("Free").getByRole("button", { name: "Switch to Free" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Your plan will end at the close of this billing period." })).toBeVisible();
+  await expect(plan.getByText("Cancel scheduled", { exact: true })).toBeVisible();
   await context.close();
 });
 
-test("the public pricing page lists Free, Basic and Pro, then the workspace plans", async ({ page }) => {
-  await page.goto("http://localhost:3000/pricing");
-  const personal = page.getByRole("region", { name: "Personal plans" });
-  for (const name of ["Free", "Basic", "Pro"]) await expect(personal.getByRole("heading", { level: 2, name, exact: true })).toBeVisible();
-  await expect(personal.getByText("$0", { exact: true })).toBeVisible();
-  await expect(personal.getByText("$2", { exact: true })).toBeVisible();
-  await expect(personal.getByText("$5", { exact: true })).toBeVisible();
-  await expect(personal.getByText("100 GB personal storage")).toBeVisible();
-  await expect(personal.getByRole("link", { name: /Try Pro free for 7 days/ })).toBeVisible();
-  // Workspaces: Free, and Team / Business per member (not on sale yet).
-  const workspaces = page.getByRole("region", { name: "Workspaces" });
-  for (const name of ["Free", "Team", "Business"]) await expect(workspaces.getByRole("heading", { level: 3, name, exact: true })).toBeVisible();
-  await expect(workspaces.getByText("or $49 per member / year")).toBeVisible();
-  await expect(workspaces.getByText("or $99 per member / year")).toBeVisible();
-  await expect(workspaces.getByText("Coming soon", { exact: true })).toHaveCount(2);
-  await expect(page.getByText(/across every workspace|workspaces you own/)).toHaveCount(0);
+test("Core: more room and no AI, said plainly on the plan page", async ({ browser }) => {
+  const { page, context } = await newPerson(browser, "Core Planner");
+  await page.goto(`${APP}/settings/billing`);
+  const plan = page.getByRole("region", { name: "Your plan", exact: true });
+  await expect(plan).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("region", { name: "Core plan", exact: true }).getByRole("button", { name: "Choose Core (test)" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "You're on Core (test purchase)." })).toBeVisible();
+  await expect(plan.getByText("Core", { exact: true })).toBeVisible();
+  await expect(plan.getByText("Annual", { exact: true })).toBeVisible();
+  await expect(plan.getByText(/Core doesn't include AI, so nothing in your notes is sent to an AI model\./)).toBeVisible();
+  await expect(plan.getByText("Your own 20 GB on Core.")).toBeVisible();
+  const personal = page.getByRole("listitem", { name: "AI credits: Personal" });
+  await expect(personal).toContainText("Not included in Core.");
+  await expect(personal.getByRole("button", { name: "Buy credits" })).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "Core · yearly" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "$19 USD" })).toBeVisible();
+  await context.close();
 });

@@ -7,9 +7,9 @@ import { FileText, RotateCcw, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
-import { errorMessage } from "@/components/ui/Toast";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
+import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 
 interface Brief {
   answer: string;
@@ -29,7 +29,7 @@ export function CatchUp() {
   const stream = useAiStream();
   const [data, setData] = useState<Brief | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AiProblem | null>(null);
 
   useEffect(() => {
     try {
@@ -55,7 +55,7 @@ export function CatchUp() {
         /* storage unavailable: keep it in memory */
       }
     } catch (e) {
-      setError(errorMessage(e));
+      setError(aiProblem(e));
     } finally {
       stream.end();
       setBusy(false);
@@ -82,11 +82,7 @@ export function CatchUp() {
           <AiIcon size={15} aria-hidden /> Catch me up
         </button>
         <span className="text-[12.5px] text-muted">A quick AI brief of this week’s notes and what’s due.</span>
-        {error ? (
-          <p role="alert" className="w-full text-[13px] text-danger">
-            {error}
-          </p>
-        ) : null}
+        {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "w-full text-[13px] text-danger" : "w-full max-w-xl"} /> : <AiCreditsNote className="w-full max-w-xl" />}
       </div>
     );
   }
@@ -134,11 +130,7 @@ export function CatchUp() {
           ) : null}
         </>
       ) : null}
-      {error ? (
-        <p role="alert" className="mt-2 text-[13px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-2 text-[13px] text-danger" : "mt-3"} /> : data && !busy ? <AiCreditsNote className="mt-3" /> : null}
     </section>
   );
 }

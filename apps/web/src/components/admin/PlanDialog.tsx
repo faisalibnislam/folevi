@@ -8,7 +8,9 @@ import { Select } from "@/components/ui/Select";
 import { formatBytes } from "@/lib/format";
 import {
   PLAN_CATALOG,
+  PLAN_ORDER,
   PLANS,
+  WORKSPACE_PLAN_ORDER,
   WORKSPACE_PLANS,
   formatPrice,
   planName,
@@ -48,20 +50,23 @@ export const storageLimit = (bytes: number) => (bytes % 1024 ** 4 === 0 ? `${byt
 
 interface TierInfo {
   tier: string;
-  /** "Pro", "Team" */
+  /** "Pro AI" */
   name: string;
-  /** "Pro", "Workspace Team" (what the toast and the summary say) */
+  /** "Pro AI", "Workspace Pro AI" (what the toast and the summary say) */
   fullName: (interval: BillingInterval | null) => string;
   monthlyCents: number;
   yearlyCents: number;
   perMember: boolean;
   storageBytes: number;
+  /** Whether the plan includes AI at all (every plan but Core). */
   ai: boolean;
+  /** AI credits a month (per member in a workspace); 0 on Core, and on Workspace Free (members use their own). */
+  credits: number;
   /** Devices at once (Personal plans); null = unlimited. undefined = not applicable. */
   devices?: number | null;
 }
 
-const PERSONAL_TIERS: TierInfo[] = (["free", "basic", "pro"] as const).map((t) => ({
+const PERSONAL_TIERS: TierInfo[] = PLAN_ORDER.map((t) => ({
   tier: t,
   name: PLANS[t].name,
   fullName: () => PLANS[t].name,
@@ -70,10 +75,11 @@ const PERSONAL_TIERS: TierInfo[] = (["free", "basic", "pro"] as const).map((t) =
   perMember: false,
   storageBytes: PLANS[t].storageBytes,
   ai: PLANS[t].ai,
+  credits: PLANS[t].monthlyCredits,
   devices: PLANS[t].devices,
 }));
 
-const WORKSPACE_TIERS: TierInfo[] = (["free", "team", "business"] as const).map((t) => {
+const WORKSPACE_TIERS: TierInfo[] = WORKSPACE_PLAN_ORDER.map((t) => {
   const monthly = PLAN_CATALOG[workspacePlanId(t, "month")];
   return {
     tier: t,
@@ -84,6 +90,8 @@ const WORKSPACE_TIERS: TierInfo[] = (["free", "team", "business"] as const).map(
     perMember: WORKSPACE_PLANS[t].perSeat,
     storageBytes: monthly.entitlements.storageBytes,
     ai: monthly.entitlements.aiAssistant,
+    // On Workspace Free each member uses their own personal credits.
+    credits: t === "free" ? 0 : monthly.entitlements.monthlyCredits,
   };
 });
 
@@ -93,6 +101,12 @@ const price = (t: TierInfo, i: BillingInterval) => {
   return `${formatPrice(cents)}${t.perMember ? " per member" : ""} / ${i === "year" ? "year" : "month"}`;
 };
 
+/** "1 GB, shared", "20 GB per member" */
+const storageText = (t: TierInfo, kind: "personal" | "workspace") => (t.tier === "free" ? (kind === "personal" ? `${storageLimit(t.storageBytes)}, shared` : `Owner's ${storageLimit(t.storageBytes)}`) : `${storageLimit(t.storageBytes)}${kind === "workspace" ? " per member" : ""}`);
+
+/** "180 a month", "No AI", "Their personal credits" */
+const creditsText = (t: TierInfo, kind: "personal" | "workspace") => (!t.ai ? "No AI" : kind === "workspace" && t.tier === "free" ? "Their personal credits" : `${t.credits.toLocaleString()} a month${kind === "workspace" ? " per member" : ""}`);
+
 // ---------------------------------------------------------------- the dialog
 
 export interface CurrentPlan {
@@ -100,8 +114,10 @@ export interface CurrentPlan {
   interval: BillingInterval | null;
   /** When a hand-set plan ends (ms), or null for no end date. */
   endsAt: number | null;
-  /** A Personal plan's Pro trial end (ms), while it runs. */
+  /** A Personal plan's Pro AI trial end (ms), while it runs. */
   trialEndsAt?: number | null;
+  /** Billed through Polar: it can only be changed in Polar (the server refuses here too). */
+  polarBilled?: boolean;
 }
 
 type EndChoice = "none" | "1m" | "3m" | "1y" | "date";
@@ -133,7 +149,7 @@ function confirmLabel(tiers: TierInfo[], from: string, to: TierInfo): string {
 /**
  * Change a Personal or workspace plan by hand: pick the plan, how it's counted (monthly or yearly), and an
  * optional end date; the summary says exactly what changes. A reason is required and goes to the audit log.
- * The server checks the admin's role, refuses Stripe-billed plans and records the change; this only asks.
+ * The server checks the admin's role, refuses plans billed through Polar and records the change; this only asks.
  */
 function PlanChangeDialog({
   open,
@@ -164,8 +180,8 @@ function PlanChangeDialog({
 
   useEffect(() => {
     if (!open) return;
-    // On a free plan the usual reason to open this is an upgrade: the first plan with the AI Assistant starts selected.
-    setTier(current.tier === "free" ? (tiers.find((t) => t.ai)?.tier ?? current.tier) : current.tier);
+    // On a free plan the usual reason to open this is an upgrade: the first paid plan with AI starts selected.
+    setTier(current.tier === "free" ? (tiers.find((t) => t.tier !== "free" && t.ai)?.tier ?? current.tier) : current.tier);
     setInterval(current.interval ?? "month");
     // A plan with an end date keeps it unless it's changed here.
     setEnd(current.endsAt ? "date" : "none");
@@ -185,11 +201,12 @@ function PlanChangeDialog({
   const changed = to.tier !== from.tier || (paid && (nextInterval !== current.interval || !sameEnd));
   const backTo = kind === "personal" ? "Free" : "Workspace Free";
   const trialing = Boolean(current.trialEndsAt && current.trialEndsAt > Date.now());
+  const polar = Boolean(current.polarBilled);
 
   const rows: { label: string; from: string; to: string }[] = [
     { label: "Plan", from: `${from.fullName(current.interval)}${current.interval ? `, ${intervalWord(current.interval)}` : ""}`, to: `${to.fullName(nextInterval)}${nextInterval ? `, ${intervalWord(nextInterval)}` : ""}` },
-    { label: kind === "personal" ? "Personal storage" : "Workspace storage", from: storageLimit(from.storageBytes), to: storageLimit(to.storageBytes) },
-    { label: "AI Assistant", from: from.ai ? "Included" : "Not included", to: to.ai ? "Included" : "Not included" },
+    { label: kind === "personal" ? "Personal storage" : "Storage", from: storageText(from, kind), to: storageText(to, kind) },
+    { label: "AI credits", from: creditsText(from, kind), to: creditsText(to, kind) },
   ];
   if (kind === "personal") rows.push({ label: "Devices", from: from.devices === null ? "Unlimited" : String(from.devices), to: to.devices === null ? "Unlimited" : String(to.devices) });
   rows.push({
@@ -208,12 +225,13 @@ function PlanChangeDialog({
         <>
           Currently <strong className="font-semibold text-heading">{from.fullName(current.interval)}</strong>
           {current.interval ? `, ${intervalWord(current.interval)}` : ""}
-          {trialing ? ` (on a Pro trial until ${shortDate(current.trialEndsAt!)})` : ""}. Nobody is charged: money only moves through the payment provider.
+          {trialing ? ` (on a Pro AI trial until ${shortDate(current.trialEndsAt!)})` : ""}. Nobody is charged: money only moves through Polar.
         </>
       }
       confirmLabel={changed ? confirmLabel(tiers, from.tier, to) : "Save plan"}
-      confirmDisabled={!changed || Boolean(dateError && dateTouched)}
+      confirmDisabled={polar || !changed || Boolean(dateError && dateTouched)}
       onSubmit={async ({ reason, meta }) => {
+        if (polar) throw new Error(`${kind === "personal" ? "This plan" : "This workspace"} is billed through Polar. Change or cancel it there.`);
         if (dateError) {
           setDateTouched(true);
           throw new Error(dateError);
@@ -223,9 +241,14 @@ function PlanChangeDialog({
         return `Plan set to ${to.fullName(nextInterval)}${nextInterval ? `, ${intervalWord(nextInterval)}` : ""}`;
       }}
     >
-      <fieldset>
+      {polar ? (
+        <Callout tone="warning" title="Billed through Polar">
+          {kind === "personal" ? "This plan is paid for" : "This workspace's plan is paid for"} through Polar, so it can't be changed here. Change or cancel it in Polar; Folevi updates when Polar tells it. After that you can set a plan here if needed.
+        </Callout>
+      ) : null}
+      <fieldset disabled={polar}>
         <legend className="mb-1.5 text-sm font-medium">Plan</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2">
           {tiers.map((t) => {
             const checked = t.tier === tier;
             const isCurrent = t.tier === current.tier;
@@ -246,7 +269,7 @@ function PlanChangeDialog({
                 <span id={`${uid}-${t.tier}`} className="mt-1 text-muted">
                   {t.tier === "free" ? "No charge" : `${formatPrice(interval === "year" ? t.yearlyCents : t.monthlyCents)} / ${interval === "year" ? "year" : "month"}`}
                   <br />
-                  {[t.perMember && t.tier !== "free" ? "per member" : null, storageLimit(t.storageBytes), t.ai ? "AI" : null].filter(Boolean).join(" · ")}
+                  {[t.perMember && t.tier !== "free" ? "per member" : null, storageLimit(t.storageBytes), !t.ai ? "no AI" : t.credits ? `${t.credits.toLocaleString()} credits` : null].filter(Boolean).join(" · ")}
                 </span>
               </label>
             );
@@ -254,7 +277,7 @@ function PlanChangeDialog({
         </div>
       </fieldset>
 
-      {paid ? (
+      {paid && !polar ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="text-sm">
             <p id={`${uid}-interval`} className="mb-1 font-medium">
@@ -347,7 +370,13 @@ function PlanChangeDialog({
           ) : null}
         </dl>
       </section>
-      {trialing && !to.ai ? <Callout>Their Pro trial keeps running until {shortDate(current.trialEndsAt!)}. After that, {to.fullName(nextInterval)} applies.</Callout> : null}
+      {trialing && changed ? (
+        <Callout>
+          {paid
+            ? `A paid plan replaces their Pro AI trial (it would have run until ${shortDate(current.trialEndsAt!)}).`
+            : `Their Pro AI trial keeps running until ${shortDate(current.trialEndsAt!)}. After that, ${to.fullName(nextInterval)} applies.`}
+        </Callout>
+      ) : null}
     </ActionDialog>
   );
 }
@@ -361,6 +390,7 @@ export interface PersonalPlanTarget {
   interval: BillingInterval | null;
   endsAt: number | null;
   trialEndsAt?: number | null;
+  polarBilled?: boolean;
 }
 
 /** A person's Personal plan (adminBilling.setPlan). */
@@ -378,7 +408,7 @@ export function PersonalPlanDialog({ target, onClose, onDone }: { target: Person
       onClose={onClose}
       kind="personal"
       who={t.who}
-      current={{ tier: t.plan, interval: t.interval, endsAt: t.endsAt, trialEndsAt: t.trialEndsAt }}
+      current={{ tier: t.plan, interval: t.interval, endsAt: t.endsAt, trialEndsAt: t.trialEndsAt, polarBilled: t.polarBilled }}
       onSave={async ({ tier, interval, until, reason, meta }) => {
         await setPlan({ profileId: t.profileId, plan: tier as PersonalTier, interval: interval ?? undefined, until, reason, ...meta });
         onDone();
@@ -393,6 +423,7 @@ export interface WorkspacePlanTarget {
   planId: WorkspacePlanId;
   endsAt: number | null;
   seats?: number;
+  polarBilled?: boolean;
 }
 
 /** A team workspace's plan (adminBilling.setWorkspacePlan). */
@@ -411,7 +442,7 @@ export function WorkspacePlanDialog({ target, onClose, onDone }: { target: Works
       onClose={onClose}
       kind="workspace"
       who={t.name}
-      current={{ tier: plan.tier, interval: plan.interval, endsAt: t.endsAt }}
+      current={{ tier: plan.tier, interval: plan.interval, endsAt: t.endsAt, polarBilled: t.polarBilled }}
       seats={t.seats}
       onSave={async ({ tier, interval, until, reason, meta }) => {
         await setPlan({ workspaceId: t.workspaceId, planId: workspacePlanId(tier as WorkspaceTier, interval), until, reason, ...meta });

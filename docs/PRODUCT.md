@@ -17,7 +17,7 @@ This page describes what exists in this repository today, what has been verified
 | Identity (built-in accounts) | **Live.** Better Auth inside Convex: email + password, confirmed email, optional authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). |
 | Email (Mailtrap) | **Live.** All eleven templates (confirmation, password reset, new device, deletion, invites, mentions, comments, digest, shares, access changes) are rendered in the repository with the app's look and sent through Mailtrap, the only provider (`docs/EMAIL_OPERATIONS.md`). |
 | AI Assistant (Gemini) | **Live.** Server-side only (`convex/ai.ts`); the key is a Convex environment variable. |
-| Payments (Stripe) | **Not configured.** Personal and workspace plans, the trial, seats and limits work; paid plans can't be bought until the Stripe variables are set (`.env.example`, `docs/DEPLOYMENT.md`). |
+| Payments (Polar) | **Not configured.** Personal and Team plans, the trial, AI credits, seats and limits work; paid plans and credit packs can't be bought until the Polar variables are set and the plan migration has run (`docs/BILLING.md`). |
 | Native Mac app (`apps/macos`) | Built and unit-tested against the local backend, brought up to the web's current design on 2026-09-28; signs in through the browser (Authorization Code + PKCE). **Not distributed** (ad-hoc signed, not notarized); the marketing page says “Coming soon”. Work is paused while the web is finished (`docs/MACOS.md`). |
 
 iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
@@ -48,9 +48,11 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Ask questions of your notes (with links to the notes used), write, rewrite, summarize, continue,
   translate and find action items (from the slash menu, the selection toolbar or ⌘J), and “Catch me
   up”, a brief of the week on Home. Answers stream in. Anyone can turn it off in Settings. Sent to
-  Google Gemini. In Personal it comes with Pro and the Pro trial; in a workspace, with that workspace's
-  Team or Business plan, for its members (not guests). A personal plan never adds AI to a workspace.
-  Fair-use limits apply (per person, per Personal or workspace).
+  Google Gemini. Metered in AI credits (1 credit = $0.01 of Gemini cost): Free 25 a month, Pro 180, Pro AI
+  550, the trial 100, plus credit packs on Pro and Pro AI. In a paid workspace each member has that plan's
+  credits there; in free workspaces and as a guest, people use their own personal credits. Core has no AI
+  at all: the server refuses every request in a Core Personal or workspace and the app hides AI there.
+  An hourly abuse limit still applies. Details in `docs/BILLING.md`.
 
 ### Personal and workspaces
 - **Personal** is each person's own space, not a workspace: nobody can join it; pages in it can be shared
@@ -59,13 +61,15 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   role. The model and its migration are in `docs/ACCOUNT_MODEL_PLAN.md`.
 
 ### Plans
-- **Personal plans** (per person): Free (1 GB, 2 devices), Basic (20 GB, unlimited devices) and Pro (100 GB,
-  unlimited devices, AI), with a 7-day Pro trial for every new account and no card. Settings → Plan &
-  billing and Settings → Devices.
-- **Workspace plans** (per workspace, billed per member seat: owner, admins and members; guests and pending
-  invitations are free): Workspace Free (5 GB, no AI), Team (100 GB, AI) and Business (1 TB, AI with higher
-  fair use). Managed by the owner and admins they allow (Settings → workspace Plan & billing). Not on sale
-  until Stripe is configured; admins can set a workspace's plan by hand.
+- **Four plans, for Personal and for Team** (`docs/BILLING.md`): Free ($0: 1 GB shared by your Personal
+  and the free workspaces you own, 25 AI credits a month, 2 devices), Core ($1.99 a month or $19 a year:
+  20 GB, no AI), Pro ($4.99 or $49: 20 GB, 180 credits) and Pro AI ($12.99 or $149: 50 GB, 550 credits,
+  "unlimited AI, fair use"). Team plans cost the same per member seat (owner, admins and members; guests
+  and pending invitations are free) and give each member that storage and those credits in the workspace.
+  Every new account gets a 7-day Pro AI trial with 100 credits and no card. Credit packs (500 for $7.99,
+  1,000 for $14.99) last 12 months. Settings → Plan & billing, Settings → Workspace billing, Settings →
+  Devices. Payments go through Polar (the merchant of record) once it's configured; admins can set plans by
+  hand and grant credits.
 - Personal and workspace plans, storage and AI never mix. Over a limit (e.g. after a downgrade) nothing is
   deleted; uploads wait until there's room. Everything is enforced by the server
   (`convex/lib/entitlements.ts`, `convex/lib/seats.ts`).
@@ -131,7 +135,8 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 - **Email:** Mailtrap sends everything, with its signed webhook reporting deliveries and bounces to the
   admin email log (verified in production 2026-09-29). The Convex `LOOPS_*` variables are removed; the
   Loops DNS records and sending domain are removed by the owner per `docs/EMAIL_OPERATIONS.md` §9.
-- **Payments:** Stripe isn't configured on production (personal or workspace prices).
+- **Payments:** Polar isn't configured on production yet, and the plan migration hasn't run there
+  (`docs/BILLING.md`, owner checklist).
 - **Account model:** production runs the new model (Personal is not a workspace, workspace plans, members
   vs guests; migrated and verified 2026-09-29). A few clean-up migrations are left to run and the
   `workspaces.kind` field to delete afterwards (`docs/ACCOUNT_MODEL_PLAN.md` §3b). The Mac app still
@@ -152,7 +157,8 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 1. Run the account-model migration on production (`docs/ACCOUNT_MODEL_PLAN.md` §3a).
 2. Finish the first-release checklist on production and remove the Loops leftovers
    (`docs/EMAIL_OPERATIONS.md` §9).
-3. Stripe on production, so paid personal and workspace plans can be bought.
+3. Polar on production (sandbox first), then run the plan migration, so plans and credit packs can be
+   bought (`docs/BILLING.md`).
 4. Mac: catch up with the web (Personal as its own scope, workspace plans, guests), then distribution (Developer ID signing, notarization, universal build
    once the Convex Swift client ships an x86_64 slice, testing on macOS 15).
 5. Character-level merging for concurrent edits to the same block.

@@ -489,7 +489,7 @@ describe("deleting a workspace", () => {
     const t = setup();
     const w = await world(t, "delws");
     const page = await newPage(w.owner, w.workspaceId, "Notes");
-    await w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_team_monthly" });
+    await w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_pro_monthly" });
     await expect(w.member.as.mutation(api.workspaces.scheduleDeletion, { workspaceId: w.workspaceId, confirmName: "delws team" })).rejects.toThrow(/permission/);
     await expect(w.owner.as.mutation(api.workspaces.scheduleDeletion, { workspaceId: w.workspaceId, confirmName: "wrong" })).rejects.toThrow(/name exactly/);
     await w.owner.as.mutation(api.workspaces.scheduleDeletion, { workspaceId: w.workspaceId, confirmName: "delws team" });

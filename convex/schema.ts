@@ -13,7 +13,8 @@ import {
   vProfileStatus,
   vMemberAccess,
   vShareRole,
-  vWorkspacePlanId,
+  vStoredPersonalTier,
+  vStoredWorkspacePlanId,
   vWorkspaceRole,
 } from "./lib/validators";
 
@@ -385,10 +386,14 @@ export default defineSchema({
    * Plans: a person's Personal plan (one row per profile) or a team workspace's plan (one row per workspace).
    * Exactly one of `profileId` / `workspaceId` is set, matching `ownerType`; rows are written only through convex/lib/billing.ts.
    *
-   * Personal rows are created at sign-up with a 7-day Pro trial and store the tier in `plan`. Workspace rows
-   * store the catalog id in `planId` and the billed seat count in `quantity`. Paid plans come from the
-   * payment provider (Stripe webhooks), a development test purchase ("test"), or an admin ("manual");
-   * admins can also grant AI or override storage on Personal plans.
+   * Personal rows are created at sign-up with a 7-day Pro AI trial and store the tier in `plan`. Workspace
+   * rows store the catalog id in `planId` and the billed seat count in `quantity`. Paid plans come from the
+   * payment provider (Polar webhooks, provider "polar"), a development test purchase ("test"), or an admin
+   * ("manual"); admins can also override storage and devices on Personal plans. docs/BILLING.md.
+   *
+   * Tiers stored before January 2027 ("basic", the old "pro", "workspace_team_*", "workspace_business_*")
+   * are still accepted and read through lib/plans.ts personalTierOf / workspacePlanIdOf until
+   * migrations:migratePlanTiers has run; rows written since carry catalogVersion 2.
    */
   subscriptions: defineTable({
     /** "user" (Personal) or "workspace"; unset on older rows = "user". */
@@ -397,37 +402,47 @@ export default defineSchema({
     profileId: v.optional(v.id("profiles")),
     /** Workspace rows: the workspace (the plan belongs to it, not to whoever owns it). */
     workspaceId: v.optional(v.id("workspaces")),
-    /** Personal rows: the tier. Workspace rows leave it unset (they use planId). */
-    plan: v.optional(v.union(v.literal("free"), v.literal("basic"), v.literal("pro"))),
+    /** Personal rows: the tier ("basic" only on rows not yet migrated). Workspace rows leave it unset. */
+    plan: v.optional(vStoredPersonalTier),
+    /** 2 = written with the January 2027 plans (a stored "pro" is Pro, not the old Pro with AI). */
+    catalogVersion: v.optional(v.number()),
     /** Workspace rows: the catalog plan id (convex/lib/plans.ts). */
-    planId: v.optional(vWorkspacePlanId),
-    /** Workspace rows: member seats billed (the provider's subscription quantity). */
+    planId: v.optional(vStoredWorkspacePlanId),
+    /** Workspace rows: member seats billed (the provider's subscription seats). */
     quantity: v.optional(v.number()),
-    /** Workspace rows: when a seat-quantity sync was scheduled (cleared when it runs; lib/seats.ts). */
+    /** Workspace rows: when a seat sync was scheduled (cleared when it runs; lib/seats.ts). */
     seatSyncScheduledAt: v.optional(v.number()),
-    /** Workspace rows: the Stripe subscription item, for seat and plan changes. */
-    stripeSubscriptionItemId: v.optional(v.string()),
     /** "Visa •••• 4242", when the provider has told us (workspace rows). */
     paymentMethod: v.optional(v.string()),
     currentPeriodStart: v.optional(v.number()),
     interval: v.optional(v.union(v.literal("month"), v.literal("year"))),
     status: v.union(v.literal("active"), v.literal("past_due"), v.literal("canceled")),
-    provider: v.union(v.literal("none"), v.literal("stripe"), v.literal("manual"), v.literal("test")),
+    /** "stripe" only on rows from before Polar (Stripe was never live). */
+    provider: v.union(v.literal("none"), v.literal("polar"), v.literal("manual"), v.literal("test"), v.literal("stripe")),
     trialEndsAt: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
-    stripeCustomerId: v.optional(v.string()),
-    stripeSubscriptionId: v.optional(v.string()),
-    /** Admin-granted AI (on any plan); aiGrantUntil unset = no end date. */
-    aiGrant: v.optional(v.boolean()),
-    aiGrantUntil: v.optional(v.number()),
+    /** Polar: the customer (always the person who bought it; external_id = their profile id). */
+    polarCustomerId: v.optional(v.string()),
+    polarSubscriptionId: v.optional(v.string()),
+    polarProductId: v.optional(v.string()),
+    /** Workspace rows billed through Polar: the person whose Polar customer pays (only they get the portal). */
+    polarBuyerId: v.optional(v.id("profiles")),
+    /** Polar's event time (ms) of the last subscription event applied; older events are ignored. */
+    polarEventAt: v.optional(v.number()),
     storageOverrideBytes: v.optional(v.number()),
     /** Admin-set device limit (a number, or unlimited); unset = the plan's. */
     deviceLimitOverride: v.optional(v.union(v.number(), v.literal("unlimited"))),
     /** When the current paid plan started (for conversion and churn analytics). */
     paidSince: v.optional(v.number()),
     canceledAt: v.optional(v.number()),
-    /** Stripe's `created` time (seconds) of the last subscription event applied; older events are ignored. */
+    /** Legacy, never read: AI grants before AI credits (admins now grant credits, aiCreditPacks). */
+    aiGrant: v.optional(v.boolean()),
+    aiGrantUntil: v.optional(v.number()),
+    /** Legacy, never written: Stripe fields from before Polar (Stripe was never live). */
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    stripeSubscriptionItemId: v.optional(v.string()),
     stripeEventCreatedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -436,27 +451,38 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_owner_type", ["ownerType"])
     .index("by_plan", ["plan"])
-    .index("by_stripe_customer", ["stripeCustomerId"])
-    .index("by_stripe_subscription", ["stripeSubscriptionId"]),
+    .index("by_polar_subscription", ["polarSubscriptionId"]),
 
   /**
    * Money received (and refunds), for billing history and revenue analytics. Amounts in cents. Exactly one
-   * of `profileId` (a Personal plan) / `workspaceId` (a workspace plan), so the two histories never mix.
+   * of `profileId` (a Personal plan, or credits a person bought) / `workspaceId` (a workspace plan), so the
+   * two histories never mix.
    */
   payments: defineTable({
     profileId: v.optional(v.id("profiles")),
     workspaceId: v.optional(v.id("workspaces")),
     amountCents: v.number(),
     currency: v.string(),
-    /** The tier paid for: Personal (basic, pro) or workspace (team, business). */
-    plan: v.union(v.literal("basic"), v.literal("pro"), v.literal("team"), v.literal("business")),
+    /**
+     * What was paid for: a plan tier, or "credits" (an AI credit pack). Legacy rows: basic, pro (the old
+     * Pro), team, business; catalogVersion 2 rows use today's tiers.
+     */
+    plan: v.union(v.literal("core"), v.literal("pro"), v.literal("pro_ai"), v.literal("credits"), v.literal("basic"), v.literal("team"), v.literal("business")),
+    catalogVersion: v.optional(v.number()),
     /** Workspace payments: the catalog plan id and the seats billed. */
-    planId: v.optional(vWorkspacePlanId),
+    planId: v.optional(vStoredWorkspacePlanId),
     quantity: v.optional(v.number()),
-    interval: v.union(v.literal("month"), v.literal("year")),
+    /** Plans: the billing interval. Unset for credit packs. */
+    interval: v.optional(v.union(v.literal("month"), v.literal("year"))),
+    /** Credit packs: how many credits, and the workspace seat they were bought for (unset = Personal). */
+    credits: v.optional(v.number()),
+    creditsWorkspaceId: v.optional(v.id("workspaces")),
     status: v.union(v.literal("paid"), v.literal("refunded"), v.literal("failed")),
-    provider: v.union(v.literal("stripe"), v.literal("manual"), v.literal("test")),
+    provider: v.union(v.literal("polar"), v.literal("manual"), v.literal("test"), v.literal("stripe")),
+    /** The provider's order id (payments are keyed by it, so a redelivered event updates the same row). */
     providerRef: v.optional(v.string()),
+    /** Money refunded so far (a partial refund leaves the status "paid"). */
+    refundedCents: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_profile_created", ["profileId", "createdAt"])
@@ -464,18 +490,18 @@ export default defineSchema({
     .index("by_created", ["createdAt"])
     .index("by_provider_ref", ["providerRef"]),
 
-  /** Stripe webhook events already applied (by event id), so a redelivered event is applied once. */
+  /** Payment provider webhook deliveries already applied (by webhook id), so a redelivery is applied once. */
   billingEvents: defineTable({
     eventId: v.string(),
     type: v.string(),
-    /** Stripe's `created` time (seconds). */
+    /** The provider's event time (seconds). */
     created: v.optional(v.number()),
     processedAt: v.number(),
   }).index("by_event_id", ["eventId"]),
 
   /**
-   * AI requests per person per day (UTC), per scope, for usage limits and analytics. No content. Rows
-   * without a scope predate scopes (all were Personal).
+   * AI use per person per day (UTC), per scope, for the credits meter and analytics. No content: never a
+   * prompt, a note or an answer. `count` is requests; credits and tokens were added with AI credits.
    */
   aiUsage: defineTable({
     profileId: v.id("profiles"),
@@ -484,10 +510,84 @@ export default defineSchema({
     scope: v.union(v.literal("personal"), v.literal("workspace")),
     /** The team workspace the requests were made in (scope "workspace"). */
     workspaceId: v.optional(v.id("workspaces")),
+    /** Credits charged (after rounding up per request). */
+    credits: v.optional(v.number()),
+    /** Tokens sent (prompt) and generated (answer plus thinking), from Gemini's usage metadata. */
+    tokensIn: v.optional(v.number()),
+    tokensOut: v.optional(v.number()),
   })
     .index("by_profile_day", ["profileId", "day"])
     .index("by_day", ["day"])
     .index("by_workspace_day", ["workspaceId", "day"]),
+
+  /**
+   * AI credits used per credit account per period (lib/credits.ts). An account is a person in Personal
+   * (workspaceId unset; also used in free workspaces and by guests) or a member's seat in a paid workspace.
+   * A new period is a new row, which is how monthly credits reset.
+   */
+  aiCreditPeriods: defineTable({
+    profileId: v.id("profiles"),
+    workspaceId: v.optional(v.id("workspaces")),
+    /** The period's start (ms); for the trial, the trial's own row (periodKey "trial"). */
+    periodKey: v.string(),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+    /** Monthly credits used (never more than the allowance). */
+    used: v.number(),
+    /** Credits a request cost beyond everything available (clamped to zero, not charged). */
+    overrun: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_account_period", ["profileId", "workspaceId", "periodKey"]),
+
+  /**
+   * Bought and granted AI credits: a pack (Polar order), a test purchase, or an admin grant. Belongs to one
+   * credit account; used oldest-expiring first after the monthly credits; lasts 12 months (grants: as set).
+   */
+  aiCreditPacks: defineTable({
+    profileId: v.id("profiles"),
+    workspaceId: v.optional(v.id("workspaces")),
+    credits: v.number(),
+    remaining: v.number(),
+    source: v.union(v.literal("polar"), v.literal("test"), v.literal("admin")),
+    status: v.union(v.literal("active"), v.literal("refunded")),
+    purchasedAt: v.number(),
+    expiresAt: v.number(),
+    /** Credits a refund of this pack's order has taken back so far (used credits stay used). */
+    refundedCredits: v.optional(v.number()),
+    /** Polar order id (packs), for refunds and exactly-once delivery. */
+    orderId: v.optional(v.string()),
+    paymentId: v.optional(v.id("payments")),
+  })
+    .index("by_account_expires", ["profileId", "workspaceId", "expiresAt"])
+    .index("by_order", ["orderId"]),
+
+  /**
+   * Credits set aside while an AI request runs (the estimate), so parallel requests can't spend the same
+   * credits. Released when the request settles; an expired hold no longer counts.
+   */
+  aiCreditHolds: defineTable({
+    profileId: v.id("profiles"),
+    workspaceId: v.optional(v.id("workspaces")),
+    /** The scope the request was made in (for aiUsage), which can differ from the account's. */
+    scope: v.union(v.literal("personal"), v.literal("workspace")),
+    scopeWorkspaceId: v.optional(v.id("workspaces")),
+    credits: v.number(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_account", ["profileId", "workspaceId"])
+    .index("by_expires", ["expiresAt"]),
+
+  /**
+   * Storage used per member in a team workspace (bytes), for per-person quotas on paid plans. The
+   * workspace's total stays on `workspaces.storageUsedBytes`. Files record who they count against
+   * (`files.chargedTo`).
+   */
+  workspaceStorage: defineTable({
+    workspaceId: v.id("workspaces"),
+    profileId: v.id("profiles"),
+    usedBytes: v.number(),
+  }).index("by_workspace_profile", ["workspaceId", "profileId"]),
 
   /**
    * Live AI output while it's being written (convex/ai.ts), so the app can show it word by word. Holds only
@@ -783,6 +883,11 @@ export default defineSchema({
     ...scoped,
     documentId: v.optional(v.id("documents")),
     uploadedBy: v.id("profiles"),
+    /**
+     * Team workspace files: whose per-person storage it counts against (the uploader if a member, else the
+     * page's owner). Unset on older files (the uploader). lib/entitlements.ts.
+     */
+    chargedTo: v.optional(v.id("profiles")),
     filename: v.string(),
     mimeType: v.string(),
     size: v.number(),

@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { Select } from "@/components/ui/Select";
 import { formatBytes } from "@/lib/format";
-import { PLANS, PLAN_ORDER } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, formatPrice } from "@/lib/plans";
 import { DailyChart } from "./DailyChart";
 import { DocTitle, Meter, PageHeader, Panel, StatTile, selectCls } from "./ui";
 
@@ -92,7 +92,7 @@ export function AnalyticsView() {
             ))}
           </ul>
         </Panel>
-        <Panel title="Trials" description={`Pro trials, and how many convert (trials ending in the last ${days} days)`}>
+        <Panel title="Trials" description={`Pro AI trials, and how many convert (trials ending in the last ${days} days)`}>
           <dl className="grid grid-cols-2 gap-3">
             <StatTile label="On a trial now" value={d ? n(d.trialing) : "…"} />
             <StatTile label="Ending in 3 days" value={d ? n(d.trialsEndingSoon) : "…"} />
@@ -100,12 +100,13 @@ export function AnalyticsView() {
             <StatTile label="Converted" value={d ? pct(d.trialConversion.rate) : "…"} hint={d ? `${n(d.trialConversion.converted)} now paying` : undefined} />
           </dl>
         </Panel>
-        <Panel title="AI Assistant" description={`Last ${days} days`}>
+        <Panel title="AI" description={`Last ${days} days, Personal and workspaces. 1 credit is $0.01 of AI cost.`}>
           <dl className="grid grid-cols-2 gap-3">
-            <StatTile label="Requests" value={d ? n(d.ai.requests) : "…"} />
-            <StatTile label="People using AI" value={d ? n(d.ai.users) : "…"} />
-            <StatTile label="Per person" value={d && d.ai.users ? (d.ai.requests / d.ai.users).toFixed(1) : "-"} />
-            <StatTile label="Manual AI grants" value={d ? n(d.aiGrants) : "…"} />
+            <StatTile label="Requests" value={d ? n(d.ai.requests) : "…"} hint={d ? `${n(d.ai.byScope.personal)} Personal · ${n(d.ai.byScope.workspace)} workspaces` : undefined} />
+            <StatTile label="People using AI" value={d ? n(d.ai.users) : "…"} hint={d && d.ai.users ? `${(d.ai.requests / d.ai.users).toFixed(1)} requests each` : undefined} />
+            <StatTile label="Credits used" value={d ? n(d.ai.credits) : "…"} hint={d ? `${n(d.ai.creditsByScope.personal)} Personal · ${n(d.ai.creditsByScope.workspace)} workspaces` : undefined} />
+            <StatTile label="AI cost" value={d ? formatPrice(d.ai.credits) : "…"} hint={d ? `${n(d.ai.tokensIn + d.ai.tokensOut)} tokens` : undefined} />
+            <StatTile label="Credits granted" value={d ? n(d.creditGrants.credits) : "…"} hint={d ? `${n(d.creditGrants.count)} ${d.creditGrants.count === 1 ? "grant" : "grants"} by the Folevi team` : undefined} />
           </dl>
         </Panel>
       </div>

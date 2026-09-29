@@ -30,7 +30,7 @@ export default function TermsPage() {
   return (
     <>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="29 September 2026" />
+        <DraftNotice updated="30 September 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
@@ -113,30 +113,38 @@ export default function TermsPage() {
         <h2 id="price">Plans and billing</h2>
         <ul>
           <li>
-            <strong>Personal plans</strong> are per person: Free, and the paid Basic and Pro plans, billed monthly or yearly in
-            advance through Stripe. A personal plan covers your own account and your Personal only.
+            <strong>Personal plans</strong> are per person: Free, and the paid Core, Pro and Pro AI plans, billed monthly or
+            yearly in advance. A personal plan covers your own account and your Personal only.
           </li>
           <li>
-            <strong>Workspace plans</strong> belong to the workspace, not to any one person: Free, and the paid Team and
-            Business plans, billed monthly or yearly in advance through Stripe, per member seat. The owner, admins and members
-            each take a seat; guests and pending invitations are free. When members join or leave, the number of seats billed
-            changes to match, and Stripe prorates the difference. A workspace’s plan stays with it if ownership is
+            <strong>Workspace plans</strong> belong to the workspace, not to any one person: Free, and the paid Core, Pro and
+            Pro AI plans, billed monthly or yearly in advance, per member seat. The owner, admins and members each take a
+            seat; guests and pending invitations are free. When members join or leave, the number of seats billed changes to
+            match, and the difference is prorated. A workspace’s plan stays with it if ownership is
             transferred.
           </li>
           <li>
             Personal and workspace plans never affect each other: a personal plan doesn’t change what a workspace includes, and
-            a workspace plan doesn’t change your personal plan. Prices and what each plan includes (storage, devices and the
-            AI Assistant) are on the <Link href="/pricing">pricing page</Link>.
+            a workspace plan doesn’t change your personal plan. Prices and what each plan includes (storage, devices and AI
+            credits) are on the <Link href="/pricing">pricing page</Link>.
           </li>
-          <li>New accounts get a free 7-day Pro trial. It ends without charge; you choose whether to pay.</li>
+          <li>
+            Payments for plans and AI credit packs are processed by Polar, which sells them to you as merchant of record and
+            handles sales tax or VAT at checkout.
+          </li>
+          <li>
+            AI credit packs are one-time purchases for Pro and Pro AI. Their credits last 12 months from purchase and are used
+            after the monthly credits.
+          </li>
+          <li>New accounts get a free 7-day Pro AI trial with 100 AI credits. It ends without charge; you choose whether to pay.</li>
           <li>
             Paid plans renew automatically until canceled. You can cancel a personal plan in Settings → Plan & billing; a
             workspace plan is canceled by its owner or an admin they allow. A canceled plan keeps working until the end of the
             period paid for, then moves to Free. Payments already made aren’t refunded except where the law requires it.
           </li>
           <li>
-            Plan limits apply while you’re on a plan: personal storage for your personal plan, workspace storage for a
-            workspace’s plan (the two are never added together), and, on the Free personal plan, the number of devices
+            Plan limits apply while you’re on a plan: storage (on Free, your Personal and the free workspaces you own share
+            one allowance; on paid plans, each person has their own), AI credits, and, on the Free personal plan, the number of devices
             signed in at once, which being in a workspace doesn’t change. Going over a limit, for example after moving to a
             smaller plan, pauses new uploads or holds a new device until you make room or upgrade. Nothing already stored is
             deleted, and you can still open, edit, organise, export and delete it.
@@ -149,10 +157,10 @@ export default function TermsPage() {
 
         <h2 id="ai">The AI Assistant</h2>
         <p>
-          On plans that include it, the AI Assistant can answer questions about your notes and help you write. In your
-          Personal it comes with Pro (and the trial); in a workspace it comes with the workspace’s Team or Business plan, for
-          its members. A personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it
-          available to everyone. It uses Google’s Gemini API, as described in our{" "}
+          On plans that include it, the AI Assistant can answer questions about your notes and help you write. Every plan
+          except Core includes it, with a number of AI credits each month; in a free workspace, members use their own
+          personal credits, and in a paid workspace, each member gets the workspace plan’s credits. Core has no AI. A
+          personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it available to everyone. It uses Google’s Gemini API, as described in our{" "}
           <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
           produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as
           to the rest of your content.

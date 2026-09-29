@@ -89,7 +89,11 @@ export function WorkspacesView() {
                     <td className={td}>
                       <span className="flex flex-wrap items-center gap-1">
                         <Badge tone={onFree ? "neutral" : "strong"}>{planName(planId)}</Badge>
-                        {w.stripeBilled ? <Badge tone="outline" title="Billed through Stripe">Stripe</Badge> : null}
+                        {w.polarBilled ? (
+                          <Badge tone="outline" title="Billed through Polar">
+                            Polar
+                          </Badge>
+                        ) : null}
                       </span>
                       {interval || w.planEndsAt ? (
                         <span className="mt-0.5 block text-[12px] text-muted">
@@ -108,9 +112,8 @@ export function WorkspacesView() {
                         {w.status === "deleting" ? null : (
                           <Button
                             size="sm"
-                            disabled={w.stripeBilled}
-                            title={w.stripeBilled ? "Billed through Stripe. Change it in Stripe." : undefined}
-                            onClick={() => setPlanFor({ workspaceId: w.id, name: w.name, planId, endsAt: w.planEndsAt })}
+                            title={w.polarBilled ? "Billed through Polar. Change it in Polar." : undefined}
+                            onClick={() => setPlanFor({ workspaceId: w.id, name: w.name, planId, endsAt: w.planEndsAt, polarBilled: w.polarBilled })}
                           >
                             {onFree ? <ArrowUpCircle size={14} aria-hidden /> : null}
                             {onFree ? "Upgrade" : "Change plan"}

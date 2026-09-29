@@ -396,54 +396,37 @@ text to `ink`. Axe runs in the e2e suite in both themes.
   `GEMINI_FAST_MODEL`, default `gemini-flash-lite-latest`, used for search terms and as the fallback when the
   main model is busy). Retrieval: the fast model turns the question into keyword queries → the workspace
   full-text index → only notes the person can read (`documentAccess`), up to 8 (the open note first, in
-  full as Markdown). Budget: rate rule `ai`, 150 requests/hour per person per scope (`aiHigh`, 300, on
-  Workspace Business). Prompts, note text and answers
-  are never logged (only event, model, status). Tests: `tests/convex/ai.test.ts` (no key → clean error;
+  full as Markdown). Budget: AI credits (`docs/BILLING.md`), plus the hourly abuse rule `ai`, 150 requests/hour per
+  person per scope (`aiHigh`, 300, on Pro AI). Prompts, note text and answers are never logged or stored
+  (only event, model, status and token counts). Tests: `tests/convex/ai.test.ts` (no key → clean error;
   access control); `apps/web/e2e/ai.spec.ts` calls Gemini for real, so it runs only with `E2E_AI=1`.
 
 ## Plans and billing
 
-- **Plans** (`convex/lib/plans.ts`, the one catalog of plan ids, prices and entitlements; the web
-  re-exports it from `@/lib/plans`). **Personal** plans belong to a person: **Free** $0: 1 GB personal
-  storage, 2 devices, no AI · **Basic** $2/month or $9/year: 20 GB, unlimited devices, no AI · **Pro**
-  $5/month or $49/year: 100 GB, AI Assistant (fair use). **Workspace** plans belong to a team workspace
-  (not to its owner) and are billed per member seat (owner, admins and members; guests and pending
-  invitations are free; `convex/lib/seats.ts`): **Free** $0: 5 GB, no AI · **Team** $5 per member/month
-  ($49/year): 100 GB, AI for members · **Business** $10 per member/month ($99/year): 1 TB, AI with higher
-  fair-use limits. Stripe checkout for Team and Business opens once its prices are configured; until
-  then workspaces are on Workspace Free unless an admin sets a plan. New accounts get **Pro free for 7
-  days** (no card); it ends without charge. Choosing a paid plan ends a running trial.
-- **Entitlements** (`convex/lib/entitlements.ts`): `resolveEntitlements({ kind: "personal", profileId } |
-  { kind: "workspace", workspaceId })` (Personal is not a workspace: its rows carry `ownerProfileId`). The
-  two never merge: a Personal plan never upgrades a workspace and a
-  workspace plan never upgrades Personal. Personal (`personalEntitlementsOf`): trial counts as Pro; an admin
-  AI grant turns AI on whatever the plan; a plan whose period has ended falls back to Free. Code checks
-  capabilities (`ai`, `storageBytes`, `devices`, `paid`), never plan names.
-- **Storage**: personal storage (the Personal plan) and each team workspace's storage (its workspace plan)
-  are separate, never summed. An admin can set one workspace's limit (`storageQuotaOverrideBytes`), which
-  replaces the plan's. Over the limit, uploads are refused (`assertStorageFor` in
-  `files.generateUploadUrl`/`commitFile`); nothing is deleted.
-- **AI**: in Personal it follows the Personal plan; in a team workspace, that workspace's plan, for its
-  members only (not guests); never in someone else's Personal. `ai.begin` checks after the person's own on/off switch and records usage per
-  scope (`aiUsage.scope`, `workspaceId`). The client reads `aiIncluded` per workspace from
-  `workspaces.mine` (`useAiAccess`), and says "AI Assistant comes with the Team and Business workspace
-  plans" in a team workspace.
-- **Devices** (per account, from the Personal plan; workspace membership never changes it): a device is
-  one signed-in browser or app (one session). Free allows 2 at a time; Basic,
-  Pro and the trial are unlimited (admins can override per person). Over the limit, the devices that signed
-  in first keep working and the newest wait on a "device limit" screen (`users.me` → `device_limit`,
-  `components/app/DeviceLimit.tsx`) where they can sign another device out or upgrade; every other backend
-  call refuses them (`requireProfile` → `lib/devices.ts`). Nobody is signed out automatically.
-- **Settings → Plan & billing** (`settings/BillingSection.tsx`, Personal only): current plan card (Trial,
-  Active, Past due or Cancel scheduled; renewal; personal storage meter; AI status and use), cancel/resume,
-  "Choose a personal plan" with a Monthly/Yearly segmented control and the three Personal plans, and
-  personal billing history. In your own Personal, the workspace menu shows a "Pro trial · N days left" /
-  "Upgrade to Pro" pill.
-- **Payments**: Stripe Checkout + billing portal + webhook (`/webhooks/stripe`, HMAC-verified; each
-  event id applied once via `billingEvents`, subscription events older than the last applied one ignored,
-  payments keyed by invoice) when `STRIPE_*` is set. Without it, non-production deployments offer **test
-  purchases** (marked "Test" everywhere, excluded from revenue by default); production refuses them.
-- **Marketing**: `/pricing` and the home pricing section render the same `PLANS` (three Personal cards,
-  Pro highlighted); `/pricing` adds the Workspace plans (`WORKSPACE_PLANS`, Team and Business marked
-  "Coming soon") and FAQs on trial, storage, workspaces, switching and yearly savings. Availability reads
-  "On the web · Mac app coming soon" (`AVAILABILITY`).
+The rules, prices, AI credits and Polar setup are in `docs/BILLING.md`; this is how they show up.
+
+- **Plans** (`convex/lib/plans.ts`, the one catalog; the web re-exports it from `@/lib/plans`): Free, Core,
+  Pro and Pro AI, the same for Personal and for Team (Team priced per member seat). Plan order is always
+  Free, Core, Pro, Pro AI. Core is presented as the plan without AI, plainly and positively ("No AI. Your
+  notes stay yours: nothing is sent to an AI model."). Pro AI is marketed as "Unlimited AI, fair use (550
+  credits a month)". New accounts get a 7-day Pro AI trial with 100 AI credits, no card.
+- **Entitlements** (`convex/lib/entitlements.ts`, `convex/lib/credits.ts`): resolved per scope on the
+  server; code checks capabilities (`ai`, `monthlyCredits`, `storageBytes`, `storageRule`, `devices`,
+  `paid`), never plan names.
+- **AI entry points** (Ask AI, Catch me up, title AI, selection and inline AI, the AI page tool and panel,
+  flowchart AI) all go through `useAiAccess` / `useAiEnabled` and disappear in a Core scope; the AI
+  setting shows "Not included in Core". The server refuses anyway. The AI panels show a small credits
+  line when fewer than 20% of the month's credits are left ("12 AI credits left. Resets October 1.") with
+  Buy more (Pro, Pro AI) or Upgrade (Free); when a request is refused with `out_of_credits`, the panel
+  shows the server's message and the same button.
+- **Settings → Plan & billing** (Personal) and **Settings → Workspace billing** (billing managers): the
+  plan and status, storage with its rule (the free pool, or your own quota), AI credits left with the
+  reset date and purchased credits, Upgrade / Change plan / Buy credits / Manage billing, and history.
+- **Devices** (per account, from the Personal plan): Free allows 2 at a time; every other plan and the
+  trial are unlimited. Over the limit, the newest devices wait on the device-limit screen.
+- **Payments**: Polar Checkout, customer portal and webhook (`/webhooks/polar`). Without Polar settings,
+  non-production deployments offer **test purchases** (plans and credit packs; marked "Test",
+  excluded from revenue by default); production refuses them.
+- **Marketing**: `/pricing` has the four plans with Personal / Team and Monthly / Yearly toggles
+  (`PlanPicker`), the credit packs, "What's an AI credit?" and the FAQ; the home pricing section uses the
+  same picker. Availability reads "On the web · Mac app coming soon" (`AVAILABILITY`).

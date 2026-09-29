@@ -3,11 +3,40 @@ import { PageHeader, container, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Changelog",
-  description: "What’s new in Folevi. Version 0.2 brings plans (Free, Basic, Pro), the AI Assistant, 57 note styles, 26 templates, a new look and a new Devices page.",
+  description: "What’s new in Folevi. Version 0.3 brings four plans (Free, Core, Pro and Pro AI) for you or your team, and AI credits with credit packs.",
   path: "/changelog",
 });
 
 const releases = [
+  {
+    version: "0.3",
+    name: "New plans and AI credits",
+    date: "2026-09-30",
+    label: "30 September 2026",
+    intro: "Four plans, the same for you and for your team, and AI counted in credits so every plan can say exactly what it includes.",
+    groups: [
+      {
+        title: "Plans",
+        items: [
+          "Free (1 GB shared with the free workspaces you own, 25 AI credits a month, 2 devices)",
+          "Core (20 GB, unlimited devices, and no AI: nothing is sent to an AI model)",
+          "Pro (20 GB, 180 AI credits a month, unlimited devices)",
+          "Pro AI (50 GB, unlimited AI with fair use: 550 credits a month, unlimited devices)",
+          "The same four plans for workspaces, billed per member; guests are free",
+          "Basic is now Core, the old Pro is now Pro AI, and workspaces on Team or Business move to Pro or Pro AI",
+        ],
+      },
+      {
+        title: "AI credits",
+        items: [
+          "Every AI request uses credits: a rewrite about 1, Ask AI about 2, a flowchart 3 to 5",
+          "Monthly credits reset each billing month (on Free, each calendar month)",
+          "Credit packs for Pro and Pro AI: 500 or 1,000 credits, one-time, valid for 12 months",
+          "The 7-day trial for new accounts is now Pro AI, with 100 AI credits and no card",
+        ],
+      },
+    ],
+  },
   {
     version: "0.2",
     name: "Plans, AI and a new look",

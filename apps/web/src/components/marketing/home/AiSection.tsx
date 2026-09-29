@@ -1,6 +1,6 @@
 import { ArrowUp, FileText, X } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { TRIAL_DAYS } from "@/lib/plans";
+import { MONTHLY_CREDITS, TIER_NAMES, TRIAL_DAYS } from "@/lib/plans";
 import { artById, artThumb } from "../product/Replica";
 import { Kbd, SectionHeading, container } from "../ui";
 
@@ -9,7 +9,9 @@ const facts = [
     Write, rewrite, summarize or continue text from the slash menu, the selection toolbar or <Kbd>⌘J</Kbd>.
   </>,
   <>Catch me up, on Home, writes a short brief of your week: recent notes and what’s due.</>,
-  <>Part of Pro, and of the {TRIAL_DAYS}-day Pro trial every new account gets.</>,
+  <>
+    Free includes {MONTHLY_CREDITS.free} AI credits a month and Pro {MONTHLY_CREDITS.pro}. {TIER_NAMES.pro_ai} is unlimited, with fair use, and new accounts try it free for {TRIAL_DAYS} days. Core has no AI at all.
+  </>,
   <>Turn it off in Settings at any time. While it’s off, none of your notes are sent to it.</>,
 ];
 

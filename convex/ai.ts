@@ -9,17 +9,24 @@
 //   ai.flowchart: a flowchart block from a description, or the current flowchart changed as asked (strict
 //               JSON, sanitised before it's returned; the client lays it out).
 //
+// Credits (lib/credits.ts, docs/BILLING.md): `begin` checks the scope allows AI (never in a Core scope),
+// takes the hourly abuse limit, and holds a conservative estimate of the request's credits; every Gemini
+// call reports its token counts (usageMetadata), and `settle` charges what the calls really cost (rounded up
+// to whole credits) when the request ends, however it ends. Cheap tasks (a title, fixing spelling, short
+// rewrites) use Flash-Lite; Ask AI keeps the main model.
+//
 // Privacy: note text goes to Google only when a person asks for AI help, and only the notes that request
-// needs. Prompts, note text and answers are never logged. Only the event, model and status are.
+// needs. Prompts, note text and answers are never logged or stored. Only the event, model, status and
+// token counts are.
 import { v } from "convex/values";
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, membership, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
+import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
-import { aiAccessIn, recordAiUsage } from "./lib/entitlements";
+import { aiAccountFor, aiBlockedIn, estimateCredits, holdCredits, settleHold, sweepHolds, tokensForChars, type CallUsage, type PlannedCall } from "./lib/credits";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
@@ -50,7 +57,20 @@ interface GeminiRequest {
   maxOutputTokens?: number;
 }
 
-type GeminiChunk = { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[] };
+type GeminiUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
+type GeminiChunk = { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[]; usageMetadata?: GeminiUsage };
+
+/**
+ * A call's token counts, from Gemini's usage metadata (cumulative in a stream, so the last one counts).
+ * Without any (a stream stopped before it arrived), estimated from the characters sent and received.
+ */
+function usageOf(model: string, meta: GeminiUsage | undefined, req: GeminiRequest, text: string): CallUsage {
+  if (meta && typeof meta.promptTokenCount === "number") return { model, promptTokens: meta.promptTokenCount, outputTokens: meta.candidatesTokenCount ?? 0, thoughtsTokens: meta.thoughtsTokenCount ?? 0 };
+  return { model, promptTokens: tokensForChars(req.system.length + req.prompt.length), outputTokens: tokensForChars(text.length), thoughtsTokens: 0 };
+}
+
+/** The models requests use, for estimates (the same env settings `gemini` reads). */
+const models = () => ({ main: model(), fast: fastModel() });
 const textOf = (data: GeminiChunk) =>
   (data.candidates?.[0]?.content?.parts ?? [])
     .filter((p) => !p.thought && typeof p.text === "string")
@@ -60,9 +80,10 @@ const textOf = (data: GeminiChunk) =>
 /**
  * One call to Gemini. With `onDelta`, the reply streams (server-sent events) and each new piece of text is
  * passed on as it arrives; `onDelta` returning false stops the stream (the person pressed Stop). Falls back
- * to the lighter model once when the main one is busy, as long as nothing has been streamed yet.
+ * to the lighter model once when the main one is busy, as long as nothing has been streamed yet. Every
+ * answered call adds its token counts to `meter` (even one whose reply is unusable: it was still billed).
  */
-async function gemini(req: GeminiRequest, onDelta?: (textSoFar: string) => Promise<boolean>): Promise<string> {
+async function gemini(req: GeminiRequest, meter: CallUsage[], onDelta?: (textSoFar: string) => Promise<boolean>): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) fail("maintenance", "The AI Assistant isn't set up on this server yet.");
   const models = req.fast ? [fastModel()] : [model(), fastModel()];
@@ -94,6 +115,7 @@ async function gemini(req: GeminiRequest, onDelta?: (textSoFar: string) => Promi
       let text = "";
       let finish: string | null = null;
       let stopped = false;
+      let usage: GeminiUsage | undefined;
       // Server-sent events: one JSON object per "data:" line, events separated by a blank line (\n or \r\n).
       const take = (event: string) => {
         for (const line of event.split("\n")) {
@@ -102,6 +124,7 @@ async function gemini(req: GeminiRequest, onDelta?: (textSoFar: string) => Promi
             const data = JSON.parse(line.slice(5)) as GeminiChunk;
             text += textOf(data);
             finish = data.candidates?.[0]?.finishReason ?? finish;
+            usage = data.usageMetadata ?? usage;
           } catch {
             /* a partial or keep-alive line */
           }
@@ -123,7 +146,9 @@ async function gemini(req: GeminiRequest, onDelta?: (textSoFar: string) => Promi
         }
       }
       if (!stopped && buffer.trim()) take(buffer);
-      console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped }));
+      const used = usageOf(m, usage, req, text);
+      meter.push(used);
+      console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens }));
       if (!text.trim() && !stopped) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
       return text.trim();
     }
@@ -131,7 +156,9 @@ async function gemini(req: GeminiRequest, onDelta?: (textSoFar: string) => Promi
       const data = (await res.json()) as GeminiChunk;
       const text = textOf(data).trim();
       const finish = data.candidates?.[0]?.finishReason ?? null;
-      console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish }));
+      const used = usageOf(m, data.usageMetadata, req, text);
+      meter.push(used);
+      console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens }));
       if (!text) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
       return text;
     }
@@ -217,7 +244,7 @@ export const dropStream = internalMutation({
   },
 });
 
-/** Hourly: removes any stream rows older than an hour (a crashed call, a closed tab). */
+/** Hourly: removes any stream rows older than an hour (a crashed call, a closed tab), and stale credit holds. */
 export const sweepStreams = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -226,7 +253,7 @@ export const sweepStreams = internalMutation({
       .withIndex("by_created", (q) => q.lt("createdAt", Date.now() - 60 * 60_000))
       .take(500);
     for (const r of old) await ctx.db.delete(r._id);
-    return { deleted: old.length };
+    return { deleted: old.length, holds: await sweepHolds(ctx) };
   },
 });
 
@@ -236,12 +263,12 @@ type RunCtx = { runMutation: (ref: typeof internal.ai.writeStream, args: { id: I
  * Runs a Gemini call into a stream, if there is one: the text so far is written at most every ~90 ms, and
  * the stream is marked done (or error) at the end. Without a stream it's a plain call.
  */
-async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req: GeminiRequest): Promise<string> {
-  if (!streamId) return gemini(req);
+async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req: GeminiRequest, meter: CallUsage[]): Promise<string> {
+  if (!streamId) return gemini(req, meter);
   let last = 0;
   let written = "";
   try {
-    const text = await gemini(req, async (soFar) => {
+    const text = await gemini(req, meter, async (soFar) => {
       const now = Date.now();
       if (now - last < FLUSH_MS || soFar === written) return true;
       last = now;
@@ -256,44 +283,63 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
   }
 }
 
+const vPlannedCall = v.object({ fast: v.boolean(), inputChars: v.number(), maxOutputTokens: v.number() });
+const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), outputTokens: v.number(), thoughtsTokens: v.number() });
+
 /**
- * Auth, scope access, whether AI is included where it's asked for, and a per-person budget (the free
- * Gemini tier is shared by everyone). The scope decides: Personal follows the person's Personal plan; a
- * team workspace follows that workspace's plan, for its members only. A request about one note (`noteOnly`) is made in that
- * note's scope; otherwise in the scope given. When it also reads a note from elsewhere, AI must be
- * included there too, so one scope's plan never covers another's content.
+ * Auth, whether AI may be used where it's asked for, the hourly abuse limit, and a hold on the request's
+ * estimated credits (refused with `out_of_credits` when there aren't enough). A request about one note
+ * (`noteOnly`) is made in that note's scope; otherwise in the scope given. When it also reads a note from
+ * elsewhere, AI must be allowed there too, so content from a Core scope is never sent. Whose credits pay:
+ * lib/credits.ts aiAccountFor (a member's seat in a paid workspace, otherwise the person's own Personal;
+ * a guest's AI always comes from their own personal plan).
  */
 export const begin = internalMutation({
-  args: { scope: vScopeArg, documentId: v.optional(v.string()), noteOnly: v.optional(v.boolean()) },
-  handler: async (ctx, args) => {
+  args: { scope: vScopeArg, documentId: v.optional(v.string()), noteOnly: v.optional(v.boolean()), plan: v.optional(v.array(vPlannedCall)) },
+  handler: async (ctx, args): Promise<{ holdId: Id<"aiCreditHolds"> }> => {
     const profile = await requireProfile(ctx);
     if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
-    const { scope: context } = await resolveScope(ctx, profile, args.scope);
-    let target: Scope = context;
+    let target: Scope;
     let also: Scope | null = null;
-    if (args.documentId) {
-      const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
-      const home = scopeOfRow(doc);
-      if (args.noteOnly) target = home;
-      else if (!sameScope(home, context)) also = home;
+    if (args.documentId && args.noteOnly) {
+      target = scopeOfRow((await requireDocument(ctx, profile, args.documentId, "read")).doc);
+    } else {
+      target = (await resolveScope(ctx, profile, args.scope)).scope;
+      if (args.documentId) {
+        const home = scopeOfRow((await requireDocument(ctx, profile, args.documentId, "read")).doc);
+        if (!sameScope(home, target)) also = home;
+      }
     }
-    // A workspace plan's AI is for its members (who hold its seats): a guest on one of its pages doesn't
-    // get it, and their own Personal plan doesn't cover the workspace's content either.
+    // Nothing from a Core Personal or a Core workspace is ever sent to AI, whoever asks.
     for (const s of [target, also]) {
-      if (s?.kind === "workspace" && !(await membership(ctx, profile._id, s.workspaceId))) fail("forbidden", "The AI Assistant here is for members of this workspace.");
+      const blocked = s ? await aiBlockedIn(ctx, profile._id, s) : null;
+      if (blocked) fail("forbidden", blocked, { reason: "ai_not_included" });
     }
-    const access = await aiAccessIn(ctx, profile, target);
-    if (!access.allowed) fail("forbidden", access.message ?? "The AI Assistant isn't available here.");
-    if (also) {
-      const other = await aiAccessIn(ctx, profile, also);
-      if (!other.allowed) fail("forbidden", other.message ?? "The AI Assistant isn't available here.");
-    }
-    await consume(ctx, access.rateRule, access.rateSubject);
-    // Count it against the scope it was made in (per person per day; no content).
-    await recordAiUsage(ctx, profile._id, access.scope);
-    return null;
+    const access = await aiAccountFor(ctx, profile, target);
+    if (!access.allowed) fail("forbidden", access.message ?? "The AI Assistant isn't available here.", { reason: "ai_not_included" });
+    await consume(ctx, access.account.rateRule, access.account.rateSubject);
+    const estimate = estimateCredits((args.plan ?? []) as PlannedCall[], models());
+    return { holdId: await holdCredits(ctx, access.account, target, estimate) };
   },
 });
+
+/** Ends a request: releases its hold and charges what its Gemini calls really cost. */
+export const settle = internalMutation({
+  args: { holdId: v.id("aiCreditHolds"), calls: v.array(vCallUsage) },
+  handler: async (ctx, args) => await settleHold(ctx, args.holdId, args.calls),
+});
+
+type SettleCtx = { runMutation: (ref: typeof internal.ai.settle, args: { holdId: Id<"aiCreditHolds">; calls: CallUsage[] }) => Promise<unknown> };
+
+/** Runs a request's work, then settles its credits from the calls it made, however it ends. */
+async function metered<T>(ctx: SettleCtx, holdId: Id<"aiCreditHolds">, work: (meter: CallUsage[]) => Promise<T>): Promise<T> {
+  const meter: CallUsage[] = [];
+  try {
+    return await work(meter);
+  } finally {
+    await ctx.runMutation(internal.ai.settle, { holdId, calls: meter });
+  }
+}
 
 interface SourceNote {
   id: string;
@@ -412,38 +458,46 @@ export const ask = action({
     await requireIdentity(ctx);
     const question = args.question.trim().slice(0, MAX_QUESTION);
     if (!question) fail("invalid_argument", "Ask a question first.");
-    await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note" });
-    if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
     const history = (args.history ?? []).slice(-6).map((t) => ({ role: t.role, text: t.text.slice(0, 3000) }));
+    const historyChars = history.reduce((n, t) => n + t.text.length + 12, 0);
+    // The estimate: the search-terms call (Flash-Lite), and the answer at its largest (every note it may read).
+    const plan: PlannedCall[] = [
+      ...(args.range !== "note" ? [{ fast: true, inputChars: 600 + question.length + Math.min(historyChars, 1500), maxOutputTokens: 200 }] : []),
+      { fast: false, inputChars: PERSONA.length + 600 + question.length + historyChars + (args.documentId ? FOCUS_CHARS : 0) + (args.range !== "note" ? 8 * (NOTE_CHARS + 80) : 0), maxOutputTokens: 2048 },
+    ];
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note", plan });
+    return await metered(ctx, holdId, async (meter) => {
+      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
 
-    const notes: SourceNote[] = [];
-    if (args.documentId) notes.push(await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }));
-    if (args.range !== "note") {
-      const context = history.map((t) => t.text).join("\n").slice(-1500);
-      const raw = await gemini({
-        fast: true,
-        json: true,
-        temperature: 0,
-        maxOutputTokens: 200,
-        system: "You turn a question about someone's personal notes into full-text search queries.",
-        prompt: `Conversation so far (may be empty):\n${context}\n\nQuestion: ${question}\n\nReturn JSON {"queries": [...]} with 2 to 4 short keyword queries (1-4 words each, no punctuation) likely to match the words used in the relevant notes. Include synonyms. Use the question's language.`,
-      });
-      notes.push(...(await ctx.runQuery(internal.ai.gather, { scope: args.scope, queries: parseQueries(raw, question), exclude: args.documentId, limit: 8, folderId: args.folderId })));
-    }
+      const notes: SourceNote[] = [];
+      if (args.documentId) notes.push(await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }));
+      if (args.range !== "note") {
+        const context = history.map((t) => t.text).join("\n").slice(-1500);
+        const raw = await gemini({
+          fast: true,
+          json: true,
+          temperature: 0,
+          maxOutputTokens: 200,
+          system: "You turn a question about someone's personal notes into full-text search queries.",
+          prompt: `Conversation so far (may be empty):\n${context}\n\nQuestion: ${question}\n\nReturn JSON {"queries": [...]} with 2 to 4 short keyword queries (1-4 words each, no punctuation) likely to match the words used in the relevant notes. Include synonyms. Use the question's language.`,
+        }, meter);
+        notes.push(...(await ctx.runQuery(internal.ai.gather, { scope: args.scope, queries: parseQueries(raw, question), exclude: args.documentId, limit: 8, folderId: args.folderId })));
+      }
 
-    const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
-    const convo = history.map((t) => `${t.role === "user" ? "Person" : "Assistant"}: ${t.text}`).join("\n");
-    const answer = await streamed(ctx, args.streamId, {
-      system: `${PERSONA} Answer questions using the person's notes below. Cite the notes you use with bracketed numbers like [1] or [2][3] right after the sentence they support. If the notes don't contain the answer, say so plainly in one sentence, then offer a short general answer clearly labelled as not from their notes.`,
-      prompt: `<notes>\n${sources || "(no notes found)"}\n</notes>\n\n${convo ? `<conversation>\n${convo}\n</conversation>\n\n` : ""}Question: ${question}`,
-      temperature: 0.3,
-      maxOutputTokens: 2048,
+      const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
+      const convo = history.map((t) => `${t.role === "user" ? "Person" : "Assistant"}: ${t.text}`).join("\n");
+      const answer = await streamed(ctx, args.streamId, {
+        system: `${PERSONA} Answer questions using the person's notes below. Cite the notes you use with bracketed numbers like [1] or [2][3] right after the sentence they support. If the notes don't contain the answer, say so plainly in one sentence, then offer a short general answer clearly labelled as not from their notes.`,
+        prompt: `<notes>\n${sources || "(no notes found)"}\n</notes>\n\n${convo ? `<conversation>\n${convo}\n</conversation>\n\n` : ""}Question: ${question}`,
+        temperature: 0.3,
+        maxOutputTokens: 2048,
+      }, meter);
+      const cited = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1]) - 1));
+      return {
+        answer,
+        sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })),
+      };
     });
-    const cited = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1]) - 1));
-    return {
-      answer,
-      sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })),
-    };
   },
 });
 
@@ -472,6 +526,11 @@ const TASKS = {
 } as const;
 type Task = keyof typeof TASKS;
 const SELECTION_TASKS = new Set<Task>(["improve", "fix", "shorter", "longer", "simplify", "professional", "casual", "translate", "explain", "summarizeText", "refine"]);
+/** Short rewrites Flash-Lite does as well as Flash, for a fraction of the credits. */
+const SHORT_REWRITES = new Set<Task>(["improve", "shorter", "simplify", "professional", "casual"]);
+const SHORT_TEXT = 1_500;
+/** Cheap tasks go to Flash-Lite: a title, fixing spelling, and short rewrites. Ask AI never does. */
+const usesFlashLite = (task: Task, text: string) => task === "title" || task === "fix" || (SHORT_REWRITES.has(task) && text.length <= SHORT_TEXT);
 
 /** Writing help. Returns Markdown to insert or to replace the selection with. */
 export const write = action({
@@ -493,28 +552,35 @@ export const write = action({
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
     if (SELECTION_TASKS.has(task) && !text.trim()) fail("invalid_argument", "Select some text first.");
     if ((task === "draft" || task === "refine") && !instruction) fail("invalid_argument", "Tell the AI what to write.");
+    const fast = usesFlashLite(task, text);
+    const readsNote = Boolean(args.documentId && !SELECTION_TASKS.has(task));
+    const maxOutputTokens = task === "title" ? 60 : 3072;
     // Writing help works on one note (or text from it), so that note's scope decides.
-    await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true });
-    if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
+    const plan: PlannedCall[] = [{ fast, inputChars: PERSONA.length + 400 + text.length + instruction.length + (readsNote ? FOCUS_CHARS : 0), maxOutputTokens }];
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan });
+    return await metered(ctx, holdId, async (meter) => {
+      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
 
-    const note = args.documentId && !SELECTION_TASKS.has(task) ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }) : null;
-    const language = (args.language ?? "English").replace(/[^\p{L}\p{M} ()-]/gu, "").slice(0, 40) || "English";
-    const job = TASKS[task].replace("{language}", language);
-    const parts = [
-      note ? `<note title="${note.title.replace(/"/g, "'")}">\n${note.text}\n</note>` : "",
-      text && SELECTION_TASKS.has(task) ? `<text>\n${text}\n</text>` : "",
-      text && !SELECTION_TASKS.has(task) ? `<selected>\n${text}\n</selected>` : "",
-      instruction ? `Request: ${instruction}` : "",
-      `Task: ${job}`,
-      SELECTION_TASKS.has(task) && task !== "explain" && task !== "summarizeText" ? "Reply with the rewritten text only. No preamble, no quotes." : "Reply with the content only. No preamble.",
-    ].filter(Boolean);
-    const out = await streamed(ctx, args.streamId, {
-      system: PERSONA,
-      prompt: parts.join("\n\n"),
-      temperature: task === "fix" ? 0.1 : task === "brainstorm" || task === "draft" ? 0.9 : 0.5,
-      maxOutputTokens: task === "title" ? 60 : 3072,
+      const note = readsNote ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! }) : null;
+      const language = (args.language ?? "English").replace(/[^\p{L}\p{M} ()-]/gu, "").slice(0, 40) || "English";
+      const job = TASKS[task].replace("{language}", language);
+      const parts = [
+        note ? `<note title="${note.title.replace(/"/g, "'")}">\n${note.text}\n</note>` : "",
+        text && SELECTION_TASKS.has(task) ? `<text>\n${text}\n</text>` : "",
+        text && !SELECTION_TASKS.has(task) ? `<selected>\n${text}\n</selected>` : "",
+        instruction ? `Request: ${instruction}` : "",
+        `Task: ${job}`,
+        SELECTION_TASKS.has(task) && task !== "explain" && task !== "summarizeText" ? "Reply with the rewritten text only. No preamble, no quotes." : "Reply with the content only. No preamble.",
+      ].filter(Boolean);
+      const out = await streamed(ctx, args.streamId, {
+        system: PERSONA,
+        prompt: parts.join("\n\n"),
+        fast,
+        temperature: task === "fix" ? 0.1 : task === "brainstorm" || task === "draft" ? 0.9 : 0.5,
+        maxOutputTokens,
+      }, meter);
+      return { text: task === "title" ? out.split("\n")[0]!.replace(/^#+\s*/, "").replace(/^["'“”]+|["'“”.]+$/g, "").trim() : out };
     });
-    return { text: task === "title" ? out.split("\n")[0]!.replace(/^#+\s*/, "").replace(/^["'“”]+|["'“”.]+$/g, "").trim() : out };
   },
 });
 
@@ -536,14 +602,17 @@ export const flowchart = action({
     if (!instruction) fail("invalid_argument", args.mode === "create" ? "Describe the process first." : "Say what to change.");
     const current = args.mode === "update" ? flowchartForPrompt(args.current ?? "") : null;
     if (args.mode === "update" && !current) fail("invalid_argument", "There's no flowchart to update yet.");
-    await ctx.runMutation(internal.ai.begin, { scope: args.scope });
+    const plan: PlannedCall[] = [{ fast: false, inputChars: FLOWCHART_SYSTEM.length + 300 + instruction.length + (current?.length ?? 0), maxOutputTokens: 6144 }];
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan });
     const prompt = current
       ? `<flowchart>\n${current}\n</flowchart>\n\nChange the flowchart as the person asks, and return the complete updated flowchart. Keep the ids, text and colours of everything they didn't ask to change.\n\nRequest: ${instruction}`
       : `Draw a flowchart of this process.\n\nRequest: ${instruction}`;
-    const raw = await gemini({ system: FLOWCHART_SYSTEM, prompt, json: true, temperature: 0.4, maxOutputTokens: 6144 });
-    const draft = parseFlowchartDraft(raw);
-    if (!draft) fail("invalid_argument", "The AI couldn't draw a flowchart from that. Try describing the steps.");
-    return draft;
+    return await metered(ctx, holdId, async (meter) => {
+      const raw = await gemini({ system: FLOWCHART_SYSTEM, prompt, json: true, temperature: 0.4, maxOutputTokens: 6144 }, meter);
+      const draft = parseFlowchartDraft(raw);
+      if (!draft) fail("invalid_argument", "The AI couldn't draw a flowchart from that. Try describing the steps.");
+      return draft;
+    });
   },
 });
 
@@ -597,24 +666,28 @@ export const brief = action({
   args: { scope: vScopeArg, today: v.string(), streamId: v.optional(v.id("aiStreams")) },
   handler: async (ctx, args): Promise<{ answer: string; sources: { id: string; title: string }[] }> => {
     await requireIdentity(ctx);
-    await ctx.runMutation(internal.ai.begin, { scope: args.scope });
-    if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
-    const today = /^\d{4}-\d{2}-\d{2}$/.test(args.today) ? args.today : new Date().toISOString().slice(0, 10);
-    const { notes, tasks } = await ctx.runQuery(internal.ai.recent, { scope: args.scope, today });
-    if (!notes.length && !tasks.length) {
-      const answer = "Nothing new this week: no recently edited notes or open tasks yet.";
-      if (args.streamId) await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: answer, status: "done" });
-      return { answer, sources: [] };
-    }
-    const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
-    const taskList = tasks.map((t) => `- ${t.title}${t.due ? ` (due ${t.due})` : ""}, in "${t.note}"`).join("\n");
-    const answer = await streamed(ctx, args.streamId, {
-      system: `${PERSONA} You write a short, friendly catch-up brief for someone opening their notes app. Cite notes with [n].`,
-      prompt: `Today is ${today}.\n\n<recent_notes>\n${sources || "(none)"}\n</recent_notes>\n\n<open_tasks>\n${taskList || "(none)"}\n</open_tasks>\n\nWrite the brief: "## This week" with 2-4 bullets on what they've been working on (cite notes), then "## Up next" with the most important open tasks (overdue or due soon first, say when), at most 5. Under 170 words. No greeting, no sign-off.`,
-      temperature: 0.4,
-      maxOutputTokens: 1024,
+    // At most 8 recent notes (2,500 characters each) and 20 tasks.
+    const plan: PlannedCall[] = [{ fast: false, inputChars: PERSONA.length + 700 + 8 * 2600 + 20 * 260, maxOutputTokens: 1024 }];
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan });
+    return await metered(ctx, holdId, async (meter) => {
+      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
+      const today = /^\d{4}-\d{2}-\d{2}$/.test(args.today) ? args.today : new Date().toISOString().slice(0, 10);
+      const { notes, tasks } = await ctx.runQuery(internal.ai.recent, { scope: args.scope, today });
+      if (!notes.length && !tasks.length) {
+        const answer = "Nothing new this week: no recently edited notes or open tasks yet.";
+        if (args.streamId) await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: answer, status: "done" });
+        return { answer, sources: [] };
+      }
+      const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
+      const taskList = tasks.map((t) => `- ${t.title}${t.due ? ` (due ${t.due})` : ""}, in "${t.note}"`).join("\n");
+      const answer = await streamed(ctx, args.streamId, {
+        system: `${PERSONA} You write a short, friendly catch-up brief for someone opening their notes app. Cite notes with [n].`,
+        prompt: `Today is ${today}.\n\n<recent_notes>\n${sources || "(none)"}\n</recent_notes>\n\n<open_tasks>\n${taskList || "(none)"}\n</open_tasks>\n\nWrite the brief: "## This week" with 2-4 bullets on what they've been working on (cite notes), then "## Up next" with the most important open tasks (overdue or due soon first, say when), at most 5. Under 170 words. No greeting, no sign-off.`,
+        temperature: 0.4,
+        maxOutputTokens: 1024,
+      }, meter);
+      const cited = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1]) - 1));
+      return { answer, sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })) };
     });
-    const cited = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1]) - 1));
-    return { answer, sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })) };
   },
 });

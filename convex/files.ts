@@ -6,7 +6,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, isScheduledForDeletion, membership, memberLevel, requireDocument, requireProfile, requireWorkspace, resolveScope, memberAtLeast } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { adjustStorageUsed, assertStorageFor } from "./lib/entitlements";
+import { adjustStorageUsed, assertStorageFor, storageChargeFor } from "./lib/entitlements";
 import { insertScoped, personalScope, scopeOfRow, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
 import { vImagePalette } from "./lib/validators";
 import { consume } from "./lib/rateLimit";
@@ -63,9 +63,9 @@ export const generateUploadUrl = mutation({
     await consume(ctx, "upload", profile._id);
     const max = maxBytesFor(args.kind);
     if (!Number.isFinite(args.size) || args.size <= 0 || args.size > max) fail("invalid_argument", `Files can be up to ${Math.round(max / 1024 / 1024)} MB.`);
-    // Against the scope's own limit: Personal uploads count toward the Personal plan, a team workspace's
-    // toward that workspace's plan.
-    const storageProblem = await assertStorageFor(ctx, scope, args.size, profile._id);
+    // Under the scope's own rule (lib/entitlements.ts): the owner's free pool, the uploader's own quota in a
+    // paid workspace (a guest's: the page owner's), or an admin's override.
+    const storageProblem = await assertStorageFor(ctx, scope, args.size, profile._id, documentId);
     if (storageProblem) fail("quota_exceeded", storageProblem);
     const intentId = await insertScoped(ctx, "uploadIntents", scope, {
       profileId: profile._id,
@@ -106,15 +106,18 @@ export const commitFile = internalMutation({
     const intent = await ctx.db.get(args.intentId);
     if (!intent || intent.consumedAt || intent.profileId !== args.profileId || intent.expiresAt < Date.now()) fail("expired", "Upload expired. Try again.");
     const scope = scopeOfRow(intent);
-    const storageProblem = await assertStorageFor(ctx, scope, args.size, args.profileId);
+    const storageProblem = await assertStorageFor(ctx, scope, args.size, args.profileId, intent.documentId);
     if (storageProblem) fail("quota_exceeded", storageProblem);
     await ctx.db.patch(intent._id, { consumedAt: Date.now() });
+    // In a team workspace, whose per-person storage it counts against (kept on the file for when it's deleted).
+    const chargedTo = scope.kind === "workspace" ? await storageChargeFor(ctx, scope.workspaceId, args.profileId, intent.documentId) : undefined;
     const publicId = ulid();
     await insertScoped(ctx, "files", scope, {
       publicId,
       storageId: args.storageId,
       documentId: intent.documentId,
       uploadedBy: args.profileId,
+      chargedTo,
       filename: intent.filename,
       mimeType: args.mimeType,
       size: args.size,
@@ -125,7 +128,7 @@ export const commitFile = internalMutation({
       status: "ready",
       createdAt: Date.now(),
     });
-    await adjustStorageUsed(ctx, scope, args.size);
+    await adjustStorageUsed(ctx, scope, args.size, chargedTo);
     await bump(ctx, "storage_bytes", args.size);
     return publicId;
   },

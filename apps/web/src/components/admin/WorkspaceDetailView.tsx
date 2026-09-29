@@ -11,12 +11,21 @@ import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
 import { WorkspacePlanDialog, type WorkspacePlanTarget } from "./PlanDialog";
-import { PLAN_CATALOG, WORKSPACE_PLANS, formatPrice, planName, seatChargeCents, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
+import { PLAN_CATALOG, TIER_NAMES, formatPrice, planName, seatChargeCents, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { t } from "@/i18n";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, recordLink, td, th } from "./ui";
 
 const GB = 1024 ** 3;
+
+/** "20 GB per member · 180 AI credits per member a month" */
+function planIncludes(id: WorkspacePlanId): string {
+  const p = PLAN_CATALOG[id];
+  const e = p.entitlements;
+  const storage = p.tier === "free" ? "The owner's free 1 GB" : `${Math.round(e.storageBytes / GB)} GB per member`;
+  const ai = !e.aiAssistant ? "no AI for anyone" : p.tier === "free" ? "members use their personal AI credits" : `${e.monthlyCredits.toLocaleString()} AI credits per member a month`;
+  return `${storage} · ${ai}`;
+}
 
 export function WorkspaceDetailView({ id }: { id: string }) {
   const admin = useAdmin();
@@ -52,9 +61,11 @@ export function WorkspaceDetailView({ id }: { id: string }) {
   const owners = w.members.filter((m) => m.role === "owner");
   const canSetPlan = admin.can("billing.manage");
   const b = w.billing;
-  const stripeLive = b.stripeBilled;
   const onFree = !b.paid;
-  const planBlocked = !canSetPlan ? rolesFor("billing.manage") : stripeLive ? "Billed through Stripe. Change it in Stripe." : w.status === "deleting" ? "This workspace is being deleted." : null;
+  const planId = b.planId as WorkspacePlanId;
+  const interval = PLAN_CATALOG[planId].interval;
+  // A plan billed through Polar still opens the dialog, which explains it's changed in Polar.
+  const planBlocked = !canSetPlan ? rolesFor("billing.manage") : w.status === "deleting" ? "This workspace is being deleted." : null;
 
   return (
     <>
@@ -63,7 +74,8 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         eyebrow={
           <>
             <StatusBadge status={w.status} />
-            <Badge tone={b.paid ? "strong" : "neutral"}>{planName(b.planId as WorkspacePlanId)}</Badge>
+            <Badge tone={b.paid ? "strong" : "neutral"}>{planName(planId)}</Badge>
+            {b.polarBilled ? <Badge tone="outline">Billed through Polar</Badge> : null}
           </>
         }
         title={w.name}
@@ -82,7 +94,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
               variant="primary"
               disabled={Boolean(planBlocked)}
               title={planBlocked ?? undefined}
-              onClick={() => setPlanFor({ workspaceId: w.id, name: w.name, planId: b.planId as WorkspacePlanId, endsAt: b.paid ? (b.subscription?.currentPeriodEnd ?? null) : null, seats: b.seats })}
+              onClick={() => setPlanFor({ workspaceId: w.id, name: w.name, planId, endsAt: b.paid ? (b.subscription?.currentPeriodEnd ?? null) : null, seats: b.seats, polarBilled: b.polarBilled })}
             >
               {onFree ? <ArrowUpCircle size={14} aria-hidden /> : <CreditCard size={14} aria-hidden />}
               {onFree ? "Upgrade" : "Change plan"}
@@ -145,19 +157,21 @@ export function WorkspaceDetailView({ id }: { id: string }) {
           </div>
         </Panel>
 
-        <Panel title="Plan & billing" description="The workspace's own plan, billed per member seat (never its owner's Personal plan).">
+        <Panel title="Plan & billing" description="The workspace's own plan, billed per member seat (never its owner's Personal plan). Guests are never billed.">
           <KeyValues
             items={[
-              { label: "Plan", value: <Badge tone={b.paid ? "strong" : "neutral"}>{planName(b.planId as WorkspacePlanId)}</Badge> },
-              { label: "Provider", value: b.subscription ? humanize(b.subscription.provider) : "None" },
+              { label: "Plan", value: <Badge tone={b.paid ? "strong" : "neutral"}>{`${planName(planId)}${interval ? ` · ${interval === "year" ? "yearly" : "monthly"}` : ""}`}</Badge> },
+              { label: "What it includes", value: planIncludes(planId) },
+              { label: "Billed through", value: b.subscription && b.subscription.provider !== "none" ? humanize(b.subscription.provider) : "Not billed" },
               { label: "Status", value: b.subscription ? <StatusBadge status={b.subscription.cancelAtPeriodEnd && b.paid ? "cancel_scheduled" : b.subscription.status} /> : "None" },
               { label: "Billable seats", value: `${b.seats}${b.subscription?.quantity !== null && b.subscription?.quantity !== undefined && b.subscription.quantity !== b.seats ? ` (billed: ${b.subscription.quantity})` : ""}` },
               { label: "Guests (not billed)", value: b.guests },
-              { label: "Estimated charge", value: b.paid ? `${b.seats} × ${formatPrice(b.seatPriceCents)} = ${formatPrice(seatChargeCents(b.seatPriceCents, b.seats))}/${PLAN_CATALOG[b.planId as WorkspacePlanId].interval === "year" ? "year" : "month"}` : "None" },
+              { label: "Estimated charge", value: b.paid ? `${b.seats} × ${formatPrice(b.seatPriceCents)} = ${formatPrice(seatChargeCents(b.seatPriceCents, b.seats))}/${interval === "year" ? "year" : "month"}` : "None" },
               { label: "Renews / ends", value: b.subscription?.currentPeriodEnd ? <Time ts={b.subscription.currentPeriodEnd} /> : "Not set" },
-              { label: "Stripe customer", value: b.subscription?.stripeCustomerId ? <Mono>{b.subscription.stripeCustomerId}</Mono> : "None" },
+              { label: "Polar customer", value: b.subscription?.polarCustomerId ? <Mono>{b.subscription.polarCustomerId}</Mono> : "None" },
             ]}
           />
+          {b.polarBilled ? <p className="mt-3 text-xs text-muted">This plan is billed through Polar. Change or cancel it in Polar; Folevi updates when Polar tells it.</p> : null}
         </Panel>
 
         <Panel title="Workspace payments" description="This workspace only." flush>
@@ -180,8 +194,8 @@ export function WorkspaceDetailView({ id }: { id: string }) {
                       <Time ts={p.createdAt} />
                     </td>
                     <td className={td}>
-                      {p.plan === "team" || p.plan === "business" ? WORKSPACE_PLANS[p.plan as WorkspaceTier].name : humanize(p.plan)} · {p.interval === "year" ? "yearly" : "monthly"}
-                      {p.quantity ? ` · ${p.quantity} seats` : ""}
+                      {p.plan === "credits" ? "AI credits" : `${p.plan in TIER_NAMES ? `Workspace ${TIER_NAMES[p.plan as WorkspaceTier]}` : humanize(p.plan)}${p.interval ? ` · ${p.interval === "year" ? "yearly" : "monthly"}` : ""}`}
+                      {p.quantity && p.plan !== "credits" ? ` · ${p.quantity} ${p.quantity === 1 ? "seat" : "seats"}` : ""}
                     </td>
                     <td className={`${td} tabular-nums`}>
                       {formatPrice(p.amountCents)} {p.currency.toUpperCase()}

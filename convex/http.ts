@@ -1,5 +1,5 @@
 import { httpRouter } from "convex/server";
-import { stripeWebhook } from "./billing";
+import { polarWebhook } from "./billing";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import {
@@ -82,8 +82,11 @@ function corsFor(origin: string | null): Record<string, string> {
   return allowed ? { "access-control-allow-origin": origin, vary: "origin" } : {};
 }
 
-/** Stripe events (subscriptions, invoices, refunds); signature-verified in billing.stripeWebhook. */
-http.route({ path: "/webhooks/stripe", method: "POST", handler: stripeWebhook });
+/**
+ * Polar events (subscriptions, orders, refunds): Standard Webhooks signature checked in
+ * billing.polarWebhook under POLAR_WEBHOOK_SECRET; each delivery applied once. docs/BILLING.md.
+ */
+http.route({ path: "/webhooks/polar", method: "POST", handler: polarWebhook });
 
 /** Mailtrap sends at most 500 events per request; a few MB is plenty. */
 const MAX_WEBHOOK_BYTES = 5 * 1024 * 1024;

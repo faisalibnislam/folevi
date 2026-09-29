@@ -52,17 +52,18 @@ membership). A person's Personal is not a workspace and never appears in the wor
 | Revoke all sessions                                      | `revokeAllSessions`                                                           |   ✓   |   ✓   |         |
 | Schedule account deletion                                | `scheduleAccountDeletion`                                                     |   ✓   |   ✓   |         |
 | Grant, change or remove platform roles                   | `setPlatformRole`                                                             |   ✓   |       |         |
-| View a person's plan, storage, AI use and payments       | `adminBilling.userBilling`                                                    |   ✓   |   ✓   |    ✓    |
-| Give or extend a Pro trial                               | `adminBilling.extendTrial`                                                    | ✓ (90 days) | ✓ (90 days) | ✓ (14 days) |
+| View a person's plan, storage, AI credits and use, and payments | `adminBilling.userBilling`                                             |   ✓   |   ✓   |    ✓    |
+| Give or extend a Pro AI trial                            | `adminBilling.extendTrial`                                                    | ✓ (90 days) | ✓ (90 days) | ✓ (14 days) |
 | Prepare a Personal export for the person (delivered to them only) | `adminBilling.requestUserExport`                                     |   ✓   |   ✓   |    ✓    |
-| Set a plan by hand, grant AI, override storage or device limit | `adminBilling.setPlan`, `setAiGrant`, `setStorageOverride`, `setDeviceLimit` |   ✓   |   ✓   |         |
-| Mark a payment refunded                                  | `adminBilling.markRefunded`                                                   |   ✓   |       |         |
+| Set a plan by hand, override storage or device limit     | `adminBilling.setPlan`, `setStorageOverride`, `setDeviceLimit`                |   ✓   |   ✓   |         |
+| Grant AI credits (Personal, or a seat in a paid workspace) | `adminBilling.grantCredits`                                                 |   ✓   |   ✓   |         |
+| Mark a payment refunded (a credit pack's unused credits go too) | `adminBilling.markRefunded`                                            |   ✓   |       |         |
 | User analytics (aggregates)                              | `adminAnalytics.users`                                                        |   ✓   |   ✓   |    ✓    |
 | Revenue analytics                                        | `adminAnalytics.revenue`                                                      |   ✓   |   ✓   |         |
 | List and view workspaces                                 | `listWorkspaces`, `viewWorkspace`                                             |   ✓   |   ✓   |    ✓    |
 | Suspend / unsuspend a workspace                          | `setWorkspaceSuspended`                                                       |   ✓   |   ✓   |         |
 | Set workspace storage quota and member limit             | `setWorkspaceQuota`                                                           |   ✓   |   ✓   |         |
-| Set a workspace's plan by hand (not Stripe-billed ones)   | `adminBilling.setWorkspacePlan`                                               |   ✓   |   ✓   |         |
+| Set a workspace's plan by hand (not Polar-billed ones)    | `adminBilling.setWorkspacePlan`                                               |   ✓   |   ✓   |         |
 | View the email send log                                  | `listEmails`                                                                  |   ✓   |   ✓   |    ✓    |
 | Resend a failed email                                    | `resendEmail`                                                                 |   ✓   |   ✓   |    ✓    |
 | View configuration                                       | `configuration`                                                               |   ✓   |   ✓   |    ✓    |
@@ -120,21 +121,33 @@ payment provider.
   **Change plan** (on a paid plan), which opens the plan dialog right there. Each person's and
   each workspace's own page has the same button at the top, next to Reload. Both lists show
   the current plan, how it's counted (monthly or yearly) and its end date, if any.
-- **The dialog:** pick the plan (Personal: Free, Basic, Pro; workspace: Free, Team, Business),
+- **The dialog:** pick the plan (Personal or workspace: Free, Core, Pro, Pro AI; docs/BILLING.md),
   how it's counted (Monthly or Yearly), and when it ends (**No end date** by default, or in 1
   month, 3 months, 1 year, or on a date). **What changes** lists the plan, storage, AI
-  Assistant, devices (Personal) and end date, from the current value to the new one; for a
+  credits, devices (Personal) and end date, from the current value to the new one; for a
   workspace it also shows the seat estimate. The button says what happens ("Upgrade to Pro",
   "Downgrade to Free"), and stays off while nothing would change. A reason (8+ characters) is
   required and goes to the audit log.
 - **After the end date** the plan goes back to Free (Personal) or Workspace Free.
-- **A Pro trial keeps running** when someone is set to Basic during it; the dialog says so.
-- **Refused on the server:** plans billed through Stripe (change or cancel them in Stripe;
-  the lists and pages mark them "Stripe" and the button is off), accounts that were deleted,
+- **A Pro AI trial keeps running** when someone is set to Free during it (a paid plan replaces it);
+  the dialog says so.
+- **Refused on the server:** plans billed through Polar (change or cancel them in Polar; the
+  lists and pages mark them "Polar" and the dialog explains why), accounts that were deleted,
   workspaces being deleted, end dates in the past, missing reasons, and anyone without an
   admin or owner role (support staff don't see the list buttons; the page button is off).
 - **Audit:** `billing.set_plan` (target: profile) or `billing.set_workspace_plan` (target:
   workspace), with the reason and the before/after subscription state.
+
+### Granting AI credits
+
+Admins and owners (`billing.credits`) can add AI credits to someone, replacing the old "Grant AI":
+**Grant credits…** on the person's Plan & billing panel. Choose how many (1 to 10,000), where
+(their Personal, or their seat in a Pro or Pro AI workspace they belong to), how long they last
+(1 to 24 months, 12 by default) and a reason (8+ characters). Granted credits are used after the
+monthly ones, like a bought pack. Core has no AI, so a Core Personal can't be given credits.
+Audited as `billing.grant_credits` with the amount, length and workspace. The panel lists every
+pack and grant (bought, test, granted), what's left and when it expires, and 30 days of AI use in
+requests and credits (1 credit = $0.01 of AI cost).
 
 ## 4. Audit log
 
@@ -223,10 +236,10 @@ attempts, quotas and the audit trail.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/admin`                     | Stat tiles, 30-day signups and DAU charts (SVG with a data-table fallback), retention cohorts, failed emails (7 d), sync errors (7 d), rate-limited events (24 h), deployments. |
 | `/admin/users`               | Exact-email search, or browse newest first with a name filter and status filter, 50 per page. Each row shows the plan and has Upgrade or Change plan (admins and owners). |
-| `/admin/analytics`           | User analytics: users, new signups, daily/weekly/monthly active, storage, signups and AI requests per day, plan mix, trials and conversion, AI use and grants (7–180 day window). Aggregates only. |
-| `/admin/revenue`             | Admins and owners: MRR, ARR, paying accounts, revenue per payer, last 30 days, at-risk (canceling/past due), revenue, new and canceled by month, subscribers per plan, workspace plans (paying workspaces, billed seats, workspace MRR), recent payments (emails redacted). Test purchases are excluded unless switched on. |
-| `/admin/users`               | Plan column: Free/Basic/Pro, "· trial" while on the Pro trial, monthly or yearly and the end date, an AI badge for grants and a Stripe badge for Stripe-billed plans. |
-| `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above. Upgrade or Change plan at the top. **Plan & billing**: Personal plan, provider, renewal, AI access and 30-day use in Personal, personal storage, payments, and the billing actions (trial, AI grant, storage limit, device limit, prepare export, mark refunded). Loading it is an audited read (`user.view_billing`). |
+| `/admin/analytics`           | User analytics: users, new signups, daily/weekly/monthly active, storage, signups and AI requests per day, plan mix (Free, Core, Pro, Pro AI), Pro AI trials and conversion, AI use, credits used (the AI cost in cents), tokens and credit grants (7 to 180 day window). Aggregates only. |
+| `/admin/revenue`             | Admins and owners: MRR, ARR, paying accounts, revenue per payer, last 30 days, at-risk (canceling/past due), revenue, new and canceled by month, subscribers per plan (Core, Pro, Pro AI, monthly and yearly), AI credit pack revenue, workspace plans (paying workspaces, billed seats, workspace MRR), recent payments (emails redacted; packs shown as "500 AI credits"). Test purchases are excluded unless switched on. |
+| `/admin/users`               | Plan column: Free/Core/Pro/Pro AI, "· trial" while on the Pro AI trial, monthly or yearly and the end date, and a Polar badge for Polar-billed plans. |
+| `/admin/users/[id]`          | Identity metadata, verification and TOTP badges, sessions, memberships, usage, recent emails, admin history, and the actions above. Upgrade or Change plan at the top. **Plan & billing**: Personal plan, provider, renewal, AI credits this period, packs and grants, 30-day AI use, storage (with its rule), payments, and the billing actions (trial, grant credits, storage limit, device limit, prepare export, mark refunded). Loading it is an audited read (`user.view_billing`). |
 | `/admin/workspaces`          | All workspaces, paginated, with each workspace's plan and Upgrade or Change plan (admins and owners).                                             |
 | `/admin/workspaces/[id]`     | Members and roles, usage against quotas, redacted invites, admin history, suspend and quota. **Plan & billing**: the workspace's plan (never its owner's Personal plan), billed seats and estimated charge, and payments. Upgrade or Change plan at the top. |
 | `/admin/support`             | The Support inbox ([SUPPORT.md](./SUPPORT.md)): tickets by latest activity, a status filter, search by ticket number or exact email, 50 per page. The nav item shows how many tickets have a message nobody on staff has opened. Opening it is audited. |

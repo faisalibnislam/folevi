@@ -20,7 +20,7 @@ import { DEFAULT_WORKSPACE_QUOTA_BYTES, personalEntitlements, storageUsage, work
 import { personalScope, workspaceScope } from "./lib/scope";
 import { PLAN_CATALOG, planName } from "./lib/plans";
 import { seatSummary, seatsChanged } from "./lib/seats";
-import { personalStripeBilled, subscriptionOf, workspaceStripeBilled, workspaceSubscriptionOf } from "./lib/billing";
+import { paymentTier, personalPolarBilled, storedWorkspacePlanId, subscriptionOf, workspacePolarBilled, workspaceSubscriptionOf } from "./lib/billing";
 
 // Three tiers (stored names kept for existing admins and audit records):
 //   Owner (super_admin):           everything, including admin roles and money matters
@@ -179,8 +179,8 @@ export const searchUsers = mutation({
         aiSource: string | null;
         interval: "month" | "year" | null;
         planEndsAt: number | null;
-        billedBy: "none" | "stripe" | "manual" | "test";
-        stripeBilled: boolean;
+        billedBy: "none" | "polar" | "manual" | "test" | "stripe";
+        polarBilled: boolean;
       }
     >();
     for (const p of rows) {
@@ -196,7 +196,7 @@ export const searchUsers = mutation({
         interval: PLAN_CATALOG[e.paidPlanId].interval,
         planEndsAt: paid ? (sub?.currentPeriodEnd ?? null) : null,
         billedBy: sub?.provider ?? "none",
-        stripeBilled: personalStripeBilled(sub),
+        polarBilled: personalPolarBilled(sub),
       });
     }
     return {
@@ -238,7 +238,7 @@ export const viewUser = mutation({
     const workspaces = [];
     for (const m of memberships) {
       const w = await ctx.db.get(m.workspaceId);
-      if (w) workspaces.push({ id: w.publicId, name: w.name, role: normalizeMembership(m).role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes });
+      if (w) workspaces.push({ id: w.publicId, name: w.name, role: normalizeMembership(m).role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes, planId: (await workspaceEntitlements(ctx, w)).planId });
     }
     const personalStorage = await storageUsage(ctx, personalScope(p._id));
     const history = await ctx.db
@@ -492,12 +492,12 @@ export const viewWorkspace = mutation({
         seats: seats.seats,
         guests: seats.guests,
         pendingInvites: seats.pendingInvites,
-        /** Billed through Stripe: the plan can't be set by hand here (setWorkspacePlan refuses). */
-        stripeBilled: workspaceStripeBilled(sub),
+        /** Billed through Polar: the plan can't be set by hand here (setWorkspacePlan refuses). */
+        polarBilled: workspacePolarBilled(sub),
         subscription: sub
-          ? { planId: sub.planId, provider: sub.provider, status: sub.status, quantity: sub.quantity ?? null, currentPeriodEnd: sub.currentPeriodEnd ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), stripeCustomerId: sub.stripeCustomerId ?? null }
+          ? { planId: storedWorkspacePlanId(sub), provider: sub.provider, status: sub.status, quantity: sub.quantity ?? null, currentPeriodEnd: sub.currentPeriodEnd ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), polarCustomerId: sub.polarCustomerId ?? null }
           : null,
-        payments: payments.map((p) => ({ id: p._id as string, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval, quantity: p.quantity ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
+        payments: payments.map((p) => ({ id: p._id as string, amountCents: p.amountCents, currency: p.currency, plan: paymentTier(p), interval: p.interval ?? null, quantity: p.quantity ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
       },
       audit: history.map((h) => ({ action: h.action, reason: h.reason ?? null, createdAt: h.createdAt })),
     };
@@ -575,7 +575,7 @@ export const listWorkspaces = mutation({
         createdAt: w.createdAt,
         planId: entitlements.planId,
         planEndsAt: entitlements.paid ? (sub?.currentPeriodEnd ?? null) : null,
-        stripeBilled: workspaceStripeBilled(sub, now),
+        polarBilled: workspacePolarBilled(sub, now),
       });
     }
     return {

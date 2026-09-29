@@ -95,5 +95,5 @@ fi
 
 echo
 echo "Done. Still yours to add when ready (Convex, with: npx convex env set NAME value):"
-echo "  GEMINI_API_KEY (AI), STRIPE_* (payments), EMAIL_REPLY_TO (optional monitored Reply-To)."
+echo "  GEMINI_API_KEY (AI), POLAR_* (payments, docs/BILLING.md), EMAIL_REPLY_TO (optional monitored Reply-To)."
 echo "Then redeploy: vercel redeploy --prod --scope $SCOPE, or push a commit."

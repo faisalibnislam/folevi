@@ -19,7 +19,8 @@ export type ErrorCode =
   | "password_required"
   | "unsupported_file"
   | "limit_exceeded"
-  | "device_limit";
+  | "device_limit"
+  | "out_of_credits";
 
 export function fail(code: ErrorCode, message?: string, extra?: Record<string, string | number | boolean>): never {
   throw new ConvexError({ code, message: message ?? code, ...extra });

@@ -169,8 +169,11 @@ export function UsersView() {
                     <td className={td}>
                       <span className="flex flex-wrap items-center gap-1">
                         <PlanBadge plan={u.plan as PersonalTier} trialing={u.trialing} />
-                        {u.aiSource === "grant" ? <Badge tone="outline">AI</Badge> : null}
-                        {u.stripeBilled ? <Badge tone="outline" title="Billed through Stripe">Stripe</Badge> : null}
+                        {u.polarBilled ? (
+                          <Badge tone="outline" title="Billed through Polar">
+                            Polar
+                          </Badge>
+                        ) : null}
                       </span>
                       {u.interval || u.planEndsAt ? (
                         <span className="mt-0.5 block text-[12px] text-muted">
@@ -191,9 +194,8 @@ export function UsersView() {
                         {u.status === "deleted" ? null : (
                           <Button
                             size="sm"
-                            disabled={u.stripeBilled}
-                            title={u.stripeBilled ? "Billed through Stripe. Change it in Stripe." : undefined}
-                            onClick={() => setPlanFor({ profileId: u.id, who: name, plan: u.plan as PersonalTier, interval: u.interval, endsAt: u.planEndsAt, trialEndsAt: u.trialEndsAt })}
+                            title={u.polarBilled ? "Billed through Polar. Change it in Polar." : undefined}
+                            onClick={() => setPlanFor({ profileId: u.id, who: name, plan: u.plan as PersonalTier, interval: u.interval, endsAt: u.planEndsAt, trialEndsAt: u.trialEndsAt, polarBilled: u.polarBilled })}
                           >
                             {onFree ? <ArrowUpCircle size={14} aria-hidden /> : null}
                             {onFree ? "Upgrade" : "Change plan"}

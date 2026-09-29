@@ -12,6 +12,9 @@ if (process.env.FOLEVI_DEV_MAILBOX_SECRET) {
 }
 for (const name of Object.keys(process.env)) {
   if (name.startsWith("LOOPS_")) warn.push(`${name} is set but unused (Loops is no longer used); remove it.`);
+  if (name.startsWith("STRIPE_")) warn.push(`${name} is set but unused (Stripe was replaced by Polar); remove it.`);
+  // Polar secrets belong in the Convex environment only, never in the web app's.
+  if (name.startsWith("POLAR_") || name.startsWith("NEXT_PUBLIC_POLAR")) (env === "production" ? problems : warn).push(`${name} is set in the web app's environment; Polar settings belong in Convex only (docs/BILLING.md).`);
 }
 if (env === "production") {
   for (const name of ["FOLEVI_SERVER_SECRET", "NEXT_PUBLIC_APP_URL", "NEXT_PUBLIC_MARKETING_URL", "CONVEX_DEPLOY_KEY"]) {
@@ -50,6 +53,22 @@ if (env === "production") {
       for (const k of ["MAILTRAP_SANDBOX_INBOX_ID", "MAILTRAP_SANDBOX_TOKEN"]) {
         if (has(k)) warn.push(`Convex ${k} is set in production; it is ignored there (the sandbox is for non-production only). Remove it.`);
       }
+      // Billing (Polar, docs/BILLING.md): optional while billing isn't live, so these only warn. Secrets
+      // stay in Convex; a NEXT_PUBLIC_ copy of any of them is refused above.
+      const polarProducts = [
+        "PERSONAL_CORE_MONTHLY", "PERSONAL_CORE_YEARLY", "PERSONAL_PRO_MONTHLY", "PERSONAL_PRO_YEARLY", "PERSONAL_PRO_AI_MONTHLY", "PERSONAL_PRO_AI_YEARLY",
+        "TEAM_CORE_MONTHLY", "TEAM_CORE_YEARLY", "TEAM_PRO_MONTHLY", "TEAM_PRO_YEARLY", "TEAM_PRO_AI_MONTHLY", "TEAM_PRO_AI_YEARLY",
+        "CREDITS_500", "CREDITS_1000",
+      ].map((k) => `POLAR_PRODUCT_${k}`);
+      if (has("POLAR_ACCESS_TOKEN")) {
+        if (!has("POLAR_WEBHOOK_SECRET")) warn.push("Convex POLAR_WEBHOOK_SECRET is not set: Polar payments would never activate plans or add credits (docs/BILLING.md).");
+        if (get("POLAR_SERVER") !== "production") warn.push("Convex POLAR_SERVER is not 'production': checkout uses the Polar sandbox (no real payments).");
+        const missing = polarProducts.filter((k) => !has(k));
+        if (missing.length) warn.push(`Convex ${missing.join(", ")} not set: those plans or credit packs can't be bought yet.`);
+      } else {
+        warn.push("Convex POLAR_ACCESS_TOKEN is not set: paid plans and credit packs can't be bought (billing isn't live; docs/BILLING.md).");
+      }
+      for (const [, k] of out.matchAll(/^(STRIPE_[A-Z0-9_]*)=/gm)) warn.push(`Convex ${k} is set but unused (Stripe was replaced by Polar); remove it.`);
       if ((get("BETTER_AUTH_SECRET") ?? "").length < 32) problems.push("Convex BETTER_AUTH_SECRET must be at least 32 characters.");
       for (const k of ["FOLEVI_DEV_MAILBOX_SECRET", "FOLEVI_AUTH_RATE_LIMIT_SCALE"]) {
         if (get(k) && get(k) !== "none") problems.push(`Convex ${k} must not be set in production.`);

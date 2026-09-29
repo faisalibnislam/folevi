@@ -6,8 +6,8 @@ import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { redactEmail } from "./lib/crypto";
-import { DAY_MS, PLANS, billedQuantity, monthlyValueCents, personalEntitlementsOf, seatChargeCents, workspaceEntitlementsOf, type PersonalTier } from "./lib/plans";
-import { isPersonalPayment, isPersonalSubscription, isWorkspaceSubscription } from "./lib/billing";
+import { DAY_MS, PRICES, billedQuantity, monthlyValueCents, personalEntitlementsOf, seatChargeCents, workspaceEntitlementsOf, type PersonalTier } from "./lib/plans";
+import { isPersonalPayment, isPersonalSubscription, isWorkspaceSubscription, paymentTier } from "./lib/billing";
 import { workspaceSubscriptionLike } from "./lib/entitlements";
 
 const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
@@ -26,7 +26,7 @@ function lastMonths(n: number, now: number): string[] {
   });
 }
 
-/** People: growth, activity, Personal plans, trials and AI use (Personal and workspaces). */
+/** People: growth, activity, Personal plans, trials and AI use and credits (Personal and workspaces). */
 export const users = query({
   args: { days: v.number() },
   handler: async (ctx, args) => {
@@ -43,10 +43,9 @@ export const users = query({
     for (const p of profiles) if (p.createdAt >= since) signupsByDay.set(dayOf(p.createdAt), (signupsByDay.get(dayOf(p.createdAt)) ?? 0) + 1);
 
     const active = (ms: number) => profiles.filter((p) => p.lastActiveAt >= now - ms).length;
-    const planCounts: Record<PersonalTier, number> = { free: 0, basic: 0, pro: 0 };
+    const planCounts: Record<PersonalTier, number> = { free: 0, core: 0, pro: 0, pro_ai: 0 };
     let trialing = 0;
     let trialsEndingSoon = 0;
-    let aiGrants = 0;
     for (const p of profiles) {
       const sub = subByProfile.get(p._id) ?? null;
       const e = personalEntitlementsOf(sub, now);
@@ -55,7 +54,6 @@ export const users = query({
         trialing++;
         if ((e.trialEndsAt ?? 0) - now < 3 * DAY_MS) trialsEndingSoon++;
       }
-      if (e.aiSource === "grant") aiGrants++;
     }
     // Trial conversion: accounts whose trial has ended (within the window) that are now on a paid plan.
     const endedTrials = subs.filter((s) => s.trialEndsAt && s.trialEndsAt < now && s.trialEndsAt >= since);
@@ -68,12 +66,22 @@ export const users = query({
     const aiByDay = new Map(lastDays(days, now).map((d) => [d, 0]));
     const aiUsers = new Set<string>();
     const aiByScope = { personal: 0, workspace: 0 };
+    const creditsByDay = new Map(lastDays(days, now).map((d) => [d, 0]));
+    const creditsByScope = { personal: 0, workspace: 0 };
+    let tokensIn = 0;
+    let tokensOut = 0;
     for (const u of usage) {
       aiByDay.set(u.day, (aiByDay.get(u.day) ?? 0) + u.count);
+      creditsByDay.set(u.day, (creditsByDay.get(u.day) ?? 0) + (u.credits ?? 0));
       aiUsers.add(u.profileId);
       // Rows from before scopes were recorded were all Personal.
       aiByScope[u.scope] += u.count;
+      creditsByScope[u.scope] += u.credits ?? 0;
+      tokensIn += u.tokensIn ?? 0;
+      tokensOut += u.tokensOut ?? 0;
     }
+    // Credit grants by admins in the window (bought packs are in `revenue`).
+    const grants = (await ctx.db.query("aiCreditPacks").collect()).filter((p) => p.source === "admin" && p.purchasedAt >= since);
     // Team workspaces plus every Personal (each counts on its own; nothing is double counted).
     const workspaces = await ctx.db.query("workspaces").collect();
     const storageBytes = workspaces.reduce((n, w) => n + w.storageUsedBytes, 0) + profiles.reduce((n, p) => n + (p.personalStorageUsedBytes ?? 0), 0);
@@ -86,9 +94,20 @@ export const users = query({
       plans: planCounts,
       trialing,
       trialsEndingSoon,
-      aiGrants,
+      creditGrants: { count: grants.length, credits: grants.reduce((n, g) => n + g.credits, 0) },
       trialConversion: { ended: endedTrials.length, converted, rate: endedTrials.length ? converted / endedTrials.length : null },
-      ai: { requests: usage.reduce((n, u) => n + u.count, 0), users: aiUsers.size, byScope: aiByScope, byDay: [...aiByDay].map(([day, count]) => ({ day, count })) },
+      ai: {
+        requests: usage.reduce((n, u) => n + u.count, 0),
+        users: aiUsers.size,
+        byScope: aiByScope,
+        byDay: [...aiByDay].map(([day, count]) => ({ day, count })),
+        /** Credits charged (1 credit = $0.01 of Gemini cost), so this is also the AI bill in cents. */
+        credits: usage.reduce((n, u) => n + (u.credits ?? 0), 0),
+        creditsByScope,
+        creditsByDay: [...creditsByDay].map(([day, credits]) => ({ day, credits })),
+        tokensIn,
+        tokensOut,
+      },
       storage: { totalBytes: storageBytes, perUserBytes: profiles.length ? Math.round(storageBytes / profiles.length) : 0 },
     };
   },
@@ -119,7 +138,7 @@ export const revenue = query({
 
     // Recurring revenue from plans in effect today (paid, not canceled; manual comps count at list price).
     let mrr = 0;
-    const byPlan: Record<string, number> = { "basic:month": 0, "basic:year": 0, "pro:month": 0, "pro:year": 0 };
+    const byPlan: Record<string, number> = { "core:month": 0, "core:year": 0, "pro:month": 0, "pro:year": 0, "pro_ai:month": 0, "pro_ai:year": 0 };
     let paying = 0;
     let cancelingAtPeriodEnd = 0;
     let pastDue = 0;
@@ -144,15 +163,16 @@ export const revenue = query({
       .filter(counts)
       .filter(isPersonalPayment);
     const monthsList = lastMonths(months, now);
-    const revenueByMonth = new Map(monthsList.map((m) => [m, { gross: 0, refunded: 0 }]));
+    const revenueByMonth = new Map(monthsList.map((m) => [m, { gross: 0, refunded: 0, credits: 0 }]));
     for (const p of payments) {
       const row = revenueByMonth.get(monthOf(p.createdAt));
       if (!row) continue;
-      if (p.status === "paid") row.gross += p.amountCents;
-      if (p.status === "refunded") {
+      if (p.status === "paid" || p.status === "refunded") {
         row.gross += p.amountCents;
-        row.refunded += p.amountCents;
+        if (p.plan === "credits") row.credits += p.amountCents;
       }
+      if (p.status === "refunded") row.refunded += p.amountCents;
+      else if (p.refundedCents) row.refunded += Math.min(p.refundedCents, p.amountCents);
     }
     const newByMonth = new Map(monthsList.map((m) => [m, 0]));
     const churnByMonth = new Map(monthsList.map((m) => [m, 0]));
@@ -176,7 +196,7 @@ export const revenue = query({
       byPlan,
       cancelingAtPeriodEnd,
       pastDue,
-      revenueByMonth: [...revenueByMonth].map(([month, r]) => ({ month, grossCents: r.gross, refundedCents: r.refunded, netCents: r.gross - r.refunded })),
+      revenueByMonth: [...revenueByMonth].map(([month, r]) => ({ month, grossCents: r.gross, refundedCents: r.refunded, netCents: r.gross - r.refunded, creditPacksCents: r.credits })),
       newByMonth: [...newByMonth].map(([month, count]) => ({ month, count })),
       churnByMonth: [...churnByMonth].map(([month, count]) => ({ month, count })),
       last30: {
@@ -184,8 +204,8 @@ export const revenue = query({
         refundedCents: last30.filter((p) => p.status === "refunded").reduce((n, p) => n + p.amountCents, 0),
         failed: last30.filter((p) => p.status === "failed").length,
       },
-      recent: recent.map((p) => ({ id: p._id as string, profileId: p.profileId as string, ...names.get(p.profileId)!, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval, status: p.status, provider: p.provider, createdAt: p.createdAt })),
-      prices: { basic: { month: PLANS.basic.monthlyCents, year: PLANS.basic.yearlyCents }, pro: { month: PLANS.pro.monthlyCents, year: PLANS.pro.yearlyCents } },
+      recent: recent.map((p) => ({ id: p._id as string, profileId: p.profileId as string, ...names.get(p.profileId)!, amountCents: p.amountCents, currency: p.currency, plan: paymentTier(p), interval: p.interval ?? null, credits: p.credits ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
+      prices: PRICES,
       workspaces: workspaceTotals,
       testIncluded: Boolean(args.includeTest),
     };

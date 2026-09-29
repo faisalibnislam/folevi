@@ -188,10 +188,10 @@ describe("a workspace scheduled for deletion", () => {
     const { token } = await w.owner.as.mutation(api.sharing.createPublicLink, { documentId: page });
     const open = () => t.mutation(api.sharing.openPublicLink, { token, serverSecret: "a".repeat(64), clientKey: "client-closing" });
     expect((await open()).status).toBe("ok");
-    await w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_team_monthly" });
+    await w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_pro_monthly" });
     await w.owner.as.mutation(api.workspaces.scheduleDeletion, { workspaceId: w.workspaceId, confirmName: "closing team" });
     expect((await open()).status).toBe("not_found");
-    await expect(w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_business_monthly" })).rejects.toThrow(/scheduled for deletion/);
+    await expect(w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_pro_ai_monthly" })).rejects.toThrow(/scheduled for deletion/);
     await expect(w.owner.as.action(api.workspaceBilling.resume, { workspaceId: w.workspaceId })).rejects.toThrow(/scheduled for deletion/);
     await w.owner.as.action(api.workspaceBilling.cancel, { workspaceId: w.workspaceId });
     // Canceling the deletion brings the link back.
@@ -200,19 +200,23 @@ describe("a workspace scheduled for deletion", () => {
   });
 });
 
-describe("AI in a workspace is for its members", () => {
-  test("a guest on a Team workspace's page doesn't get the workspace's AI (nor does their Pro cover it)", async () => {
+describe("AI on a workspace page: members use the workspace's credits, guests their own", () => {
+  test("a guest on a Pro workspace's page uses their own personal credits, never the workspace's", async () => {
     const t = setup();
     const w = await world(t, "aig");
-    await w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_team_monthly" });
+    await w.owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: w.workspaceId, planId: "workspace_pro_monthly" });
     await w.guest.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     const page = await newPage(w.owner, w.scope, "Brief");
     await w.owner.as.mutation(api.sharing.grant, { documentId: page, email: w.guestEmail, role: "editor" });
-    await expect(w.guest.as.mutation(internal.ai.begin, { scope: PERSONAL, documentId: page, noteOnly: true })).rejects.toThrow(/for members of this workspace/);
-    await expect(w.guest.as.mutation(internal.ai.begin, { scope: PERSONAL, documentId: page })).rejects.toThrow(/for members of this workspace/);
-    // Members get it; the guest's own Personal is covered by their Pro.
-    await w.member.as.mutation(internal.ai.begin, { scope: w.scope, documentId: page, noteOnly: true });
-    await w.guest.as.mutation(internal.ai.begin, { scope: PERSONAL });
+    const guestHold = await w.guest.as.mutation(internal.ai.begin, { scope: PERSONAL, documentId: page, noteOnly: true });
+    const memberHold = await w.member.as.mutation(internal.ai.begin, { scope: w.scope, documentId: page, noteOnly: true });
+    const [g, m] = await t.run(async (ctx) => [await ctx.db.get(guestHold.holdId), await ctx.db.get(memberHold.holdId)]);
+    // The guest's hold is on their Personal account; the member's on their seat in the workspace.
+    expect(g!.workspaceId).toBeUndefined();
+    expect(m!.workspaceId).toBeDefined();
+    expect(await w.guest.as.query(api.billing.credits, { scope: PERSONAL, documentId: page })).toMatchObject({ account: "personal", plan: "Pro" });
+    // A guest can't buy credits for the workspace (they have no seat there).
+    await expect(w.guest.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: w.scope })).rejects.toThrow(/not_found/);
   });
 });
 

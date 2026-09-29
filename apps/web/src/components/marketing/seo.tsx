@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PLANS, PLAN_ORDER, formatPrice, isPaidPlan } from "@/lib/plans";
+import { PLANS, PLAN_ORDER } from "@/lib/plans";
 import { absoluteUrl } from "./site";
 
 export function pageMetadata({
@@ -63,12 +63,20 @@ export function softwareLd(): Record<string, unknown> {
     operatingSystem: "Web",
     description:
       "A calm writing and notes workspace with block documents, nested pages, tasks, offline editing and real-time sync. It runs on the web, and a native Mac app is coming soon.",
-    // The Personal plans (workspace plans aren't on sale yet), from the plan catalog.
-    offers: PLAN_ORDER.map((id) => {
-      const plan = PLANS[id];
-      return isPaidPlan(plan.monthly)
-        ? { "@type": "Offer", name: plan.name, price: plan.monthlyCents / 100, priceCurrency: "USD", description: `Per month, or ${formatPrice(plan.yearlyCents)} a year` }
-        : { "@type": "Offer", name: plan.name, price: 0, priceCurrency: "USD" };
+    // The Personal plans, one offer per price, from the plan catalog (team plans cost the same per member).
+    offers: PLAN_ORDER.flatMap((tier) => {
+      const plan = PLANS[tier];
+      if (tier === "free") return [{ "@type": "Offer", name: plan.name, price: 0, priceCurrency: "USD" }];
+      return (["month", "year"] as const).map((interval) => {
+        const price = (interval === "month" ? plan.monthlyCents : plan.yearlyCents) / 100;
+        return {
+          "@type": "Offer",
+          name: `${plan.name} (${interval === "month" ? "monthly" : "yearly"})`,
+          price,
+          priceCurrency: "USD",
+          priceSpecification: { "@type": "UnitPriceSpecification", price, priceCurrency: "USD", billingDuration: interval === "month" ? "P1M" : "P1Y" },
+        };
+      });
     }),
   };
 }

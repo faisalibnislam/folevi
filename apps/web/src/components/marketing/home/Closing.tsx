@@ -1,10 +1,10 @@
-import { PLANS, PLAN_ORDER, TRIAL_DAYS, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, formatPrice, isPaidPlan } from "@/lib/plans";
+import { TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER, TIER_NAMES } from "@/lib/plans";
 import Link from "next/link";
-import { Check } from "lucide-react";
 import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
 import { SIGN_UP_URL } from "../site";
-import { ButtonLink, SectionHeading, container, cx } from "../ui";
+import { PlanPicker } from "./PlanPicker";
+import { ButtonLink, SectionHeading, container } from "../ui";
 
 export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: string }> = [
   {
@@ -83,104 +83,22 @@ export function SecuritySection() {
   );
 }
 
-function FeatureList({ items }: { items: string[] }) {
-  return (
-    <ul className="mt-5 flex-1 space-y-2.5 border-t mk-hair pt-5">
-      {items.map((item) => (
-        <li key={item} className="flex items-start gap-2.5 text-[14.5px] leading-snug text-ink">
-          <Check size={16} aria-hidden="true" className="mt-px flex-none text-(--color-heading)" />
-          {item}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** The three Personal plans side by side (marketing home and /pricing). Prices come from lib/plans. */
-export function PricingCard({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3" }) {
-  const Heading = headingLevel;
-  return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {PLAN_ORDER.map((id) => {
-        const plan = PLANS[id];
-        // The plan with AI is the one highlighted (and the one the trial gives).
-        const pro = plan.ai;
-        const paid = isPaidPlan(plan.monthly);
-        return (
-          <div
-            key={id}
-            className={cx(
-              "mk-card flex flex-col p-6 sm:p-7",
-              pro && "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]",
-            )}
-          >
-            <div className="flex min-h-7 items-center gap-2">
-              <Heading className="text-[16px] font-semibold text-(--color-heading)">{plan.name}</Heading>
-              {pro ? <span className="mk-chip ml-auto">{TRIAL_DAYS}-day free trial</span> : null}
-            </div>
-            <p className="mt-5 flex items-baseline gap-1.5">
-              <span className="mk-display text-[48px] leading-none">{formatPrice(plan.monthlyCents)}</span>
-              <span className="text-[14.5px] text-muted">/ month</span>
-            </p>
-            <p className="mt-2 min-h-[22px] text-[13.5px] text-muted">{!paid ? "No card required" : `or ${formatPrice(plan.yearlyCents)} a year`}</p>
-            <p className="mt-4 text-[14.5px] leading-relaxed text-ink">{plan.blurb}</p>
-            <FeatureList items={plan.features} />
-            <ButtonLink href={SIGN_UP_URL} className="mt-7 w-full" icon="arrow-right" size="lg" variant={pro ? undefined : "secondary"}>
-              {!paid ? "Start free" : pro ? `Try ${plan.name} free for ${TRIAL_DAYS} days` : `Start with ${plan.name}`}
-            </ButtonLink>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Workspace plans (the /pricing page). Each workspace has its own plan, separate from anyone's Personal
- * plan; paid plans are per member. Only what exists is listed, and plans that can't be bought yet say so.
- */
-export function WorkspacePlans({ headingLevel = "h3" }: { headingLevel?: "h2" | "h3" }) {
-  const Heading = headingLevel;
-  return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {WORKSPACE_PLAN_ORDER.map((id) => {
-        const plan = WORKSPACE_PLANS[id];
-        return (
-          <div key={id} className="mk-card flex flex-col p-6 sm:p-7">
-            <div className="flex min-h-7 items-center gap-2">
-              <Heading className="text-[16px] font-semibold text-(--color-heading)">{plan.name}</Heading>
-              {!plan.available ? <span className="mk-chip ml-auto">Coming soon</span> : null}
-            </div>
-            <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5">
-              <span className="mk-display text-[40px] leading-none">{formatPrice(plan.monthlyCents)}</span>
-              <span className="text-[14.5px] text-muted">{plan.perSeat ? "per member / month" : "/ month"}</span>
-            </p>
-            <p className="mt-2 min-h-[22px] text-[13.5px] text-muted">{plan.perSeat ? `or ${formatPrice(plan.yearlyCents)} per member / year` : "No card required"}</p>
-            <p className="mt-4 text-[14.5px] leading-relaxed text-ink">{plan.blurb}</p>
-            <FeatureList items={plan.features} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export function PricingSection() {
   return (
     <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 border-t mk-hair py-16 sm:py-24">
-      <div className={cx(container, "max-w-[1120px]")}>
+      <div className={container}>
         <SectionHeading
           align="center"
           id="pricing-title"
           eyebrow="Pricing"
           title="Start free. Upgrade when you need room or AI."
-          lede={`Every new account gets Pro free for ${TRIAL_DAYS} days. Every plan works on the web, and will include the Mac app when it arrives.`}
+          lede={`Four plans, for you or for your team. Every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card.`}
         />
-        <div className="mt-12">
-          <PricingCard />
+        <div className="mt-10">
+          <PlanPicker align="center" />
         </div>
         <p className="mt-6 text-center text-[14px] text-muted">
-          Workspaces for teams have their own plans.{" "}
+          AI credits, credit packs and answers to common questions.{" "}
           <Link href="/pricing" className="mk-link">
             See all pricing
           </Link>

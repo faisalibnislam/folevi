@@ -18,7 +18,7 @@ test("Free: a third device waits until another is signed out", async ({ browser 
   const third = await browser.newContext();
   const thirdPage = await signIn(third, first.account);
   await expect(thirdPage.getByRole("heading", { name: "You’re on 2 devices already" })).toBeVisible({ timeout: 30_000 });
-  await expect(thirdPage.getByRole("button", { name: /Upgrade to Basic/ })).toBeVisible();
+  await expect(thirdPage.getByRole("button", { name: /Upgrade to Core/ })).toBeVisible();
   // Sign one of the other devices out from here; this one opens.
   await thirdPage.getByRole("button", { name: /^Sign out / }).first().click();
   await expect(thirdPage.getByRole("heading", { name: "You’re on 2 devices already" })).toHaveCount(0, { timeout: 30_000 });

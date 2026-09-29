@@ -23,11 +23,11 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { errorMessage } from "@/components/ui/Toast";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown } from "./insert";
 import { useAi, type AiTask } from "./useAi";
+import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 
 /** What the inline composer works on: a range of text (a selection or whole blocks), or the cursor. */
 export interface InlineAiRequest {
@@ -91,7 +91,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
   const [phase, setPhase] = useState<Phase>({ kind: "compose" });
   const [input, setInput] = useState("");
   const [active, setActive] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AiProblem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number; width: number; up: boolean } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -130,7 +130,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         setInput("");
       } catch (e) {
         if (seq !== runSeq.current) return;
-        setError(errorMessage(e));
+        setError(aiProblem(e));
         setPhase({ kind: "compose" });
       } finally {
         if (seq === runSeq.current) stream.end();
@@ -359,11 +359,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         </div>
       )}
 
-      {error ? (
-        <p role="alert" className="mx-3 mb-2.5 rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-3 mb-2.5 rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 mb-2.5 w-auto"} /> : phase.kind === "compose" ? <AiCreditsNote documentId={documentId} className="mx-3 mb-2.5" /> : null}
       {notice ? <p className="mx-4 mb-2 text-[12.5px] text-muted">{notice}</p> : null}
 
       {/* Result actions and quick refinements */}

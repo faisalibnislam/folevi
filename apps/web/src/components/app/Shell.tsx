@@ -308,8 +308,8 @@ export function Shell() {
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
-      {/* The floating Ask AI chat (bottom right). With AI switched on but not included here, it says how to get it. */}
-      {ai.setting ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} entitled={ai.entitled} context={ai.context} onClose={() => setAskOpen(null)} /> : null}
+      {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
+      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} /> : null}
     </ShellContext.Provider>
     </TabsProvider>
   );

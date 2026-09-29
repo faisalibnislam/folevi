@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
+import { TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
 import { Card } from "./Card";
 
 function DeviceIcon({ client, label }: { client: string; label: string }) {
@@ -23,7 +24,7 @@ function DeviceIcon({ client, label }: { client: string; label: string }) {
 
 /**
  * Settings → Devices: every browser and app signed in to the account, on every plan, with the plan's
- * device limit (Free: 2; Basic, Pro and the trial: unlimited). Signing a device out ends its session at once.
+ * device limit (Free: 2; Core, Pro, Pro AI and the trial: unlimited). Signing a device out ends its session at once.
  */
 export function DevicesSection() {
   const sessions = useQuery(api.users.listSessions, {});
@@ -54,7 +55,7 @@ export function DevicesSection() {
             <p className="mt-0.5 text-[13px] text-muted">
               {limit === null
                 ? entitlements?.trialing
-                  ? "Unlimited devices during your Pro trial."
+                  ? `Unlimited devices during your ${TIER_NAMES[TRIAL_TIER]} trial.`
                   : "Your personal plan includes unlimited devices."
                 : `Your personal plan works on ${limit} ${plural(limit)} at a time, in Personal and every workspace. A new device beyond that asks you to sign one out first.`}
             </p>

@@ -33,7 +33,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   const personal = menu.getByRole("menuitemradio", { name: "Personal", exact: true });
   await expect(personal).toHaveAttribute("aria-checked", "true");
   await expect(personal).toContainText("Switch Person");
-  await expect(personal).toContainText("Pro trial"); // new accounts start with the 7-day Pro trial
+  await expect(personal).toContainText("Pro AI trial"); // new accounts start with the 7-day Pro AI trial
   await expect(menu.getByText("Workspaces", { exact: true })).toBeVisible();
   // Only Personal and the three appearance choices are choices: no workspaces.
   await expect(menu.getByRole("menuitemradio")).toHaveCount(4);

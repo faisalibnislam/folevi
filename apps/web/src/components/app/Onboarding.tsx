@@ -8,7 +8,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { COVER_ART } from "@/lib/cover";
-import { TRIAL_DAYS } from "@/lib/plans";
+import { MONTHLY_CREDITS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { ONBOARDING_NOTE_STYLES, PLAIN_STYLE, USE_CASES, isOnboardingNoteStyle, starterPagesFor, type OnboardingStep } from "@/lib/onboarding";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
@@ -487,12 +487,13 @@ type Entitlements = ReturnType<typeof useAppState>["profile"]["entitlements"];
 function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next: boolean) => void; entitlements: Entitlements }) {
   const descId = useId();
   const ends = entitlements.trialEndsAt ? new Date(entitlements.trialEndsAt).toLocaleDateString(undefined, { month: "long", day: "numeric" }) : null;
+  // AI is counted in credits: the trial's fixed allowance, then the plan's monthly credits. Core has none.
   const plan =
     entitlements.ai && entitlements.aiSource === "trial"
-      ? `Included in your ${TRIAL_DAYS}-day Pro trial${ends ? `, which ends on ${ends}` : ""}. After that, AI is part of Pro.`
+      ? `Included in your ${TRIAL_DAYS}-day ${TIER_NAMES[TRIAL_TIER]} trial, with ${TRIAL_CREDITS} AI credits${ends ? ` until ${ends}` : ""}. After that, Free includes ${MONTHLY_CREDITS.free} AI credits a month, and you can choose a plan with more in Settings.`
       : entitlements.ai
-        ? "Included in your plan."
-        : "In Personal, AI is part of Pro. You’ll find plans in Settings.";
+        ? `Your plan includes ${entitlements.monthlyCredits} AI credits a month.`
+        : `Your plan, ${TIER_NAMES.core}, has no AI: nothing is sent to an AI model. You can change plans in Settings.`;
   return (
     <>
       <FactList

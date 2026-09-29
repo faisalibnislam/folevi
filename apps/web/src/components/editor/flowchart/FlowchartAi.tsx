@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowUp, X } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAi } from "@/components/ai/useAi";
-import { errorMessage } from "@/components/ui/Toast";
+import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import type { FlowDraft } from "./ops";
 
 const CREATE_IDEAS = ["Customer refund process", "Hiring pipeline from application to offer", "How a pull request gets merged"];
@@ -30,7 +30,7 @@ export function FlowchartAi({
   const [mode, setMode] = useState<"create" | "update">(hasChart ? "update" : "create");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AiProblem | null>(null);
 
   const run = async (instruction: string) => {
     if (busy || !instruction.trim()) return;
@@ -40,7 +40,7 @@ export function FlowchartAi({
       const draft = await flowchart(mode, instruction.trim(), mode === "update" ? current() : undefined);
       onApply(draft, mode);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(aiProblem(e));
     } finally {
       setBusy(false);
     }
@@ -107,19 +107,20 @@ export function FlowchartAi({
           {mode === "create" ? "Drawing your flowchart…" : "Updating the flowchart…"}
         </p>
       ) : error ? (
-        <p className="fc-ai-error" role="alert">
-          {error}
-        </p>
+        <AiProblemNotice problem={error} className={error.kind === "other" ? "fc-ai-error" : "mx-3 mb-2"} />
       ) : (
-        <ul className="fc-ai-ideas" aria-label="Ideas">
-          {ideas.map((idea) => (
-            <li key={idea}>
-              <button type="button" onClick={() => setText(idea)}>
-                {idea}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <AiCreditsNote className="mx-3 mb-2" />
+          <ul className="fc-ai-ideas" aria-label="Ideas">
+            {ideas.map((idea) => (
+              <li key={idea}>
+                <button type="button" onClick={() => setText(idea)}>
+                  {idea}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       <p className="fc-ai-foot">AI can make mistakes. Sent to Google Gemini. {mode === "update" ? "Undo with ⌘Z." : ""}</p>
     </div>

@@ -25,9 +25,10 @@ import { vInviteRole, vMemberAccess, vShareRole } from "./lib/validators";
 import { createWorkspace } from "./seed";
 import { claimIdentityImage, deleteIdentityImage, workspaceLabel, workspaceLogoUrl } from "./lib/identityImages";
 import { isFeatureEnabled } from "./lib/flags";
-import { aiAccessIn, storageUsage, workspaceEntitlements } from "./lib/entitlements";
+import { storageUsage, workspaceEntitlements } from "./lib/entitlements";
+import { aiAccountFor } from "./lib/credits";
 import { insertScoped, workspaceScope } from "./lib/scope";
-import { PLAN_CATALOG, WORKSPACE_PLANS, planName, type WorkspaceTier } from "./lib/plans";
+import { PLAN_CATALOG, TIER_NAMES, planName } from "./lib/plans";
 import { canInviteMember, canManageMember, canManageWorkspace, memberCanManageBilling, requireWorkspaceManager } from "./lib/permissions";
 import { billableSeatCount, seatsChanged, seatSummary } from "./lib/seats";
 import { notifyAccessChange, notifyInvite, workspaceRoleLabel } from "./lib/notify";
@@ -60,9 +61,10 @@ export const mine = query({
       const deleting = isScheduledForDeletion(w);
       if (deleting && role !== "owner") continue;
       const scope = workspaceScope(w._id);
-      const storage = await storageUsage(ctx, scope);
+      // Your view of its storage: the owner's free pool, your own quota on a paid plan, or an admin's limit.
+      const storage = await storageUsage(ctx, scope, profile._id);
       const plan = (await workspaceEntitlements(ctx, w)).planId;
-      const tier = PLAN_CATALOG[plan].tier as WorkspaceTier;
+      const tier = PLAN_CATALOG[plan].tier;
       const level = memberLevel(m);
       out.push({
         id: w.publicId,
@@ -81,13 +83,14 @@ export const mine = query({
         /** Set when the owner asked to delete it: read-only until then, and gone after. */
         deletionScheduledFor: w.deletionScheduledFor ?? null,
         storageUsedBytes: storage.usedBytes,
-        /** The storage limit that applies here (the workspace's plan, or an admin override). */
+        /** The storage limit that applies to you here (the owner's free pool, your per-member quota, or an admin override). */
         storageQuotaBytes: storage.limitBytes,
-        plan: { scope: "workspace" as const, id: plan, name: planName(plan), tier, shortName: WORKSPACE_PLANS[tier].name },
+        storageRule: storage.rule,
+        plan: { scope: "workspace" as const, id: plan, name: planName(plan), tier, shortName: TIER_NAMES[tier] },
         /** Whether you may see and change this workspace's plan and billing (the server checks again). */
         canManageBilling: memberCanManageBilling(m) && !deleting,
-        /** Whether you can use the AI Assistant here (the server checks again on every request). */
-        aiIncluded: (await aiAccessIn(ctx, profile, scope)).allowed,
+        /** Whether you can use the AI Assistant here: never on Core (the server checks again on every request). */
+        aiIncluded: (await aiAccountFor(ctx, profile, scope)).allowed,
       });
     }
     return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -146,7 +149,7 @@ export const members = query({
     if (manager) {
       const e = await workspaceEntitlements(ctx, workspace);
       const plan = PLAN_CATALOG[e.planId];
-      seats = { billable: await billableSeatCount(ctx, workspace._id), paid: e.paid, planName: WORKSPACE_PLANS[plan.tier as WorkspaceTier].name, seatPriceCents: plan.priceCents, interval: plan.interval };
+      seats = { billable: await billableSeatCount(ctx, workspace._id), paid: e.paid, planName: TIER_NAMES[plan.tier], seatPriceCents: plan.priceCents, interval: plan.interval };
       guests = (await seatSummary(ctx, workspace._id)).guests;
     }
     const you = normalizeMembership(member);

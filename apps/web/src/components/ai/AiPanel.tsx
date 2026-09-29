@@ -6,12 +6,12 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowUp, Check, Copy, CornerDownLeft, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, X } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
 import { useShell } from "@/components/app/Shell";
-import { errorMessage } from "@/components/ui/Toast";
 import { Select } from "@/components/ui/Select";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, markdownToPlain, type AiPlacement } from "./insert";
 import { SELECTION_ACTIONS, useAi, type AiRunDetail, type AiTask } from "./useAi";
+import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -61,7 +61,7 @@ export function AiPanel({
   const [mode, setMode] = useState<"write" | "ask">("write");
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AiProblem | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -78,7 +78,7 @@ export function AiPanel({
       await stream.finish(text);
       if (text.trim()) setResult({ kind: "write", task: req.task, text, placement: req.placement, request: req });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(aiProblem(e));
     } finally {
       stream.end();
       setBusy(null);
@@ -95,7 +95,7 @@ export function AiPanel({
       await stream.finish(answer);
       if (answer.trim()) setResult({ kind: "ask", question, text: answer, sources });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(aiProblem(e));
     } finally {
       stream.end();
       setBusy(null);
@@ -190,6 +190,8 @@ export function AiPanel({
         <p className="mt-1.5 px-1 text-[11.5px] text-faint">
           {mode === "write" ? "Uses this note (and any selected text) as context. ↵ to send." : "Answers from this note and your other notes, with sources."}
         </p>
+        {/* Writing uses the note's own scope; asking searches where you are. */}
+        <AiCreditsNote documentId={mode === "write" ? documentId : undefined} className="mt-2" />
       </section>
 
       {/* Quick actions */}
@@ -240,11 +242,7 @@ export function AiPanel({
             <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {busy}…
           </p>
         ) : null}
-        {error ? (
-          <p role="alert" className="rounded-[10px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger">
-            {error}
-          </p>
-        ) : null}
+        {error ? <AiProblemNotice problem={error} /> : null}
         {notice ? <p className="px-1 text-[12.5px] text-muted">{notice}</p> : null}
       </div>
 

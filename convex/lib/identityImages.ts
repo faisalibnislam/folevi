@@ -3,7 +3,7 @@
 // lives in (and counts toward) the team workspace.
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { adjustStorageUsed } from "./entitlements";
+import { releaseFileStorage } from "./entitlements";
 import { fail } from "./errors";
 import { signFileUrl } from "./fileUrls";
 import { bump } from "./metrics";
@@ -55,7 +55,7 @@ export async function deleteIdentityImage(ctx: MutationCtx, fileId: Id<"files"> 
   const file = await ctx.db.get(fileId);
   if (!file) return;
   await ctx.storage.delete(file.storageId);
-  await adjustStorageUsed(ctx, scopeOfRow(file), -file.size);
+  await releaseFileStorage(ctx, file, scopeOfRow(file));
   await bump(ctx, "storage_bytes", -file.size);
   await ctx.db.delete(file._id);
 }

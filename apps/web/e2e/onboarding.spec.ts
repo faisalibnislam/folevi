@@ -65,7 +65,7 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
   await expect(heading(page, "Meet your AI Assistant")).toBeFocused();
   const ai = page.getByRole("switch", { name: "AI Assistant" });
   await expect(ai).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByText(/Included in your 7-day Pro trial/)).toBeVisible();
+  await expect(page.getByText(/Included in your 7-day Pro AI trial, with 100 AI credits/)).toBeVisible();
   await ai.click();
   await expect(ai).toHaveAttribute("aria-checked", "false");
   await scan(page, "ai");

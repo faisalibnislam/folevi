@@ -192,7 +192,7 @@ export default function DocsPage() {
         <h2 id="workspaces">Workspaces & plans</h2>
         <p>
           Your <strong>Personal</strong> is yours alone and isn’t a workspace: nobody can join it, and your personal plan (Free,
-          Basic or Pro) covers only it: its storage, your devices and, on Pro, the AI Assistant. A{" "}
+          Core, Pro or Pro AI) covers it: its storage, your devices and your AI credits. A{" "}
           <strong>workspace</strong> is shared with a team and has its own plan, storage and billing.
         </p>
         <ul>
@@ -202,14 +202,16 @@ export default function DocsPage() {
             shared with them.
           </li>
           <li>
-            <strong>Plans.</strong> Workspace Free, Team and Business. Paid plans are billed per member seat. The owner,
-            admins and members each take one; guests and pending invitations are free. The owner, and admins the owner
-            allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
+            <strong>Plans.</strong> Free, Core, Pro and Pro AI, the same as personal plans. Paid plans are billed per member
+            seat. The owner, admins and members each take one and get the plan’s storage and AI credits in the workspace;
+            guests and pending invitations are free. On Core, nobody in the workspace can use AI. The owner, and admins the
+            owner allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
           </li>
           <li>
-            <strong>Separate limits.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes
-            your Personal. Storage is counted separately for your Personal and for each workspace; if a space goes over its
-            limit, nothing is deleted. New uploads wait until there’s room.
+            <strong>Separate plans.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes
+            your Personal. On Free, your Personal and the free workspaces you own share 1 GB, and in a free workspace each
+            member uses their own personal AI credits. On paid plans, storage and AI credits are per person. If a space goes
+            over its limit, nothing is deleted. New uploads wait until there’s room.
           </li>
           <li>
             <strong>Leaving and deleting.</strong> Content in a workspace belongs to the workspace and stays when someone

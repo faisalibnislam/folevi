@@ -4,19 +4,19 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowUp, Copy, FileText, Folder, Loader2, RotateCcw, X } from "lucide-react";
-import { AppLink, useAppRouter } from "@/lib/app/router";
-import { errorMessage } from "@/components/ui/Toast";
+import { useAppRouter } from "@/lib/app/router";
 import { modKey } from "@/lib/hooks/useEngine";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
 import { markdownToPlain } from "./insert";
 import { useAi, type AskTurn } from "./useAi";
+import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 
 interface Turn {
   question: string;
   answer?: string;
   sources?: { id: string; title: string }[];
-  error?: string;
+  error?: AiProblem;
 }
 
 const SUGGESTIONS = ["What am I working on this week?", "Summarize my notes about travel", "Which tasks are still open?", "What ideas have I written down recently?"];
@@ -29,8 +29,8 @@ const SHADOW = "shadow-[0_8px_24px_rgb(0_0_0/0.1),0_2px_6px_rgb(0_0_0/0.1),inset
  * Ask AI (⌘J): a chat with your notes that pops out from a floating button in the bottom-right corner.
  * It isn't modal: you can keep reading and writing while it's open. Each answer cites the notes it used;
  * follow-ups keep the conversation. Also opened from the command palette, a folder's menu and the note's
- * AI panel. When AI isn't included where they are, the same button explains how to get it: in Personal,
- * the Pro plan; in a team workspace, that workspace's plan.
+ * AI panel. Shown only where AI is included and turned on (never on Core). When credits run low it says
+ * so, and a refused request (out of credits) says what helps.
  */
 export function AskAiChat({
   open,
@@ -38,8 +38,6 @@ export function AskAiChat({
   onClose,
   initial,
   folder,
-  entitled,
-  context = "personal",
 }: {
   open: boolean;
   onOpen: () => void;
@@ -47,10 +45,6 @@ export function AskAiChat({
   initial?: string;
   /** Only this folder's notes. */
   folder?: { id: string; name: string };
-  /** False: AI is switched on but not included where they are; the panel explains how to get it instead. */
-  entitled: boolean;
-  /** Where they are (useAiAccess): decides which plan the explanation points to. */
-  context?: "personal" | "workspace" | "shared";
 }) {
   const [mounted, setMounted] = useState(false);
   const { route } = useAppRouter();
@@ -92,7 +86,7 @@ export function AskAiChat({
               <X size={16} aria-hidden />
             </button>
           </header>
-          {entitled ? <Conversation open={open} initial={initial} folder={folder} onNavigate={close} /> : <Upsell context={context} onNavigate={close} />}
+          <Conversation open={open} initial={initial} folder={folder} onNavigate={close} />
       </section>
       {onNote ? null : (
       <button
@@ -110,30 +104,6 @@ export function AskAiChat({
       )}
     </div>,
     document.body,
-  );
-}
-
-function Upsell({ context, onNavigate }: { context: "personal" | "workspace" | "shared"; onNavigate: () => void }) {
-  if (context !== "personal") {
-    // A Personal plan never covers a workspace: say what does, honestly (workspace plans aren't on sale yet).
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-        <p className="ui-display text-[22px] text-heading">Ask your notes anything</p>
-        <p className="text-[13.5px] text-muted">
-          {context === "workspace" ? "AI Assistant comes with the Team and Business workspace plans. They're coming soon." : "The AI Assistant isn't available on notes shared with you from someone else's Personal or a workspace you're not in."}
-        </p>
-        <p className="text-[12.5px] text-faint">Your own Pro plan includes AI in Personal.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-      <p className="ui-display text-[22px] text-heading">Ask your notes anything</p>
-      <p className="text-[13.5px] text-muted">The AI Assistant writes, summarizes and answers questions from your notes. It&apos;s part of Pro.</p>
-      <AppLink href="/settings/billing" onClick={onNavigate} className="ui-btn ui-btn-primary mt-2 h-9 px-4 text-sm">
-        See plans
-      </AppLink>
-    </div>
   );
 }
 
@@ -174,7 +144,7 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
       await stream.finish(answer);
       setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, answer: answer || "(stopped)", sources } : t)));
     } catch (e) {
-      setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, error: errorMessage(e) } : t)));
+      setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, error: aiProblem(e) } : t)));
     } finally {
       stream.end();
       setBusy(false);
@@ -233,9 +203,7 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
                 </button>
               </div>
             ) : t.error ? (
-              <p role="alert" className="rounded-[12px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger">
-                {t.error}
-              </p>
+              <AiProblemNotice problem={t.error} className={t.error.kind === "other" ? "rounded-[12px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} />
             ) : stream.text ? (
               <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]" aria-busy="true">
                 <StreamingText text={stream.text} />
@@ -254,6 +222,7 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
       </div>
 
       <div className="flex-none border-t border-line/70 px-3 pb-3 pt-2.5">
+        <AiCreditsNote className="mb-2" />
         {scope ? (
           <p className="mb-2 flex flex-wrap items-center gap-1.5 px-1 text-[12.5px] text-muted">
             <Folder size={13} aria-hidden /> In folder <span className="font-semibold text-heading">{scope.name}</span>

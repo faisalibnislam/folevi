@@ -65,7 +65,7 @@ export function SettingsView({ section }: { section: Section }) {
   const sectionHidden = workspace !== null && workspaceItem !== undefined && !allowed(workspaceItem.who);
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
-      <div className="mx-auto grid max-w-5xl gap-8 px-4 pb-24 pt-6 sm:px-8 md:grid-cols-[216px_1fr] md:gap-10">
+      <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-24 pt-6 sm:px-8 md:grid-cols-[216px_minmax(0,1fr)] md:gap-10">
         <nav aria-label="Settings sections" className="md:sticky md:top-[76px] md:self-start">
           <div className="flex gap-6 overflow-x-auto pb-1 md:flex-col md:gap-5 md:overflow-visible md:pb-0">
             {groups.map((g) => (

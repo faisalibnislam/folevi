@@ -42,10 +42,13 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       setBusy(null);
     }
   };
-  const upgrade = (plan: "basic" | "pro") =>
+  const upgrade = (plan: "core" | "pro") =>
     run(plan, async () => {
-      if (billing?.checkoutAvailable) window.location.assign((await checkout({ plan, interval: "month" })).url);
-      else if (billing?.testPurchases) await testPurchase({ plan, interval: "month" });
+      if (billing?.checkoutAvailable) {
+        // null: an existing subscription was switched instead; the server lifts the limit once it lands.
+        const { url } = await checkout({ plan, interval: "month" });
+        if (url) window.location.assign(url);
+      } else if (billing?.testPurchases) await testPurchase({ plan, interval: "month" });
       else throw new Error("Online payments aren't available yet.");
     });
   const others = sessions?.filter((s) => !s.current) ?? [];
@@ -85,11 +88,11 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       <div className="mt-6 flex flex-wrap items-center gap-2">
         {canBuy ? (
           <>
-            <Button variant="primary" onClick={() => void upgrade("basic")} disabled={busy !== null}>
-              {busy === "basic" ? "Upgrading…" : `Upgrade to Basic · ${formatPrice(PLANS.basic.monthlyCents)}/mo`}
+            <Button variant="primary" onClick={() => void upgrade("core")} disabled={busy !== null}>
+              {busy === "core" ? "Upgrading…" : `Upgrade to ${PLANS.core.name} · ${formatPrice(PLANS.core.monthlyCents)}/mo`}
             </Button>
             <Button onClick={() => void upgrade("pro")} disabled={busy !== null}>
-              {busy === "pro" ? "Upgrading…" : `Pro · ${formatPrice(PLANS.pro.monthlyCents)}/mo`}
+              {busy === "pro" ? "Upgrading…" : `${PLANS.pro.name} with AI · ${formatPrice(PLANS.pro.monthlyCents)}/mo`}
             </Button>
           </>
         ) : null}

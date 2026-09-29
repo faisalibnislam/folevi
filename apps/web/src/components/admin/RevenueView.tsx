@@ -5,7 +5,8 @@ import { useId, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { Select } from "@/components/ui/Select";
-import { PLANS, formatPrice, type PersonalTier } from "@/lib/plans";
+import { PRICES, TIER_NAMES, formatPrice } from "@/lib/plans";
+import { paymentLabel } from "./UserBillingPanel";
 import { useAdmin } from "./AdminApp";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, LoadingRows, PageHeader, Panel, StatTile, Switch, Time, humanize, selectCls, td, tdNum, th, thNum } from "./ui";
 
@@ -46,6 +47,8 @@ export function RevenueView() {
   const [includeTest, setIncludeTest] = useState(false);
   const r = useQuery(api.adminAnalytics.revenue, { months, includeTest });
   const loading = r === undefined;
+  const prices = r?.prices ?? PRICES;
+  const packsCents = r ? r.revenueByMonth.reduce((s, m) => s + m.creditPacksCents, 0) : 0;
 
   return (
     <>
@@ -86,15 +89,16 @@ export function RevenueView() {
           <StatTile label="Last 30 days" value={r ? money(r.last30.grossCents - r.last30.refundedCents) : "…"} hint={r ? `${money(r.last30.refundedCents)} refunded · ${n(r.last30.failed)} failed` : undefined} />
           <StatTile label="At risk" value={r ? n(r.cancelingAtPeriodEnd + r.pastDue) : "…"} hint={r ? `${n(r.cancelingAtPeriodEnd)} canceling · ${n(r.pastDue)} past due` : undefined} />
           <StatTile label="Workspace MRR" value={r ? money(r.workspaces.mrrCents) : "…"} hint={r ? `${n(r.workspaces.paying)} paying workspaces · ${n(r.workspaces.seats)} seats` : undefined} />
+          <StatTile label="AI credit packs" value={r ? money(packsCents) : "…"} hint={`One-time packs, last ${months} months`} />
         </dl>
       </section>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        <Panel title="Revenue by month" description="Net of refunds" flush>
+        <Panel title="Revenue by month" description="Net of refunds, plans and AI credit packs together (packs are noted)" flush>
           {r ? (
             <MonthlyBars
               caption="Net revenue by month"
-              rows={r.revenueByMonth.map((m) => ({ month: m.month, value: m.netCents, note: m.refundedCents ? `−${money(m.refundedCents)}` : undefined }))}
+              rows={r.revenueByMonth.map((m) => ({ month: m.month, value: m.netCents, note: [m.creditPacksCents ? `${money(m.creditPacksCents)} packs` : null, m.refundedCents ? `−${money(m.refundedCents)}` : null].filter(Boolean).join(" · ") || undefined }))}
               format={money}
             />
           ) : (
@@ -112,15 +116,15 @@ export function RevenueView() {
               </tr>
             </thead>
             <tbody>
-              {(["basic", "pro"] as const).flatMap((plan) =>
+              {(["core", "pro", "pro_ai"] as const).flatMap((plan) =>
                 (["month", "year"] as const).map((interval) => {
                   const count = r?.byPlan[`${plan}:${interval}`] ?? 0;
-                  const price = interval === "month" ? PLANS[plan].monthlyCents : PLANS[plan].yearlyCents;
+                  const price = prices[plan][interval];
                   const monthly = interval === "month" ? price : Math.round(price / 12);
                   return (
                     <tr key={`${plan}:${interval}`}>
                       <td className={td}>
-                        {PLANS[plan].name} · {interval === "month" ? "monthly" : "yearly"}
+                        {TIER_NAMES[plan]} · {interval === "month" ? "monthly" : "yearly"}
                       </td>
                       <td className={tdNum}>
                         {money(price)}/{interval === "month" ? "mo" : "yr"}
@@ -149,7 +153,7 @@ export function RevenueView() {
               <tr>
                 <th scope="col" className={th}>When</th>
                 <th scope="col" className={th}>Person</th>
-                <th scope="col" className={th}>Plan</th>
+                <th scope="col" className={th}>For</th>
                 <th scope="col" className={thNum}>Amount</th>
                 <th scope="col" className={th}>Status</th>
                 <th scope="col" className={th}>Via</th>
@@ -176,9 +180,7 @@ export function RevenueView() {
                       )}{" "}
                       <span className="text-xs text-muted">{p.email}</span>
                     </td>
-                    <td className={td}>
-                      {PLANS[p.plan as PersonalTier]?.name ?? p.plan} · {p.interval === "year" ? "yearly" : "monthly"}
-                    </td>
+                    <td className={td}>{paymentLabel(p)}</td>
                     <td className={tdNum}>{money(p.amountCents)}</td>
                     <td className={td}>
                       <Badge tone={p.status === "paid" ? "success" : p.status === "failed" ? "danger" : "neutral"}>{humanize(p.status)}</Badge>

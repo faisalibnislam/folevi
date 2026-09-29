@@ -1,6 +1,6 @@
 import { FileDown, Paintbrush, RefreshCw, SunMoon, WifiOff, type LucideIcon } from "lucide-react";
 import { COVER_ART } from "@/lib/cover";
-import { TRIAL_DAYS } from "@/lib/plans";
+import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { StyleShowcase } from "../product/StyleShowcase";
 import { SIGN_UP_URL } from "../site";
 import { ButtonLink, container, cx } from "../ui";
@@ -26,7 +26,7 @@ export function Hero() {
           </ButtonLink>
         </div>
         <p className="mt-4 text-[13.5px] text-muted">
-          Free plan with no card. New accounts get Pro free for {TRIAL_DAYS} days.
+          Free plan with no card. New accounts get {TIER_NAMES[TRIAL_TIER]} free for {TRIAL_DAYS} days.
         </p>
       </div>
       <div className={cx(container, "mt-12 sm:mt-16")}>

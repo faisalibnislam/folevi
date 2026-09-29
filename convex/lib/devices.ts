@@ -8,7 +8,7 @@
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { listUserSessions } from "./authStore";
-import { entitlementsFor } from "./billing";
+import { personalEntitlements } from "./entitlements";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -22,7 +22,8 @@ export interface DeviceStatus {
 }
 
 export async function deviceStatus(ctx: Ctx, profile: Doc<"profiles">, sessionId: string | null): Promise<DeviceStatus> {
-  const { devices: limit } = await entitlementsFor(ctx, profile._id);
+  // Devices are per account, from the Personal plan; workspace membership never changes the limit.
+  const { devices: limit } = await personalEntitlements(ctx, profile._id);
   // Unlimited plans skip the session scan entirely (it runs on every backend call).
   if (limit === null) return { limit: null, active: 0, allowed: true };
   const sessions = (await listUserSessions(ctx, profile.authSubject)).sort((a, b) => a.createdAt - b.createdAt || a._id.localeCompare(b._id));

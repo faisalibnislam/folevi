@@ -340,7 +340,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // AI: a selection rewrite from the editor's toolbar, or "ask AI to write" from the slash menu, opens the
   // AI panel (and runs the rewrite there).
   const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
-  const aiOn = useAiEnabled();
+  // AI follows the note's own workspace (Personal: your Personal plan; a team: its workspace plan).
+  const aiOn = useAiEnabled(meta?.document.workspaceId);
   // AI turned off while its panel is open: show another tool instead.
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
@@ -567,6 +568,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           >
             <DocumentHeader
               documentId={documentId}
+              workspaceId={meta?.document.workspaceId}
               title={summary?.title ?? localTitle}
               cover={summary?.cover ?? DEFAULT_COVER}
               style={style}
@@ -786,6 +788,7 @@ function PresenceAvatars({ people }: { people: { profileId: string; name: string
 
 function DocumentHeader({
   documentId,
+  workspaceId,
   title,
   cover,
   style,
@@ -795,6 +798,8 @@ function DocumentHeader({
   hasContent = false,
 }: {
   documentId: string;
+  /** The note's workspace (decides whether AI is included). */
+  workspaceId?: string;
   /** The note has body text (so the AI has something to title). */
   hasContent?: boolean;
   title: string;
@@ -844,7 +849,7 @@ function DocumentHeader({
   }, [value]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushTitle = useRef<(() => void) | null>(null);
-  const aiOn = useAiEnabled();
+  const aiOn = useAiEnabled(workspaceId);
   const { write } = useAi();
   const toast = useToast();
   const [suggesting, setSuggesting] = useState(false);

@@ -82,9 +82,13 @@ export default function TermsPage() {
         <h2 id="price">Plans and billing</h2>
         <ul>
           <li>
-            Folevi has a Free plan and paid plans (Basic and Pro), billed monthly or yearly in advance through Stripe. Prices
-            and what each plan includes — storage, devices and the AI Assistant — are on the{" "}
+            Folevi has a Free personal plan and paid personal plans (Basic and Pro), billed monthly or yearly in advance through
+            Stripe. Prices and what each plan includes — storage, devices and the AI Assistant — are on the{" "}
             <Link href="/pricing">pricing page</Link>.
+          </li>
+          <li>
+            A personal plan covers your own account. Each workspace has its own plan, limits and billing: a personal plan
+            doesn’t change what a workspace includes, and a workspace plan doesn’t change your personal plan.
           </li>
           <li>New accounts get a free Pro trial. It ends without charge; you choose whether to pay.</li>
           <li>
@@ -93,8 +97,8 @@ export default function TermsPage() {
             except where the law requires it.
           </li>
           <li>
-            Plan limits apply while you’re on a plan: storage (counted across the workspaces you own) and, on Free, the number
-            of devices signed in at once. Going over a limit pauses new uploads or holds a new device until you make room or
+            Plan limits apply while you’re on a plan: personal storage for your personal plan, workspace storage for a
+            workspace’s plan, and, on the Free personal plan, the number of devices signed in at once. Going over a limit pauses new uploads or holds a new device until you make room or
             upgrade — nothing you’ve created is deleted.
           </li>
           <li>

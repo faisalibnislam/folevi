@@ -108,7 +108,7 @@ export function UserDetailView({ id }: { id: string }) {
             {[
               { label: "Workspaces", value: user.usage.workspaces.toLocaleString() },
               { label: "Documents", value: user.usage.documents.toLocaleString() },
-              { label: "Storage", value: formatBytes(user.usage.storageBytes) },
+              { label: "Personal storage", value: formatBytes(user.usage.storageBytes) },
             ].map((s) => (
               <div key={s.label} className="ui-card rounded-[8px] px-3 py-2.5">
                 <dt className="text-[12px] text-muted">{s.label}</dt>

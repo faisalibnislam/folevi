@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { verifyStripeSignature } from "../../convex/billing";
-import { DAY_MS, PLANS, TRIAL_DAYS, entitlementsOf } from "../../convex/lib/plans";
+import { DAY_MS, PLAN_CATALOG, PLANS, TRIAL_DAYS, WORKSPACE_PLANS, monthlyEquivalent, personalEntitlementsOf, personalPlanId, workspaceEntitlementsOf } from "../../convex/lib/plans";
 import { authSession, identity, person, setup, ulid, type T } from "./helpers";
 
 const MB = 1024 ** 2;
@@ -37,20 +37,55 @@ const REASON = "Customer support ticket 4321";
 describe("plans and entitlements", () => {
   test("the rules: trial is Pro, grants give AI, lapsed plans fall back to Free", () => {
     const now = Date.now();
-    expect(entitlementsOf(null, now)).toMatchObject({ plan: "free", ai: false, storageBytes: 1 * GB });
-    const trial = entitlementsOf({ plan: "free", status: "active", trialEndsAt: now + DAY_MS }, now);
-    expect(trial).toMatchObject({ plan: "pro", paidPlan: "free", trialing: true, ai: true, aiSource: "trial", storageBytes: 100 * GB });
-    expect(entitlementsOf({ plan: "free", status: "active", trialEndsAt: now - 1 }, now)).toMatchObject({ plan: "free", trialing: false, ai: false });
-    expect(entitlementsOf({ plan: "basic", status: "active", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ plan: "basic", ai: false, storageBytes: 20 * GB });
-    expect(entitlementsOf({ plan: "basic", status: "active", currentPeriodEnd: now - 1 }, now)).toMatchObject({ plan: "free" });
-    expect(entitlementsOf({ plan: "pro", status: "canceled", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ plan: "pro", ai: true });
-    expect(entitlementsOf({ plan: "free", status: "active", aiGrant: true }, now)).toMatchObject({ plan: "free", ai: true, aiSource: "grant" });
-    expect(entitlementsOf({ plan: "free", status: "active", aiGrant: true, aiGrantUntil: now - 1 }, now)).toMatchObject({ ai: false });
-    expect(entitlementsOf({ plan: "free", status: "active", storageOverrideBytes: 5 * GB }, now).storageBytes).toBe(5 * GB);
-    expect(PLANS.basic.monthlyCents).toBe(200);
-    expect(PLANS.basic.yearlyCents).toBe(900);
-    expect(PLANS.pro.monthlyCents).toBe(500);
-    expect(PLANS.pro.yearlyCents).toBe(4900);
+    expect(personalEntitlementsOf(null, now)).toMatchObject({ scope: "personal", planId: "personal_free", plan: "free", paid: false, ai: false, storageBytes: 1 * GB, devices: 2 });
+    const trial = personalEntitlementsOf({ plan: "free", status: "active", trialEndsAt: now + DAY_MS }, now);
+    expect(trial).toMatchObject({ planId: "personal_pro_monthly", paidPlanId: "personal_free", plan: "pro", paidPlan: "free", paid: false, trialing: true, ai: true, aiSource: "trial", storageBytes: 100 * GB });
+    expect(personalEntitlementsOf({ plan: "free", status: "active", trialEndsAt: now - 1 }, now)).toMatchObject({ plan: "free", trialing: false, ai: false });
+    expect(personalEntitlementsOf({ plan: "basic", status: "active", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ planId: "personal_basic_monthly", plan: "basic", paid: true, ai: false, storageBytes: 20 * GB });
+    expect(personalEntitlementsOf({ plan: "basic", interval: "year", status: "active" }, now)).toMatchObject({ planId: "personal_basic_yearly" });
+    expect(personalEntitlementsOf({ plan: "basic", status: "active", currentPeriodEnd: now - 1 }, now)).toMatchObject({ plan: "free", paid: false });
+    expect(personalEntitlementsOf({ plan: "pro", status: "canceled", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ plan: "pro", ai: true });
+    expect(personalEntitlementsOf({ plan: "free", status: "active", aiGrant: true }, now)).toMatchObject({ plan: "free", ai: true, aiSource: "grant" });
+    expect(personalEntitlementsOf({ plan: "free", status: "active", aiGrant: true, aiGrantUntil: now - 1 }, now)).toMatchObject({ ai: false });
+    expect(personalEntitlementsOf({ plan: "free", status: "active", storageOverrideBytes: 5 * GB }, now).storageBytes).toBe(5 * GB);
+  });
+
+  test("the catalog: exact prices, scopes, billing models and entitlements", () => {
+    const price = (id: keyof typeof PLAN_CATALOG) => PLAN_CATALOG[id].priceCents;
+    expect([price("personal_free"), price("personal_basic_monthly"), price("personal_basic_yearly"), price("personal_pro_monthly"), price("personal_pro_yearly")]).toEqual([0, 200, 900, 500, 4900]);
+    expect([price("workspace_free"), price("workspace_team_monthly"), price("workspace_team_yearly"), price("workspace_business_monthly"), price("workspace_business_yearly")]).toEqual([0, 500, 4900, 1000, 9900]);
+    for (const plan of Object.values(PLAN_CATALOG)) {
+      expect(plan.id.startsWith(plan.scope)).toBe(true);
+      expect(plan.currency).toBe("usd");
+      if (plan.priceCents === 0) expect(plan.billingModel).toBe("free");
+      else expect(plan.billingModel).toBe(plan.scope === "personal" ? "flat_user" : "per_seat");
+    }
+    const e = (id: keyof typeof PLAN_CATALOG) => PLAN_CATALOG[id].entitlements;
+    expect([e("personal_free").storageBytes, e("personal_basic_yearly").storageBytes, e("personal_pro_monthly").storageBytes]).toEqual([1 * GB, 20 * GB, 100 * GB]);
+    expect([e("personal_free").devices, e("personal_basic_monthly").devices, e("personal_pro_yearly").devices]).toEqual([2, null, null]);
+    expect([e("personal_free").aiAssistant, e("personal_basic_monthly").aiAssistant, e("personal_pro_monthly").aiAssistant]).toEqual([false, false, true]);
+    expect([e("workspace_free").storageBytes, e("workspace_team_monthly").storageBytes, e("workspace_business_yearly").storageBytes]).toEqual([5 * GB, 100 * GB, 1024 * GB]);
+    expect([e("workspace_free").aiAssistant, e("workspace_team_yearly").aiAssistant, e("workspace_business_monthly").aiAssistant]).toEqual([false, true, true]);
+    expect(e("workspace_business_monthly").aiFairUse).toBe("high");
+    // Features that don't exist yet aren't promised by any plan.
+    for (const plan of Object.values(PLAN_CATALOG)) expect(plan.entitlements).toMatchObject({ auditLog: false, workspaceAnalytics: false, securityControls: false, advancedPermissions: false, prioritySupport: false, members: null, guests: null });
+    // Stored tiers map to catalog ids; display cards read the catalog.
+    expect([personalPlanId("free"), personalPlanId("basic"), personalPlanId("pro", "year")]).toEqual(["personal_free", "personal_basic_monthly", "personal_pro_yearly"]);
+    expect([PLANS.basic.monthlyCents, PLANS.basic.yearlyCents, PLANS.pro.monthlyCents, PLANS.pro.yearlyCents]).toEqual([200, 900, 500, 4900]);
+    expect([monthlyEquivalent(PLANS.basic.yearlyCents), monthlyEquivalent(PLANS.pro.yearlyCents)]).toEqual(["$0.75", "$4.08"]);
+    expect(PLANS.free.features).toContain("1 GB personal storage");
+    expect(Object.values(PLANS).flatMap((p) => p.features).join(" ")).not.toMatch(/across|iOS/);
+    expect([WORKSPACE_PLANS.team.monthlyCents, WORKSPACE_PLANS.team.yearlyCents, WORKSPACE_PLANS.business.monthlyCents, WORKSPACE_PLANS.business.yearlyCents]).toEqual([500, 4900, 1000, 9900]);
+    expect([WORKSPACE_PLANS.team.available, WORKSPACE_PLANS.business.available]).toEqual([false, false]);
+  });
+
+  test("workspace entitlements: Free without a subscription; a paid plan while in force; an admin override replaces storage", () => {
+    const now = Date.now();
+    expect(workspaceEntitlementsOf(null, {}, now)).toMatchObject({ scope: "workspace", planId: "workspace_free", paid: false, ai: false, storageBytes: 5 * GB, storageOverridden: false });
+    expect(workspaceEntitlementsOf({ tier: "business", interval: "year", status: "active", currentPeriodEnd: now + DAY_MS }, {}, now)).toMatchObject({ planId: "workspace_business_yearly", ai: true, aiFairUse: "high", storageBytes: 1024 * GB });
+    expect(workspaceEntitlementsOf({ tier: "team", status: "canceled", currentPeriodEnd: now + DAY_MS }, {}, now)).toMatchObject({ planId: "workspace_team_monthly", ai: true });
+    expect(workspaceEntitlementsOf({ tier: "team", status: "active", currentPeriodEnd: now - 1 }, {}, now)).toMatchObject({ planId: "workspace_free", ai: false });
+    expect(workspaceEntitlementsOf(null, { storageBytes: 50 * GB }, now)).toMatchObject({ storageBytes: 50 * GB, storageOverridden: true });
   });
 
   test("new accounts start on Free with a 7-day Pro trial", async () => {
@@ -68,32 +103,35 @@ describe("plans and entitlements", () => {
     const sub = await subOf(t, a);
     await t.run(async (ctx) => ctx.db.patch(sub!._id, { trialEndsAt: Date.now() - 1 }));
     await expect(a.as.mutation(internal.ai.begin, { workspaceId: a.workspaceId })).rejects.toThrow(/part of Pro/);
+    expect(await t.run(async (ctx) => ctx.db.query("aiUsage").collect())).toHaveLength(0);
     // An admin grant turns it back on.
     await t.run(async (ctx) => ctx.db.patch(sub!._id, { aiGrant: true }));
     await a.as.mutation(internal.ai.begin, { workspaceId: a.workspaceId });
   });
 
-  test("storage counts across every workspace someone owns, against their plan", async () => {
+  test("personal storage counts only Personal, against the Personal plan (team workspaces never add to it)", async () => {
     const t = setup();
     const a = await person(t, "storage@example.com");
     const sub = await subOf(t, a);
     await t.run(async (ctx) => ctx.db.patch(sub!._id, { trialEndsAt: Date.now() - 1 }));
     const docId = await newDoc(a);
     const { id: teamId } = await a.as.mutation(api.workspaces.createTeamWorkspace, { name: "Team" });
-    // 600 MB in the personal workspace and 410 MB in the team: 1010 of the Free plan's 1024 MB.
+    // 1010 MB in Personal (of the Free plan's 1024 MB) and 4 GB in the team workspace.
     await t.run(async (ctx) => {
       for (const w of await ctx.db.query("workspaces").collect()) {
         if (w.ownerId !== a.profileId) continue;
-        await ctx.db.patch(w._id, { storageUsedBytes: (w.publicId === teamId ? 410 : 600) * MB, storageQuotaBytes: 500 * GB });
+        await ctx.db.patch(w._id, { storageUsedBytes: w.publicId === teamId ? 4 * GB : 1010 * MB });
       }
     });
     const upload = (size: number) => a.as.mutation(api.files.generateUploadUrl, { workspaceId: a.workspaceId, documentId: docId, filename: "a.png", size, mimeType: "image/png", kind: "image" });
-    await expect(upload(15 * MB)).rejects.toThrow(/Free plan/);
+    await expect(upload(15 * MB)).rejects.toThrow(/personal storage on your Free plan/);
     expect((await upload(10 * MB)).uploadUrl).toBeTruthy();
     // Basic has room.
     await a.as.mutation(api.billing.testPurchase, { plan: "basic", interval: "month" });
     expect((await upload(15 * MB)).uploadUrl).toBeTruthy();
-    expect((await a.as.query(api.billing.mine, {})).storageUsedBytes).toBe(1010 * MB);
+    const mine = await a.as.query(api.billing.mine, {});
+    expect(mine.storageUsedBytes).toBe(1010 * MB);
+    expect(mine.storageLimitBytes).toBe(20 * GB);
   });
 
   test("test purchases work in development, are recorded, can be canceled — and are refused in production", async () => {
@@ -183,6 +221,59 @@ describe("Stripe", () => {
       await expect(a.as.mutation(api.billing.cancelPlan, {})).rejects.toThrow(/billing portal/);
     } finally {
       delete process.env.STRIPE_PRICE_PRO_MONTH;
+    }
+  });
+
+  test("a redelivered event is applied once, so the state stays correct (scenario 34)", async () => {
+    const t = setup();
+    const a = await person(t, "dup@example.com");
+    process.env.STRIPE_PRICE_PRO_MONTH = "price_pro_m";
+    try {
+      const sec = Math.floor(Date.now() / 1000);
+      const end = sec + 30 * 86_400;
+      const active = { object: "subscription", id: "sub_d", customer: "cus_d", status: "active", current_period_end: end, cancel_at_period_end: false, metadata: { profileId: a.profileId }, items: { data: [{ price: { id: "price_pro_m" } }] } };
+      const failed = { id: "in_d1", subscription: "sub_d", customer: "cus_d", amount_due: 500, currency: "usd" };
+      expect(await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_1", created: sec, type: "customer.subscription.created", object: active })).toEqual({ status: "applied" });
+      expect(await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_2", created: sec + 1, type: "invoice.payment_failed", object: failed })).toEqual({ status: "applied" });
+      // The customer fixes their card: paid, and the subscription is active again.
+      await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_3", created: sec + 2, type: "invoice.paid", object: { ...failed, amount_paid: 500 } });
+      await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_4", created: sec + 2, type: "customer.subscription.updated", object: active });
+      expect((await a.as.query(api.billing.mine, {})).subscription?.status).toBe("active");
+      // Stripe redelivers the failure (and the others): nothing changes.
+      expect(await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_2", created: sec + 1, type: "invoice.payment_failed", object: failed })).toEqual({ status: "duplicate" });
+      expect(await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_3", created: sec + 2, type: "invoice.paid", object: { ...failed, amount_paid: 500 } })).toEqual({ status: "duplicate" });
+      const mine = await a.as.query(api.billing.mine, {});
+      expect(mine.subscription?.status).toBe("active");
+      expect(mine.entitlements).toMatchObject({ paidPlan: "pro", ai: true });
+      expect(mine.payments).toHaveLength(1);
+      expect(mine.payments[0]!.status).toBe("paid");
+      expect(await t.run(async (ctx) => (await ctx.db.query("billingEvents").collect()).length)).toBe(4);
+    } finally {
+      delete process.env.STRIPE_PRICE_PRO_MONTH;
+    }
+  });
+
+  test("a subscription event older than the last one applied is ignored (out of order)", async () => {
+    const t = setup();
+    const a = await person(t, "order@example.com");
+    process.env.STRIPE_PRICE_PRO_MONTH = "price_pro_m";
+    process.env.STRIPE_PRICE_BASIC_MONTH = "price_basic_m";
+    try {
+      const sec = Math.floor(Date.now() / 1000);
+      const end = sec + 30 * 86_400;
+      const sub = (price: string, extra: Record<string, unknown> = {}) => ({ object: "subscription", id: "sub_o", customer: "cus_o", status: "active", current_period_end: end, metadata: { profileId: a.profileId }, items: { data: [{ price: { id: price } }] }, ...extra });
+      await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_new", created: sec + 10, type: "customer.subscription.updated", object: sub("price_pro_m") });
+      // An upgrade made later, delivered first; then the older Basic event arrives.
+      expect(await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_old", created: sec, type: "customer.subscription.updated", object: sub("price_basic_m") })).toEqual({ status: "stale" });
+      expect((await a.as.query(api.billing.mine, {})).entitlements.paidPlan).toBe("pro");
+      // A newer event still applies (same second counts as newer or equal).
+      await t.mutation(internal.billing.applyStripeEvent, { eventId: "evt_newer", created: sec + 10, type: "customer.subscription.updated", object: sub("price_pro_m", { cancel_at_period_end: true }) });
+      expect((await a.as.query(api.billing.mine, {})).subscription?.cancelAtPeriodEnd).toBe(true);
+      const row = await subOf(t, a);
+      expect(row!.stripeEventCreatedAt).toBe(sec + 10);
+    } finally {
+      delete process.env.STRIPE_PRICE_PRO_MONTH;
+      delete process.env.STRIPE_PRICE_BASIC_MONTH;
     }
   });
 });

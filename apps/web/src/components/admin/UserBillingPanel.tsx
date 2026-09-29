@@ -8,7 +8,7 @@ import { CalendarPlus, CreditCard, FileArchive, HardDrive, MonitorSmartphone, Ro
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { PLANS, formatPrice, type PlanId } from "@/lib/plans";
+import { PLANS, formatPrice, isPaidPlan, personalPlanId, type PersonalTier } from "@/lib/plans";
 import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { maxTrialDays, rolesFor } from "./permissions";
@@ -22,7 +22,7 @@ const DAY = 86_400_000;
 /** Storage limits read better as whole gigabytes ("50 GB", not "50.00 GB"). */
 const limit = (bytes: number) => (bytes % 1024 ** 3 === 0 ? `${bytes / 1024 ** 3} GB` : formatBytes(bytes));
 const day = (ts: number) => new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-const PLAN_TONE: Record<PlanId, "neutral" | "accent" | "plum"> = { free: "neutral", basic: "accent", pro: "plum" };
+const PLAN_TONE: Record<PersonalTier, "neutral" | "accent" | "plum"> = { free: "neutral", basic: "accent", pro: "plum" };
 
 /** Parses a YYYY-MM-DD field (end of that day, UTC) or "" → null. */
 function endOfDay(value: string): number | null {
@@ -36,7 +36,7 @@ const futureDate = (v: string) => {
   return t === null ? "Use a date like 2026-12-31." : t <= Date.now() ? "Choose a date in the future." : null;
 };
 
-export function PlanBadge({ plan, trialing }: { plan: PlanId; trialing?: boolean }) {
+export function PlanBadge({ plan, trialing }: { plan: PersonalTier; trialing?: boolean }) {
   return (
     <Badge tone={PLAN_TONE[plan]} title={trialing ? "On a Pro trial" : undefined}>
       {PLANS[plan].name}
@@ -65,15 +65,15 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
 
   const { subscription: sub, entitlements: e } = data;
   const canManage = admin.can("billing.manage");
-  const stripeBilled = sub.provider === "stripe" && sub.status !== "canceled" && sub.plan !== "free";
-  const paidPlan = sub.plan as PlanId;
+  const stripeBilled = sub.provider === "stripe" && sub.status !== "canceled" && isPaidPlan(personalPlanId(sub.plan, sub.interval));
+  const paidPlan = sub.plan as PersonalTier;
   const who = name || email;
 
   return (
     <>
       <Panel
         title="Plan & billing"
-        description="Plan, storage and AI access. Changes here don't charge or refund anyone — money only moves through the payment provider."
+        description="Personal plan, personal storage and AI access in Personal. Team workspaces have their own plans. Changes here don't charge or refund anyone — money only moves through the payment provider."
         actions={
           <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload billing (writes an audit entry)">
             <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} />
@@ -112,13 +112,13 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between text-[12.5px]">
             <span className="text-muted">
-              Storage{sub.storageOverrideBytes ? " (custom limit)" : ""}
+              Personal storage{sub.storageOverrideBytes ? " (custom limit)" : ""}
             </span>
             <span className="tabular-nums">
-              {formatBytes(data.storageUsedBytes)} of {limit(e.storageBytes)}
+              {formatBytes(data.storageUsedBytes)} of {limit(data.storageLimitBytes)}
             </span>
           </div>
-          <Meter value={data.storageUsedBytes} max={e.storageBytes} label="Storage used across owned workspaces" />
+          <Meter value={data.storageUsedBytes} max={data.storageLimitBytes} label="Personal storage used" />
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -168,7 +168,7 @@ export function UserBillingPanel({ profileId, email, name }: { profileId: string
                     <Time ts={p.createdAt} />
                   </td>
                   <td className={td}>
-                    {PLANS[p.plan as PlanId]?.name ?? p.plan} · {p.interval === "year" ? "yearly" : "monthly"}
+                    {PLANS[p.plan as PersonalTier]?.name ?? p.plan} · {p.interval === "year" ? "yearly" : "monthly"}
                     {p.provider === "test" ? (
                       <Badge className="ml-1.5" tone="warning">
                         Test
@@ -244,7 +244,7 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
           { name: "until", label: "Ends on (optional)", type: "text", initial: "", hint: "YYYY-MM-DD. After this date the account goes back to Free.", validate: futureDate },
         ]}
         onSubmit={async ({ reason, fields, meta }) => {
-          const plan = fields.plan as PlanId;
+          const plan = fields.plan as PersonalTier;
           await setPlan({ profileId, plan, interval: fields.interval as "month" | "year", until: endOfDay(fields.until ?? ""), reason, ...meta });
           return done(`Plan set to ${PLANS[plan].name}`);
         }}
@@ -292,7 +292,7 @@ function BillingDialogs({ profileId, who, data, action, maxTrial, onClose, onDon
         open={action === "storage"}
         onClose={onClose}
         title="Storage limit"
-        description={`Replaces their plan's limit (${limit(PLANS[data.entitlements.paidPlan].storageBytes)}) across every workspace they own. Leave empty to go back to the plan's limit.`}
+        description={`Replaces their plan's limit (${limit(PLANS[data.entitlements.paidPlan].storageBytes)}) for their personal storage. Team workspaces have their own limits. Leave empty to go back to the plan's limit.`}
         confirmLabel="Save limit"
         fields={[
           {

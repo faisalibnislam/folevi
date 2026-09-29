@@ -85,7 +85,8 @@ export function AccountSection() {
 
 /** Turns the AI assistant on or off for this person (the server enforces it). */
 function AiSettingCard() {
-  const { setting: on, entitled } = useAiAccess();
+  // Your own setting and Personal plan (team workspaces include AI on their own plans).
+  const { setting: on, personalEntitled: entitled } = useAiAccess();
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const descId = useId();
@@ -97,7 +98,7 @@ function AiSettingCard() {
           {!entitled ? (
             <>
               {" "}
-              <span className="font-medium text-heading">AI is part of Pro.</span>{" "}
+              <span className="font-medium text-heading">In Personal, AI is part of Pro.</span>{" "}
               <a href="/settings/billing" className="underline underline-offset-2">
                 See plans
               </a>

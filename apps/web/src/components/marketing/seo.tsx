@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PLANS, PLAN_ORDER, formatPrice, isPaidPlan } from "@/lib/plans";
 import { absoluteUrl } from "./site";
 
 export function pageMetadata({
@@ -62,10 +63,12 @@ export function softwareLd(): Record<string, unknown> {
     operatingSystem: "Web",
     description:
       "A calm writing and notes workspace with block documents, nested pages, tasks, offline editing and real-time sync — on the web, with a native Mac app coming soon.",
-    offers: [
-      { "@type": "Offer", name: "Free", price: 0, priceCurrency: "USD" },
-      { "@type": "Offer", name: "Basic", price: 2, priceCurrency: "USD", description: "Per month, or $9 a year" },
-      { "@type": "Offer", name: "Pro", price: 5, priceCurrency: "USD", description: "Per month, or $49 a year" },
-    ],
+    // The Personal plans (workspace plans aren't on sale yet), from the plan catalog.
+    offers: PLAN_ORDER.map((id) => {
+      const plan = PLANS[id];
+      return isPaidPlan(plan.monthly)
+        ? { "@type": "Offer", name: plan.name, price: plan.monthlyCents / 100, priceCurrency: "USD", description: `Per month, or ${formatPrice(plan.yearlyCents)} a year` }
+        : { "@type": "Offer", name: plan.name, price: 0, priceCurrency: "USD" };
+    }),
   };
 }

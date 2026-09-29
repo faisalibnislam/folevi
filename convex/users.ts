@@ -17,7 +17,8 @@ import {
 } from "./lib/auth";
 import { deleteSession, findActiveSession, listUserSessions } from "./lib/authStore";
 import { fail } from "./lib/errors";
-import { entitlementsFor, startTrial } from "./lib/billing";
+import { startTrial } from "./lib/billing";
+import { personalEntitlements } from "./lib/entitlements";
 import { consume } from "./lib/rateLimit";
 import { bump } from "./lib/metrics";
 import { keyedHash } from "./lib/crypto";
@@ -87,8 +88,9 @@ export const me = query({
         ...publicProfile(profile),
         defaultWorkspaceId: workspace?.publicId ?? null,
         avatarUrl: await identityImageUrl(ctx, profile.avatarFileId),
-        // What their plan includes right now (AI, storage, trial) — the server enforces it again.
-        entitlements: await entitlementsFor(ctx, profile._id),
+        // What their Personal plan includes right now (AI in Personal, storage, devices, trial) — the server
+        // enforces it again. A team workspace's own plan is on workspaces.mine.
+        entitlements: await personalEntitlements(ctx, profile._id),
       },
     };
   },

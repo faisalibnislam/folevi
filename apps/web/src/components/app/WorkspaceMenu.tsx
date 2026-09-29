@@ -93,10 +93,12 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
     { label: "Sign out", icon: <LogOut size={14} />, onSelect: () => void safeSignOut.request() },
   ];
 
-  // Trial days left, or an upgrade nudge on Free; nothing once they're paying.
-  const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; paidPlan: string } }).entitlements;
+  // Personal plan: trial days left, or an upgrade nudge on Free; nothing once they're paying. Only shown in
+  // your own Personal — a Personal plan doesn't change what a team workspace includes.
+  const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; paid?: boolean } }).entitlements;
+  const inPersonal = (workspace as { plan?: { scope: string } | null }).plan?.scope === "personal";
   const trialDays = ent?.trialing && ent.trialEndsAt ? Math.max(1, Math.ceil((ent.trialEndsAt - Date.now()) / 86_400_000)) : 0;
-  const pill = !ent ? null : ent.trialing ? `Pro trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paidPlan === "free" ? "Upgrade to Pro" : null;
+  const pill = !ent || !inPersonal ? null : ent.trialing ? `Pro trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false ? "Upgrade to Pro" : null;
 
   return (
     <>

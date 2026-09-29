@@ -6,7 +6,7 @@ import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { redactEmail } from "./lib/crypto";
-import { DAY_MS, PLANS, entitlementsOf, monthlyValueCents, type PlanId } from "./lib/plans";
+import { DAY_MS, PLANS, monthlyValueCents, personalEntitlementsOf, type PersonalTier } from "./lib/plans";
 
 const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
 const ADMIN: PlatformRole[] = ["super_admin", "ops_admin"];
@@ -24,7 +24,7 @@ function lastMonths(n: number, now: number): string[] {
   });
 }
 
-/** People: growth, activity, plans, trials and AI use. */
+/** People: growth, activity, Personal plans, trials and AI use (Personal and workspaces). */
 export const users = query({
   args: { days: v.number() },
   handler: async (ctx, args) => {
@@ -40,13 +40,13 @@ export const users = query({
     for (const p of profiles) if (p.createdAt >= since) signupsByDay.set(dayOf(p.createdAt), (signupsByDay.get(dayOf(p.createdAt)) ?? 0) + 1);
 
     const active = (ms: number) => profiles.filter((p) => p.lastActiveAt >= now - ms).length;
-    const planCounts: Record<PlanId, number> = { free: 0, basic: 0, pro: 0 };
+    const planCounts: Record<PersonalTier, number> = { free: 0, basic: 0, pro: 0 };
     let trialing = 0;
     let trialsEndingSoon = 0;
     let aiGrants = 0;
     for (const p of profiles) {
       const sub = subByProfile.get(p._id) ?? null;
-      const e = entitlementsOf(sub, now);
+      const e = personalEntitlementsOf(sub, now);
       planCounts[e.paidPlan]++;
       if (e.trialing) {
         trialing++;
@@ -56,7 +56,7 @@ export const users = query({
     }
     // Trial conversion: accounts whose trial has ended (within the window) that are now on a paid plan.
     const endedTrials = subs.filter((s) => s.trialEndsAt && s.trialEndsAt < now && s.trialEndsAt >= since);
-    const converted = endedTrials.filter((s) => entitlementsOf(s, now).paidPlan !== "free").length;
+    const converted = endedTrials.filter((s) => personalEntitlementsOf(s, now).paid).length;
 
     const usage = await ctx.db
       .query("aiUsage")
@@ -64,9 +64,12 @@ export const users = query({
       .collect();
     const aiByDay = new Map(lastDays(days, now).map((d) => [d, 0]));
     const aiUsers = new Set<string>();
+    const aiByScope = { personal: 0, workspace: 0 };
     for (const u of usage) {
       aiByDay.set(u.day, (aiByDay.get(u.day) ?? 0) + u.count);
       aiUsers.add(u.profileId);
+      // Rows from before scopes were recorded were all Personal.
+      aiByScope[u.scope ?? "personal"] += u.count;
     }
     const workspaces = await ctx.db.query("workspaces").collect();
     const storageBytes = workspaces.reduce((n, w) => n + w.storageUsedBytes, 0);
@@ -81,13 +84,13 @@ export const users = query({
       trialsEndingSoon,
       aiGrants,
       trialConversion: { ended: endedTrials.length, converted, rate: endedTrials.length ? converted / endedTrials.length : null },
-      ai: { requests: usage.reduce((n, u) => n + u.count, 0), users: aiUsers.size, byDay: [...aiByDay].map(([day, count]) => ({ day, count })) },
+      ai: { requests: usage.reduce((n, u) => n + u.count, 0), users: aiUsers.size, byScope: aiByScope, byDay: [...aiByDay].map(([day, count]) => ({ day, count })) },
       storage: { totalBytes: storageBytes, perUserBytes: profiles.length ? Math.round(storageBytes / profiles.length) : 0 },
     };
   },
 });
 
-/** Money: recurring revenue, subscribers, monthly revenue, new vs churned, failures and refunds. */
+/** Money (Personal plans): recurring revenue, subscribers, monthly revenue, new vs churned, failures and refunds. */
 export const revenue = query({
   args: { months: v.number(), includeTest: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
@@ -104,14 +107,14 @@ export const revenue = query({
     let cancelingAtPeriodEnd = 0;
     let pastDue = 0;
     for (const s of subs) {
-      const e = entitlementsOf(s, now);
-      if (e.paidPlan === "free" || s.status === "canceled") continue;
+      const e = personalEntitlementsOf(s, now);
+      if (!e.paid || s.status === "canceled") continue;
       const interval = s.interval ?? "month";
       paying++;
       byPlan[`${e.paidPlan}:${interval}`] = (byPlan[`${e.paidPlan}:${interval}`] ?? 0) + 1;
       if (s.cancelAtPeriodEnd) cancelingAtPeriodEnd++;
       if (s.status === "past_due") pastDue++;
-      if (s.provider !== "manual") mrr += monthlyValueCents(e.paidPlan as "basic" | "pro", interval);
+      if (s.provider !== "manual") mrr += monthlyValueCents(e.paidPlanId);
     }
 
     const since = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth() - (months - 1), 1);

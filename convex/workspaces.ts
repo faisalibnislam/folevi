@@ -11,6 +11,8 @@ import { vWorkspaceRole } from "./lib/validators";
 import { createWorkspace, PERSONAL_WORKSPACE_NAME } from "./seed";
 import { claimIdentityImage, deleteIdentityImage, workspaceLabel, workspaceLogoUrl } from "./lib/identityImages";
 import { isFeatureEnabled } from "./lib/flags";
+import { aiAccessIn, resolveEntitlements, scopeOfWorkspace, storageUsage } from "./lib/entitlements";
+import { planName } from "./lib/plans";
 import { notifyAccessChange, notifyInvite } from "./lib/notify";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -29,7 +31,12 @@ export const mine = query({
       const w = await ctx.db.get(m.workspaceId);
       if (!w || w.status === "deleting") continue;
       // Someone else's personal workspace is told apart by its owner's name ("Personal · Ada").
-      const owner = w.kind === "personal" && w.ownerId !== profile._id ? await ctx.db.get(w.ownerId) : null;
+      const othersPersonal = w.kind === "personal" && w.ownerId !== profile._id;
+      const owner = othersPersonal ? await ctx.db.get(w.ownerId) : null;
+      // Each workspace's own plan and limits: Personal follows your Personal plan, a team its workspace plan.
+      const scope = scopeOfWorkspace(w);
+      const storage = await storageUsage(ctx, scope);
+      const plan = othersPersonal ? null : (await resolveEntitlements(ctx, scope)).planId;
       out.push({
         id: w.publicId,
         name: w.name,
@@ -41,8 +48,13 @@ export const mine = query({
         role: m.role,
         status: w.status,
         isDefault: profile.defaultWorkspaceId === w._id,
-        storageUsedBytes: w.storageUsedBytes,
-        storageQuotaBytes: w.storageQuotaBytes,
+        storageUsedBytes: storage.usedBytes,
+        /** The storage limit that applies here (the scope's plan, or an admin override). */
+        storageQuotaBytes: storage.limitBytes,
+        /** Whose plan applies here; null in someone else's Personal. */
+        plan: plan ? { scope: scope.kind, id: plan, name: planName(plan) } : null,
+        /** Whether you can use the AI Assistant here (the server checks again on every request). */
+        aiIncluded: (await aiAccessIn(ctx, profile, w)).allowed,
       });
     }
     return out.sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name));

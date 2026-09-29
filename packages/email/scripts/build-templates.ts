@@ -27,11 +27,9 @@ const C = {
   muted: "#63636B",
   accent: "#111114",
   hairline: "#E4E4E7",
-  // The logo tile (brand files: black folio, white clasp, a lighter page edge) stays the same in dark mode.
+  // The mark (brand files: a white F on a black disc) stays the same in dark mode.
   tile: "#0B0B0C",
-  tileEdge: "#2A2A2E",
-  mark: "#FFFFFF",
-  markBand: "#BDBDC2",
+  tileEdge: "#1F2227",
   // Dark-mode counterparts (applied only by clients that honour prefers-color-scheme).
   darkCanvas: "#0B0B0C",
   darkCard: "#18181B",
@@ -279,36 +277,38 @@ function wrap(text: string, width = 72): string {
   return out.join("\n");
 }
 
-// The Folevi mark (packages/design-tokens/brand): a black folio on a rounded tile, its page edge running
-// down the right side and a white clasp across it. Drawn with table cells — emails carry no images — on a
-// 28px grid. Hidden from assistive tech (the wordmark is text).
-// Columns and rows (px) that follow the brand file's 236-unit drawing at 28 px: the page edge runs down the
-// right side (a white line at the top, stepping left into a light band) and the clasp crosses it, with its hole.
-const MARK_COLS = [15, 2, 2, 1, 3, 1, 4]; // margin, clasp, hole, clasp, band, edge, rest (= 28)
-type MarkCell = "on" | "band" | "hole";
-const MARK_ROWS: { h: number; cells: Partial<Record<number, MarkCell>> }[] = [
-  { h: 4, cells: { 5: "on" } }, // the page edge at the top
-  { h: 3, cells: { 4: "on", 5: "on" } }, // stepping left
-  { h: 6, cells: { 4: "band" } },
-  { h: 1, cells: { 1: "on", 2: "on", 3: "on", 4: "on", 5: "on" } }, // the clasp
-  { h: 2, cells: { 1: "on", 2: "hole", 3: "on", 4: "on", 5: "on" } },
-  { h: 1, cells: { 1: "on", 2: "on", 3: "on", 4: "on", 5: "on" } },
-  { h: 11, cells: { 4: "band" } }, // running off the bottom edge
-];
+// The Folevi mark (packages/design-tokens/brand): a white F on a black disc. Emails carry no images, so
+// it's drawn with table cells from mark-pixels.json — a 28 x 28 grid of grey levels written by
+// packages/design-tokens/scripts/brand-icons.mjs from the brand file, anti-aliased, with runs of equal
+// cells merged. The disc is the table's rounded background. Hidden from assistive tech (the wordmark is text).
+const MARK_PIXELS = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "mark-pixels.json"), "utf8")) as { size: number; levels: number; rows: string[] };
+/** Grey level → colour, from the disc (0) to white. */
+function markLevel(level: number): string {
+  const t = level / MARK_PIXELS.levels;
+  const [r, g, b] = [0x0b, 0x0b, 0x0c].map((c) => Math.round(c + (255 - c) * t));
+  return `#${[r, g, b].map((c) => c!.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+}
 const LOGO_MARK = [
-  `<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" border="0" class="fv-mark" style="border-collapse:separate;border:1px solid ${C.tileEdge};border-radius:7px;background-color:${C.tile};overflow:hidden;width:28px;height:28px;">`,
-  ...MARK_ROWS.map(
-    (row) =>
-      `<tr>${MARK_COLS.map((w, c) => {
-        const cell = row.cells[c];
-        const color = cell === "on" ? C.mark : cell === "band" ? C.markBand : null;
-        const cls = cell === "on" ? ' class="fv-mark-on"' : cell === "band" ? ' class="fv-mark-band"' : "";
-        const radius = cell === "on" && row.h === 1 && (c === 1 || c === 5) ? `border-radius:${c === 1 ? "2px 0 0 2px" : "0 2px 2px 0"};` : "";
-        return `<td${cls} style="width:${w}px;height:${row.h}px;${color ? `background-color:${color};` : ""}${radius}font-size:0;line-height:0;">&nbsp;</td>`;
-      }).join("")}</tr>`,
-  ),
+  `<table role="presentation" aria-hidden="true" cellpadding="0" cellspacing="0" border="0" class="fv-mark" style="border-collapse:separate;border:1px solid ${C.tileEdge};border-radius:50%;background-color:${C.tile};overflow:hidden;width:${MARK_PIXELS.size}px;height:${MARK_PIXELS.size}px;">`,
+  ...MARK_PIXELS.rows.map((row) => {
+    const runs: { level: number; w: number }[] = [];
+    for (const ch of row) {
+      const level = Number(ch);
+      const last = runs[runs.length - 1];
+      if (last && last.level === level) last.w++;
+      else runs.push({ level, w: 1 });
+    }
+    const cells = runs.map(({ level, w }) => {
+      const colour = level ? `background-color:${markLevel(level)};` : "";
+      const cls = level ? ` class="fv-m${level}"` : "";
+      return `<td${cls}${w > 1 ? ` colspan="${w}"` : ""} style="width:${w}px;height:1px;${colour}font-size:0;line-height:0;">&nbsp;</td>`;
+    });
+    return `<tr>${cells.join("")}</tr>`;
+  }),
   `</table>`,
 ].join("");
+/** Dark-mode clients that honour prefers-color-scheme keep the mark's own colours. */
+const MARK_DARK_CSS = Array.from({ length: MARK_PIXELS.levels }, (_, i) => `.fv-canvas table.fv-mark td.fv-m${i + 1} { background-color: ${markLevel(i + 1)} !important; }`).join("\n        ");
 
 function renderBlockMjml(block: Block): string {
   switch (block.kind) {
@@ -372,10 +372,9 @@ function renderMjml(def: TemplateDefinition, content: Content): string {
       .fv-link { color: ${C.accent}; text-decoration: underline; }
       @media (prefers-color-scheme: dark) {
         body, .fv-body, .fv-canvas, .fv-canvas table, .fv-canvas td { background-color: ${C.darkCanvas} !important; }
-        /* The logo tile keeps its brand colours: black folio, white clasp. */
+        /* The mark keeps its brand colours: a white F on a black disc. */
         .fv-canvas table.fv-mark, .fv-canvas table.fv-mark td { background-color: ${C.tile} !important; }
-        .fv-canvas table.fv-mark td.fv-mark-on { background-color: ${C.mark} !important; }
-        .fv-canvas table.fv-mark td.fv-mark-band { background-color: ${C.markBand} !important; }
+        ${MARK_DARK_CSS}
         .fv-card, .fv-card table, .fv-card td { background-color: ${C.darkCard} !important; border-color: ${C.darkHairline} !important; }
         .fv-card div, .fv-card td, .fv-card strong, .fv-wordmark div { color: ${C.darkInk} !important; }
         .fv-muted div, .fv-muted-cell, .fv-canvas .fv-muted div { color: ${C.darkMuted} !important; }

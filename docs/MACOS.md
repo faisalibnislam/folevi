@@ -34,7 +34,7 @@ Helper scripts (in `apps/macos/scripts/`):
 
 | Script | What it does |
 | --- | --- |
-| `packages/design-tokens/scripts/brand-icons.mjs` | Writes the app icon (`Assets.xcassets/AppIcon.appiconset`) and the in-app mark (`FoleviMark.imageset`) from the brand files in `packages/design-tokens/brand/source`, along with the web's icons. Run: `node packages/design-tokens/scripts/brand-icons.mjs`. |
+| `packages/design-tokens/scripts/brand-icons.mjs` | Writes the app icon — a Liquid Glass Icon Composer document, `Resources/AppIcon.icon`, which Xcode compiles (with a flat `AppIcon.icns` for older macOS) — plus the in-app mark (`FoleviMark.imageset`), the menu-bar glyph (`FoleviMenuBar.imageset`) and the wordmark, from the brand files in `packages/design-tokens/brand/source`, along with the web's icons and the email mark. Run: `node packages/design-tokens/scripts/brand-icons.mjs`. |
 | `generate-test-fixtures.mjs` | Bundles `packages/editor-schema` with esbuild and writes `FoleviTests/Fixtures/reference-outputs.json`: expected Markdown/HTML export, Markdown import, inline parsing, tree and number-formatting outputs from the TypeScript reference. Run with `node`. |
 | `update-string-catalog.py` | Refreshes `Resources/Localizable.xcstrings` (English source strings) from the compiler's extracted `.stringsdata`. Run after a build. |
 

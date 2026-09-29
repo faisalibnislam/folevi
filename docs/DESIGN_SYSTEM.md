@@ -129,7 +129,7 @@ the bottom left, ~35% opacity in light, ~50% in dark — fixed behind content. N
   larger surfaces step up only as needed — menus/popovers 8, the floating note panel and page sheet 10,
   Home shelves 10–12. Circles are kept only for avatars, dots, colour swatches and switches.
   (Tokens: `controlSmall` 4, `control` 6, `card` 8, `sheet` 10.)
-- **Sidebar top**: the Folevi logo (black tile + wordmark) — it goes to the Home tab — and
+- **Sidebar top**: the Folevi logo (the white F on a black disc + wordmark) — it goes to the Home tab — and
   notifications. **Sidebar bottom**: one button with the workspace's mark and name over your name; its
   menu (opens upward) holds everything, grouped with dividers: workspaces (✓ current) + New team
   workspace · Invite people (modal) · Members · Workspace settings · Account settings · Security &

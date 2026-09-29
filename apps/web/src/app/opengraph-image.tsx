@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { LETTER_PATHS } from "@/components/brand/FoleviMark";
+import { LETTER_PATHS, LOGO_HEIGHT, LOGO_WIDTH } from "@/components/brand/FoleviMark";
 import { ImageResponse } from "next/og";
 
 export const alt = "Folevi — A quieter place for ideas that keep growing.";
@@ -124,8 +124,8 @@ export default async function OpengraphImage() {
 
         <div style={{ position: "absolute", left: 88, top: 84, display: "flex", flexDirection: "column", width: 640 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ position: "relative", display: "flex", width: 183, height: 48 }}>
-              <svg width="183" height="48" viewBox="0 0 900 236">
+            <div style={{ position: "relative", display: "flex", width: Math.round((48 * LOGO_WIDTH) / LOGO_HEIGHT), height: 48 }}>
+              <svg width={Math.round((48 * LOGO_WIDTH) / LOGO_HEIGHT)} height="48" viewBox={`0 0 ${LOGO_WIDTH} ${LOGO_HEIGHT}`}>
                 {LETTER_PATHS.map((d) => (
                   <path key={d.slice(0, 16)} fill={HEADING} d={d} />
                 ))}

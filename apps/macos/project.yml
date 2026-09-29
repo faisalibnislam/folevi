@@ -52,10 +52,17 @@ targets:
           - "Resources/Fonts/**"
           - "Resources/Covers"
           - "Resources/Covers/**"
+          - "Resources/AppIcon.icon"
+          - "Resources/AppIcon.icon/**"
       # Instrument Sans, Spectral and JetBrains Mono (+ OFL licenses), copied to Contents/Resources/Fonts
       # and registered through ATSApplicationFontsPath (and FoleviFont.registerBundledFonts()).
       - path: Folevi/Resources/Fonts
         type: folder
+        buildPhase: resources
+      # The app icon: an Icon Composer document (Liquid Glass), written by
+      # packages/design-tokens/scripts/brand-icons.mjs. Xcode compiles it into Assets.car and AppIcon.icns.
+      - path: Folevi/Resources/AppIcon.icon
+        type: file
         buildPhase: resources
       # The 57 note styles (the web's 1600 px pages and 640 px thumbnails) + covers.json → Contents/Resources/Covers.
       - path: Folevi/Resources/Covers

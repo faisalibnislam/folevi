@@ -29,21 +29,54 @@ export interface AskTurn {
   text: string;
 }
 
+export interface AiAccess {
+  /** Available here and turned on. */
+  on: boolean;
+  /** Included where you are: in Personal, your Personal plan (Pro, the Pro trial or a grant from the Folevi
+   * team); in a team workspace, that workspace's plan. */
+  entitled: boolean;
+  /** Your Personal plan includes it (for Settings → Account). */
+  personalEntitled: boolean;
+  /** Where you are: "personal" (your own Personal), "workspace" (a team workspace) or "shared" (someone else's). */
+  context: "personal" | "workspace" | "shared";
+  /** You haven't turned it off (Settings → Account). */
+  setting: boolean;
+}
+
 /**
- * AI for this person: `entitled` — their plan includes it (Pro, the Pro trial, or a grant from the Folevi
- * team); `setting` — they haven't turned it off (Settings → Account); `on` — both.
+ * AI where you are — the current workspace, or `workspaceId` (e.g. the workspace a note belongs to). The
+ * server decides again on every request.
  */
-export function useAiAccess(): { on: boolean; entitled: boolean; setting: boolean } {
-  const { profile } = useAppState();
+export function useAiAccess(workspaceId?: string): AiAccess {
+  const { profile, workspace, workspaces } = useAppState();
   const p = profile as { aiEnabled?: boolean; entitlements?: { ai: boolean } };
   const setting = p.aiEnabled !== false;
-  const entitled = p.entitlements ? p.entitlements.ai : true;
-  return { on: setting && entitled, entitled, setting };
+  const personalEntitled = p.entitlements ? p.entitlements.ai : true;
+  const here = (workspaceId ? workspaces.find((w) => w.id === workspaceId) : workspace) as
+    | { kind: string; ownerName: string | null; plan?: { scope: string } | null; aiIncluded?: boolean }
+    | undefined;
+  // Not a member (a note shared with you), or someone else's Personal: AI isn't included there for you.
+  const context: AiAccess["context"] = !here
+    ? "shared"
+    : here.plan === undefined
+      ? here.kind === "personal" && !here.ownerName
+        ? "personal"
+        : here.kind === "personal"
+          ? "shared"
+          : "workspace"
+      : !here.plan
+        ? "shared"
+        : here.plan.scope === "personal"
+          ? "personal"
+          : "workspace";
+  // Older cached workspace lists have no aiIncluded: fall back to the Personal plan in Personal.
+  const entitled = here?.aiIncluded ?? (context === "personal" ? personalEntitled : false);
+  return { on: setting && entitled, entitled, personalEntitled, context, setting };
 }
 
 /** Whether AI is available and turned on (every AI entry point checks this; the server enforces it). */
-export function useAiEnabled(): boolean {
-  return useAiAccess().on;
+export function useAiEnabled(workspaceId?: string): boolean {
+  return useAiAccess(workspaceId).on;
 }
 
 /** The AI actions, bound to the current workspace. */

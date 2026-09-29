@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { PricingCard } from "@/components/marketing/home/Closing";
+import { PricingCard, WorkspacePlans } from "@/components/marketing/home/Closing";
 import { PLANS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
 import { pageMetadata } from "@/components/marketing/seo";
 import { PageHeader, container, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Pricing",
-  description: `Folevi is free to start, with 1 GB of storage on 2 devices. Basic adds 20 GB for ${formatPrice(PLANS.basic.monthlyCents)} a month; Pro adds unlimited AI and 100 GB for ${formatPrice(PLANS.pro.monthlyCents)} a month. Every new account gets Pro free for ${TRIAL_DAYS} days.`,
+  description: `Folevi is free to start, with 1 GB of personal storage on 2 devices. Basic adds 20 GB for ${formatPrice(PLANS.basic.monthlyCents)} a month; Pro adds unlimited AI and 100 GB for ${formatPrice(PLANS.pro.monthlyCents)} a month. Every new account gets Pro free for ${TRIAL_DAYS} days.`,
   path: "/pricing",
 });
 
@@ -17,7 +17,7 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "What counts toward storage?",
-    a: "Files, images and attachments in every workspace you own — your personal workspace and any team workspaces you created. In a team workspace someone else owns, uploads count toward the owner’s storage.",
+    a: "Your personal plan’s storage holds the files, images and attachments in your Personal. Each team workspace has its own storage from its own workspace plan, so uploads there never use your personal storage — and your personal plan never changes a workspace’s.",
   },
   {
     q: "What counts as a device?",
@@ -25,7 +25,7 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "What happens if I run out of storage?",
-    a: "Your notes stay put and you can keep writing. New uploads pause until you free up room or move to a plan with more storage.",
+    a: "Your notes and files stay put and you can keep writing. New uploads pause until you free up room or move to a plan with more storage. Nothing is deleted.",
   },
   {
     q: "Can I switch plans or cancel?",
@@ -45,6 +45,10 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
     ),
   },
   {
+    q: "How do workspace plans work?",
+    a: "A workspace has its own plan, separate from anyone’s personal plan: a Pro personal plan doesn’t upgrade a workspace, and a workspace plan doesn’t change your Personal. Every workspace starts on Free. Team and Business are billed per member and aren’t on sale yet.",
+  },
+  {
     q: "Is the Mac app included?",
     a: (
       <>
@@ -57,9 +61,20 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
 export default function PricingPage() {
   return (
     <>
-      <PageHeader eyebrow="Pricing" title="Start free. Pay for room, or for AI." lede={`Three simple plans, on the web, with the Mac app coming soon. Try Pro free for ${TRIAL_DAYS} days — no card.`} />
+      <PageHeader eyebrow="Pricing" title="Start free. Pay for room, or for AI." lede={`Three simple personal plans, on the web, with the Mac app coming soon. Try Pro free for ${TRIAL_DAYS} days — no card.`} />
       <div className={cx(container, "max-w-[1080px] pb-20 pt-4 sm:pb-28")}>
-        <PricingCard headingLevel="h2" />
+        <section aria-label="Personal plans">
+          <PricingCard headingLevel="h2" />
+        </section>
+        <section aria-labelledby="workspaces-title" className="mt-20">
+          <h2 id="workspaces-title" className="mk-h2">
+            Workspaces
+          </h2>
+          <p className="mk-lede mt-3 max-w-[60ch]">A workspace has its own plan, storage and AI, separate from your personal plan. Team and Business are coming soon.</p>
+          <div className="mt-8">
+            <WorkspacePlans headingLevel="h3" />
+          </div>
+        </section>
         <section aria-labelledby="faq-title" className="mt-20">
           <h2 id="faq-title" className="mk-h2">
             Questions

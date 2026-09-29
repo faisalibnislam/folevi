@@ -8,7 +8,7 @@ import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
-import { DAY_MS, PLANS, PLAN_ORDER, formatPrice, type BillingInterval, type PlanId } from "@/lib/plans";
+import { DAY_MS, PLANS, PLAN_ORDER, formatPrice, isPaidPlan, monthlyEquivalent, type BillingInterval, type PersonalTier } from "@/lib/plans";
 import { Card } from "./Card";
 import { AppLink } from "@/lib/app/router";
 
@@ -19,10 +19,15 @@ export function formatBytes(bytes: number): string {
 }
 const dateOnly = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
-/** Settings → Plan & billing: the current plan, usage, choosing a plan, and payment history. */
+/** The Personal tiers that are paid for (from the catalog). */
+const isPaidTier = (t: PersonalTier): t is Exclude<PersonalTier, "free"> => isPaidPlan(PLANS[t].monthly);
 /** The biggest saving from paying yearly, across the paid plans (for the Yearly toggle). */
-const BEST_YEARLY_SAVING = Math.max(...(["basic", "pro"] as const).map((id) => Math.round((1 - PLANS[id].yearlyCents / (PLANS[id].monthlyCents * 12)) * 100)));
+const BEST_YEARLY_SAVING = Math.max(...PLAN_ORDER.filter(isPaidTier).map((id) => Math.round((1 - PLANS[id].yearlyCents / (PLANS[id].monthlyCents * 12)) * 100)));
 
+/**
+ * Settings → Plan & billing: the person's Personal plan (Free, Basic or Pro), personal usage, choosing a
+ * plan, and personal payment history. Team workspaces have their own plans and billing.
+ */
 export function BillingSection() {
   const data = useQuery(api.billing.mine, {});
   const checkout = useAction(api.billing.checkout);
@@ -45,7 +50,12 @@ export function BillingSection() {
   const { entitlements: e, subscription: sub } = data;
   const current = PLANS[e.paidPlan];
   const trialDaysLeft = e.trialing && e.trialEndsAt ? Math.max(1, Math.ceil((e.trialEndsAt - Date.now()) / DAY_MS)) : 0;
-  const usedPct = Math.min(100, (data.storageUsedBytes / e.storageBytes) * 100);
+  const usedPct = Math.min(100, (data.storageUsedBytes / data.storageLimitBytes) * 100);
+  // The plan's state: trial, active, past due, or cancel scheduled (Free has none).
+  const cancelScheduled = e.paid && Boolean(sub?.cancelAtPeriodEnd && sub.currentPeriodEnd);
+  const status = e.trialing ? "Trial" : !e.paid ? null : sub?.status === "past_due" ? "Past due" : cancelScheduled ? "Cancel scheduled" : "Active";
+  const stripeBilled = sub?.provider === "stripe";
+  const selfServe = e.paid && sub?.provider !== "stripe" && sub?.provider !== "manual";
   const run = async (key: string, fn: () => Promise<unknown>, done?: string) => {
     setBusy(key);
     try {
@@ -57,8 +67,9 @@ export function BillingSection() {
       setBusy(null);
     }
   };
-  const choose = (plan: PlanId) => {
-    if (plan === "free") return run("free", () => cancel({}), "Your plan will end at the close of this billing period.");
+  const openPortal = () => run("portal", async () => window.location.assign((await portal({})).url));
+  const choose = (plan: PersonalTier) => {
+    if (!isPaidTier(plan)) return run("free", () => cancel({}), "Your plan will end at the close of this billing period.");
     if (data.checkoutAvailable)
       return run(plan, async () => {
         const { url } = await checkout({ plan, interval });
@@ -74,30 +85,34 @@ export function BillingSection() {
           <div>
             <p className="flex items-center gap-2">
               <span className="ui-display text-[24px]">{e.trialing ? "Pro trial" : current.name}</span>
-              {sub && sub.plan !== "free" && sub.interval ? <span className="rounded-full bg-[var(--glass-hover)] px-2 py-0.5 text-[12px] text-muted">{sub.interval === "year" ? "Yearly" : "Monthly"}</span> : null}
-              {sub?.status === "past_due" ? <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[12px] text-danger">Payment due</span> : null}
+              {e.paid && sub?.interval ? <span className="rounded-full bg-[var(--glass-hover)] px-2 py-0.5 text-[12px] text-muted">{sub.interval === "year" ? "Annual" : "Monthly"}</span> : null}
+              {status ? <span className={`rounded-full px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
             </p>
             <p className="mt-1 text-sm text-muted">
               {e.trialing
-                ? `${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} of Pro left (until ${dateOnly(e.trialEndsAt!)}). ${e.paidPlan === "free" ? "Then you'll move to Free unless you choose a plan." : `Then your ${current.name} plan continues.`}`
-                : sub && sub.plan !== "free" && sub.currentPeriodEnd
-                  ? sub.cancelAtPeriodEnd
-                    ? `Ends ${dateOnly(sub.currentPeriodEnd)} — then Free.`
-                    : `${sub.provider === "manual" ? "Set by the Folevi team — runs until" : "Renews"} ${dateOnly(sub.currentPeriodEnd)}.`
-                  : sub && sub.plan !== "free" && sub.provider === "manual"
-                    ? "Set by the Folevi team."
-                    : current.blurb}
+                ? `${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} of Pro left (until ${dateOnly(e.trialEndsAt!)}). ${e.paid ? `Then your ${current.name} plan continues.` : "Then you'll move to Free unless you choose a plan."}`
+                : e.paid && sub?.status === "past_due"
+                  ? stripeBilled
+                    ? "Your last payment failed. Update your payment method to keep your plan."
+                    : "Your last payment failed."
+                  : e.paid && sub?.currentPeriodEnd
+                    ? sub.cancelAtPeriodEnd
+                      ? `Ends ${dateOnly(sub.currentPeriodEnd)}. Your ${current.name} features remain available until then.`
+                      : `${sub.provider === "manual" ? "Set by the Folevi team — runs until" : "Renews"} ${dateOnly(sub.currentPeriodEnd)}.`
+                    : e.paid && sub?.provider === "manual"
+                      ? "Set by the Folevi team."
+                      : current.blurb}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {sub?.provider === "stripe" ? (
-              <Button onClick={() => run("portal", async () => window.location.assign((await portal({})).url))} aria-busy={busy === "portal" || undefined}>
-                <CreditCard size={15} aria-hidden /> Manage billing
+            {stripeBilled ? (
+              <Button onClick={() => void openPortal()} aria-busy={busy === "portal" || undefined}>
+                <CreditCard size={15} aria-hidden /> {cancelScheduled ? "Resume subscription" : "Manage subscription"}
               </Button>
             ) : null}
-            {sub && sub.plan !== "free" && sub.provider !== "stripe" && sub.provider !== "manual" ? (
-              sub.cancelAtPeriodEnd ? (
-                <Button onClick={() => run("resume", () => resume({}), "Your plan will keep renewing.")}>Keep my plan</Button>
+            {selfServe ? (
+              sub?.cancelAtPeriodEnd ? (
+                <Button onClick={() => run("resume", () => resume({}), "Your plan will keep renewing.")}>Resume subscription</Button>
               ) : (
                 <Button variant="ghost" onClick={() => run("cancel", () => cancel({}), "Your plan will end at the close of this billing period.")}>
                   Cancel plan
@@ -110,12 +125,12 @@ export function BillingSection() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div className="rounded-[10px] bg-[var(--glass-hover)] p-4">
             <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
-              <HardDrive size={15} aria-hidden /> Storage
+              <HardDrive size={15} aria-hidden /> Personal storage
             </p>
             <p className="mt-1 text-sm text-muted">
-              {formatBytes(data.storageUsedBytes)} of {formatBytes(e.storageBytes)} used, across all the workspaces you own
+              {formatBytes(data.storageUsedBytes)} of {formatBytes(data.storageLimitBytes)} used
             </p>
-            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label="Storage used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(usedPct)}>
+            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label="Personal storage used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(usedPct)}>
               <div className={`h-full rounded-full ${usedPct > 90 ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(usedPct, 1.5)}%` }} />
             </div>
           </div>
@@ -130,7 +145,7 @@ export function BillingSection() {
                   : e.trialing
                     ? "Unlimited during your Pro trial."
                     : "Unlimited on Pro."
-                : "Part of Pro — write, summarize and ask your notes anything."}
+                : "Part of Pro — write, summarize and ask your notes anything in Personal."}
             </p>
             {e.ai ? <p className="mt-2 text-[12.5px] text-faint">{data.aiRequestsThisMonth.toLocaleString()} requests this month</p> : null}
           </div>
@@ -152,7 +167,7 @@ export function BillingSection() {
         </div>
       </Card>
 
-      <Card title="Choose a plan" description="Every plan works on the web, and will include the Mac app when it launches. Storage counts across your personal and team workspaces.">
+      <Card title="Choose a personal plan" description="Your plan applies to your personal account. Workspaces have their own plans, members, limits and billing.">
         <div className="ui-seg ui-well mb-4 w-fit" role="group" aria-label="Billing period">
           <button type="button" aria-pressed={interval === "month"} onClick={() => setInterval("month")} className="h-8 whitespace-nowrap !px-4">
             Monthly
@@ -165,22 +180,22 @@ export function BillingSection() {
         <div className="grid gap-3 lg:grid-cols-3">
           {PLAN_ORDER.map((id) => {
             const plan = PLANS[id];
+            const paid = isPaidTier(id);
             const price = interval === "year" ? plan.yearlyCents : plan.monthlyCents;
-            const isCurrent = e.paidPlan === id && (id === "free" || !sub?.interval || sub.interval === interval);
-            const save = id !== "free" && interval === "year" ? Math.round((1 - plan.yearlyCents / (plan.monthlyCents * 12)) * 100) : 0;
-            const canBuy = id !== "free" && (data.checkoutAvailable || data.testPurchases);
+            const isCurrent = e.paidPlanId === (interval === "year" ? plan.yearly : plan.monthly);
+            const canBuy = paid && (data.checkoutAvailable || data.testPurchases);
             return (
-              <section key={id} aria-label={`${plan.name} plan`} className={`flex flex-col rounded-[14px] p-5 ${id === "pro" ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}>
+              <section key={id} aria-label={`${plan.name} plan`} className={`flex flex-col rounded-[14px] p-5 ${plan.ai ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}>
                 <div className="flex items-center gap-2">
                   <h4 className="ui-display text-[19px]">{plan.name}</h4>
-                  {id === "pro" ? <span className="rounded-full bg-[#7c6cf0] px-2 py-0.5 text-[11px] font-semibold text-white">AI</span> : null}
+                  {plan.ai ? <span className="rounded-full bg-[#7c6cf0] px-2 py-0.5 text-[11px] font-semibold text-white">AI</span> : null}
                   {isCurrent ? <span className="ml-auto rounded-full bg-heading px-2 py-0.5 text-[11px] font-semibold text-canvas">Current</span> : null}
                 </div>
                 <p className="mt-2">
                   <span className="text-[30px] font-semibold tracking-tight text-heading">{formatPrice(price)}</span>
                   <span className="text-sm text-muted"> / {interval === "year" ? "year" : "month"}</span>
                 </p>
-                <p className="min-h-[20px] text-[12.5px] text-muted">{id === "free" ? "No card required" : save > 0 ? `${formatPrice(Math.round(plan.yearlyCents / 12))}/month, billed yearly — save ${save}%` : "Billed monthly"}</p>
+                <p className="min-h-[20px] text-[12.5px] text-muted">{!paid ? "No card required" : interval === "year" ? `${monthlyEquivalent(plan.yearlyCents)}/month, billed yearly` : "Billed monthly"}</p>
                 <p className="mt-2 text-[13px] text-ink">{plan.blurb}</p>
                 <ul className="mt-3 flex-1 space-y-1.5 text-[13px]">
                   {plan.features.map((f) => (
@@ -194,15 +209,15 @@ export function BillingSection() {
                     <Button disabled className="w-full">
                       Your plan
                     </Button>
-                  ) : id === "free" ? (
-                    e.paidPlan !== "free" && sub?.provider !== "stripe" && sub?.provider !== "manual" ? (
+                  ) : !paid ? (
+                    selfServe ? (
                       <Button variant="ghost" className="w-full" onClick={() => choose("free")} aria-busy={busy === "free" || undefined}>
                         Switch to Free
                       </Button>
                     ) : null
                   ) : canBuy ? (
-                    <Button variant={id === "pro" ? "primary" : "secondary"} className="w-full" onClick={() => choose(id)} aria-busy={busy === id || undefined}>
-                      {busy === id ? "Opening checkout…" : `${e.paidPlan === "free" ? "Upgrade to" : "Switch to"} ${plan.name}${!data.checkoutAvailable ? " (test)" : ""}`}
+                    <Button variant={plan.ai ? "primary" : "secondary"} className="w-full" onClick={() => choose(id)} aria-busy={busy === id || undefined}>
+                      {busy === id ? "Opening checkout…" : `${e.paid ? "Switch to" : "Upgrade to"} ${plan.name}${!data.checkoutAvailable ? " (test)" : ""}`}
                     </Button>
                   ) : (
                     <Button disabled className="w-full">

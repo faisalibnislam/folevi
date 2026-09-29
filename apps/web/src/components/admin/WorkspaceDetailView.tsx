@@ -100,7 +100,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
           <div className="grid gap-4">
             <div>
               <div className="mb-1.5 flex justify-between text-[13px]">
-                <span className="text-muted">Storage</span>
+                <span className="text-muted">Storage · {w.storageOverridden ? "custom limit" : w.planName}</span>
                 <span className="tabular-nums">
                   {formatBytes(w.storageUsedBytes)} of {formatBytes(w.storageQuotaBytes)}
                 </span>
@@ -248,7 +248,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         open={action === "quota"}
         onClose={() => setAction(null)}
         title="Set workspace quota"
-        description={`Currently ${formatBytes(w.storageQuotaBytes)} storage and ${w.memberLimit} members. Lowering a quota below current usage blocks new uploads or invites; nothing is removed.`}
+        description={`Currently ${formatBytes(w.storageQuotaBytes)} storage (${w.storageOverridden ? "a custom limit" : `from ${w.planName}`}) and ${w.memberLimit} members. A different storage value replaces the plan's for this workspace. Lowering a quota below current usage blocks new uploads or invites; nothing is removed.`}
         confirmLabel="Save quota"
         fields={[
           {

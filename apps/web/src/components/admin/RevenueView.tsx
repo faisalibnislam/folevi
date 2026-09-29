@@ -5,7 +5,7 @@ import { useId, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { Select } from "@/components/ui/Select";
-import { PLANS, formatPrice, type PlanId } from "@/lib/plans";
+import { PLANS, formatPrice, type PersonalTier } from "@/lib/plans";
 import { useAdmin } from "./AdminApp";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, LoadingRows, PageHeader, Panel, StatTile, Switch, Time, humanize, selectCls, td, tdNum, th, thNum } from "./ui";
 
@@ -176,7 +176,7 @@ export function RevenueView() {
                       <span className="text-xs text-muted">{p.email}</span>
                     </td>
                     <td className={td}>
-                      {PLANS[p.plan as PlanId]?.name ?? p.plan} · {p.interval === "year" ? "yearly" : "monthly"}
+                      {PLANS[p.plan as PersonalTier]?.name ?? p.plan} · {p.interval === "year" ? "yearly" : "monthly"}
                     </td>
                     <td className={tdNum}>{money(p.amountCents)}</td>
                     <td className={td}>

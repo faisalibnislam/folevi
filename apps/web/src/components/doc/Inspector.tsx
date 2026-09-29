@@ -120,7 +120,7 @@ export function Inspector({
   onAiTitle?: (title: string) => void;
 }) {
   const baseId = useId();
-  const aiOn = useAiEnabled();
+  const aiOn = useAiEnabled(meta?.document.workspaceId);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments">>("format");
   useEffect(() => {

@@ -90,8 +90,15 @@ function WorkspaceSettings() {
             <p className="text-sm text-muted">Owners and admins can change the logo.</p>
           )}
         </div>
-        <p className="mt-4 text-sm text-muted">
-          Storage: {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
+        {/* Each workspace has its own plan and storage: Personal follows your Personal plan, a team its own. */}
+        {workspace.plan ? (
+          <p className="mt-4 text-sm text-muted">
+            Plan: <span className="text-ink">{workspace.plan.scope === "personal" ? `${workspace.plan.name} (your personal plan)` : workspace.plan.name}</span>
+            {workspace.plan.scope === "workspace" ? " · Team and Business workspace plans are coming soon." : null}
+          </p>
+        ) : null}
+        <p className={`${workspace.plan ? "mt-1" : "mt-4"} text-sm text-muted`}>
+          {personal ? "Personal storage" : "Workspace storage"}: {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
         </p>
         <div className="mt-2 h-1.5 max-w-md overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${Math.round(pct)}% of storage used`}>
           <div className="h-full bg-accent" style={{ width: `${Math.min(100, pct)}%` }} />

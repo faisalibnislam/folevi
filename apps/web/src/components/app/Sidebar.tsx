@@ -38,6 +38,8 @@ import { SyncStatus } from "./SyncStatus";
 import { WorkspaceMenu } from "./WorkspaceMenu";
 import { openNextInNewTab } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
+import { useNoteActions } from "@/components/views/noteActions";
+import { draggedNoteIds, isNoteDrag } from "@/lib/app/noteDrag";
 
 function isActive(route: Route, href: string): boolean {
   const map: Record<string, (r: Route) => boolean> = {
@@ -62,11 +64,10 @@ function isActive(route: Route, href: string): boolean {
   return false;
 }
 
-function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { href: string; icon: React.ReactNode; label: string; count?: number; onNavigate?: () => void; draggableFolderId?: string }) {
+function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { href: string; icon: React.ReactNode; label: string; count?: number; onNavigate?: () => void; /** Makes the item a drop target for notes: a folder id, or "" for Drafts. */ draggableFolderId?: string }) {
   const { route } = useAppRouter();
   const active = isActive(route, href);
-  const move = useMutation(api.documents.move);
-  const toast = useToast();
+  const notes = useNoteActions();
   const [over, setOver] = useState(false);
   return (
     <AppLink
@@ -80,27 +81,32 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
       onDragOver={
         draggableFolderId !== undefined
           ? (e) => {
-              if (e.dataTransfer.types.includes("application/x-folevi-document")) {
+              if (isNoteDrag(e)) {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
                 setOver(true);
               }
             }
           : undefined
       }
-      onDragLeave={() => setOver(false)}
+      onDragLeave={(e) => {
+        // Moving onto the icon or label inside the item isn't leaving it.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
+      }}
       onDrop={
         draggableFolderId !== undefined
           ? (e) => {
               e.preventDefault();
               setOver(false);
-              const docId = e.dataTransfer.getData("application/x-folevi-document");
-              if (docId) move({ documentId: docId, folderId: draggableFolderId || null }).then(() => toast.show(`Moved to ${label}`), (err) => toast.show(errorMessage(err), { tone: "error" }));
+              // One note, or a whole selection; the toast offers Undo.
+              const ids = draggedNoteIds(e);
+              if (ids.length) void notes.moveTo(ids, { id: draggableFolderId || null, name: label });
             }
           : undefined
       }
       className={`group relative flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 pointer-coarse:h-11 ${
         active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
-      } ${over ? "ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
+      } ${over ? "bg-[var(--glass-active)] text-heading ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
       <span className={`transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} aria-hidden>
         {icon}

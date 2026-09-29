@@ -23,6 +23,7 @@ import {
   Paintbrush,
   Info,
   Printer,
+  Search,
   Share2,
   Star,
   StarOff,
@@ -55,6 +56,9 @@ import { ShareDialog } from "./ShareDialog";
 import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
 import { VersionHistory } from "./VersionHistory";
 import { MovePageDialog } from "./MovePageDialog";
+import { FindBar } from "./FindBar";
+import { MoveToFolderDialog } from "@/components/views/MoveToFolderDialog";
+import { useNoteActions } from "@/components/views/noteActions";
 import { exportHtml, exportMarkdown, exportPdf } from "./export";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
@@ -81,6 +85,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [folderOpen, setFolderOpen] = useState(false);
+  // The find & replace bar: open with or without the replace row; `key` bumps on every ⌘F to refocus it.
+  const [findBar, setFindBar] = useState<{ replace: boolean; key: number } | null>(null);
+  const noteRef = useRef<HTMLDivElement>(null);
+  const notes = useNoteActions();
   const inspectorRef = useRef<HTMLDivElement>(null);
   // Below 1200px the inspector folds into an icon rail on the note, and opens as a floating panel.
   const dockButtons = useRef<Partial<Record<InspectorTab, HTMLButtonElement | null>>>({});
@@ -318,6 +327,21 @@ export function DocumentView({ documentId }: { documentId: string }) {
     };
   }, [setInspectorOpen, aiOn]);
 
+  // ⌘F finds in the note and ⌘⌥F replaces, while focus is in the note (or nowhere in particular);
+  // anywhere else the browser's own find still works.
+  const openFind = useCallback((replace: boolean) => setFindBar((f) => ({ replace, key: (f?.key ?? 0) + 1 })), []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.code !== "KeyF" || !editor) return;
+      const active = document.activeElement;
+      if (active && active !== document.body && !noteRef.current?.contains(active)) return;
+      e.preventDefault();
+      openFind(e.altKey);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editor, openFind]);
+
   const openComments = useCallback(
     (blockId?: string) => {
       setCommentBlock(blockId ?? null);
@@ -340,6 +364,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
     onShare: () => setShareOpen(true),
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
+    onFind: editor ? () => openFind(!readOnly) : undefined,
+    // Top-level notes of this workspace can be filed; nested pages follow their parent page.
+    onMoveToFolder:
+      meta && !readOnly && meta.isMember && meta.document.workspaceId === workspace.id && !meta.document.parentDocumentId && meta.document.kind !== "template" && (meta.access === "write" || meta.access === "manage")
+        ? () => setFolderOpen(true)
+        : undefined,
     client: convex,
   });
 
@@ -449,7 +479,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
         : null}
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind. */}
       <div className="flex h-full min-h-0">
-        <div className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
+        <div ref={noteRef} className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
+        {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
         <div
           id="doc-scroll"
@@ -587,6 +618,15 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={summary?.title ?? ""} currentParentId={meta.breadcrumbs[meta.breadcrumbs.length - 1]?.id ?? null} />
       ) : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
+      {meta ? (
+        <MoveToFolderDialog
+          open={folderOpen}
+          onClose={() => setFolderOpen(false)}
+          noteTitle={summary?.title ?? ""}
+          currentFolderId={meta.document.folderId}
+          onPick={(folder) => void notes.moveTo([documentId], folder)}
+        />
+      ) : null}
     </ViewChrome>
     </NotePaletteProvider>
   );
@@ -1003,6 +1043,8 @@ function useDocumentActions({
   onShare,
   onDelete,
   onMove,
+  onFind,
+  onMoveToFolder,
   client,
 }: {
   documentId: string;
@@ -1017,6 +1059,10 @@ function useDocumentActions({
   onShare: () => void;
   onDelete: () => void;
   onMove: () => void;
+  /** Opens the find & replace bar (absent until the editor is ready). */
+  onFind?: () => void;
+  /** Opens the folder picker (absent where a note can't be filed: nested pages, templates, view-only). */
+  onMoveToFolder?: () => void;
   client: ReturnType<typeof useConvex>;
 }): (MenuItem | "separator")[] {
   const setStarred = useMutation(api.documents.setStarred);
@@ -1052,6 +1098,8 @@ function useDocumentActions({
           : { label: "Star", icon: <Star size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Starred") },
         { label: "Share…", icon: <Share2 size={14} />, onSelect: onShare },
         { label: "Version history…", icon: <History size={14} />, onSelect: onHistory },
+        ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),
+        ...(onMoveToFolder ? [{ label: "Move to folder…", icon: <Folder size={14} />, onSelect: onMoveToFolder }] : []),
         { label: "Move to page…", icon: <FolderInput size={14} />, disabled: !canManage, onSelect: onMove },
         "separator" as const,
         { label: "Export as Markdown", icon: <FileText size={14} />, onSelect: () => void exportWith(exportMarkdown, "Markdown") },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, FileText, House, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Folder, Hash, House, LayoutList, Plus, X } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabPage, useTabs } from "@/lib/app/tabs";
 import { Button } from "@/components/ui/Button";
@@ -20,12 +20,15 @@ const ARROW = "grid h-8 w-6 flex-none place-items-center rounded-[6px] text-mute
  */
 export function TabStrip() {
   const { sidebarOpen } = useShell();
-  const { route } = useAppRouter();
-  const { tabs, close } = useTabs();
+  const { route, pathname } = useAppRouter();
+  const { tabs, close, view } = useTabs();
   const createDocument = useCreateDocument();
   const docId = route.name === "doc" ? route.id : null;
-  // The first tab is always Home (the dashboard); other list views don't take it over.
+  // The first tab is always Home (the dashboard); other list views don't take it over. While one is open it
+  // gets a tab of its own next to Home (named by the view itself, for this path only, so it's never stale).
   const onHome = route.name === "documents";
+  const viewTab = !docId && !onHome ? (view?.path === pathname ? view.title : null) : null;
+  const inFolder = route.name === "folder";
 
   // Keep the open tab in view when there are more tabs than fit.
   const navRef = useRef<HTMLElement>(null);
@@ -103,6 +106,20 @@ export function TabStrip() {
           <House size={14} aria-hidden className="flex-none" />
           <span>Home</span>
         </AppLink>
+        {/* Any other list view (a folder, Drafts, Trash…) shows as the current tab while it's open. */}
+        {viewTab ? (
+          // The page you're on (not a link: it would only lead here); the sidebar and Up move between views.
+          <span aria-current="page" title={viewTab} className={`${tabBase} min-w-0 max-w-[240px] flex-none cursor-default ${tabOn}`}>
+            {route.name === "folder" || route.name === "folders" ? (
+              <Folder size={14} aria-hidden className="flex-none" />
+            ) : route.name === "tag" || route.name === "tags" ? (
+              <Hash size={14} aria-hidden className="flex-none" />
+            ) : (
+              <LayoutList size={14} aria-hidden className="flex-none" />
+            )}
+            <span className="truncate">{viewTab}</span>
+          </span>
+        ) : null}
         {tabs.map((t) => {
           const active = tabPage(t) === docId;
           const label = t.title || "Untitled";
@@ -134,8 +151,8 @@ export function TabStrip() {
         })}
       </nav>
       <div className="flex-1" />
-      {/* Always here: a new note opens in its own tab (new notes start in Drafts). */}
-      <Button size="sm" variant="primary" title="New note (⌘⌥N)" onClick={() => void createDocument({ folderId: null })} className="flex-none">
+      {/* Always here: a new note opens in its own tab (in the open folder, else in Drafts). */}
+      <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="flex-none">
         <Plus size={14} aria-hidden /> New note
       </Button>
     </div>

@@ -17,6 +17,7 @@ import { flattenTree } from "@folevi/editor-schema";
 import { htmlToBlocks } from "./paste";
 import { EditorMenus } from "./EditorMenus";
 import { BlockSelectionExtension } from "./blockSelection";
+import { FindReplace } from "./findReplace";
 import { subtreeRange, normalizeDepths, moveSubtreeTo } from "./commands";
 import { closeHistory } from "@tiptap/pm/history";
 import { useAiEnabled } from "@/components/ai/useAi";
@@ -101,6 +102,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       BlockKeymap,
       BlockSelectionExtension,
       MarkdownShortcuts,
+      FindReplace,
       Triggers.configure({ onChange: (t) => setTrigger(t) }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

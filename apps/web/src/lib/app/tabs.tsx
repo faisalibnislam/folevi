@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAppRouter } from "./router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 
@@ -20,6 +20,9 @@ export const tabPage = (t: DocTab) => t.at ?? t.id;
 
 interface TabsValue {
   tabs: DocTab[];
+  /** The list view on screen (a folder, Drafts, Trash…) and its name, keyed by path so it's never stale. */
+  view: { path: string; title: string } | null;
+  setView: (view: { path: string; title: string }) => void;
   /** Where the Home tab goes: the last non-page view (Home, Drafts, a folder, Tasks…). */
   homeHref: string;
   close: (id: string) => void;
@@ -111,7 +114,12 @@ export function TabsProvider({ accountKey, children }: { accountKey: string; chi
     [tabs, setTabs],
   );
 
-  const value = useMemo(() => ({ tabs, homeHref, close, place }), [tabs, homeHref, close, place]);
+  const [view, setViewState] = useState<{ path: string; title: string } | null>(null);
+  const setView = useCallback((next: { path: string; title: string }) => {
+    setViewState((prev) => (prev && prev.path === next.path && prev.title === next.title ? prev : next));
+  }, []);
+
+  const value = useMemo(() => ({ tabs, view, setView, homeHref, close, place }), [tabs, view, setView, homeHref, close, place]);
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }
 
@@ -119,6 +127,21 @@ export function useTabs(): TabsValue {
   const ctx = useContext(TabsContext);
   if (!ctx) throw new Error("useTabs outside TabsProvider");
   return ctx;
+}
+
+/**
+ * Names the list view on screen for the tab strip (ViewChrome passes the view's tab title). The strip
+ * shows it as the current tab, so a folder page never looks like the last note you had open.
+ */
+export function useViewTab(title: string | undefined) {
+  const ctx = useContext(TabsContext);
+  const setView = ctx?.setView;
+  const { route, pathname } = useAppRouter();
+  const isDoc = route.name === "doc";
+  useEffect(() => {
+    if (!setView || isDoc || !title) return;
+    setView({ path: pathname, title });
+  }, [setView, isDoc, pathname, title]);
 }
 
 /**

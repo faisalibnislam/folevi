@@ -432,7 +432,7 @@ export async function ownedWorkspacesWithMembers(ctx: QueryCtx, profileId: Id<"p
     .collect();
   const out = [];
   for (const w of owned) {
-    if (w.kind !== "team" || w.status === "deleting" || w.deletionScheduledFor !== undefined) continue;
+    if (w.status === "deleting" || w.deletionScheduledFor !== undefined) continue;
     const members = await ctx.db
       .query("workspaceMembers")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", w._id))

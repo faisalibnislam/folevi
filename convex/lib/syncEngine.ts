@@ -12,7 +12,7 @@ import {
   type WireDocumentPatch,
 } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE } from "./auth";
-import { IdResolver, liveBlocks, refreshDerived, sanitizeTitle, syncTaskProjection, toSummary, toWireBlock, type DocumentSummary } from "./documents";
+import { IdResolver, liveBlocks, Placement, refreshDerived, sanitizeTitle, syncTaskProjection, toWireBlock, type DocumentSummary } from "./documents";
 import { createDocument, cloneBlocks } from "./create";
 import { builtInTemplateBlocks } from "./templates";
 import { bump } from "./metrics";
@@ -29,6 +29,7 @@ import { SeqAllocator } from "./seq";
 import { hasValidScope, inScope, insertScoped, personalScope, sameScopeRows, scopeOfRow, workspaceScope, type Scope, type ScopeArg } from "./scope";
 import { fail } from "./errors";
 import { mentionedIds, notify } from "./notify";
+import { ReaderLabels, titleIsShared } from "./linkLabels";
 
 export const MAX_BATCH = 100;
 
@@ -60,6 +61,14 @@ export class SyncEngine {
   }
 
   /**
+   * A page as returned to the caller: no folder id for a guest, no parent they can't open (Placement).
+   * A fresh Placement each time, since a batch can move pages and change what's open.
+   */
+  private async summary(doc: Doc<"documents">): Promise<DocumentSummary> {
+    return await new Placement(this.ctx, this.profile).summary(this.ids, doc);
+  }
+
+  /**
    * Applies a batch. Operations are authorized one by one against the document they touch, so a batch
    * may freely mix documents from several scopes (shared pages, deep links from a workspace). `routing`
    * only decides where a `document.create` without a parent (and without its own scope) is created.
@@ -72,6 +81,12 @@ export class SyncEngine {
       results.push(await this.applyOne(op));
     }
     await this.finish();
+    // Blocks go back with link labels this person may see (lib/linkLabels.ts), like every other read.
+    const labels = new ReaderLabels(this.ctx, this.profile);
+    for (const r of results) {
+      if (r.block) r.block = await labels.block(r.block);
+      if (r.conflict?.server) r.conflict = { ...r.conflict, server: await labels.block(r.conflict.server) };
+    }
     return results;
   }
 
@@ -85,7 +100,7 @@ export class SyncEngine {
       .query("workspaces")
       .withIndex("by_public_id", (q) => q.eq("publicId", arg.workspaceId))
       .unique();
-    if (!workspace || workspace.kind !== "team" || workspace.status === "deleting") return null;
+    if (!workspace || workspace.status === "deleting") return null;
     return (await membership(this.ctx, this.profile._id, workspace._id)) ? workspaceScope(workspace._id) : null;
   }
 
@@ -199,7 +214,7 @@ export class SyncEngine {
       const id = op.kind === "document.create" ? op.document.id : op.documentId;
       const doc = await this.readable(await getDocumentByPublicId(this.ctx, id));
       if (prior.status === "rejected") return { opId: op.opId, status: "rejected", error: { code: prior.errorCode ?? "rejected", message: "Rejected earlier." } };
-      return { opId: op.opId, status: "duplicate", revision: doc?.revision, document: doc ? await toSummary(this.ids, doc) : undefined };
+      return { opId: op.opId, status: "duplicate", revision: doc?.revision, document: doc ? await this.summary(doc) : undefined };
     }
     const blockId = op.kind === "block.upsert" ? op.block.id : op.blockId;
     const found = await this.ctx.db
@@ -519,7 +534,7 @@ export class SyncEngine {
     if (existing) {
       // A replay through another path (or after a lost ack) of our own create — if we can still open it.
       if (existing.createdBy === this.profile._id && (await this.readable(existing))) {
-        return { opId: op.opId, status: "applied", revision: existing.revision, document: await toSummary(this.ids, existing) };
+        return { opId: op.opId, status: "applied", revision: existing.revision, document: await this.summary(existing) };
       }
       return { opId: op.opId, status: "rejected", error: { code: "exists", message: "A document with this id already exists." } };
     }
@@ -553,7 +568,7 @@ export class SyncEngine {
           opId: op.opId,
           status: "conflict",
           revision: dup.revision,
-          document: await toSummary(this.ids, dup),
+          document: await this.summary(dup),
           conflict: { reason: "exists", server: null, client: null },
         };
       }
@@ -593,7 +608,7 @@ export class SyncEngine {
       accessMode,
       blocks,
     });
-    return { opId: op.opId, status: "applied", revision: doc.revision, document: await toSummary(this.ids, doc) };
+    return { opId: op.opId, status: "applied", revision: doc.revision, document: await this.summary(doc) };
   }
 
   /**
@@ -688,7 +703,7 @@ export class SyncEngine {
       }
     }
     const fresh = (await this.ctx.db.get(doc._id))!;
-    const summary = await toSummary(this.ids, fresh);
+    const summary = await this.summary(fresh);
     if (titleConflict) {
       return { opId: op.opId, status: "conflict", revision: fresh.revision, document: summary, conflict: { reason: "content", server: null, client: null } };
     }
@@ -827,6 +842,19 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
     }
     return ok;
   };
+  // Nor is a title written into a page whose readers may not all open this one (a restricted page, or a
+  // page in another scope): readers are served the current title or a neutral label anyway
+  // (lib/linkLabels.ts), and the stored label feeds text every reader sees (excerpt, preview, search).
+  const shared = new Map<string, boolean>();
+  const sharedWith = async (sourceId: Id<"documents">): Promise<boolean> => {
+    let ok = shared.get(sourceId);
+    if (ok === undefined) {
+      const source = await ctx.db.get(sourceId);
+      ok = source !== null && (await titleIsShared(ctx, source, doc));
+      shared.set(sourceId, ok);
+    }
+    return ok;
+  };
   for (const link of links) {
     const key = `${link.sourceDocumentId}:${link.blockId}`;
     if (seen.has(key)) continue;
@@ -836,6 +864,7 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
       .withIndex("by_block_id", (q) => q.eq("blockId", link.blockId))
       .unique();
     if (!row || row.deletedAt !== undefined || row.documentId !== link.sourceDocumentId) continue;
+    if (!(await sharedWith(row.documentId))) continue;
     if (!(await writerCanRead(row.updatedBy))) continue;
     const patch: Partial<Doc<"blocks">> = {};
     const props = row.props as Record<string, unknown>;

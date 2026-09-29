@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { normalizeForSearch, rankBetween, ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, requireDocument, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
+import { assertWritable, documentAccessInfo, PageReader, requireDocument, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { nextSeq } from "./lib/seq";
 import { inScope, insertScoped, sameScopeRows, scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
@@ -66,34 +66,28 @@ export const sidebar = query({
 /**
  * Every folder and tag with its page count and dates, for the All folders / All tags views (the
  * sidebar shows only the first few). Counts are pages the person can see in lists: not trashed, not
- * archived, top-level in the folder.
+ * archived, top-level in the folder — and only pages they can open (a restricted page they can't open
+ * is neither counted nor previewed).
  */
-/** Up to three notes' previews, skipping any the person can't read (restricted pages stay hidden). */
-async function readablePreviews(ctx: QueryCtx, profile: Doc<"profiles">, docs: Doc<"documents">[]) {
-  const out: { cover: Doc<"documents">["cover"]; title: string; excerpt: string }[] = [];
-  for (const d of docs) {
-    if (out.length === 3) break;
-    if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-    out.push({ cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280) });
-  }
-  return out;
-}
-
 export const index = query({
   args: { scope: vScopeArg },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const standing = await resolveScope(ctx, profile, args.scope);
+    const { scope } = standing;
+    const reader = new PageReader(ctx, profile, standing);
     const folders = (await scopeFolders(ctx, scope)).filter((f) => !f.deletedAt);
     const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
     const folderRows = [];
     for (const f of folders) {
-      const docs = (
-        await ctx.db
-          .query("documents")
-          .withIndex("by_folder", (q) => q.eq("folderId", f._id))
-          .take(2000)
-      ).filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && d.kind !== "template");
+      const docs = await reader.filter(
+        (
+          await ctx.db
+            .query("documents")
+            .withIndex("by_folder", (q) => q.eq("folderId", f._id))
+            .take(2000)
+        ).filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && d.kind !== "template"),
+      );
       folderRows.push({
         id: f.publicId,
         name: f.name,
@@ -105,7 +99,10 @@ export const index = query({
         documentCount: docs.length,
         // The most recently edited notes inside that this person can read: style, title and opening text,
         // shown as small pages peeking out of the folder.
-        previews: await readablePreviews(ctx, profile, [...docs].sort((a, b) => b.updatedAt - a.updatedAt)),
+        previews: [...docs]
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .slice(0, 3)
+          .map((d) => ({ cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280) })),
       });
     }
     const tags = await scopeTags(ctx, scope);
@@ -115,7 +112,13 @@ export const index = query({
         .query("documentTags")
         .withIndex("by_tag", (q) => q.eq("tagId", t._id))
         .take(2000);
-      tagRows.push({ id: t.publicId, name: t.name, color: t.color, createdAt: t.createdAt, documentCount: links.length });
+      // Someone who opens everything here counts every tagged page; a member only the ones they can open.
+      let documentCount = links.length;
+      if (!reader.opensEverything) {
+        documentCount = 0;
+        for (const l of links) if (await reader.canOpenId(l.documentId)) documentCount++;
+      }
+      tagRows.push({ id: t.publicId, name: t.name, color: t.color, createdAt: t.createdAt, documentCount });
     }
     return { folders: folderRows, tags: tagRows };
   },
@@ -197,19 +200,21 @@ export const setFolderColor = mutation({
   },
 });
 
-/** How many pages are in Drafts (not in any folder, top level, not archived or trashed). */
+/** How many pages are in Drafts (not in any folder, top level, not archived or trashed) that the person can open. */
 export const draftCount = query({
   args: { scope: vScopeArg },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const standing = await resolveScope(ctx, profile, args.scope);
+    const { scope } = standing;
     const base = ctx.db.query("documents");
     const rows = await (
       scope.kind === "personal"
         ? base.withIndex("by_owner_folder", (q) => q.eq("ownerProfileId", scope.profileId).eq("folderId", undefined))
         : base.withIndex("by_workspace_folder", (q) => q.eq("workspaceId", scope.workspaceId).eq("folderId", undefined))
     ).take(5000);
-    return rows.filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && (d.kind === "document" || d.kind === "daily")).length;
+    const drafts = rows.filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && (d.kind === "document" || d.kind === "daily"));
+    return (await new PageReader(ctx, profile, standing).filter(drafts)).length;
   },
 });
 

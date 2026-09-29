@@ -3,7 +3,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { inboxDocumentId, rankBetween, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, PageReader, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { SyncEngine } from "./lib/syncEngine";
@@ -110,8 +110,15 @@ export const counts = query({
   args: { scope: vScopeArg, today: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { scope } = await resolveScope(ctx, profile, args.scope);
-    const open = (await tasksByDue(ctx, scope, "open").take(1000)).filter((t) => !t.documentInTrash);
+    const standing = await resolveScope(ctx, profile, args.scope);
+    const { scope } = standing;
+    // Only tasks on pages this person can open count (the same tasks the lists show them): a member's
+    // numbers never include a restricted page they can't open.
+    const reader = new PageReader(ctx, profile, standing);
+    const open: Doc<"tasks">[] = [];
+    for (const t of await tasksByDue(ctx, scope, "open").take(1000)) {
+      if (!t.documentInTrash && (await reader.canOpenId(t.documentId))) open.push(t);
+    }
     const c = { inbox: 0, today: 0, upcoming: 0, all: 0, mine: 0 };
     // In your own Personal unassigned tasks are yours.
     const personal = scope.kind === "personal";

@@ -103,7 +103,7 @@ export function memberCanManageBilling(member: Membership | null): boolean {
 
 /** Whether `profile` may manage `workspace`'s billing (see memberCanManageBilling). */
 export async function canManageWorkspaceBilling(ctx: Ctx, profile: Doc<"profiles">, workspace: Doc<"workspaces">): Promise<boolean> {
-  if (workspace.kind !== "team" || workspace.status === "deleting" || isScheduledForDeletion(workspace)) return false;
+  if (workspace.status === "deleting" || isScheduledForDeletion(workspace)) return false;
   return memberCanManageBilling(await membership(ctx, profile._id, workspace._id));
 }
 
@@ -134,7 +134,7 @@ export async function requireWorkspaceManager(ctx: Ctx, profile: Doc<"profiles">
   return found;
 }
 
-/** A label for a stored role, e.g. for admin views ("member" for the old member roles). */
+/** A label for a stored role, e.g. for admin views. */
 export function roleLabel(role: WorkspaceRole): string {
   const r = normalizeMembership({ role }).role;
   return r === "owner" ? "Owner" : r === "admin" ? "Admin" : "Member";

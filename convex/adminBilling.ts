@@ -246,7 +246,7 @@ export const setWorkspacePlan = mutation({
       .query("workspaces")
       .withIndex("by_public_id", (q) => q.eq("publicId", args.workspaceId))
       .unique();
-    if (!w || w.kind !== "team" || w.status === "deleting") fail("not_found", "Workspace not found.");
+    if (!w || w.status === "deleting") fail("not_found", "Workspace not found.");
     const sub = await ensureWorkspaceSubscription(ctx, w._id);
     const now = Date.now();
     const stripeLive = sub.provider === "stripe" && isPaidPlan(sub.planId) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now);

@@ -73,7 +73,7 @@ export function fieldNotesBlocks(): BlockSpec[] {
 
 export function atlasBriefBlocks(today: string): BlockSpec[] {
   return [
-    { type: "callout", props: { tone: "note", icon: "🧭" }, md: "**Goal:** a lightweight field guide app for the city's community gardens, ready for the spring planting season." },
+    { type: "callout", props: { tone: "note" }, md: "**Goal:** a lightweight field guide app for the city's community gardens, ready for the spring planting season." },
     { type: "heading", props: { level: 2 }, md: "Why now" },
     {
       type: "paragraph",
@@ -158,7 +158,7 @@ export function tripSketchBlocks(today: string): BlockSpec[] {
         { type: "todo", props: { checked: true }, md: "Notebook" },
       ],
     },
-    { type: "callout", props: { tone: "warning", icon: "⛴" }, md: "The last ferry back leaves at 21:00 on Sundays." },
+    { type: "callout", props: { tone: "warning" }, md: "The last ferry back leaves at 21:00 on Sundays." },
   ];
 }
 

@@ -406,7 +406,12 @@ isn't distributed yet and Mac work is paused, so it's updated in the Mac catch-u
 
 ## 3a. Phase B runbook (production migration)
 
-Production today: 2 profiles, 2 personal workspaces, 1 team workspace, 29 documents. The migration is
+> **Done on production (2026-09-29).** `verifyAccountModel` reported `ok`; roles normalized (`legacyRoles`
+> 0); no profile has a default workspace; no personal workspace remains. The migration code
+> (`migratePersonalWorkspaces`, `normalizeWorkspaceRoles`, …) and its test have since been removed (§3b);
+> this runbook is kept as a record.
+
+Production before the migration: 2 profiles, 2 personal workspaces, 1 team workspace, 29 documents. The migration is
 written for any size (batched, self-continuing) and is idempotent: every step can be run again.
 
 What `migrations:migratePersonalWorkspaces` does, one personal workspace at a time
@@ -466,46 +471,72 @@ migration never deletes content (only the emptied workspace rows, their membersh
 
 ## 3b. After production is migrated: remove the compatibility code
 
-Once `accountModelReport` says `ok: true` on production (and the Mac app has caught up where noted),
-remove what only the old model needed. Line numbers are as of the Phase E commit.
+Production was migrated and verified on 2026-09-29 (`accountModelReport` `ok: true`, `legacyRoles` 0, no
+profile with a default workspace, no personal workspace; every remaining workspace row still stores
+`kind: "team"`).
 
-*Schema (then tighten validators and redeploy):*
-- `profiles.defaultWorkspaceId` — `convex/schema.ts:57-58`; still cleared in `convex/maintenance.ts:351`
-  (account purge) and asserted in `tests/convex/backend.test.ts:34`.
-- `workspaces.kind` and its index — `convex/schema.ts:76` (comment), `:80`, `:104` (`by_kind`). Then drop
-  the checks that refuse old personal workspaces: `convex/lib/auth.ts:246`, `convex/lib/permissions.ts:106`,
-  `convex/lib/syncEngine.ts:88`, `convex/workspaces.ts:58, 168, 381, 499`, `convex/users.ts:435`,
-  `convex/admin.ts:213, 449, 535` (and `:530`: list by `by_created` instead of `by_kind`),
-  `convex/adminBilling.ts:249`, `convex/billing.ts:285`, `convex/maintenance.ts:294`; stop writing it in
-  `convex/seed.ts:28`; `apps/web/src/lib/app/offlineSnapshot.ts:37-39` (old offline snapshots listing
-  Personal as a workspace).
-- Old member role names — `convex/lib/validators.ts:18-25` (`vWorkspaceRole`: drop editor / commenter /
-  viewer) and `:32` (`vInviteRole`, only after the Mac catch-up: older clients send them),
-  `convex/lib/auth.ts:33-38` (`LEGACY_MEMBER_ACCESS`, `isLegacyRole`) and the legacy branches of
-  `normalizeMembership` / `requestedRole` (`:45-56`), the legacy keys of `BILLABLE_ROLES`
-  (`convex/lib/seats.ts:28-29`).
-- Optional fields that stand for the old default: `subscriptions.ownerType` (`convex/schema.ts:389`;
-  unset = user, `convex/lib/billing.ts:4, 26`) and `aiUsage.scope` (`convex/schema.ts:478`; unset =
-  personal, `convex/lib/entitlements.ts:168`) — make them required after a small backfill (not written
-  yet).
-- `workspaces.storageQuotaBytes` as an implicit admin override (`convex/lib/entitlements.ts:22, 31-35`):
-  move any non-default value to `storageQuotaOverrideBytes`, then keep the field only as the value shown
-  to older clients, or remove it.
+**Done (the clean-up commit after the migration).**
+- `profiles.defaultWorkspaceId` is gone from the schema (no production row held it), with the account
+  purge's clearing of it and the test assertion.
+- `workspaces.kind`: nothing reads or writes it any more — every personal-workspace guard is gone
+  (`lib/auth.ts` requireWorkspace, `lib/permissions.ts`, `lib/syncEngine.ts` memberScope,
+  `workspaces.ts`, `users.ts`, `admin.ts` (the list reads `by_created`; `kind` left the admin responses),
+  `adminBilling.ts`, `billing.ts`, `maintenance.ts`), `seed.ts` no longer writes it, and the `by_kind`
+  index is gone. The field stays in the schema as `v.optional(v.literal("team"))` ("being removed") because
+  production rows still hold it.
+- Stored member roles are owner | admin | member only: `vWorkspaceRole` lost editor / commenter / viewer,
+  `normalizeMembership` lost its legacy branch, `isLegacyRole` and the legacy `BILLABLE_ROLES` keys are
+  gone. **Kept on purpose:** `vInviteRole` and `requestedRole` still accept editor / commenter / viewer as
+  *input* (stored as member + access) because the paused Mac app sends them — remove after the Mac
+  catch-up.
+- The Phase B and D migrations (`migratePersonalWorkspaces`, `migratePersonalWorkspace`, the grants /
+  move / finish steps, `clearDefaultWorkspaces`, `normalizeWorkspaceRoles`) and
+  `tests/convex/migration.test.ts` are removed; the legacy-role test became a member-access test.
+- `verifyAccountModel` / `accountModelReport` stay as an integrity check over every scoped table: exactly
+  one of `ownerProfileId` / `workspaceId`, the workspace exists (`rowsInMissingWorkspaces`), the row is in
+  its document's scope, no orphaned grant. The personal-workspace, default-workspace and legacy-role stages
+  are gone. `migrationReports.counts` / `tables` are now name → number records (older reports keep their
+  old names and still validate), and starting a check keeps only the latest 5 reports
+  (`REPORTS_KEPT`).
+- New idempotent, batched, self-continuing migrations: `migrations:dropWorkspaceKind` (unsets `kind`),
+  `migrations:backfillAccountDefaults` (writes `subscriptions.ownerType` — "workspace" for a row with a
+  workspace and no person, else "user" — then `aiUsage.scope` — "workspace" with a workspace, else
+  "personal") and `migrations:refreshLinkingPages` (re-derives the excerpt, preview, search text and task
+  titles of every page that links to another page, see §3d). Tests: `tests/convex/account-cleanup.test.ts`.
 
-*Code:*
-- The Phase B and D migrations: `convex/migrations.ts:144-495` (`migratePersonalWorkspaces`,
-  `migratePersonalWorkspace`, `grantTree`, `grantGuestAccess`, `moveRows`, `finishWorkspace`,
-  `clearDefaultWorkspaces`, `normalizeWorkspaceRoles`) and `tests/convex/migration.test.ts` (it rebuilds
-  old-model data), plus the legacy-role part of `members-guests.test.ts` › "old member roles read as
-  Member…". Keep `verifyAccountModel` / `accountModelReport` (`convex/migrations.ts:497-798`) without the
-  personal-workspace, default-workspace and legacy-role stages as an ongoing integrity check, or remove it
-  with the `migrationReports` table.
-- Web compatibility with older local data, once no browser can still hold pre-migration data (a few
-  weeks): `apps/web/src/lib/app/state.tsx:31-41, 57-71, 168-172` (the old `folevi:workspace` key),
-  `apps/web/src/lib/sync/db.ts:70-75` (the v3 cache rebuild), `apps/web/src/lib/sync/engine.ts:58-62` and
-  `adoptLegacyCreates` (re-stamping page creates queued by older builds).
-- After the Mac catch-up: the older `document.workspaceId` field on page creates
-  (`convex/lib/syncEngine.ts:93-105`).
+**Run in production, in this order** (after deploying this commit; each continues itself, can be run
+again, and logs a line per batch that changed something):
+
+```sh
+pnpm exec convex run --deployment <prod-deployment> migrations:dropWorkspaceKind
+pnpm exec convex run --deployment <prod-deployment> migrations:backfillAccountDefaults
+pnpm exec convex run --deployment <prod-deployment> migrations:refreshLinkingPages
+pnpm exec convex run --deployment <prod-deployment> migrations:verifyAccountModel
+pnpm exec convex run --deployment <prod-deployment> migrations:accountModelReport   # until done: true, ok: true
+```
+
+(`npx convex run …` works the same; always name the deployment, as in §3a.) Check the Schedules page until no `migrations:*` run is
+pending before the next command. To confirm the first two: in the dashboard's data view, no `workspaces`
+row has `kind`, no `subscriptions` row lacks `ownerType`, no `aiUsage` row lacks `scope`.
+
+**Left for later.**
+- *After `dropWorkspaceKind` has run in production:* delete `kind` from `workspaces` in
+  `convex/schema.ts` (and its comment), and redeploy. The deploy fails harmlessly if any row still holds
+  it.
+- *After `backfillAccountDefaults` has run in production:* make `subscriptions.ownerType` and
+  `aiUsage.scope` required in the schema, then drop the "unset = user / personal" readings
+  (`convex/lib/billing.ts` `isPersonalSubscription`, `convex/lib/entitlements.ts` `personalAiUsage`).
+- `workspaces.storageQuotaBytes` as an implicit admin override (`convex/lib/entitlements.ts`
+  `workspaceStorageOverride`): move any non-default value to `storageQuotaOverrideBytes`, then keep the
+  field only as the value shown to older clients, or remove it.
+- *A few weeks after the migration* (once no browser can still hold pre-migration data), web
+  compatibility with older local data, kept for now: the old `folevi:workspace` key
+  (`apps/web/src/lib/app/state.tsx`, `LEGACY_WORKSPACE_KEY`), the v3 cache rebuild
+  (`apps/web/src/lib/sync/db.ts` upgrade), `adoptLegacyCreates` (`apps/web/src/lib/sync/engine.ts`,
+  re-stamping page creates queued by older builds) and old offline snapshots listing Personal as a
+  workspace (`apps/web/src/lib/app/offlineSnapshot.ts`, filters `kind: "personal"` from device data).
+- *After the Mac catch-up:* the old role names in `vInviteRole` / `requestedRole`, and the older
+  `document.workspaceId` field on page creates (`convex/lib/syncEngine.ts` `createScopeArg`).
 
 ## 3c. Mac follow-ups (not changed here; for the Mac catch-up)
 
@@ -525,18 +556,41 @@ remove what only the old model needed. Line numbers are as of the Phase E commit
 
 ## 3d. Remaining gaps
 
-- Counts shown to members (`tasks.counts`, folder and draft counts in `organization.index` /
-  `draftCount`, `documents.trashSummary.total`) include restricted pages the member can't open (numbers
-  only, never titles).
-- Sync results and `documents.children` give a guest a page's `folderId` / `parentDocumentId` ids
-  (opaque ids; `documents.get` hides them). The move rules above make them useless to a guest.
-- A link, inside one workspace, to a restricted page still shows its title to members who can't open it
-  when the link's last writer could (labels are stored, not computed per reader).
+**Closed (the clean-up commit; `tests/convex/privacy-gaps.test.ts`, a view-only / restricted member and a
+guest):**
+- *Counts.* `tasks.counts`, the folder and tag counts, folder previews and "updated" dates in
+  `organization.index`, `organization.draftCount` and `documents.trashSummary` (`total` and `deletable`)
+  count only pages the caller can open. `PageReader` (`convex/lib/auth.ts`) resolves the caller's standing
+  once: in their Personal or as owner / admin everything is open without extra reads; for a member a page
+  outside any restriction is open, and only pages under a restricted page go through `documentAccess`
+  (restriction walks and verdicts cached per call). Bounds are unchanged (`take(1000)` tasks, `take(2000)`
+  per folder / tag, `take(5000)` drafts, 501 trashed pages).
+- *Ids.* `Placement` (`convex/lib/documents.ts`) gives every page summary — `documents.get` / `list` /
+  `children` / `recent` / `recentNotes` / `duplicate` / `daily`, sync push results and `sync.pull` — a
+  `folderId` only for someone in the page's scope (never a guest) and a `parentDocumentId` only when the
+  reader can open that parent (so a member granted one page under a restricted page doesn't get its id
+  either).
+- *Link labels.* Stored labels are never served as they are (`convex/lib/linkLabels.ts`): `blocks.list`,
+  `blocks.deleted`, `sync.pull`, sync push results, version previews (`documents.snapshotContent`),
+  exports and the AI's note text rewrite every page link (page blocks' `titleCache` / `iconCache`, inline
+  and table-cell `pageLink` labels) to the target's current title and icon when the reader can open it,
+  and to "Page you can't open" (no icon) otherwise. Text everyone reading a page sees — its excerpt, card
+  preview, search text, task titles — and public links use a target's title only when it's in the same
+  scope and not under a restricted page. The rename path (`refreshLinkLabels`) no longer writes a title
+  into a page unless that holds (and the block's last writer can open the target).
+  `migrations:refreshLinkingPages` recomputes text derived before this change (§3b).
+
+**Still open:**
+- A guest of a page (or a visitor of its public link) sees, in its excerpt / preview (public link: in its
+  links), the titles of *unrestricted* pages in the same Personal or workspace that it links to, even ones
+  they can't open. Restricted titles never appear. Closing it would need per-reader derived text.
+- Stored labels in blocks still hold whatever their writer saw (they're only rewritten when served).
+  Duplicating a page or restoring a version copies them as stored; they're served relabeled like any
+  other block.
 - Pro and the pricing cards say "Unlimited AI Assistant" (the spec's copy) while a fair-use limit applies
   (150 requests an hour); the terms say fair-use limits apply.
 - Workspace AI for guests is now refused; if the product owner wants guests to use a paid workspace's AI
   on the pages shared with them, that's a one-line change in `ai.begin`.
-- `migrationReports` keeps one row per check; delete old ones by hand if wanted.
 - The Playwright suites weren't run in this phase (the Convex tests cover each scenario on the server).
 
 ## 4. Decisions (made 2026-09-29)

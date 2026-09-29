@@ -282,7 +282,7 @@ async function findStripeRow(ctx: MutationCtx, o: Record<string, unknown>): Prom
   if (workspaceRef) {
     const workspaceId = ctx.db.normalizeId("workspaces", workspaceRef);
     const workspace = workspaceId ? await ctx.db.get(workspaceId) : null;
-    return workspace && workspace.kind === "team" ? await ensureWorkspaceSubscription(ctx, workspace._id) : null;
+    return workspace ? await ensureWorkspaceSubscription(ctx, workspace._id) : null;
   }
   const meta = (o.metadata as Record<string, string> | undefined)?.profileId ?? (typeof o.client_reference_id === "string" ? o.client_reference_id : null);
   const profileId = meta ? ctx.db.normalizeId("profiles", meta) : null;

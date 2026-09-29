@@ -133,10 +133,10 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
   `docs/EMAIL_OPERATIONS.md` §9. Without the Mailtrap webhook, delivered/bounced events don't reach the
   admin email log.
 - **Payments:** Stripe isn't configured on production (personal or workspace prices).
-- **Account model:** Personal-is-not-a-workspace, workspace plans and members vs guests are built on the
-  `account-model` branch; production still runs the old model until the migration in
-  `docs/ACCOUNT_MODEL_PLAN.md` §3a (backup, deploy, migrate, verify) is run. The Mac app still expects the
-  old model.
+- **Account model:** production runs the new model (Personal is not a workspace, workspace plans, members
+  vs guests; migrated and verified 2026-09-29). A few clean-up migrations are left to run and the
+  `workspaces.kind` field to delete afterwards (`docs/ACCOUNT_MODEL_PLAN.md` §3b). The Mac app still
+  expects the old model.
 - **Accounts:** no breached-password check yet and no passkeys; no social sign-in by design
   (`docs/AUTH_DECISION.md`). Account email changes are handled by support, not self-service.
 - **Collaboration is block-granular**, not character-level: concurrent edits to the same block become a

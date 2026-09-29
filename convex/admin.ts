@@ -208,11 +208,11 @@ export const viewUser = mutation({
       .query("workspaceMembers")
       .withIndex("by_profile", (q) => q.eq("profileId", p._id))
       .collect();
-    // Team workspaces only: Personal isn't a workspace (its numbers are under `usage`).
+    // Personal isn't a workspace (its numbers are under `usage`).
     const workspaces = [];
     for (const m of memberships) {
       const w = await ctx.db.get(m.workspaceId);
-      if (w && w.kind === "team") workspaces.push({ id: w.publicId, name: w.name, kind: w.kind, role: normalizeMembership(m).role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes });
+      if (w) workspaces.push({ id: w.publicId, name: w.name, role: normalizeMembership(m).role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes });
     }
     const personalStorage = await storageUsage(ctx, personalScope(p._id));
     const history = await ctx.db
@@ -448,7 +448,6 @@ export const viewWorkspace = mutation({
     return {
       id: w.publicId,
       name: w.name,
-      kind: w.kind,
       status: w.status,
       createdAt: w.createdAt,
       documentCount: w.documentCount,
@@ -529,12 +528,12 @@ export const listWorkspaces = mutation({
     await audit(ctx, admin, "workspace.list", { type: "workspaces", id: args.cursor ? "page" : "first_page" }, { requestId: args.requestId, clientHash: args.clientHash });
     const page = await ctx.db
       .query("workspaces")
-      .withIndex("by_kind", (q) => q.eq("kind", "team"))
+      .withIndex("by_created")
       .order("desc")
       .paginate({ cursor: args.cursor ?? null, numItems: 50 });
     // Workspace names are user content but needed to identify records; no document data is exposed.
     return {
-      workspaces: page.page.map((w) => ({ id: w.publicId, name: w.name, kind: w.kind, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes, createdAt: w.createdAt })),
+      workspaces: page.page.map((w) => ({ id: w.publicId, name: w.name, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes, createdAt: w.createdAt })),
       continueCursor: page.isDone ? null : page.continueCursor,
     };
   },

@@ -72,6 +72,14 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   Moving a page out from under a restricted page needs manage access. A workspace scheduled for deletion
   is hidden from everyone but its owner (read-only), its public links stop, and its billing can only be
   canceled (`tests/convex/sweep-security.test.ts`).
+- Nothing about a page someone can't open reaches them, not even as a number or an id: counts shown to
+  members (tasks, folders, tags, drafts, Trash) include only pages they can open (`PageReader` in
+  `convex/lib/auth.ts`); guests get no folder ids and nobody gets the id of a parent page they can't open
+  (`Placement` in `convex/lib/documents.ts`); and a link to a page is served with its current title only
+  to readers who can open it — everyone else sees "Page you can't open" — while text derived from a page
+  (excerpt, card preview, search text, task titles) and public links show only titles of unrestricted
+  pages in the same Personal or workspace, never a restricted page's (`convex/lib/linkLabels.ts`;
+  `tests/convex/privacy-gaps.test.ts`).
 - Plans, storage and AI are resolved per scope on the server (`convex/lib/entitlements.ts`); seats per
   workspace (`convex/lib/seats.ts`). Workspace billing is managed only by the owner and admins the owner
   allows (`canManageWorkspaceBilling`). Stripe webhooks are signature-checked, applied once per event id,
@@ -181,6 +189,10 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 - Passwords are not yet checked against known breach lists; there are no passkeys (see
   `docs/AUTH_DECISION.md`, known gaps).
 - The native Mac app isn't distributed and still expects the old account model (Personal as a workspace).
+- A guest of a page sees, in that page's excerpt and preview, the titles of unrestricted pages in the same
+  Personal or workspace it links to, even ones they can't open (the page's own link blocks show them "Page
+  you can't open"); a visitor of its public link sees those titles in its links. Restricted pages' titles
+  never appear.
 - Auth0 was previously a subprocessor; it is no longer used.
 - Loops (the previous email provider) is no longer used; Mailtrap sends all email. Its account, webhook
   and DNS records are removed per `docs/EMAIL_OPERATIONS.md` §9.

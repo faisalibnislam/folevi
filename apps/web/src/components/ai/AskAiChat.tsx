@@ -84,9 +84,7 @@ export function AskAiChat({
           className={`ui-pop fixed ${onNote ? "bottom-9" : "bottom-[104px]"} right-9 z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-[18px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
         >
           <header className="flex flex-none items-center gap-2.5 border-b border-line/70 px-4 py-3">
-            <span aria-hidden className={`grid h-7 w-7 place-items-center rounded-full bg-[linear-gradient(135deg,#8b5cf6,#3b82f6)] text-white`}>
-              <AiIcon size={14} />
-            </span>
+            <AiIcon size={20} aria-hidden className="flex-none" />
             <h2 id={`${uid}-title`} className="flex-1 text-[14.5px] font-semibold text-heading">
               Ask AI
             </h2>

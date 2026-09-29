@@ -157,7 +157,15 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
             }}
             className="ui-input h-8 min-w-0 flex-1 rounded-[6px] px-2.5 text-[13px]"
           />
-          <button type="button" disabled={!count} onClick={() => replaceCurrent(editor, replacement)} className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-[12.5px] disabled:opacity-40">
+          <button
+            type="button"
+            disabled={!count}
+            onClick={() => {
+              replaceCurrent(editor, replacement);
+              // The last match gone disables this button; keep focus in the bar so Escape still closes it.
+              if (count <= 1) findRef.current?.focus();
+            }}
+            className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-[12.5px] disabled:opacity-40">
             Replace
           </button>
           <button
@@ -165,6 +173,8 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
             disabled={!count}
             onClick={() => {
               const n = replaceAll(editor, replacement);
+              // No matches left disables the buttons; keep focus in the bar so Escape still closes it.
+              findRef.current?.focus();
               if (n) toast.show(`Replaced ${n.toLocaleString()} ${n === 1 ? "match" : "matches"}`, { action: { label: "Undo", onClick: () => editor.commands.undo() } });
             }}
             className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-[12.5px] disabled:opacity-40"

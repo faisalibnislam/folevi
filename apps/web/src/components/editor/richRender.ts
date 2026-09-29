@@ -305,13 +305,18 @@ export function onThemeChange(cb: () => void, el?: Element | null): () => void {
   };
   const observer = new MutationObserver(check);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  const sheet = el?.closest(".fb-sheet");
-  const styleObserver = sheet ? new MutationObserver(cb) : null;
-  if (sheet) styleObserver!.observe(sheet, { attributes: true, attributeFilter: ["style", "data-sheet", "data-text", "data-palette"] });
+  const styleObserver = el ? new MutationObserver(cb) : null;
+  const watchSheet = () => {
+    const sheet = el?.closest(".fb-sheet");
+    if (sheet) styleObserver?.observe(sheet, { attributes: true, attributeFilter: ["style", "data-sheet", "data-text", "data-palette"] });
+  };
+  // A node view's element is attached to the page only after it's created.
+  const attachFrame = el && !el.isConnected ? requestAnimationFrame(watchSheet) : (watchSheet(), null);
   const media = window.matchMedia?.("(prefers-color-scheme: dark)");
   media?.addEventListener("change", check);
   return () => {
     observer.disconnect();
+    if (attachFrame !== null) cancelAnimationFrame(attachFrame);
     styleObserver?.disconnect();
     media?.removeEventListener("change", check);
   };

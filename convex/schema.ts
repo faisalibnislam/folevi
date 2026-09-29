@@ -248,6 +248,20 @@ export default defineSchema({
     .index("by_profile_document", ["profileId", "documentId"])
     .index("by_document", ["documentId"]),
 
+  /**
+   * Notes a person removed from their Home "Recent notes" (per person, never shared). A note stays hidden
+   * until it's edited after `hiddenAt` (by anyone) or the person opens it again (the row is then dropped).
+   */
+  recentHidden: defineTable({
+    profileId: v.id("profiles"),
+    documentId: v.id("documents"),
+    workspaceId: v.id("workspaces"),
+    hiddenAt: v.number(),
+  })
+    .index("by_profile_workspace", ["profileId", "workspaceId"])
+    .index("by_profile_document", ["profileId", "documentId"])
+    .index("by_document", ["documentId"]),
+
   blocks: defineTable({
     blockId: v.string(),
     documentId: v.id("documents"),

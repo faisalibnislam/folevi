@@ -16,6 +16,8 @@ export const DEFAULT_RATE_RULES = {
   publicLinkOpen: { limit: 120, windowMs: 60_000 },
   publicLinkPassword: { limit: 10, windowMs: 15 * 60_000 },
   syncBatch: { limit: 600, windowMs: 60_000 },
+  /** Bulk note actions (move, star, archive, trash, restore, delete, empty Trash); each call is up to 50 notes. */
+  bulk: { limit: 60, windowMs: 60_000 },
   upload: { limit: 120, windowMs: 60 * 60_000 },
   comment: { limit: 120, windowMs: 60_000 },
   export: { limit: 20, windowMs: 60 * 60_000 },

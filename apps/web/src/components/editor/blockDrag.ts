@@ -6,6 +6,7 @@
 // source fade and the drop glow are injected CSS rules — so the editor never re-parses mid-drag.
 import type { Editor } from "@tiptap/core";
 import { dropTarget, subtreeRange } from "./commands";
+import { blockElements } from "./plugins";
 
 export type DragPayload =
   | { kind: "block"; index: number }
@@ -118,7 +119,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     g.className = "fb-drag-ghost";
     g.setAttribute("aria-hidden", "true");
     if (payload.kind === "block" && source) {
-      const children = [...dom.children] as HTMLElement[];
+      const children = blockElements(dom);
       const first = children[source.index];
       originRect = first?.getBoundingClientRect() ?? null;
       const page = dom.closest<HTMLElement>(".fb-page");
@@ -161,7 +162,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   };
 
   const measure = () => {
-    const children = [...dom.children] as HTMLElement[];
+    const children = blockElements(dom);
     const boxes = children.map((c) => {
       const r = c.getBoundingClientRect();
       return { top: r.top, bottom: r.bottom, depth: Number(c.dataset.depth ?? 0), hidden: c.classList.contains("fb-hidden") };

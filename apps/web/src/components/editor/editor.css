@@ -45,12 +45,31 @@
   color: var(--color-canvas); background: var(--presence);
   padding: 0 5px; border-radius: 4px; pointer-events: none;
 }
-.fb-editor > .fb[data-has-comments="true"]::before {
-  content: "";
-  position: absolute; right: -18px; top: 0.7em;
-  width: 7px; height: 7px; border-radius: 2px;
-  background: var(--color-marigold);
+/* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */
+.fb-editor > .fb-comment-line {
+  padding: 0 2px 4px calc(var(--depth, 0) * 1.6em + var(--pad-list, 0px) + var(--pad-extra, 0px));
+  line-height: 1;
+  user-select: none;
 }
+.fb-comment-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px 0 3px; border-radius: 999px;
+  font: 500 12px/1 var(--font-sans); letter-spacing: 0;
+  color: color-mix(in oklab, var(--doc-accent-ink, var(--color-ink)) 55%, var(--color-ink-muted));
+  background: transparent; cursor: pointer;
+  transition: background-color 150ms var(--motion-easing), color 150ms var(--motion-easing);
+}
+.fb-comment-chip:hover, .fb-comment-chip[data-open="true"] { background: var(--doc-accent-soft); color: var(--color-heading); }
+.fb-comment-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+.fb-comment-faces { display: inline-flex; }
+.fb-comment-faces > * {
+  display: grid; place-items: center; width: 16px; height: 16px; margin-left: -4px; border-radius: 999px; object-fit: cover;
+  font-size: 9px; font-weight: 650; background: var(--doc-accent-soft); color: var(--doc-accent-ink, var(--color-heading));
+  box-shadow: 0 0 0 1.5px var(--color-surface);
+}
+.fb-comment-faces > :first-child { margin-left: 0; }
+.fb-comment-unread { width: 6px; height: 6px; border-radius: 999px; background: var(--doc-accent); }
+@media (prefers-reduced-motion: reduce) { .fb-comment-chip { transition: none; } }
 
 .fb-editor p.is-empty::before,
 .fb-editor .is-empty > .fb-content::before,

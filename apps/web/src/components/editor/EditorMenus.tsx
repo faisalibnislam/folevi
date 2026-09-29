@@ -80,7 +80,7 @@ import {
 } from "./commands";
 import { blockSelectionRange, clearBlockSelection, extendBlockSelectionTo, setBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
-import type { TriggerState } from "./plugins";
+import { blockElements, type TriggerState } from "./plugins";
 import { UnsplashDialog, unsplashCredit } from "./UnsplashDialog";
 import { colorName, useNotePalette } from "./notePalette";
 import { useShowInTopLayer } from "@/components/ui/topLayer";
@@ -208,7 +208,7 @@ function useDebounced<T>(value: T, ms: number): T {
 
 /** Top-level block index → its rendered element. */
 function blockDom(editor: Editor, index: number): HTMLElement | null {
-  return ((editor.view.dom as HTMLElement).children[index] as HTMLElement | undefined) ?? null;
+  return blockElements(editor.view.dom as HTMLElement)[index] ?? null;
 }
 
 export function EditorMenus({
@@ -1211,7 +1211,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     const dom = editor.view.dom as HTMLElement;
     const onMove = (e: MouseEvent) => {
       if (menu || isDragging()) return;
-      const children = [...dom.children] as HTMLElement[];
+      const children = blockElements(dom);
       const idx = children.findIndex((c) => {
         const r = c.getBoundingClientRect();
         return e.clientY >= r.top - 2 && e.clientY <= r.bottom + 2 && !c.classList.contains("fb-hidden");
@@ -1471,7 +1471,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                   ? [
                       {
                         label: "Comment",
-                        hint: "",
+                        hint: "⌘⌥M",
                         icon: <MessageSquare size={14} />,
                         run: () => {
                           onCommentBlock(single.attrs.id as string);

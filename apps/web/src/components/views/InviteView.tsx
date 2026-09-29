@@ -29,7 +29,7 @@ export function InviteView({ token }: { token: string }) {
           <>
             <h2 className="ui-display text-3xl">Join {preview.workspaceName}</h2>
             <p className="mt-2 text-muted">
-              {preview.inviterName} invited you as {preview.role === "admin" ? "an admin" : `a${preview.role === "editor" ? "n" : ""} ${preview.role}`}.
+              {preview.inviterName} invited you to join as {preview.role === "admin" ? "an admin" : preview.memberAccess === "edit" ? "a member" : `a member who can ${preview.memberAccess === "comment" ? "comment" : "view"} only`}.
             </p>
             {!preview.emailMatches ? (
               <p className="mt-4 rounded-[6px] border border-warning/30 bg-warning-soft p-3 text-sm">

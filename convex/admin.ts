@@ -6,7 +6,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
-import { ALL_ADMIN_ROLES, requirePlatformRole, type PlatformRole } from "./lib/auth";
+import { ALL_ADMIN_ROLES, normalizeMembership, requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { recordAudit } from "./lib/audit";
 import { fail } from "./lib/errors";
 import { DEFAULT_RATE_RULES } from "./lib/rateLimit";
@@ -210,7 +210,7 @@ export const viewUser = mutation({
     const workspaces = [];
     for (const m of memberships) {
       const w = await ctx.db.get(m.workspaceId);
-      if (w && w.kind === "team") workspaces.push({ id: w.publicId, name: w.name, kind: w.kind, role: m.role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes });
+      if (w && w.kind === "team") workspaces.push({ id: w.publicId, name: w.name, kind: w.kind, role: normalizeMembership(m).role, status: w.status, documentCount: w.documentCount, storageUsedBytes: w.storageUsedBytes });
     }
     const personalStorage = await storageUsage(ctx, personalScope(p._id));
     const history = await ctx.db
@@ -423,7 +423,7 @@ export const viewWorkspace = mutation({
     const people = [];
     for (const m of members) {
       const p = await ctx.db.get(m.profileId);
-      if (p) people.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, role: m.role, joinedAt: m.joinedAt });
+      if (p) people.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, role: normalizeMembership(m).role, memberAccess: normalizeMembership(m).memberAccess, joinedAt: m.joinedAt });
     }
     const invites = await ctx.db
       .query("workspaceInvites")
@@ -457,7 +457,7 @@ export const viewWorkspace = mutation({
       planName: planName((await workspaceEntitlements(ctx, w)).planId),
       memberLimit: w.memberLimit,
       members: people,
-      invites: invites.map((i) => ({ email: redactEmail(i.email), role: i.role, status: i.status, expiresAt: i.expiresAt, createdAt: i.createdAt })),
+      invites: invites.map((i) => ({ email: redactEmail(i.email), role: normalizeMembership(i).role, status: i.status, expiresAt: i.expiresAt, createdAt: i.createdAt })),
       billing: {
         planId: entitlements.planId,
         paid: entitlements.paid,

@@ -1,8 +1,8 @@
 // Seats: who a paid workspace plan is billed for. One place decides it, and one hook keeps the payment
 // provider's quantity in step.
 //
-//   Billable (one seat each): active members — owner, admin and member roles. Today's member roles
-//     (editor, commenter, viewer) are all Members, so every membership role counts.
+//   Billable (one seat each): active members — owner, admin and member roles, whatever a member's access
+//     (edit, comment or view only). Every membership role counts.
 //   Free (no seat): guests (page grants without a membership), pending invitations, removed people, and
 //     members whose account is suspended or deleted.
 //   Suspended workspaces: seats are counted as usual. Suspension is a temporary platform action that
@@ -22,8 +22,8 @@ import { isPaidPlan } from "./plans";
 
 type Ctx = QueryCtx | MutationCtx;
 
-/** Membership roles that take a seat (Phase D renames editor/commenter/viewer to Member; all stay billable). */
-const BILLABLE_ROLES: Record<WorkspaceRole, boolean> = { owner: true, admin: true, editor: true, commenter: true, viewer: true };
+/** Membership roles that take a seat: every one (owner, admin, member — and the old member roles editor/commenter/viewer until the role migration has rewritten them). */
+const BILLABLE_ROLES: Record<WorkspaceRole, boolean> = { owner: true, admin: true, member: true, editor: true, commenter: true, viewer: true };
 export const isBillableRole = (role: WorkspaceRole) => BILLABLE_ROLES[role];
 
 /** How long seat changes are gathered before Stripe is updated (a burst of accepts → one update). */

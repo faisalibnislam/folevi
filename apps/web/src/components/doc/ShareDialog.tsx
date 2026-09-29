@@ -16,6 +16,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const setMode = useMutation(api.sharing.setAccessMode);
   const grant = useMutation(api.sharing.grant);
   const revoke = useMutation(api.sharing.revoke);
+  const revokeInvite = useMutation(api.sharing.revokePageInvite);
   const createLink = useMutation(api.sharing.createPublicLink);
   const revokeLink = useMutation(api.sharing.revokePublicLink);
   const toast = useToast();
@@ -23,7 +24,10 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const [role, setRole] = useState<"viewer" | "commenter" | "editor">("viewer");
   const [linkForm, setLinkForm] = useState({ expires: "", password: "" });
   const [freshLink, setFreshLink] = useState<string | null>(null);
-  const canManage = data?.yourAccess === "manage";
+  // Managers: access mode, public links, anyone's grants. Sharers (members who can edit): add people and
+  // change what they added. The server checks both again.
+  const canManage = data?.canManage === true;
+  const canShare = data?.canShare === true;
 
   const run = async (p: Promise<unknown>, ok?: string) => {
     try {
@@ -79,13 +83,25 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
 
           <section>
             <h3 className="mb-2 font-semibold">People</h3>
-            {canManage ? (
+            {data.youAreGuest ? (
+              <p className="mb-3 text-xs text-muted">
+                You’re a guest on this page{data.sharedBy ? `, shared with you by ${data.sharedBy}` : ""}. {data.ownerName ? `It belongs to ${data.ownerName}.` : ""} Only its owner and the workspace’s members can share it.
+              </p>
+            ) : null}
+            {canShare ? (
               <form
                 className="flex flex-wrap gap-2"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  if (!email.trim()) return;
-                  void run(grant({ documentId, email, role }), "Shared").then(() => setEmail(""));
+                  const to = email.trim();
+                  if (!to) return;
+                  try {
+                    const r = await grant({ documentId, email: to, role });
+                    toast.show(r.status === "invited" ? `Invitation sent to ${to}. They get access once they sign up and accept.` : "Shared", { tone: "success" });
+                    setEmail("");
+                  } catch (err) {
+                    toast.show(errorMessage(err), { tone: "error" });
+                  }
                 }}
               >
                 <label className="sr-only" htmlFor="share-email">
@@ -100,18 +116,25 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 <Button type="submit" variant="primary">
                   Share
                 </Button>
+                <p className="w-full text-xs text-muted">
+                  {personal ? "Anyone with an email address: people without a Folevi account get an invitation by email." : "People outside the workspace join as guests on this page only — they’re not billed. People without a Folevi account get an invitation by email."}
+                </p>
               </form>
             ) : null}
             <ul className="mt-3 divide-y divide-line rounded-[6px] border border-line">
-              {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">No one has been added directly.</li> : null}
+              {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">{data.youAreGuest ? "It was shared with you through a page above it." : "No one has been added directly."}</li> : null}
               {data.people.map((p) => (
                 <li key={p.profileId} className="flex items-center gap-3 px-3 py-2">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{p.displayName}</span>
+                    <span className="flex items-center gap-1.5 truncate font-medium">
+                      <span className="truncate">{p.displayName}</span>
+                      {p.isYou ? <span className="text-xs font-normal text-muted">(you)</span> : null}
+                      {p.guest ? <span className="flex-none rounded-full border border-line px-1.5 py-px text-[11px] font-medium text-muted">Guest</span> : null}
+                    </span>
                     {p.email ? <span className="block truncate text-xs text-muted">{p.email}</span> : null}
                   </span>
                   <span className="text-xs text-muted">{p.role === "editor" ? "Can edit" : p.role === "commenter" ? "Can comment" : "Can view"}</span>
-                  {canManage ? (
+                  {p.canChange ? (
                     <button type="button" aria-label={`Remove ${p.displayName}`} onClick={() => void run(revoke({ documentId, profileId: p.profileId }))} className="text-faint hover:text-danger">
                       <Trash2 size={14} aria-hidden />
                     </button>
@@ -119,6 +142,24 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 </li>
               ))}
             </ul>
+            {data.pendingInvites.length ? (
+              <>
+                <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
+                <ul className="divide-y divide-line rounded-[6px] border border-line">
+                  {data.pendingInvites.map((i) => (
+                    <li key={i.id} className="flex items-center gap-3 px-3 py-2">
+                      <span className="min-w-0 flex-1 truncate">{i.email}</span>
+                      <span className="text-xs text-muted">
+                        {i.role === "editor" ? "Can edit" : i.role === "commenter" ? "Can comment" : "Can view"} · {i.expired ? "expired" : "waiting to accept"}
+                      </span>
+                      <Button size="sm" variant="quiet" onClick={() => void run(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
+                        Revoke
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
           </section>
 
           {canManage ? (

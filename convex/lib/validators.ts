@@ -9,13 +9,27 @@ export const vProfileStatus = v.union(
   v.literal("deleted"),
 );
 export const vAppearance = v.union(v.literal("system"), v.literal("light"), v.literal("dark"));
+/**
+ * A workspace membership role as stored. Roles are owner | admin | member (a member's access is
+ * `memberAccess`). "editor", "commenter" and "viewer" are the old member roles: rows written before Phase D
+ * may still hold them until `migrations.normalizeWorkspaceRoles` has run, and the code reads them as
+ * member/edit, member/comment and member/view (lib/auth.ts normalizeMembership). Nothing writes them any more.
+ */
 export const vWorkspaceRole = v.union(
   v.literal("owner"),
   v.literal("admin"),
+  v.literal("member"),
   v.literal("editor"),
   v.literal("commenter"),
   v.literal("viewer"),
 );
+/** What a member (not an owner or admin) may do with the workspace's content. Unset = edit. */
+export const vMemberAccess = v.union(v.literal("edit"), v.literal("comment"), v.literal("view"));
+/**
+ * The role an invitation or role change asks for: "member" (with a memberAccess) or "admin". The old member
+ * roles are still accepted from older clients and stored as member + the matching access.
+ */
+export const vInviteRole = v.union(v.literal("admin"), v.literal("member"), v.literal("editor"), v.literal("commenter"), v.literal("viewer"));
 /** A workspace plan's catalog id (convex/lib/plans.ts). */
 export const vWorkspacePlanId = v.union(
   v.literal("workspace_free"),

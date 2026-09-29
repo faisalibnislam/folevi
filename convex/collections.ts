@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { rankBetween, ulid } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, requireDocument, requireProfile, type Access } from "./lib/auth";
@@ -28,10 +28,27 @@ async function collectionFor(ctx: QueryCtx | MutationCtx, collectionPublicId: st
   return { profile, collection, host, access };
 }
 
+/** People holding a grant on `doc` or a page above it (grants are inherited). */
+async function pageGrantHolders(ctx: QueryCtx, doc: Doc<"documents">): Promise<Id<"profiles">[]> {
+  const out: Id<"profiles">[] = [];
+  let cursor: Doc<"documents"> | null = doc;
+  for (let depth = 0; cursor && depth < 12; depth++) {
+    const current: Doc<"documents"> = cursor;
+    for (const g of await ctx.db
+      .query("documentPermissions")
+      .withIndex("by_document", (q) => q.eq("documentId", current._id))
+      .take(200)) {
+      out.push(g.profileId);
+    }
+    cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
+  }
+  return out;
+}
+
 export const get = query({
   args: { collectionId: v.string() },
   handler: async (ctx, args) => {
-    const { collection, access, profile } = await collectionFor(ctx, args.collectionId, "read");
+    const { collection, access, profile, host } = await collectionFor(ctx, args.collectionId, "read");
     const props = (
       await ctx.db
         .query("collectionProperties")
@@ -81,18 +98,36 @@ export const get = query({
         updatedAt: doc.updatedAt,
       });
     }
-    // Names for person values (display + picker): the members of the collection's workspace — or, in
-    // Personal, its owner. No emails.
+    // Names for person values (display + picker). No emails.
+    // - In the collection's scope (its Personal's owner, or a member of its workspace): the workspace's
+    //   members, or in Personal its owner.
+    // - A guest: only people this page already involves — whoever created the host page, the people it's
+    //   shared with (on it or a page above), and the people named in the rows they can see. Never the
+    //   workspace's member list.
     const scope = scopeOfRow(collection);
-    const personIds =
-      scope.kind === "personal"
-        ? [scope.profileId]
-        : (
-            await ctx.db
-              .query("workspaceMembers")
-              .withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))
-              .take(300)
-          ).map((m) => m.profileId);
+    const isMember = scope.kind === "personal" ? scope.profileId === profile._id : Boolean(await membership(ctx, profile._id, scope.workspaceId));
+    const personIds = new Set<Id<"profiles">>();
+    if (scope.kind === "personal") personIds.add(scope.profileId);
+    else if (isMember) {
+      for (const m of await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))
+        .take(300)) {
+        personIds.add(m.profileId);
+      }
+    }
+    if (!isMember) {
+      personIds.add(host.createdBy);
+      for (const id of await pageGrantHolders(ctx, host)) personIds.add(id);
+      const personProps = new Set(props.filter((p) => p.type === "person").map((p) => p.publicId));
+      for (const r of outRows) {
+        for (const [key, value] of Object.entries(r.values)) {
+          if (!personProps.has(key) || typeof value !== "string") continue;
+          const id = ctx.db.normalizeId("profiles", value);
+          if (id) personIds.add(id);
+        }
+      }
+    }
     const people: { id: string; name: string }[] = [];
     for (const id of personIds) {
       const p = await ctx.db.get(id);
@@ -106,7 +141,7 @@ export const get = query({
       /** The team workspace it's in; null in Personal. */
       workspaceId: workspace?.publicId ?? null,
       /** In the collection's scope: its Personal's owner, or a member of its workspace. */
-      isMember: scope.kind === "personal" ? scope.profileId === profile._id : Boolean(await membership(ctx, profile._id, scope.workspaceId)),
+      isMember,
       people,
       hostDocumentId: (await ctx.db.get(collection.documentId))!.publicId,
       canEdit: accessAtLeast(access, "write"),

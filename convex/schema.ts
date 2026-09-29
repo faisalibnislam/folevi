@@ -11,6 +11,7 @@ import {
   vPlatformRole,
   vNotificationPrefs,
   vProfileStatus,
+  vMemberAccess,
   vShareRole,
   vWorkspacePlanId,
   vWorkspaceRole,
@@ -90,6 +91,11 @@ export default defineSchema({
     storageQuotaOverrideBytes: v.optional(v.number()),
     memberLimit: v.number(),
     documentCount: v.number(),
+    /**
+     * The owner asked to delete this workspace; it's purged at this time (a `deletionJobs` row of kind
+     * "workspace"). Until then it's read-only for the owner (who can cancel) and hidden from everyone else.
+     */
+    deletionScheduledFor: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -102,6 +108,8 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     profileId: v.id("profiles"),
     role: vWorkspaceRole,
+    /** A member's access to the workspace's content (unset = edit). Ignored for owners and admins. */
+    memberAccess: v.optional(vMemberAccess),
     /** An admin the owner allowed to manage the workspace's plan and billing (unset = no). Owners always can. */
     canManageBilling: v.optional(v.boolean()),
     joinedAt: v.number(),
@@ -115,6 +123,8 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     email: v.string(),
     role: vWorkspaceRole,
+    /** For a member invitation: their access (unset = edit). */
+    memberAccess: v.optional(vMemberAccess),
     tokenHash: v.string(),
     invitedBy: v.id("profiles"),
     status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked"), v.literal("expired")),
@@ -659,6 +669,31 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"]),
 
+  /**
+   * A page shared with an email address that has no (verified, active) Folevi account: a guest invitation.
+   * It grants nothing and costs nothing until the person signs in with that verified address and accepts
+   * it, which creates the `documentPermissions` grant. Scoped like the page it's for.
+   */
+  pageInvites: defineTable({
+    publicId: v.string(),
+    documentId: v.id("documents"),
+    ...scoped,
+    email: v.string(),
+    role: vShareRole,
+    tokenHash: v.string(),
+    invitedBy: v.id("profiles"),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked"), v.literal("expired")),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    acceptedBy: v.optional(v.id("profiles")),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_email", ["email"])
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
   publicLinks: defineTable({
     publicId: v.string(),
     documentId: v.id("documents"),
@@ -697,6 +732,8 @@ export default defineSchema({
     documentId: v.optional(v.id("documents")),
     threadId: v.optional(v.id("commentThreads")),
     inviteId: v.optional(v.id("workspaceInvites")),
+    /** A page invitation (a page shared with an address that had no account) waiting for this person. */
+    pageInviteId: v.optional(v.id("pageInvites")),
     /** A file for the person to download (an export prepared for them). */
     fileId: v.optional(v.string()),
     title: v.string(),

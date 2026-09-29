@@ -1,7 +1,7 @@
 # Personal, Workspaces, seats and billing — audit and plan
 
-Status: **Phase A shipped; Phases B and C implemented on the `account-model` branch** (the
-production migration run is next — see the Phase B runbook in §3a). Written 2026-09-29 against
+Status: **Phase A shipped; Phases B, C and D implemented on the `account-model` branch** (the
+production migration run is next — see the runbook in §3a). Written 2026-09-29 against
 commit `9d25368`. It answers the
 "account, subscription, workspace, seat, guest, storage, AI and billing" specification in two parts:
 what exists today (Phase 1) and how to get to the specified model (Phase 2 onwards).
@@ -214,6 +214,63 @@ guest conversion; fix the three guest metadata leaks; editors can share pages th
 settings visibility; delete workspace; ownership rules for leaving and account deletion (require
 transfer or deletion instead of purging other people's content).
 
+*As built (Phase D):*
+- **Roles.** Memberships are `owner | admin | member`; a member has `workspaceMembers.memberAccess`
+  (`edit` — unset — `comment` or `view`), admins keep `canManageBilling`. The role validator still accepts
+  `editor | commenter | viewer`, and `normalizeMembership` (`convex/lib/auth.ts`) reads them as member +
+  edit / comment / view, so the code is correct before and after `migrations:normalizeWorkspaceRoles`
+  rewrites the rows (memberships and invitations; batched, idempotent). Nothing writes the old names;
+  `invite` / `changeRole` still accept them from older clients and store member + access. Checks use a
+  single "level" (`view < comment < edit < admin < owner`, `requireWorkspace(…, "edit")`). Every
+  membership role is a seat (`lib/seats.ts`).
+- **Permissions** (`convex/lib/permissions.ts`, with the matrix at the top of the file):
+  `canManageWorkspace` (owner/admin: settings, guests, export), `canManageWorkspaceMembers` /
+  `canManageMember` (admins manage members, only the owner manages admins), `canInviteMember`,
+  `canInviteGuest` (owner, admin, member who can edit), `sharePermissions` / `canShareDocument`,
+  `memberCanManageBilling`, `canExportWorkspace`, `requireWorkspaceManager`.
+- **Sharing.** Page managers (Personal: its owner; workspace: owners, admins, and the creator of a
+  restricted page) control the access mode, public links and anyone's grants. Members who can edit share a
+  non-restricted page they can edit with anyone, up to "Can edit", and change or remove only the grants
+  and invitations they made. Guests never share.
+- **Guest leaks fixed.** `collections.get` gives a guest only the people the page already involves (its
+  creator, the people it's shared with, people named in rows they can see) — never the member list;
+  `documents.get` gives a guest no folder, tag or home-folder names and no parent they can't open;
+  `sharing.get` shows a guest only their own access, the page's owner and who shared it. Workspace search
+  refuses non-members: guests find shared pages in Shared with Me (no separate guest search).
+- **Page invitations** (`pageInvites`, scoped like the page). Sharing with an address without a verified,
+  active account stores a hashed-token invitation (14 days) and sends the existing `share_notification`
+  email with `/share-invite/<token>` as its link (no new template; its footer says "share emails are turned
+  on for your Folevi account", slightly off for someone without one). Up to 50 pending per page; rate
+  limit `invite`. It grants nothing and costs nothing; `users.bootstrap` puts an "Accept and open" notice
+  in a new account's bell. Accepting needs the same verified address and re-checks that the sender may
+  still share that page at that level. The Share dialog lists pending invitations with Revoke;
+  housekeeping expires them.
+- **Guests list** (`/settings/workspace-guests`, owners/admins; `workspaces.guests`): guests, their pages
+  and access (change per page), Remove (every grant here), Convert to member (a member invitation; on
+  accept they're a member, one seat, and keep their grants), plus pending page invitations.
+- **Member → guest** (`workspaces.convertMemberToGuest`): the membership ends (one seat less); they keep
+  every grant they already had, and get a grant at their former access (view → Can view, comment → Can
+  comment, else Can edit) on each page they created (up to 200, not in Trash) — except pages that are
+  restricted, under a restricted page, or have a restricted page (or more than 200 pages) under them, since
+  a grant there would open restricted content. Nobody gains access.
+- **Settings by role.** General and Members for everyone (members read); Guests and Import & export for
+  owners/admins (`exports.exportScope` refuses members for a workspace); Plan & billing for billing
+  managers. No Security/Permissions/Sharing pages (nothing to put there yet). Hidden pages opened by URL
+  say "Not found".
+- **Deleting a workspace** (owner, type its name): `workspaces.deletionScheduledFor` + a `deletionJobs` row
+  of kind "workspace" 7 days out. Meanwhile it's hidden from members and guests (not found everywhere,
+  including their grants) and read-only for the owner, who can cancel (`cancelDeletion`); members get an
+  access-change notice (bell + `access_changed` email); pending member invitations are revoked; a paid plan
+  is set to end with its period (`workspaceClosing`; canceling the deletion doesn't resume it — resume in
+  Plan & billing). `maintenance.runDeletionJobs` then purges it (a job whose workspace is no longer
+  scheduled is marked canceled).
+- **Leaving, account deletion.** The sole owner can't leave (the error and General explain: transfer or
+  delete). `users.requestAccountDeletion` refuses while you own a workspace other people are in
+  (`users.deletionBlockers` lists them in Settings → Security); owned workspaces nobody else is in are
+  purged with the account. If someone joined during the grace period (or support scheduled the deletion),
+  the purge hands the workspace to its longest-standing admin, else member, and tells them — it never
+  deletes other people's work. Removing a member never touches their Personal or subscription.
+
 **Phase E — tests and final audit** (the 35 scenarios in the spec, as Convex tests plus Playwright for
 the UI paths), then the codebase sweep listed in the spec.
 
@@ -254,9 +311,14 @@ Steps (run from a checkout of the approved `account-model` commit, with producti
    fields and `by_owner*` indexes; existing rows stay valid). Deploy the web app from the same commit.
 4. **Migrate:** `npx convex run --prod migrations:migratePersonalWorkspaces`. It continues itself; watch
    the logs (`npx convex logs --prod`) until the scheduled `migrations:*` runs stop.
+   Then (Phase D) `npx convex run --prod migrations:normalizeWorkspaceRoles`: rewrites editor → member,
+   commenter → member (comment), viewer → member (view) on memberships and invitations. Nobody's access
+   or seat count changes (the code already reads the old names that way), so it's safe at any time after
+   the deploy; it continues itself and can be run again.
 5. **Verify:** `npx convex run --prod migrations:verifyAccountModel`. It must return `ok: true` with
    every count 0: rows with both/neither owner field, rows left in a personal workspace, rows outside
-   their document's scope, orphaned grants, personal workspaces, profiles with a default workspace.
+   their document's scope, orphaned grants, personal workspaces, profiles with a default workspace, and
+   memberships or invitations still holding an old role (`legacyRoles`).
    Spot-check in the app: each account's Personal has its notes; the team workspace is unchanged.
 6. **Lift read-only.**
 

@@ -62,7 +62,8 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Daily Notes were retired: existing daily notes remain as ordinary pages and old `/daily` links open Home.
 
 ### Working with others
-- Workspace roles (Owner, Admin, Editor, Commenter, Viewer), restricted pages with explicit grants,
+- Workspace roles (Owner, Admin, Member — optionally comment or view only) and guests (single pages,
+  not billed; invited by email even without an account), restricted pages with explicit grants,
   invitations bound to the invited address, comments with threads and resolution, presence,
   notifications.
 - Public links: off by default, optional expiry and password, `noindex`, revocable at once.

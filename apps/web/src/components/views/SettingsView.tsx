@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plus, RefreshCw, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plus, RefreshCw, ShieldCheck, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -15,12 +15,13 @@ import { BillingSection } from "./settings/BillingSection";
 import { NotificationsSection } from "./settings/NotificationsSection";
 import { WorkspaceSection } from "./settings/WorkspaceSection";
 import { MembersSection } from "./settings/MembersSection";
+import { GuestsSection } from "./settings/GuestsSection";
 import { WorkspaceBillingSection } from "./settings/WorkspaceBillingSection";
 import { SyncSection } from "./settings/SyncSection";
 import { DataSection } from "./settings/DataSection";
 import { Card } from "./settings/Card";
 
-type Section = "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-billing" | "workspace-data" | "sync" | "data";
+type Section = "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal) — the same whichever context is open. */
 const YOU: Item[] = [
@@ -35,27 +36,33 @@ const YOU: Item[] = [
 ];
 /**
  * The current team workspace's settings — only when a workspace is open. Personal has none of these.
- * Plan & billing is listed only for people who can manage it (the owner, and admins the owner allowed).
+ * Each is listed only for the roles that may use it (the server checks every action again):
+ *   General and Members: everyone in the workspace (members read; owners and admins change);
+ *   Guests and Import & export: owners and admins;
+ *   Plan & billing: the owner, and admins the owner allowed.
  */
-const WORKSPACE: Item[] = [
-  { id: "workspace", label: "General", icon: Building2 },
-  { id: "members", label: "Members", icon: Users },
-  { id: "workspace-billing", label: "Plan & billing", icon: CreditCard },
-  { id: "workspace-data", label: "Import & export", icon: ArrowDownUp },
+const WORKSPACE: (Item & { who: "everyone" | "managers" | "billing" })[] = [
+  { id: "workspace", label: "General", icon: Building2, who: "everyone" },
+  { id: "members", label: "Members", icon: Users, who: "everyone" },
+  { id: "workspace-guests", label: "Guests", icon: UserRoundPlus, who: "managers" },
+  { id: "workspace-billing", label: "Plan & billing", icon: CreditCard, who: "billing" },
+  { id: "workspace-data", label: "Import & export", icon: ArrowDownUp, who: "managers" },
 ];
 const WORKSPACE_SECTIONS = new Set<Section>(WORKSPACE.map((i) => i.id));
 const HEADINGS: Partial<Record<Section, string>> = { workspace: "Workspace" };
 
 export function SettingsView({ section }: { section: Section }) {
   const { workspace } = useAppState();
-  const workspaceItems = WORKSPACE.filter((i) => i.id !== "workspace-billing" || workspace?.canManageBilling);
+  const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
+  const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
   const groups = [{ label: "You", items: YOU }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
   // A workspace section opened in Personal (a bookmark, or right after leaving a workspace).
   const noWorkspace = WORKSPACE_SECTIONS.has(section) && !workspace;
-  // Workspace billing opened by someone who can't manage it: the page doesn't exist for them.
-  const billingHidden = section === "workspace-billing" && workspace !== null && !workspace.canManageBilling;
+  // A workspace section this role can't use (opened by URL): the page doesn't exist for them.
+  const workspaceItem = WORKSPACE.find((i) => i.id === section);
+  const sectionHidden = workspace !== null && workspaceItem !== undefined && !allowed(workspaceItem.who);
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
       <div className="mx-auto grid max-w-5xl gap-8 px-4 pb-24 pt-6 sm:px-8 md:grid-cols-[216px_1fr] md:gap-10">
@@ -90,7 +97,7 @@ export function SettingsView({ section }: { section: Section }) {
           </div>
         </nav>
         <div className="min-w-0 space-y-5">
-          <h2 className="ui-display text-[34px] leading-tight">{noWorkspace ? "Workspace" : billingHidden ? "Not found" : heading}</h2>
+          <h2 className="ui-display text-[34px] leading-tight">{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
           {section === "account" ? <AccountSection /> : null}
           {section === "billing" ? <BillingSection /> : null}
           {section === "security" ? <SecuritySection /> : null}
@@ -100,9 +107,14 @@ export function SettingsView({ section }: { section: Section }) {
           {noWorkspace ? <NoWorkspaceCard /> : null}
           {section === "workspace" && workspace ? <WorkspaceSection /> : null}
           {section === "members" && workspace ? <MembersSection key={workspace.id} workspace={workspace} /> : null}
-          {section === "workspace-billing" && workspace && !billingHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
-          {billingHidden ? <Card title="This page isn't available">There's nothing here for you. Switch to Personal to see your own plan and billing.</Card> : null}
-          {section === "workspace-data" && workspace ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
+          {section === "workspace-guests" && workspace && !sectionHidden ? <GuestsSection key={workspace.id} workspace={workspace} /> : null}
+          {section === "workspace-billing" && workspace && !sectionHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
+          {sectionHidden ? (
+            <Card title="This page isn't available">
+              {section === "workspace-billing" ? "There's nothing here for you. Switch to Personal to see your own plan and billing." : "Only this workspace's owner and admins can open this page."}
+            </Card>
+          ) : null}
+          {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
           {section === "sync" ? <SyncSection /> : null}
           {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
         </div>

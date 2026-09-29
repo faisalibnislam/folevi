@@ -30,7 +30,7 @@ export interface MenuFolder {
  * copy link, invite people to the team workspace (a modal), and delete. Folders don't nest.
  */
 export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder; trigger?: ReactNode; className?: string }) {
-  const { role, workspace } = useAppState();
+  const { canEdit, canManage: managesWorkspace, workspace } = useAppState();
   const { openAsk } = useShell();
   const aiOn = useAiEnabled();
   const createDocument = useCreateDocument();
@@ -42,9 +42,8 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
   const [inviting, setInviting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [coloring, setColoring] = useState(false);
-  const canEdit = role !== "viewer" && role !== "commenter";
   // Personal has no members: inviting people is for team workspaces (single pages are shared instead).
-  const canManage = workspace !== null && (role === "owner" || role === "admin");
+  const canManage = workspace !== null && managesWorkspace;
   const act = (p: Promise<unknown>, msg: string) => p.then(() => toast.show(msg), (e) => toast.show(errorMessage(e), { tone: "error" }));
 
   const copyLink = () => {

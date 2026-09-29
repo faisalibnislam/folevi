@@ -178,7 +178,7 @@ describe("notification triggers", () => {
     await w.owner.as.mutation(api.workspaces.changeRole, { workspaceId: w.teamId, profileId: w.editor.profileId, role: "viewer" });
     const [n] = await inbox(w.editor);
     expect(n).toMatchObject({ kind: "share_change", documentId: null });
-    expect(n!.title).toMatch(/Viewer/);
+    expect(n!.title).toMatch(/Member \(view only\)/);
   });
 
   test("a burst of comments from one person folds into one notification and one email", async () => {

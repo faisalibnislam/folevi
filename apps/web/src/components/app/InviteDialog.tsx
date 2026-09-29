@@ -10,7 +10,8 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/plans";
 
-type Role = "admin" | "editor" | "commenter" | "viewer";
+/** What an invitation offers: Member with full, comment-only or view-only access, or Admin (owner only). */
+type Offer = "member:edit" | "member:comment" | "member:view" | "admin";
 type InviteWorkspace = Pick<Workspace, "id" | "name">;
 
 /** Invite someone to a team workspace by email, with a role. Used in settings and the invite modal. Personal has no members. */
@@ -20,7 +21,7 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
   const toast = useToast();
   const uid = useId();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("editor");
+  const [offer, setOffer] = useState<Offer>("member:edit");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const isOwner = data?.yourRole === "owner";
@@ -34,7 +35,7 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
           setError(null);
           setSending(true);
           try {
-            await invite({ workspaceId: workspace.id, email, role });
+            await invite(offer === "admin" ? { workspaceId: workspace.id, email, role: "admin" } : { workspaceId: workspace.id, email, role: "member", memberAccess: offer.slice("member:".length) as "edit" | "comment" | "view" });
             toast.show(`Invitation sent to ${email.trim()}`, { tone: "success" });
             setEmail("");
             onSent?.();
@@ -63,11 +64,11 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
           placeholder="name@example.com"
           className="h-9 min-w-0 flex-1 ui-input rounded-[6px] px-3"
         />
-        <Select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as Role)} className="h-9 ui-input rounded-[6px] px-3">
+        <Select aria-label="Role" value={offer} onChange={(e) => setOffer(e.target.value as Offer)} className="h-9 ui-input rounded-[6px] px-3">
+          <option value="member:edit">Member</option>
+          <option value="member:comment">Member · can comment</option>
+          <option value="member:view">Member · view only</option>
           {isOwner ? <option value="admin">Admin</option> : null}
-          <option value="editor">Editor</option>
-          <option value="commenter">Commenter</option>
-          <option value="viewer">Viewer</option>
         </Select>
         <Button type="submit" variant="primary" aria-busy={sending || undefined}>
           {sending ? "Sending…" : "Invite"}
@@ -95,7 +96,7 @@ export function InviteDialog({ workspace, open, onClose }: { workspace: InviteWo
       open={open}
       onClose={onClose}
       title={`Invite people to ${workspace.name}`}
-      description="Collaborators can work on the notes and folders in this workspace. Invitations are tied to the email address you enter and expire after 7 days."
+      description="Members work on the notes and folders in this workspace. To share just one page, use Share on that page instead: guests are never billed. Invitations are tied to the email address you enter and expire after 7 days."
       size="md"
     >
       <InviteForm workspace={workspace} />

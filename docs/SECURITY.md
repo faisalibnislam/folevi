@@ -60,7 +60,9 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   function lacks one.
 - Reads are scoped by workspace membership and document permissions (workspace mode or restricted with
   explicit grants inherited by nested pages). Missing and forbidden resources return the same `not_found`.
-- Roles: Owner, Admin, Editor, Commenter, Viewer; platform roles for the admin console are enforced in
+- Workspace roles: Owner, Admin, Member (members may be limited to comment or view); guests are page grants
+  without a membership and see only what was shared with them (`convex/lib/permissions.ts` has the matrix;
+  `tests/convex/members-guests.test.ts`). Platform roles for the admin console are enforced in
   every admin function (`docs/ADMIN.md`).
 - Tenant isolation, role changes, invitation binding, public-link expiry, file authorization and deletion
   cascades are covered by `tests/convex/backend.test.ts`.

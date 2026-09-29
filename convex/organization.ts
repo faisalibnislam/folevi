@@ -126,7 +126,7 @@ export const createFolder = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { scope } = await resolveScope(ctx, profile, args.scope, "editor");
+    const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     let parentFolderId: Id<"folders"> | undefined;
     if (args.parentFolderId) {
       const parent = await ctx.db
@@ -166,7 +166,7 @@ async function folderFor(ctx: Parameters<typeof requireProfile>[0], folderPublic
     .unique();
   if (!folder || folder.deletedAt) fail("not_found", "Folder not found.");
   // Your own Personal, or a workspace where you can edit; someone else's Personal reads as not found.
-  const { scope } = await requireRowScope(ctx, profile, folder, "editor", "Folder not found.");
+  const { scope } = await requireRowScope(ctx, profile, folder, "edit", "Folder not found.");
   return { profile, folder, scope };
 }
 
@@ -274,7 +274,7 @@ export const createTag = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    const { scope } = await resolveScope(ctx, profile, args.scope, "editor");
+    const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     const name = cleanName(args.name.replace(/^#/, ""), 40);
     const normalizedName = normalizeForSearch(name);
     const existing = await tagNamed(ctx, scope, normalizedName);
@@ -299,7 +299,7 @@ async function tagFor(ctx: Parameters<typeof requireProfile>[0], tagPublicId: st
     .withIndex("by_public_id", (q) => q.eq("publicId", tagPublicId))
     .unique();
   if (!tag) fail("not_found", "Tag not found.");
-  const { scope } = await requireRowScope(ctx, profile, tag, "editor", "Tag not found.");
+  const { scope } = await requireRowScope(ctx, profile, tag, "edit", "Tag not found.");
   return { profile, tag, scope };
 }
 

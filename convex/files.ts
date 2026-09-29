@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, membership, requireDocument, requireProfile, requireWorkspace, resolveScope, roleAtLeast } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, membership, requireDocument, requireProfile, requireWorkspace, resolveScope, memberAtLeast } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { adjustStorageUsed, assertStorageFor } from "./lib/entitlements";
 import { insertScoped, personalScope, scopeOfRow, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
@@ -58,7 +58,7 @@ export const generateUploadUrl = mutation({
       documentId = doc._id;
     } else {
       if (!args.scope) fail("invalid_argument", "Say where the file goes.");
-      scope = (await resolveScope(ctx, profile, args.scope, "editor")).scope;
+      scope = (await resolveScope(ctx, profile, args.scope, "edit")).scope;
     }
     await consume(ctx, "upload", profile._id);
     const max = maxBytesFor(args.kind);
@@ -205,7 +205,7 @@ async function canEditLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: D
   const scope = scopeOfRow(file);
   if (scope.kind === "personal") return scope.profileId === profile._id;
   const m = await membership(ctx, profile._id, scope.workspaceId);
-  return Boolean(m && roleAtLeast(m.role, "editor"));
+  return memberAtLeast(m, "edit");
 }
 
 const HEX = /^#[0-9a-f]{6}$/i;

@@ -85,8 +85,12 @@ interface AppState {
   scopeKey: string;
   /** The current team workspace, or null in Personal. */
   workspace: Workspace | null;
-  /** Your role in the current context: "owner" in your Personal (you manage all of it), else your workspace role. */
+  /** Your role in the current context: "owner" in your Personal (you manage all of it), else your workspace role (owner, admin or member). */
   role: WorkspaceRole;
+  /** Whether you can add and change pages, folders and tags here (always in Personal; members who can only comment or view can't). The server checks again. */
+  canEdit: boolean;
+  /** Owner or admin of the current workspace (settings, members, guests, export). False in Personal. */
+  canManage: boolean;
   setContext: (scope: WireScope) => void;
   engine: SyncEngine | null;
   uploader: Uploader | null;
@@ -255,6 +259,8 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
       scopeKey: scopeIdKey(scope),
       workspace: context.kind === "workspace" ? context.workspace : null,
       role: context.kind === "workspace" ? context.role : "owner",
+      canEdit: context.kind === "workspace" ? context.workspace.canEdit !== false : true,
+      canManage: context.kind === "workspace" ? context.workspace.canManage === true : false,
       setContext: (next: WireScope) => {
         writeStoredContext(next);
         setSelected(next.kind === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: next.workspaceId });

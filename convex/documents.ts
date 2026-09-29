@@ -815,8 +815,23 @@ export const bulkUpdate = mutation({
     const action = args.action;
     // Starring is personal (read access is enough), as in setStarred.
     if (action.kind !== "star") await assertWritable(ctx, profile);
-    const ids = [...new Set(args.documentIds)];
+    let ids = [...new Set(args.documentIds)];
     if (ids.length > MAX_BULK) fail("limit_exceeded", `At most ${MAX_BULK} notes at a time.`);
+    if (action.kind === "restore") {
+      // Parents before their nested pages, so a restored page lands back under its parent instead of at
+      // the top level (restoring a page whose parent is still in Trash moves it out).
+      const depth = new Map<string, number>();
+      for (const id of ids) {
+        let d = 0;
+        let cursor = await getDocumentByPublicId(ctx, id);
+        while (cursor?.parentDocumentId && d < 12) {
+          cursor = await ctx.db.get(cursor.parentDocumentId);
+          d++;
+        }
+        depth.set(id, d);
+      }
+      ids = [...ids].sort((a, b) => depth.get(a)! - depth.get(b)!);
+    }
     const done: string[] = [];
     const previousFolders: Record<string, string | null> = {};
     if (!ids.length) return { done, skipped: 0, previousFolders };
@@ -864,7 +879,8 @@ export const bulkUpdate = mutation({
           break;
         case "delete":
           if (!doc.inTrash || !(await canDeletePermanently(ctx, profile, doc))) ok = false;
-          else await queueDeletion(ctx, await trashRoot(ctx, doc), profile._id, "user_request");
+          // Exactly this page and its nested pages, as deletePermanently does.
+          else await queueDeletion(ctx, doc, profile._id, "user_request");
           break;
       }
       if (ok) done.push(id);

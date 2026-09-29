@@ -72,6 +72,27 @@ describe("bulk actions", () => {
     expect(await titlesOf(a, "trash")).toEqual([]);
   });
 
+  test("restoring a page with its nested page keeps the nesting, whatever the order", async () => {
+    const t = setup();
+    const a = await personAs(t, "bulk-nest@example.com");
+    const [parent] = await newDocs(a, ["Parent"]);
+    const child = ulid();
+    await a.as.mutation(api.sync.push, {
+      workspaceId: a.workspaceId,
+      deviceId: "device-organize-1",
+      ops: [{ opId: ulid(), kind: "document.create", document: { id: child, parentDocumentId: parent!, folderId: null, kind: "document", title: "Child", icon: null } }],
+    });
+    // Trashed separately (so restoring the parent alone wouldn't bring the child back).
+    await a.as.mutation(api.documents.bulkUpdate, { documentIds: [child], action: { kind: "trash" } });
+    await new Promise((r) => setTimeout(r, 5));
+    await a.as.mutation(api.documents.bulkUpdate, { documentIds: [parent!], action: { kind: "trash" } });
+    const r = await a.as.mutation(api.documents.bulkUpdate, { documentIds: [child, parent!], action: { kind: "restore" } });
+    expect(r.done.sort()).toEqual([child, parent].sort());
+    const meta = await a.as.query(api.documents.get, { documentId: child });
+    expect(meta?.inTrash).toBe(false);
+    expect(meta?.document.parentDocumentId).toBe(parent);
+  });
+
   test("each note is authorized on its own; viewers and outsiders are skipped", async () => {
     const t = setup();
     const owner = await personAs(t, "bulk-owner@example.com");

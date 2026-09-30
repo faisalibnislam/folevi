@@ -494,7 +494,7 @@ export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children 
                   </Link>
                   <span className="flex-1" />
                   <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 px-3.5 text-[14px]">
-                    Start writing
+                    Sign up
                   </a>
                   <button
                     type="button"

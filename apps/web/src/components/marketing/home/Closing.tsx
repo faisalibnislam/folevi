@@ -1,7 +1,7 @@
 import { TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER, TIER_NAMES } from "@/lib/plans";
 import Link from "next/link";
 import { FoleviMark } from "@/components/brand/FoleviMark";
-import { Icon, type IconName } from "../icons";
+import type { IconName } from "../icons";
 import { SIGN_UP_URL } from "../site";
 import { PlanPicker } from "./PlanPicker";
 import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
@@ -38,50 +38,6 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
     body: "Delete your account whenever you like. After a 7-day grace period, it’s deleted permanently.",
   },
 ];
-
-export function SecuritySection() {
-  return (
-    <section id="security" aria-labelledby="security-title" className={cx(container, "scroll-mt-20")}>
-      <div className={box}>
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
-          <div>
-            <SectionHeading
-              id="security-title"
-              eyebrow="Privacy and security"
-              title="Private by default. Plain about the rest."
-              lede="Your notes are yours. Here is what protects them, and one thing Folevi does not do."
-            />
-            <div className="mk-panel mt-8 p-5 sm:p-6">
-              <p className="flex items-center gap-2.5 text-[15px] font-semibold text-(--color-heading)">
-                <Icon name="shield" size={17} />
-                Folevi is not end-to-end encrypted
-              </p>
-              <p className="mt-2 text-[14.5px] leading-relaxed text-ink">
-                Our servers can process your content so that search, sharing, sync and support can work. What we don’t
-                have is a way to browse it: the admin tools have no content viewer, so staff cannot open your notes from
-                there.
-              </p>
-            </div>
-            <Link href="/security" className="mk-link mt-6 inline-flex min-h-11 items-center gap-2 text-[15px]">
-              Read the full security overview <Icon name="arrow-right" size={16} />
-            </Link>
-          </div>
-          <ul className="grid gap-x-10 gap-y-9 self-start sm:grid-cols-2">
-            {SECURITY_CONTROLS.map((control) => (
-              <li key={control.title}>
-                <span className="mk-tile">
-                  <Icon name={control.icon} size={17} />
-                </span>
-                <h3 className="mk-h3 mt-3.5 text-[15.5px]">{control.title}</h3>
-                <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">{control.body}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 export function PricingSection() {
   return (

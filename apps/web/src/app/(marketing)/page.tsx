@@ -4,11 +4,10 @@ import { HERO_STYLES } from "@/components/marketing/home/heroStyles";
 import { artVars } from "@/components/marketing/product/Replica";
 import { paletteVars } from "@/lib/cover";
 import { Chapters } from "@/components/marketing/home/Chapters";
-import { FinalCta, PricingSection, SecuritySection } from "@/components/marketing/home/Closing";
+import { FinalCta, PricingSection } from "@/components/marketing/home/Closing";
 import { Hero } from "@/components/marketing/home/Hero";
 import { PageBackdrop } from "@/components/marketing/PageBackdrop";
 import { Included } from "@/components/marketing/home/Included";
-import { MacSection } from "@/components/marketing/home/MacSection";
 import { NoteStyles } from "@/components/marketing/home/NoteStyles";
 import { JsonLd, organizationLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
 
@@ -34,8 +33,6 @@ export default function HomePage() {
           <NoteStyles />
           <Chapters />
           <AiSection />
-          <MacSection />
-          <SecuritySection />
           <PricingSection />
           <FinalCta />
         </div>

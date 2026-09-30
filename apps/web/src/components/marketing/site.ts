@@ -11,14 +11,6 @@ export function signUpWithTemplate(key: string): string {
   return `${SIGN_UP_URL}?template=${encodeURIComponent(key)}`;
 }
 
-export const PRIMARY_NAV = [
-  { label: "Features", href: "/features" },
-  { label: "Mac", href: "/mac" },
-  { label: "Security", href: "/security" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Support", href: "/support" },
-] as const;
-
 /**
  * The fixed marketing routes, for the sitemap. `updated` is the day the page's content last changed
  * (YYYY-MM-DD). Change it in the same commit as the page. Feature, template and docs pages carry their own

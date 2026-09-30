@@ -2,37 +2,30 @@ import Link from "next/link";
 import { FileDown, Paintbrush, RefreshCw, SunMoon, WifiOff, type LucideIcon } from "lucide-react";
 import { COVER_ART } from "@/lib/cover";
 import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
-import { StyleShowcase } from "../product/StyleShowcase";
 import { SIGN_UP_URL } from "../site";
 import { ButtonLink, container, cx } from "../ui";
+import { HeroNote } from "./HeroNote";
 
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="pb-12 pt-12 sm:pb-16 sm:pt-20">
-      <div className={cx(container, "text-center")}>
-        <p className="mk-chip mk-chip--raised">Free to start · On the web, Mac app coming soon</p>
-        <h1 id="hero-title" className="mk-display mx-auto mt-6 max-w-[24ch] text-balance text-[44px] sm:text-[64px] lg:text-[76px]">
-          A quieter place for ideas that keep growing.
-        </h1>
-        <p className="mk-lede mx-auto mt-6 max-w-[54ch]">
+    <section aria-labelledby="hero-title" className="mk-hero">
+      <HeroNote title="A quieter place for ideas that keep growing." chip="Free to start · On the web, Mac app coming soon">
+        <p className="mk-hero-lede mt-4">
           Folevi is a notes app for documents, tasks and linked pages. Your writing is saved on your device first, so you can keep
           working offline, and it syncs when you reconnect.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-          <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
+        <div className="mt-7 flex flex-wrap items-center gap-2.5">
+          <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg" className="mk-hero-primary">
             Start writing
           </ButtonLink>
-          <ButtonLink href="/mac" variant="secondary" size="lg">
+          <ButtonLink href="/mac" variant="secondary" size="lg" className="mk-hero-secondary">
             Folevi for Mac
           </ButtonLink>
         </div>
-        <p className="mt-4 text-[13.5px] text-muted">
+        <p className="mk-note-muted mt-4 text-[13.5px]">
           Free plan with no card. New accounts get {TIER_NAMES[TRIAL_TIER]} free for {TRIAL_DAYS} days.
         </p>
-      </div>
-      <div className={cx(container, "mt-12 sm:mt-16")}>
-        <StyleShowcase />
-      </div>
+      </HeroNote>
     </section>
   );
 }

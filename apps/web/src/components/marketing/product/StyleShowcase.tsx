@@ -8,7 +8,7 @@ import { AppWindow, artById, artThumb } from "./Replica";
 const STYLES = ["art-03", "art-01", "art-30", "art-49", "art-09"].map(artById);
 
 /**
- * The hero: a replica of the app with a note open, and the note's style as a real choice. Picking a
+ * A replica of the app with a note open, and the note's style as a real choice. Picking a
  * style recolours the note and the light behind the glass, as it does in the app; the chrome stays neutral.
  */
 export function StyleShowcase() {

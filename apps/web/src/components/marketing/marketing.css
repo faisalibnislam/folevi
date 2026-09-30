@@ -188,6 +188,85 @@
   box-shadow: var(--shadow-primary);
 }
 
+/* The frame (SiteShell): the app's soft canvas, a sidebar flat on it and the page in a rounded panel. --- */
+.mk-shell {
+  min-height: 100dvh;
+  background: var(--glass-canvas);
+}
+.mk-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(70vw 60vh at 85% -10%, var(--glass-light-a), transparent 70%),
+    radial-gradient(60vw 70vh at -10% 110%, var(--glass-light-b), transparent 70%),
+    radial-gradient(50vw 50vh at 50% 50%, var(--glass-light-c), transparent 75%);
+}
+/* The ambient light (Shell's .ui-ambient): the home page's note style, heavily blurred under a veil. */
+.mk-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 500ms var(--mk-ease);
+}
+.mk-ambient[data-on="true"] { opacity: 1; }
+.mk-ambient-layer {
+  position: absolute;
+  inset: -6rem;
+  background-size: cover;
+  background-position: center;
+  filter: blur(56px) saturate(1.4);
+  animation: mk-fade-in 560ms var(--mk-ease) both;
+}
+.mk-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--mk-ambient-veil);
+}
+:root:has(.mk-root) { --mk-ambient-veil: rgb(238 238 241 / 0.7); }
+:root[data-theme="dark"]:has(.mk-root) { --mk-ambient-veil: rgb(12 12 14 / 0.7); }
+@keyframes mk-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mk-ambient { display: none; }
+}
+.mk-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-canvas);
+}
+.mk-content > main { flex: 1; }
+@media (min-width: 1024px) {
+  .mk-sidebar {
+    position: sticky;
+    top: 8px;
+    flex: none;
+    width: 248px;
+    height: calc(100dvh - 16px);
+  }
+  .mk-content {
+    min-height: calc(100dvh - 16px);
+    overflow: clip;
+    border-radius: 14px;
+    box-shadow: var(--glass-edge), var(--glass-shadow);
+  }
+}
+/* The navigation drawer on narrow screens slides in from the left. */
+.mk-drawer { animation: mk-drawer-in var(--motion-slow, 220ms) var(--mk-ease); }
+@keyframes mk-drawer-in {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* Navigation ------------------------------------------------------------------------------------ */
 .mk-rail {
   background: color-mix(in oklab, var(--color-canvas) 84%, transparent);
@@ -196,8 +275,7 @@
   box-shadow: 0 1px 0 transparent;
   transition: box-shadow var(--motion-slow, 220ms) var(--mk-ease);
 }
-.mk-rail[data-scrolled="true"],
-.mk-rail[data-open="true"] { box-shadow: 0 1px 0 var(--mk-hair); }
+.mk-rail[data-scrolled="true"] { box-shadow: 0 1px 0 var(--mk-hair); }
 @media (prefers-reduced-transparency: reduce) {
   .mk-rail { background: var(--color-canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
@@ -220,17 +298,6 @@
   background: var(--color-surface-raised);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent);
 }
-.mk-sheet {
-  border-radius: 10px;
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-pop);
-  animation: mk-sheet-in var(--motion-slow, 220ms) var(--mk-ease);
-}
-@keyframes mk-sheet-in {
-  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
-  to { opacity: 1; transform: none; }
-}
-
 /* Buttons (the app's .ui-btn) ------------------------------------------------------------------ */
 .mk-btn {
   display: inline-flex;
@@ -626,6 +693,199 @@
 }
 .mk-notecard-spine { background: var(--note-art, none) center / cover no-repeat; }
 
+/* ------------------------------------------------------------------------------------------------
+ * The home page hero: a note in the app. Its style lights the page behind it (blurred, as the Style
+ * panel's Blur background does), the sheet takes the style's paper and ink, and the title sits on the
+ * cover as DocumentHeader draws it. The section slides under the glass site header.
+ * --------------------------------------------------------------------------------------------- */
+.mk-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  margin-top: -4rem;
+}
+.mk-hero-stage { position: relative; padding-top: 4rem; }
+/* Beside the sidebar there is no top bar: the note's light fills the top of the content panel. */
+@media (min-width: 1024px) {
+  .mk-hero { margin-top: 0; }
+  .mk-hero-stage { padding-top: 0.5rem; }
+}
+.mk-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--color-canvas);
+}
+/* A soft veil so the header reads, and a fade into the page below. */
+.mk-hero-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-canvas) 28%, transparent) 0%, transparent 22%, transparent 72%, var(--color-canvas) 100%);
+}
+:root[data-theme="dark"] .mk-hero-backdrop::after {
+  background: linear-gradient(180deg, rgb(16 16 17 / 0.5) 0%, rgb(16 16 17 / 0.38) 24%, rgb(16 16 17 / 0.38) 70%, var(--color-canvas) 100%);
+}
+.mk-hero-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 560ms var(--mk-ease);
+}
+.mk-hero-layer[data-ready="true"] { opacity: 1; }
+.mk-hero-glow {
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  filter: blur(40px) saturate(1.25);
+}
+
+.mk-hero-note {
+  max-width: 960px;
+  margin-inline: auto;
+  box-shadow: var(--shadow-lift);
+}
+.mk-hero-cover {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-height: 248px;
+  padding: 72px 20px 24px;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+}
+.mk-hero-art { position: absolute; inset: 0; z-index: -1; background: var(--n-paper); }
+/* Dark mode dims the artwork a little (--cover-art-tint), except behind an ink title on a light cover. */
+.mk-hero-art::after { content: ""; position: absolute; inset: 0; background: var(--cover-art-tint); transition: opacity var(--motion-page, 320ms) var(--mk-ease); }
+.mk-hero-stage[data-tone="light"] .mk-hero-art::after { opacity: 0; }
+/* The film grain (editor.css .fb-cover-grain): dark specks on covers that read deep, white on light ones. */
+.mk-hero-grain {
+  position: absolute;
+  inset: 0;
+  background-size: 220px 220px;
+  opacity: 0;
+  transition: opacity var(--motion-page, 320ms) var(--mk-ease);
+}
+.mk-hero-grain[data-grain="deep"] {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  mix-blend-mode: multiply;
+}
+.mk-hero-grain[data-grain="light"] {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  mix-blend-mode: screen;
+}
+/* The shade under the title: dark under white titles, light under ink ones. */
+.mk-hero-shade {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--motion-page, 320ms) var(--mk-ease);
+}
+.mk-hero-shade[data-shade="deep"] { background: linear-gradient(180deg, transparent 12%, rgb(0 0 0 / 0.3) 48%, rgb(0 0 0 / 0.56)); }
+.mk-hero-shade[data-shade="light"] { background: linear-gradient(180deg, transparent 12%, rgb(255 255 255 / 0.36) 48%, rgb(255 255 255 / 0.62)); }
+.mk-hero-stage[data-tone="deep"] [data-grain="deep"],
+.mk-hero-stage[data-tone="light"] [data-grain="light"] { opacity: 0.5; }
+.mk-hero-stage[data-tone="deep"] [data-shade="deep"],
+.mk-hero-stage[data-tone="light"] [data-shade="light"] { opacity: 1; }
+
+/* The note's title on its cover (DocumentHeader): Spectral, white on deep covers, the style's ink on light ones. */
+.mk-hero-title {
+  max-width: 17ch;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(36px, 9.4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.014em;
+  text-wrap: balance;
+  color: #fff;
+  text-shadow: 0 1px 14px rgb(0 0 0 / 0.4);
+  transition: color var(--motion-page, 320ms) var(--mk-ease), text-shadow var(--motion-page, 320ms) var(--mk-ease);
+}
+.mk-hero-stage[data-tone="light"] .mk-hero-title { color: var(--art-ink); text-shadow: 0 1px 12px rgb(255 255 255 / 0.5); }
+
+.mk-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--n-ink);
+  background: color-mix(in oklab, var(--n-hl-2) 80%, var(--n-paper));
+  transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
+}
+.mk-hero-lede {
+  max-width: 58ch;
+  font-family: var(--font-serif);
+  font-size: clamp(18px, 1.6vw, 20.5px);
+  line-height: 1.6;
+  color: var(--n-ink);
+}
+/* The call to action takes the style's accent, as the note's checkboxes and links do. */
+.mk-hero-primary {
+  color: var(--n-paper);
+  background: var(--n-accent);
+  transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease), filter var(--motion-fast, 140ms) var(--mk-ease);
+}
+.mk-hero-secondary {
+  color: var(--n-heading);
+  background: color-mix(in oklab, var(--n-paper) 55%, #fff);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--n-ink) 16%, transparent), 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.mk-hero-secondary:hover { background: color-mix(in oklab, var(--n-paper) 90%, var(--n-ink)); }
+:root[data-theme="dark"] .mk-hero-secondary { background: color-mix(in oklab, var(--n-paper) 86%, #fff); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--n-ink) 14%, transparent); }
+:root[data-theme="dark"] .mk-hero-secondary:hover { background: color-mix(in oklab, var(--n-paper) 78%, #fff); }
+
+/* The style picker floats under the note on the app's glass. */
+.mk-hero-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin: 20px auto 0;
+  padding: 10px 14px 12px;
+  border-radius: 14px;
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: var(--glass-edge), var(--shadow-pop);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mk-hero-picker { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+.mk-hero-swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+  transition: box-shadow var(--motion-fast, 140ms) var(--mk-ease);
+}
+.mk-hero-swatch:hover { box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 4px var(--color-line-strong); }
+.mk-hero-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 4px var(--color-heading); }
+
+@media (min-width: 640px) {
+  .mk-hero-cover { min-height: 300px; padding: 96px 64px 30px; }
+  .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
+  .mk-hero-picker { flex-direction: row; gap: 16px; padding: 7px 7px 7px 16px; }
+  .mk-hero-swatch { width: 34px; height: 34px; }
+}
+@media (min-width: 1024px) {
+  .mk-hero-cover { min-height: 340px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-hero-layer, .mk-hero-grain, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary { transition: none; }
+}
+
 /* Long-form pages (docs, legal) ------------------------------------------------------------------ */
 .mk-prose { color: var(--color-ink); font-size: 16.5px; line-height: 1.7; letter-spacing: -0.006em; }
 .mk-prose > * + * { margin-top: 1em; }
@@ -706,7 +966,8 @@
 .mk-table tbody:last-child tr:last-child > * { border-bottom: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mk-appear, .mk-flash, .mk-sheet { animation: none; }
+  .mk-appear, .mk-flash, .mk-drawer, .mk-ambient-layer { animation: none; }
+  .mk-ambient { transition: none; }
   .mk-btn:hover svg { transform: none; }
 }
 }

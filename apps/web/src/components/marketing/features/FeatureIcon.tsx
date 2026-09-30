@@ -16,8 +16,17 @@ const ICONS: Record<string, LucideIcon> = {
   "security-and-privacy": ShieldCheck,
 };
 
+/** The feature's icon on its own (the site's sidebar lists a few features with it). */
+export function FeatureGlyph({ slug, size = 17, className }: { slug: string; size?: number; className?: string }) {
+  const Glyph = ICONS[slug];
+  return slug === "ai-notes" ? <AiIcon size={size} className={className} /> : Glyph ? <Glyph size={size} aria-hidden="true" className={className} /> : null;
+}
+
 /** The feature's icon on the site's tile (the rounded square beside section titles). */
 export function FeatureIcon({ slug }: { slug: string }) {
-  const Glyph = ICONS[slug];
-  return <span className="mk-tile">{slug === "ai-notes" ? <AiIcon size={17} /> : Glyph ? <Glyph size={17} aria-hidden="true" /> : null}</span>;
+  return (
+    <span className="mk-tile">
+      <FeatureGlyph slug={slug} />
+    </span>
+  );
 }

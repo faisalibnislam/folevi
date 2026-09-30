@@ -1,8 +1,9 @@
 import type { Viewport } from "next";
 import "@/components/marketing/marketing.css";
+import { HERO_STYLES, heroGlow } from "@/components/marketing/home/heroStyles";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
-import { PRIMARY_NAV, SIGN_IN_URL, SIGN_UP_URL } from "@/components/marketing/site";
+import { SiteShell } from "@/components/marketing/SiteShell";
+import { SIGN_IN_URL, SIGN_UP_URL } from "@/components/marketing/site";
 
 // The marketing site uses the app's neutral chrome: white in light mode, near-black in dark mode.
 export const viewport: Viewport = {
@@ -14,15 +15,8 @@ export const viewport: Viewport = {
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mk-root flex min-h-dvh flex-col bg-canvas text-ink">
-      <a href="#main" className="mk-skip sr-only-focusable">
-        Skip to content
-      </a>
-      <SiteHeader nav={PRIMARY_NAV} signInUrl={SIGN_IN_URL} signUpUrl={SIGN_UP_URL} />
-      <main id="main" tabIndex={-1} className="flex-1 outline-none">
-        {children}
-      </main>
-      <SiteFooter />
-    </div>
+    <SiteShell signInUrl={SIGN_IN_URL} signUpUrl={SIGN_UP_URL} homeAmbient={heroGlow(HERO_STYLES[0]!)} footer={<SiteFooter />}>
+      {children}
+    </SiteShell>
   );
 }

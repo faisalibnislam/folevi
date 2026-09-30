@@ -79,4 +79,17 @@ describe("Insert panel blocks in the editor", () => {
     await vi.waitFor(() => expect(editor.view.dom.querySelector(".fb-mermaid-error")?.textContent).toContain("Couldn’t draw this diagram"));
     editor.destroy();
   });
+
+  test("audio recordings become valid canonical blocks, and a recording without its file is rejected", () => {
+    const editor = makeEditor();
+    editor.commands.setTextSelection(3);
+    insertBlockAfterCurrent(editor, "audio", { fileId: "01JAUDIOFILE00000000000001", name: "Recording 2026-09-30 21.05.webm", size: 48_213, mimeType: "audio/webm", duration: 12.4 });
+    const block = canonical(editor).find((b) => b.type === "audio")!;
+    expect(block.props).toEqual({ fileId: "01JAUDIOFILE00000000000001", name: "Recording 2026-09-30 21.05.webm", size: 48_213, mimeType: "audio/webm", duration: 12.4 });
+    expect(validateWireBlock(block)).toEqual([]);
+    expect(validateWireBlock({ ...block, props: { ...block.props, fileId: "" } }).map((i) => i.path)).toContain("props.fileId");
+    expect(validateWireBlock({ ...block, props: { ...block.props, mimeType: "text/html" } }).map((i) => i.path)).toContain("props.mimeType");
+    expect(validateWireBlock({ ...block, props: { ...block.props, duration: -1 } }).map((i) => i.path)).toContain("props.duration");
+    editor.destroy();
+  });
 });

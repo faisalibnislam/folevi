@@ -52,7 +52,7 @@ const statuses: Array<[string, ReactNode]> = [
   ["Offline", "No connection. Edits are stored on this device, with a count of how many are waiting."],
   ["Syncing", "You’ve reconnected; Folevi is fetching changes from other devices and sending yours."],
   ["Conflict", "The same block was changed in two places. Folevi keeps both versions, throws nothing away and shows you the conflict so you can decide."],
-  ["Error", "A change couldn’t be applied, or syncing failed repeatedly. Open the status for details and a retry button."],
+  ["Not saved", "A change couldn’t be applied, or syncing failed repeatedly. Open the status for details and a retry button."],
 ];
 
 function Table({ label, head, rows }: { label: string; head: [string, string]; rows: Array<[string, ReactNode]> }) {
@@ -209,7 +209,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "sync-and-offline",
     title: "Sync and offline",
     nav: "Sync and offline",
-    description: "How offline editing works in Folevi, what the Saved, Saving, Offline, Syncing, Conflict and Error statuses mean, and how version snapshots work.",
+    description: "How offline editing works in Folevi, what the Saved, Saving, Offline, Syncing, Conflict and Not saved statuses mean, and how version snapshots work.",
     legacyAnchor: "sync",
     published: "2026-09-25",
     updated: "2026-09-30",

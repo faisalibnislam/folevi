@@ -8,7 +8,7 @@ const marketingHost = new URL(MARKETING_URL).host;
 const appHost = new URL(APP_URL).host;
 
 // Paths that only exist on the marketing site.
-const MARKETING_ONLY = /^\/($|mac$|mac\/|features|template-gallery|security|pricing|changelog|privacy|terms|docs|status|support)/;
+const MARKETING_ONLY = /^\/($|mac$|mac\/|features|template-gallery|security|pricing|changelog|privacy|terms|docs|status|support|compare|blog)/;
 // Paths that only exist on the product host (app + admin + auth + share pages).
 const APP_ONLY =
   /^\/(documents|notes|d\/|tasks|calendar|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|admin|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/)/;

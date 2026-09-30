@@ -96,7 +96,7 @@ export function faqLd(path: string, faqs: FaqItem[]): Record<string, unknown> {
   };
 }
 
-/** Article or TechArticle (docs, changelog entries). Dates are YYYY-MM-DD. */
+/** Article, TechArticle or BlogPosting (docs, changelog entries, blog posts). Dates are YYYY-MM-DD. */
 export function articleLd({
   type = "TechArticle",
   headline,
@@ -105,8 +105,10 @@ export function articleLd({
   published,
   modified,
   image,
+  authorName,
+  keywords,
 }: {
-  type?: "Article" | "TechArticle";
+  type?: "Article" | "TechArticle" | "BlogPosting";
   headline: string;
   description: string;
   path: string;
@@ -114,6 +116,9 @@ export function articleLd({
   modified?: string;
   /** Path of the article's Open Graph image. */
   image?: string;
+  /** A byline other than the company (still an organization, e.g. "The Folevi team"). */
+  authorName?: string;
+  keywords?: string[];
 }): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
@@ -126,7 +131,8 @@ export function articleLd({
     dateModified: modified ?? published,
     inLanguage: "en",
     ...(image ? { image: absoluteUrl(image) } : {}),
-    author: publisher(),
+    ...(keywords?.length ? { keywords: keywords.join(", ") } : {}),
+    author: authorName ? { "@type": "Organization", name: authorName, url: absoluteUrl("/") } : publisher(),
     publisher: publisher(),
   };
 }

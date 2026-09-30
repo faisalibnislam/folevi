@@ -21,7 +21,7 @@ test("every sitemap URL answers 200 with a unique title, a canonical, a descript
   const lastmods = [...xml.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1]!);
   expect(urls.length).toBeGreaterThan(50);
   expect(lastmods).toHaveLength(urls.length);
-  for (const path of ["/features", "/features/offline-notes", "/template-gallery", "/template-gallery/meeting-notes", "/docs", "/docs/sync-and-offline"]) {
+  for (const path of ["/features", "/features/offline-notes", "/template-gallery", "/template-gallery/meeting-notes", "/docs", "/docs/sync-and-offline", "/compare", "/compare/notion", "/blog", "/blog/how-offline-first-notes-work"]) {
     expect(urls.map((u) => new URL(u).pathname)).toContain(path);
   }
   expect(urls.some((u) => new URL(u).pathname.startsWith("/templates"))).toBe(false);
@@ -79,7 +79,7 @@ test("robots.txt keeps /templates disallowed and leaves the new pages open", asy
   // Preview and local builds disallow everything; production lists the app's paths.
   if (disallowed.includes("/")) return;
   expect(disallowed).toContain("/templates");
-  for (const path of ["/template-gallery/meeting-notes", "/features/tasks", "/docs/getting-started"]) {
+  for (const path of ["/template-gallery/meeting-notes", "/features/tasks", "/docs/getting-started", "/compare/notion", "/blog", "/blog/rss.xml"]) {
     expect(disallowed.filter((rule) => path.startsWith(rule)), path).toEqual([]);
   }
   expect(robots).toContain("sitemap.xml");
@@ -102,6 +102,11 @@ const PAGES = [
   // Pages that gained links to the new ones.
   { path: "/", h1: "A quieter place for ideas that keep growing." },
   { path: "/pricing", h1: "Start free. Pay for room, or for AI." },
+  // Comparison pages and the blog.
+  { path: "/compare", h1: "How Folevi compares." },
+  { path: "/compare/notion", h1: "Folevi vs Notion" },
+  { path: "/blog", h1: "Notes from the Folevi team." },
+  { path: "/blog/how-offline-first-notes-work", h1: "How offline-first notes work in Folevi" },
 ];
 
 for (const scheme of ["light", "dark"] as const) {
@@ -152,4 +157,66 @@ test("a template page links to sign-up with the template's key", async ({ page }
   // The preview shows the template's real blocks.
   await expect(page.getByRole("heading", { name: "Look back" })).toBeVisible();
   await expect(page.getByText("Empty the Tasks inbox")).toBeVisible();
+});
+
+test("a comparison page has a table with a value per product, sources and FAQ data", async ({ page }) => {
+  const html = await (await page.request.get(`${SITE}/compare/notion`)).text();
+  expect(html).toContain('"FAQPage"');
+  expect(html).toContain('"BreadcrumbList"');
+  await page.goto(`${SITE}/compare/notion`);
+  const table = page.getByRole("region", { name: "Folevi and Notion compared" }).getByRole("table");
+  await expect(table.getByRole("columnheader", { name: "Folevi" })).toBeVisible();
+  await expect(table.getByRole("columnheader", { name: "Notion" })).toBeVisible();
+  const rows = table.locator("tbody tr");
+  expect(await rows.count()).toBeGreaterThanOrEqual(10);
+  // Every row has a plain value in both product columns, and Folevi's platforms are stated plainly.
+  for (const row of await rows.all()) {
+    for (const cell of await row.getByRole("cell").all()) expect((await cell.innerText()).trim().length).toBeGreaterThan(2);
+  }
+  await expect(table.getByRole("row", { name: /^Apps/ })).toContainText("No iOS");
+  // Sources: official links, each with the day it was checked, and the disclaimer.
+  const sources = page.locator("ol li[id^='source-'] a");
+  expect(await sources.count()).toBeGreaterThanOrEqual(5);
+  for (const href of await sources.evaluateAll((links) => links.map((a) => (a as HTMLAnchorElement).href))) expect(href).toMatch(/^https:\/\/(www\.)?notion\.com\//);
+  await expect(page.getByText("may have changed", { exact: false })).toBeVisible();
+  await expect(page.getByText("Notion is a trademark of its owner.", { exact: false })).toBeVisible();
+});
+
+test("the blog lists posts newest first, each post is a BlogPosting, and the RSS feed lists them", async ({ page }) => {
+  const post = await (await page.request.get(`${SITE}/blog/what-an-ai-credit-is`)).text();
+  expect(post).toContain('"BlogPosting"');
+  expect(post).toContain('"The Folevi team"');
+  expect(post).toMatch(/<link rel="canonical" href="[^"]+\/blog\/what-an-ai-credit-is"/);
+
+  const res = await page.request.get(`${SITE}/blog/rss.xml`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("xml");
+  const xml = await res.text();
+  await page.goto(`${SITE}/blog`);
+  const feed = await page.evaluate((text) => {
+    const doc = new DOMParser().parseFromString(text, "application/xml");
+    if (doc.querySelector("parsererror")) return null;
+    return {
+      version: doc.documentElement.getAttribute("version"),
+      title: doc.querySelector("channel > title")?.textContent,
+      items: [...doc.querySelectorAll("item")].map((item) => ({
+        link: item.querySelector("link")?.textContent ?? "",
+        guid: item.querySelector("guid")?.textContent ?? "",
+        pubDate: item.querySelector("pubDate")?.textContent ?? "",
+        title: item.querySelector("title")?.textContent ?? "",
+      })),
+    };
+  }, xml);
+  expect(feed).not.toBeNull();
+  expect(feed!.version).toBe("2.0");
+  expect(feed!.items).toHaveLength(5);
+  for (const item of feed!.items) {
+    expect(item.link).toMatch(/^https?:\/\/[^/]+\/blog\/[a-z0-9-]+$/);
+    expect(item.guid).toBe(item.link);
+    expect(Number.isNaN(Date.parse(item.pubDate))).toBe(false);
+  }
+  // The index shows the same posts, and links the feed.
+  const titles = await page.locator("main ol h2").allInnerTexts();
+  expect(titles).toEqual(feed!.items.map((i) => i.title));
+  expect(await page.locator('link[rel="alternate"][type="application/rss+xml"]').getAttribute("href")).toMatch(/\/blog\/rss\.xml$/);
 });

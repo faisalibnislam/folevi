@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { COVER_ART } from "@/lib/cover";
 import { CREDIT_PACKS, GB, MONTHLY_CREDITS, PACK_VALID_MONTHS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
 import { BUILT_IN_TEMPLATES } from "@/lib/templates";
+import { FOLDER_COLORS } from "@/lib/folderColors";
 import { Kbd } from "../ui";
 
 /*
@@ -12,7 +13,7 @@ import { Kbd } from "../ui";
  * text. FAQ answers are plain sentences because they also feed the FAQPage structured data.
  */
 
-export type FeatureVisual = "ai" | "offline" | "tasks" | "linked" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
+export type FeatureVisual = "ai" | "offline" | "tasks" | "linked" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
 
 export type Feature = {
   slug: string;
@@ -42,6 +43,7 @@ const credits = (n: number) => n.toLocaleString("en-US");
 const gb = (bytes: number) => `${bytes / GB} GB`;
 const TEMPLATE_COUNT = BUILT_IN_TEMPLATES.length;
 const STYLE_COUNT = COVER_ART.length;
+const FOLDER_COLOR_COUNT = FOLDER_COLORS.length;
 /** How long page versions are kept (the same on every plan today). */
 const VERSION_DAYS = PLAN_CATALOG.personal_free.entitlements.versionHistoryDays;
 
@@ -343,7 +345,7 @@ export const FEATURES: Feature[] = [
       {
         id: "organize",
         title: "Drafts, folders and tags",
-        body: <p>New notes wait in Drafts until you file them. Folders show the notes inside them, and pages can also be tagged and starred. Archive keeps finished pages out of the way, and Trash keeps deleted pages for 30 days.</p>,
+        body: <p>New notes wait in Drafts until you file them. <Link href="/features/folders">Folders</Link> show the notes inside them, and pages can also be tagged and starred. Archive keeps finished pages out of the way, and Trash keeps deleted pages for 30 days.</p>,
       },
     ],
     faq: [
@@ -353,6 +355,106 @@ export const FEATURES: Feature[] = [
       { q: "What does search look through?", a: "Titles, text, code, captions, table cells, attachment names and tags, in the space you’re in. It only returns pages you can open." },
     ],
     related: ["templates", "tasks", "flowcharts"],
+  },
+  {
+    // components/app/Sidebar.tsx, FolderMenu.tsx, views/OrganizeIndex.tsx, DocumentBrowser.tsx,
+    // MoveToFolderDialog.tsx, HomeDashboard.tsx and convex/organization.ts.
+    slug: "folders",
+    name: "Folders",
+    summary: "Coloured folders for your notes, and Drafts for the ones you haven’t filed.",
+    title: "Note folders: organize notes in coloured folders",
+    description: "Organize Folevi notes in coloured folders. New notes wait in Drafts until you file them. Move a note from its menu or drag it onto a folder, and find recent folders on Home.",
+    h1: "Organize your notes in coloured folders",
+    intro:
+      "Make a folder for each project, client or trip and file your notes in it. Every folder has a colour and a page that shows the notes inside. Notes you haven’t filed yet wait in Drafts.",
+    plans: "Every plan, including Free.",
+    updated: "2026-09-30",
+    art: "art-30",
+    visual: "folders",
+    docs: { label: "Getting started", href: "/docs/getting-started" },
+    sections: [
+      {
+        id: "make",
+        title: "Make a folder",
+        body: (
+          <p>
+            Press the new folder button next to Folders in the sidebar, or <strong>New folder</strong> on the Folders page, and give it a name. The sidebar lists your first five folders. The Folders page has all of them, with search, sorting and a grid or list view.
+          </p>
+        ),
+      },
+      {
+        id: "colours",
+        title: "A colour for each folder",
+        body: (
+          <p>
+            Every new folder gets a colour. To pick another, open the folder’s menu and choose <strong>Change color</strong>. The {FOLDER_COLOR_COUNT} colours are the page colours of the note styles, and the folder shows its colour in the sidebar, on note cards and on Home.
+          </p>
+        ),
+      },
+      {
+        id: "drafts",
+        title: "Drafts",
+        body: (
+          <p>
+            A new note starts in <strong>Drafts</strong>, unless you create it on a folder’s page, where it starts in that folder. Each note card shows its folder, or Draft if it isn’t filed yet, and the sidebar shows how many notes are in Drafts.
+          </p>
+        ),
+      },
+      {
+        id: "move",
+        title: "Move notes into a folder",
+        body: (
+          <>
+            <ul>
+              <li>
+                Choose <strong>Move to folder</strong> from a note’s menu, then pick a folder or type to find one.
+              </li>
+              <li>Drag a note from Home or a list onto a folder in the sidebar. Drop it on Drafts to take it out of its folder.</li>
+              <li>Select several notes and move them together.</li>
+              <li>
+                In a note, the <strong>Location</strong> menu in the Info panel sets its folder.
+              </li>
+            </ul>
+            <p>After a move from a menu or by dragging, the message at the bottom of the screen has Undo.</p>
+          </>
+        ),
+      },
+      {
+        id: "folder-page",
+        title: "A folder’s page",
+        body: (
+          <p>
+            Open a folder to see its notes as cards, compact cards or a list. Sort them by last edit, creation date or title, or choose Manual order and drag them into your own order. <strong>New note</strong> on a folder’s page starts the note in that folder.
+          </p>
+        ),
+      },
+      {
+        id: "home",
+        title: "Recent folders on Home",
+        body: <p>Home lists your folders by their latest edit. Each one is drawn as a folder with its newest notes showing through the cover, the number of notes inside and when it last changed.</p>,
+      },
+      {
+        id: "ask",
+        title: "Ask AI about a folder",
+        body: (
+          <p>
+            Choose <strong>Ask AI about this folder</strong> from the folder’s menu and the answer comes from that folder’s notes only. It’s there on plans with AI while the AI Assistant is on. See the <Link href="/features/ai-notes">AI Assistant</Link>.
+          </p>
+        ),
+      },
+      {
+        id: "menu",
+        title: "Rename, link and delete",
+        body: <p>The folder’s menu also renames it, copies a link to it and deletes it. Deleting a folder keeps its notes: they move to Drafts. In a team workspace, owners and admins can invite people from the same menu.</p>,
+      },
+    ],
+    faq: [
+      { q: "Can a note be in more than one folder?", a: "No. A note is in one folder or in Drafts. Tags group notes across folders." },
+      { q: "What happens to the notes when I delete a folder?", a: "They stay. The folder is removed and its notes move to Drafts." },
+      { q: "Can I change a folder’s colour?", a: `Yes. Open the folder’s menu and choose Change color. There are ${FOLDER_COLOR_COUNT} colours to pick from.` },
+      { q: "Are folders on the Free plan?", a: "Yes. Folders work the same way on every plan." },
+    ],
+    related: ["linked-notes", "note-styles", "ai-notes"],
   },
   {
     slug: "flowcharts",

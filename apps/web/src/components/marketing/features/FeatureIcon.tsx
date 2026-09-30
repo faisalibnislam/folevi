@@ -1,10 +1,11 @@
-import { CheckSquare, FileDown, LayoutTemplate, Link2, Network, Paintbrush, PenTool, Share2, ShieldCheck, Users, WifiOff, type LucideIcon } from "lucide-react";
+import { CheckSquare, FileDown, Folder, LayoutTemplate, Link2, Network, Paintbrush, PenTool, Share2, ShieldCheck, Users, WifiOff, type LucideIcon } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 
 const ICONS: Record<string, LucideIcon> = {
   "offline-notes": WifiOff,
   tasks: CheckSquare,
   "linked-notes": Link2,
+  folders: Folder,
   flowcharts: Network,
   whiteboard: PenTool,
   "note-styles": Paintbrush,

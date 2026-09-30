@@ -1,6 +1,7 @@
 import { AiSection } from "@/components/marketing/home/AiSection";
 import { Chapters } from "@/components/marketing/home/Chapters";
 import { FinalCta, PricingSection, SecuritySection } from "@/components/marketing/home/Closing";
+import { Folders } from "@/components/marketing/home/Folders";
 import { Hero, ProofStrip } from "@/components/marketing/home/Hero";
 import { MacSection } from "@/components/marketing/home/MacSection";
 import { NoteStyles } from "@/components/marketing/home/NoteStyles";
@@ -22,6 +23,7 @@ export default function HomePage() {
       <ProofStrip />
       <NoteStyles />
       <Chapters />
+      <Folders />
       <AiSection />
       <MacSection />
       <SecuritySection />

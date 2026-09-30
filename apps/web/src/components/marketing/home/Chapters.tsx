@@ -20,7 +20,8 @@ function Chapter({
   reverse = false,
 }: {
   id: string;
-  number: string;
+  /** Shown before the name when the chapters are a numbered series. */
+  number?: string;
   name: string;
   /** The note style that lights the stage, as a note's style lights the app's canvas. */
   art: string;
@@ -42,7 +43,8 @@ function Chapter({
       >
         <div className={cx("max-w-[460px]", reverse && "lg:order-2")}>
           <p className="mk-caps">
-            <span className="tabular-nums">{number}</span> · {name}
+            {number ? <span className="tabular-nums">{number} · </span> : null}
+            {name}
           </p>
           <h3 id={`${id}-title`} className="mk-display mt-3 text-[32px] leading-[1.08] sm:text-[40px]">
             {title}
@@ -65,9 +67,38 @@ function TryIt() {
   return <span className="mr-1 font-semibold text-(--color-heading)">Try it:</span>;
 }
 
+/** The home page's editor chapter: finding things again, with a working search and task list. */
 export function Chapters() {
   return (
     <section id="chapters" aria-label="Writing in Folevi" className={cx(container, "mk-stack scroll-mt-20")}>
+      <Chapter
+        id="return"
+        name="Return"
+        art="art-41"
+        title="Find it again."
+        hint={
+          <>
+            <TryIt /> search for <span className="font-medium text-ink">labels</span> or{" "}
+            <span className="font-medium text-ink">printer</span>, then tick off a task
+          </>
+        }
+        demo={<ReturnDemo />}
+        more={{ label: "Tasks in your notes", href: "/features/tasks" }}
+      >
+        <p>
+          <Kbd>⌘K</Kbd> searches titles and text across your workspace. Tasks with a date collect in Today, so the next step is
+          there when you open Folevi.
+        </p>
+        <p>The calendar shows the rest of the week, and Quick Add puts a new task in your Inbox page.</p>
+      </Chapter>
+    </section>
+  );
+}
+
+/** The features page's working editor demos: moving and nesting blocks, and linking pages. */
+export function EditorDemos() {
+  return (
+    <section id="try-the-editor" aria-label="Try the editor" className={cx(container, "mk-stack scroll-mt-20")}>
       <Chapter
         id="shape"
         number="01"
@@ -108,27 +139,6 @@ export function Chapters() {
         <p>Sub-pages sit inside their parent page and show as a link or a card.</p>
       </Chapter>
 
-      <Chapter
-        id="return"
-        number="03"
-        name="Return"
-        art="art-41"
-        title="Find it again."
-        hint={
-          <>
-            <TryIt /> search for <span className="font-medium text-ink">labels</span> or{" "}
-            <span className="font-medium text-ink">printer</span>, then tick off a task
-          </>
-        }
-        demo={<ReturnDemo />}
-        more={{ label: "Tasks in your notes", href: "/features/tasks" }}
-      >
-        <p>
-          <Kbd>⌘K</Kbd> searches titles and text across your workspace. Tasks with a date collect in Today, so the next step is
-          there when you open Folevi.
-        </p>
-        <p>The calendar shows the rest of the week, and Quick Add puts a new task in your Inbox page.</p>
-      </Chapter>
     </section>
   );
 }

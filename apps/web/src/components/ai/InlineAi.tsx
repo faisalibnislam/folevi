@@ -1,6 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
+import { AI_LANGUAGES } from "./languages";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import {
@@ -66,7 +67,6 @@ const WRITE: Suggestion[] = [
   { id: "outline", label: "Make an outline", icon: <ListTree size={15} />, task: "outline" },
   { id: "brainstorm", label: "Brainstorm ideas", icon: <Lightbulb size={15} />, task: "brainstorm" },
 ];
-export const AI_LANGUAGES = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Dutch", "Bengali", "Hindi", "Arabic", "Chinese", "Japanese", "Korean", "Turkish", "Russian"];
 const REFINES = ["Shorter", "Longer", "Simpler", "More formal", "More casual"];
 
 const TASK_LABEL: Partial<Record<AiTask, string>> = Object.fromEntries([...EDIT, ...WRITE].filter((s) => s.task).map((s) => [s.task, s.label]));

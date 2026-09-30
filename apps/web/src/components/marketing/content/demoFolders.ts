@@ -1,7 +1,7 @@
 /*
  * The demo folders in the site's pictures of Folevi: the Folders page replica (product/FoldersPageReplica.tsx)
- * and the Move to folder replica (product/MoveToFolderReplica.tsx), so both show the same folders in the
- * same colours.
+ * and the folder cards on the home page (home/NoteStyles.tsx), so both show the same folders in the same
+ * colours.
  *
  * Folders are listed in the order they were made, which is the sidebar's order. `color` is a FOLDER_COLORS
  * id and `age` is the folder card's "last update" text. Notes are listed oldest first, so the last three are

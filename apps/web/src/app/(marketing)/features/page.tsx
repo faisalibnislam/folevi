@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FEATURES, featurePath } from "@/components/marketing/content/features";
 import { GALLERY_TEMPLATES } from "@/components/marketing/content/templates";
 import { FeatureIcon } from "@/components/marketing/features/FeatureIcon";
+import { EditorDemos } from "@/components/marketing/home/Chapters";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
@@ -52,6 +53,7 @@ export default function FeaturesPage() {
             ))}
           </ul>
         </Card>
+        <EditorDemos />
         <div className={cx(container, "grid gap-(--mk-stack-gap) md:grid-cols-2")}>
           <div className="mk-box p-6 sm:p-8">
             <h2 className="mk-h3 text-[19px]">Template gallery</h2>

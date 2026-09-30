@@ -1,8 +1,8 @@
-import { ArrowUp, Check, ChevronDown, FileText, House, Inbox, LayoutGrid, LayoutList, List, PanelLeft, PencilLine, Plus, Rows3, Search, X } from "lucide-react";
+import { Check, ChevronDown, Inbox, LayoutGrid, List, PencilLine, Rows3, Search, X } from "lucide-react";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { DEMO_DRAFT, DEMO_FOLDERS } from "../content/demoFolders";
 import { cx } from "../ui";
-import { MainSidebar, artById, artThumb } from "./Replica";
+import { ListTabs, MainSidebar, artById, artThumb } from "./Replica";
 
 /*
  * An HTML replica of the app's Move to folder dialog (components/views/MoveToFolderDialog.tsx inside
@@ -36,7 +36,7 @@ export function MoveToFolderReplica({ className }: { className?: string }) {
           sections
         />
         <div className="relative flex min-w-0 flex-1 flex-col gap-2">
-          <ViewTabs />
+          <ListTabs view="Drafts" />
           <div className="mk-app-content min-h-0 flex-1 overflow-hidden rounded-[12px] px-3 pt-3 sm:px-5 sm:pt-4">
             <div className="flex items-center gap-2.5">
               <p className="mr-auto text-[12px] text-muted">2 notes</p>
@@ -69,36 +69,6 @@ export function MoveToFolderReplica({ className }: { className?: string }) {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-/** The tab strip with the Drafts list open (a list view shows as the current tab). */
-function ViewTabs() {
-  return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[12px] px-1.5">
-      <span className="grid size-8 flex-none place-items-center text-muted md:hidden">
-        <PanelLeft size={15} />
-      </span>
-      <span className="hidden size-8 flex-none place-items-center text-muted md:grid">
-        <ArrowUp size={15} />
-      </span>
-      <span className="h-5 w-px flex-none bg-(--color-line-strong) opacity-60" />
-      <span className="mk-app-tab hidden flex-none sm:flex">
-        <House size={13} /> Home
-      </span>
-      <span className="mk-app-tab flex-none" data-on="true">
-        <LayoutList size={13} className="opacity-70" /> Drafts
-      </span>
-      <span className="mk-app-tab hidden min-w-0 flex-[0_1_170px] xl:flex">
-        <FileText size={13} className="flex-none opacity-70" />
-        <span className="truncate">Lisbon in April</span>
-      </span>
-      <span className="flex-1" />
-      <span className="mk-btn mk-btn-primary h-8 flex-none gap-1.5 px-2.5 text-[12.5px] sm:px-3">
-        <Plus size={14} />
-        <span className="hidden sm:inline">New note</span>
-      </span>
     </div>
   );
 }

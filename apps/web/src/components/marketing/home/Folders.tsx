@@ -2,13 +2,13 @@ import Link from "next/link";
 import { ArrowRight, FolderInput, House, Inbox, Palette } from "lucide-react";
 import type { ReactNode } from "react";
 import { MoveToFolderReplica } from "../product/MoveToFolderReplica";
-import { FOLDERS_SCREENSHOT, ThemedScreenshot } from "../product/Screenshot";
+import { FoldersPageReplica } from "../product/FoldersPageReplica";
 import { artById, artThumb } from "../product/Replica";
 import { SectionHeading, container } from "../ui";
 
 // What folders do in the app: components/app/Sidebar.tsx and FolderMenu.tsx, views/OrganizeIndex.tsx (the
-// Folders page), views/MoveToFolderDialog.tsx and views/HomeDashboard.tsx (Recent folders). The screenshot
-// is real (scripts/capture-folder-screenshots.ts); the Move to folder picture is an HTML replica.
+// Folders page), views/MoveToFolderDialog.tsx and views/HomeDashboard.tsx (Recent folders). Both pictures
+// are HTML replicas; the folder cards are the app's own drawing (views/FolderCardArt.tsx).
 const points: Array<{ icon: ReactNode; title: string; body: string }> = [
   {
     icon: <Inbox size={16} aria-hidden="true" />,
@@ -53,9 +53,7 @@ export function Folders() {
           className="mk-stage mt-12 p-2 sm:p-6 lg:p-8"
           style={{ ["--stage-art" as string]: artThumb(artById("art-30")) }}
         >
-          <div className="mk-shot">
-            <ThemedScreenshot shot={FOLDERS_SCREENSHOT} />
-          </div>
+          <FoldersPageReplica />
         </div>
 
         <div className="mt-14 grid items-center gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.55fr)] lg:gap-14">

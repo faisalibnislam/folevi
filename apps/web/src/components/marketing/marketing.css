@@ -374,23 +374,6 @@
   background: var(--glass-veil);
 }
 
-/* A real screenshot of the app, framed like the product pictures. It comes in a light and a dark version
- * (product/Screenshot.tsx) and the site's theme shows one; without scripting, the system setting decides. */
-.mk-shot {
-  display: block;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--color-canvas);
-  box-shadow: var(--shadow-lift);
-}
-[data-shot="dark"] { display: none; }
-:root[data-theme="dark"] [data-shot="light"] { display: none; }
-:root[data-theme="dark"] [data-shot="dark"] { display: block; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) [data-shot="light"] { display: none; }
-  :root:not([data-theme]) [data-shot="dark"] { display: block; }
-}
-
 .mk-appear { animation: mk-appear var(--motion-slow, 220ms) var(--mk-ease) both; }
 @keyframes mk-appear {
   from { opacity: 0; transform: translateY(-4px); }

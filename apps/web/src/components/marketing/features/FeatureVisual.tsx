@@ -48,7 +48,7 @@ import { SECURITY_CONTROLS } from "../home/Closing";
 import { Icon } from "../icons";
 import { DateChip, StatusPill, type SyncStatus } from "../mini";
 import { CheckMark, artById, artThumb, artVars } from "../product/Replica";
-import { FOLDERS_SCREENSHOT, ThemedScreenshot } from "../product/Screenshot";
+import { FoldersPageReplica } from "../product/FoldersPageReplica";
 import { StyleShowcase } from "../product/StyleShowcase";
 import { TemplateSheet } from "../templates/TemplateSheet";
 import { cx } from "../ui";
@@ -63,12 +63,10 @@ export function FeatureVisual({ visual, art }: { visual: VisualKey; art: string 
   if (visual === "styles") return <StyleShowcase />;
   if (visual === "security") return <SecurityGrid />;
   if (visual === "folders") {
-    // A real screenshot of the app (the home page's Folders section uses the same one).
+    // The Folders page replica, as in the home page's Folders section.
     return (
       <div className="mk-stage p-2 sm:p-6 lg:p-8" style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
-        <div className="mk-shot">
-          <ThemedScreenshot shot={FOLDERS_SCREENSHOT} />
-        </div>
+        <FoldersPageReplica />
       </div>
     );
   }

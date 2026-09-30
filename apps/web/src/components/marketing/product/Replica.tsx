@@ -12,10 +12,12 @@ import {
   Ellipsis,
   FileText,
   Files,
+  Folder,
   FolderPlus,
   House,
   Inbox,
   Info,
+  LayoutList,
   LayoutTemplate,
   List,
   MessageSquare,
@@ -265,7 +267,7 @@ export function MainSidebar({
       {sections ? (
         <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[10.5px]">
           <ChevronDown size={11} />
-          <span className="flex-1">Folders</span>
+          <span className={cx("-my-1 flex-1 rounded-[6px] px-1.5 py-1", activeLabel === "Folders" && "bg-(--glass-hover) text-(--color-heading)")}>Folders</span>
           <FolderPlus size={13} className="text-muted" />
         </p>
       ) : (
@@ -322,6 +324,36 @@ export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "w
       <span className="mk-app-tab hidden min-w-0 flex-[0_1_180px] lg:flex">
         <FileText size={13} className="flex-none opacity-70" />
         <span className="truncate">Reading list</span>
+      </span>
+      <span className="flex-1" />
+      <span className="mk-btn mk-btn-primary h-8 flex-none gap-1.5 px-2.5 text-[12.5px] sm:px-3">
+        <Plus size={14} />
+        <span className="hidden sm:inline">New note</span>
+      </span>
+    </div>
+  );
+}
+
+/** The tab strip while a list is open (Drafts, or the Folders page): a list view shows as the current tab. */
+export function ListTabs({ view }: { view: "Drafts" | "Folders" }) {
+  return (
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[12px] px-1.5">
+      <span className="grid size-8 flex-none place-items-center text-muted md:hidden">
+        <PanelLeft size={15} />
+      </span>
+      <span className="hidden size-8 flex-none place-items-center text-muted md:grid">
+        <ArrowUp size={15} />
+      </span>
+      <span className="h-5 w-px flex-none bg-(--color-line-strong) opacity-60" />
+      <span className="mk-app-tab hidden flex-none sm:flex">
+        <House size={13} /> Home
+      </span>
+      <span className="mk-app-tab flex-none" data-on="true">
+        {view === "Folders" ? <Folder size={13} className="opacity-70" /> : <LayoutList size={13} className="opacity-70" />} {view}
+      </span>
+      <span className="mk-app-tab hidden min-w-0 flex-[0_1_170px] xl:flex">
+        <FileText size={13} className="flex-none opacity-70" />
+        <span className="truncate">Lisbon in April</span>
       </span>
       <span className="flex-1" />
       <span className="mk-btn mk-btn-primary h-8 flex-none gap-1.5 px-2.5 text-[12.5px] sm:px-3">

@@ -4,9 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useId, useMemo, useState } from "react";
 import { FolderPlus, Hash, LayoutGrid, MoreHorizontal, Rows3, Search, X } from "lucide-react";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { folderHex } from "@/lib/folderColors";
-import type { DocumentCover } from "@folevi/editor-schema";
-import { coverArtOf, coverArtThumbUrl, styleColorsOf } from "@/lib/cover";
+import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, type FolderPreview } from "./FolderCardArt";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -66,7 +64,7 @@ export interface FolderSummary {
   updatedAt: number;
   documentCount: number;
   /** Up to three of the notes inside (most recently edited first), drawn faintly through the cover. */
-  previews?: { cover: DocumentCover; title?: string; excerpt?: string }[];
+  previews?: FolderPreview[];
 }
 
 /** "23 mins ago" / "1 hour ago" / "Sep 10": the short age shown on folder covers. */
@@ -82,96 +80,26 @@ function shortAge(t: number): string {
 }
 
 /**
- * A folder card drawn as a real folder (portrait): a lighter back cover offset behind, paper sheets along
- * the right edge, the front cover with its stepped top-right tab, and a strap with a button. The page
- * count sits in a badge top-left, the last update top-right, and the name bottom-left in large serif
- * (up to three lines, then "…"). Everything scales with the card width (container query units).
- */
-/** One note inside a folder, drawn small: its page colour, style image down the spine, title and opening text. */
-function FolderNote({ note, index }: { note: { cover: DocumentCover; title?: string; excerpt?: string }; index: number }) {
-  const colors = styleColorsOf(note.cover);
-  const art = coverArtOf(note.cover);
-  const place = [
-    "left-[9%] top-[8%] -rotate-[4deg] group-hover:-translate-y-[5%]",
-    "left-[14%] top-[10%] rotate-[3deg] group-hover:-translate-y-[3.5%]",
-    "left-[11%] top-[12.5%] -rotate-[1deg] group-hover:-translate-y-[2%]",
-  ][index]!;
-  const ink = colors?.ink ?? "#1c1c1f";
-  return (
-    <div
-      aria-hidden
-      className={`absolute h-[70%] w-[78%] overflow-hidden rounded-[2.4cqw] shadow-[0_1px_2px_rgb(0_0_0/0.12),0_6px_14px_-6px_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${place}`}
-      style={{ background: colors?.paper ?? "#ffffff" }}
-    >
-      {art ? <div className="absolute inset-y-0 left-0 w-[7%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} /> : null}
-      <div className="absolute inset-0 left-[13%] right-[7%] top-[7%] overflow-hidden">
-        <p className="line-clamp-2 font-serif text-[5.4cqw] font-medium leading-[1.2]" style={{ color: ink }}>
-          {note.title || "Untitled"}
-        </p>
-        <p className="mt-[2cqw] whitespace-pre-line break-words text-[3.2cqw] leading-[1.45]" style={{ color: `color-mix(in oklab, ${ink} 82%, ${colors?.paper ?? "#ffffff"})` }}>
-          {note.excerpt || ""}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * A folder card: a tinted back with a tab, up to three of the notes inside (faint and soft, fanned), and a
- * frosted-glass front cover in the folder's colour that the notes show through. Count, last update and name
- * sit on the front. On hover the notes rise a little out of the folder.
+ * A folder card drawn as a real folder (portrait): the drawing (FolderCardArt, shared with the site's
+ * replica) inside a link to the folder, with the folder's menu over the cover on hover. The page count sits
+ * top-left of the front cover, the last update top-right, and the name bottom-left in large serif.
  */
 export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; parentName?: string }) {
-  const base = folderHex(f.color);
-  const backTone = `color-mix(in oklab, ${base} 80%, #8e94a3)`;
   const label = `${f.name}${parentName ? `, in ${parentName}` : ""}, ${pages(f.documentCount)}, updated ${formatRelative(f.updatedAt)}`;
-  const previews = (f.previews ?? []).slice(0, 3);
   return (
-    <div className="group relative aspect-[820/912] [container-type:inline-size]">
+    <div className={FOLDER_CARD_BOX}>
       <AppLink
         href={`/folders/${f.id}`}
         aria-label={label}
         title={parentName ? `${f.name} (in ${parentName})` : f.name}
-        className="absolute inset-0 block rounded-[4cqw] outline-none transition-transform duration-200 ease-[var(--ease-folio)] [filter:drop-shadow(0_8px_14px_rgb(20_20_30/0.1))_drop-shadow(0_1px_2px_rgb(20_20_30/0.06))] hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas"
+        className={`${FOLDER_CARD_FRAME} focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas`}
       >
-        {/* back, with its tab */}
-        <div aria-hidden className="absolute left-0 top-0 h-[9%] w-[44%] rounded-t-[3.5cqw] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone }} />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[5%] rounded-[4cqw] rounded-tl-none shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone }} />
-        {/* the notes inside, faint and soft */}
-        <div aria-hidden className="absolute inset-0">
-          {previews.length ? (
-            [...previews].reverse().map((p, i) => <FolderNote key={i} note={p} index={previews.length - 1 - i} />)
-          ) : (
-            <div className="absolute left-[12%] top-[12%] h-[60%] w-[76%] rounded-[2.4cqw] bg-white/60" />
-          )}
-        </div>
-        {/* frosted front cover */}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 top-[46%] rounded-[4cqw] shadow-[inset_0_1px_0_rgb(255_255_255/0.75),inset_0_0_0_1px_rgb(0_0_0/0.08),0_-6px_16px_-10px_rgb(0_0_0/0.25)] [-webkit-backdrop-filter:blur(9px)_saturate(1.3)] [backdrop-filter:blur(9px)_saturate(1.3)]"
-          style={{ background: `linear-gradient(180deg, color-mix(in oklab, ${base} 62%, transparent), color-mix(in oklab, ${base} 86%, transparent))` }}
-        />
-        {/* page count */}
-        <span
-          aria-hidden
-          className="absolute left-[7%] top-[51%] inline-flex items-center rounded-[1.4cqw] px-[2.2cqw] py-[1.3cqw] font-serif text-[clamp(12px,5.4cqw,22px)] font-semibold leading-none tabular-nums text-[#111114]"
-          style={{ background: `color-mix(in oklab, ${base} 55%, #8e94a3)` }}
-        >
-          {f.documentCount.toLocaleString()}
-        </span>
-        {/* last update */}
-        <span aria-hidden className="absolute right-[7%] top-[51.6%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,5.6cqw,24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
-          {shortAge(f.updatedAt)}
-        </span>
-        {/* name */}
-        <span aria-hidden className="absolute bottom-[6.2%] left-[7%] right-[7%] line-clamp-2 break-words font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
-          {f.name}
-        </span>
+        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={shortAge(f.updatedAt)} previews={f.previews} />
       </AppLink>
       <FolderMenu
         folder={f}
         trigger={<MoreHorizontal size={16} aria-hidden />}
-        className="absolute left-1/2 top-[70%] z-10 -translate-x-1/2 -translate-y-1/2 rounded-[6px] bg-white/90 text-[#17171a] opacity-0 pointer-events-none shadow-[0_1px_3px_rgb(0_0_0/0.18)] transition-opacity focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100 [&>div>button]:text-[#17171a]/75 [&>div>button:hover]:text-[#17171a]"
+        className={`${FOLDER_CARD_MENU} pointer-events-none focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto pointer-coarse:pointer-events-auto [&>div>button]:text-[#17171a]/75 [&>div>button:hover]:text-[#17171a]`}
       />
     </div>
   );

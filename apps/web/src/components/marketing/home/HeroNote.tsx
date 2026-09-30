@@ -2,14 +2,14 @@
 
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { preload } from "react-dom";
-import type { CoverArt } from "@/lib/cover";
+import { paletteVars, type CoverArt } from "@/lib/cover";
 import { artVars } from "../product/Replica";
 import { useSiteAmbient } from "../SiteShell";
 import { cx } from "../ui";
 import { HERO_STYLES, heroBand as band, heroBandSet as bandSet, heroGlow as glow } from "./heroStyles";
 
-/** The cover band is the sheet's width: 960 px at most, else the content panel (beside the sidebar from 1024 px) less its gutters. */
-const BAND_SIZES = "(min-width: 1320px) 960px, (min-width: 1024px) calc(100vw - 336px), calc(100vw - 32px)";
+/** The cover band is the sheet's width: 888 px at most, else the content panel (beside the sidebar from 1024 px) less its gutters. */
+const BAND_SIZES = "(min-width: 1250px) 888px, (min-width: 1024px) calc(100vw - 336px), calc(100vw - 32px)";
 
 type Layer = { key: number; art: CoverArt };
 
@@ -17,9 +17,10 @@ type Layer = { key: number; art: CoverArt };
  * The home page hero, drawn as a Folevi note: the style's artwork lights the page behind it (blurred, as with
  * the app's Blur background), the sheet takes the style's paper and ink, and the title sits on the cover as
  * the app puts it (white on covers that read deep, the style's ink on light ones). Picking a style cross-fades
- * all of it, as changing a note's style does in the app.
+ * all of it, as changing a note's style does in the app. `children` is the note's body (its blocks); `actions`
+ * sit in their own card under the note, beside the style picker.
  */
-export function HeroNote({ title, chip, children }: { title: ReactNode; chip: ReactNode; children: ReactNode }) {
+export function HeroNote({ title, chip, children, actions }: { title: ReactNode; chip: ReactNode; children: ReactNode; actions: ReactNode }) {
   const [index, setIndex] = useState(0);
   // The artwork shown, newest last: a new style fades in over the one before it once its image has loaded.
   const [layers, setLayers] = useState<Layer[]>([{ key: 0, art: HERO_STYLES[0]! }]);
@@ -53,7 +54,7 @@ export function HeroNote({ title, chip, children }: { title: ReactNode; chip: Re
   };
 
   return (
-    <div className="mk-hero-stage" style={artVars(art)} data-tone={art.tone}>
+    <div className="mk-hero-stage" style={{ ...artVars(art), ...paletteVars(art) }} data-tone={art.tone}>
       <div aria-hidden="true" className="mk-hero-backdrop">
         {layers.map((layer) => (
           <FadeImage key={layer.key} src={glow(layer.art)} first={layer.key === 0} className="mk-hero-glow" />
@@ -85,37 +86,40 @@ export function HeroNote({ title, chip, children }: { title: ReactNode; chip: Re
             </h1>
           </header>
 
-          <div className="px-5 pb-8 pt-6 sm:px-16 sm:pb-12 sm:pt-7">
+          <div className="mk-hero-body">
             <p className="mk-hero-badge">{chip}</p>
             {children}
           </div>
         </article>
 
-        <div className="mk-hero-picker">
-          <p id="hero-note-style" className="text-[13.5px] text-(--color-ink-muted)">
-            Note style: <span className="font-semibold text-(--color-heading)">{art.name}</span>
-          </p>
-          <div role="radiogroup" aria-labelledby="hero-note-style" className="flex items-center gap-2">
-            {HERO_STYLES.map((style, i) => {
-              const checked = i === index;
-              return (
-                <button
-                  key={style.id}
-                  ref={(node) => {
-                    refs.current[i] = node;
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={checked}
-                  aria-label={style.name}
-                  tabIndex={checked ? 0 : -1}
-                  onClick={() => pick(i)}
-                  onKeyDown={onKey}
-                  className="mk-hero-swatch"
-                  style={{ backgroundImage: `url("${glow(style)}")` }}
-                />
-              );
-            })}
+        <div className="mk-hero-actions">
+          <div className="min-w-0">{actions}</div>
+          <div className="mk-hero-picker">
+            <p id="hero-note-style" className="text-[13.5px] text-(--color-ink-muted)">
+              Note style: <span className="font-semibold text-(--color-heading)">{art.name}</span>
+            </p>
+            <div role="radiogroup" aria-labelledby="hero-note-style" className="flex items-center gap-2">
+              {HERO_STYLES.map((style, i) => {
+                const checked = i === index;
+                return (
+                  <button
+                    key={style.id}
+                    ref={(node) => {
+                      refs.current[i] = node;
+                    }}
+                    type="button"
+                    role="radio"
+                    aria-checked={checked}
+                    aria-label={style.name}
+                    tabIndex={checked ? 0 : -1}
+                    onClick={() => pick(i)}
+                    onKeyDown={onKey}
+                    className="mk-hero-swatch"
+                    style={{ backgroundImage: `url("${glow(style)}")` }}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

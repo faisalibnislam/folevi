@@ -745,8 +745,9 @@
   filter: blur(40px) saturate(1.25);
 }
 
+/* The app's sheet: the default editor width (760 px) plus its 64 px margins. */
 .mk-hero-note {
-  max-width: 960px;
+  max-width: calc(var(--layout-editor-width-default, 760px) + 8rem);
   margin-inline: auto;
   box-shadow: var(--shadow-lift);
 }
@@ -811,6 +812,7 @@
 
 .mk-hero-badge {
   display: inline-flex;
+  font-family: var(--font-sans);
   align-items: center;
   min-height: 26px;
   padding: 0 10px;
@@ -821,12 +823,139 @@
   background: color-mix(in oklab, var(--n-hl-2) 80%, var(--n-paper));
   transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
 }
-.mk-hero-lede {
-  max-width: 58ch;
+/* The note's body: the editor's blocks (editor.css) with the note on the Serif font, in the style's
+   palette (sheetProps / paletteVars: --pal-*-l in light mode, --pal-*-d in dark mode). */
+.mk-hero-note {
+  --hp-accent: var(--pal-accent-l, var(--n-accent));
+  --hp-hl-yellow: var(--pal-hl-yellow-l, var(--n-hl-2));
+  --hp-callout-mix: 60%;
+  --hp-sunken: rgb(0 0 0 / 0.05);
+}
+:root[data-theme="dark"] .mk-hero-note {
+  --hp-accent: var(--pal-accent-d, var(--n-accent));
+  --hp-hl-yellow: var(--pal-hl-yellow-d, var(--n-hl-2));
+  --hp-callout-mix: 40%;
+  --hp-sunken: rgb(255 255 255 / 0.06);
+}
+.mk-hero-body {
+  padding: 22px 20px 28px;
   font-family: var(--font-serif);
-  font-size: clamp(18px, 1.6vw, 20.5px);
-  line-height: 1.6;
+  font-size: 16.5px;
+  line-height: 1.62;
   color: var(--n-ink);
+}
+.mk-hero-body > .mk-hero-badge { margin: 0 0 10px; }
+.mk-hb { margin: 0; padding: 3px 2px; }
+.mk-hb-h {
+  margin-top: 0.95em;
+  font-family: var(--font-serif);
+  font-size: 1.42em;
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+  color: var(--n-heading);
+}
+.mk-hb-list { margin: 2px 0 0; padding: 0; list-style: none; }
+.mk-hb-todo { display: flex; align-items: flex-start; gap: 0.55em; }
+.mk-hb-todo-text { flex: 1; min-width: 0; }
+.mk-hb-todo[data-checked="true"] .mk-hb-todo-text {
+  color: var(--n-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--n-muted) 60%, transparent);
+}
+/* The checkbox: a 24 px box with the 18 px square drawn inside it; done, it fills with the style's accent. */
+.mk-hb-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: calc(0.8em - 12px) -3px 0 -4px;
+}
+.mk-hb-check::before {
+  content: "";
+  grid-area: 1 / 1;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1.5px solid color-mix(in oklab, var(--n-ink) 48%, var(--n-paper));
+  background: color-mix(in oklab, var(--n-paper) 70%, #fff);
+  box-shadow: 0 1px 1px color-mix(in oklab, var(--n-ink) 8%, transparent);
+  transition: background var(--motion-page, 320ms) var(--mk-ease), border-color var(--motion-page, 320ms) var(--mk-ease);
+}
+:root[data-theme="dark"] .mk-hb-check::before { background: color-mix(in oklab, var(--n-paper) 88%, #fff); }
+.mk-hb-todo[data-checked="true"] .mk-hb-check::before {
+  border-color: transparent;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--hp-accent) 82%, white), var(--hp-accent));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px color-mix(in oklab, var(--hp-accent) 45%, transparent);
+}
+.mk-hb-todo[data-checked="true"] .mk-hb-check::after {
+  content: "";
+  grid-area: 1 / 1;
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border: solid var(--n-paper);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+/* The due date chip (editor.css .fb-due-chip). */
+.mk-hb-due {
+  flex: none;
+  min-height: 24px;
+  margin-top: 0.15em;
+  padding: 0 9px;
+  border-radius: 4px;
+  font: 550 12px/24px var(--font-sans);
+  color: var(--n-muted);
+  background: var(--hp-sunken);
+}
+.mk-hb-code {
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  font: 0.86em var(--font-mono);
+  color: var(--hp-accent);
+  background: color-mix(in oklab, var(--hp-accent) 6%, var(--n-paper));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--n-heading) 8%, transparent);
+}
+/* A callout in the style's key colour (the "note" tone), with the editor's default mark. */
+.mk-hb-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+  margin-top: 0.7em;
+  padding: 0.8em 1em;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--hp-hl-yellow) var(--hp-callout-mix), var(--n-paper));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 0 0 1px color-mix(in oklab, var(--n-heading) 6%, transparent);
+  transition: background-color var(--motion-page, 320ms) var(--mk-ease);
+}
+:root[data-theme="dark"] .mk-hb-callout { box-shadow: inset 0 1px 0 rgb(255 240 230 / 0.05), inset 0 0 0 1px rgb(255 240 230 / 0.06); }
+.mk-hb-callout-icon { flex: none; width: 1.4em; text-align: center; font-weight: 700; color: var(--hp-accent); }
+
+/* The actions, in their own glass card under the note, with the style picker beside them. */
+.mk-hero-actions {
+  --n-accent: var(--art-accent, var(--color-heading));
+  --n-paper: var(--art-paper, var(--color-surface));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: calc(var(--layout-editor-width-default, 760px) + 8rem);
+  margin: 16px auto 0;
+  padding: 18px 20px 20px;
+  border-radius: 14px;
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: var(--glass-edge), var(--shadow-pop);
+}
+:root[data-theme="dark"] .mk-hero-actions {
+  --n-accent: var(--art-accent-dark, var(--color-heading));
+  --n-paper: var(--art-paper-dark, var(--color-surface));
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mk-hero-actions { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 /* The call to action takes the style's accent, as the note's checkboxes and links do. */
 .mk-hero-primary {
@@ -834,32 +963,12 @@
   background: var(--n-accent);
   transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease), filter var(--motion-fast, 140ms) var(--mk-ease);
 }
-.mk-hero-secondary {
-  color: var(--n-heading);
-  background: color-mix(in oklab, var(--n-paper) 55%, #fff);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--n-ink) 16%, transparent), 0 1px 2px rgb(0 0 0 / 0.05);
-}
-.mk-hero-secondary:hover { background: color-mix(in oklab, var(--n-paper) 90%, var(--n-ink)); }
-:root[data-theme="dark"] .mk-hero-secondary { background: color-mix(in oklab, var(--n-paper) 86%, #fff); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--n-ink) 14%, transparent); }
-:root[data-theme="dark"] .mk-hero-secondary:hover { background: color-mix(in oklab, var(--n-paper) 78%, #fff); }
-
-/* The style picker floats under the note on the app's glass. */
 .mk-hero-picker {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 10px;
-  width: fit-content;
-  margin: 20px auto 0;
-  padding: 10px 14px 12px;
-  border-radius: 14px;
-  background: var(--glass-pop);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
-  box-shadow: var(--glass-edge), var(--shadow-pop);
-}
-@media (prefers-reduced-transparency: reduce) {
-  .mk-hero-picker { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  padding-top: 16px;
+  border-top: 1px solid var(--glass-border);
 }
 .mk-hero-swatch {
   width: 44px;
@@ -876,14 +985,18 @@
 @media (min-width: 640px) {
   .mk-hero-cover { min-height: 300px; padding: 96px 64px 30px; }
   .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
-  .mk-hero-picker { flex-direction: row; gap: 16px; padding: 7px 7px 7px 16px; }
-  .mk-hero-swatch { width: 34px; height: 34px; }
+  .mk-hero-body { padding: 26px 64px 44px; font-size: 17.5px; }
+  .mk-hero-swatch { width: 36px; height: 36px; }
 }
 @media (min-width: 1024px) {
   .mk-hero-cover { min-height: 340px; }
 }
+@media (min-width: 900px) {
+  .mk-hero-actions { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 20px 18px 24px; }
+  .mk-hero-picker { flex: none; padding: 0 0 0 24px; border-top: 0; border-left: 1px solid var(--glass-border); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .mk-hero-layer, .mk-hero-grain, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary { transition: none; }
+  .mk-hero-layer, .mk-hero-grain, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary, .mk-hb-check::before, .mk-hb-callout { transition: none; }
 }
 
 /* Long-form pages (docs, legal) ------------------------------------------------------------------ */

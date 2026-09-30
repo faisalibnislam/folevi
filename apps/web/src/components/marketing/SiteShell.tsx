@@ -133,7 +133,7 @@ function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: str
       </nav>
 
       {/* Where the app shows the account: signing in, and the way in for new people. */}
-      <div className="flex-none space-y-2 px-2.5 pb-3 pt-2">
+      <div className="flex-none space-y-2 px-2.5 pb-6 pt-2">
         <a href={signInUrl} className="mk-btn mk-btn-secondary h-10 w-full text-[14px]">
           <LogIn size={15} aria-hidden className="flex-none" />
           Sign in
@@ -242,7 +242,7 @@ const ICON_BTN =
  * (Home, pinned, and every page opened since, the open one forward), and Sign up where the app has New note.
  * Closing the open tab goes to the tab on its left.
  */
-function TabBar({ signUpUrl }: { signUpUrl: string }) {
+function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const [tabs, setTabs] = useSiteTabs(pathname);
@@ -330,6 +330,9 @@ function TabBar({ signUpUrl }: { signUpUrl: string }) {
         })}
       </nav>
       <span className="flex-1" />
+      <a href={signInUrl} className="mk-btn mk-btn-secondary h-8 flex-none gap-1.5 px-3 text-[13px]">
+        Sign in
+      </a>
       <a href={signUpUrl} className="mk-btn mk-btn-primary h-8 flex-none gap-1.5 px-3 text-[13px]">
         Sign up
       </a>
@@ -485,7 +488,7 @@ export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children 
 
             <div className="mk-column" inert={open}>
               <div className="hidden lg:block">
-                <TabBar signUpUrl={signUpUrl} />
+                <TabBar signInUrl={signInUrl} signUpUrl={signUpUrl} />
               </div>
               <header className="mk-rail sticky top-0 z-50 lg:hidden" data-scrolled={scrolled}>
                 <div className="flex h-16 items-center gap-2 px-4 sm:px-8">

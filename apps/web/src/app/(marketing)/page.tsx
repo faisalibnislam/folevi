@@ -19,16 +19,21 @@ export default function HomePage() {
   return (
     <>
       <JsonLd data={[organizationLd(), softwareLd()]} />
-      <Hero />
-      <ProofStrip />
-      <NoteStyles />
-      <Chapters />
-      <Folders />
-      <AiSection />
-      <MacSection />
-      <SecuritySection />
-      <PricingSection />
-      <FinalCta />
+      {/* The hero note, then every section in its own card on a soft canvas, like panels in the app. */}
+      <div className="mk-home">
+        <Hero />
+        <div className="mk-stack mk-home-stack">
+          <ProofStrip />
+          <NoteStyles />
+          <Chapters />
+          <Folders />
+          <AiSection />
+          <MacSection />
+          <SecuritySection />
+          <PricingSection />
+          <FinalCta />
+        </div>
+      </div>
     </>
   );
 }

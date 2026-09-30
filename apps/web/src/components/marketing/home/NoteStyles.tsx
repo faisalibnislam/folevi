@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { COVER_ART } from "@/lib/cover";
 import { NoteCard, artById } from "../product/Replica";
-import { SectionHeading, container, cx } from "../ui";
+import { SectionHeading, box, container, cx } from "../ui";
 
 const CARDS = [
   { art: "art-03", title: "Seed library", folder: "Projects", lines: ["Swap day is the first Saturday in April.", "Print seed labels by Friday."] },
@@ -19,8 +19,8 @@ const points = [
 
 export function NoteStyles() {
   return (
-    <section id="styles" aria-labelledby="styles-title" className="scroll-mt-20 py-16 sm:py-24">
-      <div className={container}>
+    <section id="styles" aria-labelledby="styles-title" className={cx(container, "scroll-mt-20")}>
+      <div className={box}>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
           <SectionHeading id="styles-title" eyebrow="Note styles" title="The app stays neutral. Your notes bring the colour." />
           <p className="mk-lede max-w-[52ch] lg:pb-1">

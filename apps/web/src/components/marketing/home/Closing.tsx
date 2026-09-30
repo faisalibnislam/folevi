@@ -4,7 +4,7 @@ import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
 import { SIGN_UP_URL } from "../site";
 import { PlanPicker } from "./PlanPicker";
-import { ButtonLink, SectionHeading, container } from "../ui";
+import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
 
 export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: string }> = [
   {
@@ -41,8 +41,8 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
 
 export function SecuritySection() {
   return (
-    <section id="security" aria-labelledby="security-title" className="scroll-mt-20 border-t mk-hair py-16 sm:py-24">
-      <div className={container}>
+    <section id="security" aria-labelledby="security-title" className={cx(container, "scroll-mt-20")}>
+      <div className={box}>
         <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
           <div>
             <SectionHeading
@@ -85,8 +85,8 @@ export function SecuritySection() {
 
 export function PricingSection() {
   return (
-    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 border-t mk-hair py-16 sm:py-24">
-      <div className={container}>
+    <section id="pricing" aria-labelledby="pricing-title" className={cx(container, "scroll-mt-20")}>
+      <div className={box}>
         <SectionHeading
           align="center"
           id="pricing-title"
@@ -110,24 +110,22 @@ export function PricingSection() {
 
 export function FinalCta() {
   return (
-    <section aria-labelledby="cta-title" className="pb-12 pt-4 sm:pb-20">
-      <div className={container}>
-        <div className="mk-panel px-6 py-16 text-center sm:px-10 sm:py-24">
-          <FoleviMark size={48} className="mx-auto block" />
-          <h2 id="cta-title" className="mk-display mx-auto mt-7 max-w-[16ch] text-[38px] sm:text-[56px]">
-            Start with one note.
-          </h2>
-          <p className="mk-lede mx-auto mt-5 max-w-[46ch]">
-            The Free plan has no time limit, and you can export your notes to Markdown, HTML or PDF at any time.
-          </p>
-          <div className="mt-9 flex flex-wrap justify-center gap-2.5">
-            <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
-              Start writing
-            </ButtonLink>
-            <ButtonLink href="/docs" variant="secondary" size="lg">
-              Read the docs
-            </ButtonLink>
-          </div>
+    <section aria-labelledby="cta-title" className={container}>
+      <div className="mk-box px-6 py-16 text-center sm:px-10 sm:py-24">
+        <FoleviMark size={48} className="mx-auto block" />
+        <h2 id="cta-title" className="mk-display mx-auto mt-7 max-w-[16ch] text-[38px] sm:text-[56px]">
+          Start with one note.
+        </h2>
+        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">
+          The Free plan has no time limit, and you can export your notes to Markdown, HTML or PDF at any time.
+        </p>
+        <div className="mt-9 flex flex-wrap justify-center gap-2.5">
+          <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
+            Start writing
+          </ButtonLink>
+          <ButtonLink href="/docs" variant="secondary" size="lg">
+            Read the docs
+          </ButtonLink>
         </div>
       </div>
     </section>

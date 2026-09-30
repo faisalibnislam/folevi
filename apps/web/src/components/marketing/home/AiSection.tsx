@@ -4,7 +4,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { MONTHLY_CREDITS, TIER_NAMES, TRIAL_DAYS } from "@/lib/plans";
 import { artById, artThumb } from "../product/Replica";
 import { Icon } from "../icons";
-import { Kbd, SectionHeading, container } from "../ui";
+import { Kbd, SectionHeading, box, container, cx } from "../ui";
 
 const facts = [
   <>
@@ -19,8 +19,8 @@ const facts = [
 
 export function AiSection() {
   return (
-    <section id="ai" aria-labelledby="ai-title" className="scroll-mt-20 py-16 sm:py-24">
-      <div className={container}>
+    <section id="ai" aria-labelledby="ai-title" className={cx(container, "scroll-mt-20")}>
+      <div className={box}>
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
           <div>
             <AiIcon size={32} />

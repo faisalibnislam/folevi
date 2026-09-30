@@ -4,7 +4,7 @@ import { FileDown, Paintbrush, RefreshCw, SunMoon, WifiOff, type LucideIcon } fr
 import { COVER_ART } from "@/lib/cover";
 import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { SIGN_UP_URL } from "../site";
-import { ButtonLink, container, cx } from "../ui";
+import { ButtonLink, container } from "../ui";
 import { HeroNote } from "./HeroNote";
 
 export function Hero() {
@@ -80,8 +80,8 @@ const facts: Array<{ icon: LucideIcon; label: string; href?: string }> = [
 
 export function ProofStrip() {
   return (
-    <section aria-label="What’s included" className="border-y mk-hair">
-      <ul className={cx(container, "flex flex-wrap justify-center gap-x-8 gap-y-3 py-6 sm:justify-between")}>
+    <section aria-label="What’s included" className={container}>
+      <ul className="mk-box flex flex-wrap justify-center gap-x-8 gap-y-3 px-6 py-5 sm:justify-between sm:px-10 lg:px-14">
         {facts.map(({ icon: FactIcon, label, href }) => (
           <li key={label} className="flex items-center gap-2 text-[14px] text-ink">
             <FactIcon size={16} aria-hidden="true" className="flex-none text-muted" />

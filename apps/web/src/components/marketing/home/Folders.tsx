@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { MoveToFolderReplica } from "../product/MoveToFolderReplica";
 import { FoldersPageReplica } from "../product/FoldersPageReplica";
 import { artById, artThumb } from "../product/Replica";
-import { SectionHeading, container } from "../ui";
+import { SectionHeading, box, container, cx } from "../ui";
 
 // What folders do in the app: components/app/Sidebar.tsx and FolderMenu.tsx, views/OrganizeIndex.tsx (the
 // Folders page), views/MoveToFolderDialog.tsx and views/HomeDashboard.tsx (Recent folders). Both pictures
@@ -34,8 +34,8 @@ const points: Array<{ icon: ReactNode; title: string; body: string }> = [
 
 export function Folders() {
   return (
-    <section id="folders" aria-labelledby="folders-title" className="scroll-mt-20 py-16 sm:py-24">
-      <div className={container}>
+    <section id="folders" aria-labelledby="folders-title" className={cx(container, "scroll-mt-20")}>
+      <div className={box}>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
           <SectionHeading
             id="folders-title"

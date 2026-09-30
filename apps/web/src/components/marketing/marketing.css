@@ -693,6 +693,23 @@
 }
 .mk-notecard-spine { background: var(--note-art, none) center / cover no-repeat; }
 
+/* The home page: the hero note, then each section in its own card (.mk-box) on a soft canvas. ---- */
+:root:has(.mk-root) { --mk-home-bg: #F3F3F5; --mk-stack-gap: 12px; }
+:root[data-theme="dark"]:has(.mk-root) { --mk-home-bg: var(--color-canvas); }
+@media (min-width: 640px) { :root:has(.mk-root) { --mk-stack-gap: 20px; } }
+.mk-home { background: var(--mk-home-bg); }
+.mk-stack { display: flex; flex-direction: column; gap: var(--mk-stack-gap); }
+.mk-home-stack { padding-bottom: 32px; }
+@media (min-width: 640px) { .mk-home-stack { padding-bottom: 48px; } }
+.mk-box {
+  position: relative;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -26px rgb(20 20 40 / 0.2);
+}
+:root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
+@media (min-width: 640px) { .mk-box { border-radius: 16px; } }
+
 /* ------------------------------------------------------------------------------------------------
  * The home page hero: a note in the app. Its style lights the page behind it (blurred, as the Style
  * panel's Blur background does), the sheet takes the style's paper and ink, and the title sits on the
@@ -715,17 +732,17 @@
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  background: var(--color-canvas);
+  background: var(--mk-home-bg, var(--color-canvas));
 }
 /* A soft veil so the header reads, and a fade into the page below. */
 .mk-hero-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--color-canvas) 28%, transparent) 0%, transparent 22%, transparent 72%, var(--color-canvas) 100%);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-canvas) 28%, transparent) 0%, transparent 22%, transparent 72%, var(--mk-home-bg, var(--color-canvas)) 100%);
 }
 :root[data-theme="dark"] .mk-hero-backdrop::after {
-  background: linear-gradient(180deg, rgb(16 16 17 / 0.5) 0%, rgb(16 16 17 / 0.38) 24%, rgb(16 16 17 / 0.38) 70%, var(--color-canvas) 100%);
+  background: linear-gradient(180deg, rgb(16 16 17 / 0.5) 0%, rgb(16 16 17 / 0.38) 24%, rgb(16 16 17 / 0.38) 70%, var(--mk-home-bg, var(--color-canvas)) 100%);
 }
 .mk-hero-layer {
   position: absolute;

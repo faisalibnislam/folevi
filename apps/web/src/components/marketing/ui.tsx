@@ -5,6 +5,9 @@ import { Icon, type IconName } from "./icons";
 
 export const container = "mx-auto w-full max-w-[1200px] px-4 sm:px-8";
 
+/** A home page section's card: one rounded panel on the page's soft canvas, like a panel in the app. */
+export const box = "mk-box px-5 py-9 sm:px-10 sm:py-12 lg:px-14 lg:py-14";
+
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }

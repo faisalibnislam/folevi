@@ -2,7 +2,7 @@ import { AppWindow, READING_NOTE, artById, artThumb } from "../product/Replica";
 import { Icon, type IconName } from "../icons";
 import { MacMenuBar } from "../mac/MacMenuBar";
 import { ShortcutTable } from "../mac/ShortcutTable";
-import { ButtonLink, SectionHeading, container } from "../ui";
+import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
 
 const points: Array<{ icon: IconName; title: string; body: string }> = [
   { icon: "window", title: "Separate windows", body: "Open a page in its own window with ⇧⌘N and keep two pages side by side." },
@@ -14,8 +14,8 @@ const points: Array<{ icon: IconName; title: string; body: string }> = [
 export function MacSection() {
   const art = artById("art-39");
   return (
-    <section id="mac" aria-labelledby="mac-title" className="scroll-mt-20 py-16 sm:py-24">
-      <div className={container}>
+    <section id="mac" aria-labelledby="mac-title" className={cx(container, "scroll-mt-20")}>
+      <div className={box}>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
           <SectionHeading id="mac-title" eyebrow="Folevi for Mac" title="A native Mac app, coming soon." />
           <div className="max-w-[52ch] lg:pb-1">

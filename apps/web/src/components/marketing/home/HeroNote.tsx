@@ -61,7 +61,7 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
         ))}
       </div>
 
-      <div className="relative mx-auto w-full max-w-[1024px] px-4 pb-12 pt-8 sm:px-8 sm:pb-16 sm:pt-12">
+      <div className="relative mx-auto w-full max-w-[1024px] px-4 pb-8 pt-8 sm:px-8 sm:pb-12 sm:pt-12">
         <article className="mk-note mk-hero-note">
           <header className="mk-hero-cover">
             <div aria-hidden="true" className="mk-hero-art">

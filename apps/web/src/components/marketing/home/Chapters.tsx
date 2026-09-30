@@ -6,7 +6,7 @@ import { ReturnDemo } from "../demos/ReturnDemo";
 import { ShapeDemo } from "../demos/ShapeDemo";
 import { artById, artThumb } from "../product/Replica";
 import { Icon } from "../icons";
-import { Kbd, SectionHeading, container, cx } from "../ui";
+import { Kbd, SectionHeading, box, container, cx } from "../ui";
 
 function Chapter({
   id,
@@ -34,7 +34,7 @@ function Chapter({
   reverse?: boolean;
 }) {
   return (
-    <article id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 py-12 sm:py-16">
+    <article id={id} aria-labelledby={`${id}-title`} className={cx(box, "scroll-mt-20")}>
       <div
         className={cx(
           "grid items-center gap-8 lg:gap-16",
@@ -68,101 +68,101 @@ function TryIt() {
 
 export function Chapters() {
   return (
-    <section id="chapters" aria-labelledby="chapters-title" className="scroll-mt-20 pb-8 pt-4 sm:pt-8">
-      <div className={container}>
-        <div className="grid gap-6 pb-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
+    <section id="chapters" aria-labelledby="chapters-title" className={cx(container, "mk-stack scroll-mt-20")}>
+      <div className={box}>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
           <SectionHeading id="chapters-title" eyebrow="Writing in Folevi" title="From a quick line to a page you keep." />
           <p className="mk-lede max-w-[52ch] lg:pb-1">
             Each example below is a small working copy of the editor. Type in them, drag the blocks and search the sample
             pages.
           </p>
         </div>
-
-        <Chapter
-          id="capture"
-          number="01"
-          name="Capture"
-          art="art-13"
-          title="Write first. File it later."
-          hint={
-            <>
-              <TryIt /> type <Kbd>/</Kbd> then <Kbd>↑</Kbd>
-              <Kbd>↓</Kbd> and <Kbd>↵</Kbd>
-            </>
-          }
-          demo={<CaptureDemo />}
-          more={{ label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" }}
-        >
-          <p>
-            Every line is a block. Type <span className="font-medium text-ink">/</span> to turn the line into a heading, a
-            checklist, a quote or a callout, without the mouse.
-          </p>
-          <p>New notes wait in Drafts until you move them into a folder.</p>
-        </Chapter>
-
-        <Chapter
-          id="shape"
-          number="02"
-          name="Shape"
-          art="art-50"
-          title="Move blocks and nest them."
-          reverse
-          hint={
-            <>
-              <TryIt /> drag a handle, or select a line and press <Kbd>⌥⇧↑</Kbd> <Kbd>⌥⇧↓</Kbd> to move it, <Kbd>⌥⇧→</Kbd> to nest it
-            </>
-          }
-          demo={<ShapeDemo />}
-          more={{ label: "Keyboard shortcuts", href: "/docs/keyboard-shortcuts" }}
-        >
-          <p>Drag a block by its handle, or move it from the keyboard. Nest a block under another to turn a list into an outline.</p>
-          <p>Nested blocks move with their parent, so the outline stays in one piece.</p>
-        </Chapter>
-
-        <Chapter
-          id="connect"
-          number="03"
-          name="Connect"
-          art="art-42"
-          title="Link pages with two brackets."
-          hint={
-            <>
-              <TryIt /> type <Kbd>[[</Kbd> and pick a page
-            </>
-          }
-          demo={<ConnectDemo />}
-          more={{ label: "Linked notes and backlinks", href: "/features/linked-notes" }}
-        >
-          <p>
-            Type <span className="font-medium text-ink">[[</span> to link any page in your workspace. The page you link to lists a
-            backlink, so you can follow the link from either end.
-          </p>
-          <p>Sub-pages sit inside their parent page and show as a link or a card.</p>
-        </Chapter>
-
-        <Chapter
-          id="return"
-          number="04"
-          name="Return"
-          art="art-41"
-          title="Find it again."
-          reverse
-          hint={
-            <>
-              <TryIt /> search for <span className="font-medium text-ink">labels</span> or{" "}
-              <span className="font-medium text-ink">printer</span>, then tick off a task
-            </>
-          }
-          demo={<ReturnDemo />}
-          more={{ label: "Tasks in your notes", href: "/features/tasks" }}
-        >
-          <p>
-            <Kbd>⌘K</Kbd> searches titles and text across your workspace. Tasks with a date collect in Today, so the next step is
-            there when you open Folevi.
-          </p>
-          <p>The calendar shows the rest of the week, and Quick Add puts a new task in your Inbox page.</p>
-        </Chapter>
       </div>
+
+      <Chapter
+        id="capture"
+        number="01"
+        name="Capture"
+        art="art-13"
+        title="Write first. File it later."
+        hint={
+          <>
+            <TryIt /> type <Kbd>/</Kbd> then <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd> and <Kbd>↵</Kbd>
+          </>
+        }
+        demo={<CaptureDemo />}
+        more={{ label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" }}
+      >
+        <p>
+          Every line is a block. Type <span className="font-medium text-ink">/</span> to turn the line into a heading, a
+          checklist, a quote or a callout, without the mouse.
+        </p>
+        <p>New notes wait in Drafts until you move them into a folder.</p>
+      </Chapter>
+
+      <Chapter
+        id="shape"
+        number="02"
+        name="Shape"
+        art="art-50"
+        title="Move blocks and nest them."
+        reverse
+        hint={
+          <>
+            <TryIt /> drag a handle, or select a line and press <Kbd>⌥⇧↑</Kbd> <Kbd>⌥⇧↓</Kbd> to move it, <Kbd>⌥⇧→</Kbd> to nest it
+          </>
+        }
+        demo={<ShapeDemo />}
+        more={{ label: "Keyboard shortcuts", href: "/docs/keyboard-shortcuts" }}
+      >
+        <p>Drag a block by its handle, or move it from the keyboard. Nest a block under another to turn a list into an outline.</p>
+        <p>Nested blocks move with their parent, so the outline stays in one piece.</p>
+      </Chapter>
+
+      <Chapter
+        id="connect"
+        number="03"
+        name="Connect"
+        art="art-42"
+        title="Link pages with two brackets."
+        hint={
+          <>
+            <TryIt /> type <Kbd>[[</Kbd> and pick a page
+          </>
+        }
+        demo={<ConnectDemo />}
+        more={{ label: "Linked notes and backlinks", href: "/features/linked-notes" }}
+      >
+        <p>
+          Type <span className="font-medium text-ink">[[</span> to link any page in your workspace. The page you link to lists a
+          backlink, so you can follow the link from either end.
+        </p>
+        <p>Sub-pages sit inside their parent page and show as a link or a card.</p>
+      </Chapter>
+
+      <Chapter
+        id="return"
+        number="04"
+        name="Return"
+        art="art-41"
+        title="Find it again."
+        reverse
+        hint={
+          <>
+            <TryIt /> search for <span className="font-medium text-ink">labels</span> or{" "}
+            <span className="font-medium text-ink">printer</span>, then tick off a task
+          </>
+        }
+        demo={<ReturnDemo />}
+        more={{ label: "Tasks in your notes", href: "/features/tasks" }}
+      >
+        <p>
+          <Kbd>⌘K</Kbd> searches titles and text across your workspace. Tasks with a date collect in Today, so the next step is
+          there when you open Folevi.
+        </p>
+        <p>The calendar shows the rest of the week, and Quick Add puts a new task in your Inbox page.</p>
+      </Chapter>
     </section>
   );
 }

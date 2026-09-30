@@ -3,7 +3,8 @@ import { BUILT_IN_TEMPLATES, type BlockSpec } from "@/lib/templates";
 /*
  * The public template gallery (/template-gallery). Every page is built from the built-in templates in
  * convex/lib/templates.ts, the same blocks the app creates, so nothing here can drift from the product.
- * Admins can turn a built-in template off in the app at runtime; the gallery is static, so it lists all.
+ * Admins can turn a built-in template off in the app; the gallery pages re-check that hourly and hide it
+ * (templateAvailability.ts).
  */
 
 /** The day the gallery's pages last changed (YYYY-MM-DD). Change it with convex/lib/templates.ts or these pages. */
@@ -64,9 +65,9 @@ export const GALLERY_TEMPLATES: GalleryTemplate[] = BUILT_IN_TEMPLATES.map((t) =
 }));
 
 /** Groups with their templates; a template added to the catalog without a group lands in "More". */
-export function galleryGroups(): Array<{ id: TemplateGroupId; name: string; lede: string; templates: GalleryTemplate[] }> {
-  const groups = TEMPLATE_GROUPS.map((g) => ({ id: g.id, name: g.name, lede: g.lede, templates: GALLERY_TEMPLATES.filter((t) => t.group === g.id) }));
-  const more = GALLERY_TEMPLATES.filter((t) => t.group === "more");
+export function galleryGroups(list: GalleryTemplate[] = GALLERY_TEMPLATES): Array<{ id: TemplateGroupId; name: string; lede: string; templates: GalleryTemplate[] }> {
+  const groups = TEMPLATE_GROUPS.map((g) => ({ id: g.id, name: g.name, lede: g.lede, templates: list.filter((t) => t.group === g.id) })).filter((g) => g.templates.length > 0);
+  const more = list.filter((t) => t.group === "more");
   return more.length ? [...groups, { id: "more" as const, name: "More", lede: "More starting points.", templates: more }] : groups;
 }
 

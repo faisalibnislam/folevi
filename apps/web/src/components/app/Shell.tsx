@@ -19,7 +19,7 @@ import { AskAiChat } from "@/components/ai/AskAiChat";
 import { useAiAccess } from "@/components/ai/useAi";
 import { SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
-import { clearPendingTemplate, pendingTemplate, rememberTemplate } from "@/lib/pendingTemplate";
+import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 
 interface ShellValue {
   sidebarOpen: boolean;
@@ -180,13 +180,7 @@ export function Shell() {
   const templateOpened = useRef(false);
   useEffect(() => {
     if (templateOpened.current) return;
-    const url = new URL(window.location.href);
-    const fromUrl = url.searchParams.get("template");
-    if (fromUrl) {
-      rememberTemplate(fromUrl);
-      url.searchParams.delete("template");
-      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    }
+    captureTemplateFromUrl();
     const pending = pendingTemplate();
     if (!pending) return;
     templateOpened.current = true;

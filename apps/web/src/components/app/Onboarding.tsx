@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/Switch";
 import { errorMessage } from "@/components/ui/Toast";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { pendingTemplate } from "@/lib/pendingTemplate";
+import { captureTemplateFromUrl, pendingTemplate } from "@/lib/pendingTemplate";
 import { OnboardingPreview, artOf, artThumb, type PreviewScene } from "./onboarding/OnboardingPreview";
 import "./onboarding/onboarding.css";
 
@@ -49,7 +49,11 @@ export function Onboarding() {
   const docs = useQuery(api.documents.list, { scope: { kind: "personal" }, view: "all", paginationOpts: { numItems: 50, cursor: null } });
   const welcome = docs?.page.find((d) => d.title === WELCOME) ?? null;
   // A template picked on folevi.com before signing up (lib/pendingTemplate), opened when onboarding ends.
-  const [template] = useState(() => (typeof window === "undefined" ? null : pendingTemplate()));
+  const [template] = useState(() => {
+    if (typeof window === "undefined") return null;
+    captureTemplateFromUrl(); // arriving from the confirmation email, possibly on another device
+    return pendingTemplate();
+  });
 
   const [step, setStep] = useState(() => stepIndexOf(profile.onboardingStep));
   const [dir, setDir] = useState<"forward" | "back">("forward");

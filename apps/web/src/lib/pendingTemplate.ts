@@ -1,6 +1,7 @@
 // "Use this template" on folevi.com links to sign-up with ?template=<key>. The key is kept in this browser
 // through sign-up, email confirmation and onboarding, and the app then opens that template as a new page.
-// Only built-in template keys are kept; the server still checks the template exists and is switched on.
+// The confirmation email returns to /documents?template=<key>, so confirming on another device carries it
+// there too. Only built-in template keys are kept; the server still checks the template exists and is on.
 import { BUILT_IN_TEMPLATES } from "./templates";
 
 const STORAGE_KEY = "folevi:pending-template";
@@ -50,4 +51,21 @@ export function clearPendingTemplate(): void {
   } catch {
     // Nothing to clear.
   }
+}
+
+/** Where the confirmation email returns to: the app, carrying the template if one was picked. */
+export function signUpCallback(key: string | null | undefined): string {
+  const t = builtIn(key);
+  return t ? `/documents?template=${encodeURIComponent(t.key)}` : "/documents";
+}
+
+/** Keeps a ?template=<key> from the address bar (then removes it from the URL). Browser only. */
+export function captureTemplateFromUrl(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  const key = url.searchParams.get("template");
+  if (!key) return;
+  rememberTemplate(key);
+  url.searchParams.delete("template");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }

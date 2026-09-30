@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from "./fields";
 import { CheckInbox } from "./CheckInbox";
-import { rememberTemplate } from "@/lib/pendingTemplate";
+import { pendingTemplate, rememberTemplate, signUpCallback } from "@/lib/pendingTemplate";
 
 /** Password guidance: length matters most; we only block what's too short or obviously weak. */
 function passwordProblem(password: string, email: string): string | null {
@@ -27,7 +27,7 @@ export function SignUpForm({ template }: { template?: string }) {
   const [fieldError, setFieldError] = useState<{ name?: string; email?: string; password?: string }>({});
   const [sentTo, setSentTo] = useState<string | null>(null);
 
-  if (sentTo) return <CheckInbox email={sentTo} />;
+  if (sentTo) return <CheckInbox email={sentTo} callbackURL={signUpCallback(template ?? pendingTemplate()?.key)} />;
 
   return (
     <>
@@ -52,7 +52,7 @@ export function SignUpForm({ template }: { template?: string }) {
             name: name.trim().slice(0, 80),
             email: trimmedEmail,
             password,
-            callbackURL: "/documents",
+            callbackURL: signUpCallback(template ?? pendingTemplate()?.key),
           });
           setBusy(false);
           // An address that already has an account gets the same answer (no account enumeration).

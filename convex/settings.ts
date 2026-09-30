@@ -32,4 +32,10 @@ export const builtInTemplates = query({
   },
 });
 
+/** Built-in templates an admin switched off, for the public template gallery on folevi.com (keys only). */
+export const disabledBuiltInTemplates = query({
+  args: {},
+  handler: async (ctx) => (await ctx.db.query("builtInTemplates").take(100)).filter((r) => !r.enabled).map((r) => r.key),
+});
+
 export const ping = query({ args: { at: v.optional(v.number()) }, handler: async () => ({ ok: true }) });

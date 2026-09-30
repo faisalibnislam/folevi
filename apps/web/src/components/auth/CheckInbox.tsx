@@ -6,7 +6,8 @@ import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, SubmitButton, TextLink } from "./fields";
 
 /** "Check your inbox" + resend. Answers the same whether or not an account exists for the address. */
-export function CheckInbox({ email: initialEmail }: { email?: string }) {
+/** `callbackURL`: where the confirmation link returns to (sign-up passes one carrying a picked template). */
+export function CheckInbox({ email: initialEmail, callbackURL = "/documents" }: { email?: string; callbackURL?: string }) {
   const [email, setEmail] = useState(initialEmail ?? "");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -35,7 +36,7 @@ export function CheckInbox({ email: initialEmail }: { email?: string }) {
           if (busy || !email.trim()) return;
           setBusy(true);
           setMessage(null);
-          const { error } = await authClient.sendVerificationEmail({ email: email.trim(), callbackURL: "/documents" });
+          const { error } = await authClient.sendVerificationEmail({ email: email.trim(), callbackURL });
           setBusy(false);
           if (error && error.status === 429) setMessage({ tone: "error", text: authErrorMessage(error, undefined, "a few minutes") });
           else setMessage({ tone: "success", text: "If that address has an account waiting for confirmation, a new link is on its way." });

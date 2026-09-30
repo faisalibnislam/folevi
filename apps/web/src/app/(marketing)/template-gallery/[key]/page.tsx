@@ -1,3 +1,4 @@
+import { availableGalleryTemplates } from "@/components/marketing/content/templateAvailability";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
@@ -20,6 +21,8 @@ import { TemplateSheet } from "@/components/marketing/templates/TemplateSheet";
 import { ButtonLink, Eyebrow, container, cx } from "@/components/marketing/ui";
 
 export const dynamicParams = false;
+/** Re-check hourly which templates an admin has switched off. */
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return GALLERY_TEMPLATES.map((t) => ({ key: t.key }));
@@ -67,12 +70,14 @@ function creativeWorkLd(t: GalleryTemplate): Record<string, unknown> {
 
 export default async function TemplatePage({ params }: Params) {
   const t = templateByKey((await params).key);
-  if (!t) notFound();
+  const available = await availableGalleryTemplates();
+  // Switched off by an admin: the page goes away (at the next hourly re-check).
+  if (!t || !available.some((x) => x.key === t.key)) notFound();
   const path = templatePath(t.key);
   const group = TEMPLATE_GROUPS.find((g) => g.id === t.group);
   const sections = templateSections(t);
   const stats = templateStats(t);
-  const more = GALLERY_TEMPLATES.filter((x) => x.group === t.group && x.key !== t.key).slice(0, 3);
+  const more = available.filter((x) => x.group === t.group && x.key !== t.key).slice(0, 3);
   const heading = `${t.searchName} template`;
 
   return (

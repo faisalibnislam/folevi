@@ -21,6 +21,23 @@ test("a template picked before sign-up opens as the first page after onboarding"
   await context.close();
 });
 
+test("confirming the email on another device still opens the template", async ({ browser }) => {
+  const email = uniqueEmail("template");
+  const first = await browser.newContext();
+  const signUpPage = await first.newPage();
+  await signUpPage.goto(`${APP}/signup?template=meeting-notes`);
+  await signUp(signUpPage, { email, name: "Two Devices" });
+  await first.close();
+  // A separate browser with nothing stored: the confirmation link carries the template.
+  const second = await browser.newContext();
+  const page = await second.newPage();
+  await confirmEmail(page, email);
+  await page.getByRole("button", { name: "Skip setup" }).click({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Open “Meeting Notes”" }).click();
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Meeting Notes", { timeout: 20_000 });
+  await second.close();
+});
+
 test("signed in already, the template opens straight away; unknown keys are ignored", async ({ browser }) => {
   const context = await browser.newContext();
   const page = await context.newPage();

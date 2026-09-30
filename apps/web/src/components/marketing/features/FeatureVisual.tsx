@@ -326,13 +326,14 @@ function WhiteboardPicture({ art }: { art: string }) {
       style={artVars(artById(art))}
     >
       <div aria-hidden="true">
-        <div className="flex flex-wrap items-center gap-1 border-b border-[color-mix(in_oklab,var(--n-ink)_12%,transparent)] px-3 py-2">
+        {/* One row at every width: on phones the controls are a little smaller and two pen colours are left out. */}
+        <div className="flex items-center gap-0.5 overflow-hidden border-b border-[color-mix(in_oklab,var(--n-ink)_12%,transparent)] px-2 py-2 sm:gap-1 sm:px-3">
           {[
             { icon: <Pencil size={14} />, on: true },
             { icon: <Highlighter size={14} /> },
             { icon: <Eraser size={14} /> },
           ].map((tool, i) => (
-            <span key={i} className={cx("grid size-8 place-items-center rounded-[6px]", tool.on ? "mk-app-dock-on" : "text-(--n-muted)")}>
+            <span key={i} className={cx("grid size-7 flex-none place-items-center rounded-[6px] sm:size-8", tool.on ? "mk-app-dock-on" : "text-(--n-muted)")}>
               {tool.icon}
             </span>
           ))}
@@ -340,7 +341,7 @@ function WhiteboardPicture({ art }: { art: string }) {
           {PEN.map((c, i) => (
             <span
               key={c}
-              className={cx("size-5 rounded-full", i === 1 && "shadow-[0_0_0_2px_var(--n-paper),0_0_0_3.5px_var(--n-ink)]")}
+              className={cx("mx-px size-4 flex-none rounded-full sm:mx-0 sm:size-5", i >= 4 && "hidden sm:block", i === 1 && "shadow-[0_0_0_2px_var(--n-paper),0_0_0_3.5px_var(--n-ink)]")}
               style={{ background: WHITEBOARD_COLORS[c] }}
             />
           ))}
@@ -351,10 +352,10 @@ function WhiteboardPicture({ art }: { art: string }) {
             </span>
           ))}
           <span className="flex-1" />
-          <span className="grid size-8 place-items-center text-(--n-muted)">
+          <span className="grid size-7 flex-none place-items-center text-(--n-muted) sm:size-8">
             <Undo2 size={14} />
           </span>
-          <span className="grid size-8 place-items-center text-(--n-muted)">
+          <span className="grid size-7 flex-none place-items-center text-(--n-muted) sm:size-8">
             <Trash2 size={14} />
           </span>
         </div>

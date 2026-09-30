@@ -1,35 +1,42 @@
 import Link from "next/link";
 import { TemplateCard } from "@/components/marketing/templates/TemplateCard";
-import { GALLERY_TEMPLATES, galleryGroups, templatePath } from "@/components/marketing/content/templates";
+import { galleryGroups, templatePath, type GalleryTemplate } from "@/components/marketing/content/templates";
+import { availableGalleryTemplates } from "@/components/marketing/content/templateAvailability";
 import { Breadcrumbs, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { absoluteUrl } from "@/components/marketing/site";
 import { Eyebrow, container, cx } from "@/components/marketing/ui";
 
-const count = GALLERY_TEMPLATES.length;
+/** Re-check hourly which templates an admin has switched off. */
+export const revalidate = 3600;
 
-export const metadata = pageMetadata({
-  title: "Free note templates",
-  description: `${count} free note templates for Folevi: meeting notes, 1:1s, a weekly reset, project briefs, decision records, class notes, a travel plan, a budget and more. Preview each one and start a page from it.`,
-  path: "/template-gallery",
-  ogImage: "segment",
-});
+export async function generateMetadata() {
+  const count = (await availableGalleryTemplates()).length;
+  return pageMetadata({
+    title: "Free note templates",
+    description: `${count} free note templates for Folevi: meeting notes, 1:1s, a weekly reset, project briefs, decision records, class notes, a travel plan, a budget and more. Preview each one and start a page from it.`,
+    path: "/template-gallery",
+    ogImage: "segment",
+  });
+}
 
-function itemListLd(): Record<string, unknown> {
+function itemListLd(list: GalleryTemplate[]): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Folevi note templates",
-    numberOfItems: count,
-    itemListElement: GALLERY_TEMPLATES.map((t, i) => ({ "@type": "ListItem", position: i + 1, name: `${t.searchName} template`, url: absoluteUrl(templatePath(t.key)) })),
+    numberOfItems: list.length,
+    itemListElement: list.map((t, i) => ({ "@type": "ListItem", position: i + 1, name: `${t.searchName} template`, url: absoluteUrl(templatePath(t.key)) })),
   };
 }
 
-export default function TemplateGalleryPage() {
-  const groups = galleryGroups();
+export default async function TemplateGalleryPage() {
+  const available = await availableGalleryTemplates();
+  const count = available.length;
+  const groups = galleryGroups(available);
   return (
     <>
-      <JsonLd data={itemListLd()} />
+      <JsonLd data={itemListLd(available)} />
       <Breadcrumbs
         items={[
           { name: "Home", path: "/" },

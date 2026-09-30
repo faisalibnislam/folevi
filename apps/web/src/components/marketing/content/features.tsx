@@ -378,7 +378,7 @@ export const FEATURES: Feature[] = [
         title: "Make a folder",
         body: (
           <p>
-            Press the new folder button next to Folders in the sidebar, or <strong>New folder</strong> on the Folders page, and give it a name. The sidebar lists your first five folders. The Folders page has all of them, with search, sorting and a grid or list view.
+            Press the new folder button next to Folders in the sidebar, or <strong>New folder</strong> on the Folders page, and give it a name. The sidebar lists your first five folders. The Folders page has all of them as folder cards, each showing how many notes it holds and its newest notes through the cover. You can search them, sort them by name, last update, most pages or newest, and switch to a list.
           </p>
         ),
       },

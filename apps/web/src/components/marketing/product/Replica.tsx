@@ -6,10 +6,13 @@ import {
   Asterisk,
   Bell,
   CheckSquare,
+  ChevronDown,
+  ChevronRight,
   CircleCheck,
   Ellipsis,
   FileText,
   Files,
+  FolderPlus,
   House,
   Inbox,
   Info,
@@ -209,8 +212,30 @@ export function PageSidebar({ note, chrome = "web" }: { note: NoteContent; chrom
   );
 }
 
-/** The main sidebar (Home and the lists), as in the app. */
-export function MainSidebar({ chrome = "web", activeLabel = "Home" }: { chrome?: "web" | "mac"; activeLabel?: string }) {
+const DEFAULT_FOLDERS = [
+  { color: "irises", label: "Projects" },
+  { color: "poppy-print", label: "Reading" },
+  { color: "harbor-blue", label: "Studio" },
+];
+
+/**
+ * The main sidebar (Home and the lists), as in the app. `folders` replaces the sample folders; with
+ * `sections`, the Folders and Tags headings have the app's chevrons and new-folder button, and `moreFolders`
+ * adds the "+N more" row the app shows after its first five folders.
+ */
+export function MainSidebar({
+  chrome = "web",
+  activeLabel = "Home",
+  folders = DEFAULT_FOLDERS,
+  moreFolders = 0,
+  sections = false,
+}: {
+  chrome?: "web" | "mac";
+  activeLabel?: string;
+  folders?: Array<{ color: string; label: string }>;
+  moreFolders?: number;
+  sections?: boolean;
+}) {
   const rows = [
     { icon: House, label: "Home" },
     { icon: Star, label: "Starred" },
@@ -219,11 +244,6 @@ export function MainSidebar({ chrome = "web", activeLabel = "Home" }: { chrome?:
     { icon: CheckSquare, label: "Tasks", count: 3 },
     { icon: Share2, label: "Shared with Me" },
     { icon: LayoutTemplate, label: "Templates" },
-  ];
-  const folders = [
-    { color: "irises", label: "Projects" },
-    { color: "poppy-print", label: "Reading" },
-    { color: "harbor-blue", label: "Studio" },
   ];
   return (
     <div className="hidden w-[208px] flex-none flex-col md:flex lg:w-[224px]">
@@ -242,7 +262,15 @@ export function MainSidebar({ chrome = "web", activeLabel = "Home" }: { chrome?:
           </li>
         ))}
       </ul>
-      <p className="mk-caps mt-4 px-3.5 text-[10.5px]">Folders</p>
+      {sections ? (
+        <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[10.5px]">
+          <ChevronDown size={11} />
+          <span className="flex-1">Folders</span>
+          <FolderPlus size={13} className="text-muted" />
+        </p>
+      ) : (
+        <p className="mk-caps mt-4 px-3.5 text-[10.5px]">Folders</p>
+      )}
       <ul className="mt-1 space-y-0.5 px-1">
         {folders.map((folder) => (
           <li key={folder.label} className="flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 pl-4 text-[12.5px] text-ink">
@@ -250,7 +278,14 @@ export function MainSidebar({ chrome = "web", activeLabel = "Home" }: { chrome?:
             <span className="truncate">{folder.label}</span>
           </li>
         ))}
+        {moreFolders ? <li className="flex h-7 items-center px-2.5 pl-4 text-[11.5px] text-muted">+{moreFolders} more</li> : null}
       </ul>
+      {sections ? (
+        <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[10.5px]">
+          <ChevronRight size={11} />
+          Tags
+        </p>
+      ) : null}
       <ul className="mt-4 space-y-0.5 px-1">
         <li className="flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[12.5px] text-ink">
           <Archive size={15} className="text-muted" /> Archive

@@ -18,22 +18,13 @@ export type Screenshot = {
   alt: string;
 };
 
-/** The Travel folder's page with the Folders section open in the sidebar (1440 × 900 window). */
+/** The Folders page with every folder as a card (1440 × 1100 window). */
 export const FOLDERS_SCREENSHOT: Screenshot = {
   light: "/marketing/screenshots/folders-light.webp",
   dark: "/marketing/screenshots/folders-dark.webp",
   width: 2400,
-  height: 1500,
-  alt: "The Folevi app with five coloured folders in the sidebar: Projects, Personal, Clients, Reading and Travel. The Travel folder is open and shows its eight notes as cards, such as Lisbon in April, Packing list and Train times, each in its own note style.",
-};
-
-/** The Move to folder dialog over Drafts, with the sidebar's folders beside it. */
-export const MOVE_TO_FOLDER_SCREENSHOT: Screenshot = {
-  light: "/marketing/screenshots/folders-move-light.webp",
-  dark: "/marketing/screenshots/folders-move-dark.webp",
-  width: 1440,
-  height: 960,
-  alt: "The Move to folder dialog for a draft called Ideas for the balcony. It has a search field and lists No folder (Drafts), marked as current, then the folders Projects, Personal, Clients, Reading and Travel.",
+  height: 1833,
+  alt: "The Folders page in Folevi, listing twelve folders as cards in their own colours: Clients, Finance, Garden, Health, Ideas, Meetings, Personal, Projects, Reading, Recipes, Research and Travel. Each card shows how many notes it holds, when it last changed and its newest notes showing through the cover. The sidebar lists the first five folders and 7 more.",
 };
 
 export function ThemedScreenshot({ shot, className }: { shot: Screenshot; className?: string }) {

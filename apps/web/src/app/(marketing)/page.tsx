@@ -9,6 +9,7 @@ import { Hero } from "@/components/marketing/home/Hero";
 import { PageBackdrop } from "@/components/marketing/PageBackdrop";
 import { Included } from "@/components/marketing/home/Included";
 import { NoteStyles } from "@/components/marketing/home/NoteStyles";
+import { SlashSection } from "@/components/marketing/home/SlashSection";
 import { JsonLd, organizationLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
 
 export const metadata = pageMetadata({
@@ -31,6 +32,7 @@ export default function HomePage() {
         <div className="mk-stack mk-home-stack">
           <Included />
           <NoteStyles />
+          <SlashSection />
           <Chapters />
           <AiSection />
           <PricingSection />

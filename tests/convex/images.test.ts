@@ -1,6 +1,6 @@
 // Upload content sniffing and metadata stripping (convex/lib/images.ts).
 import { describe, expect, test } from "vitest";
-import { safeFilename, sameBytes, sniff, stripGif, stripImageMetadata, stripJpeg, stripPng, stripWebp } from "../../convex/lib/images";
+import { safeFilename, sameBytes, sniff, sniffAudio, stripGif, stripImageMetadata, stripJpeg, stripPng, stripWebp } from "../../convex/lib/images";
 
 const enc = (s: string) => Array.from(new TextEncoder().encode(s));
 const bytes = (...parts: (number[] | string)[]) => new Uint8Array(parts.flatMap((p) => (typeof p === "string" ? enc(p) : p)));
@@ -162,5 +162,35 @@ describe("file delivery headers", () => {
     const h = contentDisposition("attachment", "Maya's Folio (draft)*-folevi-export.zip");
     expect(h).toBe(`attachment; filename="Maya's Folio (draft)*-folevi-export.zip"; filename*=UTF-8''Maya%27s%20Folio%20%28draft%29%2A-folevi-export.zip`);
     expect(contentDisposition("inline", "résumé \"final\";.pdf")).toBe(`inline; filename="r_sum_ _final__.pdf"; filename*=UTF-8''r%C3%A9sum%C3%A9%20%22final%22%3B.pdf`);
+  });
+});
+
+describe("audio recordings", () => {
+  test("sniffAudio recognises the formats browsers record, and nothing else", () => {
+    expect(sniffAudio(bytes([0x1a, 0x45, 0xdf, 0xa3], [0x9f, 0x42, 0x86, 0x81]))).toBe("audio/webm");
+    expect(sniffAudio(bytes("OggS", [0, 2]))).toBe("audio/ogg");
+    expect(sniffAudio(bytes(u32be(28), "ftypM4A ", u32be(0)))).toBe("audio/mp4");
+    expect(sniffAudio(bytes("RIFF", u32le(36), "WAVEfmt "))).toBe("audio/wav");
+    expect(sniffAudio(bytes("ID3", [4, 0, 0]))).toBe("audio/mpeg");
+    expect(sniffAudio(bytes([0xff, 0xfb, 0x90, 0x44]))).toBe("audio/mpeg");
+    // Images, HTML and text are not recordings.
+    expect(sniffAudio(bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBeNull();
+    expect(sniffAudio(bytes("RIFF", u32le(36), "WEBPVP8 "))).toBeNull();
+    expect(sniffAudio(bytes("<html><script>alert(1)</script>"))).toBeNull();
+    expect(sniffAudio(bytes("plain words"))).toBeNull();
+  });
+
+  test("byte ranges for seeking are parsed and clamped", async () => {
+    const { byteRange } = await import("../../convex/http");
+    expect(byteRange(null, 1000)).toBeNull();
+    expect(byteRange("bytes=0-", 1000)).toEqual({ start: 0, end: 999 });
+    expect(byteRange("bytes=100-199", 1000)).toEqual({ start: 100, end: 199 });
+    expect(byteRange("bytes=900-5000", 1000)).toEqual({ start: 900, end: 999 });
+    expect(byteRange("bytes=-100", 1000)).toEqual({ start: 900, end: 999 });
+    expect(byteRange("bytes=1000-", 1000)).toBe("invalid");
+    expect(byteRange("bytes=500-100", 1000)).toBe("invalid");
+    // Several ranges or other units: send the whole file.
+    expect(byteRange("bytes=0-1,5-9", 1000)).toBeNull();
+    expect(byteRange("items=0-1", 1000)).toBeNull();
   });
 });

@@ -37,7 +37,7 @@ export interface PendingUpload {
   uploadId: string;
   documentId: string;
   blockId: string;
-  kind: "image" | "file";
+  kind: "image" | "file" | "audio";
   filename: string;
   mimeType: string;
   size: number;

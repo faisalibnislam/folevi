@@ -53,7 +53,7 @@ export async function localPreviewUrl(accountKey: string, uploadId: string): Pro
 export async function enqueueUpload(
   accountKey: string,
   engine: SyncEngine,
-  input: { documentId: string; blockId: string; file: File; kind: "image" | "file" },
+  input: { documentId: string; blockId: string; file: File; kind: "image" | "file" | "audio" },
 ): Promise<string> {
   const uploadId = ulid();
   const record: PendingUpload = {
@@ -61,7 +61,7 @@ export async function enqueueUpload(
     documentId: input.documentId,
     blockId: input.blockId,
     kind: input.kind,
-    filename: input.file.name || (input.kind === "image" ? "image" : "file"),
+    filename: input.file.name || (input.kind === "image" ? "image" : input.kind === "audio" ? "recording" : "file"),
     mimeType: input.file.type || "application/octet-stream",
     size: input.file.size,
     blob: input.file,

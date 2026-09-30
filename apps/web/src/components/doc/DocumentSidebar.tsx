@@ -2,7 +2,7 @@
 
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, CircleCheck, ExternalLink, FileText, House, Image as ImageIcon, List, PanelLeft, Paperclip, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, CircleCheck, ExternalLink, FileText, House, Image as ImageIcon, List, Mic, PanelLeft, Paperclip, Search, X } from "lucide-react";
 import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
@@ -233,10 +233,11 @@ function hostOf(url: string): string {
 function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: string; onJump: (id: string) => void; onNavigate?: () => void }) {
   const blocks = useBlocks(documentId);
   const attachments = blocks
-    .filter((b) => b.type === "image" || b.type === "file")
+    .filter((b) => b.type === "image" || b.type === "file" || b.type === "audio")
     .map((b) => {
       const p = b.props as { name?: string; alt?: string; caption?: string; fileId?: string };
-      return { id: b.id, kind: b.type, name: b.type === "file" ? p.name || "File" : p.caption || p.alt || "Image", uploading: !p.fileId && b.type === "file" };
+      const named = b.type === "file" || b.type === "audio";
+      return { id: b.id, kind: b.type, name: named ? p.name || (b.type === "audio" ? "Audio recording" : "File") : p.caption || p.alt || "Image", uploading: !p.fileId && named };
     });
   const links: { key: string; blockId: string; label: string; href: string; internal: boolean }[] = [];
   for (const b of blocks) {
@@ -261,7 +262,7 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
             <li key={a.id}>
               <button type="button" onClick={() => onJump(a.id)} className="flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[13px] hover:bg-accent-soft/60">
                 <span aria-hidden className="grid h-7 w-7 flex-none place-items-center rounded-[6px] bg-sunken text-muted">
-                  {a.kind === "image" ? <ImageIcon size={14} /> : <Paperclip size={14} />}
+                  {a.kind === "image" ? <ImageIcon size={14} /> : a.kind === "audio" ? <Mic size={14} /> : <Paperclip size={14} />}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{a.name}</span>
               </button>

@@ -146,7 +146,8 @@ export function blocksToMarkdown(
         lines.push("");
         break;
       }
-      case "file": {
+      case "file":
+      case "audio": {
         const src = opts.resolveFile?.(String(p.fileId));
         lines.push(`${indent}[${escapeMd(String(p.name ?? "file"))}](${src ? encodeURI(src) : ""})`, "");
         break;

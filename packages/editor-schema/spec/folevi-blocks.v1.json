@@ -4,23 +4,53 @@
   "enums": {
     "HeadingLevel": { "type": "int", "values": [1, 2, 3] },
     "CalloutTone": { "type": "string", "values": ["note", "info", "success", "warning", "danger"] },
-    "TextColor": { "type": "string", "values": ["muted", "accent", "moss", "marigold", "plum", "coral"] },
+    "TextColor": {
+      "type": "string",
+      "values": ["muted", "accent", "moss", "marigold", "plum", "coral"]
+    },
     "HighlightColor": { "type": "string", "values": ["yellow", "green", "blue", "pink"] },
     "TaskPriority": { "type": "string", "values": ["none", "low", "medium", "high"] },
     "PageDisplay": { "type": "string", "values": ["link", "card"] },
     "DocumentFont": { "type": "string", "values": ["sans", "serif", "mono", "rounded"] },
     "DocumentWidth": { "type": "string", "values": ["narrow", "default", "wide"] },
     "DocumentBackground": { "type": "string", "values": ["paper", "plain", "tinted", "grid"] },
-    "DocumentAccent": { "type": "string", "values": ["accent", "moss", "marigold", "plum", "coral"] },
+    "DocumentAccent": {
+      "type": "string",
+      "values": ["accent", "moss", "marigold", "plum", "coral"]
+    },
     "CardStyle": { "type": "string", "values": ["folio", "plain", "tinted", "outline"] },
     "CoverKind": { "type": "string", "values": ["none", "color", "gradient", "image", "art"] },
-    "DocumentKind": { "type": "string", "values": ["document", "daily", "template", "collectionRow"] },
-    "DocumentSheet": { "type": "string", "values": ["white", "paper", "ivory", "mist", "sage", "blush", "night"] },
-    "DocumentText": { "type": "string", "values": ["ink", "slate", "navy", "forest", "plum", "brown", "white"] },
+    "DocumentKind": {
+      "type": "string",
+      "values": ["document", "daily", "template", "collectionRow"]
+    },
+    "DocumentSheet": {
+      "type": "string",
+      "values": ["white", "paper", "ivory", "mist", "sage", "blush", "night"]
+    },
+    "DocumentText": {
+      "type": "string",
+      "values": ["ink", "slate", "navy", "forest", "plum", "brown", "white"]
+    },
     "SeparatorStyle": { "type": "string", "values": ["line", "dots", "doodle"] },
     "BlockTextStyle": { "type": "string", "values": ["strong", "caption"] },
     "BlockDecoration": { "type": "string", "values": ["focus", "block"] },
-    "BlockColor": { "type": "string", "values": ["black", "slate", "gray", "navy", "blue", "sky", "green", "purple", "red", "orange", "brown"] },
+    "BlockColor": {
+      "type": "string",
+      "values": [
+        "black",
+        "slate",
+        "gray",
+        "navy",
+        "blue",
+        "sky",
+        "green",
+        "purple",
+        "red",
+        "orange",
+        "brown"
+      ]
+    },
     "BlockAlign": { "type": "string", "values": ["left", "center", "right", "justify"] },
     "BlockFont": { "type": "string", "values": ["system", "serif", "mono", "rounded"] },
     "BlockGroup": { "type": "string", "values": ["page", "card"] },
@@ -176,11 +206,21 @@
     },
     "page": {
       "text": false,
-      "props": { "documentId": "string", "display": "PageDisplay", "titleCache": "string?", "iconCache": "string?" }
+      "props": {
+        "documentId": "string",
+        "display": "PageDisplay",
+        "titleCache": "string?",
+        "iconCache": "string?"
+      }
     },
     "bookmark": {
       "text": false,
-      "props": { "url": "string", "title": "string?", "description": "string?", "siteName": "string?" }
+      "props": {
+        "url": "string",
+        "title": "string?",
+        "description": "string?",
+        "siteName": "string?"
+      }
     },
     "collection": {
       "text": false,
@@ -188,7 +228,22 @@
     },
     "formula": { "text": false, "props": { "latex": "string" } },
     "whiteboard": { "text": false, "props": { "data": "string", "height": "number" } },
-    "flowchart": { "text": false, "webOnly": true, "props": { "data": "string", "height": "number" } }
+    "flowchart": {
+      "text": false,
+      "webOnly": true,
+      "props": { "data": "string", "height": "number" }
+    },
+    "audio": {
+      "text": false,
+      "webOnly": true,
+      "props": {
+        "fileId": "string",
+        "name": "string",
+        "size": "number",
+        "mimeType": "string",
+        "duration": "number"
+      }
+    }
   },
   "limits": {
     "maxTextLength": 20000,
@@ -207,8 +262,32 @@
     "maxFlowchartHeight": 1600
   },
   "codeLanguages": [
-    "plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java",
-    "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust",
-    "sql", "swift", "toml", "typescript", "xml", "yaml"
+    "plaintext",
+    "bash",
+    "c",
+    "cpp",
+    "csharp",
+    "css",
+    "diff",
+    "go",
+    "graphql",
+    "html",
+    "java",
+    "javascript",
+    "json",
+    "kotlin",
+    "latex",
+    "markdown",
+    "mermaid",
+    "php",
+    "python",
+    "ruby",
+    "rust",
+    "sql",
+    "swift",
+    "toml",
+    "typescript",
+    "xml",
+    "yaml"
   ]
 }

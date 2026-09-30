@@ -41,11 +41,17 @@ export function AiSection() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
           <div>
             <AiIcon size={32} />
-            <SectionHeading className="mt-6" id="ai-title" eyebrow="AI Assistant" title="Ask, write and draw with your notes." />
+            <SectionHeading
+              className="mt-6"
+              id="ai-title"
+              eyebrow="AI Assistant"
+              title="Ask, write and draw with your notes."
+            />
           </div>
           <p className="mk-lede max-w-[52ch] lg:pb-1">
-            The AI Assistant works where you write. Ask a question across your notes, rewrite a paragraph, turn a meeting into
-            tasks or describe a process and get a flowchart. It only reads the notes you can open.
+            The AI Assistant works where you write. Ask a question across your notes, rewrite a
+            paragraph, turn a meeting into tasks or describe a process and get a flowchart. It only
+            reads the notes you can open.
           </p>
         </div>
 
@@ -57,18 +63,19 @@ export function AiSection() {
             picture={<AskPanel />}
             points={[
               <>
-                Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <b>Ask AI about your notes</b> in the <Kbd>⌘K</Kbd> palette.
+                Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <b>Ask AI about your notes</b>{" "}
+                in the <Kbd>⌘K</Kbd> palette.
               </>,
               <>Each answer lists the notes it used. Click a source to open it.</>,
               <>
-                Ask follow-ups in the same chat. From a folder’s menu, <b>Ask AI about this folder</b> keeps answers inside that
-                folder.
+                Ask follow-ups in the same chat. From a folder’s menu,{" "}
+                <b>Ask AI about this folder</b> keeps answers inside that folder.
               </>,
               <>If your notes don’t have the answer, it says so before giving a general one.</>,
             ]}
           >
-            Try “What am I working on this week?” or “Which tasks are still open?”. Folevi searches your notes, reads the ones
-            that match and writes an answer you can check.
+            Try “What am I working on this week?” or “Which tasks are still open?”. Folevi searches
+            your notes, reads the ones that match and writes an answer you can check.
           </Feature>
 
           <Feature
@@ -79,17 +86,21 @@ export function AiSection() {
             picture={<EditPicture />}
             points={[
               <>
-                Improve the writing, fix spelling, make it shorter, longer or simpler, or make it sound professional or casual.
+                Improve the writing, fix spelling, make it shorter, longer or simpler, or make it
+                sound professional or casual.
               </>,
-              <>Translate into {AI_LANGUAGES.length} languages, or ask it to explain or summarize the selection.</>,
               <>
-                Or type your own instruction, like “turn this into a numbered list”. <b>Replace</b> swaps the text, and{" "}
-                <b>Insert below</b> keeps both.
+                Translate into {AI_LANGUAGES.length} languages, or ask it to explain or summarize
+                the selection.
+              </>,
+              <>
+                Or type your own instruction, like “turn this into a numbered list”. <b>Replace</b>{" "}
+                swaps the text, and <b>Insert below</b> keeps both.
               </>,
             ]}
           >
-            Select a sentence or a whole section and press <Kbd>⌘J</Kbd>, or use the AI button in the selection toolbar or a
-            block’s handle menu.
+            Select a sentence or a whole section and press <Kbd>⌘J</Kbd>, or use the AI button in
+            the selection toolbar or a block’s handle menu.
           </Feature>
 
           <Feature
@@ -99,21 +110,25 @@ export function AiSection() {
             picture={<WritePicture />}
             points={[
               <>
-                <b>Continue writing</b> picks up where you stopped. <b>Summarize this note</b> and <b>Make an outline</b> sum up
-                long pages.
+                <b>Continue writing</b> picks up where you stopped. <b>Summarize this note</b> and{" "}
+                <b>Make an outline</b> sum up long pages.
               </>,
               <>
-                <b>Find action items</b> writes real checkboxes, so they show up in Tasks with the rest of your to-dos.
+                <b>Find action items</b> writes real checkboxes, so they show up in Tasks with the
+                rest of your to-dos.
               </>,
               <>
-                <b>Brainstorm ideas</b> gives you a list to start from. Or type what you want, like “a friendly intro
-                paragraph”.
+                <b>Brainstorm ideas</b> gives you a list to start from. Or type what you want, like
+                “a friendly intro paragraph”.
               </>,
-              <>Watch it write, press Stop at any time, then Insert, Try again or tweak it: Shorter, Longer, Simpler, More formal, More casual.</>,
+              <>
+                Watch it write, press Stop at any time, then Insert, Try again or tweak it: Shorter,
+                Longer, Simpler, More formal, More casual.
+              </>,
             ]}
           >
-            On an empty line, type <Kbd>/</Kbd> and pick an <b>AI</b> item, or press <Kbd>⌘J</Kbd>. It uses the note you’re in as
-            context.
+            On an empty line, type <Kbd>/</Kbd> and pick an <b>AI</b> item, or press <Kbd>⌘J</Kbd>.
+            It uses the note you’re in as context.
           </Feature>
 
           <Feature
@@ -123,18 +138,22 @@ export function AiSection() {
             art="art-42"
             picture={<FlowchartPicture />}
             points={[
-              <>Write the steps, or a single sentence. Folevi draws the shapes, the decisions and the arrows, and lays them out.</>,
               <>
-                Change it in words: “add an approval step after review” or “simplify it to the main steps”. <b>Start over</b>{" "}
-                draws a new one.
+                Write the steps, or a single sentence. Folevi draws the shapes, the decisions and
+                the arrows, and lays them out.
               </>,
               <>
-                Every shape stays editable. Drag, recolour and relabel it, and undo the whole AI change with <Kbd>⌘Z</Kbd>.
+                Change it in words: “add an approval step after review” or “simplify it to the main
+                steps”. <b>Start over</b> draws a new one.
+              </>,
+              <>
+                Every shape stays editable. Drag, recolour and relabel it, and undo the whole AI
+                change with <Kbd>⌘Z</Kbd>.
               </>,
             ]}
           >
-            Insert a flowchart with <Kbd>/</Kbd> and click <b>Create with AI</b>, or the <b>AI</b> button on a chart you already
-            have.
+            Insert a flowchart with <Kbd>/</Kbd> and click <b>Create with AI</b>, or the <b>AI</b>{" "}
+            button on a chart you already have.
           </Feature>
         </div>
 
@@ -157,19 +176,29 @@ export function AiSection() {
           <li>
             <h3 className="mk-h3 text-[15.5px]">Off when you want it off</h3>
             <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">
-              Turn the AI Assistant off in Settings and every AI button disappears. Core has no AI at all.
+              Turn the AI Assistant off in Settings and every AI button disappears. Core has no AI
+              at all.
             </p>
           </li>
         </ul>
 
         <p className="mt-8 flex flex-wrap gap-x-8 gap-y-1 text-[15px]">
-          <Link href="/features/ai-notes" className="mk-link inline-flex min-h-11 items-center gap-1.5">
+          <Link
+            href="/features/ai-notes"
+            className="mk-link inline-flex min-h-11 items-center gap-1.5"
+          >
             More about AI notes <Icon name="arrow-right" size={15} />
           </Link>
-          <Link href="/features/flowcharts" className="mk-link inline-flex min-h-11 items-center gap-1.5">
+          <Link
+            href="/features/flowcharts"
+            className="mk-link inline-flex min-h-11 items-center gap-1.5"
+          >
             Flowcharts <Icon name="arrow-right" size={15} />
           </Link>
-          <Link href="/docs/ai-assistant" className="mk-link inline-flex min-h-11 items-center gap-1.5">
+          <Link
+            href="/docs/ai-assistant"
+            className="mk-link inline-flex min-h-11 items-center gap-1.5"
+          >
             AI Assistant guide <Icon name="arrow-right" size={15} />
           </Link>
         </p>
@@ -202,7 +231,10 @@ function Feature({
   stacked?: boolean;
 }) {
   const stage = (
-    <div className={cx("mk-stage px-3 py-8 sm:px-8 sm:py-10", reverse && "lg:order-1")} style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
+    <div
+      className={cx("mk-stage px-3 py-8 sm:px-8 sm:py-10", reverse && "lg:order-1")}
+      style={{ ["--stage-art" as string]: artThumb(artById(art)) }}
+    >
       {picture}
     </div>
   );
@@ -212,8 +244,12 @@ function Feature({
         <div className="grid gap-6 lg:grid-cols-2 lg:gap-14">
           <div>
             <p className="mk-caps">{eyebrow}</p>
-            <h3 className="mk-display mt-3 max-w-[16ch] text-[28px] leading-[1.1] sm:text-[34px]">{title}</h3>
-            <p className="mt-4 max-w-[460px] text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">{children}</p>
+            <h3 className="mk-display mt-3 max-w-[16ch] text-[28px] leading-[1.1] sm:text-[34px]">
+              {title}
+            </h3>
+            <p className="mt-4 max-w-[460px] text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">
+              {children}
+            </p>
           </div>
           <Points points={points} className="lg:pt-8" />
         </div>
@@ -225,13 +261,17 @@ function Feature({
     <div
       className={cx(
         "grid items-center gap-8 lg:gap-14",
-        reverse ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" : "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]",
+        reverse
+          ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]"
+          : "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]",
       )}
     >
       <div className={cx("max-w-[460px]", reverse && "lg:order-2")}>
         <p className="mk-caps">{eyebrow}</p>
         <h3 className="mk-display mt-3 text-[28px] leading-[1.1] sm:text-[34px]">{title}</h3>
-        <p className="mt-4 text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">{children}</p>
+        <p className="mt-4 text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">
+          {children}
+        </p>
         <Points points={points} className="mt-5" />
       </div>
       {stage}
@@ -243,8 +283,14 @@ function Points({ points, className }: { points: ReactNode[]; className?: string
   return (
     <ul className={cx("space-y-3", className)}>
       {points.map((point, i) => (
-        <li key={i} className="flex gap-3 text-[14.5px] leading-relaxed text-ink [&_b]:font-medium [&_b]:text-(--color-heading)">
-          <span aria-hidden="true" className="mt-[9px] size-[5px] flex-none rounded-full bg-(--color-ink-muted)" />
+        <li
+          key={i}
+          className="flex gap-3 text-[14.5px] leading-relaxed text-ink [&_b]:font-medium [&_b]:text-(--color-heading)"
+        >
+          <span
+            aria-hidden="true"
+            className="mt-[9px] size-[5px] flex-none rounded-full bg-(--color-ink-muted)"
+          />
           <span>{point}</span>
         </li>
       ))}
@@ -252,10 +298,23 @@ function Points({ points, className }: { points: ReactNode[]; className?: string
   );
 }
 
-function SmallFeature({ art, picture, title, body }: { art: string; picture: ReactNode; title: string; body: string }) {
+function SmallFeature({
+  art,
+  picture,
+  title,
+  body,
+}: {
+  art: string;
+  picture: ReactNode;
+  title: string;
+  body: string;
+}) {
   return (
     <div>
-      <div className="mk-stage flex min-h-[380px] items-center px-3 py-8 sm:px-8" style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
+      <div
+        className="mk-stage flex min-h-[380px] items-center px-3 py-8 sm:px-8"
+        style={{ ["--stage-art" as string]: artThumb(artById(art)) }}
+      >
         {picture}
       </div>
       <h3 className="mk-h3 mt-5 text-[17px]">{title}</h3>
@@ -268,13 +327,23 @@ function SmallFeature({ art, picture, title, body }: { art: string; picture: Rea
 
 const AI_VIOLET = "text-[#7c6cf0]";
 
-function AiFoot({ children = "AI can make mistakes. Sent to Google Gemini." }: { children?: ReactNode }) {
-  return <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">{children}</p>;
+function AiFoot({
+  children = "AI can make mistakes. Sent to Google Gemini.",
+}: {
+  children?: ReactNode;
+}) {
+  return (
+    <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">
+      {children}
+    </p>
+  );
 }
 
 function Chip({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-full bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]">{children}</span>
+    <span className="rounded-full bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]">
+      {children}
+    </span>
   );
 }
 
@@ -311,8 +380,12 @@ export function AskPanel() {
           </p>
           <div className="rounded-[14px] rounded-bl-[4px] bg-(--glass-active) px-4 py-3 leading-relaxed text-ink shadow-(--glass-edge)">
             <p>
-              Swap day is the <strong className="font-semibold text-(--color-heading)">first Saturday in April</strong> [1]. Two
-              tasks are still open: print the seed labels by Friday, and order glassine envelopes by Monday [2].
+              Swap day is the{" "}
+              <strong className="font-semibold text-(--color-heading)">
+                first Saturday in April
+              </strong>{" "}
+              [1]. Two tasks are still open: print the seed labels by Friday, and order glassine
+              envelopes by Monday [2].
             </p>
             <div className="mt-3 border-t border-(--color-line) pt-2.5">
               <p className="mk-caps mb-1.5 text-[10.5px]">Sources</p>
@@ -330,7 +403,9 @@ export function AskPanel() {
               <ArrowUp size={15} />
             </span>
           </div>
-          <p className="mt-2 px-1 text-[11px] text-faint">AI can make mistakes. Questions and the notes they need go to Google Gemini.</p>
+          <p className="mt-2 px-1 text-[11px] text-faint">
+            AI can make mistakes. Questions and the notes they need go to Google Gemini.
+          </p>
         </div>
       </div>
     </div>
@@ -351,7 +426,8 @@ const EDIT_ROWS: Array<{ icon: ReactNode; label: string; more?: boolean }> = [
 ];
 
 function EditPicture() {
-  const selected = "the swap moved to the library hall because the café is closed for repairs, so everyone should bring their seeds there";
+  const selected =
+    "the swap moved to the library hall because the café is closed for repairs, so everyone should bring their seeds there";
   return (
     <div
       role="img"
@@ -359,10 +435,17 @@ function EditPicture() {
       className="mx-auto max-w-[480px]"
     >
       <div aria-hidden="true">
-        <div className="mk-note rounded-[14px] px-5 pb-6 pt-5 text-[14px] leading-[1.65] shadow-(--glass-edge)" style={{ ...artVars(artById("art-16")), fontFamily: "var(--font-serif)" }}>
+        <div
+          className="mk-note rounded-[14px] px-5 pb-6 pt-5 text-[14px] leading-[1.65] shadow-(--glass-edge)"
+          style={{ ...artVars(artById("art-16")), fontFamily: "var(--font-serif)" }}
+        >
           <p className="mk-note-h text-[19px]">Swap day update</p>
           <p className="mt-2">
-            Quick note for the group: <span className="rounded-[2px] bg-[color-mix(in_oklab,#7c6cf0_24%,transparent)]">{selected}</span>.
+            Quick note for the group:{" "}
+            <span className="rounded-[2px] bg-[color-mix(in_oklab,#7c6cf0_24%,transparent)]">
+              {selected}
+            </span>
+            .
           </p>
         </div>
         <div className="mk-app-pop relative z-10 -mt-3 ml-4 overflow-hidden rounded-[14px] text-[13.5px] sm:ml-10">
@@ -371,13 +454,23 @@ function EditPicture() {
           </p>
           <div className="flex items-center gap-2 px-3 py-2.5">
             <AiIcon size={16} className={cx("flex-none", AI_VIOLET)} />
-            <span className="min-w-0 flex-1 truncate text-[14px] text-faint">Ask AI to edit the selected text…</span>
+            <span className="min-w-0 flex-1 truncate text-[14px] text-faint">
+              Ask AI to edit the selected text…
+            </span>
             <X size={15} className="flex-none text-muted" />
           </div>
           <ul className="border-t border-(--color-line) p-1.5">
-            <li className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Edit or review</li>
+            <li className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
+              Edit or review
+            </li>
             {EDIT_ROWS.map((row, i) => (
-              <li key={row.label} className={cx("flex items-center gap-2.5 rounded-[8px] px-2.5 py-[7px]", i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink")}>
+              <li
+                key={row.label}
+                className={cx(
+                  "flex items-center gap-2.5 rounded-[8px] px-2.5 py-[7px]",
+                  i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink",
+                )}
+              >
                 <span className="text-muted">{row.icon}</span>
                 <span className="min-w-0 flex-1 truncate">{row.label}</span>
                 {row.more ? <ChevronRight size={14} className="text-faint" /> : null}
@@ -394,7 +487,12 @@ function EditPicture() {
 
 /* Write with AI ------------------------------------------------------------------------------------ */
 
-const ACTION_ITEMS = ["Book the library hall for the 5th", "Print seed labels by Friday", "Order glassine envelopes", "Post the new time in the group chat"];
+const ACTION_ITEMS = [
+  "Book the library hall for the 5th",
+  "Print seed labels by Friday",
+  "Order glassine envelopes",
+  "Post the new time in the group chat",
+];
 
 function WritePicture() {
   return (
@@ -419,7 +517,9 @@ function WritePicture() {
         </div>
         <div className="flex items-center gap-2 px-3 py-2.5">
           <AiIcon size={16} className={cx("flex-none", AI_VIOLET)} />
-          <span className="min-w-0 flex-1 truncate text-[14px] text-faint">Tell AI what to change… (⏎ to accept)</span>
+          <span className="min-w-0 flex-1 truncate text-[14px] text-faint">
+            Tell AI what to change… (⏎ to accept)
+          </span>
           <X size={15} className="flex-none text-muted" />
         </div>
         <div className="space-y-2 border-t border-(--color-line) px-3 py-2.5">
@@ -479,7 +579,9 @@ function FlowchartPicture() {
     >
       <div aria-hidden="true" className="mk-card overflow-hidden">
         <div className="flex items-center gap-2 border-b mk-hair px-4 py-2.5 text-[12px] font-medium text-muted">
-          <span className="rounded-[5px] bg-(--glass-hover) px-1.5 leading-5 text-ink">Flowchart</span>
+          <span className="rounded-[5px] bg-(--glass-hover) px-1.5 leading-5 text-ink">
+            Flowchart
+          </span>
           <span className="flex-1" />
           <span>Tidy up</span>
           <span className="inline-flex items-center gap-1 rounded-[6px] bg-(--glass-hover) px-2 py-0.5 text-(--color-heading)">
@@ -490,7 +592,9 @@ function FlowchartPicture() {
           <div className="mk-app-pop m-3 overflow-hidden rounded-[12px] text-[13.5px] md:m-5">
             <div className="flex gap-1 px-2.5 pt-2 text-[12px] font-[550]">
               <span className="rounded-full px-2.5 py-1 text-muted">Update this chart</span>
-              <span className="rounded-full bg-(--glass-hover) px-2.5 py-1 text-(--color-heading) shadow-[inset_0_0_0_1px_var(--glass-border)]">Start over</span>
+              <span className="rounded-full bg-(--glass-hover) px-2.5 py-1 text-(--color-heading) shadow-[inset_0_0_0_1px_var(--glass-border)]">
+                Start over
+              </span>
             </div>
             <div className="flex items-start gap-2 p-2.5">
               <AiIcon size={15} className={cx("mt-[3px] flex-none", AI_VIOLET)} />
@@ -502,7 +606,11 @@ function FlowchartPicture() {
               </span>
             </div>
             <ul className="border-t border-(--color-line) px-1.5 py-1.5 text-[13px] text-muted">
-              {["Add an approval step after review", "Add error handling to every step", "Simplify it to the main steps"].map((idea) => (
+              {[
+                "Add an approval step after review",
+                "Add error handling to every step",
+                "Simplify it to the main steps",
+              ].map((idea) => (
                 <li key={idea} className="rounded-[8px] px-2 py-1.5">
                   {idea}
                 </li>
@@ -528,7 +636,10 @@ function CatchUpPicture() {
       aria-label="The Catch me up brief on Home, titled Your week. This week: the swap moved to the library hall, and the trip is booked. Up next: print seed labels by Friday and book the ferry. Three notes are linked as sources."
       className="mx-auto w-full max-w-[420px]"
     >
-      <div aria-hidden="true" className="mk-app-pop rounded-[16px] p-5 text-[13px] leading-relaxed text-ink">
+      <div
+        aria-hidden="true"
+        className="mk-app-pop rounded-[16px] p-5 text-[13px] leading-relaxed text-ink"
+      >
         <div className="mb-2 flex items-center gap-2">
           <AiIcon size={15} className={AI_VIOLET} />
           <p className="mk-display flex-1 text-[18px]">Your week</p>
@@ -566,7 +677,9 @@ function TitlePicture() {
     >
       <div aria-hidden="true">
         <p className="mk-display text-[24px] text-(--color-heading)">
-          <span className="rounded-[2px] bg-[color-mix(in_oklab,#7c6cf0_24%,transparent)]">notes from tuesdays call w/ ines</span>
+          <span className="rounded-[2px] bg-[color-mix(in_oklab,#7c6cf0_24%,transparent)]">
+            notes from tuesdays call w/ ines
+          </span>
         </p>
         <div className="mk-app-pop mt-2.5 overflow-hidden rounded-[14px] text-[13.5px]">
           <div className="flex items-center gap-2 px-3 py-2.5">
@@ -580,7 +693,13 @@ function TitlePicture() {
               { icon: <SpellCheck size={15} />, label: "Fix spelling & grammar" },
               { icon: <Minimize2 size={15} />, label: "Make shorter" },
             ].map((row, i) => (
-              <li key={row.label} className={cx("flex items-center gap-2.5 rounded-[8px] px-2.5 py-[7px]", i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink")}>
+              <li
+                key={row.label}
+                className={cx(
+                  "flex items-center gap-2.5 rounded-[8px] px-2.5 py-[7px]",
+                  i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink",
+                )}
+              >
                 <span className="text-muted">{row.icon}</span>
                 <span className="min-w-0 flex-1 truncate">{row.label}</span>
                 {i === 0 ? <Check size={13} className="text-faint" /> : null}
@@ -592,4 +711,3 @@ function TitlePicture() {
     </div>
   );
 }
-

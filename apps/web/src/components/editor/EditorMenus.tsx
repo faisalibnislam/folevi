@@ -6,6 +6,7 @@ import { beginPointerDrag, isDragging } from "./blockDrag";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { AudioRecorder } from "./AudioRecorder";
 import {
   Bold,
   CalendarDays,
@@ -32,6 +33,7 @@ import {
   Minus,
   MoveDown,
   MoveUp,
+  Mic,
   Paperclip,
   Plus,
   Quote,
@@ -102,7 +104,7 @@ interface MenuItem {
 }
 
 /** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
-export type SpecialInsert = "image" | "unsplash" | "file" | "page" | "card" | "bookmark" | "collection" | "gallery" | "board" | "date" | "pickDate";
+export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "page" | "card" | "bookmark" | "collection" | "gallery" | "board" | "date" | "pickDate";
 
 /** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
 export function requestSpecialInsert(editor: Editor, kind: SpecialInsert) {
@@ -220,6 +222,7 @@ export function EditorMenus({
   trigger,
   editable,
   onInsertFiles,
+  onInsertAudio,
   onDropBlock,
   onCommentBlock,
 }: {
@@ -229,6 +232,7 @@ export function EditorMenus({
   trigger: TriggerState | null;
   editable: boolean;
   onInsertFiles: (files: File[]) => Promise<void>;
+  onInsertAudio: (file: File, durationSeconds: number) => Promise<void>;
   onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null;
   onCommentBlock?: (blockId: string) => void;
 }) {
@@ -246,6 +250,7 @@ export function EditorMenus({
   const [unsplashOpen, setUnsplashOpen] = useState(false);
   const [datePicker, setDatePicker] = useState<{ mode: "insert" } | { mode: "edit"; pos: number } | null>(null);
   const [datePickerAnchor, setDatePickerAnchor] = useState<Anchor | null>(null);
+  const [recorderAnchor, setRecorderAnchor] = useState<Anchor | null>(null);
 
   const triggerKey = trigger ? `${trigger.kind}:${trigger.from}` : null;
   const open = trigger && editable && dismissed !== triggerKey ? trigger : null;
@@ -344,6 +349,7 @@ export function EditorMenus({
       image: account("Images", () => imageInput.current?.click()),
       unsplash: account("Images", () => setUnsplashOpen(true)),
       file: account("Files", () => fileInput.current?.click()),
+      record: account("Audio recordings", () => setRecorderAnchor(caretAnchor())),
       page: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "link")}?new=1`)),
       card: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "card")}?new=1`)),
       bookmark: account("Bookmarks", () => setBookmarkPrompt(true)),
@@ -494,6 +500,7 @@ export function EditorMenus({
       { id: "image", label: "Image", keywords: "image picture photo upload", icon: <ImageIcon size={15} />, run: special.image },
       { id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash },
       { id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
+      { id: "record", label: "Audio recording", keywords: "audio record recording voice memo microphone mic sound dictate", icon: <Mic size={15} />, run: special.record },
       { id: "bookmark", label: "Bookmark", keywords: "bookmark web link url embed", icon: <LinkIcon size={15} />, run: special.bookmark },
       { id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
       { id: "gallery", label: "Gallery", keywords: "gallery collection database cards grid", icon: <LayoutGrid size={15} />, run: special.gallery },
@@ -706,6 +713,17 @@ export function EditorMenus({
           insertBlockAfterCurrent(editor, "bookmark", { url, title: host });
         }}
       />
+      {recorderAnchor ? (
+        <Popover anchor={recorderAnchor} label="Audio recording" width={320} scroll={false}>
+          <AudioRecorder
+            onSave={onInsertAudio}
+            onClose={() => {
+              setRecorderAnchor(null);
+              editor.view.focus();
+            }}
+          />
+        </Popover>
+      ) : null}
       {datePicker && datePickerAnchor ? (
         <DatePopover
           editor={editor}

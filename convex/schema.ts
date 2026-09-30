@@ -913,7 +913,7 @@ export default defineSchema({
     mimeType: v.string(),
     size: v.number(),
     sha256: v.string(),
-    kind: v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("logo"), v.literal("cover"), v.literal("export")),
+    kind: v.union(v.literal("image"), v.literal("file"), v.literal("audio"), v.literal("avatar"), v.literal("logo"), v.literal("cover"), v.literal("export")),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
     /** For a note style image: the page and text colours picked from it (apps/web/src/lib/palette.ts). */
@@ -933,7 +933,7 @@ export default defineSchema({
     profileId: v.id("profiles"),
     ...scoped,
     documentId: v.optional(v.id("documents")),
-    kind: v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("logo"), v.literal("cover")),
+    kind: v.union(v.literal("image"), v.literal("file"), v.literal("audio"), v.literal("avatar"), v.literal("logo"), v.literal("cover")),
     filename: v.string(),
     declaredSize: v.number(),
     declaredMime: v.string(),

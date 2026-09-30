@@ -52,6 +52,8 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     // 'unsafe-inline'; styles cannot execute script.
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${site} https:`,
+    // Audio recordings: blob: while one waits to upload, then signed file URLs.
+    `media-src 'self' blob: ${site}`,
     "font-src 'self'",
     `connect-src 'self' ${convex} ${convexWs} ${site} ${extra}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
     `frame-src ${site}`,

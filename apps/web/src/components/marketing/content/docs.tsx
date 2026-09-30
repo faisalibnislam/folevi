@@ -37,6 +37,7 @@ const blocks: Array<[string, string]> = [
   ["Code", "Monospaced code with a language label."],
   ["Table", "Rows and columns, with an optional header row."],
   ["Image and file", "Upload from your device or drag in from Finder."],
+  ["Audio recording", "Record from your microphone, up to an hour, and play it back in the note. Saved on your device first, then uploaded."],
   ["Bookmark", "A link preview card for a web page."],
   ["Page", "A sub-page, shown as a link or as a card."],
   ["Flowchart", "Shapes and connectors on a canvas, with Tidy up and AI. See Flowcharts and diagrams."],

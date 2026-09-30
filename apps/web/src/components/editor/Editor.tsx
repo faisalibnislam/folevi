@@ -14,7 +14,7 @@ import { blockToNode, blocksToDoc, contentKey, diffBlocks, docToBlocks } from ".
 import { flattenTree } from "@folevi/editor-schema";
 import { htmlToBlocks } from "./paste";
 import { EditorMenus } from "./EditorMenus";
-import { subtreeRange, normalizeDepths, moveSubtreeTo } from "./commands";
+import { insertBlockAfterCurrent, subtreeRange, normalizeDepths, moveSubtreeTo } from "./commands";
 import { closeHistory } from "@tiptap/pm/history";
 import { useAiEnabled } from "@/components/ai/useAi";
 
@@ -301,6 +301,21 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     [accountKey, engine, documentId],
   );
 
+  // A finished "/Audio recording": stored on the device and uploaded like any attachment.
+  const insertAudio = useCallback(
+    async (file: File, duration: number) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      const blockId = ulid();
+      // Register the upload before the block exists so its sync op is held until the upload finishes.
+      await enqueueUpload(accountKey, engine, { documentId, blockId, file, kind: "audio" });
+      // Takes the place of the empty line the "/" was typed on.
+      insertBlockAfterCurrent(ed, "audio", { id: blockId, name: file.name, size: file.size, mimeType: file.type, duration: Math.round(duration * 10) / 10 });
+      window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
+    },
+    [accountKey, engine, documentId],
+  );
+
   useImperativeHandle(
     ref,
     () => ({
@@ -342,6 +357,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           trigger={trigger}
           editable={editable}
           onInsertFiles={insertFiles}
+          onInsertAudio={insertAudio}
           onDropBlock={onDropBlock}
           onCommentBlock={onCommentBlock}
         />

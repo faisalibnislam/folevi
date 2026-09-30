@@ -37,7 +37,9 @@ export function inlineToHtml(nodes: readonly InlineNode[], opts: HtmlExportOptio
         case "pageLink": {
           const href = opts.resolveDocument?.(n.documentId);
           const label = opts.resolveDocumentTitle?.(n.documentId) || n.label || "Untitled";
-          return href ? `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>` : escapeHtml(label);
+          return href
+            ? `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`
+            : escapeHtml(label);
         }
         case "text": {
           let s = escapeHtml(n.text).replace(/\n/g, "<br>");
@@ -104,7 +106,10 @@ hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{b
 @media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
 `;
 
-export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptions & { title: string }): string {
+export function blocksToHtml(
+  blocks: readonly WireBlock[],
+  opts: HtmlExportOptions & { title: string },
+): string {
   const flat = flattenTree(blocks);
   const parts: string[] = [];
   let openList: { tag: string; depth: number }[] = [];
@@ -116,7 +121,14 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
   for (const { block, depth } of flat) {
     const p = block.props as Record<string, unknown>;
     const t = inlineToHtml(block.text, opts);
-    const listTag = block.type === "bulleted" ? "ul" : block.type === "numbered" ? "ol" : block.type === "todo" ? "ul class=\"todo\"" : null;
+    const listTag =
+      block.type === "bulleted"
+        ? "ul"
+        : block.type === "numbered"
+          ? "ol"
+          : block.type === "todo"
+            ? 'ul class="todo"'
+            : null;
     if (listTag) {
       const top = openList[openList.length - 1];
       if (top && top.depth > depth) closeLists(depth + 1);
@@ -148,7 +160,9 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
         parts.push(`<blockquote>${t}</blockquote>`);
         break;
       case "callout":
-        parts.push(`<aside class="callout callout-${escapeHtml(String(p.tone))}">${p.icon ? `${escapeHtml(String(p.icon))} ` : ""}${t}</aside>`);
+        parts.push(
+          `<aside class="callout callout-${escapeHtml(String(p.tone))}">${p.icon ? `${escapeHtml(String(p.icon))} ` : ""}${t}</aside>`,
+        );
         break;
       case "divider":
         parts.push(p.style ? `<hr class="divider-${escapeHtml(String(p.style))}">` : "<hr>");
@@ -159,20 +173,29 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
       case "formula": {
         const latex = String(p.latex ?? "");
         const rendered = latex ? opts.renderMath?.(latex) : null;
-        parts.push(`<div class="formula">${rendered ?? `<pre><code class="language-latex">${escapeHtml(latex)}</code></pre>`}</div>`);
+        parts.push(
+          `<div class="formula">${rendered ?? `<pre><code class="language-latex">${escapeHtml(latex)}</code></pre>`}</div>`,
+        );
         break;
       }
       case "whiteboard":
-        parts.push(`<figure class="whiteboard">${whiteboardToSvg(String(p.data ?? ""), Number(p.height))}</figure>`);
+        parts.push(
+          `<figure class="whiteboard">${whiteboardToSvg(String(p.data ?? ""), Number(p.height))}</figure>`,
+        );
         break;
       case "flowchart":
-        if (String(p.data ?? "")) parts.push(`<figure class="flowchart">${flowchartToSvg(String(p.data))}</figure>`);
+        if (String(p.data ?? ""))
+          parts.push(`<figure class="flowchart">${flowchartToSvg(String(p.data))}</figure>`);
         break;
       case "code":
-        parts.push(`<pre><code class="language-${escapeHtml(String(p.language))}">${escapeHtml(String(p.code ?? ""))}</code></pre>`);
+        parts.push(
+          `<pre><code class="language-${escapeHtml(String(p.language))}">${escapeHtml(String(p.code ?? ""))}</code></pre>`,
+        );
         break;
       case "image": {
-        const src = p.fileId ? opts.resolveFile?.(String(p.fileId)) : sanitizeHref(String(p.url ?? ""));
+        const src = p.fileId
+          ? opts.resolveFile?.(String(p.fileId))
+          : sanitizeHref(String(p.url ?? ""));
         if (src) {
           parts.push(
             `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(String(p.alt ?? ""))}">${p.caption ? `<figcaption>${escapeHtml(String(p.caption))}</figcaption>` : ""}</figure>`,
@@ -182,7 +205,18 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
       }
       case "file": {
         const src = opts.resolveFile?.(String(p.fileId));
-        parts.push(`<p><a href="${escapeHtml(src ?? "#")}" download>${escapeHtml(String(p.name))}</a></p>`);
+        parts.push(
+          `<p><a href="${escapeHtml(src ?? "#")}" download>${escapeHtml(String(p.name))}</a></p>`,
+        );
+        break;
+      }
+      case "audio": {
+        const src = opts.resolveFile?.(String(p.fileId));
+        parts.push(
+          src
+            ? `<figure class="audio"><audio controls preload="metadata" src="${escapeHtml(src)}"></audio><figcaption><a href="${escapeHtml(src)}" download>${escapeHtml(String(p.name))}</a></figcaption></figure>`
+            : `<p>${escapeHtml(String(p.name))}</p>`,
+        );
         break;
       }
       case "table": {
@@ -198,13 +232,17 @@ export function blocksToHtml(blocks: readonly WireBlock[], opts: HtmlExportOptio
       }
       case "page": {
         const href = opts.resolveDocument?.(String(p.documentId));
-        const label = escapeHtml(opts.resolveDocumentTitle?.(String(p.documentId)) || String(p.titleCache || "Untitled"));
+        const label = escapeHtml(
+          opts.resolveDocumentTitle?.(String(p.documentId)) || String(p.titleCache || "Untitled"),
+        );
         parts.push(`<p>${href ? `<a href="${escapeHtml(href)}">${label}</a>` : label}</p>`);
         break;
       }
       case "bookmark": {
         const href = sanitizeHref(String(p.url));
-        parts.push(`<p><a href="${escapeHtml(href ?? "#")}" rel="noopener noreferrer">${escapeHtml(String(p.title ?? p.url))}</a></p>`);
+        parts.push(
+          `<p><a href="${escapeHtml(href ?? "#")}" rel="noopener noreferrer">${escapeHtml(String(p.title ?? p.url))}</a></p>`,
+        );
         break;
       }
       default:

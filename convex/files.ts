@@ -4,23 +4,62 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, isScheduledForDeletion, membership, memberLevel, requireDocument, requireProfile, requireWorkspace, resolveScope, memberAtLeast } from "./lib/auth";
+import {
+  accessAtLeast,
+  assertWritable,
+  documentAccess,
+  isScheduledForDeletion,
+  membership,
+  memberLevel,
+  requireDocument,
+  requireProfile,
+  requireWorkspace,
+  resolveScope,
+  memberAtLeast,
+} from "./lib/auth";
 import { fail } from "./lib/errors";
 import { adjustStorageUsed, assertStorageFor, storageChargeFor } from "./lib/entitlements";
-import { insertScoped, personalScope, scopeOfRow, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
+import {
+  insertScoped,
+  personalScope,
+  scopeOfRow,
+  vScopeArg,
+  workspaceScope,
+  type Scope,
+} from "./lib/scope";
 import { vImagePalette } from "./lib/validators";
 import { consume } from "./lib/rateLimit";
-import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, safeFilename, sameBytes, sniff, stripImageMetadata } from "./lib/images";
+import {
+  MAX_FILE_BYTES,
+  MAX_IMAGE_BYTES,
+  MAX_IMAGE_PIXELS,
+  safeFilename,
+  sameBytes,
+  sniff,
+  sniffAudio,
+  stripImageMetadata,
+} from "./lib/images";
 import { toHex } from "./lib/crypto";
 import { signFileUrl as sign } from "./lib/fileUrls";
 import { bump } from "./lib/metrics";
 import { MAX_IDENTITY_IMAGE_BYTES } from "./lib/identityImages";
 
 const INTENT_TTL_MS = 10 * 60_000;
-const vKind = v.union(v.literal("image"), v.literal("file"), v.literal("avatar"), v.literal("logo"), v.literal("cover"));
+const vKind = v.union(
+  v.literal("image"),
+  v.literal("file"),
+  v.literal("audio"),
+  v.literal("avatar"),
+  v.literal("logo"),
+  v.literal("cover"),
+);
 
 function maxBytesFor(kind: Doc<"uploadIntents">["kind"]): number {
-  return kind === "file" ? MAX_FILE_BYTES : kind === "avatar" || kind === "logo" ? MAX_IDENTITY_IMAGE_BYTES : MAX_IMAGE_BYTES;
+  return kind === "file" || kind === "audio"
+    ? MAX_FILE_BYTES
+    : kind === "avatar" || kind === "logo"
+      ? MAX_IDENTITY_IMAGE_BYTES
+      : MAX_IMAGE_BYTES;
 }
 
 /**
@@ -29,7 +68,14 @@ function maxBytesFor(kind: Doc<"uploadIntents">["kind"]): number {
  * Personal; a workspace logo to that workspace; anything else to `scope`.
  */
 export const generateUploadUrl = mutation({
-  args: { scope: v.optional(vScopeArg), documentId: v.optional(v.string()), filename: v.string(), size: v.number(), mimeType: v.string(), kind: vKind },
+  args: {
+    scope: v.optional(vScopeArg),
+    documentId: v.optional(v.string()),
+    filename: v.string(),
+    size: v.number(),
+    mimeType: v.string(),
+    kind: vKind,
+  },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
@@ -40,13 +86,17 @@ export const generateUploadUrl = mutation({
     let documentId: Id<"documents"> | undefined;
     if (args.kind === "avatar" || args.kind === "logo") {
       // Profile pictures and workspace logos are never page attachments; the server decides where they live.
-      if (args.documentId) fail("invalid_argument", "Profile pictures and logos can't be attached to a page.");
+      if (args.documentId)
+        fail("invalid_argument", "Profile pictures and logos can't be attached to a page.");
       if (args.kind === "avatar") {
         // Your profile picture is a Personal file (it counts toward your personal storage).
         scope = personalScope(profile._id);
       } else {
-        if (args.scope?.kind !== "workspace") fail("invalid_argument", "Logos belong to a workspace.");
-        scope = workspaceScope((await requireWorkspace(ctx, profile, args.scope.workspaceId, "admin")).workspace._id);
+        if (args.scope?.kind !== "workspace")
+          fail("invalid_argument", "Logos belong to a workspace.");
+        scope = workspaceScope(
+          (await requireWorkspace(ctx, profile, args.scope.workspaceId, "admin")).workspace._id,
+        );
       }
     } else if (args.documentId) {
       const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
@@ -62,7 +112,8 @@ export const generateUploadUrl = mutation({
     }
     await consume(ctx, "upload", profile._id);
     const max = maxBytesFor(args.kind);
-    if (!Number.isFinite(args.size) || args.size <= 0 || args.size > max) fail("invalid_argument", `Files can be up to ${Math.round(max / 1024 / 1024)} MB.`);
+    if (!Number.isFinite(args.size) || args.size <= 0 || args.size > max)
+      fail("invalid_argument", `Files can be up to ${Math.round(max / 1024 / 1024)} MB.`);
     // Under the scope's own rule (lib/entitlements.ts): the owner's free pool, the uploader's own quota in a
     // paid workspace (a guest's: the page owner's), or an admin's override.
     const storageProblem = await assertStorageFor(ctx, scope, args.size, profile._id, documentId);
@@ -104,13 +155,28 @@ export const commitFile = internalMutation({
   },
   handler: async (ctx, args) => {
     const intent = await ctx.db.get(args.intentId);
-    if (!intent || intent.consumedAt || intent.profileId !== args.profileId || intent.expiresAt < Date.now()) fail("expired", "Upload expired. Try again.");
+    if (
+      !intent ||
+      intent.consumedAt ||
+      intent.profileId !== args.profileId ||
+      intent.expiresAt < Date.now()
+    )
+      fail("expired", "Upload expired. Try again.");
     const scope = scopeOfRow(intent);
-    const storageProblem = await assertStorageFor(ctx, scope, args.size, args.profileId, intent.documentId);
+    const storageProblem = await assertStorageFor(
+      ctx,
+      scope,
+      args.size,
+      args.profileId,
+      intent.documentId,
+    );
     if (storageProblem) fail("quota_exceeded", storageProblem);
     await ctx.db.patch(intent._id, { consumedAt: Date.now() });
     // In a team workspace, whose per-person storage it counts against (kept on the file for when it's deleted).
-    const chargedTo = scope.kind === "workspace" ? await storageChargeFor(ctx, scope.workspaceId, args.profileId, intent.documentId) : undefined;
+    const chargedTo =
+      scope.kind === "workspace"
+        ? await storageChargeFor(ctx, scope.workspaceId, args.profileId, intent.documentId)
+        : undefined;
     const publicId = ulid();
     await insertScoped(ctx, "files", scope, {
       publicId,
@@ -145,37 +211,69 @@ export const currentProfileId = internalQuery({
  */
 export const finalize = action({
   args: { intentId: v.string(), storageId: v.id("_storage"), sha256: v.string() },
-  handler: async (ctx, args): Promise<{ fileId: string; mimeType: string; width: number | null; height: number | null; size: number }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    fileId: string;
+    mimeType: string;
+    width: number | null;
+    height: number | null;
+    size: number;
+  }> => {
     const profileId: Id<"profiles"> = await ctx.runQuery(internal.files.currentProfileId, {});
     const intentId = args.intentId as Id<"uploadIntents">;
-    const { intent, meta } = await ctx.runQuery(internal.files.intentForFinalize, { intentId, storageId: args.storageId });
+    const { intent, meta } = await ctx.runQuery(internal.files.intentForFinalize, {
+      intentId,
+      storageId: args.storageId,
+    });
     const reject = async (message: string): Promise<never> => {
       await ctx.storage.delete(args.storageId);
       fail("unsupported_file", message);
     };
-    if (!intent || intent.profileId !== profileId || intent.consumedAt || intent.expiresAt < Date.now() || !meta) return await reject("Upload expired. Try again.");
+    if (
+      !intent ||
+      intent.profileId !== profileId ||
+      intent.consumedAt ||
+      intent.expiresAt < Date.now() ||
+      !meta
+    )
+      return await reject("Upload expired. Try again.");
     const blob = await ctx.storage.get(args.storageId);
     if (!blob) return await reject("Upload not found.");
     let bytes = new Uint8Array(await blob.arrayBuffer());
     const max = maxBytesFor(intent.kind);
-    if (bytes.length > max || bytes.length !== intent.declaredSize) return await reject("The file size didn't match.");
+    if (bytes.length > max || bytes.length !== intent.declaredSize)
+      return await reject("The file size didn't match.");
     const clientHash = args.sha256.toLowerCase();
     const serverHash = toHex(await crypto.subtle.digest("SHA-256", bytes));
-    if (clientHash !== serverHash) return await reject("The file was damaged during upload. Try again.");
-    const sniffed = sniff(bytes);
-    const wantsImage = intent.kind !== "file";
-    if (wantsImage && sniffed.kind !== "image") return await reject("Images must be PNG, JPEG, GIF or WebP.");
+    if (clientHash !== serverHash)
+      return await reject("The file was damaged during upload. Try again.");
+    // Audio recordings are checked against the audio formats browsers record and play; nothing else passes.
+    const audioMime = intent.kind === "audio" ? sniffAudio(bytes) : null;
+    if (intent.kind === "audio" && !audioMime)
+      return await reject("Recordings must be WebM, Ogg, MP4, WAV or MP3 audio.");
+    const sniffed = audioMime
+      ? ({ kind: "file", mime: audioMime, risky: false } as const)
+      : sniff(bytes);
+    const wantsImage = intent.kind !== "file" && intent.kind !== "audio";
+    if (wantsImage && sniffed.kind !== "image")
+      return await reject("Images must be PNG, JPEG, GIF or WebP.");
     let storageId = args.storageId;
     let width: number | undefined;
     let height: number | undefined;
     if (sniffed.kind === "image") {
       width = sniffed.width;
       height = sniffed.height;
-      if (width && height && width * height > MAX_IMAGE_PIXELS) return await reject("That image is too large.");
-      if (!width || !height) return await reject("That image couldn't be read. Try exporting it again as PNG or JPEG.");
+      if (width && height && width * height > MAX_IMAGE_PIXELS)
+        return await reject("That image is too large.");
+      if (!width || !height)
+        return await reject("That image couldn't be read. Try exporting it again as PNG or JPEG.");
       const stripped = stripImageMetadata(sniffed.mime, bytes);
       if (!sameBytes(stripped, bytes)) {
-        storageId = await ctx.storage.store(new Blob([stripped as Uint8Array<ArrayBuffer>], { type: sniffed.mime }));
+        storageId = await ctx.storage.store(
+          new Blob([stripped as Uint8Array<ArrayBuffer>], { type: sniffed.mime }),
+        );
         await ctx.storage.delete(args.storageId);
         bytes = stripped as Uint8Array<ArrayBuffer>;
       }
@@ -192,7 +290,13 @@ export const finalize = action({
       height,
       kind: intent.kind === "file" && sniffed.kind === "image" ? "image" : intent.kind,
     });
-    return { fileId, mimeType: sniffed.mime, width: width ?? null, height: height ?? null, size: bytes.length };
+    return {
+      fileId,
+      mimeType: sniffed.mime,
+      width: width ?? null,
+      height: height ?? null,
+      size: bytes.length,
+    };
   },
 });
 
@@ -201,7 +305,11 @@ export const finalize = action({
  * workspace scheduled for deletion: only its owner). An export ZIP only ever goes to the person it was
  * made for (a workspace export holds everything its admin could see, restricted pages included).
  */
-async function canSeeLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: Doc<"files">): Promise<boolean> {
+async function canSeeLooseFile(
+  ctx: QueryCtx,
+  profile: Doc<"profiles">,
+  file: Doc<"files">,
+): Promise<boolean> {
   if (file.kind === "export") return file.uploadedBy === profile._id;
   const scope = scopeOfRow(file);
   if (scope.kind === "personal") return scope.profileId === profile._id;
@@ -213,12 +321,17 @@ async function canSeeLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: Do
 }
 
 /** …and its Personal's owner, or a workspace member who can edit (not while it's closing), may change it. */
-async function canEditLooseFile(ctx: QueryCtx, profile: Doc<"profiles">, file: Doc<"files">): Promise<boolean> {
+async function canEditLooseFile(
+  ctx: QueryCtx,
+  profile: Doc<"profiles">,
+  file: Doc<"files">,
+): Promise<boolean> {
   if (file.kind === "export") return false;
   const scope = scopeOfRow(file);
   if (scope.kind === "personal") return scope.profileId === profile._id;
   const workspace = await ctx.db.get(scope.workspaceId);
-  if (!workspace || workspace.status === "deleting" || isScheduledForDeletion(workspace)) return false;
+  if (!workspace || workspace.status === "deleting" || isScheduledForDeletion(workspace))
+    return false;
   const m = await membership(ctx, profile._id, scope.workspaceId);
   return memberAtLeast(m, "edit");
 }
@@ -241,17 +354,37 @@ export const setPalette = mutation({
       .query("files")
       .withIndex("by_public_id", (q) => q.eq("publicId", args.fileId))
       .unique();
-    if (!file || file.status !== "ready" || (file.kind !== "cover" && file.kind !== "image")) fail("not_found", "File not found.");
+    if (!file || file.status !== "ready" || (file.kind !== "cover" && file.kind !== "image"))
+      fail("not_found", "File not found.");
     if (file.documentId) {
       const doc = await ctx.db.get(file.documentId);
-      if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "write")) fail("not_found", "File not found.");
+      if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "write"))
+        fail("not_found", "File not found.");
     } else if (!(await canEditLooseFile(ctx, profile, file))) fail("not_found", "File not found.");
     const p = args.palette;
     const lower = (list: string[] | undefined) => list?.map((c) => c.toLowerCase());
-    const colours = [p.paper, p.ink, p.paperDark, p.inkDark, p.accent, p.accentDark, ...(p.text ?? []), ...(p.textDark ?? []), ...(p.highlight ?? []), ...(p.highlightDark ?? [])].filter((c): c is string => c !== undefined);
+    const colours = [
+      p.paper,
+      p.ink,
+      p.paperDark,
+      p.inkDark,
+      p.accent,
+      p.accentDark,
+      ...(p.text ?? []),
+      ...(p.textDark ?? []),
+      ...(p.highlight ?? []),
+      ...(p.highlightDark ?? []),
+    ].filter((c): c is string => c !== undefined);
     if (!colours.every((c) => HEX.test(c))) fail("invalid_argument", "Colours must be #rrggbb.");
-    if ((p.text && p.text.length !== 5) || (p.textDark && p.textDark.length !== 5) || (p.highlight && p.highlight.length !== 4) || (p.highlightDark && p.highlightDark.length !== 4)) fail("invalid_argument", "Unexpected palette size.");
-    if (p.names && (p.names.length !== 5 || !p.names.every((n) => /^[A-Za-z ]{1,20}$/.test(n)))) fail("invalid_argument", "Unexpected colour names.");
+    if (
+      (p.text && p.text.length !== 5) ||
+      (p.textDark && p.textDark.length !== 5) ||
+      (p.highlight && p.highlight.length !== 4) ||
+      (p.highlightDark && p.highlightDark.length !== 4)
+    )
+      fail("invalid_argument", "Unexpected palette size.");
+    if (p.names && (p.names.length !== 5 || !p.names.every((n) => /^[A-Za-z ]{1,20}$/.test(n))))
+      fail("invalid_argument", "Unexpected colour names.");
     // Convex values can't hold undefined: drop the fields this palette doesn't have.
     const palette = Object.fromEntries(
       Object.entries({
@@ -284,7 +417,18 @@ export const urls = query({
     // clock is only trusted up to a few minutes ahead of the server's: a link never lasts more than ~2 hours.
     const now = Math.min(args.now, Date.now() + MAX_CLOCK_SKEW_MS);
     const exp = Math.floor(now / 3_600_000) * 3_600_000 + 2 * 3_600_000;
-    const out: Record<string, { url: string; mimeType: string; filename: string; size: number; width: number | null; height: number | null; palette: Doc<"files">["palette"] | null }> = {};
+    const out: Record<
+      string,
+      {
+        url: string;
+        mimeType: string;
+        filename: string;
+        size: number;
+        width: number | null;
+        height: number | null;
+        palette: Doc<"files">["palette"] | null;
+      }
+    > = {};
     for (const id of args.fileIds.slice(0, 200)) {
       const file = await ctx.db
         .query("files")
@@ -321,7 +465,6 @@ export const byPublicId = internalQuery({
       .unique(),
 });
 
-
 // ---------------------------------------------------------------- orphan cleanup (cron)
 
 /** Blobs younger than this are never swept: an upload may still be between upload and finalize. */
@@ -355,7 +498,9 @@ export const sweepOrphanedStorage = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())), now: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const now = args.now ?? Date.now();
-    const page = await ctx.db.system.query("_storage").paginate({ cursor: args.cursor ?? null, numItems: 100 });
+    const page = await ctx.db.system
+      .query("_storage")
+      .paginate({ cursor: args.cursor ?? null, numItems: 100 });
     let deleted = 0;
     for (const blob of page.page) {
       if (blob._creationTime > now - ORPHAN_GRACE_MS) continue;
@@ -364,7 +509,11 @@ export const sweepOrphanedStorage = internalMutation({
       deleted++;
     }
     if (deleted) console.log(JSON.stringify({ event: "files.orphans_swept", deleted }));
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.files.sweepOrphanedStorage, { cursor: page.continueCursor, now });
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(0, internal.files.sweepOrphanedStorage, {
+        cursor: page.continueCursor,
+        now,
+      });
     return { deleted, done: page.isDone };
   },
 });
@@ -382,7 +531,8 @@ export const purgeExpiredExports = internalMutation({
       await ctx.storage.delete(f.storageId);
       await ctx.db.delete(f._id);
     }
-    if (rows.length === 100) await ctx.scheduler.runAfter(0, internal.files.purgeExpiredExports, { now: args.now });
+    if (rows.length === 100)
+      await ctx.scheduler.runAfter(0, internal.files.purgeExpiredExports, { now: args.now });
     return rows.length;
   },
 });

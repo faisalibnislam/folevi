@@ -241,7 +241,7 @@ export function buildPreview(entries: { block: WireBlock; depth: number }[]): Pr
     if (b.type === "heading") line.l = Number(p.level ?? 1);
     if (b.type === "todo") line.c = Boolean(p.checked);
     if (b.type === "table") line.rows = (p.rows ?? []).slice(0, 6).map((r) => r.slice(0, 5).map((c) => plainText(c).slice(0, 24)));
-    if (b.type === "file") line.x = String(p.name ?? "File").slice(0, 80);
+    if (b.type === "file" || b.type === "audio") line.x = String(p.name ?? "File").slice(0, 80);
     if (b.type === "bookmark") line.x = String(p.title ?? p.url ?? "").slice(0, 80);
     if (b.type === "page") line.x = String(p.titleCache ?? "Page").slice(0, 80);
     if (b.type === "formula") line.x = String((p as { latex?: string }).latex ?? "").slice(0, 160);

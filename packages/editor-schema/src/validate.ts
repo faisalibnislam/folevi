@@ -33,7 +33,14 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-function checkValue(value: unknown, base: string, arrays: number, path: string, issues: ValidationIssue[], maxString: number = LIMITS.maxCodeLength): void {
+function checkValue(
+  value: unknown,
+  base: string,
+  arrays: number,
+  path: string,
+  issues: ValidationIssue[],
+  maxString: number = LIMITS.maxCodeLength,
+): void {
   if (arrays > 0) {
     if (!Array.isArray(value)) {
       issues.push({ path, code: "type", message: "expected array" });
@@ -44,27 +51,39 @@ function checkValue(value: unknown, base: string, arrays: number, path: string, 
   }
   switch (base) {
     case "string":
-      if (typeof value !== "string") issues.push({ path, code: "type", message: "expected string" });
-      else if (value.length > maxString) issues.push({ path, code: "too_long", message: "string too long" });
+      if (typeof value !== "string")
+        issues.push({ path, code: "type", message: "expected string" });
+      else if (value.length > maxString)
+        issues.push({ path, code: "too_long", message: "string too long" });
       return;
     case "int":
-      if (typeof value !== "number" || !Number.isInteger(value)) issues.push({ path, code: "type", message: "expected integer" });
+      if (typeof value !== "number" || !Number.isInteger(value))
+        issues.push({ path, code: "type", message: "expected integer" });
       return;
     case "number":
-      if (typeof value !== "number" || !Number.isFinite(value)) issues.push({ path, code: "type", message: "expected number" });
+      if (typeof value !== "number" || !Number.isFinite(value))
+        issues.push({ path, code: "type", message: "expected number" });
       return;
     case "bool":
-      if (typeof value !== "boolean") issues.push({ path, code: "type", message: "expected boolean" });
+      if (typeof value !== "boolean")
+        issues.push({ path, code: "type", message: "expected boolean" });
       return;
   }
   const enums = SPEC.enums as Record<string, { values: readonly (string | number)[] }>;
   if (enums[base]) {
     if (!enums[base].values.includes(value as string | number)) {
-      issues.push({ path, code: "enum", message: `expected one of ${enums[base].values.join(", ")}` });
+      issues.push({
+        path,
+        code: "enum",
+        message: `expected one of ${enums[base].values.join(", ")}`,
+      });
     }
     return;
   }
-  const unions = SPEC.unions as Record<string, { discriminator: string; variants: Record<string, Record<string, string>> }>;
+  const unions = SPEC.unions as Record<
+    string,
+    { discriminator: string; variants: Record<string, Record<string, string>> }
+  >;
   if (unions[base]) {
     const u = unions[base];
     if (!isPlainObject(value)) {
@@ -134,15 +153,26 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   if (typeof b.type !== "string" || !/^[a-zA-Z][a-zA-Z0-9_.-]{0,40}$/.test(b.type)) {
     issues.push({ path: "type", code: "type", message: "invalid block type" });
   }
-  if (b.parentId !== null && !isValidId(b.parentId)) issues.push({ path: "parentId", code: "id", message: "invalid parent id" });
-  if (b.parentId !== null && b.parentId === b.id) issues.push({ path: "parentId", code: "cycle", message: "block cannot be its own parent" });
-  if (typeof b.rank !== "string" || !isValidRank(b.rank) || b.rank.length > LIMITS.maxRankLength * 2) {
+  if (b.parentId !== null && !isValidId(b.parentId))
+    issues.push({ path: "parentId", code: "id", message: "invalid parent id" });
+  if (b.parentId !== null && b.parentId === b.id)
+    issues.push({ path: "parentId", code: "cycle", message: "block cannot be its own parent" });
+  if (
+    typeof b.rank !== "string" ||
+    !isValidRank(b.rank) ||
+    b.rank.length > LIMITS.maxRankLength * 2
+  ) {
     issues.push({ path: "rank", code: "rank", message: "invalid rank" });
   }
-  if (typeof b.schemaVersion !== "number" || !Number.isInteger(b.schemaVersion) || b.schemaVersion < 1) {
+  if (
+    typeof b.schemaVersion !== "number" ||
+    !Number.isInteger(b.schemaVersion) ||
+    b.schemaVersion < 1
+  ) {
     issues.push({ path: "schemaVersion", code: "type", message: "invalid schema version" });
   }
-  if (!isPlainObject(b.props)) issues.push({ path: "props", code: "type", message: "props must be an object" });
+  if (!isPlainObject(b.props))
+    issues.push({ path: "props", code: "type", message: "props must be an object" });
   if (!Array.isArray(b.text)) {
     issues.push({ path: "text", code: "type", message: "text must be an array" });
   }
@@ -154,17 +184,27 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
     }
     return issues;
   }
-  const def = (SPEC.blocks as Record<string, { text: boolean; props: Record<string, string> }>)[b.type as string]!;
+  const def = (SPEC.blocks as Record<string, { text: boolean; props: Record<string, string> }>)[
+    b.type as string
+  ]!;
   issues.push(...validateInline(b.text));
   if (!def.text && (b.text as unknown[]).length > 0) {
-    issues.push({ path: "text", code: "unexpected", message: `${b.type} blocks do not carry text` });
+    issues.push({
+      path: "text",
+      code: "unexpected",
+      message: `${b.type} blocks do not carry text`,
+    });
   }
   if (issues.length === 0 && plainText(b.text as never).length > LIMITS.maxTextLength) {
     issues.push({ path: "text", code: "too_long", message: "text too long" });
   }
   // Whiteboard drawings and flowcharts may be larger than other strings (see LIMITS.max*DataLength).
   const stringLimits: Record<string, number> =
-    b.type === "whiteboard" ? { data: LIMITS.maxWhiteboardDataLength } : b.type === "flowchart" ? { data: LIMITS.maxFlowchartDataLength } : {};
+    b.type === "whiteboard"
+      ? { data: LIMITS.maxWhiteboardDataLength }
+      : b.type === "flowchart"
+        ? { data: LIMITS.maxFlowchartDataLength }
+        : {};
   checkFields(b.props as Record<string, unknown>, def.props, "props", issues, [], stringLimits);
   if (issues.length) return issues;
 
@@ -188,10 +228,13 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
       break;
     case "table": {
       const rows = p.rows as unknown[][];
-      if (rows.length > LIMITS.maxTableRows) issues.push({ path: "props.rows", code: "too_long", message: "too many rows" });
+      if (rows.length > LIMITS.maxTableRows)
+        issues.push({ path: "props.rows", code: "too_long", message: "too many rows" });
       const width = rows[0]?.length ?? 0;
-      if (width > LIMITS.maxTableColumns) issues.push({ path: "props.rows", code: "too_long", message: "too many columns" });
-      if (rows.some((r) => r.length !== width)) issues.push({ path: "props.rows", code: "shape", message: "rows must have equal length" });
+      if (width > LIMITS.maxTableColumns)
+        issues.push({ path: "props.rows", code: "too_long", message: "too many columns" });
+      if (rows.some((r) => r.length !== width))
+        issues.push({ path: "props.rows", code: "shape", message: "rows must have equal length" });
       break;
     }
     case "image":
@@ -199,38 +242,80 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
         issues.push({ path: "props", code: "required", message: "image needs fileId or url" });
       }
       if (p.width !== undefined && ((p.width as number) < 0.2 || (p.width as number) > 1)) {
-        issues.push({ path: "props.width", code: "range", message: "width must be between 0.2 and 1" });
+        issues.push({
+          path: "props.width",
+          code: "range",
+          message: "width must be between 0.2 and 1",
+        });
       }
       break;
+    case "audio": {
+      if (!(p.fileId as string))
+        issues.push({ path: "props.fileId", code: "required", message: "audio needs a file" });
+      if (!/^audio\//.test(p.mimeType as string))
+        issues.push({ path: "props.mimeType", code: "format", message: "expected an audio type" });
+      const seconds = p.duration as number;
+      if (!Number.isFinite(seconds) || seconds < 0 || seconds > 24 * 3600) {
+        issues.push({
+          path: "props.duration",
+          code: "range",
+          message: "duration must be 0 to 24 hours",
+        });
+      }
+      break;
+    }
     case "bookmark":
-      if (!/^https?:\/\//i.test(p.url as string)) issues.push({ path: "props.url", code: "format", message: "http(s) url required" });
+      if (!/^https?:\/\//i.test(p.url as string))
+        issues.push({ path: "props.url", code: "format", message: "http(s) url required" });
       break;
     case "formula":
-      if ((p.latex as string).length > LIMITS.maxFormulaLength) issues.push({ path: "props.latex", code: "too_long", message: "formula too long" });
+      if ((p.latex as string).length > LIMITS.maxFormulaLength)
+        issues.push({ path: "props.latex", code: "too_long", message: "formula too long" });
       break;
     case "whiteboard": {
       const issue = whiteboardDataIssue(p.data as string);
-      if (issue) issues.push({ path: "props.data", code: issue === "drawing too large" ? "too_long" : "shape", message: issue });
+      if (issue)
+        issues.push({
+          path: "props.data",
+          code: issue === "drawing too large" ? "too_long" : "shape",
+          message: issue,
+        });
       const h = p.height as number;
       if (h < LIMITS.minWhiteboardHeight || h > LIMITS.maxWhiteboardHeight) {
-        issues.push({ path: "props.height", code: "range", message: `height must be between ${LIMITS.minWhiteboardHeight} and ${LIMITS.maxWhiteboardHeight}` });
+        issues.push({
+          path: "props.height",
+          code: "range",
+          message: `height must be between ${LIMITS.minWhiteboardHeight} and ${LIMITS.maxWhiteboardHeight}`,
+        });
       }
       break;
     }
     case "flowchart": {
       const issue = flowchartDataIssue(p.data as string);
-      if (issue) issues.push({ path: "props.data", code: issue === "flowchart too large" ? "too_long" : "shape", message: issue });
+      if (issue)
+        issues.push({
+          path: "props.data",
+          code: issue === "flowchart too large" ? "too_long" : "shape",
+          message: issue,
+        });
       const h = p.height as number;
       if (h < LIMITS.minFlowchartHeight || h > LIMITS.maxFlowchartHeight) {
-        issues.push({ path: "props.height", code: "range", message: `height must be between ${LIMITS.minFlowchartHeight} and ${LIMITS.maxFlowchartHeight}` });
+        issues.push({
+          path: "props.height",
+          code: "range",
+          message: `height must be between ${LIMITS.minFlowchartHeight} and ${LIMITS.maxFlowchartHeight}`,
+        });
       }
       break;
     }
     case "page":
-      if (!isValidId(p.documentId)) issues.push({ path: "props.documentId", code: "id", message: "invalid document id" });
+      if (!isValidId(p.documentId))
+        issues.push({ path: "props.documentId", code: "id", message: "invalid document id" });
       break;
   }
-  for (const [i, node] of (b.text as { type: string; marks?: { type: string; href?: string }[] }[]).entries()) {
+  for (const [i, node] of (
+    b.text as { type: string; marks?: { type: string; href?: string }[] }[]
+  ).entries()) {
     for (const m of node.marks ?? []) {
       if (m.type === "link" && !/^(https?:|mailto:|folevi:|\/|#)/i.test(m.href ?? "")) {
         issues.push({ path: `text[${i}].marks`, code: "href", message: "unsafe link" });

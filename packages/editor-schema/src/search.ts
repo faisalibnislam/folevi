@@ -27,6 +27,7 @@ export function blockSearchText(block: Pick<WireBlock, "type" | "text" | "props"
       parts.push(String(p.alt ?? ""), String(p.caption ?? ""));
       break;
     case "file":
+    case "audio":
       parts.push(String(p.name ?? ""));
       break;
     case "table":

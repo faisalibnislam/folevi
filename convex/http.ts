@@ -11,12 +11,44 @@ import {
   verifyMailtrapSignature,
 } from "@folevi/email";
 import { verifyFileSignature } from "./lib/fileUrls";
+import { AUDIO_MIMES } from "./lib/images";
 import { createAuth } from "./auth";
 import { withTrustedClientIp } from "./lib/clientIp";
 
 const http = httpRouter();
 
-const SAFE_INLINE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"]);
+const SAFE_INLINE = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+  ...AUDIO_MIMES,
+]);
+
+/**
+ * One "bytes=a-b" range (the only kind audio players ask for), clamped to the file, or null for the whole
+ * file. An unsatisfiable range returns "invalid".
+ */
+export function byteRange(
+  header: string | null,
+  size: number,
+): { start: number; end: number } | null | "invalid" {
+  const m = header?.match(/^bytes=(\d*)-(\d*)$/);
+  if (!m || (!m[1] && !m[2])) return null;
+  let start: number;
+  let end: number;
+  if (!m[1]) {
+    // "bytes=-N": the last N bytes.
+    start = Math.max(0, size - Number(m[2]));
+    end = size - 1;
+  } else {
+    start = Number(m[1]);
+    end = m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+  }
+  if (start >= size || start > end) return "invalid";
+  return { start, end };
+}
 
 /**
  * RFC 6266 Content-Disposition with an ASCII fallback and an RFC 5987 UTF-8 name. encodeURIComponent
@@ -25,13 +57,17 @@ const SAFE_INLINE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp
  */
 export function contentDisposition(kind: "inline" | "attachment", filename: string): string {
   const fallback = filename.replace(/[^\x20-\x7e]|["\\%;]/g, "_").slice(0, 180) || "file";
-  const encoded = encodeURIComponent(filename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  const encoded = encodeURIComponent(filename).replace(
+    /['()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
   return `${kind}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
 }
 
 /**
- * Signed file delivery. Images/PDFs render inline; everything else downloads. All responses carry
- * nosniff and a sandboxing CSP so uploaded content can never execute script.
+ * Signed file delivery. Images, PDFs and audio recordings render inline; everything else downloads. All
+ * responses carry nosniff and a sandboxing CSP so uploaded content can never execute script. Byte ranges
+ * are served so audio players can seek (Safari won't play audio without them).
  */
 http.route({
   pathPrefix: "/files/",
@@ -50,21 +86,38 @@ http.route({
     if (!blob) return new Response("Not found", { status: 404 });
     const inline = SAFE_INLINE.has(file.mimeType);
     const disposition = contentDisposition(inline ? "inline" : "attachment", file.filename);
-    return new Response(blob, {
-      status: 200,
-      headers: {
-        "content-type": inline ? file.mimeType : "application/octet-stream",
-        "content-disposition": disposition,
-        "x-content-type-options": "nosniff",
-        "content-security-policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
-        "cross-origin-resource-policy": "cross-origin",
-        "referrer-policy": "no-referrer",
-        "cache-control": "private, max-age=3600",
-        // The app may read an image's pixels (to pick a note's colours from it). The signed URL is already
-        // the capability; this only lets our own app origin read the bytes it can already display.
-        ...corsFor(request.headers.get("origin")),
-      },
-    });
+    const headers: Record<string, string> = {
+      "content-type": inline ? file.mimeType : "application/octet-stream",
+      "content-disposition": disposition,
+      "accept-ranges": "bytes",
+      "x-content-type-options": "nosniff",
+      "content-security-policy":
+        "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+      "cross-origin-resource-policy": "cross-origin",
+      "referrer-policy": "no-referrer",
+      "cache-control": "private, max-age=3600",
+      // The app may read an image's pixels (to pick a note's colours from it). The signed URL is already
+      // the capability; this only lets our own app origin read the bytes it can already display.
+      ...corsFor(request.headers.get("origin")),
+    };
+    const range = byteRange(request.headers.get("range"), blob.size);
+    if (range === "invalid") {
+      return new Response(null, {
+        status: 416,
+        headers: { ...headers, "content-range": `bytes */${blob.size}` },
+      });
+    }
+    if (range) {
+      return new Response(blob.slice(range.start, range.end + 1), {
+        status: 206,
+        headers: {
+          ...headers,
+          "content-range": `bytes ${range.start}-${range.end}/${blob.size}`,
+          "content-length": String(range.end - range.start + 1),
+        },
+      });
+    }
+    return new Response(blob, { status: 200, headers });
   }),
 });
 
@@ -75,7 +128,10 @@ function corsFor(origin: string | null): Record<string, string> {
   try {
     const app = process.env.FOLEVI_APP_URL ? new URL(process.env.FOLEVI_APP_URL).origin : null;
     const host = new URL(origin).hostname;
-    allowed = origin === app || (process.env.FOLEVI_ENV !== "production" && (host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost")));
+    allowed =
+      origin === app ||
+      (process.env.FOLEVI_ENV !== "production" &&
+        (host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost")));
   } catch {
     allowed = false;
   }
@@ -104,21 +160,36 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const secret = process.env.MAILTRAP_WEBHOOK_SECRET;
-    if (!secret || secret === "none") return new Response("Webhook not configured", { status: 401 });
+    if (!secret || secret === "none")
+      return new Response("Webhook not configured", { status: 401 });
     const declared = Number(request.headers.get("content-length") ?? "0");
     if (declared > MAX_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
     const rawBody = await request.text();
     if (rawBody.length > MAX_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
-    const ok = await verifyMailtrapSignature({ rawBody, signature: request.headers.get("mailtrap-signature"), secret });
+    const ok = await verifyMailtrapSignature({
+      rawBody,
+      signature: request.headers.get("mailtrap-signature"),
+      secret,
+    });
     if (!ok) return new Response("Invalid signature", { status: 401 });
     const parsed = parseMailtrapWebhook(rawBody);
     if (!parsed) return new Response("Malformed body", { status: 400 });
     let stored = 0;
     for (let i = 0; i < parsed.events.length; i += EVENTS_PER_MUTATION) {
-      const result = await ctx.runMutation(internal.email.recordMailtrapEvents, { events: parsed.events.slice(i, i + EVENTS_PER_MUTATION) });
+      const result = await ctx.runMutation(internal.email.recordMailtrapEvents, {
+        events: parsed.events.slice(i, i + EVENTS_PER_MUTATION),
+      });
       stored += result.stored;
     }
-    console.log(JSON.stringify({ event: "email.webhook", provider: "mailtrap", received: parsed.events.length, stored, ignored: parsed.ignored }));
+    console.log(
+      JSON.stringify({
+        event: "email.webhook",
+        provider: "mailtrap",
+        received: parsed.events.length,
+        stored,
+        ignored: parsed.ignored,
+      }),
+    );
     return new Response("ok", { status: 200 });
   }),
 });
@@ -140,12 +211,18 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const secret = process.env.MAILTRAP_INBOUND_WEBHOOK_SECRET;
-    if (!secret || secret === "none") return new Response("Webhook not configured", { status: 401 });
+    if (!secret || secret === "none")
+      return new Response("Webhook not configured", { status: 401 });
     const declared = Number(request.headers.get("content-length") ?? "0");
     if (declared > MAX_INBOUND_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
     const rawBody = await request.text();
-    if (rawBody.length > MAX_INBOUND_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
-    const ok = await verifyMailtrapSignature({ rawBody, signature: request.headers.get("mailtrap-signature"), secret });
+    if (rawBody.length > MAX_INBOUND_WEBHOOK_BYTES)
+      return new Response("Too large", { status: 413 });
+    const ok = await verifyMailtrapSignature({
+      rawBody,
+      signature: request.headers.get("mailtrap-signature"),
+      secret,
+    });
     if (!ok) return new Response("Invalid signature", { status: 401 });
     const parsed = parseMailtrapInboundWebhook(rawBody);
     if (!parsed) return new Response("Malformed body", { status: 400 });
@@ -163,7 +240,11 @@ http.route({
         retry = true;
         continue;
       }
-      const fetched = await fetchInboundMessage({ token: apiToken, inboxId: event.inboxId, messageId: event.messageId });
+      const fetched = await fetchInboundMessage({
+        token: apiToken,
+        inboxId: event.inboxId,
+        messageId: event.messageId,
+      });
       if (!fetched.ok) {
         count(`fetch_${fetched.status}`);
         if (fetched.retryable) retry = true;
@@ -188,7 +269,14 @@ http.route({
       });
       count(result.outcome);
     }
-    console.log(JSON.stringify({ event: "support.inbound", received: parsed.events.length, ignoredEvents: parsed.ignored, outcomes }));
+    console.log(
+      JSON.stringify({
+        event: "support.inbound",
+        received: parsed.events.length,
+        ignoredEvents: parsed.ignored,
+        outcomes,
+      }),
+    );
     // Mailtrap retries non-2xx deliveries (every 5 minutes, up to 40 times); handled messages are skipped then.
     if (retry) return new Response("Try again later", { status: 503 });
     return new Response("ok", { status: 200 });
@@ -198,20 +286,31 @@ http.route({
 http.route({
   path: "/health",
   method: "GET",
-  handler: httpAction(async () => new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json", "cache-control": "no-store" } })),
+  handler: httpAction(
+    async () =>
+      new Response(JSON.stringify({ ok: true }), {
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      }),
+  ),
 });
 
 // Better Auth (sign-up, sign-in, email verification, password reset, two-factor, sessions, JWKS).
 // Reached through the Next.js proxy at /api/auth/* so cookies are first-party on the app host. Registered
 // here rather than with authComponent.registerRoutes so forwarded-IP headers can be checked first: rate
 // limits key on the client IP, and only an IP signed by the web server is trusted (lib/clientIp.ts).
-const authRoute = httpAction(async (ctx, request) => createAuth(ctx).handler(await withTrustedClientIp(request)));
+const authRoute = httpAction(async (ctx, request) =>
+  createAuth(ctx).handler(await withTrustedClientIp(request)),
+);
 http.route({ pathPrefix: "/api/auth/", method: "GET", handler: authRoute });
 http.route({ pathPrefix: "/api/auth/", method: "POST", handler: authRoute });
 http.route({
   path: "/.well-known/openid-configuration",
   method: "GET",
-  handler: httpAction(async () => Response.redirect(`${process.env.CONVEX_SITE_URL}/api/auth/convex/.well-known/openid-configuration`)),
+  handler: httpAction(async () =>
+    Response.redirect(
+      `${process.env.CONVEX_SITE_URL}/api/auth/convex/.well-known/openid-configuration`,
+    ),
+  ),
 });
 
 export default http;

@@ -335,6 +335,7 @@ export const PageBreak = Node.create({
 });
 export const ImageBlock = atom("image", { fileId: r("fileId"), url: r("url"), alt: { ...r("alt"), default: "" }, caption: { ...r("caption"), default: "" }, width: r("width"), naturalWidth: r("naturalWidth"), naturalHeight: r("naturalHeight"), uploadId: hidden });
 export const FileBlock = atom("file", { fileId: r("fileId"), name: r("name"), size: r("size"), mimeType: r("mimeType"), uploadId: hidden });
+export const AudioBlock = atom("audio", { fileId: r("fileId"), name: r("name"), size: r("size"), mimeType: r("mimeType"), duration: r("duration"), uploadId: hidden });
 export const TableBlock = atom("table", { rows: { default: [[[], []], [[], []]], rendered: false }, headerRow: { default: true, rendered: false } });
 export const PageBlock = atom("page", { documentId: r("documentId"), display: { ...r("display"), default: "card" }, titleCache: r("titleCache"), iconCache: r("iconCache") });
 export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName") });
@@ -472,6 +473,7 @@ export const ALL_NODES = [
   PageBreak,
   ImageBlock,
   FileBlock,
+  AudioBlock,
   TableBlock,
   PageBlock,
   BookmarkBlock,

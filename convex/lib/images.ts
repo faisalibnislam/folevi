@@ -1,10 +1,16 @@
 // Content sniffing and metadata stripping for uploads. Never trusts extensions or client MIME types.
 
 export type Sniffed =
-  | { kind: "image"; mime: "image/png" | "image/jpeg" | "image/gif" | "image/webp"; width?: number; height?: number }
+  | {
+      kind: "image";
+      mime: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+      width?: number;
+      height?: number;
+    }
   | { kind: "file"; mime: string; risky: boolean };
 
-const startsWith = (b: Uint8Array, sig: number[], offset = 0) => sig.every((v, i) => b[offset + i] === v);
+const startsWith = (b: Uint8Array, sig: number[], offset = 0) =>
+  sig.every((v, i) => b[offset + i] === v);
 
 function be16(b: Uint8Array, o: number) {
   return (b[o]! << 8) | b[o + 1]!;
@@ -64,19 +70,54 @@ export function sniff(bytes: Uint8Array): Sniffed {
   if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
     return { kind: "image", mime: "image/png", width: be32(bytes, 16), height: be32(bytes, 20) };
   }
-  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return { kind: "image", mime: "image/jpeg", ...jpegSize(bytes) };
-  if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return { kind: "image", mime: "image/gif", width: le16(bytes, 6), height: le16(bytes, 8) };
-  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)) {
+  if (startsWith(bytes, [0xff, 0xd8, 0xff]))
+    return { kind: "image", mime: "image/jpeg", ...jpegSize(bytes) };
+  if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38]))
+    return { kind: "image", mime: "image/gif", width: le16(bytes, 6), height: le16(bytes, 8) };
+  if (
+    startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) &&
+    startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)
+  ) {
     return { kind: "image", mime: "image/webp", ...webpSize(bytes) };
   }
-  if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46])) return { kind: "file", mime: "application/pdf", risky: false };
-  if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) return { kind: "file", mime: "application/zip", risky: false };
+  if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46]))
+    return { kind: "file", mime: "application/pdf", risky: false };
+  if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]))
+    return { kind: "file", mime: "application/zip", risky: false };
   const head = new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, 512));
   // Anything that could be rendered as active content by a browser is forced to download as octet-stream.
-  if (TEXTUAL_RISKY.test(head)) return { kind: "file", mime: "application/octet-stream", risky: true };
-  const printable = bytes.slice(0, 512).every((c) => c === 9 || c === 10 || c === 13 || (c >= 32 && c !== 127) || c >= 128);
+  if (TEXTUAL_RISKY.test(head))
+    return { kind: "file", mime: "application/octet-stream", risky: true };
+  const printable = bytes
+    .slice(0, 512)
+    .every((c) => c === 9 || c === 10 || c === 13 || (c >= 32 && c !== 127) || c >= 128);
   if (printable) return { kind: "file", mime: "text/plain", risky: false };
   return { kind: "file", mime: "application/octet-stream", risky: false };
+}
+
+/** Audio formats that browsers record (MediaRecorder) and play: the stored and served type, or null. */
+export const AUDIO_MIMES = [
+  "audio/webm",
+  "audio/ogg",
+  "audio/mp4",
+  "audio/wav",
+  "audio/mpeg",
+] as const;
+
+export function sniffAudio(bytes: Uint8Array): (typeof AUDIO_MIMES)[number] | null {
+  // WebM (Matroska EBML header): Chrome, Edge and Firefox record this.
+  if (startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return "audio/webm";
+  if (startsWith(bytes, [0x4f, 0x67, 0x67, 0x53])) return "audio/ogg";
+  // ISO base media ("ftyp" box at offset 4): Safari records MP4/AAC.
+  if (startsWith(bytes, [0x66, 0x74, 0x79, 0x70], 4)) return "audio/mp4";
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x41, 0x56, 0x45], 8))
+    return "audio/wav";
+  if (
+    startsWith(bytes, [0x49, 0x44, 0x33]) ||
+    (bytes[0] === 0xff && ((bytes[1] ?? 0) & 0xe0) === 0xe0)
+  )
+    return "audio/mpeg";
+  return null;
 }
 
 /** Removes EXIF/XMP/comment segments from JPEG (keeps JFIF, ICC profile and image data). */
@@ -221,7 +262,10 @@ export function stripGif(b: Uint8Array): Uint8Array {
 }
 
 /** Strips metadata for any sniffed image type (a no-op when there is nothing to remove). */
-export function stripImageMetadata(mime: "image/png" | "image/jpeg" | "image/gif" | "image/webp", bytes: Uint8Array): Uint8Array {
+export function stripImageMetadata(
+  mime: "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+  bytes: Uint8Array,
+): Uint8Array {
   switch (mime) {
     case "image/jpeg":
       return stripJpeg(bytes);

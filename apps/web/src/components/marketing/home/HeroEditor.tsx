@@ -187,6 +187,7 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
             trigger={trigger}
             editable
             onInsertFiles={async () => setNotice({ title: "Files", body: "Files and images work in your own notes once you sign up. Nothing in this note is saved." })}
+            onInsertAudio={async () => setNotice({ title: "Audio recordings", body: "Audio recordings work in your own notes once you sign up. Nothing in this note is saved." })}
             onDropBlock={onDropBlock}
             onCommentBlock={() => setNotice(NOTICES.comments)}
           />

@@ -150,6 +150,7 @@ test.describe("Insert panel", () => {
 
     // Drag the Whiteboard row above the first block.
     const row = panel.getByRole("button", { name: "Whiteboard" });
+    await row.scrollIntoViewIfNeeded();
     const r = (await row.boundingBox())!;
     const first = (await page.locator(".fb-editor > .fb").first().boundingBox())!;
     await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);

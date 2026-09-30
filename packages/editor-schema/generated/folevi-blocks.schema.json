@@ -370,6 +370,22 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "audio"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/AudioProps"
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -1235,6 +1251,34 @@
       "required": [
         "data",
         "height"
+      ],
+      "additionalProperties": false
+    },
+    "AudioProps": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number"
+        },
+        "mimeType": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "fileId",
+        "name",
+        "size",
+        "mimeType",
+        "duration"
       ],
       "additionalProperties": false
     }

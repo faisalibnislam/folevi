@@ -20,7 +20,7 @@ export const nodeNameFor = (type: string) => (type === "code" ? "codeBlock" : ty
 export const blockTypeFor = (nodeName: string) => (nodeName === "codeBlock" ? "code" : nodeName);
 
 export const TEXT_NODES = new Set(["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote", "callout"]);
-export const ATOM_NODES = new Set(["divider", "pageBreak", "image", "file", "table", "page", "bookmark", "collection", "formula", "whiteboard", "flowchart", "unknownBlock"]);
+export const ATOM_NODES = new Set(["divider", "pageBreak", "image", "file", "audio", "table", "page", "bookmark", "collection", "formula", "whiteboard", "flowchart", "unknownBlock"]);
 
 /** Props each node stores as attributes (besides id/depth). */
 const FORMAT = ["decoration", "color", "align", "font", "group"];
@@ -39,6 +39,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   pageBreak: [],
   image: ["fileId", "url", "alt", "caption", "width", "naturalWidth", "naturalHeight"],
   file: ["fileId", "name", "size", "mimeType"],
+  audio: ["fileId", "name", "size", "mimeType", "duration"],
   table: ["rows", "headerRow"],
   page: ["documentId", "display", "titleCache", "iconCache"],
   bookmark: ["url", "title", "description", "siteName"],

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from "./fields";
 import { CheckInbox } from "./CheckInbox";
+import { rememberTemplate } from "@/lib/pendingTemplate";
 
 /** Password guidance: length matters most; we only block what's too short or obviously weak. */
 function passwordProblem(password: string, email: string): string | null {
@@ -15,7 +16,9 @@ function passwordProblem(password: string, email: string): string | null {
   return null;
 }
 
-export function SignUpForm() {
+export function SignUpForm({ template }: { template?: string }) {
+  // A template picked on folevi.com opens as the first page after sign-up (Shell), in this browser.
+  useEffect(() => rememberTemplate(template), [template]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

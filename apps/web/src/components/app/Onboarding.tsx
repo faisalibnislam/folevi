@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/Switch";
 import { errorMessage } from "@/components/ui/Toast";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { pendingTemplate } from "@/lib/pendingTemplate";
 import { OnboardingPreview, artOf, artThumb, type PreviewScene } from "./onboarding/OnboardingPreview";
 import "./onboarding/onboarding.css";
 
@@ -47,6 +48,8 @@ export function Onboarding() {
   // A new account starts in Personal, where its first pages were added.
   const docs = useQuery(api.documents.list, { scope: { kind: "personal" }, view: "all", paginationOpts: { numItems: 50, cursor: null } });
   const welcome = docs?.page.find((d) => d.title === WELCOME) ?? null;
+  // A template picked on folevi.com before signing up (lib/pendingTemplate), opened when onboarding ends.
+  const [template] = useState(() => (typeof window === "undefined" ? null : pendingTemplate()));
 
   const [step, setStep] = useState(() => stepIndexOf(profile.onboardingStep));
   const [dir, setDir] = useState<"forward" | "back">("forward");
@@ -122,7 +125,8 @@ export function Onboarding() {
         return void run(async () => {
           await complete({ step: "welcome" });
           setContext({ kind: "personal" });
-          navigate(welcome ? `/d/${welcome.id}` : "/documents", { replace: true });
+          // A template picked on folevi.com opens next (Shell creates it); otherwise the Welcome page.
+          navigate(template ? "/documents" : welcome ? `/d/${welcome.id}` : "/documents", { replace: true });
         });
     }
   };
@@ -280,7 +284,7 @@ export function Onboarding() {
               </Button>
             ) : null}
             <Button type="submit" variant="primary" disabled={busy || (step === LAST && !docs)} className="min-w-[112px]">
-              {step === 0 ? "Get started" : step === LAST ? `Open “${WELCOME}”` : "Continue"}
+              {step === 0 ? "Get started" : step === LAST ? `Open “${template?.name ?? WELCOME}”` : "Continue"}
               <ArrowRight size={16} aria-hidden />
             </Button>
           </footer>

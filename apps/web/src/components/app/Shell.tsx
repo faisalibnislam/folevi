@@ -19,6 +19,7 @@ import { AskAiChat } from "@/components/ai/AskAiChat";
 import { useAiAccess } from "@/components/ai/useAi";
 import { SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
+import { clearPendingTemplate, pendingTemplate, rememberTemplate } from "@/lib/pendingTemplate";
 
 interface ShellValue {
   sidebarOpen: boolean;
@@ -173,6 +174,27 @@ export function Shell() {
   const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
   const [docSidebarMode, setDocSidebarModePref] = useLocalStorage<"document" | "folders">("folevi:doc-sidebar-mode", "document");
   const pageSidebar = route.name === "doc" && docSidebarMode === "document";
+
+  // "Use this template" on folevi.com: open the picked template as a new page, once, as soon as the app can
+  // create pages (after onboarding; straight away for someone already signed in, via ?template=).
+  const templateOpened = useRef(false);
+  useEffect(() => {
+    if (templateOpened.current) return;
+    const url = new URL(window.location.href);
+    const fromUrl = url.searchParams.get("template");
+    if (fromUrl) {
+      rememberTemplate(fromUrl);
+      url.searchParams.delete("template");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+    const pending = pendingTemplate();
+    if (!pending) return;
+    templateOpened.current = true;
+    void createDocument({ title: pending.name, templateId: `builtin:${pending.key}` }).then((id) => {
+      if (id) clearPendingTemplate();
+      else templateOpened.current = false; // not ready yet; try again when it is
+    });
+  }, [createDocument]);
 
   useEffect(() => setDrawerOpen(false), [route]);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);

@@ -988,6 +988,25 @@
 }
 .mk-hero-stage[data-tone="light"] .mk-hero-title { color: var(--art-ink); text-shadow: 0 1px 12px rgb(255 255 255 / 0.5); }
 
+/* "notes app" in the title, highlighted like selected text in a note: the style's highlight colour behind
+   the style's ink, so it reads the same on deep and light covers (the dark pair in dark mode). */
+.mk-hero-mark {
+  background: var(--art-hl-2, var(--color-highlight-yellow));
+  color: var(--art-ink, var(--color-heading));
+  text-shadow: none;
+  padding: 0 0.12em;
+  margin: 0 -0.04em;
+  border-radius: 0.14em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
+}
+:root[data-theme="dark"] .mk-hero-mark {
+  background: var(--art-hl-2-dark, var(--color-highlight-yellow));
+  color: var(--art-ink-dark, var(--color-heading));
+}
+@media (prefers-reduced-motion: reduce) { .mk-hero-mark { transition: none; } }
+
 .mk-hero-badge {
   display: inline-flex;
   font-family: var(--font-sans);

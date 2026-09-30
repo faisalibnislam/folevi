@@ -21,8 +21,8 @@ const points = [
   { title: "A pair for dark mode", body: "Every style has dark colours too, so a note reads the same way at night." },
 ];
 
-/** The folders panel shows the first eight demo folders, in the sidebar's order; phones show four. */
-const FOLDERS = DEMO_FOLDERS.slice(0, 8);
+/** The folders panel shows one row: the first four demo folders, in the sidebar's order; phones show two. */
+const FOLDERS = DEMO_FOLDERS.slice(0, 4);
 
 // What folders do in the app: components/app/Sidebar.tsx and FolderMenu.tsx, views/OrganizeIndex.tsx,
 // views/MoveToFolderDialog.tsx and views/HomeDashboard.tsx (Recent folders).
@@ -95,7 +95,7 @@ export function NoteStyles() {
             aria-label={`${FOLDERS.length} sample folders, each in its own colour, with their newest notes showing through the cover`}
           >
             {FOLDERS.map((folder, i) => (
-              <li key={folder.name} aria-label={`${folder.name}, ${folder.notes.length} notes`} className={cx(i >= 4 && "hidden sm:block")}>
+              <li key={folder.name} aria-label={`${folder.name}, ${folder.notes.length} notes`} className={cx(i >= 2 && "hidden sm:block")}>
                 <DemoFolderCard folder={folder} />
               </li>
             ))}

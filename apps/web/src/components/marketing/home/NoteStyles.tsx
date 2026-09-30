@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { COVER_ART } from "@/lib/cover";
 import { NoteCard, artById } from "../product/Replica";
@@ -58,6 +59,9 @@ export function NoteStyles() {
             </li>
           ))}
         </ul>
+        <Link href="/features/note-styles" className="mk-link mt-8 inline-flex min-h-11 items-center gap-1.5 text-[15px]">
+          More about note styles <ArrowRight size={15} aria-hidden="true" />
+        </Link>
       </div>
     </section>
   );

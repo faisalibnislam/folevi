@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PlanPicker } from "@/components/marketing/home/PlanPicker";
 import { CREDIT_PACKS, CREDIT_PACK_ORDER, GB, MONTHLY_CREDITS, PACK_VALID_MONTHS, PLANS, PLAN_ORDER, PRICES, STORAGE_BYTES, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER, formatPrice, yearlySavingPercent } from "@/lib/plans";
-import { pageMetadata } from "@/components/marketing/seo";
+import { JsonLd, faqLd, pageMetadata } from "@/components/marketing/seo";
 import { PageHeader, container, cx } from "@/components/marketing/ui";
 
 const trialName = TIER_NAMES[TRIAL_TIER];
@@ -23,7 +23,8 @@ const CREDIT_EXAMPLES: Array<{ action: string; cost: string }> = [
 
 const saving = (tier: "core" | "pro" | "pro_ai") => `${TIER_NAMES[tier]} is ${formatPrice(PRICES[tier].year)} a year instead of ${formatPrice(PRICES[tier].month * 12)} (save ${yearlySavingPercent(tier)}%)`;
 
-const faqs: Array<{ q: string; a: React.ReactNode }> = [
+// `text` is the plain answer for the FAQPage structured data, where the shown answer has links.
+const faqs: Array<{ q: string; a: React.ReactNode; text?: string }> = [
   {
     q: "How does the free trial work?",
     a: `Every new account gets ${trialName} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card. When the trial ends you move to Free, with ${MONTHLY_CREDITS.free} AI credits a month, unless you choose a plan. Nothing is charged automatically.`,
@@ -88,9 +89,10 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
     q: "What happens to my notes if I downgrade?",
     a: (
       <>
-        They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time. See <Link href="/docs#import-export">Import &amp; export</Link>.
+        They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time. See <Link href="/docs/import-and-export">Import &amp; export</Link>.
       </>
     ),
+    text: "They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time.",
   },
   {
     q: "Is the Mac app included?",
@@ -99,12 +101,14 @@ const faqs: Array<{ q: string; a: React.ReactNode }> = [
         Folevi runs on the web today, on every plan. The Mac app is coming soon, and every plan, including Free, will include it. See <Link href="/mac">Folevi for Mac</Link>.
       </>
     ),
+    text: "Folevi runs on the web today, on every plan. The Mac app is coming soon, and every plan, including Free, will include it.",
   },
 ];
 
 export default function PricingPage() {
   return (
     <>
+      <JsonLd data={faqLd("/pricing", faqs.map((f) => ({ q: f.q, a: f.text ?? (typeof f.a === "string" ? f.a : "") })).filter((f) => f.a))} />
       <PageHeader
         eyebrow="Pricing"
         title="Start free. Pay for room, or for AI."

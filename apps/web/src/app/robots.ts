@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { APP_HOST, MARKETING_URL } from "@/lib/env";
 
 // Product-only paths (kept in step with proxy.ts). Nothing behind sign-in, and no share links, is crawlable.
+// Rules are prefixes: "/templates" is the app's templates view; the public gallery is /template-gallery,
+// which it doesn't match. Marketing pages (/features, /template-gallery, /docs and the rest) are allowed by "/".
 const APP_PATHS = [
   "/api/",
   "/admin",

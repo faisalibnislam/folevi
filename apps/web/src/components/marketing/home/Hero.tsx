@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FileDown, Paintbrush, RefreshCw, SunMoon, WifiOff, type LucideIcon } from "lucide-react";
 import { COVER_ART } from "@/lib/cover";
 import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
@@ -36,11 +37,11 @@ export function Hero() {
   );
 }
 
-const facts: Array<{ icon: LucideIcon; label: string }> = [
-  { icon: WifiOff, label: "Works offline" },
+const facts: Array<{ icon: LucideIcon; label: string; href?: string }> = [
+  { icon: WifiOff, label: "Works offline", href: "/features/offline-notes" },
   { icon: RefreshCw, label: "Real-time sync" },
-  { icon: Paintbrush, label: `${COVER_ART.length} note styles` },
-  { icon: FileDown, label: "Markdown, HTML and PDF export" },
+  { icon: Paintbrush, label: `${COVER_ART.length} note styles`, href: "/features/note-styles" },
+  { icon: FileDown, label: "Markdown, HTML and PDF export", href: "/features/import-and-export" },
   { icon: SunMoon, label: "Light and dark mode" },
 ];
 
@@ -48,10 +49,16 @@ export function ProofStrip() {
   return (
     <section aria-label="What’s included" className="border-y mk-hair">
       <ul className={cx(container, "flex flex-wrap justify-center gap-x-8 gap-y-3 py-6 sm:justify-between")}>
-        {facts.map(({ icon: FactIcon, label }) => (
+        {facts.map(({ icon: FactIcon, label, href }) => (
           <li key={label} className="flex items-center gap-2 text-[14px] text-ink">
             <FactIcon size={16} aria-hidden="true" className="flex-none text-muted" />
-            {label}
+            {href ? (
+              <Link href={href} className="underline decoration-(--color-line-strong) underline-offset-4 transition-colors duration-150 hover:text-(--color-heading) hover:decoration-current">
+                {label}
+              </Link>
+            ) : (
+              label
+            )}
           </li>
         ))}
       </ul>

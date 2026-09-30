@@ -58,7 +58,7 @@ export default function StatusPage() {
           </li>
         </ul>
         <p>
-          More detail is in <Link href="/docs#sync">Sync &amp; offline</Link>.
+          More detail is in <Link href="/docs/sync-and-offline">Sync &amp; offline</Link>.
         </p>
 
         <h2 id="report">Reporting a problem</h2>

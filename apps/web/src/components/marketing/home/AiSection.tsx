@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { ArrowUp, FileText, X } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { MONTHLY_CREDITS, TIER_NAMES, TRIAL_DAYS } from "@/lib/plans";
 import { artById, artThumb } from "../product/Replica";
+import { Icon } from "../icons";
 import { Kbd, SectionHeading, container } from "../ui";
 
 const facts = [
@@ -37,6 +39,14 @@ export function AiSection() {
                 </li>
               ))}
             </ul>
+            <p className="mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[14.5px]">
+              <Link href="/features/ai-notes" className="mk-link inline-flex min-h-11 items-center gap-1.5">
+                More about AI notes <Icon name="arrow-right" size={15} />
+              </Link>
+              <Link href="/features/flowcharts" className="mk-link inline-flex min-h-11 items-center gap-1.5">
+                Flowcharts with AI <Icon name="arrow-right" size={15} />
+              </Link>
+            </p>
           </div>
 
           <div className="mk-stage px-3 py-8 sm:px-10 sm:py-12" style={{ ["--stage-art" as string]: artThumb(artById("art-49")) }}>
@@ -49,7 +59,7 @@ export function AiSection() {
 }
 
 /** A replica of the app's Ask AI chat, with one question and its answer. */
-function AskPanel() {
+export function AskPanel() {
   return (
     <div
       role="img"

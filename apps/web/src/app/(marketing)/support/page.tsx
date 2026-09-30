@@ -32,7 +32,7 @@ const faqs: Faq[] = [
   {
     q: "Does Folevi work offline?",
     a: "Yes. Every change is saved on your device first, then synced. With no connection the page shows Offline and counts the edits waiting on this device; they sync when you reconnect. Saved means everything has reached our servers.",
-    link: { label: "Sync & offline in the docs", href: "/docs#sync" },
+    link: { label: "Sync & offline in the docs", href: "/docs/sync-and-offline" },
   },
   {
     q: "A page says Conflict. What happened?",
@@ -50,12 +50,12 @@ const faqs: Faq[] = [
   {
     q: "How do I export my notes?",
     a: "Export any page as Markdown, HTML or PDF, or download everything in your Personal as a ZIP archive. Owners and admins can export a whole workspace.",
-    link: { label: "Import & export in the docs", href: "/docs#import-export" },
+    link: { label: "Import & export in the docs", href: "/docs/import-and-export" },
   },
   {
     q: "How do I share a page?",
     a: "Use the page’s Share menu. You can invite people by email to view, comment or edit, or create a public link. A link can expire, require a password, and be revoked at any time.",
-    link: { label: "Sharing & permissions in the docs", href: "/docs#sharing" },
+    link: { label: "Sharing & permissions in the docs", href: "/docs/sharing-and-permissions" },
   },
   {
     q: "How do I delete my account?",

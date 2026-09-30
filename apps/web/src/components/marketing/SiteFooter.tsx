@@ -1,22 +1,38 @@
 import Link from "next/link";
+import { featureBySlug, featurePath } from "./content/features";
 import { SECURITY_EMAIL, SUPPORT_EMAIL } from "./site";
 import { Wordmark, container, cx } from "./ui";
+
+// Feature pages listed in the footer (the full list is on /features).
+const FOOTER_FEATURES = ["ai-notes", "offline-notes", "tasks", "linked-notes", "flowcharts", "team-workspaces"];
 
 const columns: Array<{ title: string; links: Array<{ label: string; href: string }> }> = [
   {
     title: "Product",
     links: [
-      { label: "Overview", href: "/#chapters" },
+      { label: "Features", href: "/features" },
+      { label: "Template gallery", href: "/template-gallery" },
       { label: "Mac app", href: "/mac" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
     ],
   },
   {
+    title: "Features",
+    links: [
+      ...FOOTER_FEATURES.map((slug) => {
+        const feature = featureBySlug(slug)!;
+        return { label: feature.name, href: featurePath(slug) };
+      }),
+      { label: "All features", href: "/features" },
+    ],
+  },
+  {
     title: "Help",
     links: [
-      { label: "Support", href: "/support" },
       { label: "Documentation", href: "/docs" },
+      { label: "Getting started", href: "/docs/getting-started" },
+      { label: "Support", href: "/support" },
       { label: "Status", href: "/status" },
       { label: "Security", href: "/security" },
     ],
@@ -34,7 +50,7 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="mt-8 border-t mk-hair">
-      <div className={cx(container, "grid gap-10 py-12 sm:py-14 md:grid-cols-[1.1fr_2fr]")}>
+      <div className={cx(container, "grid gap-10 py-12 sm:py-14 lg:grid-cols-[0.9fr_2.1fr]")}>
         <div>
           <Wordmark markSize={24} />
           <p className="mt-4 max-w-[34ch] text-[14.5px] leading-relaxed text-muted">
@@ -53,7 +69,7 @@ export function SiteFooter() {
             </a>
           </p>
         </div>
-        <nav aria-label="Footer" className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+        <nav aria-label="Footer" className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           {columns.map((column) => (
             <div key={column.title}>
               <h2 className="mk-caps">{column.title}</h2>

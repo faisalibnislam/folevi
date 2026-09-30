@@ -5,7 +5,7 @@ catalog: every price and limit), `convex/lib/entitlements.ts` (storage), `convex
 and metering), `convex/lib/polar.ts` (Polar requests and webhook signatures), `convex/billing.ts` (Personal
 billing, credit packs, the webhook), `convex/workspaceBilling.ts` (Team plans and seats),
 `convex/adminBilling.ts` (admin tools), `convex/billingSetup.ts` and `convex/lib/billingProducts.ts` (Admin →
-Billing setup: the Polar products), `convex/migrations.ts` (`migratePlanTiers`).
+Billing setup: the Polar products).
 
 ## Plans
 
@@ -193,17 +193,15 @@ then repeat in production.
      (and the `folevi_key` metadata if you like), then Check Polar; or set its `POLAR_PRODUCT_*` env var.
      The id recorded by Billing setup takes precedence over the env var, and webhooks accept either, so a
      subscription started under an env var's id keeps working.
-6. **Run the plan migration once on production** (after deploying this code): rows from before these
-   plans read correctly without it, but it rewrites them for good. A dry run first shows what changes:
-
-   ```sh
-   npx convex run --deployment <prod-deployment> migrations:migratePlanTiers '{"dryRun": true}'
-   npx convex run --deployment <prod-deployment> migrations:migratePlanTiers '{}'
-   npx convex run --deployment <prod-deployment> migrations:planTierReport '{}'     # { subscriptions: 0, payments: 0 } when done
-   ```
-
-   It maps Personal Basic → Core, Personal Pro → Pro AI, Workspace Team → Pro, Workspace Business → Pro AI,
-   is batched (100 rows a run, continuing itself) and idempotent (`catalogVersion: 2` marks done rows).
+6. **The plan migration (done).** `migrations:migratePlanTiers` rewrote every stored tier from before
+   these plans (Personal Basic → Core, Personal Pro → Pro AI, Workspace Team → Pro, Workspace Business →
+   Pro AI, payments relabelled the same way). It ran on production on 2026-09-30 and
+   `migrations:planTierReport` returned `{ subscriptions: 0, payments: 0 }`, so both were removed along with
+   the old values: the schema accepts only today's tiers and plan ids, and rows are read as stored (no
+   `personalTierOf` / `workspacePlanIdOf`). `catalogVersion` stays in the schema as an optional, unread
+   field because the rows the migration wrote carry it; new rows don't. A backend whose data still holds an
+   old tier (an old local dev backend) fails the schema push; run `convex dev` against a fresh local
+   deployment instead.
 7. **Remove the old Stripe variables** from Convex (`npx convex env remove STRIPE_...`): they're unused.
 
 ## Testing in the Polar sandbox

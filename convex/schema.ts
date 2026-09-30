@@ -13,8 +13,8 @@ import {
   vProfileStatus,
   vMemberAccess,
   vShareRole,
-  vStoredPersonalTier,
-  vStoredWorkspacePlanId,
+  vPersonalTier,
+  vWorkspacePlanId,
   vWorkspaceRole,
 } from "./lib/validators";
 
@@ -390,10 +390,6 @@ export default defineSchema({
    * rows store the catalog id in `planId` and the billed seat count in `quantity`. Paid plans come from the
    * payment provider (Polar webhooks, provider "polar"), a development test purchase ("test"), or an admin
    * ("manual"); admins can also override storage and devices on Personal plans. docs/BILLING.md.
-   *
-   * Tiers stored before January 2027 ("basic", the old "pro", "workspace_team_*", "workspace_business_*")
-   * are still accepted and read through lib/plans.ts personalTierOf / workspacePlanIdOf until
-   * migrations:migratePlanTiers has run; rows written since carry catalogVersion 2.
    */
   subscriptions: defineTable({
     /** "user" (Personal) or "workspace"; unset on older rows = "user". */
@@ -402,12 +398,15 @@ export default defineSchema({
     profileId: v.optional(v.id("profiles")),
     /** Workspace rows: the workspace (the plan belongs to it, not to whoever owns it). */
     workspaceId: v.optional(v.id("workspaces")),
-    /** Personal rows: the tier ("basic" only on rows not yet migrated). Workspace rows leave it unset. */
-    plan: v.optional(vStoredPersonalTier),
-    /** 2 = written with the January 2027 plans (a stored "pro" is Pro, not the old Pro with AI). */
+    /** Personal rows: the tier. Workspace rows leave it unset. */
+    plan: v.optional(vPersonalTier),
+    /**
+     * Legacy, never read or written: 2 on rows the January 2027 plan migration wrote or checked (it ran on
+     * 2026-09-30 and was removed). Kept so those rows still match the schema.
+     */
     catalogVersion: v.optional(v.number()),
     /** Workspace rows: the catalog plan id (convex/lib/plans.ts). */
-    planId: v.optional(vStoredWorkspacePlanId),
+    planId: v.optional(vWorkspacePlanId),
     /** Workspace rows: member seats billed (the provider's subscription seats). */
     quantity: v.optional(v.number()),
     /** Workspace rows: when a seat sync was scheduled (cleared when it runs; lib/seats.ts). */
@@ -463,14 +462,12 @@ export default defineSchema({
     workspaceId: v.optional(v.id("workspaces")),
     amountCents: v.number(),
     currency: v.string(),
-    /**
-     * What was paid for: a plan tier, or "credits" (an AI credit pack). Legacy rows: basic, pro (the old
-     * Pro), team, business; catalogVersion 2 rows use today's tiers.
-     */
-    plan: v.union(v.literal("core"), v.literal("pro"), v.literal("pro_ai"), v.literal("credits"), v.literal("basic"), v.literal("team"), v.literal("business")),
+    /** What was paid for: a plan tier, or "credits" (an AI credit pack). */
+    plan: v.union(v.literal("core"), v.literal("pro"), v.literal("pro_ai"), v.literal("credits")),
+    /** Legacy, never read or written (see subscriptions.catalogVersion). */
     catalogVersion: v.optional(v.number()),
     /** Workspace payments: the catalog plan id and the seats billed. */
-    planId: v.optional(vStoredWorkspacePlanId),
+    planId: v.optional(vWorkspacePlanId),
     quantity: v.optional(v.number()),
     /** Plans: the billing interval. Unset for credit packs. */
     interval: v.optional(v.union(v.literal("month"), v.literal("year"))),

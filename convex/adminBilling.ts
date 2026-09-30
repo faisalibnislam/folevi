@@ -10,7 +10,7 @@ import type { MutationCtx } from "./_generated/server";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { recordAudit } from "./lib/audit";
 import { fail } from "./lib/errors";
-import { ensureSubscription, ensureWorkspaceSubscription, isPersonalPayment, paymentTier, personalPlanFields, personalPolarBilled, personalTier, storedPersonalPlanId, storedWorkspacePlanId, workspacePolarBilled, type PersonalSubscription, type WorkspaceSubscription } from "./lib/billing";
+import { ensureSubscription, ensureWorkspaceSubscription, isPersonalPayment, personalPolarBilled, storedPersonalPlanId, workspacePolarBilled, type PersonalSubscription, type WorkspaceSubscription } from "./lib/billing";
 import { personalEntitlements, storageUsage } from "./lib/entitlements";
 import { addCredits, creditBalance, personalAccount, seatAccount } from "./lib/credits";
 import { DAY_MS, PACK_VALID_MONTHS, addMonthsUtc, isPaidPlan, personalPlanId } from "./lib/plans";
@@ -40,7 +40,7 @@ async function targetProfile(ctx: MutationCtx, profileId: string): Promise<Doc<"
 }
 
 const snapshot = (s: PersonalSubscription) => ({
-  plan: personalTier(s),
+  plan: s.plan,
   interval: s.interval ?? null,
   status: s.status,
   provider: s.provider,
@@ -113,7 +113,7 @@ export const userBilling = mutation({
       aiRequests30d: usage.requests,
       aiCredits30d: usage.credits,
       aiByDay: usage.byDay,
-      payments: payments.map((x) => ({ id: x._id as string, amountCents: x.amountCents, currency: x.currency, plan: paymentTier(x), interval: x.interval ?? null, credits: x.credits ?? null, status: x.status, provider: x.provider, createdAt: x.createdAt })),
+      payments: payments.map((x) => ({ id: x._id as string, amountCents: x.amountCents, currency: x.currency, plan: x.plan, interval: x.interval ?? null, credits: x.credits ?? null, status: x.status, provider: x.provider, createdAt: x.createdAt })),
       /** Documents in their Personal (an export of it can be prepared for them). */
       personalDocuments: p.personalDocumentCount ?? 0,
     };
@@ -138,14 +138,14 @@ export const setPlan = mutation({
     const now = Date.now();
     const wasPaid = isPaidPlan(storedPersonalPlanId(sub));
     await ctx.db.patch(sub._id, {
-      ...personalPlanFields(args.plan),
+      plan: args.plan,
       interval: paid ? (args.interval ?? "month") : undefined,
       status: "active",
       provider: paid ? "manual" : "none",
       currentPeriodStart: paid ? now : undefined,
       currentPeriodEnd: paid ? (args.until ?? undefined) : undefined,
       cancelAtPeriodEnd: false,
-      paidSince: !paid ? undefined : personalTier(sub) === args.plan && sub.paidSince ? sub.paidSince : now,
+      paidSince: !paid ? undefined : sub.plan === args.plan && sub.paidSince ? sub.paidSince : now,
       canceledAt: !paid && wasPaid ? now : undefined,
       updatedAt: now,
     });
@@ -295,7 +295,7 @@ export const requestUserExport = mutation({
 // ---------------------------------------------------------------------------------------------------
 
 const workspaceSnapshot = (s: WorkspaceSubscription) => ({
-  planId: storedWorkspacePlanId(s),
+  planId: s.planId,
   status: s.status,
   provider: s.provider,
   quantity: s.quantity ?? null,
@@ -325,7 +325,7 @@ export const setWorkspacePlan = mutation({
     if (args.until !== undefined && args.until !== null && args.until <= now) fail("invalid_argument", "The end date must be in the future.");
     const paid = isPaidPlan(args.planId);
     const before = workspaceSnapshot(sub);
-    const wasPaid = isPaidPlan(storedWorkspacePlanId(sub)) && sub.status !== "canceled";
+    const wasPaid = isPaidPlan(sub.planId) && sub.status !== "canceled";
     await ctx.db.patch(sub._id, {
       planId: args.planId,
       status: paid ? "active" : "canceled",

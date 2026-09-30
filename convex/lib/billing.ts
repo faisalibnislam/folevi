@@ -10,7 +10,7 @@
 import type { WithoutSystemFields } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { CATALOG_VERSION, DAY_MS, TRIAL_DAYS, addMonthsUtc, isPaidPlan, personalPlanId, personalTierOf, workspacePlanIdOf, type BillingInterval, type PersonalTier, type StoredPersonalTier, type StoredWorkspacePlanId, type WorkspacePlanId } from "./plans";
+import { DAY_MS, TRIAL_DAYS, addMonthsUtc, isPaidPlan, personalPlanId, type BillingInterval, type PersonalTier, type WorkspacePlanId } from "./plans";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -18,36 +18,19 @@ type Ctx = QueryCtx | MutationCtx;
 export type BillingOwner = { kind: "user"; profileId: Id<"profiles"> } | { kind: "workspace"; workspaceId: Id<"workspaces"> };
 
 /** A Personal subscription row (its person and tier are always set). */
-export type PersonalSubscription = Doc<"subscriptions"> & { profileId: Id<"profiles">; plan: StoredPersonalTier };
+export type PersonalSubscription = Doc<"subscriptions"> & { profileId: Id<"profiles">; plan: PersonalTier };
 /** A workspace subscription row (its workspace and catalog plan id are always set). */
-export type WorkspaceSubscription = Doc<"subscriptions"> & { workspaceId: Id<"workspaces">; planId: StoredWorkspacePlanId; ownerType: "workspace" };
+export type WorkspaceSubscription = Doc<"subscriptions"> & { workspaceId: Id<"workspaces">; planId: WorkspacePlanId; ownerType: "workspace" };
 
 export const isWorkspaceSubscription = (s: Doc<"subscriptions">): s is WorkspaceSubscription => s.ownerType === "workspace" && s.workspaceId !== undefined && s.planId !== undefined;
 export const isPersonalSubscription = (s: Doc<"subscriptions">): s is PersonalSubscription => s.ownerType === "user" && s.profileId !== undefined && s.plan !== undefined;
 
-/** A Personal row's tier and catalog id, in today's catalog (legacy rows mapped). */
-export const personalTier = (s: Pick<PersonalSubscription, "plan" | "catalogVersion">): PersonalTier => personalTierOf(s);
-export const storedPersonalPlanId = (s: Pick<PersonalSubscription, "plan" | "catalogVersion" | "interval">) => personalPlanId(personalTier(s), s.interval);
-/** A workspace row's plan in today's catalog (Team → Pro, Business → Pro AI on rows not yet migrated). */
-export const storedWorkspacePlanId = (s: Pick<WorkspaceSubscription, "planId">): WorkspacePlanId => workspacePlanIdOf(s.planId);
-
-/** The fields that set a Personal row's tier (always with the catalog version, so "pro" means Pro). */
-export const personalPlanFields = (tier: PersonalTier) => ({ plan: tier, catalogVersion: CATALOG_VERSION });
+/** A Personal row's catalog id (its tier and interval). */
+export const storedPersonalPlanId = (s: Pick<PersonalSubscription, "plan" | "interval">) => personalPlanId(s.plan, s.interval);
 
 /** A person's payment (a Personal plan or credits they bought), never a workspace plan's. */
 export type PersonalPayment = Doc<"payments"> & { profileId: Id<"profiles"> };
 export const isPersonalPayment = (p: Doc<"payments">): p is PersonalPayment => p.profileId !== undefined && p.workspaceId === undefined;
-
-/** A payment's tier in today's catalog ("credits" for a credit pack). */
-export function paymentTier(p: Pick<Doc<"payments">, "plan" | "catalogVersion" | "workspaceId">): Exclude<PersonalTier, "free"> | "credits" {
-  if (p.plan === "credits") return "credits";
-  if (p.plan === "team") return "pro";
-  if (p.plan === "business") return "pro_ai";
-  if (p.plan === "basic") return "core";
-  if (p.catalogVersion === CATALOG_VERSION) return p.plan;
-  // Before January 2027 a Personal "pro" payment was the old Pro (now Pro AI).
-  return p.plan === "pro" && !p.workspaceId ? "pro_ai" : p.plan;
-}
 
 type SubscriptionFields = Omit<WithoutSystemFields<Doc<"subscriptions">>, "ownerType" | "profileId" | "workspaceId" | "catalogVersion">;
 type PaymentFields = Omit<WithoutSystemFields<Doc<"payments">>, "profileId" | "workspaceId" | "catalogVersion">;
@@ -60,7 +43,7 @@ function ownerFields(owner: BillingOwner) {
 export async function insertSubscription(ctx: MutationCtx, owner: BillingOwner, fields: SubscriptionFields): Promise<Id<"subscriptions">> {
   if (owner.kind === "user" && (fields.plan === undefined || fields.planId !== undefined)) throw new Error("A Personal subscription stores a personal tier.");
   if (owner.kind === "workspace" && (fields.planId === undefined || fields.plan !== undefined)) throw new Error("A workspace subscription stores a workspace plan id.");
-  return await ctx.db.insert("subscriptions", { ...fields, ...ownerFields(owner), catalogVersion: CATALOG_VERSION });
+  return await ctx.db.insert("subscriptions", { ...fields, ...ownerFields(owner) });
 }
 
 /**
@@ -73,7 +56,7 @@ export async function insertPayment(ctx: MutationCtx, owner: BillingOwner, field
   if (owner.kind === "workspace" && (!workspacePlan || fields.plan === "credits")) throw new Error("A payment's plan must belong to its owner's kind.");
   if ((fields.plan === "credits") !== (fields.credits !== undefined)) throw new Error("A credit pack payment records its credits.");
   const who = owner.kind === "user" ? { profileId: owner.profileId } : { workspaceId: owner.workspaceId };
-  return await ctx.db.insert("payments", { ...fields, ...who, catalogVersion: CATALOG_VERSION });
+  return await ctx.db.insert("payments", { ...fields, ...who });
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -130,7 +113,7 @@ export async function workspaceSubscriptionOf(ctx: Ctx, workspaceId: Id<"workspa
  * paid period). Admins can't set such a plan by hand (adminBilling.setWorkspacePlan refuses).
  */
 export function workspacePolarBilled(sub: WorkspaceSubscription | null, now = Date.now()): boolean {
-  return Boolean(sub && sub.provider === "polar" && isPaidPlan(storedWorkspacePlanId(sub)) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now));
+  return Boolean(sub && sub.provider === "polar" && isPaidPlan(sub.planId) && (sub.status !== "canceled" || (sub.currentPeriodEnd ?? 0) > now));
 }
 
 /** A workspace's billing row, created on Workspace Free if it doesn't exist yet. */

@@ -18,11 +18,6 @@
 // 180, Pro AI 550), plus one-time packs (Pro and Pro AI only) that last 12 months and are used after the
 // monthly credits. Core has no AI at all: the server refuses every AI request in a Core Personal or a Core
 // workspace, for everyone there.
-//
-// Stored tiers: rows written before these plans (January 2027) stored personal "free" | "basic" | "pro"
-// and workspace "workspace_team_*" | "workspace_business_*". `personalTierOf` and `workspacePlanIdOf` read
-// both (Basic → Core, old Pro → Pro AI, Team → Pro, Business → Pro AI) until migrations:migratePlanTiers
-// has rewritten every row (rows it wrote carry catalogVersion 2).
 
 export type PlanScope = "personal" | "workspace";
 export type BillingInterval = "month" | "year";
@@ -30,19 +25,11 @@ export type BillingModel = "free" | "flat_user" | "per_seat";
 export type PersonalTier = "free" | "core" | "pro" | "pro_ai";
 export type WorkspaceTier = "free" | "core" | "pro" | "pro_ai";
 export type PlanTier = PersonalTier;
-/** What a personal subscription row may store: a tier, or the legacy "basic" (until the migration). */
-export type StoredPersonalTier = PersonalTier | "basic";
 
 export type PersonalPlanId = "personal_free" | "personal_core_monthly" | "personal_core_yearly" | "personal_pro_monthly" | "personal_pro_yearly" | "personal_pro_ai_monthly" | "personal_pro_ai_yearly";
 export type WorkspacePlanId = "workspace_free" | "workspace_core_monthly" | "workspace_core_yearly" | "workspace_pro_monthly" | "workspace_pro_yearly" | "workspace_pro_ai_monthly" | "workspace_pro_ai_yearly";
 export type PaidWorkspacePlanId = Exclude<WorkspacePlanId, "workspace_free">;
-/** Workspace plan ids stored before January 2027 (still accepted until the migration runs). */
-export type LegacyWorkspacePlanId = "workspace_team_monthly" | "workspace_team_yearly" | "workspace_business_monthly" | "workspace_business_yearly";
-export type StoredWorkspacePlanId = WorkspacePlanId | LegacyWorkspacePlanId;
 export type CatalogPlanId = PersonalPlanId | WorkspacePlanId;
-
-/** Rows written with these plans carry this version (a stored "pro" then means Pro, not the old Pro). */
-export const CATALOG_VERSION = 2;
 
 /**
  * What a plan includes. Flags for features that don't exist yet stay false (or null) until they're built,
@@ -171,28 +158,6 @@ export function personalPlanId(tier: PersonalTier, interval?: BillingInterval | 
 export function workspacePlanId(tier: WorkspaceTier, interval?: BillingInterval | null): WorkspacePlanId {
   if (tier === "free") return "workspace_free";
   return `workspace_${tier}_${interval === "year" ? "yearly" : "monthly"}`;
-}
-
-/** The tier a personal row stores, read with the rules of the catalog it was written under. */
-export function personalTierOf(row: { plan: StoredPersonalTier; catalogVersion?: number }): PersonalTier {
-  // Basic (20 GB, no AI) is now Core.
-  if (row.plan === "basic") return "core";
-  if (row.catalogVersion === CATALOG_VERSION) return row.plan;
-  // Written before January 2027: the old Pro (with AI) is now Pro AI.
-  return row.plan === "pro" ? "pro_ai" : row.plan;
-}
-
-const LEGACY_WORKSPACE_IDS: Record<LegacyWorkspacePlanId, WorkspacePlanId> = {
-  workspace_team_monthly: "workspace_pro_monthly",
-  workspace_team_yearly: "workspace_pro_yearly",
-  workspace_business_monthly: "workspace_pro_ai_monthly",
-  workspace_business_yearly: "workspace_pro_ai_yearly",
-};
-export const isLegacyWorkspacePlanId = (id: StoredWorkspacePlanId): id is LegacyWorkspacePlanId => id in LEGACY_WORKSPACE_IDS;
-
-/** A stored workspace plan id in today's catalog (Team → Pro, Business → Pro AI). */
-export function workspacePlanIdOf(id: StoredWorkspacePlanId): WorkspacePlanId {
-  return isLegacyWorkspacePlanId(id) ? LEGACY_WORKSPACE_IDS[id] : id;
 }
 
 /** Whether a plan is paid for (anything but the free plans). */
@@ -401,8 +366,7 @@ export const yearlySavingPercent = (tier: Exclude<PlanTier, "free">) => Math.rou
 
 /** The billing record fields personal entitlements depend on (see the subscriptions table). */
 export interface SubscriptionLike {
-  plan: StoredPersonalTier;
-  catalogVersion?: number;
+  plan: PersonalTier;
   interval?: BillingInterval;
   status: "active" | "past_due" | "canceled";
   trialEndsAt?: number;
@@ -445,7 +409,7 @@ export interface PersonalEntitlements {
 export function personalEntitlementsOf(sub: SubscriptionLike | null, now: number): PersonalEntitlements {
   // A paid (or admin-set) plan counts while it's active or in its grace period; a period end in the past
   // (a manual plan that ran out, a lapsed subscription) falls back to Free.
-  const storedId = sub ? personalPlanId(personalTierOf(sub), sub.interval) : "personal_free";
+  const storedId = sub ? personalPlanId(sub.plan, sub.interval) : "personal_free";
   const paidActive = sub && isPaidPlan(storedId) && sub.status !== "canceled" && (sub.currentPeriodEnd === undefined || sub.currentPeriodEnd > now);
   const canceledButPaidThrough = sub && isPaidPlan(storedId) && sub.status === "canceled" && sub.currentPeriodEnd !== undefined && sub.currentPeriodEnd > now;
   const paidPlanId: PersonalPlanId = paidActive || canceledButPaidThrough ? storedId : "personal_free";

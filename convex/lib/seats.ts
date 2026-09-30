@@ -18,7 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { WorkspaceRole } from "./auth";
-import { storedWorkspacePlanId, workspaceSubscriptionOf } from "./billing";
+import { workspaceSubscriptionOf } from "./billing";
 import { billedQuantity, isPaidPlan } from "./plans";
 
 // The pure price arithmetic lives in the shared catalog (the web app shows the same numbers).
@@ -95,7 +95,7 @@ export async function seatSummary(ctx: Ctx, workspaceId: Id<"workspaces">, now =
  */
 export async function seatsChanged(ctx: MutationCtx, workspaceId: Id<"workspaces">): Promise<void> {
   const sub = await workspaceSubscriptionOf(ctx, workspaceId);
-  if (!sub || !isPaidPlan(storedWorkspacePlanId(sub)) || sub.status === "canceled") return;
+  if (!sub || !isPaidPlan(sub.planId) || sub.status === "canceled") return;
   if (sub.provider !== "polar") {
     // Test and manual plans have no provider to tell: the stored quantity is the bill.
     const seats = await billableQuantity(ctx, workspaceId);

@@ -105,21 +105,20 @@ describe("the catalog", () => {
     expect(Object.values(PLANS).flatMap((p) => p.features).join(" ")).not.toMatch(/\u2014|iOS/);
   });
 
-  test("the rules: the trial is Pro AI with 100 credits; lapsed plans fall back to Free; old tiers read as today's", () => {
+  test("the rules: the trial is Pro AI with 100 credits; lapsed plans fall back to Free", () => {
     const now = Date.now();
     expect(personalEntitlementsOf(null, now)).toMatchObject({ scope: "personal", planId: "personal_free", plan: "free", paid: false, ai: true, monthlyCredits: 25, storageBytes: 1 * GB, devices: 2 });
     const trial = personalEntitlementsOf({ plan: "free", status: "active", trialEndsAt: now + DAY_MS }, now);
     expect(trial).toMatchObject({ planId: "personal_pro_ai_monthly", paidPlanId: "personal_free", plan: "pro_ai", paidPlan: "free", paid: false, trialing: true, ai: true, aiSource: "trial", monthlyCredits: TRIAL_CREDITS, storageBytes: 50 * GB, devices: null });
     expect(personalEntitlementsOf({ plan: "free", status: "active", trialEndsAt: now - 1 }, now)).toMatchObject({ plan: "free", trialing: false });
-    expect(personalEntitlementsOf({ plan: "core", catalogVersion: 2, status: "active", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ planId: "personal_core_monthly", ai: false, aiSource: null, storageBytes: 20 * GB });
+    expect(personalEntitlementsOf({ plan: "core", status: "active", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ planId: "personal_core_monthly", ai: false, aiSource: null, storageBytes: 20 * GB });
     expect(personalEntitlementsOf({ plan: "pro", catalogVersion: 2, interval: "year", status: "active" }, now)).toMatchObject({ planId: "personal_pro_yearly", monthlyCredits: 180 });
-    expect(personalEntitlementsOf({ plan: "pro", catalogVersion: 2, status: "active", currentPeriodEnd: now - 1 }, now)).toMatchObject({ plan: "free", paid: false });
-    expect(personalEntitlementsOf({ plan: "pro_ai", catalogVersion: 2, status: "canceled", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ plan: "pro_ai", paid: true });
+    expect(personalEntitlementsOf({ plan: "pro", status: "active", currentPeriodEnd: now - 1 }, now)).toMatchObject({ plan: "free", paid: false });
+    expect(personalEntitlementsOf({ plan: "pro_ai", status: "canceled", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ plan: "pro_ai", paid: true });
     // A paying Core customer with a trial date left doesn't get the trial.
-    expect(personalEntitlementsOf({ plan: "core", catalogVersion: 2, status: "active", trialEndsAt: now + DAY_MS }, now)).toMatchObject({ trialing: false, ai: false });
-    // Rows from before January 2027 (not yet migrated): Basic → Core, the old Pro → Pro AI.
-    expect(personalEntitlementsOf({ plan: "basic", status: "active" }, now)).toMatchObject({ planId: "personal_core_monthly" });
-    expect(personalEntitlementsOf({ plan: "pro", status: "active" }, now)).toMatchObject({ planId: "personal_pro_ai_monthly" });
+    expect(personalEntitlementsOf({ plan: "core", status: "active", trialEndsAt: now + DAY_MS }, now)).toMatchObject({ trialing: false, ai: false });
+    // A stored "pro" is Pro (the January 2027 plan migration ran on 2026-09-30; nothing reads catalogVersion).
+    expect(personalEntitlementsOf({ plan: "pro", status: "active" }, now)).toMatchObject({ planId: "personal_pro_monthly" });
     expect(personalEntitlementsOf({ plan: "free", status: "active", storageOverrideBytes: 5 * GB }, now).storageBytes).toBe(5 * GB);
     expect([personalPlanId("free"), personalPlanId("core"), personalPlanId("pro_ai", "year")]).toEqual(["personal_free", "personal_core_monthly", "personal_pro_ai_yearly"]);
   });
@@ -146,7 +145,8 @@ describe("personal plans", () => {
     expect(mine.entitlements.trialEndsAt! - Date.now()).toBeLessThanOrEqual(TRIAL_DAYS * DAY_MS);
     expect(mine.credits.resetsAt).toBe(mine.entitlements.trialEndsAt);
     const sub = await subOf(t, a);
-    expect(sub).toMatchObject({ plan: "free", catalogVersion: 2 });
+    expect(sub).toMatchObject({ plan: "free" });
+    expect(sub?.catalogVersion).toBeUndefined();
   });
 
   test("test purchases work in development, are recorded, can be canceled, and are refused in production", async () => {
@@ -491,61 +491,6 @@ describe("admin: billing, plans, credits and analytics", () => {
     expect(theirs[0]!.profileId).toBe(user.profileId);
     const view = await staff.as.mutation(api.adminBilling.userBilling, { profileId: user.profileId });
     expect(JSON.stringify(view)).not.toContain(theirs[0]!.fileId!);
-  });
-});
-
-describe("the January 2027 plan migration", () => {
-  test("old tiers are rewritten (Basic → Core, Pro → Pro AI, Team → Pro, Business → Pro AI), in batches, once", async () => {
-    vi.useFakeTimers();
-    const t = setup();
-    const people = [await person(t, "m-basic@example.com"), await person(t, "m-pro@example.com"), await person(t, "m-free@example.com")];
-    const [basic, pro] = people;
-    const { id: teamWs } = await basic!.as.mutation(api.workspaces.createTeamWorkspace, { name: "Old team" });
-    const { id: bizWs } = await basic!.as.mutation(api.workspaces.createTeamWorkspace, { name: "Old business" });
-    // Rows as they were stored before January 2027 (no catalogVersion).
-    await t.run(async (ctx) => {
-      for (const s of await ctx.db.query("subscriptions").collect()) await ctx.db.patch(s._id, { catalogVersion: undefined });
-      const set = async (p: Person, plan: "basic" | "pro") => {
-        const s = (await ctx.db.query("subscriptions").withIndex("by_profile", (q) => q.eq("profileId", p.profileId as Id<"profiles">)).unique())!;
-        await ctx.db.patch(s._id, { plan, interval: "month", status: "active", provider: "manual", trialEndsAt: Date.now() - 1 });
-      };
-      await set(basic!, "basic");
-      await set(pro!, "pro");
-      const now = Date.now();
-      for (const [publicId, planId] of [[teamWs, "workspace_team_yearly"], [bizWs, "workspace_business_monthly"]] as const) {
-        const w = (await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", publicId)).unique())!;
-        await ctx.db.insert("subscriptions", { ownerType: "workspace", workspaceId: w._id, planId, status: "active", provider: "manual", quantity: 1, createdAt: now, updatedAt: now });
-        await ctx.db.insert("payments", { workspaceId: w._id, amountCents: 4900, currency: "usd", plan: planId.includes("team") ? "team" : "business", planId, interval: "year", status: "paid", provider: "manual", createdAt: now });
-      }
-      await ctx.db.insert("payments", { profileId: pro!.profileId as Id<"profiles">, amountCents: 500, currency: "usd", plan: "pro", interval: "month", status: "paid", provider: "manual", createdAt: now });
-      await ctx.db.insert("payments", { profileId: basic!.profileId as Id<"profiles">, amountCents: 200, currency: "usd", plan: "basic", interval: "month", status: "paid", provider: "manual", createdAt: now });
-    });
-    // Before the migration the old rows already read as today's plans (the schema deploys on old data).
-    expect((await basic!.as.query(api.billing.mine, {})).entitlements.paidPlan).toBe("core");
-    expect((await pro!.as.query(api.billing.mine, {})).entitlements.paidPlan).toBe("pro_ai");
-    expect((await basic!.as.query(api.workspaceBilling.summary, { workspaceId: teamWs })).entitlements.planId).toBe("workspace_pro_yearly");
-    const before = await t.query(internal.migrations.planTierReport, {});
-    expect(before.subscriptions).toBeGreaterThanOrEqual(5);
-    expect(before.payments).toBe(4);
-    // A dry run changes nothing.
-    const dry = await t.mutation(internal.migrations.migratePlanTiers, { dryRun: true });
-    expect(dry.changes).toEqual(expect.arrayContaining(["subscriptions: basic → core", "subscriptions: pro → pro_ai", "subscriptions: workspace_team_yearly → workspace_pro_yearly", "subscriptions: workspace_business_monthly → workspace_pro_ai_monthly"]));
-    expect(await t.query(internal.migrations.planTierReport, {})).toEqual(before);
-    await t.mutation(internal.migrations.migratePlanTiers, {});
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect(await t.query(internal.migrations.planTierReport, {})).toEqual({ subscriptions: 0, payments: 0 });
-    const subs = await t.run(async (ctx) => ctx.db.query("subscriptions").collect());
-    expect(subs.find((s) => s.profileId === basic!.profileId)).toMatchObject({ plan: "core", catalogVersion: 2 });
-    expect(subs.find((s) => s.profileId === pro!.profileId)).toMatchObject({ plan: "pro_ai", catalogVersion: 2 });
-    expect(subs.filter((s) => s.ownerType === "workspace" && s.planId !== "workspace_free").map((s) => s.planId).sort()).toEqual(["workspace_pro_ai_monthly", "workspace_pro_yearly"]);
-    const payments = await t.run(async (ctx) => ctx.db.query("payments").collect());
-    expect(payments.map((p) => p.plan).sort()).toEqual(["core", "pro", "pro_ai", "pro_ai"]);
-    expect(payments.every((p) => p.catalogVersion === 2)).toBe(true);
-    // Nobody's plan changed meaning, and running it again changes nothing.
-    expect((await basic!.as.query(api.billing.mine, {})).entitlements.paidPlan).toBe("core");
-    expect((await pro!.as.query(api.billing.mine, {})).entitlements.paidPlan).toBe("pro_ai");
-    const again = await t.mutation(internal.migrations.migratePlanTiers, {});
-    expect(again.changed).toBe(0);
   });
 });
 

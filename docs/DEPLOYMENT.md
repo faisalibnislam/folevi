@@ -103,8 +103,8 @@ deployments offer test purchases instead). All variables are server-only, on Con
 and credit pack) are created from Admin → Billing setup, which records their ids in the database; a
 `POLAR_PRODUCT_*` env var per product (`.env.example`, Billing section) still works as a fallback. The webhook endpoint is
 `https://<deployment>.convex.site/webhooks/polar`. The full checklist (the 14 products with names, prices
-and intervals, the webhook events, the token's scopes, sandbox testing) and the one-time plan migration
-command are in `docs/BILLING.md`. Access is granted only by signed webhook events (never by returning
+and intervals, the webhook events, the token's scopes, sandbox testing) are in `docs/BILLING.md`. The one-time plan migration ran on production on 2026-09-30 and
+its code has been removed (`docs/BILLING.md`, step 6). Access is granted only by signed webhook events (never by returning
 from checkout). Remove any leftover `STRIPE_*` variables: Stripe was never live and its code is gone.
 
 ## 6. Account-model migration (done) and clean-up

@@ -7,7 +7,7 @@ import type { Doc } from "./_generated/dataModel";
 import { requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { redactEmail } from "./lib/crypto";
 import { DAY_MS, PRICES, billedQuantity, monthlyValueCents, personalEntitlementsOf, seatChargeCents, workspaceEntitlementsOf, type PersonalTier } from "./lib/plans";
-import { isPersonalPayment, isPersonalSubscription, isWorkspaceSubscription, paymentTier } from "./lib/billing";
+import { isPersonalPayment, isPersonalSubscription, isWorkspaceSubscription } from "./lib/billing";
 import { workspaceSubscriptionLike } from "./lib/entitlements";
 
 const STAFF: PlatformRole[] = ["super_admin", "ops_admin", "support_admin"];
@@ -204,7 +204,7 @@ export const revenue = query({
         refundedCents: last30.filter((p) => p.status === "refunded").reduce((n, p) => n + p.amountCents, 0),
         failed: last30.filter((p) => p.status === "failed").length,
       },
-      recent: recent.map((p) => ({ id: p._id as string, profileId: p.profileId as string, ...names.get(p.profileId)!, amountCents: p.amountCents, currency: p.currency, plan: paymentTier(p), interval: p.interval ?? null, credits: p.credits ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
+      recent: recent.map((p) => ({ id: p._id as string, profileId: p.profileId as string, ...names.get(p.profileId)!, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval ?? null, credits: p.credits ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
       prices: PRICES,
       workspaces: workspaceTotals,
       testIncluded: Boolean(args.includeTest),

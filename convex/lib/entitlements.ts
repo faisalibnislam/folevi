@@ -17,7 +17,7 @@
 //     replaces their Personal limit (on Free, the pool's).
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { storedWorkspacePlanId, subscriptionOf, workspaceSubscriptionOf, type WorkspaceSubscription } from "./billing";
+import { subscriptionOf, workspaceSubscriptionOf, type WorkspaceSubscription } from "./billing";
 import { GB, PLAN_CATALOG, STORAGE_BYTES, TIER_NAMES, personalEntitlementsOf, planName, workspaceEntitlementsOf, type Entitlements, type PersonalEntitlements, type WorkspaceEntitlements, type WorkspaceSubscriptionLike } from "./plans";
 import type { Scope } from "./scope";
 
@@ -45,7 +45,7 @@ export function workspaceStorageOverride(workspace: Doc<"workspaces">): number |
 /** A workspace subscription row in the shape the entitlement rules read. */
 export function workspaceSubscriptionLike(sub: WorkspaceSubscription | null): WorkspaceSubscriptionLike | null {
   if (!sub) return null;
-  const plan = PLAN_CATALOG[storedWorkspacePlanId(sub)];
+  const plan = PLAN_CATALOG[sub.planId];
   return { tier: plan.tier, interval: plan.interval ?? undefined, status: sub.status, currentPeriodEnd: sub.currentPeriodEnd };
 }
 

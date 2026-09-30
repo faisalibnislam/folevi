@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPerson, waitForSaved } from "./helpers";
+import { convexUrl, newPerson, waitForSaved } from "./helpers";
 
 test("offline edits are kept, shown as pending, and sync on reconnect", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Offline Tester");
@@ -63,7 +63,9 @@ test("opening Folevi while the server is unreachable shows the last-known folio,
   // Cut the page off from the auth server and the Convex backend (the app shell itself still loads,
   // as it would from the service worker in production), then start the app again.
   await page.route("**/api/auth/**", (route) => route.abort("internetdisconnected"));
-  await page.routeWebSocket(/127\.0\.0\.1:3210|convex\.cloud/, (ws) => ws.close());
+  // The backend's host comes from the configured Convex URL, so this works on any local port.
+  const backendHost = new URL(convexUrl()).host;
+  await page.routeWebSocket((url) => url.host === backendHost || url.hostname.endsWith(".convex.cloud"), (ws) => ws.close());
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 20_000 });
   // Personal (the default context) opens: the switcher shows it.

@@ -19,10 +19,7 @@ import {
   isPersonalPayment,
   isPersonalSubscription,
   isWorkspaceSubscription,
-  paymentTier,
   periodEndFrom,
-  personalPlanFields,
-  personalTier,
   storedPersonalPlanId,
   subscriptionOf,
   type PersonalSubscription,
@@ -90,7 +87,7 @@ export const mine = query({
       subscription: sub
         ? {
             planId: storedPersonalPlanId(sub),
-            plan: personalTier(sub),
+            plan: sub.plan,
             interval: sub.interval ?? null,
             status: sub.status,
             provider: sub.provider,
@@ -109,7 +106,7 @@ export const mine = query({
       credits: { ...credits, trialing: account.trialing, canBuy: account.canBuy, aiIncluded: entitlements.ai },
       /** Kept for older clients: AI requests this period. */
       aiRequestsThisMonth: await requestsSince(ctx, profile._id, credits.periodStart),
-      payments: payments.map((p) => ({ id: p._id, amountCents: p.amountCents, currency: p.currency, plan: paymentTier(p), interval: p.interval ?? null, credits: p.credits ?? null, status: p.status, createdAt: p.createdAt })),
+      payments: payments.map((p) => ({ id: p._id, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval ?? null, credits: p.credits ?? null, status: p.status, createdAt: p.createdAt })),
       checkoutAvailable: personalCheckoutReady(ids),
       creditsCheckoutAvailable: creditsCheckoutReady(ids),
       testPurchases: testPurchasesAllowed(),
@@ -176,14 +173,14 @@ export const testPurchase = mutation({
     if (polarLive(sub)) fail("invalid_argument", "This plan is billed through Polar. Change it in the billing portal.");
     const now = Date.now();
     await ctx.db.patch(sub._id, {
-      ...personalPlanFields(args.plan),
+      plan: args.plan,
       interval: args.interval,
       status: "active",
       provider: "test",
       currentPeriodStart: now,
       currentPeriodEnd: periodEndFrom(now, args.interval),
       cancelAtPeriodEnd: false,
-      paidSince: personalTier(sub) === args.plan && sub.paidSince ? sub.paidSince : now,
+      paidSince: sub.plan === args.plan && sub.paidSince ? sub.paidSince : now,
       canceledAt: undefined,
       // Choosing a plan ends a running trial: they get what they chose from now on.
       trialEndsAt: sub.trialEndsAt && sub.trialEndsAt > now ? now : sub.trialEndsAt,
@@ -259,7 +256,7 @@ export const settleExpiredPlans = internalMutation({
   handler: async (ctx) => {
     const now = Date.now();
     let changed = 0;
-    for (const plan of ["core", "pro", "pro_ai", "basic"] as const) {
+    for (const plan of ["core", "pro", "pro_ai"] as const) {
       const subs = await ctx.db
         .query("subscriptions")
         .withIndex("by_plan", (q) => q.eq("plan", plan))
@@ -272,7 +269,7 @@ export const settleExpiredPlans = internalMutation({
           await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: periodEndFrom(now, s.interval), updatedAt: now });
           continue;
         }
-        await ctx.db.patch(s._id, { ...personalPlanFields("free"), interval: undefined, status: "canceled", canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
+        await ctx.db.patch(s._id, { plan: "free", interval: undefined, status: "canceled", canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
         changed++;
       }
     }
@@ -504,7 +501,7 @@ async function applySubscriptionEvent(ctx: MutationCtx, type: string, at: number
   const wasPaid = onPaidPlan(row) && row.status !== "canceled";
   await ctx.db.patch(row._id, {
     provider: "polar",
-    ...personalPlanFields(tier),
+    plan: tier,
     interval: product.interval,
     status,
     currentPeriodStart: ms(o.current_period_start) ?? row.currentPeriodStart,

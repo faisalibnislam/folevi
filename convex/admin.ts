@@ -20,7 +20,7 @@ import { DEFAULT_WORKSPACE_QUOTA_BYTES, personalEntitlements, storageUsage, work
 import { personalScope, workspaceScope } from "./lib/scope";
 import { PLAN_CATALOG, planName } from "./lib/plans";
 import { seatSummary, seatsChanged } from "./lib/seats";
-import { paymentTier, personalPolarBilled, storedWorkspacePlanId, subscriptionOf, workspacePolarBilled, workspaceSubscriptionOf } from "./lib/billing";
+import { personalPolarBilled, subscriptionOf, workspacePolarBilled, workspaceSubscriptionOf } from "./lib/billing";
 
 // Three tiers (stored names kept for existing admins and audit records):
 //   Owner (super_admin):           everything, including admin roles and money matters
@@ -495,9 +495,9 @@ export const viewWorkspace = mutation({
         /** Billed through Polar: the plan can't be set by hand here (setWorkspacePlan refuses). */
         polarBilled: workspacePolarBilled(sub),
         subscription: sub
-          ? { planId: storedWorkspacePlanId(sub), provider: sub.provider, status: sub.status, quantity: sub.quantity ?? null, currentPeriodEnd: sub.currentPeriodEnd ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), polarCustomerId: sub.polarCustomerId ?? null }
+          ? { planId: sub.planId, provider: sub.provider, status: sub.status, quantity: sub.quantity ?? null, currentPeriodEnd: sub.currentPeriodEnd ?? null, cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd), polarCustomerId: sub.polarCustomerId ?? null }
           : null,
-        payments: payments.map((p) => ({ id: p._id as string, amountCents: p.amountCents, currency: p.currency, plan: paymentTier(p), interval: p.interval ?? null, quantity: p.quantity ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
+        payments: payments.map((p) => ({ id: p._id as string, amountCents: p.amountCents, currency: p.currency, plan: p.plan, interval: p.interval ?? null, quantity: p.quantity ?? null, status: p.status, provider: p.provider, createdAt: p.createdAt })),
       },
       audit: history.map((h) => ({ action: h.action, reason: h.reason ?? null, createdAt: h.createdAt })),
     };

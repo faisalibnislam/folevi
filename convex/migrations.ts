@@ -7,8 +7,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { liveBlocks, refreshDerived, syncTaskProjection } from "./lib/documents";
 import { randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
 import { isFolderColor, randomFolderColor } from "./lib/folderColors";
-import { paymentTier, startTrial } from "./lib/billing";
-import { CATALOG_VERSION, isLegacyWorkspacePlanId, personalTierOf, workspacePlanIdOf } from "./lib/plans";
+import { startTrial } from "./lib/billing";
 import { hasValidScope, SCOPED_TABLES, sameScope, scopeOfRow, type ScopedTable } from "./lib/scope";
 
 /** Fills in the card preview (documents.preview) for pages saved before previews existed. */
@@ -138,79 +137,6 @@ export const startBillingForExistingUsers = internalMutation({
   },
 });
 
-
-// ---------------------------------------------------------------------------------------------------
-// January 2027 plans (docs/BILLING.md). Rewrites every stored tier to today's catalog, idempotently and in
-// batches: Personal Basic → Core, Personal Pro (the old Pro, with AI) → Pro AI, Workspace Team → Pro,
-// Workspace Business → Pro AI; payments are relabelled the same way (amounts never change). Rows it has
-// done (and every row written since) carry catalogVersion 2, so running it again changes nothing.
-//
-//   npx convex run --prod migrations:migratePlanTiers '{}'            dry run first: add "dryRun": true
-//   npx convex run --prod migrations:planTierReport '{}'             rows still on the old tiers (0 when done)
-// ---------------------------------------------------------------------------------------------------
-
-const PLAN_TIER_PAGE = 100;
-
-/** Today's fields for a subscription row written before January 2027 (null: nothing to change). */
-export function migratedSubscription(row: Doc<"subscriptions">): Partial<Doc<"subscriptions">> | null {
-  if (row.catalogVersion === CATALOG_VERSION) return null;
-  if (row.ownerType === "workspace") {
-    if (!row.planId) return { catalogVersion: CATALOG_VERSION };
-    return { planId: workspacePlanIdOf(row.planId), catalogVersion: CATALOG_VERSION };
-  }
-  if (!row.plan) return { catalogVersion: CATALOG_VERSION };
-  return { plan: personalTierOf(row as { plan: NonNullable<Doc<"subscriptions">["plan"]> }), catalogVersion: CATALOG_VERSION };
-}
-
-/** Today's fields for a payment row written before January 2027 (null: nothing to change). */
-export function migratedPayment(row: Doc<"payments">): Partial<Doc<"payments">> | null {
-  if (row.catalogVersion === CATALOG_VERSION) return null;
-  const tier = paymentTier(row);
-  return { plan: tier, ...(row.planId && isLegacyWorkspacePlanId(row.planId) ? { planId: workspacePlanIdOf(row.planId) } : {}), catalogVersion: CATALOG_VERSION };
-}
-
-export const migratePlanTiers = internalMutation({
-  args: {
-    table: v.optional(v.union(v.literal("subscriptions"), v.literal("payments"))),
-    cursor: v.optional(v.union(v.string(), v.null())),
-    dryRun: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args): Promise<{ table: "subscriptions" | "payments"; changed: number; seen: number; done: boolean; changes: string[] }> => {
-    const table = args.table ?? "subscriptions";
-    const page = await ctx.db.query(table).paginate({ cursor: args.cursor ?? null, numItems: PLAN_TIER_PAGE });
-    let changed = 0;
-    const changes: string[] = [];
-    for (const row of page.page) {
-      const patch = table === "subscriptions" ? migratedSubscription(row as Doc<"subscriptions">) : migratedPayment(row as Doc<"payments">);
-      if (!patch) continue;
-      changed++;
-      // What changed, without ids or personal data (e.g. "subscriptions: pro → pro_ai").
-      const before = table === "subscriptions" ? ((row as Doc<"subscriptions">).plan ?? (row as Doc<"subscriptions">).planId) : (row as Doc<"payments">).plan;
-      const after = table === "subscriptions" ? (patch as Partial<Doc<"subscriptions">>).plan ?? (patch as Partial<Doc<"subscriptions">>).planId ?? before : (patch as Partial<Doc<"payments">>).plan;
-      if (changes.length < 20) changes.push(`${table}: ${String(before)} → ${String(after)}`);
-      if (!args.dryRun) await ctx.db.patch(row._id, patch);
-    }
-    console.log(JSON.stringify({ event: "migration.plan_tiers", table, changed, seen: page.page.length, dryRun: Boolean(args.dryRun) }));
-    const done = page.isDone && table === "payments";
-    if (!args.dryRun) {
-      if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.migratePlanTiers, { table, cursor: page.continueCursor });
-      else if (table === "subscriptions") await ctx.scheduler.runAfter(0, internal.migrations.migratePlanTiers, { table: "payments", cursor: null });
-    }
-    return { table, changed, seen: page.page.length, done, changes };
-  },
-});
-
-/** How many rows still store a tier from before January 2027 (both 0 once migratePlanTiers has run). */
-export const planTierReport = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    let subscriptions = 0;
-    let payments = 0;
-    for await (const row of ctx.db.query("subscriptions")) if (migratedSubscription(row)) subscriptions++;
-    for await (const row of ctx.db.query("payments")) if (migratedPayment(row)) payments++;
-    return { subscriptions, payments };
-  },
-});
 
 // ---------------------------------------------------------------------------------------------------
 // Account model clean-up (docs/ACCOUNT_MODEL_PLAN.md §3b). Production was migrated (Personal is not a

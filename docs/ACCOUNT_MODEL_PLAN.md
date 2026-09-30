@@ -170,10 +170,10 @@ workspace, per member); AI is metered in credits per person per scope (a member'
 workspace, otherwise the person's own Personal, including in free workspaces and as a guest), and Core
 has no AI at all; Polar replaced Stripe (checkout with seats, customer portal for the payer, Standard
 Webhooks at `/webhooks/polar`, seat sync by `PATCH subscriptions/{id} {seats}`); `stripe*` fields on
-subscription rows are legacy and never written. Stored tiers from before are read through
-`personalTierOf` / `workspacePlanIdOf` until `migrations:migratePlanTiers` rewrites them (Basic → Core,
-Pro → Pro AI, Team → Pro, Business → Pro AI). The current rules, the owner's Polar checklist and the
-migration command are in `docs/BILLING.md`; read "Stripe" below as "Polar" and "Team / Business" as the
+subscription rows are legacy and never written. `migrations:migratePlanTiers` rewrote the stored tiers
+from before (Basic → Core, Pro → Pro AI, Team → Pro, Business → Pro AI) on production on 2026-09-30;
+the migration, its report and the old values were then removed from the schema and code. The current
+rules and the owner's Polar checklist are in `docs/BILLING.md`; read "Stripe" below as "Polar" and "Team / Business" as the
 paid plans.
 
 *As built (Phase C):*

@@ -169,8 +169,19 @@ test.describe("editor keyboard", () => {
     await expect(body).toHaveAttribute("aria-controls", (await list.getAttribute("id"))!);
     await page.keyboard.press("ArrowDown");
     await expect(body).toHaveAttribute("aria-activedescendant", (await list.getByRole("option").nth(1).getAttribute("id"))!);
+    // Colours must be checked once the theme has settled, not halfway through the light/dark transition:
+    // switch transitions off for the check, wait for the app to apply the theme, then for any finite
+    // animation still running (the listbox stays open throughout).
+    await page.addStyleTag({ content: "*, *::before, *::after { transition: none !important; }" });
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
+      await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
+      await page.evaluate(async () => {
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+        const finite = document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity);
+        await Promise.all(finite.map((a) => a.finished.catch(() => undefined)));
+      });
+      await expect(list).toBeVisible();
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).disableRules(["region"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
       expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);

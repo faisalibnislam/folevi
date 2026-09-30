@@ -30,17 +30,6 @@ export const vWorkspacePlanId = v.union(
   v.literal("workspace_pro_ai_monthly"),
   v.literal("workspace_pro_ai_yearly"),
 );
-/**
- * A workspace plan id as stored: today's ids, plus the ids from before January 2027 (Team, Business) that
- * rows keep until migrations:migratePlanTiers rewrites them. Only for the schema; functions take today's.
- */
-export const vStoredWorkspacePlanId = v.union(
-  vWorkspacePlanId,
-  v.literal("workspace_team_monthly"),
-  v.literal("workspace_team_yearly"),
-  v.literal("workspace_business_monthly"),
-  v.literal("workspace_business_yearly"),
-);
 /** A paid workspace plan's catalog id (what can be bought). */
 export const vPaidWorkspacePlanId = v.union(
   v.literal("workspace_core_monthly"),
@@ -54,8 +43,6 @@ export const vPaidWorkspacePlanId = v.union(
 export const vPersonalTier = v.union(v.literal("free"), v.literal("core"), v.literal("pro"), v.literal("pro_ai"));
 /** A paid Personal tier (what can be bought). */
 export const vPaidPersonalTier = v.union(v.literal("core"), v.literal("pro"), v.literal("pro_ai"));
-/** A Personal tier as stored ("basic" only on rows from before January 2027, until the migration). */
-export const vStoredPersonalTier = v.union(vPersonalTier, v.literal("basic"));
 /** An AI credit pack (lib/plans.ts CREDIT_PACKS). */
 export const vCreditPackId = v.union(v.literal("credits_500"), v.literal("credits_1000"));
 export const vInterval = v.union(v.literal("month"), v.literal("year"));

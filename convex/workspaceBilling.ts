@@ -23,7 +23,7 @@ import type { Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx } from "./_generated/server";
 import { normalizeMembership, requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { ensureWorkspaceSubscription, insertPayment, isWorkspaceSubscription, periodEndFrom, storedWorkspacePlanId, workspaceSubscriptionOf, type WorkspaceSubscription } from "./lib/billing";
+import { ensureWorkspaceSubscription, insertPayment, isWorkspaceSubscription, periodEndFrom, workspaceSubscriptionOf, type WorkspaceSubscription } from "./lib/billing";
 import { freePool, memberStorageUsed, storageUsage, workspaceEntitlements } from "./lib/entitlements";
 import { creditBalance, seatAccount } from "./lib/credits";
 import { requireWorkspaceBilling } from "./lib/permissions";
@@ -36,7 +36,7 @@ import { vPaidWorkspacePlanId } from "./lib/validators";
 
 const intervalOf = (planId: PaidWorkspacePlanId) => PLAN_CATALOG[planId].interval!;
 /** Whether a row is a paid plan that hasn't ended (a canceled row still in its paid period counts). */
-const livePaid = (s: WorkspaceSubscription, now = Date.now()) => isPaidPlan(storedWorkspacePlanId(s)) && (s.status !== "canceled" || (s.currentPeriodEnd ?? 0) > now);
+const livePaid = (s: WorkspaceSubscription, now = Date.now()) => isPaidPlan(s.planId) && (s.status !== "canceled" || (s.currentPeriodEnd ?? 0) > now);
 
 // ---------------------------------------------------------------------------------------------------
 // Reading
@@ -73,7 +73,7 @@ export const summary = query({
       subscription:
         sub && sub.provider !== "none"
           ? {
-              planId: storedWorkspacePlanId(sub),
+              planId: sub.planId,
               provider: sub.provider,
               status: sub.status,
               cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd),
@@ -105,7 +105,7 @@ export const summary = query({
       /** Your own AI credits here (paid plans with AI; on Free members use their personal credits). */
       credits: seat ? { ...(await creditBalance(ctx, seat)), canBuy: seat.canBuy } : null,
       payments: payments.map((p) => {
-        const planId = p.planId ? storedWorkspacePlanId({ planId: p.planId }) : null;
+        const planId = p.planId ?? null;
         return { id: p._id as string, amountCents: p.amountCents, currency: p.currency, planId, plan: planId ? PLAN_CATALOG[planId].tier : null, interval: p.interval ?? null, quantity: p.quantity ?? null, status: p.status, createdAt: p.createdAt };
       }),
       checkoutAvailable: workspaceCheckoutReady(await productIds(ctx)),
@@ -196,7 +196,7 @@ export const billingContext = internalQuery({
       email: profile.email,
       provider: sub?.provider ?? "none",
       polarSubscriptionId: sub?.polarSubscriptionId ?? null,
-      planId: sub ? storedWorkspacePlanId(sub) : "workspace_free",
+      planId: sub ? sub.planId : "workspace_free",
       paid: e.paid,
       polarLive: Boolean(sub && sub.provider === "polar" && sub.polarSubscriptionId && livePaid(sub) && sub.status !== "canceled"),
       youPay: Boolean(sub && sub.polarBuyerId === profile._id),
@@ -408,7 +408,7 @@ export async function applyWorkspaceSubscriptionEvent(ctx: MutationCtx, row: Wor
     return ref ? (ctx.db.normalizeId("profiles", ref) ?? undefined) : undefined;
   })();
   const wasLive = livePaid(row, now) && row.status !== "canceled";
-  const sameTier = PLAN_CATALOG[storedWorkspacePlanId(row)].tier === PLAN_CATALOG[planId].tier;
+  const sameTier = PLAN_CATALOG[row.planId].tier === PLAN_CATALOG[planId].tier;
   await ctx.db.patch(row._id, {
     provider: "polar",
     planId,
@@ -463,7 +463,7 @@ export async function settleExpiredWorkspacePlans(ctx: MutationCtx, now: number)
   let changed = 0;
   for (const s of rows) {
     if (!isWorkspaceSubscription(s)) continue;
-    const planId = storedWorkspacePlanId(s);
+    const planId = s.planId;
     if (!isPaidPlan(planId) || s.provider === "polar" || s.currentPeriodEnd === undefined || s.currentPeriodEnd > now) continue;
     if (s.provider === "test" && !s.cancelAtPeriodEnd) {
       await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: periodEndFrom(now, PLAN_CATALOG[planId].interval), updatedAt: now });

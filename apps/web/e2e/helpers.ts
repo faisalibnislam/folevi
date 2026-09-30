@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, type APIRequestContext, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { TOTP } from "otpauth";
@@ -6,6 +7,27 @@ import { TOTP } from "otpauth";
 export const APP = process.env.E2E_BASE_URL ?? "http://app.localhost:3000";
 export const PASSWORD = "quiet folio test password";
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+
+function envFileValue(path: string, key: string): string | undefined {
+  if (!existsSync(path)) return undefined;
+  const match = new RegExp(`^${key}=(\\S+)`, "m").exec(readFileSync(path, "utf8"));
+  return match?.[1];
+}
+
+/**
+ * The Convex deployment URL the web app talks to: the environment first, then apps/web/.env.local (what the
+ * Next dev server reads), then the root .env.local that `convex dev` writes. Defaults to the local backend's
+ * usual port.
+ */
+export function convexUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_CONVEX_URL ||
+    process.env.CONVEX_URL ||
+    envFileValue(`${REPO_ROOT}apps/web/.env.local`, "NEXT_PUBLIC_CONVEX_URL") ||
+    envFileValue(`${REPO_ROOT}.env.local`, "CONVEX_URL") ||
+    "http://127.0.0.1:3210"
+  );
+}
 
 export function uniqueEmail(prefix = "e2e"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;

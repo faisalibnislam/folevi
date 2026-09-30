@@ -23,7 +23,6 @@ import { chartFromDraft, type FlowDraft } from "@/components/editor/flowchart/op
 import { FlowchartStatic } from "@/components/editor/flowchart/render";
 import "@/components/editor/flowchart/flowchart.css";
 import { AI_LANGUAGES } from "@/components/ai/languages";
-import { MONTHLY_CREDITS, TIER_NAMES, TRIAL_DAYS } from "@/lib/plans";
 import { artById, artThumb, artVars } from "../product/Replica";
 import { Icon } from "../icons";
 import { Kbd, SectionHeading, box, container, cx } from "../ui";
@@ -155,19 +154,6 @@ export function AiSection() {
         </div>
 
         <ul className="mt-14 grid gap-8 sm:grid-cols-3 sm:gap-10">
-          <li>
-            <h3 className="mk-h3 text-[15.5px]">Credits</h3>
-            <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">
-              Free includes {MONTHLY_CREDITS.free} AI credits a month and Pro {MONTHLY_CREDITS.pro}. {TIER_NAMES.pro_ai} is
-              unlimited, with fair use, and new accounts try it free for {TRIAL_DAYS} days. A short rewrite is usually 1 credit.
-            </p>
-          </li>
-          <li>
-            <h3 className="mk-h3 text-[15.5px]">Your notes stay yours</h3>
-            <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">
-              A request and the notes it needs go to Google Gemini, and nothing else. It never reads notes you can’t open.
-            </p>
-          </li>
           <li>
             <h3 className="mk-h3 text-[15.5px]">Off when you want it off</h3>
             <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">

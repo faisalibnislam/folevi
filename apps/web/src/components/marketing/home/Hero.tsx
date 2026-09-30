@@ -11,7 +11,7 @@ export function Hero() {
     <section aria-labelledby="hero-title" className="pb-12 pt-12 sm:pb-16 sm:pt-20">
       <div className={cx(container, "text-center")}>
         <p className="mk-chip mk-chip--raised">Free to start · On the web, Mac app coming soon</p>
-        <h1 id="hero-title" className="mk-display mx-auto mt-6 max-w-[19ch] text-[44px] sm:text-[64px] lg:text-[76px]">
+        <h1 id="hero-title" className="mk-display mx-auto mt-6 max-w-[24ch] text-balance text-[44px] sm:text-[64px] lg:text-[76px]">
           A quieter place for ideas that keep growing.
         </h1>
         <p className="mk-lede mx-auto mt-6 max-w-[54ch]">

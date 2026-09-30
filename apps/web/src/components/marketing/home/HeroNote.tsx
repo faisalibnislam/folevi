@@ -1,12 +1,18 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent, type ReactNode } from "react";
+import type { Editor } from "@tiptap/react";
 import { preload } from "react-dom";
 import { paletteVars, type CoverArt } from "@/lib/cover";
 import { artVars } from "../product/Replica";
 import { useSiteAmbient } from "../SiteShell";
 import { cx } from "../ui";
+import type { HeroEditorProps } from "./HeroEditor";
 import { HERO_STYLES, heroBand as band, heroBandSet as bandSet, heroGlow as glow } from "./heroStyles";
+
+/** The editable note loads after the page has painted (on idle, or at once when the visitor reaches for it). */
+let editorModule: Promise<ComponentType<HeroEditorProps>> | null = null;
+const loadEditor = () => (editorModule ??= import("./HeroEditor").then((m) => m.default));
 
 /**
  * The cover band is the sheet's width, which is the home cards' width: the content panel (beside the 248 px
@@ -36,6 +42,42 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
   // The first style's cover is the largest thing above the fold: fetch it early, at the size it shows.
   preload(band(HERO_STYLES[0]!), { as: "image", imageSrcSet: bandSet(HERO_STYLES[0]!), imageSizes: BAND_SIZES, fetchPriority: "high" });
 
+  // The style's colours also tint the rest of the home page (the section pictures and wells, via .mk-home).
+  const stageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const home = stageRef.current?.closest<HTMLElement>(".mk-home");
+    if (!home) return;
+    for (const [name, value] of Object.entries({ ...artVars(art), ...paletteVars(art) })) home.style.setProperty(name, String(value));
+  }, [art]);
+
+  // The live editor replaces the static body once it has loaded (same layout, so nothing moves).
+  const [Live, setLive] = useState<ComponentType<HeroEditorProps> | null>(null);
+  const [dockSlot, setDockSlot] = useState<HTMLDivElement | null>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const noteRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const savedId = useId();
+  useEffect(() => {
+    let cancelled = false;
+    const start = () => void loadEditor().then((C) => !cancelled && setLive(() => C));
+    const note = noteRef.current;
+    note?.addEventListener("pointerenter", start, { once: true });
+    note?.addEventListener("focusin", start, { once: true });
+    note?.addEventListener("touchstart", start, { once: true, passive: true });
+    const w = window as Window & { requestIdleCallback?: Window["requestIdleCallback"] };
+    const idle = w.requestIdleCallback ? w.requestIdleCallback(start, { timeout: 4000 }) : null;
+    const timer = idle === null ? setTimeout(start, 2500) : null;
+    return () => {
+      cancelled = true;
+      note?.removeEventListener("pointerenter", start);
+      note?.removeEventListener("focusin", start);
+      note?.removeEventListener("touchstart", start);
+      if (idle !== null) window.cancelIdleCallback(idle);
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, []);
+  const onReady = useCallback((ed: Editor) => setEditor(ed), []);
+
   const pick = (next: number) => {
     if (next === index) return;
     setIndex(next);
@@ -57,9 +99,9 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
   };
 
   return (
-    <div className="mk-hero-stage" style={{ ...artVars(art), ...paletteVars(art) }} data-tone={art.tone}>
+    <div ref={stageRef} className="mk-hero-stage" style={{ ...artVars(art), ...paletteVars(art) }} data-tone={art.tone}>
       <div className="relative mx-auto w-full max-w-[1200px] px-4 pb-3 pt-4 sm:px-8 sm:pb-5 sm:pt-8">
-        <article className="mk-note mk-hero-note">
+        <article ref={noteRef} className="mk-note mk-hero-note">
           <header className="mk-hero-cover">
             <div aria-hidden="true" className="mk-hero-art">
               {layers.map((layer) => (
@@ -78,15 +120,47 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
               <span className="mk-hero-shade" data-shade="deep" />
               <span className="mk-hero-shade" data-shade="light" />
             </div>
-            <h1 id="hero-title" className="mk-hero-title">
+            {/* The page's h1. With the editor loaded it can be edited too, like a note's title (Enter goes to the text). */}
+            <h1
+              ref={titleRef}
+              id="hero-title"
+              className="mk-hero-title"
+              contentEditable={editor ? "plaintext-only" : undefined}
+              suppressContentEditableWarning
+              spellCheck={editor ? false : undefined}
+              aria-describedby={editor ? savedId : undefined}
+              onKeyDown={
+                editor
+                  ? (e) => {
+                      if (e.key === "Enter" || (e.key === "ArrowDown" && !e.shiftKey)) {
+                        e.preventDefault();
+                        editor.chain().focus("start").run();
+                      }
+                    }
+                  : undefined
+              }
+            >
               {title}
             </h1>
           </header>
 
           <div className="mk-hero-body">
-            <p className="mk-hero-badge">{chip}</p>
-            {children}
+            <div className="mk-hero-meta">
+              <p className="mk-hero-badge">{chip}</p>
+              <p className="mk-hero-try">Try it: this note is yours until you refresh.</p>
+            </div>
+            <p id={savedId} className="sr-only">
+              This note is a live demo of the editor. Changes aren’t saved; reloading the page brings the original note back.
+            </p>
+            {/* The body as the editor draws it: the note's font and the style's page, text and accent colours. */}
+            <div className="fb-page mk-hero-page" data-font="serif">
+              <div className="fb-sheet mk-hero-sheet relative" data-sheet="art" data-text="art" data-palette="">
+                {Live ? <Live staticBody={children} art={art} styles={HERO_STYLES} onPickStyle={pick} dockSlot={dockSlot} describedBy={savedId} onReady={onReady} /> : children}
+              </div>
+            </div>
           </div>
+          {/* The page tools dock sticks to the bottom of the note while it's on screen. */}
+          <div ref={setDockSlot} className="mk-hero-dock-slot" />
         </article>
 
         <div className="mk-hero-actions">

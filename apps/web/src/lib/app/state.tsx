@@ -74,7 +74,7 @@ function writeStoredContext(scope: WireScope) {
   }
 }
 
-interface AppState {
+export interface AppState {
   profile: Profile;
   /** Your team workspaces, by name. May be empty: Personal always works on its own. */
   workspaces: Workspace[];
@@ -103,6 +103,14 @@ interface AppState {
 }
 
 const AppStateContext = createContext<AppState | null>(null);
+
+/**
+ * A fixed app state, for the editor on the public site (its demo note has no account, engine or server):
+ * the editor's menus read the day and the context from here.
+ */
+export function StaticAppStateProvider({ value, children }: { value: AppState; children: ReactNode }) {
+  return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
+}
 
 export function useAppState(): AppState {
   const ctx = useContext(AppStateContext);

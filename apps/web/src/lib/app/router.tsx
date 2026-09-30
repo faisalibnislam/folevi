@@ -80,7 +80,7 @@ export function parseRoute(pathname: string): Route {
 
 export { APP_ROUTE_HEADS } from "./routes";
 
-interface RouterValue {
+export interface RouterValue {
   route: Route;
   pathname: string;
   search: URLSearchParams;
@@ -114,6 +114,11 @@ export function AppRouterProvider({ children }: { children: ReactNode }) {
   const back = useCallback(() => window.history.back(), []);
   const search = useMemo(() => new URLSearchParams(searchParams?.toString() ?? ""), [searchParams]);
   const value = useMemo(() => ({ route, pathname, search, navigate, back }), [route, pathname, search, navigate, back]);
+  return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
+}
+
+/** A fixed router, for the editor on the public site (where nothing navigates inside the app). */
+export function StaticRouterProvider({ value, children }: { value: RouterValue; children: ReactNode }) {
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }
 

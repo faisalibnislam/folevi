@@ -787,6 +787,28 @@
 :root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
 @media (min-width: 640px) { .mk-box { border-radius: 16px; } }
 
+/* On Home, the grey wells inside the cards (the section pictures, the Recent notes panel, the security note)
+   take a light tint from the hero note's style instead: its paper, warmed with its second highlight, and a
+   hairline in its ink. Dark mode uses the style's dark pair. The variables are set on .mk-home by the hero,
+   so the tint follows the style picker (and cross-fades, as the note does). */
+.mk-home {
+  --mk-tint: color-mix(in oklab, var(--art-hl-2, var(--mk-well)) 26%, var(--art-paper, var(--mk-well)));
+  --mk-tint-edge: color-mix(in oklab, var(--art-ink, #000) 11%, transparent);
+}
+:root[data-theme="dark"] .mk-home {
+  --mk-tint: color-mix(in oklab, var(--art-hl-2-dark, var(--mk-well)) 30%, var(--art-paper-dark, var(--mk-well)));
+  --mk-tint-edge: color-mix(in oklab, var(--art-ink-dark, #fff) 13%, transparent);
+}
+.mk-home .mk-mini-stage,
+.mk-home .mk-panel {
+  background: var(--mk-tint);
+  box-shadow: inset 0 0 0 1px var(--mk-tint-edge);
+  transition: background-color var(--motion-page, 320ms) var(--mk-ease), box-shadow var(--motion-page, 320ms) var(--mk-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-home .mk-mini-stage, .mk-home .mk-panel { transition: none; }
+}
+
 /* What every plan includes (home/Included.tsx): small pictures made of the app's pieces. ------------ */
 .mk-mini-stage {
   position: relative;
@@ -979,117 +1001,27 @@
   background: color-mix(in oklab, var(--n-hl-2) 80%, var(--n-paper));
   transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
 }
-/* The note's body: the editor's blocks (editor.css) with the note on the Serif font, in the style's
-   palette (sheetProps / paletteVars: --pal-*-l in light mode, --pal-*-d in dark mode). */
-.mk-hero-note {
-  --hp-accent: var(--pal-accent-l, var(--n-accent));
-  --hp-hl-yellow: var(--pal-hl-yellow-l, var(--n-hl-2));
-  --hp-callout-mix: 60%;
-  --hp-sunken: rgb(0 0 0 / 0.05);
-}
-:root[data-theme="dark"] .mk-hero-note {
-  --hp-accent: var(--pal-accent-d, var(--n-accent));
-  --hp-hl-yellow: var(--pal-hl-yellow-d, var(--n-hl-2));
-  --hp-callout-mix: 40%;
-  --hp-sunken: rgb(255 255 255 / 0.06);
-}
+/* The note's body: the badge line, then the editor (editor.css) on the note's Serif font in the style's
+   colours (fb-sheet data-sheet/data-text/data-palette read the --art-* and --pal-* variables set above).
+   The same markup is drawn by the server first (HeroStaticBody) and then by the live editor (HeroEditor). */
 .mk-hero-body {
-  padding: 22px 20px 28px;
-  font-family: var(--font-serif);
-  font-size: 16.5px;
-  line-height: 1.62;
-  color: var(--n-ink);
+  /* Room at the bottom for the page tools dock (its height and gap), so it never covers the last line. */
+  padding: 22px 20px 84px;
 }
-.mk-hero-body > .mk-hero-badge { margin: 0 0 10px; }
-.mk-hero-body > * { max-width: var(--layout-editor-width-default, 760px); }
-.mk-hb { margin: 0; padding: 3px 2px; }
-.mk-hb-h {
-  margin-top: 0.95em;
-  font-family: var(--font-serif);
-  font-size: 1.42em;
-  font-weight: 600;
-  line-height: 1.22;
-  letter-spacing: -0.012em;
-  color: var(--n-heading);
+.mk-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
+.mk-hero-try { font-size: 13px; color: var(--n-muted); }
+.mk-hero-page { max-width: var(--layout-editor-width-default, 760px); }
+/* The page tools dock: sticky at the bottom of the note while it's on screen, its panels float above it. */
+.mk-hero-dock-slot { position: sticky; bottom: 0; z-index: 30; height: 0; }
+.mk-hero-dock { position: absolute; inset: auto 0 0; height: 0; }
+.mk-hero-panel {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  translate: -50% 0;
+  width: min(400px, calc(100vw - 24px));
+  max-height: min(560px, calc(100dvh - 180px));
 }
-.mk-hb-list { margin: 2px 0 0; padding: 0; list-style: none; }
-.mk-hb-todo { display: flex; align-items: flex-start; gap: 0.55em; }
-.mk-hb-todo-text { flex: 1; min-width: 0; }
-.mk-hb-todo[data-checked="true"] .mk-hb-todo-text {
-  color: var(--n-muted);
-  text-decoration: line-through;
-  text-decoration-color: color-mix(in oklab, var(--n-muted) 60%, transparent);
-}
-/* The checkbox: a 24 px box with the 18 px square drawn inside it; done, it fills with the style's accent. */
-.mk-hb-check {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  margin: calc(0.8em - 12px) -3px 0 -4px;
-}
-.mk-hb-check::before {
-  content: "";
-  grid-area: 1 / 1;
-  width: 18px;
-  height: 18px;
-  box-sizing: border-box;
-  border-radius: 4px;
-  border: 1.5px solid color-mix(in oklab, var(--n-ink) 48%, var(--n-paper));
-  background: color-mix(in oklab, var(--n-paper) 70%, #fff);
-  box-shadow: 0 1px 1px color-mix(in oklab, var(--n-ink) 8%, transparent);
-  transition: background var(--motion-page, 320ms) var(--mk-ease), border-color var(--motion-page, 320ms) var(--mk-ease);
-}
-:root[data-theme="dark"] .mk-hb-check::before { background: color-mix(in oklab, var(--n-paper) 88%, #fff); }
-.mk-hb-todo[data-checked="true"] .mk-hb-check::before {
-  border-color: transparent;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--hp-accent) 82%, white), var(--hp-accent));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px color-mix(in oklab, var(--hp-accent) 45%, transparent);
-}
-.mk-hb-todo[data-checked="true"] .mk-hb-check::after {
-  content: "";
-  grid-area: 1 / 1;
-  width: 5px;
-  height: 9px;
-  margin-top: -2px;
-  border: solid var(--n-paper);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-/* The due date chip (editor.css .fb-due-chip). */
-.mk-hb-due {
-  flex: none;
-  min-height: 24px;
-  margin-top: 0.15em;
-  padding: 0 9px;
-  border-radius: 4px;
-  font: 550 12px/24px var(--font-sans);
-  color: var(--n-muted);
-  background: var(--hp-sunken);
-}
-.mk-hb-code {
-  padding: 0.12em 0.4em;
-  border-radius: 6px;
-  font: 0.86em var(--font-mono);
-  color: var(--hp-accent);
-  background: color-mix(in oklab, var(--hp-accent) 6%, var(--n-paper));
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--n-heading) 8%, transparent);
-}
-/* A callout in the style's key colour (the "note" tone), with the editor's default mark. */
-.mk-hb-callout {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6em;
-  margin-top: 0.7em;
-  padding: 0.8em 1em;
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--hp-hl-yellow) var(--hp-callout-mix), var(--n-paper));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 0 0 1px color-mix(in oklab, var(--n-heading) 6%, transparent);
-  transition: background-color var(--motion-page, 320ms) var(--mk-ease);
-}
-:root[data-theme="dark"] .mk-hb-callout { box-shadow: inset 0 1px 0 rgb(255 240 230 / 0.05), inset 0 0 0 1px rgb(255 240 230 / 0.06); }
-.mk-hb-callout-icon { flex: none; width: 1.4em; text-align: center; font-weight: 700; color: var(--hp-accent); }
 
 /* The actions, in their own glass card under the note, with the style picker beside them. */
 .mk-hero-actions {
@@ -1099,7 +1031,7 @@
   flex-direction: column;
   gap: 18px;
   margin: var(--mk-stack-gap) 0 0;
-  padding: 18px 20px 20px;
+  padding: 24px 20px;
   border-radius: 12px;
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
@@ -1141,7 +1073,7 @@
 @media (min-width: 640px) {
   .mk-hero-cover { min-height: 300px; padding: 96px 40px 30px; }
   .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
-  .mk-hero-body { padding: 26px 40px 44px; font-size: 17.5px; }
+  .mk-hero-body { padding: 26px 40px 88px; }
   .mk-hero-actions { padding-inline: 40px; border-radius: 16px; }
   .mk-hero-note { border-radius: 16px; }
   .mk-hero-swatch { width: 36px; height: 36px; }
@@ -1153,11 +1085,11 @@
   .mk-hero-actions { padding-inline: 56px; }
 }
 @media (min-width: 900px) {
-  .mk-hero-actions { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; padding-block: 18px; }
+  .mk-hero-actions { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; padding-block: 32px; }
   .mk-hero-picker { flex: none; padding: 0 0 0 24px; border-top: 0; border-left: 1px solid var(--glass-border); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mk-hero-layer, .mk-hero-grain, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary, .mk-hb-check::before, .mk-hb-callout { transition: none; }
+  .mk-hero-layer, .mk-hero-grain, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary { transition: none; }
 }
 
 /* Long-form pages (docs, legal) ------------------------------------------------------------------ */
@@ -1246,3 +1178,9 @@
   .mk-btn:hover svg { transform: none; }
 }
 }
+
+/* The home page note's editor (editor.css is unlayered, so these sit outside the layers too): the note's
+   own padding replaces the app page's, and the sheet has no paper or height of its own. */
+.mk-hero-sheet.fb-sheet { background: transparent; min-height: 0; }
+.mk-hero-sheet .fb-editor { padding-bottom: 0; min-height: 0; }
+.mk-hero-sheet .fb-editor > .fb:first-child { margin-top: 0; }

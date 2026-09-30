@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import "@/components/editor/editor.css";
 import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { SIGN_UP_URL } from "../site";
 import { ButtonLink } from "../ui";
 import { HeroNote } from "./HeroNote";
+import { HeroStaticBody } from "./HeroStaticBody";
 
 export function Hero() {
   return (
@@ -20,49 +21,14 @@ export function Hero() {
                 Folevi for Mac
               </ButtonLink>
             </div>
-            <p className="mt-3 text-[13.5px] text-muted">
+            <p className="mt-4 text-[13.5px] text-muted">
               Free plan with no card. New accounts get {TIER_NAMES[TRIAL_TIER]} free for {TRIAL_DAYS} days.
             </p>
           </>
         }
       >
-        {/* The note's blocks, drawn with the editor's block styles (editor.css) in the style's colours. */}
-        <p className="mk-hb">
-          Folevi is a notes app for documents, tasks and linked pages. Your writing is saved on your device first, so you can keep
-          working offline, and it syncs when you reconnect.
-        </p>
-        <h2 className="mk-hb mk-hb-h">First things to try</h2>
-        <ul className="mk-hb-list" aria-label="A to-do list">
-          <Todo done>Write a page while offline</Todo>
-          <Todo done>Pick a style for this note</Todo>
-          <Todo>
-            Link another page with <code className="mk-hb-code">[[</code>
-          </Todo>
-          <Todo due="Oct 9">Give a to-do a due date</Todo>
-        </ul>
-        <div role="note" className="mk-hb mk-hb-callout">
-          <span className="mk-hb-callout-icon" aria-hidden="true">
-            ✳︎
-          </span>
-          <p className="min-w-0">Everything you type is saved on this device first. When the status says Saved, the server has it.</p>
-        </div>
+        <HeroStaticBody />
       </HeroNote>
     </section>
-  );
-}
-
-/** A to-do as the editor draws it: its checkbox, the text (struck through when done) and a due date chip. */
-function Todo({ done = false, due, children }: { done?: boolean; due?: string; children: ReactNode }) {
-  return (
-    <li className="mk-hb mk-hb-todo" data-checked={done ? "true" : undefined}>
-      <span className="mk-hb-check" role="img" aria-label={done ? "Done" : "Not done"} />
-      <span className="mk-hb-todo-text">{children}</span>
-      {due ? (
-        <span className="mk-hb-due">
-          <span className="sr-only">Due </span>
-          {due}
-        </span>
-      ) : null}
-    </li>
   );
 }

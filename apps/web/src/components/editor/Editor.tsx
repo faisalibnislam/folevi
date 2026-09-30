@@ -1,7 +1,6 @@
 "use client";
 
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
-import { Placeholder, UndoRedo, Dropcursor, Gapcursor } from "@tiptap/extensions";
 import { TextSelection } from "@tiptap/pm/state";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { LIMITS, markdownToBlocks, plainTextToBlocks, ulid, type WireBlock } from "@folevi/editor-schema";
@@ -9,15 +8,12 @@ import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { enqueueUpload } from "@/lib/sync/uploads";
-import { ALL_MARKS, ALL_NODES, BlockFormat } from "./extensions";
-import { NODE_VIEW_EXTENSIONS } from "./NodeViews";
-import { BlockDecorations, BlockIdentity, BlockKeymap, MarkdownShortcuts, Triggers, decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
+import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
+import { editorExtensions } from "./editorExtensions";
 import { blockToNode, blocksToDoc, contentKey, diffBlocks, docToBlocks } from "./convert";
 import { flattenTree } from "@folevi/editor-schema";
 import { htmlToBlocks } from "./paste";
 import { EditorMenus } from "./EditorMenus";
-import { BlockSelectionExtension } from "./blockSelection";
-import { FindReplace } from "./findReplace";
 import { subtreeRange, normalizeDepths, moveSubtreeTo } from "./commands";
 import { closeHistory } from "@tiptap/pm/history";
 import { useAiEnabled } from "@/components/ai/useAi";
@@ -78,33 +74,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   useEffect(() => engine.subscribe(() => runRebalance()), [engine, runRebalance]);
 
   const extensions = useMemo(
-    () => [
-      ...ALL_NODES.filter((n) => !NODE_VIEW_EXTENSIONS.some((v) => v.name === n.name)),
-      ...NODE_VIEW_EXTENSIONS,
-      ...ALL_MARKS,
-      BlockFormat,
-      UndoRedo.configure({ depth: 200, newGroupDelay: 600 }),
-      Dropcursor.configure({ color: "var(--color-accent)", width: 2 }),
-      Gapcursor,
-      Placeholder.configure({
-        placeholder: ({ node, pos, editor }) => {
-          if (node.type.name === "heading") return `Heading ${node.attrs.level}`;
-          if (node.type.name === "todo") return "To-do";
-          if (["bulleted", "numbered", "quote", "callout", "toggle"].includes(node.type.name)) return "List";
-          const ai = aiHint.current ? ", ⌘J for AI" : "";
-          return pos === 0 && editor.state.doc.childCount === 1 ? (placeholder ?? `Start writing, or type / for blocks${ai}`) : `Type / for blocks${ai}, [[ to link a page`;
-        },
-        showOnlyCurrent: true,
-        includeChildren: false,
-      }),
-      BlockIdentity,
-      BlockDecorations,
-      BlockKeymap,
-      BlockSelectionExtension,
-      MarkdownShortcuts,
-      FindReplace,
-      Triggers.configure({ onChange: (t) => setTrigger(t) }),
-    ],
+    () => editorExtensions({ aiHint, placeholder, onTrigger: setTrigger }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );

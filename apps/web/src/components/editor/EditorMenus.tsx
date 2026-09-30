@@ -57,6 +57,7 @@ import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, sanitizeH
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
+import { useEditorEnvironment } from "./environment";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Dialog } from "@/components/ui/Dialog";
@@ -233,6 +234,7 @@ export function EditorMenus({
 }) {
   const { scope, today } = useAppState();
   const { navigate } = useAppRouter();
+  const env = useEditorEnvironment();
   const toast = useToast();
   const createCollection = useMutation(api.collections.create);
   const [active, setActive] = useState(0);
@@ -335,17 +337,19 @@ export function EditorMenus({
     [engine, documentId, createCollection, editor, toast],
   );
 
-  const special = useMemo<Record<SpecialInsert, () => void | Promise<void>>>(
-    () => ({
-      image: () => imageInput.current?.click(),
-      unsplash: () => setUnsplashOpen(true),
-      file: () => fileInput.current?.click(),
-      page: async () => navigate(`/d/${await createNestedPage("", false, "link")}?new=1`),
-      card: async () => navigate(`/d/${await createNestedPage("", false, "card")}?new=1`),
-      bookmark: () => setBookmarkPrompt(true),
-      collection: () => insertCollection("table", "Collection"),
-      gallery: () => insertCollection("gallery", "Gallery"),
-      board: () => insertCollection("board", "Kanban"),
+  const special = useMemo<Record<SpecialInsert, () => void | Promise<void>>>(() => {
+    // Without an account (the site's demo note), inserts that need the server ask to sign up instead.
+    const account = (feature: string, run: () => void | Promise<void>) => (env.demo ? () => env.unavailable(feature) : run);
+    return {
+      image: account("Images", () => imageInput.current?.click()),
+      unsplash: account("Images", () => setUnsplashOpen(true)),
+      file: account("Files", () => fileInput.current?.click()),
+      page: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "link")}?new=1`)),
+      card: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "card")}?new=1`)),
+      bookmark: account("Bookmarks", () => setBookmarkPrompt(true)),
+      collection: account("Collections", () => insertCollection("table", "Collection")),
+      gallery: account("Collections", () => insertCollection("gallery", "Gallery")),
+      board: account("Collections", () => insertCollection("board", "Kanban")),
       date: () => {
         ensureTextCaret();
         editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: today } }).insertContent(" ").run();
@@ -355,9 +359,8 @@ export function EditorMenus({
         setDatePickerAnchor(caretAnchor());
         setDatePicker({ mode: "insert" });
       },
-    }),
-    [navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret],
-  );
+    };
+  }, [env, navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret]);
 
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
@@ -519,6 +522,10 @@ export function EditorMenus({
   const recent = useQuery(api.documents.recent, open?.kind === "page" && !debounced ? { scope, limit: 8 } : "skip");
   const pageItems: MenuItem[] = useMemo(() => {
     if (open?.kind !== "page") return [];
+    if (env.demo) {
+      // No pages to link to without an account.
+      return [{ id: "__account", label: "Sign up to link your pages", keywords: "", icon: <FileText size={15} />, run: () => env.unavailable("Links to pages") }];
+    }
     const docs = (debounced ? searchResults : recent) ?? [];
     const items: MenuItem[] = docs
       .filter((d) => d.id !== documentId)
@@ -533,7 +540,7 @@ export function EditorMenus({
       items.push({ id: "__create", label: `Create page “${debounced}”`, keywords: "", icon: <Plus size={15} />, run: () => void createNestedPage(debounced, true) });
     }
     return items;
-  }, [open?.kind, debounced, searchResults, recent, editor, documentId, createNestedPage]);
+  }, [env, open?.kind, debounced, searchResults, recent, editor, documentId, createNestedPage]);
 
   // ---------------------------------------------------------------- mentions & dates
   const people = useQuery(api.comments.mentionable, open?.kind === "mention" ? { documentId } : "skip");

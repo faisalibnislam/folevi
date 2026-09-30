@@ -18,7 +18,7 @@ export const HERO_SEED: SeedBlock[] = [
     type: "paragraph",
     text: [
       {
-        text: "Folevi is a notes app for documents, tasks and linked pages. Your writing is saved on your device first, so you can keep working offline, and it syncs when you reconnect.",
+        text: "Write notes, keep your tasks next to them and link pages together. Folevi saves every change on your device first, so you can write offline, and it syncs when you reconnect.",
       },
     ],
   },

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Folevi",
     short_name: "Folevi",
-    description: "A quieter place for ideas that keep growing.",
+    description: "A quiet notes app for ideas that keep growing.",
     start_url: "/documents",
     scope: "/",
     display: "standalone",

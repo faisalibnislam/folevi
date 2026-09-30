@@ -13,7 +13,7 @@ const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.co
 
 export const metadata: Metadata = {
   metadataBase: new URL(marketingUrl),
-  title: { default: "Folevi: a quieter place for ideas that keep growing", template: "%s · Folevi" },
+  title: { default: "Folevi: a quiet notes app for ideas that keep growing", template: "%s · Folevi" },
   description:
     "Folevi is a calm writing and notes workspace for the web and a fully native Mac app: block documents, nested pages, tasks, calendar, offline editing and real-time sync.",
   applicationName: "Folevi",

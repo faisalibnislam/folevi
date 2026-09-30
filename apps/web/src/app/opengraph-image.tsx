@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { LETTER_PATHS, LOGO_HEIGHT, LOGO_WIDTH } from "@/components/brand/FoleviMark";
 import { ImageResponse } from "next/og";
 
-export const alt = "Folevi: a quieter place for ideas that keep growing.";
+export const alt = "Folevi: a quiet notes app for ideas that keep growing.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -144,7 +144,7 @@ export default async function OpengraphImage() {
               display: "flex",
             }}
           >
-            A quieter place for ideas that keep growing.
+            A quiet notes app for ideas that keep growing.
           </div>
           <div style={{ marginTop: 34, display: "flex", alignItems: "center", gap: 14, fontSize: 24, fontWeight: 500, color: MUTED }}>
             <div

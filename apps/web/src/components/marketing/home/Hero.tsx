@@ -9,7 +9,7 @@ export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="mk-hero">
       <HeroNote
-        title="A quieter place for ideas that keep growing."
+        title="A quiet notes app for ideas that keep growing."
         chip="Free to start · On the web, Mac app coming soon"
         actions={
           <>

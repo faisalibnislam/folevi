@@ -16,7 +16,7 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await page.goto(`${SITE}/`);
   const editor = page.getByRole("textbox", { name: "Try the editor" });
   await expect(editor).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("A quieter place for ideas that keep growing.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("A quiet notes app for ideas that keep growing.");
 
   // Type at the end of the heading (clicking past its text puts the caret at its end).
   const heading = editor.getByRole("heading", { level: 2 });

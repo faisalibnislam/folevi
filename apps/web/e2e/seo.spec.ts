@@ -100,7 +100,7 @@ const PAGES = [
   { path: "/template-gallery", h1: "Free note templates for Folevi." },
   { path: "/docs", h1: "How Folevi works." },
   // Pages that gained links to the new ones.
-  { path: "/", h1: "A quieter place for ideas that keep growing." },
+  { path: "/", h1: "A quiet notes app for ideas that keep growing." },
   { path: "/pricing", h1: "Start free. Pay for room, or for AI." },
   // Comparison pages and the blog.
   { path: "/compare", h1: "How Folevi compares." },

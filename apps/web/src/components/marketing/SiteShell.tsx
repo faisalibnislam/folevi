@@ -330,10 +330,10 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
         })}
       </nav>
       <span className="flex-1" />
-      <a href={signInUrl} className="mk-btn mk-btn-secondary h-8 flex-none gap-1.5 px-3 text-[13px]">
+      <a href={signInUrl} className="mk-btn mk-btn-secondary h-8 min-w-[92px] flex-none gap-1.5 px-5 text-[13px]">
         Sign in
       </a>
-      <a href={signUpUrl} className="mk-btn mk-btn-primary h-8 flex-none gap-1.5 px-3 text-[13px]">
+      <a href={signUpUrl} className="mk-btn mk-btn-primary h-8 min-w-[92px] flex-none gap-1.5 px-5 text-[13px]">
         Sign up
       </a>
     </div>

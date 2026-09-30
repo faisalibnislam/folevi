@@ -4,7 +4,8 @@ import { ShortcutTable } from "@/components/marketing/mac/ShortcutTable";
 import { AppWindow, READING_NOTE, artById, artThumb } from "@/components/marketing/product/Replica";
 import { JsonLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
 import { SIGN_UP_URL, WEB_APP_URL } from "@/components/marketing/site";
-import { ButtonLink, Eyebrow, SectionHeading, container, cx } from "@/components/marketing/ui";
+import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
+import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Mac app",
@@ -51,50 +52,52 @@ export default function MacPage() {
   return (
     <>
       <JsonLd data={softwareLd()} />
-      <header className={cx(container, "pb-16 pt-12 sm:pt-20")}>
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-end lg:gap-16">
-          <div>
-            <Eyebrow>Folevi for Mac</Eyebrow>
-            <h1 className="mk-display mt-4 max-w-[15ch] text-[44px] sm:text-[60px] lg:text-[68px]">Folevi as a native Mac app.</h1>
-            <p className="mk-lede mt-6 max-w-[50ch]">
-              The Mac app has the menus, windows and keyboard shortcuts you expect. Notes are stored on your Mac, so writing
-              never waits for the network.
-            </p>
-          </div>
-          <div className="mk-card p-6 sm:p-7">
-            <p className="mk-chip">Coming soon</p>
-            <p className="mt-4 text-[15px] leading-relaxed text-muted">
-              The Mac app isn’t available to download yet. Create a Folevi account and we’ll email you when it’s ready.
-              Until then, everything works on the web, and your account, plan and notes carry over.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2.5">
-              <ButtonLink href={SIGN_UP_URL} icon="arrow-right">
-                Create an account
-              </ButtonLink>
-              <ButtonLink href={WEB_APP_URL} variant="secondary">
-                Open the web app
-              </ButtonLink>
+      <PageFrame art="art-39">
+        <HeaderCard>
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-end lg:gap-16">
+            <div>
+              <Eyebrow>Folevi for Mac</Eyebrow>
+              <h1 className="mk-display mt-4 max-w-[15ch] text-[44px] sm:text-[60px] lg:text-[68px]">Folevi as a native Mac app.</h1>
+              <p className="mk-lede mt-6 max-w-[50ch]">
+                The Mac app has the menus, windows and keyboard shortcuts you expect. Notes are stored on your Mac, so writing
+                never waits for the network.
+              </p>
             </div>
-            <p className="mt-5 text-[13px] text-muted">Requires macOS 15 or later.</p>
+            <div className="mk-card p-6 sm:p-7">
+              <p className="mk-chip">Coming soon</p>
+              <p className="mt-4 text-[15px] leading-relaxed text-muted">
+                The Mac app isn’t available to download yet. Create a Folevi account and we’ll email you when it’s ready.
+                Until then, everything works on the web, and your account, plan and notes carry over.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2.5">
+                <ButtonLink href={SIGN_UP_URL} icon="arrow-right">
+                  Create an account
+                </ButtonLink>
+                <ButtonLink href={WEB_APP_URL} variant="secondary">
+                  Open the web app
+                </ButtonLink>
+              </div>
+              <p className="mt-5 text-[13px] text-muted">Requires macOS 15 or later.</p>
+            </div>
           </div>
-        </div>
 
-        <div className="mk-stage mt-14 p-3 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
-          <MacMenuBar initial="View" />
-          <AppWindow
-            art={art}
-            note={READING_NOTE}
-            sidebar="main"
-            chrome="mac"
-            active={null}
-            label="The Folevi Mac app: the sidebar with Home, Drafts, Tasks and folders, and a note called Reading list open in a tab."
-            className="mt-4 h-[420px] sm:mt-6 sm:h-[560px]"
-          />
-        </div>
-      </header>
+        </HeaderCard>
+        <Card as="div" inner="p-3 sm:p-5">
+          <div className="mk-stage p-3 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
+            <MacMenuBar initial="View" />
+            <AppWindow
+              art={art}
+              note={READING_NOTE}
+              sidebar="main"
+              chrome="mac"
+              active={null}
+              label="The Folevi Mac app: the sidebar with Home, Drafts, Tasks and folders, and a note called Reading list open in a tab."
+              className="mt-4 h-[420px] sm:mt-6 sm:h-[560px]"
+            />
+          </div>
+        </Card>
 
-      <section aria-labelledby="why-title" className="py-14 sm:py-20">
-        <div className={container}>
+        <Card aria-labelledby="why-title">
           <SectionHeading id="why-title" eyebrow="Why native" title="It should feel like it came with your Mac." />
           <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
@@ -107,12 +110,10 @@ export default function MacPage() {
               </li>
             ))}
           </ul>
-        </div>
-      </section>
+        </Card>
 
-      <section aria-labelledby="glass-title" className="py-14 sm:py-20">
-        <div className={container}>
-          <div className="mk-panel grid gap-12 overflow-hidden p-6 sm:p-10 lg:grid-cols-2 lg:gap-16 lg:p-14">
+        <Card aria-labelledby="glass-title">
+          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="relative">
               <SectionHeading id="glass-title" eyebrow="Designed for macOS 26" title="Liquid Glass where it belongs. Solid everywhere else." />
               <div className="mt-6 space-y-4 text-[17px] leading-relaxed text-muted">
@@ -143,26 +144,24 @@ export default function MacPage() {
               </dl>
             </div>
           </div>
-        </div>
-      </section>
+        </Card>
 
-      <section aria-labelledby="keys-title" className="py-14 sm:py-20">
-        <div className={cx(container, "grid gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16")}>
-          <SectionHeading
-            id="keys-title"
-            eyebrow="Keyboard"
-            title="Hands stay on the keys."
-            lede="The shortcuts below are the ones in the menus today. You’ll find the full list, including the web equivalents, in the documentation."
-            className="lg:sticky lg:top-28 lg:self-start"
-          />
-          <div className="mk-card p-5 sm:p-7">
-            <ShortcutTable caption="Keyboard shortcuts in Folevi for Mac" />
+        <Card aria-labelledby="keys-title">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16">
+            <SectionHeading
+              id="keys-title"
+              eyebrow="Keyboard"
+              title="Hands stay on the keys."
+              lede="The shortcuts below are the ones in the menus today. You’ll find the full list, including the web equivalents, in the documentation."
+              className="lg:sticky lg:top-12 lg:self-start"
+            />
+            <div className="mk-card p-5 sm:p-7">
+              <ShortcutTable caption="Keyboard shortcuts in Folevi for Mac" />
+            </div>
           </div>
-        </div>
-      </section>
+        </Card>
 
-      <section aria-labelledby="web-title" className="relative py-14 sm:py-20">
-        <div className={container}>
+        <Card aria-labelledby="web-title">
           <SectionHeading
             align="center"
             id="web-title"
@@ -182,8 +181,8 @@ export default function MacPage() {
               Start writing
             </ButtonLink>
           </div>
-        </div>
-      </section>
+        </Card>
+      </PageFrame>
     </>
   );
 }

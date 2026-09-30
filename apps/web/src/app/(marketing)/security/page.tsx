@@ -2,6 +2,7 @@ import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
 import { PageHeader } from "@/components/marketing/ui";
+import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Security",
@@ -53,7 +54,7 @@ const subprocessors = [
 
 export default function SecurityPage() {
   return (
-    <>
+    <PageFrame>
       <PageHeader
         eyebrow="Security"
         title="Private by default. Plain about the rest."
@@ -186,6 +187,6 @@ export default function SecurityPage() {
           <li>Give us a reasonable chance to fix the issue before you share details publicly.</li>
         </ul>
       </DocShell>
-    </>
+    </PageFrame>
   );
 }

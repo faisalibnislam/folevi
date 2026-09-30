@@ -3,6 +3,7 @@ import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
 import { DraftNotice, PageHeader } from "@/components/marketing/ui";
+import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Terms",
@@ -28,7 +29,7 @@ const toc = [
 
 export default function TermsPage() {
   return (
-    <>
+    <PageFrame>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
         <DraftNotice updated="30 September 2026" />
       </PageHeader>
@@ -192,6 +193,6 @@ export default function TermsPage() {
           Questions about these terms can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>.
         </p>
       </DocShell>
-    </>
+    </PageFrame>
   );
 }

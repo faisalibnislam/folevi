@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useSiteAmbientImage } from "../SiteShell";
+import { useSiteAmbient, useSiteAmbientImage } from "./SiteShell";
 
 /**
- * The home page's backdrop: the hero note's style image, heavily blurred, held still behind the whole page
- * while the note and the cards scroll over it (the Style panel's Blur background, for the page as a whole).
- * It follows the hero's style picker: a new image fades in over the last one once it has loaded.
+ * A page's backdrop: an artwork, heavily blurred, held still behind the page while its cards scroll over it
+ * (the Style panel's Blur background, for the page as a whole). A page names its artwork (`image`), which
+ * also lights the sidebar; without one (Home) it follows the canvas light, which the hero's style picker sets.
+ * A new image fades in over the last one once it has loaded.
  */
-export function HomeBackdrop() {
-  const image = useSiteAmbientImage();
+export function PageBackdrop({ image: own }: { image?: string }) {
+  useSiteAmbient(own ?? null);
+  const lit = useSiteAmbientImage();
+  const image = own ?? lit;
   const [layers, setLayers] = useState<Array<{ src: string; first: boolean }>>(image ? [{ src: image, first: true }] : []);
   const [shown, setShown] = useState(image);
   if (shown !== image) {

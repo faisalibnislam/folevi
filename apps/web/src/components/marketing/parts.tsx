@@ -16,7 +16,7 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
   return (
     <>
       <JsonLd data={breadcrumbLd(items)} />
-      <nav aria-label="Breadcrumb" className={cx(container, "pt-6 sm:pt-8", className)}>
+      <nav aria-label="Breadcrumb" className={className}>
         <ol className="flex flex-wrap items-center gap-x-0.5 gap-y-1 text-[13.5px] text-muted">
           {items.map((item, i) => {
             const last = i === items.length - 1;
@@ -43,22 +43,24 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
   );
 }
 
-/** Questions and answers in the site's card, plus FAQPage structured data built from the same text. */
-export function FaqSection({ id = "faq", title = "Questions", faqs, path, className }: { id?: string; title?: string; faqs: FaqItem[]; path: string; className?: string }) {
+/** Questions and answers in their own card, plus FAQPage structured data built from the same text. */
+export function FaqSection({ id = "faq", title = "Questions", faqs, path, className, bare = false }: { id?: string; title?: string; faqs: FaqItem[]; path: string; className?: string; /** In a column of cards, not the page's width. */ bare?: boolean }) {
   return (
-    <section aria-labelledby={`${id}-title`} className={className}>
-      <JsonLd data={faqLd(path, faqs)} />
-      <h2 id={`${id}-title`} className="mk-h2">
-        {title}
-      </h2>
-      <dl className="mk-prose mk-card mt-8 max-w-none px-6 sm:px-8 [&>div]:mt-0">
-        {faqs.map((item, index) => (
-          <div key={item.q} className={cx("grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10", index > 0 && "border-t mk-hair")}>
-            <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
-            <dd className="text-muted">{item.a}</dd>
-          </div>
-        ))}
-      </dl>
+    <section aria-labelledby={`${id}-title`} className={cx(!bare && container, className)}>
+      <div className="mk-box px-5 pt-8 sm:px-10 sm:pt-10 lg:px-14 lg:pt-12">
+        <JsonLd data={faqLd(path, faqs)} />
+        <h2 id={`${id}-title`} className="mk-h2">
+          {title}
+        </h2>
+        <dl className="mk-prose mt-4 max-w-none pb-2 sm:pb-4 [&>div]:mt-0">
+          {faqs.map((item, index) => (
+            <div key={item.q} className={cx("grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10", index > 0 && "border-t mk-hair")}>
+              <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
+              <dd className="text-muted">{item.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </section>
   );
 }
@@ -98,11 +100,11 @@ export function LinkCard({
   );
 }
 
-/** The closing panel on feature, template and docs pages. */
+/** The closing card on feature, template and docs pages. */
 export function SignUpPanel({ title = "Start with one note.", body, href = SIGN_UP_URL, cta = "Start writing", secondary }: { title?: string; body: ReactNode; href?: string; cta?: string; secondary?: { label: string; href: string } }) {
   return (
-    <section aria-labelledby="signup-title" className={cx(container, "pb-12 pt-4 sm:pb-20")}>
-      <div className="mk-panel px-6 py-14 text-center sm:px-10 sm:py-20">
+    <section aria-labelledby="signup-title" className={container}>
+      <div className="mk-box px-6 py-14 text-center sm:px-10 sm:py-20">
         <FoleviMark size={44} className="mx-auto block" />
         <h2 id="signup-title" className="mk-display mx-auto mt-6 max-w-[18ch] text-[34px] sm:text-[48px]">
           {title}

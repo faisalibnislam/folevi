@@ -4,6 +4,7 @@ import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL, absoluteUrl } from "@/components/marketing/site";
 import { PageHeader, container, cx } from "@/components/marketing/ui";
 import { MONTHLY_CREDITS, PLANS, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
+import { Card, PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Support",
@@ -126,7 +127,7 @@ const elsewhere: Array<{ title: string; body: React.ReactNode }> = [
 
 export default function SupportPage() {
   return (
-    <>
+    <PageFrame>
       <JsonLd data={faqLd()} />
       <PageHeader
         eyebrow="Support"
@@ -137,38 +138,37 @@ export default function SupportPage() {
           </>
         }
       />
-      <div className={cx(container, "pb-20 sm:pb-28")}>
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-14">
-          <section aria-labelledby="contact-title" className="mk-card relative p-6 sm:p-8">
-            <h2 id="contact-title" className="mk-h3 text-[22px]">
-              Contact support
-            </h2>
-            <p className="mt-1.5 text-[15px] text-muted">We’ll confirm by email with a request number. Reply to that email to add details.</p>
-            <div className="mt-6">
-              <SupportForm variant="site" />
-            </div>
-          </section>
+      <div className={cx(container, "grid gap-(--mk-stack-gap) lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]")}>
+        <section aria-labelledby="contact-title" className="mk-box relative px-5 py-8 sm:p-8 lg:p-10">
+          <h2 id="contact-title" className="mk-h3 text-[22px]">
+            Contact support
+          </h2>
+          <p className="mt-1.5 text-[15px] text-muted">We’ll confirm by email with a request number. Reply to that email to add details.</p>
+          <div className="mt-6">
+            <SupportForm variant="site" />
+          </div>
+        </section>
 
-          <aside aria-labelledby="elsewhere-title">
-            <h2 id="elsewhere-title" className="mk-caps">
-              Other ways to get help
-            </h2>
-            <ul className="mt-4 space-y-5">
-              {elsewhere.map((item) => (
-                <li key={item.title} className="border-t mk-hair pt-5 first:border-t-0 first:pt-0">
-                  <h3 className="text-[16px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.title}</h3>
-                  <p className="mt-1 text-[15px] leading-relaxed text-muted">{item.body}</p>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        </div>
+        <aside aria-labelledby="elsewhere-title" className="mk-box self-start px-5 py-8 sm:p-8">
+          <h2 id="elsewhere-title" className="mk-caps">
+            Other ways to get help
+          </h2>
+          <ul className="mt-4 space-y-5">
+            {elsewhere.map((item) => (
+              <li key={item.title} className="border-t mk-hair pt-5 first:border-t-0 first:pt-0">
+                <h3 className="text-[16px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.title}</h3>
+                <p className="mt-1 text-[15px] leading-relaxed text-muted">{item.body}</p>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </div>
 
-        <section aria-labelledby="faq-title" className="mt-20">
+        <Card aria-labelledby="faq-title" inner="px-5 pt-8 pb-2 sm:px-10 sm:pt-10 sm:pb-4 lg:px-14 lg:pt-12">
           <h2 id="faq-title" className="mk-h2">
             Common questions
           </h2>
-          <dl className="mk-prose mk-card mt-8 max-w-none px-6 sm:px-8 [&>div]:mt-0">
+          <dl className="mk-prose mt-4 max-w-none [&>div]:mt-0">
             {faqs.map((item, index) => (
               <div key={item.q} className={cx("grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10", index > 0 && "border-t mk-hair")}>
                 <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
@@ -184,8 +184,7 @@ export default function SupportPage() {
               </div>
             ))}
           </dl>
-        </section>
-      </div>
-    </>
+        </Card>
+    </PageFrame>
   );
 }

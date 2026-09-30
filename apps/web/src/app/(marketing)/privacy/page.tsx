@@ -3,6 +3,7 @@ import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
 import { DraftNotice, PageHeader } from "@/components/marketing/ui";
+import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Privacy",
@@ -27,7 +28,7 @@ const toc = [
 
 export default function PrivacyPage() {
   return (
-    <>
+    <PageFrame>
       <PageHeader eyebrow="Legal" title="Privacy policy" lede="How Folevi handles your information, written to be read.">
         <DraftNotice updated="30 September 2026" />
       </PageHeader>
@@ -185,6 +186,6 @@ export default function PrivacyPage() {
           Questions about privacy can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>.
         </p>
       </DocShell>
-    </>
+    </PageFrame>
   );
 }

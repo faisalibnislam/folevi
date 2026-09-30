@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { COMPARE_CHECKED, COMPETITORS, TRIAL_LINE, comparePath, trademarkLine } from "@/components/marketing/content/compare";
-import { Breadcrumbs, LinkCard, SignUpPanel } from "@/components/marketing/parts";
+import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
+import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { absoluteUrl, formatDay } from "@/components/marketing/site";
-import { Eyebrow, container, cx } from "@/components/marketing/ui";
+import { Eyebrow } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Folevi alternatives and comparisons",
@@ -27,28 +28,29 @@ export default function CompareIndexPage() {
   return (
     <>
       <JsonLd data={collectionLd()} />
-      <Breadcrumbs
-        items={[
-          { name: "Home", path: "/" },
-          { name: "Compare", path: "/compare" },
-        ]}
-      />
-      <header className={cx(container, "pb-10 pt-8 sm:pb-14 sm:pt-12")}>
-        <Eyebrow>Compare</Eyebrow>
-        <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">How Folevi compares.</h1>
-        <p className="mk-lede mt-5 max-w-[60ch]">
-          Folevi next to the notes apps people ask us about, one page each. Every page has a table with a plain value for each product, what the other app does better, and how to move your notes across.
-        </p>
-      </header>
-      <div className={cx(container, "pb-16 sm:pb-24")}>
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {COMPETITORS.map((x) => (
-            <li key={x.slug}>
-              <LinkCard href={comparePath(x.slug)} title={x.h1} body={x.summary} headingLevel="h2" />
-            </li>
-          ))}
-        </ul>
-        <div className="mk-panel mt-16 p-6 sm:p-8">
+      <PageFrame>
+        <HeaderCard
+          crumbs={[
+            { name: "Home", path: "/" },
+            { name: "Compare", path: "/compare" },
+          ]}
+        >
+          <Eyebrow>Compare</Eyebrow>
+          <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">How Folevi compares.</h1>
+          <p className="mk-lede mt-5 max-w-[60ch]">
+            Folevi next to the notes apps people ask us about, one page each. Every page has a table with a plain value for each product, what the other app does better, and how to move your notes across.
+          </p>
+        </HeaderCard>
+        <Card as="div">
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {COMPETITORS.map((x) => (
+              <li key={x.slug}>
+                <LinkCard href={comparePath(x.slug)} title={x.h1} body={x.summary} headingLevel="h2" />
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card as="div">
           <h2 className="mk-h3 text-[19px]">How we compare</h2>
           <div className="mt-2 max-w-[70ch] space-y-3 text-[15px] leading-relaxed text-muted">
             <p>
@@ -61,9 +63,9 @@ export default function CompareIndexPage() {
               Prices and features of other products are from their public websites on {formatDay(COMPARE_CHECKED)} and may have changed. {trademarkLine(COMPETITORS.flatMap((x) => x.trademarks).filter((name, i, all) => all.indexOf(name) === i))} If something is out of date, <Link href="/support" className="mk-link">tell us</Link>.
             </p>
           </div>
-        </div>
-      </div>
-      <SignUpPanel body={TRIAL_LINE} secondary={{ label: "See pricing", href: "/pricing" }} />
+        </Card>
+        <SignUpPanel body={TRIAL_LINE} secondary={{ label: "See pricing", href: "/pricing" }} />
+      </PageFrame>
     </>
   );
 }

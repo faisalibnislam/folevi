@@ -3,6 +3,7 @@ import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
 import { PageHeader } from "@/components/marketing/ui";
+import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Status",
@@ -18,7 +19,7 @@ const toc = [
 
 export default function StatusPage() {
   return (
-    <>
+    <PageFrame>
       <PageHeader
         eyebrow="Status"
         title="Is Folevi working?"
@@ -76,6 +77,6 @@ export default function StatusPage() {
           say so in the subject line.
         </p>
       </DocShell>
-    </>
+    </PageFrame>
   );
 }

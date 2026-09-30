@@ -99,6 +99,7 @@ export function SectionHeading({
   );
 }
 
+/** A page's header card (the first card of the page): eyebrow, title, lede and any actions. */
 export function PageHeader({
   eyebrow,
   title,
@@ -111,11 +112,13 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className={cx(container, "pb-10 pt-12 sm:pb-14 sm:pt-20")}>
-      <Eyebrow>{eyebrow}</Eyebrow>
-      <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">{title}</h1>
-      {lede ? <div className="mk-lede mt-5 max-w-[60ch]">{lede}</div> : null}
-      {children}
+    <header className={container}>
+      <div className="mk-box px-5 pb-8 pt-8 sm:px-10 sm:pb-12 sm:pt-12 lg:px-14">
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">{title}</h1>
+        {lede ? <div className="mk-lede mt-5 max-w-[60ch]">{lede}</div> : null}
+        {children}
+      </div>
     </header>
   );
 }

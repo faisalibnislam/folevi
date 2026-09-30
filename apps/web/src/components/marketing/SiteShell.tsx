@@ -77,11 +77,11 @@ const AmbientContext = createContext<(image: string | null) => void>(() => undef
 const AmbientImageContext = createContext<string | null>(null);
 export const useSiteAmbientImage = () => useContext(AmbientImageContext);
 
-/** Lights the site's canvas with an image while the calling component is on screen (the home page's note). */
+/** Lights the site's canvas with an image while the calling component is on screen (a page's artwork). */
 export function useSiteAmbient(image: string | null) {
   const set = useContext(AmbientContext);
   useEffect(() => {
-    set(image);
+    if (image) set(image);
   }, [image, set]);
   useEffect(() => () => set(null), [set]);
 }
@@ -438,8 +438,10 @@ function Drawer({ id, onClose, children }: { id: string; onClose: () => void; ch
 
 export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children }: { signInUrl: string; signUpUrl: string; homeAmbient: string; footer: ReactNode; children: ReactNode }) {
   const pathname = usePathname() ?? "/";
-  // The home page's note lights the canvas from the first paint; its style picker changes it from there.
-  const [ambient, setAmbient] = useState<string | null>(pathname === "/" ? homeAmbient : null);
+  // Every page is lit by an artwork: the site's default (the home note's first style) unless the page sets
+  // its own; the home page's style picker changes it from there.
+  const [pageAmbient, setAmbient] = useState<string | null>(null);
+  const ambient = pageAmbient ?? homeAmbient;
   const [open, setOpen] = useState(false);
   const drawerId = useId();
   const close = useCallback(() => setOpen(false), []);

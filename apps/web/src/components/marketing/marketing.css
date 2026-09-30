@@ -710,7 +710,7 @@
 .mk-notecard-spine { background: var(--note-art, none) center / cover no-repeat; }
 
 /* The home page: the hero note, then each section in its own card (.mk-box), all over one blurred copy
-   of the note's style image (HomeBackdrop). The image layer is sticky: it stays put, a screen tall, while
+   of the note’s style image (PageBackdrop). The image layer is sticky: it stays put, a screen tall, while
    the page scrolls over it, and it takes no room (the negative margin). Only the page moves, so scrolling
    never repaints the blur. */
 :root:has(.mk-root) { --mk-stack-gap: 12px; }
@@ -773,6 +773,11 @@
 .mk-stack { display: flex; flex-direction: column; gap: var(--mk-stack-gap); }
 .mk-home-stack { padding-bottom: 32px; }
 @media (min-width: 640px) { .mk-home-stack { padding-bottom: 48px; } }
+/* Other pages: the stack starts the same distance from the top as the cards are from the panel's sides
+   (below 1024 px, from under the glass top bar the page slides beneath). */
+.mk-page-stack { padding: calc(4rem + 16px) 0 32px; }
+@media (min-width: 640px) { .mk-page-stack { padding: calc(4rem + 32px) 0 48px; } }
+@media (min-width: 1024px) { .mk-page-stack { padding-top: 32px; } }
 .mk-box {
   position: relative;
   border-radius: 12px;

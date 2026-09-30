@@ -5,7 +5,6 @@ import { artVars } from "@/components/marketing/product/Replica";
 import { paletteVars } from "@/lib/cover";
 import { Chapters } from "@/components/marketing/home/Chapters";
 import { FinalCta, PricingSection, SecuritySection } from "@/components/marketing/home/Closing";
-import { Folders } from "@/components/marketing/home/Folders";
 import { Hero } from "@/components/marketing/home/Hero";
 import { PageBackdrop } from "@/components/marketing/PageBackdrop";
 import { Included } from "@/components/marketing/home/Included";
@@ -34,7 +33,6 @@ export default function HomePage() {
           <Included />
           <NoteStyles />
           <Chapters />
-          <Folders />
           <AiSection />
           <MacSection />
           <SecuritySection />

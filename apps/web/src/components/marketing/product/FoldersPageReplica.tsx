@@ -2,7 +2,7 @@ import type { DocumentCover } from "@folevi/editor-schema";
 import { ChevronDown, FolderPlus, LayoutGrid, Rows3, Search } from "lucide-react";
 import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, FolderCardMenuLook, type FolderPreview } from "@/components/views/FolderCardArt";
 import { COVER_ART } from "@/lib/cover";
-import { DEMO_FOLDERS, type DemoNote } from "../content/demoFolders";
+import { DEMO_FOLDERS, type DemoFolder, type DemoNote } from "../content/demoFolders";
 import { cx } from "../ui";
 import { ListTabs, MainSidebar, artById, artThumb } from "./Replica";
 
@@ -28,6 +28,20 @@ const previewsOf = (notes: DemoNote[]): FolderPreview[] =>
     .slice(-3)
     .reverse()
     .map((n) => ({ cover: coverFor(n.style), title: n.title, excerpt: `${n.lines[0]} ${n.lines[1]}` }));
+
+/** One demo folder drawn as the app's folder card: it lifts on hover and its newest notes rise out of it. */
+export function DemoFolderCard({ folder }: { folder: DemoFolder }) {
+  return (
+    <div className={FOLDER_CARD_BOX}>
+      <div className={FOLDER_CARD_FRAME}>
+        <FolderCardArt name={folder.name} color={folder.color} count={folder.notes.length} age={folder.age} previews={previewsOf(folder.notes)} />
+      </div>
+      <span className={FOLDER_CARD_MENU}>
+        <FolderCardMenuLook />
+      </span>
+    </div>
+  );
+}
 
 export function FoldersPageReplica({ className }: { className?: string }) {
   const folders = [...DEMO_FOLDERS].sort((a, b) => a.name.localeCompare(b.name));
@@ -77,14 +91,7 @@ export function FoldersPageReplica({ className }: { className?: string }) {
               {folders.map((folder, i) => (
                 // Phones show the first six folders.
                 <li key={folder.name} className={cx(i >= 6 && "hidden sm:block")}>
-                  <div className={FOLDER_CARD_BOX}>
-                    <div className={FOLDER_CARD_FRAME}>
-                      <FolderCardArt name={folder.name} color={folder.color} count={folder.notes.length} age={folder.age} previews={previewsOf(folder.notes)} />
-                    </div>
-                    <span className={FOLDER_CARD_MENU}>
-                      <FolderCardMenuLook />
-                    </span>
-                  </div>
+                  <DemoFolderCard folder={folder} />
                 </li>
               ))}
             </ul>

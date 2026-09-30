@@ -6,7 +6,7 @@ import { ReturnDemo } from "../demos/ReturnDemo";
 import { ShapeDemo } from "../demos/ShapeDemo";
 import { artById, artThumb } from "../product/Replica";
 import { Icon } from "../icons";
-import { Kbd, SectionHeading, box, container, cx } from "../ui";
+import { Kbd, box, container, cx } from "../ui";
 
 function Chapter({
   id,
@@ -68,17 +68,7 @@ function TryIt() {
 
 export function Chapters() {
   return (
-    <section id="chapters" aria-labelledby="chapters-title" className={cx(container, "mk-stack scroll-mt-20")}>
-      <div className={box}>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
-          <SectionHeading id="chapters-title" eyebrow="Writing in Folevi" title="From a quick line to a page you keep." />
-          <p className="mk-lede max-w-[52ch] lg:pb-1">
-            Each example below is a small working copy of the editor. Type in them, drag the blocks and search the sample
-            pages.
-          </p>
-        </div>
-      </div>
-
+    <section id="chapters" aria-label="Writing in Folevi" className={cx(container, "mk-stack scroll-mt-20")}>
       <Chapter
         id="capture"
         number="01"

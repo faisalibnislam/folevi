@@ -1,10 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { FileDown, Paintbrush, RefreshCw, SunMoon, WifiOff, type LucideIcon } from "lucide-react";
-import { COVER_ART } from "@/lib/cover";
 import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { SIGN_UP_URL } from "../site";
-import { ButtonLink, container } from "../ui";
+import { ButtonLink } from "../ui";
 import { HeroNote } from "./HeroNote";
 
 export function Hero() {
@@ -67,34 +64,5 @@ function Todo({ done = false, due, children }: { done?: boolean; due?: string; c
         </span>
       ) : null}
     </li>
-  );
-}
-
-const facts: Array<{ icon: LucideIcon; label: string; href?: string }> = [
-  { icon: WifiOff, label: "Works offline", href: "/features/offline-notes" },
-  { icon: RefreshCw, label: "Real-time sync" },
-  { icon: Paintbrush, label: `${COVER_ART.length} note styles`, href: "/features/note-styles" },
-  { icon: FileDown, label: "Markdown, HTML and PDF export", href: "/features/import-and-export" },
-  { icon: SunMoon, label: "Light and dark mode" },
-];
-
-export function ProofStrip() {
-  return (
-    <section aria-label="What’s included" className={container}>
-      <ul className="mk-box flex flex-wrap justify-center gap-x-8 gap-y-3 px-6 py-5 sm:justify-between sm:px-10 lg:px-14">
-        {facts.map(({ icon: FactIcon, label, href }) => (
-          <li key={label} className="flex items-center gap-2 text-[14px] text-ink">
-            <FactIcon size={16} aria-hidden="true" className="flex-none text-muted" />
-            {href ? (
-              <Link href={href} className="underline decoration-(--color-line-strong) underline-offset-4 transition-colors duration-150 hover:text-(--color-heading) hover:decoration-current">
-                {label}
-              </Link>
-            ) : (
-              label
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

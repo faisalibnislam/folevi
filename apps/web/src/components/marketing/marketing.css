@@ -245,17 +245,33 @@
   background: var(--color-canvas);
 }
 .mk-content > main { flex: 1; }
+/* From 1024 px: the app's frame. The window doesn't scroll: the sidebar sits on the canvas, the tab bar
+   floats at the top, and the page scrolls inside the content panel under it, with 8 px gaps all round. */
 @media (min-width: 1024px) {
-  .mk-sidebar {
-    position: sticky;
-    top: 8px;
-    flex: none;
-    width: 248px;
-    height: calc(100dvh - 16px);
+  .mk-frame {
+    display: flex;
+    gap: 8px;
+    height: 100dvh;
+    padding: 8px;
+    overflow: hidden;
+  }
+  .mk-sidebar { flex: none; width: 248px; height: 100%; }
+  .mk-column {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
   }
   .mk-content {
-    min-height: calc(100dvh - 16px);
-    overflow: clip;
+    --mk-panel-h: calc(100dvh - 68px);
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border-radius: 14px;
     box-shadow: var(--glass-edge), var(--glass-shadow);
   }
@@ -720,6 +736,9 @@
   pointer-events: none;
   background: var(--color-canvas);
 }
+@media (min-width: 1024px) {
+  .mk-home-art { height: var(--mk-panel-h); margin-bottom: calc(-1 * var(--mk-panel-h)); }
+}
 .mk-home-art-layer {
   position: absolute;
   inset: -12%;
@@ -763,6 +782,89 @@
 :root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
 @media (min-width: 640px) { .mk-box { border-radius: 16px; } }
 
+/* What every plan includes (home/Included.tsx): small pictures made of the app's pieces. ------------ */
+.mk-mini-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 168px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--mk-well);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 70%, transparent);
+}
+.mk-mini-card {
+  display: block;
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-ink);
+  text-align: start;
+}
+.mk-mini-line { display: block; height: 4px; border-radius: 999px; background: color-mix(in oklab, var(--color-ink) 14%, transparent); }
+/* The sync status pill (SyncStatus's ui-well pill): Offline with changes waiting, then Saved, in turn. */
+.mk-mini-pills { position: relative; display: inline-grid; flex: none; }
+.mk-mini-pill {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+  background: var(--glass-hover);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+.mk-mini-pill-offline { color: var(--color-warning); }
+:root[data-theme="dark"] .mk-mini-pill-offline { color: #F0B36B; }
+.mk-mini-pill[data-step="1"] { animation: mk-mini-first 7s var(--mk-ease) infinite; }
+.mk-mini-pill[data-step="2"] { animation: mk-mini-second 7s var(--mk-ease) infinite; }
+@keyframes mk-mini-first { 0%, 55% { opacity: 1; } 62%, 95% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes mk-mini-second { 0%, 55% { opacity: 0; } 62%, 95% { opacity: 1; } 100% { opacity: 0; } }
+/* A line typed on one device, then arriving on the other. */
+.mk-mini-typed { width: fit-content; overflow: hidden; white-space: nowrap; animation: mk-mini-type 7s steps(17) infinite; }
+@keyframes mk-mini-type { 0%, 10% { max-width: 0; } 40%, 100% { max-width: 12em; } }
+.mk-mini-caret { display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -0.15em; background: var(--color-heading); animation: mk-mini-blink 1s steps(2) infinite; }
+@keyframes mk-mini-blink { 50% { opacity: 0; } }
+.mk-mini-arrive { animation: mk-mini-arrive 7s var(--mk-ease) infinite; }
+@keyframes mk-mini-arrive {
+  0%, 44% { opacity: 0; background: transparent; }
+  50% { opacity: 1; background: color-mix(in oklab, var(--color-highlight-yellow, #fdecb2) 90%, transparent); }
+  80%, 100% { opacity: 1; background: transparent; }
+}
+.mk-mini-art {
+  width: 72px;
+  height: 96px;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 18px -10px rgb(0 0 0 / 0.35);
+  transform-origin: 50% 120%;
+}
+/* The same note in both of the app's themes (their chrome colours, fixed, whatever the site's theme). */
+.mk-mini-themes { display: flex; gap: 10px; }
+.mk-mini-theme {
+  display: block;
+  width: 136px;
+  padding: 12px 12px 14px;
+  border-radius: 8px;
+  text-align: start;
+}
+.mk-mini-theme[data-mini-theme="light"] { color: #18181B; background: #FFFFFF; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 20px -12px rgb(0 0 0 / 0.3); }
+.mk-mini-theme[data-mini-theme="dark"] { color: #F2F2F3; background: #1C1C1E; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 20px -12px rgb(0 0 0 / 0.6); }
+.mk-mini-theme[data-mini-theme="light"] .mk-mini-theme-check { color: #FFFFFF; }
+.mk-mini-theme[data-mini-theme="dark"] .mk-mini-theme-check { color: #1C1C1E; }
+@media (prefers-reduced-motion: reduce) {
+  .mk-mini-pill[data-step="1"], .mk-mini-pill[data-step="2"], .mk-mini-typed, .mk-mini-caret, .mk-mini-arrive { animation: none; }
+  .mk-mini-pill[data-step="2"] { opacity: 0; }
+  .mk-mini-typed { max-width: none; }
+}
+
 /* ------------------------------------------------------------------------------------------------
  * The home page hero: a note in the app. Its style lights the page behind it (blurred, as the Style
  * panel's Blur background does), the sheet takes the style's paper and ink, and the title sits on the
@@ -776,7 +878,8 @@
 .mk-hero-stage { position: relative; padding-top: 4rem; }
 /* Beside the sidebar there is no top bar: the note starts at the top of the content panel. */
 @media (min-width: 1024px) {
-  .mk-hero-stage { padding-top: 0.5rem; }
+  /* The gap above the note matches the gap at its sides (the cards' 32 px inset in the panel). */
+  .mk-hero-stage { padding-top: 0; }
 }
 .mk-hero-layer {
   position: absolute;

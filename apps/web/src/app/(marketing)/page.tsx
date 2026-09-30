@@ -2,8 +2,9 @@ import { AiSection } from "@/components/marketing/home/AiSection";
 import { Chapters } from "@/components/marketing/home/Chapters";
 import { FinalCta, PricingSection, SecuritySection } from "@/components/marketing/home/Closing";
 import { Folders } from "@/components/marketing/home/Folders";
-import { Hero, ProofStrip } from "@/components/marketing/home/Hero";
+import { Hero } from "@/components/marketing/home/Hero";
 import { HomeBackdrop } from "@/components/marketing/home/HomeBackdrop";
+import { Included } from "@/components/marketing/home/Included";
 import { MacSection } from "@/components/marketing/home/MacSection";
 import { NoteStyles } from "@/components/marketing/home/NoteStyles";
 import { JsonLd, organizationLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
@@ -25,7 +26,7 @@ export default function HomePage() {
         <HomeBackdrop />
         <Hero />
         <div className="mk-stack mk-home-stack">
-          <ProofStrip />
+          <Included />
           <NoteStyles />
           <Chapters />
           <Folders />

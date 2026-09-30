@@ -58,7 +58,7 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
 
   return (
     <div className="mk-hero-stage" style={{ ...artVars(art), ...paletteVars(art) }} data-tone={art.tone}>
-      <div className="relative mx-auto w-full max-w-[1200px] px-4 pb-3 pt-8 sm:px-8 sm:pb-5 sm:pt-12">
+      <div className="relative mx-auto w-full max-w-[1200px] px-4 pb-3 pt-4 sm:px-8 sm:pb-5 sm:pt-8">
         <article className="mk-note mk-hero-note">
           <header className="mk-hero-cover">
             <div aria-hidden="true" className="mk-hero-art">

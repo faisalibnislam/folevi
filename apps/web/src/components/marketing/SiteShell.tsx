@@ -73,6 +73,10 @@ const ROW_OFF = "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading";
 /** The artwork that lights the canvas behind the chrome (a small image; it is drawn heavily blurred). */
 const AmbientContext = createContext<(image: string | null) => void>(() => undefined);
 
+/** The image lighting the canvas right now (the home page's backdrop follows it). */
+const AmbientImageContext = createContext<string | null>(null);
+export const useSiteAmbientImage = () => useContext(AmbientImageContext);
+
 /** Lights the site's canvas with an image while the calling component is on screen (the home page's note). */
 export function useSiteAmbient(image: string | null) {
   const set = useContext(AmbientContext);
@@ -233,57 +237,59 @@ export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children 
 
   return (
     <AmbientContext.Provider value={setAmbient}>
-      <div className="mk-root mk-shell text-ink">
-        <a href="#main" className="mk-skip sr-only-focusable">
-          Skip to content
-        </a>
-        <Ambient image={ambient} />
+      <AmbientImageContext.Provider value={ambient}>
+        <div className="mk-root mk-shell text-ink">
+          <a href="#main" className="mk-skip sr-only-focusable">
+            Skip to content
+          </a>
+          <Ambient image={ambient} />
 
-        <div className="lg:flex lg:gap-2 lg:p-2">
-          <header className="mk-sidebar hidden lg:block">
-            <SiteNav signInUrl={signInUrl} signUpUrl={signUpUrl} />
-          </header>
-
-          <div className="min-w-0 flex-1" inert={open}>
-            <header className="mk-rail sticky top-0 z-50 lg:hidden" data-scrolled={scrolled}>
-              <div className="flex h-16 items-center gap-2 px-4 sm:px-8">
-                <Link href="/" className="-ml-1.5 flex h-11 items-center rounded-[6px] px-1.5 text-heading" aria-label="Folevi home">
-                  <FoleviLogo height={24} title={null} />
-                </Link>
-                <span className="flex-1" />
-                <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 px-3.5 text-[14px]">
-                  Start writing
-                </a>
-                <button
-                  type="button"
-                  aria-label="Menu"
-                  aria-expanded={open}
-                  aria-controls={drawerId}
-                  aria-haspopup="dialog"
-                  data-drawer-toggle=""
-                  onClick={() => setOpen(true)}
-                  className="mk-btn mk-btn-secondary size-11 flex-none px-0"
-                >
-                  <Menu size={18} aria-hidden />
-                </button>
-              </div>
+          <div className="lg:flex lg:gap-2 lg:p-2">
+            <header className="mk-sidebar hidden lg:block">
+              <SiteNav signInUrl={signInUrl} signUpUrl={signUpUrl} />
             </header>
 
-            <div className="mk-content">
-              <main id="main" tabIndex={-1} className="outline-none">
-                {children}
-              </main>
-              {footer}
+            <div className="min-w-0 flex-1" inert={open}>
+              <header className="mk-rail sticky top-0 z-50 lg:hidden" data-scrolled={scrolled}>
+                <div className="flex h-16 items-center gap-2 px-4 sm:px-8">
+                  <Link href="/" className="-ml-1.5 flex h-11 items-center rounded-[6px] px-1.5 text-heading" aria-label="Folevi home">
+                    <FoleviLogo height={24} title={null} />
+                  </Link>
+                  <span className="flex-1" />
+                  <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 px-3.5 text-[14px]">
+                    Start writing
+                  </a>
+                  <button
+                    type="button"
+                    aria-label="Menu"
+                    aria-expanded={open}
+                    aria-controls={drawerId}
+                    aria-haspopup="dialog"
+                    data-drawer-toggle=""
+                    onClick={() => setOpen(true)}
+                    className="mk-btn mk-btn-secondary size-11 flex-none px-0"
+                  >
+                    <Menu size={18} aria-hidden />
+                  </button>
+                </div>
+              </header>
+
+              <div className="mk-content">
+                <main id="main" tabIndex={-1} className="outline-none">
+                  {children}
+                </main>
+                {footer}
+              </div>
             </div>
           </div>
-        </div>
 
-        {open ? (
-          <Drawer id={drawerId} onClose={close}>
-            <SiteNav signInUrl={signInUrl} signUpUrl={signUpUrl} onNavigate={close} onClose={close} />
-          </Drawer>
-        ) : null}
-      </div>
+          {open ? (
+            <Drawer id={drawerId} onClose={close}>
+              <SiteNav signInUrl={signInUrl} signUpUrl={signUpUrl} onNavigate={close} onClose={close} />
+            </Drawer>
+          ) : null}
+        </div>
+      </AmbientImageContext.Provider>
     </AmbientContext.Provider>
   );
 }

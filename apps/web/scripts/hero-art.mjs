@@ -2,6 +2,7 @@
 // Sized artwork for the home page hero (a note in one of a few styles), from the covers in public/covers.
 // Run from apps/web after `pnpm --filter @folevi/design-tokens covers`: node scripts/hero-art.mjs
 //   <id>-band.webp       1080 × 450: the note's cover band on regular (1×) screens
+//   <id>-band-lg.webp    1440 × 600: the same where the sheet is wider than 1080 px (desktop, 1×)
 //   <id>-band-2x.webp    2160 × 900: the same on Retina (2×) screens
 //   <id>-glow.webp        200 px: the backdrop behind the note, drawn heavily blurred
 import { mkdirSync } from "node:fs";
@@ -22,6 +23,7 @@ const webp = { quality: 74, smartSubsample: true, effort: 6 };
 for (const id of IDS) {
   const input = resolve(src, `${id}.webp`);
   await sharp(input).resize(1080, 450, { fit: "cover" }).webp(webp).toFile(resolve(out, `${id}-band.webp`));
+  await sharp(input).resize(1440, 600, { fit: "cover" }).webp({ ...webp, quality: 70 }).toFile(resolve(out, `${id}-band-lg.webp`));
   await sharp(input).resize(2160, 900, { fit: "cover" }).webp({ ...webp, quality: 62 }).toFile(resolve(out, `${id}-band-2x.webp`));
   await sharp(input).resize(200, 200, { fit: "cover" }).webp({ ...webp, quality: 55 }).toFile(resolve(out, `${id}-glow.webp`));
 }

@@ -3,6 +3,7 @@ import { Chapters } from "@/components/marketing/home/Chapters";
 import { FinalCta, PricingSection, SecuritySection } from "@/components/marketing/home/Closing";
 import { Folders } from "@/components/marketing/home/Folders";
 import { Hero, ProofStrip } from "@/components/marketing/home/Hero";
+import { HomeBackdrop } from "@/components/marketing/home/HomeBackdrop";
 import { MacSection } from "@/components/marketing/home/MacSection";
 import { NoteStyles } from "@/components/marketing/home/NoteStyles";
 import { JsonLd, organizationLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
@@ -19,8 +20,9 @@ export default function HomePage() {
   return (
     <>
       <JsonLd data={[organizationLd(), softwareLd()]} />
-      {/* The hero note, then every section in its own card on a soft canvas, like panels in the app. */}
+      {/* The hero note, then every section in its own card, all over one blurred copy of the note's style image. */}
       <div className="mk-home">
+        <HomeBackdrop />
         <Hero />
         <div className="mk-stack mk-home-stack">
           <ProofStrip />

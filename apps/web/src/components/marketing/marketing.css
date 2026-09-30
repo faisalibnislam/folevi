@@ -693,11 +693,64 @@
 }
 .mk-notecard-spine { background: var(--note-art, none) center / cover no-repeat; }
 
-/* The home page: the hero note, then each section in its own card (.mk-box) on a soft canvas. ---- */
-:root:has(.mk-root) { --mk-home-bg: #F3F3F5; --mk-stack-gap: 12px; }
-:root[data-theme="dark"]:has(.mk-root) { --mk-home-bg: var(--color-canvas); }
+/* The home page: the hero note, then each section in its own card (.mk-box), all over one blurred copy
+   of the note's style image (HomeBackdrop). The image layer is sticky: it stays put, a screen tall, while
+   the page scrolls over it, and it takes no room (the negative margin). Only the page moves, so scrolling
+   never repaints the blur. */
+:root:has(.mk-root) { --mk-stack-gap: 12px; }
 @media (min-width: 640px) { :root:has(.mk-root) { --mk-stack-gap: 20px; } }
-.mk-home { background: var(--mk-home-bg); }
+.mk-home {
+  position: relative;
+  isolation: isolate;
+  /* Clip, not hidden: the sticky layer's negative margin lets it run past the end, and clip keeps sticky working. */
+  overflow: clip;
+  background: var(--color-canvas);
+}
+/* Below 1024 px the page slides under the glass top bar, so the artwork shows through it too. */
+@media (max-width: 1023.98px) { .mk-home { margin-top: -4rem; } }
+.mk-home-art {
+  position: sticky;
+  top: 0;
+  z-index: -1;
+  height: 100vh;
+  height: 100lvh;
+  margin-bottom: -100vh;
+  margin-bottom: -100lvh;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--color-canvas);
+}
+.mk-home-art-layer {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  max-width: none;
+  height: 124%;
+  object-fit: cover;
+  filter: blur(40px) saturate(1.25);
+  opacity: 0;
+  transition: opacity 560ms var(--mk-ease);
+  will-change: opacity;
+}
+.mk-home-art-layer[data-ready="true"] { opacity: 1; }
+/* A veil so the artwork stays calm behind the cards: a touch of white in light mode, dark in dark mode. */
+.mk-home-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(250 250 252 / 0.2);
+}
+:root[data-theme="dark"] .mk-home-art::after { background: rgb(12 12 14 / 0.46); }
+/* The end of the page fades into the plain canvas the footer sits on. */
+.mk-home::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  z-index: -1;
+  height: 180px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--color-canvas));
+}
 .mk-stack { display: flex; flex-direction: column; gap: var(--mk-stack-gap); }
 .mk-home-stack { padding-bottom: 32px; }
 @media (min-width: 640px) { .mk-home-stack { padding-bottom: 48px; } }
@@ -719,30 +772,11 @@
   position: relative;
   isolation: isolate;
   overflow: clip;
-  margin-top: -4rem;
 }
 .mk-hero-stage { position: relative; padding-top: 4rem; }
-/* Beside the sidebar there is no top bar: the note's light fills the top of the content panel. */
+/* Beside the sidebar there is no top bar: the note starts at the top of the content panel. */
 @media (min-width: 1024px) {
-  .mk-hero { margin-top: 0; }
   .mk-hero-stage { padding-top: 0.5rem; }
-}
-.mk-hero-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  background: var(--mk-home-bg, var(--color-canvas));
-}
-/* A soft veil so the header reads, and a fade into the page below. */
-.mk-hero-backdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--color-canvas) 28%, transparent) 0%, transparent 22%, transparent 72%, var(--mk-home-bg, var(--color-canvas)) 100%);
-}
-:root[data-theme="dark"] .mk-hero-backdrop::after {
-  background: linear-gradient(180deg, rgb(16 16 17 / 0.5) 0%, rgb(16 16 17 / 0.38) 24%, rgb(16 16 17 / 0.38) 70%, var(--mk-home-bg, var(--color-canvas)) 100%);
 }
 .mk-hero-layer {
   position: absolute;
@@ -755,16 +789,11 @@
   transition: opacity 560ms var(--mk-ease);
 }
 .mk-hero-layer[data-ready="true"] { opacity: 1; }
-.mk-hero-glow {
-  inset: -12%;
-  width: 124%;
-  height: 124%;
-  filter: blur(40px) saturate(1.25);
-}
 
-/* The app's sheet: the default editor width (760 px) plus its 64 px margins. */
+/* The sheet is as wide as the home cards below it (the app's Wide page), with their corners; its blocks
+   keep the default editor width (760 px) as their measure, so lines stay easy to read. */
 .mk-hero-note {
-  max-width: calc(var(--layout-editor-width-default, 760px) + 8rem);
+  border-radius: 12px;
   margin-inline: auto;
   box-shadow: var(--shadow-lift);
 }
@@ -776,7 +805,9 @@
   min-height: 248px;
   padding: 72px 20px 24px;
   overflow: hidden;
-  border-radius: 10px 10px 0 0;
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .mk-hero-art { position: absolute; inset: 0; z-index: -1; background: var(--n-paper); }
 /* Dark mode dims the artwork a little (--cover-art-tint), except behind an ink title on a light cover. */
@@ -862,6 +893,7 @@
   color: var(--n-ink);
 }
 .mk-hero-body > .mk-hero-badge { margin: 0 0 10px; }
+.mk-hero-body > * { max-width: var(--layout-editor-width-default, 760px); }
 .mk-hb { margin: 0; padding: 3px 2px; }
 .mk-hb-h {
   margin-top: 0.95em;
@@ -958,10 +990,9 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: calc(var(--layout-editor-width-default, 760px) + 8rem);
-  margin: 16px auto 0;
+  margin: var(--mk-stack-gap) 0 0;
   padding: 18px 20px 20px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   backdrop-filter: blur(28px) saturate(1.8);
@@ -1000,16 +1031,21 @@
 .mk-hero-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 4px var(--color-heading); }
 
 @media (min-width: 640px) {
-  .mk-hero-cover { min-height: 300px; padding: 96px 64px 30px; }
+  .mk-hero-cover { min-height: 300px; padding: 96px 40px 30px; }
   .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
-  .mk-hero-body { padding: 26px 64px 44px; font-size: 17.5px; }
+  .mk-hero-body { padding: 26px 40px 44px; font-size: 17.5px; }
+  .mk-hero-actions { padding-inline: 40px; border-radius: 16px; }
+  .mk-hero-note { border-radius: 16px; }
   .mk-hero-swatch { width: 36px; height: 36px; }
 }
 @media (min-width: 1024px) {
-  .mk-hero-cover { min-height: 340px; }
+  .mk-hero-cover { min-height: 380px; padding-inline: 56px; }
+  .mk-hero-title { font-size: clamp(56px, 5.4vw, 72px); }
+  .mk-hero-body { padding-inline: 56px; }
+  .mk-hero-actions { padding-inline: 56px; }
 }
 @media (min-width: 900px) {
-  .mk-hero-actions { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 20px 18px 24px; }
+  .mk-hero-actions { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; padding-block: 18px; }
   .mk-hero-picker { flex: none; padding: 0 0 0 24px; border-top: 0; border-left: 1px solid var(--glass-border); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1097,6 +1133,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mk-appear, .mk-flash, .mk-drawer, .mk-ambient-layer { animation: none; }
+  .mk-home-art-layer { transition: none; }
   .mk-ambient { transition: none; }
   .mk-btn:hover svg { transform: none; }
 }

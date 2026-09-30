@@ -8,8 +8,11 @@ import { useSiteAmbient } from "../SiteShell";
 import { cx } from "../ui";
 import { HERO_STYLES, heroBand as band, heroBandSet as bandSet, heroGlow as glow } from "./heroStyles";
 
-/** The cover band is the sheet's width: 888 px at most, else the content panel (beside the sidebar from 1024 px) less its gutters. */
-const BAND_SIZES = "(min-width: 1250px) 888px, (min-width: 1024px) calc(100vw - 336px), calc(100vw - 32px)";
+/**
+ * The cover band is the sheet's width, which is the home cards' width: the content panel (beside the 248 px
+ * sidebar and its 8 px gaps from 1024 px) less the page gutters, 1136 px at most.
+ */
+const BAND_SIZES = "(min-width: 1472px) 1136px, (min-width: 1024px) calc(100vw - 336px), (min-width: 640px) calc(100vw - 64px), calc(100vw - 32px)";
 
 type Layer = { key: number; art: CoverArt };
 
@@ -55,13 +58,7 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
 
   return (
     <div className="mk-hero-stage" style={{ ...artVars(art), ...paletteVars(art) }} data-tone={art.tone}>
-      <div aria-hidden="true" className="mk-hero-backdrop">
-        {layers.map((layer) => (
-          <FadeImage key={layer.key} src={glow(layer.art)} first={layer.key === 0} className="mk-hero-glow" />
-        ))}
-      </div>
-
-      <div className="relative mx-auto w-full max-w-[1024px] px-4 pb-8 pt-8 sm:px-8 sm:pb-12 sm:pt-12">
+      <div className="relative mx-auto w-full max-w-[1200px] px-4 pb-3 pt-8 sm:px-8 sm:pb-5 sm:pt-12">
         <article className="mk-note mk-hero-note">
           <header className="mk-hero-cover">
             <div aria-hidden="true" className="mk-hero-art">

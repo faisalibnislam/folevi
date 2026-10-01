@@ -140,7 +140,7 @@ final class NavigationModel {
     }
     var openDocumentId: String?
     var showInspector = false
-    var inspectorTab: InspectorTab = .insert
+    var inspectorTab: InspectorTab = .format
     var columnVisibility: NavigationSplitViewVisibility = .all
     var showFind = false
     var layout: BrowserLayout = BrowserLayout(rawValue: UserDefaults.standard.string(forKey: "browserLayout") ?? "") ?? .grid {
@@ -268,15 +268,15 @@ final class NavigationModel {
     }
 }
 
+/// The page tools' panels (the outline lives in the note's sidebar, as on the web).
 enum InspectorTab: String, CaseIterable, Identifiable {
-    case insert, format, style, outline, info, comments
+    case insert, format, style, info, comments
     var id: String { rawValue }
     var title: LocalizedStringKey {
         switch self {
         case .insert: return "Insert"
         case .format: return "Format"
         case .style: return "Style"
-        case .outline: return "Outline"
         case .info: return "Info"
         case .comments: return "Comments"
         }
@@ -286,7 +286,6 @@ enum InspectorTab: String, CaseIterable, Identifiable {
         case .insert: return "plus"
         case .format: return "textformat"
         case .style: return "paintpalette"
-        case .outline: return "list.bullet.indent"
         case .info: return "info.circle"
         case .comments: return "bubble.left"
         }

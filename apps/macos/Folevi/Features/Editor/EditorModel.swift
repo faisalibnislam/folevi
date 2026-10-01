@@ -169,7 +169,26 @@ final class EditorModel {
     /// "Image from Unsplash": the block the picked photo goes after, while the picker is open.
     var unsplashAnchor: String?
     var activeMarks: Set<String> = []
-    var findQuery = "" { didSet { updateFind() } }
+    /// Find in note: the query, every occurrence in page order, the current one (FindReplaceBar.swift).
+    var findQuery = "" {
+        didSet {
+            guard oldValue != findQuery else { return }
+            findIndex = 0
+            updateFind()
+            revealMatch()
+        }
+    }
+    /// "Match case".
+    var findCaseSensitive = false {
+        didSet {
+            guard oldValue != findCaseSensitive else { return }
+            findIndex = 0
+            updateFind()
+            revealMatch()
+        }
+    }
+    var findHits: [FindHit] = []
+    /// The blocks with a match (their rows are tinted).
     var findMatches: [String] = []
     var findIndex = 0
     /// The find bar shows its Replace row (⌘⌥F).
@@ -188,6 +207,8 @@ final class EditorModel {
     @ObservationIgnored let drag = BlockDragController()
     /// Comment threads on this note, live while it's open (Features/Comments/NoteComments.swift).
     @ObservationIgnored lazy var comments = NoteComments(documentId: documentId, editor: self, app: app)
+    /// The page around the editor: its dialogs, menus and who else is here (Features/Editor/PageActions.swift).
+    @ObservationIgnored lazy var page = DocumentPageState()
 
     @ObservationIgnored var undoManager: UndoManager?
     @ObservationIgnored var openDocumentHandler: ((String, Bool) -> Void)?
@@ -1572,37 +1593,50 @@ final class EditorModel {
     // MARK: Find
 
     func updateFind() {
-        let q = SearchText.normalize(findQuery)
-        guard !q.isEmpty else {
+        guard !findQuery.isEmpty else {
+            if !findHits.isEmpty { findHits = [] }
             if !findMatches.isEmpty { findMatches = [] }
+            findIndex = 0
             return
         }
-        let matches = rows.filter { SearchText.normalize(SearchText.blockText($0.block.wire)).contains(q) }.map(\.id)
-        if matches != findMatches {
-            findMatches = matches
-            findIndex = 0
+        var hits: [FindHit] = []
+        outer: for row in rows {
+            guard let block = blocks[row.id] else { continue }
+            for r in FindReplace.hits(of: findQuery, in: block, caseSensitive: findCaseSensitive) {
+                hits.append(FindHit(blockId: row.id, range: r))
+                if hits.count >= FindReplace.maxMatches { break outer }
+            }
         }
+        if hits != findHits { findHits = hits }
+        var ids: [String] = []
+        for h in hits where ids.last != h.blockId { ids.append(h.blockId) }
+        if ids != findMatches { findMatches = ids }
+        if !hits.isEmpty, findIndex >= hits.count { findIndex %= hits.count }
+        if hits.isEmpty { findIndex = 0 }
     }
 
+    /// Steps to the next (or previous) match, wrapping, and brings it into view.
     func findNext(backwards: Bool = false) {
-        guard !findMatches.isEmpty else {
-            NSSound.beep()
-            return
-        }
-        findIndex = backwards ? (findIndex - 1 + findMatches.count) % findMatches.count : (findIndex + 1) % findMatches.count
+        guard !findHits.isEmpty else { return }
+        let n = findHits.count
+        findIndex = ((findIndex + (backwards ? -1 : 1)) % n + n) % n
         revealMatch()
     }
 
+    /// Scrolls the current match into view without taking the keyboard from the find bar.
     func revealMatch() {
-        guard findMatches.indices.contains(findIndex) else { return }
-        let id = findMatches[findIndex]
-        guard let block = blocks[id] else { return }
-        let text = RichText.plainText(block.text) as NSString
-        let r = text.range(of: findQuery, options: [.caseInsensitive, .diacriticInsensitive])
-        if block.content.carriesText, r.location != NSNotFound {
-            focus = FocusRequest(blockId: id, caret: .range(r.location, r.length))
+        guard findHits.indices.contains(findIndex) else { return }
+        revealBlockId = findHits[findIndex].blockId
+    }
+
+    /// Back in the note with the current match selected (closing the find bar).
+    func selectCurrentMatch() {
+        guard findHits.indices.contains(findIndex), let block = blocks[findHits[findIndex].blockId] else { return }
+        let hit = findHits[findIndex]
+        if block.content.carriesText || { if case .code = block.content { return true } else { return false } }() {
+            focus = FocusRequest(blockId: hit.blockId, caret: .range(hit.range.location, hit.range.length))
         } else {
-            select(id, extend: false)
+            select(hit.blockId, extend: false)
         }
     }
 

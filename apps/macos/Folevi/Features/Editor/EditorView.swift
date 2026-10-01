@@ -1,18 +1,22 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The document page: cover/icon/title header, conflict banner, block rows, find bar.
+/// The document page (the web's DocumentView): the note floats on its backdrop in a rounded panel; the
+/// sheet holds the header (cover and title), a conflict banner and the blocks; "Linked from" follows the
+/// sheet. The find bar floats at the top right, the dock and its panels at the bottom (MainWindowView).
 struct EditorView: View {
     @Bindable var model: EditorModel
     var openDocument: (String, Bool) -> Void
     @Environment(AppModel.self) private var app
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var containerFocused: Bool
     var showFind: Binding<Bool>
-
-    private var scale: CGFloat { CGFloat(app.editorScale) }
+    /// The window's navigation (breadcrumbs, the open panel); nil in previews.
+    var nav: NavigationModel? = nil
+    @State private var viewportHeight: CGFloat = 800
 
     private var pageWidth: CGFloat {
         switch model.style.width {
@@ -22,19 +26,29 @@ struct EditorView: View {
         }
     }
 
+    /// The page's side padding inside the sheet (px-16); the hover gutter lives inside it.
+    static let sheetPadding: CGFloat = 64
+
     var body: some View {
-        ZStack(alignment: .top) {
-            switch model.loadState {
-            case .loading:
-                ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .unavailable(let message):
-                EmptyStateView(systemImage: "icloud.slash", title: "Not available offline", message: LocalizedStringKey(message))
-            case .ready:
-                content
+        VStack(spacing: 0) {
+            PageChromeBar(model: model, nav: nav)
+            ZStack(alignment: .top) {
+                switch model.loadState {
+                case .unavailable(let message):
+                    UnavailablePage(message: message, nav: nav)
+                default:
+                    content
+                }
             }
-        }
-        .overlay(alignment: .topTrailing) {
-            if showFind.wrappedValue { FindReplaceBar(model: model, showFind: showFind).padding(.top, 10).padding(.trailing, 24) }
+            .overlay(alignment: .topTrailing) {
+                if showFind.wrappedValue, model.loadState == .ready {
+                    FindReplaceBar(model: model, showFind: showFind)
+                        .padding(.top, 12)
+                        .padding(.trailing, 20)
+                        .padding(.leading, 20)
+                        .transition(.offset(y: -6).combined(with: .opacity))
+                }
+            }
         }
         .task(id: model.documentId) { model.comments.start() }
         .onAppear {
@@ -62,21 +76,37 @@ struct EditorView: View {
         }
     }
 
-    /// Sheet side padding (64 each side); the hover gutter lives inside the left padding.
-    private static let sheetPadding: CGFloat = 64
+    // MARK: Page panel
+
+    private var inspectorOpen: Bool { nav?.showInspector == true }
 
     private var content: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                sheet
-                    .frame(maxWidth: pageWidth + Self.sheetPadding * 2)
-                    .padding(.horizontal, 28)
-                    .padding(.top, 10)
-                    .padding(.bottom, 56)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    sheet
+                        .frame(maxWidth: pageWidth + Self.sheetPadding * 2)
+                        .frame(maxWidth: .infinity)
+                    if model.loadState == .ready {
+                        BacklinksSection(model: model, nav: nav, openDocument: openDocument)
+                            .frame(maxWidth: pageWidth + Self.sheetPadding * 2)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 32)
+                // Room for the dock, or for the panel floating over the note.
+                .padding(.bottom, inspectorOpen ? min(700, viewportHeight * 0.7) : 112)
             }
             .scrollContentBackground(.hidden)
-            .background { NoteBackdropLayer(model: model) }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewportHeight = $0 }
+            .background { panelBackground }
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(FoleviGlass.border))
+            .shadow(color: .black.opacity(0.04), radius: 1, y: 1)
+            .shadow(color: Color(red: 20 / 255, green: 20 / 255, blue: 40 / 255).opacity(0.14), radius: 16, y: 12)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
             .focusable()
             .focused($containerFocused)
             .focusEffectDisabled()
@@ -89,7 +119,10 @@ struct EditorView: View {
             .onChange(of: model.revealBlockId) { _, id in
                 guard let id else { return }
                 model.revealBlockId = nil
-                proxy.scrollTo(id)
+                withAnimation(reduceMotion ? nil : .easeOut(duration: FoleviMotion.base)) { proxy.scrollTo(id, anchor: .center) }
+            }
+            .onChange(of: model.page.scrollTopToken) { _, _ in
+                withAnimation(reduceMotion ? nil : .easeOut(duration: FoleviMotion.base)) { proxy.scrollTo("page.top", anchor: .top) }
             }
             .onChange(of: model.selectedBlockIds) { _, ids in
                 if let first = model.orderedByRows(Array(ids)).first { proxy.scrollTo(first) }
@@ -103,43 +136,49 @@ struct EditorView: View {
         }
     }
 
+    /// The panel behind the page: the note's backdrop (blurred when the note asks), or the sunken surface.
+    @ViewBuilder private var panelBackground: some View {
+        if let backdrop = model.pageBackdrop {
+            PageBackdropView(backdrop: backdrop, blur: model.style.blur == true && !reduceTransparency)
+                .transition(.opacity)
+        } else {
+            FoleviColor.surfaceSunken
+        }
+    }
+
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Color.clear.frame(height: 0).id("page.top")
             DocumentHeaderView(model: model, openDocument: openDocument, sidePadding: Self.sheetPadding)
-            VStack(alignment: .leading, spacing: 0) {
-                if !model.conflicts.isEmpty {
-                    ConflictBanner(model: model)
-                        .padding(.leading, BlockMetrics.gutter)
-                        .padding(.bottom, 16)
-                }
-                if model.isReadOnly, model.document?.deletedAt == nil {
-                    Label("You can view this document but not edit it.", systemImage: "lock")
-                        .font(.ui(12.5, .medium))
-                        .foregroundStyle(FoleviColor.inkMuted)
-                        .padding(.horizontal, 10)
-                        .frame(height: 26)
-                        .background(Capsule().fill(FoleviColor.surfaceSunken))
-                        .padding(.leading, BlockMetrics.gutter)
-                        .padding(.bottom, 12)
-                }
-                ForEach(model.rows) { row in
-                    BlockRowView(row: row, model: model, openDocument: openDocument)
-                        .blockComments(model: model, row: row)
-                        .id(row.id)
-                        .zIndex(model.popup?.blockId == row.id || model.datePick?.blockId == row.id ? 10 : 0)
-                }
-                // Clicking below the last block continues writing.
-                Color.clear
-                    .frame(height: 120)
-                    .contentShape(Rectangle())
-                    .onTapGesture { continueWriting() }
-                    .accessibilityHidden(true)
+            if !model.conflicts.isEmpty {
+                ConflictBanner(model: model)
+                    .padding(.horizontal, Self.sheetPadding)
+                    .padding(.bottom, 20)
             }
-            .coordinateSpace(.named("blocks"))
-            .background(BlocksAnchor(controller: model.drag))
-            .padding(.leading, Self.sheetPadding - BlockMetrics.gutter)
-            .padding(.trailing, Self.sheetPadding)
-            .padding(.bottom, 40)
+            if model.loadState == .ready {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(model.rows) { row in
+                        BlockRowView(row: row, model: model, openDocument: openDocument)
+                            .blockComments(model: model, row: row)
+                            .id(row.id)
+                            .zIndex(model.popup?.blockId == row.id || model.datePick?.blockId == row.id ? 10 : 0)
+                    }
+                    // Clicking below the last block continues writing (the editor's 30vh of room below).
+                    Color.clear
+                        .frame(height: max(120, viewportHeight * 0.3))
+                        .contentShape(Rectangle())
+                        .onTapGesture { continueWriting() }
+                        .accessibilityHidden(true)
+                }
+                .coordinateSpace(.named("blocks"))
+                .background(BlocksAnchor(controller: model.drag))
+                .padding(.leading, Self.sheetPadding - BlockMetrics.gutter)
+                .padding(.trailing, Self.sheetPadding)
+            } else {
+                LoadingBlocks()
+                    .padding(.horizontal, Self.sheetPadding)
+                    .padding(.bottom, max(120, viewportHeight * 0.3))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { sheetBackground }
@@ -190,7 +229,8 @@ struct EditorView: View {
         }
     }
 
-    /// The page sheet: the note's page colour (SheetPalette) or the surface per page background; sheet shadow.
+    /// The page sheet (fb-sheet ui-sheet): the note's page colour (SheetPalette) or the surface per page
+    /// background, radius 10, the sheet shadow.
     private var sheetBackground: some View {
         let accentSoft = Color.folevi(accentSoft: model.style.accent)
         let fill: SurfaceFill
@@ -198,11 +238,11 @@ struct EditorView: View {
             fill = .color(palette.surface)
         } else {
             switch model.style.background {
-        case .plain: fill = .color(FoleviColor.surfaceRaised)
-        case .tinted: fill = .color(accentSoft.mix(with: FoleviColor.surface, by: 0.55))
-        case .grid: fill = .color(FoleviColor.surface)
-        default: fill = .color(FoleviColor.surface)
-        }
+            case .plain: fill = .color(FoleviColor.surfaceRaised)
+            case .tinted: fill = .color(accentSoft.mix(with: FoleviColor.surface, by: 0.55))
+            case .paper: fill = .gradient([FoleviColor.surface, FoleviColor.surface.mix(with: FoleviColor.glowPeach, by: 0.03)])
+            default: fill = .color(FoleviColor.surface)
+            }
         }
         return Color.clear
             .foleviSurface(fill, shape: .rounded(FoleviRadius.sheet), shadow: FoleviShadow.sheet)
@@ -212,6 +252,74 @@ struct EditorView: View {
                         .clipShape(RoundedRectangle(cornerRadius: FoleviRadius.sheet, style: .continuous))
                 }
             }
+    }
+}
+
+/// The page's skeleton while its blocks load.
+private struct LoadingBlocks: View {
+    @State private var pulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        GeometryReader { geo in
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array([0.8, 0.95, 0.6, 0.88].enumerated()), id: \.offset) { _, w in
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(FoleviColor.surfaceSunken)
+                        .frame(width: geo.size.width * w, height: 16)
+                }
+            }
+            .padding(.vertical, 24)
+        }
+        .frame(height: 136)
+        .opacity(pulse ? 0.5 : 1)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse = true }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(Text("Loading document"))
+    }
+}
+
+/// "This page isn’t available" (deleted, no access), or why it can't open offline.
+private struct UnavailablePage: View {
+    var message: String
+    var nav: NavigationModel?
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(app.sync.isOnline ? String(localized: "This page isn’t available") : String(localized: "Not available offline"))
+                .font(FoleviType.display(36))
+                .tracking(FoleviType.displayTracking(36))
+                .foregroundStyle(FoleviColor.heading)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+            Text(app.sync.isOnline
+                 ? String(localized: "It may have been deleted, or you don’t have access. If someone shared it with you, ask them to check the sharing settings.")
+                 : message)
+                .font(.ui(16))
+                .foregroundStyle(FoleviColor.inkMuted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+            if let nav {
+                Button {
+                    nav.selection = .all
+                    nav.closeDocument()
+                } label: {
+                    Text("Back to Home").underline().foregroundStyle(FoleviColor.accent)
+                }
+                .buttonStyle(.plain)
+                .font(.ui(16))
+                .padding(.top, 24)
+            }
+        }
+        .frame(maxWidth: 512)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 96)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -239,35 +347,52 @@ struct GridPaper: View {
 
 // MARK: - Header
 
-/// The page header, as on the web: with a style, the artwork band (about 192pt) with a soft shade and the
-/// serif title on it — white on deep artwork, the style's ink on light artwork; without one, the title on
-/// the page. Pages have no icon (as on the web).
+/// The page header, as on the web: with a style, the artwork band (at least 192pt) with a soft shade and the
+/// serif title on it, white on deep artwork and the style's ink on light artwork; without one, the title on
+/// the page. Pages have no icon (as on the web). An untitled note with some writing offers "Suggest a title".
 struct DocumentHeaderView: View {
     @Bindable var model: EditorModel
     var openDocument: (String, Bool) -> Void
     var sidePadding: CGFloat = 64
     @Environment(AppModel.self) private var app
+    @State private var suggesting = false
 
     private var cover: DocumentCover? { model.document?.cover }
 
+    private var ownImage: NSImage? {
+        guard cover?.kind == .image, let id = cover?.value else { return nil }
+        return CoverImages.shared.image(id, app: app)
+    }
+
     private var onCover: Bool {
-        let kind = cover?.kind
-        return kind == .color || kind == .gradient || kind == .art
+        switch cover?.kind {
+        case .color, .gradient, .art: return true
+        case .image: return cover?.value != nil
+        default: return false
+        }
     }
 
     private var art: CoverArt.Entry? { cover?.kind == .art ? CoverArt.entry(cover?.value) : nil }
 
+    /// Whether the band behind the title reads light or deep (a person's image: deep until known).
+    private var tone: String? {
+        if let art { return art.tone ?? "deep" }
+        if cover?.kind == .image { return "deep" }
+        return nil
+    }
+
     /// The title's colour on the artwork (nil: the page's heading colour).
     private var titleColor: NSColor? {
-        guard onCover, let art else { return nil }
-        if art.tone == "light", let ink = art.ink.flatMap(Color.init(hex:)) { return NSColor(ink) }
-        return .white
+        guard onCover, let tone else { return nil }
+        if tone == "light", let ink = art?.ink.flatMap(Color.init(hex:)) { return NSColor(ink) }
+        return tone == "deep" ? .white : nil
     }
 
     private var title: some View {
         BlockTextEditor(blockId: "__title__",
                         text: model.titleDraft.isEmpty ? [] : [.text(text: model.titleDraft, marks: nil)],
-                        style: BlockStyles.title(style: model.style, scale: CGFloat(app.editorScale), palette: model.sheetPalette, color: titleColor),
+                        // The title keeps its size at any editor zoom, as on the web.
+                        style: BlockStyles.title(style: model.style, scale: 1, palette: model.sheetPalette, color: titleColor),
                         isEditable: !model.isReadOnly,
                         accessibilityLabel: String(localized: "Title"),
                         model: model,
@@ -276,38 +401,94 @@ struct DocumentHeaderView: View {
                         alwaysShowPlaceholder: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
+            .accessibilityHint(model.isReadOnly ? Text("This document is read-only for you.") : Text(""))
             .accessibilityIdentifier("documentTitle")
             // The title's AI ("Edit with AI" on selected words, ⌘J).
             .overlay(alignment: .bottom) { TitleAiAttachment(model: model) }
     }
 
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            title
+            if model.aiWritable, !(model.document?.excerpt ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               model.titleDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+                suggestButton.padding(.top, 8)
+            }
+        }
+    }
+
+    private var suggestButton: some View {
+        Button {
+            suggest()
+        } label: {
+            HStack(spacing: 6) {
+                AiIcon(size: 13).opacity(suggesting ? 0.5 : 1)
+                Text(suggesting ? "Thinking of a title…" : "Suggest a title").font(.ui(12.5, .medium))
+            }
+            .foregroundStyle(titleColor != nil ? .white : FoleviColor.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .background(titleColor != nil ? Color.black.opacity(0.2) : FoleviGlass.hover, in: Capsule())
+            .background(.ultraThinMaterial, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(suggesting)
+        .opacity(suggesting ? 0.6 : 1)
+    }
+
+    private func suggest() {
+        guard let session = app.session else { return }
+        suggesting = true
+        let id = model.documentId
+        Task {
+            defer { suggesting = false }
+            do {
+                let args: [String: JSONValue] = ["scope": session.scope.arg, "task": "title", "documentId": .string(id)]
+                let out: AiWritten = try await session.convex.action("ai:write", args, timeout: 90)
+                let text = out.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty, model.titleDraft.trimmingCharacters(in: .whitespaces).isEmpty { model.setTitle(text) }
+            } catch {
+                app.showToast(ConvexService.mapError(error).localizedDescription)
+            }
+        }
+    }
+
     var body: some View {
         if onCover {
             ZStack(alignment: .bottomLeading) {
-                CoverView(cover: cover, style: model.style)
-                    .accessibilityHidden(true)
-                if let art {
+                Group {
+                    if let image = ownImage {
+                        ArtCoverImage(image: image)
+                    } else if cover?.kind == .image {
+                        FoleviColor.surfaceSunken
+                    } else {
+                        CoverView(cover: cover, style: model.style)
+                    }
+                }
+                .accessibilityHidden(true)
+                if let tone {
                     LinearGradient(stops: [
                         .init(color: .clear, location: 0.35),
-                        .init(color: art.tone == "light" ? .white.opacity(0.45) : .black.opacity(0.4), location: 1),
+                        .init(color: tone == "light" ? .white.opacity(0.45) : .black.opacity(0.4), location: 1),
                     ], startPoint: .top, endPoint: .bottom)
                     .accessibilityHidden(true)
                 }
-                title
+                titleBlock
                     .shadow(color: titleColor == .white ? .black.opacity(0.4) : .white.opacity(0.5), radius: titleColor == nil ? 0 : 7, y: 1)
                     .padding(.horizontal, sidePadding)
                     .padding(.top, 56)
                     .padding(.bottom, 24)
             }
             .frame(minHeight: 192)
-            .clipShape(UnevenRoundedRectangle(topLeadingRadius: FoleviRadius.sheet, topTrailingRadius: FoleviRadius.sheet, style: .continuous))
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 6, topTrailingRadius: 6, style: .continuous))
             .overlay(alignment: .bottom) { FoleviColor.line.opacity(0.6).frame(height: 1) }
-            .padding(.bottom, 20)
+            .padding(.bottom, 16)
         } else {
-            title
+            titleBlock
                 .padding(.horizontal, sidePadding)
                 .padding(.top, 40 + 16)
-                .padding(.bottom, 20)
+                .padding(.bottom, 16)
         }
     }
 }
@@ -363,7 +544,6 @@ struct CoverGlow: View {
     }
 }
 
-
 struct LinkPromptView: View {
     @State var initial: String
     var onSubmit: (String) -> Void
@@ -389,80 +569,76 @@ struct LinkPromptView: View {
 
 // MARK: - Conflicts
 
+/// "This block was changed in two places": both versions side by side, and Keep mine / theirs / both (the
+/// web's ConflictBanner). Nothing is lost until you choose.
 struct ConflictBanner: View {
     @Bindable var model: EditorModel
-    @State private var reviewing: ConflictRecord?
+    @State private var openId: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(model.conflicts) { conflict in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.2").foregroundStyle(FoleviColor.coralInk).accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(conflict.reason == .deleted ? "A block you edited was deleted on another device." : "This block was changed on another device while you were editing.")
-                            .font(.ui(12.5, .medium))
-                        Text(RichText.plainText(conflict.client.inlineText).prefix(120))
-                            .font(.ui(11.5))
-                            .foregroundStyle(FoleviColor.inkMuted)
-                            .lineLimit(2)
+        let conflicts = model.conflicts
+        if let c = conflicts.first(where: { $0.id == openId }) ?? conflicts.first {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(conflicts.count == 1 ? String(localized: "This block was changed in two places")
+                     : String(localized: "\(conflicts.count) blocks were changed in two places"))
+                    .font(.ui(14, .semibold))
+                    .foregroundStyle(FoleviColor.plumInk)
+                    .accessibilityAddTraits(.isHeader)
+                Text("Both versions are kept. Nothing is lost until you choose.")
+                    .font(.ui(14)).foregroundStyle(FoleviColor.ink).padding(.top, 4)
+                HStack(alignment: .top, spacing: 12) {
+                    version(c.reason == .deleted ? String(localized: "Deleted elsewhere") : String(localized: "Version from elsewhere"),
+                            c.reason == .deleted ? String(localized: "Someone deleted this block.") : Self.text(c.server), mine: false)
+                    version(String(localized: "Your version"), Self.text(c.client), mine: true)
+                }
+                .padding(.top, 12)
+                HStack(spacing: 8) {
+                    Button("Keep mine") { model.resolve(c, .mine) }.buttonStyle(.page(.primary, .sm))
+                    Button("Keep theirs") { model.resolve(c, .theirs) }.buttonStyle(.page(.secondary, .sm))
+                    if c.reason != .deleted {
+                        Button("Keep both") { model.resolve(c, .both) }.buttonStyle(.page(.secondary, .sm))
                     }
                     Spacer()
-                    Button("Review…") { reviewing = conflict }
-                    Button("Keep mine") { model.resolve(conflict, .mine) }
-                    Button("Keep theirs") { model.resolve(conflict, .theirs) }
-                    Button("Keep both") { model.resolve(conflict, .both) }
+                    if conflicts.count > 1 {
+                        FoleviSelect(selection: Binding(get: { c.id }, set: { openId = $0 }),
+                                     options: conflicts.enumerated().map { .init(value: $0.element.id, title: String(localized: "Conflict \($0.offset + 1)")) },
+                                     accessibilityLabel: String(localized: "Choose conflict"), height: 32)
+                    }
                 }
-                .accessibilityElement(children: .contain)
+                .padding(.top, 12)
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FoleviColor.plumSoft, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(FoleviColor.plum.opacity(0.3)))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("conflictBanner")
+        }
+    }
+
+    private func version(_ label: String, _ text: String, mine: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).pageCaps()
+            Text(text).font(.ui(14)).foregroundStyle(FoleviColor.ink).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).fill(FoleviColor.coralSoft))
-        .accessibilityIdentifier("conflictBanner")
-        .sheet(item: $reviewing) { conflict in
-            ConflictMergeSheet(conflict: conflict) { choice in
-                model.resolve(conflict, choice)
-                reviewing = nil
-            }
-        }
-    }
-}
-
-struct ConflictMergeSheet: View {
-    var conflict: ConflictRecord
-    var onChoose: (ConflictChoice) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Resolve conflict").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading)
-            Text("Folevi kept both versions. Choose what this block should say.")
-                .foregroundStyle(FoleviColor.inkMuted)
-            HStack(alignment: .top, spacing: 16) {
-                version(title: "On this Mac", text: RichText.plainText(conflict.client.inlineText))
-                version(title: "On the server", text: conflict.server.map { RichText.plainText($0.inlineText) } ?? String(localized: "(deleted)"))
-            }
-            HStack {
-                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
-                Spacer()
-                Button("Keep theirs") { onChoose(.theirs) }
-                Button("Keep both") { onChoose(.both) }
-                Button("Keep mine") { onChoose(.mine) }.keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(24)
-        .frame(width: 620)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .foleviCard(radius: 8)
+        .overlay { if mine { RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(FoleviColor.ember.opacity(0.45), lineWidth: 2) } }
     }
 
-    private func version(title: LocalizedStringKey, text: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.ui(11.5, .semibold)).foregroundStyle(FoleviColor.inkMuted)
-            ScrollView {
-                Text(text).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+    /// A block's words for the comparison ("(deleted)" when gone, "(code block)" when it has none).
+    static func text(_ b: WireBlock?) -> String {
+        guard let b else { return String(localized: "(deleted)") }
+        let nodes = b.inlineText
+        if nodes.isEmpty { return "(\(b.type) block)" }
+        return nodes.map { n -> String in
+            switch n {
+            case .text(let t, _): return t
+            case .mention(_, let label): return "@\(label)"
+            case .date(let d): return d
+            case .pageLink(_, let label): return label
             }
-            .frame(height: 160)
-            .padding(10)
-            .background(RoundedRectangle(cornerRadius: 8).fill(FoleviColor.surfaceSunken))
-        }
-        .frame(maxWidth: .infinity)
+        }.joined()
     }
 }

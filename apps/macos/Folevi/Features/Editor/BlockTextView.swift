@@ -695,6 +695,11 @@ extension BlockTextView {
         if attrs[.foleviStrike] != nil { out.insert("strike") }
         if attrs[.foleviCode] != nil { out.insert("code") }
         if attrs[.foleviLink] != nil { out.insert("link") }
+        // For the Format panel: the colour, highlight and link address here, and whether words are selected.
+        if let c = attrs[.foleviColor] as? String { out.insert("color.\(c)") }
+        if let h = attrs[.foleviHighlight] as? String { out.insert("highlight.\(h)") }
+        if let href = attrs[.foleviLink] as? String { out.insert("href.\(href)") }
+        if sel.length > 0 { out.insert("selection") }
         return out
     }
 

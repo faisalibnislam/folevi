@@ -273,6 +273,8 @@ struct DocumentDetail: Decodable, Sendable {
     struct FolderRef: Decodable, Sendable, Hashable { var id: String; var name: String }
     var document: DocumentSummary
     var access: String
+    /// In the page's own Personal or workspace (not only a guest on it): folders and tags are shown.
+    var isMember: Bool?
     var folder: FolderRef?
     var breadcrumbs: [Breadcrumb]
     var lastEditedBy: String?

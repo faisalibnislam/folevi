@@ -1,21 +1,33 @@
 import SwiftUI
 
+/// One occurrence of the find query: its block and where it is in the block's text.
+struct FindHit: Equatable {
+    var blockId: String
+    var range: NSRange
+}
+
 extension EditorModel {
-    /// Replaces the current match (the first occurrence in the current matching block). Returns whether
-    /// anything changed. Goes through an ordinary edit, so it syncs and ⌘Z undoes it.
+    /// Replaces the current match and moves on to the next one. Returns whether anything changed. Goes
+    /// through an ordinary edit, so it syncs and ⌘Z undoes it.
     @discardableResult
     func replaceCurrent(with replacement: String) -> Bool {
-        guard !isReadOnly, findMatches.indices.contains(findIndex), let block = blocks[findMatches[findIndex]],
-              let result = FindReplace.replace(in: block, query: findQuery, with: replacement, limit: 1) else {
-            NSSound.beep()
+        guard !isReadOnly, findHits.indices.contains(findIndex) else { return false }
+        let hit = findHits[findIndex]
+        // Which of this block's occurrences it is.
+        let skip = findHits[..<findIndex].filter { $0.blockId == hit.blockId }.count
+        guard let block = blocks[hit.blockId],
+              let result = FindReplace.replace(in: block, query: findQuery, with: replacement, limit: 1, caseSensitive: findCaseSensitive, skip: skip) else {
             return false
         }
         let index = findIndex
         commit(upserts: [result.block], actionName: String(localized: "Replace"))
         updateFind()
-        // The replaced text is no longer a match, so the same place now holds the next one.
-        if !findMatches.isEmpty {
-            findIndex = min(index, findMatches.count - 1)
+        // The replaced text is no longer a match, so the same index is now the next one, unless the
+        // replacement itself contains the query: then step past it.
+        let stillMatches = !FindReplace.ranges(of: findQuery, in: replacement, caseSensitive: findCaseSensitive).isEmpty
+        if !findHits.isEmpty {
+            let n = findHits.count
+            findIndex = ((stillMatches ? index + 1 : index) % n + n) % n
             revealMatch()
         }
         return true
@@ -24,23 +36,35 @@ extension EditorModel {
     /// Replaces every match in one edit (one Undo step). Returns how many were replaced.
     @discardableResult
     func replaceAll(with replacement: String) -> Int {
-        guard !isReadOnly, !findQuery.isEmpty else { return 0 }
+        guard !isReadOnly, !findQuery.isEmpty, !findHits.isEmpty else { return 0 }
         var upserts: [Block] = []
         var count = 0
         for id in findMatches {
-            guard let block = blocks[id], let r = FindReplace.replace(in: block, query: findQuery, with: replacement) else { continue }
+            guard let block = blocks[id],
+                  let r = FindReplace.replace(in: block, query: findQuery, with: replacement, caseSensitive: findCaseSensitive) else { continue }
             upserts.append(r.block)
             count += r.count
         }
         guard !upserts.isEmpty else { return 0 }
         commit(upserts: upserts, actionName: String(localized: "Replace All"))
+        findIndex = 0
         updateFind()
         return count
     }
+
+    /// The find bar's starting text: the selected words, when a short piece of one line is selected.
+    var findSeed: String? {
+        guard let id = focusedBlockId, let tv = textView(id) else { return nil }
+        let r = tv.selectedRange()
+        guard r.length > 0 else { return nil }
+        let text = (tv.string as NSString).substring(with: r)
+        return text.count <= 100 && !text.contains("\n") ? text : nil
+    }
 }
 
-/// The find & replace bar floating at the top of the note (the web's FindBar): ⌘F finds, ⌘⌥F also
-/// replaces. Return / Shift-Return step through matches, Escape closes.
+/// The find & replace bar floating at the top right of the note (the web's FindBar): ⌘F finds, ⌘⌥F or the
+/// page menu also replaces. Return / Shift-Return step through matches, Escape closes and puts the cursor
+/// on the current match.
 struct FindReplaceBar: View {
     @Bindable var model: EditorModel
     var showFind: Binding<Bool>
@@ -53,73 +77,111 @@ struct FindReplaceBar: View {
 
     private var showsReplace: Bool { model.findShowsReplace && !model.isReadOnly }
 
+    private var count: Int { model.findHits.count }
+
     private var status: String {
         guard !model.findQuery.isEmpty else { return "" }
-        return model.findMatches.isEmpty ? String(localized: "No results") : String(localized: "\(model.findIndex + 1) of \(model.findMatches.count)")
+        guard count > 0 else { return String(localized: "No results") }
+        let total = count >= FindReplace.maxMatches ? "\(count)+" : "\(count)"
+        return String(localized: "\(model.findIndex + 1) of \(total)")
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
+            HStack(spacing: 2) {
                 if !model.isReadOnly {
-                    IconButton(systemImage: showsReplace ? "chevron.down" : "chevron.right", label: showsReplace ? "Hide replace" : "Show replace", size: 26) {
+                    PageIconButton(systemImage: showsReplace ? "chevron.down" : "chevron.right",
+                                   label: showsReplace ? String(localized: "Hide replace") : String(localized: "Show replace"),
+                                   size: 32, width: 28, iconSize: 12) {
                         model.findShowsReplace.toggle()
-                        focus = model.findShowsReplace ? .replace : .find
                     }
+                    .accessibilityValue(Text(showsReplace ? "Expanded" : "Collapsed"))
                 }
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 11.5)).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
+                HStack(spacing: 7) {
+                    Image(systemName: "magnifyingglass").font(.system(size: 11.5, weight: .medium)).foregroundStyle(FoleviColor.inkFaint)
+                        .accessibilityHidden(true)
                     TextField("Find in note", text: $model.findQuery)
                         .textFieldStyle(.plain)
                         .font(.ui(13))
                         .focused($focus, equals: .find)
                         .onSubmit { model.findNext(backwards: NSEvent.modifierFlags.contains(.shift)) }
+                        .accessibilityLabel(Text("Find"))
                         .accessibilityIdentifier("findField")
                 }
-                .padding(.horizontal, 10)
-                .frame(width: 220, height: 30)
-                .foleviWell(shape: .rounded(6))
+                .padding(.leading, 10)
+                .padding(.trailing, 8)
+                .frame(height: 32)
+                .frame(maxWidth: .infinity)
+                .pageInput(focused: focus == .find)
                 Text(status)
                     .font(.ui(12).monospacedDigit())
                     .foregroundStyle(FoleviColor.inkMuted)
-                    .frame(minWidth: 64, alignment: .trailing)
+                    .lineLimit(1)
+                    .frame(minWidth: 72, alignment: .trailing)
+                    .padding(.horizontal, 6)
                     .accessibilityAddTraits(.updatesFrequently)
-                IconButton(systemImage: "chevron.up", label: "Previous match", shortcutHint: "⇧↩", size: 28) { model.findNext(backwards: true) }
-                    .disabled(model.findMatches.isEmpty)
-                IconButton(systemImage: "chevron.down", label: "Next match", shortcutHint: "↩", size: 28) { model.findNext() }
-                    .disabled(model.findMatches.isEmpty)
-                IconButton(systemImage: "xmark", label: "Close find", shortcutHint: "Esc", size: 28) { close() }
+                PageIconButton(systemImage: "textformat", label: String(localized: "Match case"), size: 32, iconSize: 13, isOn: model.findCaseSensitive) {
+                    model.findCaseSensitive.toggle()
+                }
+                PageIconButton(systemImage: "chevron.up", label: String(localized: "Previous match"), shortcut: "Shift+Enter", size: 32) {
+                    model.findNext(backwards: true)
+                }
+                .disabled(count == 0)
+                PageIconButton(systemImage: "chevron.down", label: String(localized: "Next match"), shortcut: "Enter", size: 32) {
+                    model.findNext()
+                }
+                .disabled(count == 0)
+                PageIconButton(systemImage: "xmark", label: String(localized: "Close find"), shortcut: "Esc", size: 32) { close() }
             }
             if showsReplace {
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     TextField("Replace with", text: $replacement)
                         .textFieldStyle(.plain)
                         .font(.ui(13))
                         .focused($focus, equals: .replace)
                         .onSubmit { model.replaceCurrent(with: replacement) }
+                        .accessibilityLabel(Text("Replace with"))
                         .padding(.horizontal, 10)
-                        .frame(width: 220, height: 30)
-                        .foleviWell(shape: .rounded(6))
+                        .frame(height: 32)
+                        .frame(maxWidth: .infinity)
+                        .pageInput(focused: focus == .replace)
                     Button("Replace") {
                         model.replaceCurrent(with: replacement)
-                        if model.findMatches.isEmpty { focus = .find }
+                        // The last match gone disables this button; keep the keyboard in the bar.
+                        if count == 0 { focus = .find }
                     }
-                    .buttonStyle(.folevi(.secondary, .small))
-                    .disabled(model.findMatches.isEmpty)
+                    .buttonStyle(.page(.secondary, .sm))
+                    .disabled(count == 0)
                     Button("Replace all") { replaceAll() }
-                        .buttonStyle(.folevi(.secondary, .small))
-                        .disabled(model.findMatches.isEmpty)
+                        .buttonStyle(.page(.secondary, .sm))
+                        .disabled(count == 0)
                 }
                 .padding(.leading, 30)
             }
         }
         .padding(6)
-        .foleviPop(radius: 12)
-        .onAppear { focus = showsReplace ? .replace : .find }
+        .frame(maxWidth: 460)
+        .foleviGlassPop(radius: 12)
+        .onAppear {
+            if model.findQuery.isEmpty, let seed = model.findSeed { model.findQuery = seed }
+            takeFocus()
+        }
+        .onChange(of: model.page.findFocusToken) { _, _ in takeFocus() }
         .onChange(of: model.findShowsReplace) { _, on in focus = on && !model.isReadOnly ? .replace : .find }
         .onExitCommand { close() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Find in note"))
+    }
+
+    private func takeFocus() {
+        if let window = NSApp.keyWindow, window.firstResponder is BlockTextView {
+            window.makeFirstResponder(nil)
+        }
+        Task { @MainActor in
+            focus = showsReplace ? .replace : .find
+            try? await Task.sleep(for: .milliseconds(60))
+            focus = showsReplace ? .replace : .find
+        }
     }
 
     private func replaceAll() {
@@ -131,7 +193,9 @@ struct FindReplaceBar: View {
                       action: .undo { undo?.undo() })
     }
 
+    /// Back to the note, with the current match selected.
     private func close() {
+        model.selectCurrentMatch()
         model.findQuery = ""
         model.findShowsReplace = false
         showFind.wrappedValue = false

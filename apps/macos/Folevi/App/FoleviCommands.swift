@@ -48,14 +48,10 @@ struct FoleviCommands: Commands {
             }
             .disabled(!ready)
             Menu("Export") {
-                ForEach(ExportService.Format.allCases) { format in
-                    Button {
-                        guard let editor else { return }
-                        ExportService.export(format, title: editor.document?.displayTitle ?? String(localized: "Untitled"), blocks: editor.exportBlocks(), app: app)
-                    } label: {
-                        Text("Export as \(Text(format.title))…")
-                    }
-                }
+                // The page menu's exports (doc/export.ts on the web).
+                Button("Export as Markdown") { if let editor { ExportService.exportPage(.markdown, editor: editor) } }
+                Button("Export as HTML") { if let editor { ExportService.exportPage(.html, editor: editor) } }
+                Button("Export as PDF (print)") { if let editor { ExportService.exportPage(.pdf, editor: editor) } }
             }
             .disabled(editor == nil)
             Button("Open in New Window") {
@@ -69,12 +65,14 @@ struct FoleviCommands: Commands {
             Button("Find in Document") {
                 editor?.findShowsReplace = false
                 nav?.showFind = true
+                editor?.page.findFocusToken = UUID()
             }
                 .keyboardShortcut("f")
                 .disabled(editor == nil)
             Button("Find and Replace…") {
                 editor?.findShowsReplace = true
                 nav?.showFind = true
+                editor?.page.findFocusToken = UUID()
             }
                 .keyboardShortcut("f", modifiers: [.command, .option])
                 .disabled(editor == nil || !canEdit)

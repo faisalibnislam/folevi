@@ -413,6 +413,8 @@ struct NoteCard: View {
 
     /// Portrait notebook proportions (25 : 27).
     static let aspect: CGFloat = 25 / 27
+    /// rgb(20 20 30), the web's card shadow colour.
+    static let shadowInk = Color(red: 20 / 255, green: 20 / 255, blue: 30 / 255)
 
     var body: some View {
         GeometryReader { geo in
@@ -429,9 +431,20 @@ struct NoteCard: View {
             }
         }
         .aspectRatio(Self.aspect, contentMode: .fit)
-        // -4px 18px 30px -18px rgb(20 20 30 / 0.2) and 0 2px 5px rgb(20 20 30 / 0.03), deeper on hover.
-        .shadow(color: Color(red: 0.08, green: 0.08, blue: 0.12).opacity(hovering ? 0.24 : 0.2), radius: hovering ? 18 : 15, x: hovering ? -5 : -4, y: hovering ? 12 : 9)
-        .shadow(color: Color(red: 0.08, green: 0.08, blue: 0.12).opacity(hovering ? 0.04 : 0.03), radius: hovering ? 4 : 2.5, y: hovering ? 3 : 2)
+        // The web's -4px 18px 30px -18px rgb(20 20 30 / 0.2) (-5px 24px 36px -18px / 0.24 on hover). SwiftUI
+        // has no shadow spread, so a shape 18pt smaller on every side casts it: only a soft fall shows under
+        // the bottom edge. (A full-size shadow on the card's two layers came out far too dark.)
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.white)
+                .padding(18)
+                .shadow(color: Self.shadowInk.opacity(hovering ? 0.24 : 0.2), radius: hovering ? 18 : 15, x: hovering ? -5 : -4, y: hovering ? 24 : 18)
+        }
+        // 0 2px 5px rgb(20 20 30 / 0.03), the contact shadow, cast once by the card's outline.
+        .background {
+            Rectangle().fill(Color.white).padding(.trailing, 1)
+                .shadow(color: Self.shadowInk.opacity(hovering ? 0.04 : 0.03), radius: hovering ? 4 : 2.5, y: hovering ? 3 : 2)
+        }
         .offset(y: hovering && !reduceMotion ? -2 : 0)
         .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)
         .contentShape(Rectangle())

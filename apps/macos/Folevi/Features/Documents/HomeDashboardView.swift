@@ -231,17 +231,22 @@ private struct NoteCarousel: View {
                 .scrollTargetLayout()
                 .padding(.horizontal, 8)
                 .padding(.top, 4)
-                .padding(.bottom, 28)
+                // Room for the cards' soft shadow inside the row (its fade mask clips at the frame).
+                .padding(.bottom, 52)
             }
             .scrollPosition($position)
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.never)
             .onScrollGeometryChange(for: Edges.self) { geo in
-                Edges(start: geo.contentOffset.x <= 2, end: geo.contentOffset.x + geo.containerSize.width >= geo.contentSize.width - 2,
+                // The visible rectangle in content coordinates: the content's own 8pt inset doesn't count as
+                // scrolled (the raw offset started past the edge test, so the back arrow showed at the start).
+                Edges(start: geo.visibleRect.minX <= 10, end: geo.visibleRect.maxX >= geo.contentSize.width - 10,
                       offset: geo.contentOffset.x, viewport: geo.containerSize.width)
             } action: { _, new in edges = new }
             .mask(fadeMask)
             .padding(.horizontal, -8)
+            // The extra shadow room overlaps the next section instead of pushing it down.
+            .padding(.bottom, -24)
             .overlay(alignment: .leading) {
                 if !edges.start { arrow("chevron.left", String(localized: "Scroll \(label.lowercased()) back")) { scroll(-1) } }
             }

@@ -30,6 +30,8 @@ struct MainWindowView: View {
                 detail
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
+                    // As on the web, a note's rounded page starts 8pt below the tab bar (it sat flush against it).
+                    .padding(.top, editorIfOpen != nil ? 8 : 0)
                     .overlay(alignment: .bottom) {
                         if let editor = editorIfOpen {
                             // The page tools: the dock at the bottom of the note, its panel floating just above it.

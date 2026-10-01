@@ -149,7 +149,11 @@ struct FolderCard: View {
             }
         }
         .aspectRatio(Self.aspect, contentMode: .fit)
-        .shadow(color: Color(red: 0.08, green: 0.08, blue: 0.12).opacity(0.1), radius: 7, y: 8)
+        // The web's drop-shadow(0 8px 14px / 0.1) drop-shadow(0 1px 2px / 0.06), cast once by the whole drawing
+        // (without the compositing group every layer cast its own and the shadow came out too dark).
+        .compositingGroup()
+        .shadow(color: NoteCard.shadowInk.opacity(0.1), radius: 7, y: 8)
+        .shadow(color: NoteCard.shadowInk.opacity(0.06), radius: 1, y: 1)
         .offset(y: hovering && !reduceMotion ? -4 : 0)
         .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)
         .contentShape(Rectangle())
@@ -195,8 +199,14 @@ private struct FolderNoteSheet: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 2.4 * u, style: .continuous))
+        // 0 1px 2px / 0.12 and 0 6px 14px -6px / 0.25: the second pulled in 6pt on every side, as CSS spread does.
+        .background {
+            GeometryReader { g in
+                Rectangle().fill(Color.white).padding(min(6, g.size.width / 4))
+                    .shadow(color: .black.opacity(0.25), radius: 7, y: 6)
+            }
+        }
         .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
-        .shadow(color: .black.opacity(0.25), radius: 7, y: 6)
         .accessibilityHidden(true)
     }
 }

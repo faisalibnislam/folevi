@@ -111,6 +111,49 @@ public enum Whiteboard {
         return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 \(width) \(hs)\" width=\"\(width)\" height=\"\(hs)\" role=\"img\" aria-label=\"\(safeTitle)\"><rect width=\"100%\" height=\"100%\" fill=\"#ffffff\"/>\(paths)</svg>"
     }
 
+    // MARK: Editing (the web's WhiteboardView)
+
+    /// The saved height, clamped (clampHeight).
+    static func clampHeight(_ h: Double?) -> Double {
+        let n = h.flatMap { $0.isFinite && $0 > 0 ? $0 : nil } ?? Double(defaultHeight)
+        return max(Double(FoleviLimits.minWhiteboardHeight), min(Double(FoleviLimits.maxWhiteboardHeight), n))
+    }
+
+    /// The data string for strokes (serializeWhiteboard); no strokes is "".
+    static func serialize(_ strokes: [Stroke]) -> String {
+        guard !strokes.isEmpty else { return "" }
+        let items: [JSONValue] = strokes.map { s in
+            var o: [String: JSONValue] = ["color": .string(s.color), "width": .number(s.width)]
+            if let points = s.points {
+                o["points"] = .array(points.map { .array([.number($0.0), .number($0.1)]) })
+            } else if let d = s.d {
+                o["d"] = .string(d)
+            }
+            if let op = s.opacity { o["opacity"] = .number(op) }
+            return .object(o)
+        }
+        let value: JSONValue = .object(["v": .number(1), "strokes": .array(items)])
+        return value.canonicalString
+    }
+
+    /// Distance from p to the segment ab (stroke-level erasing).
+    static func distanceToSegment(_ p: (Double, Double), _ a: (Double, Double), _ b: (Double, Double)) -> Double {
+        let dx = b.0 - a.0, dy = b.1 - a.1
+        let len = dx * dx + dy * dy
+        let t = len > 0 ? max(0, min(1, ((p.0 - a.0) * dx + (p.1 - a.1) * dy) / len)) : 0
+        let x = a.0 + t * dx - p.0, y = a.1 + t * dy - p.1
+        return (x * x + y * y).squareRoot()
+    }
+
+    /// Whether p is within `radius` of a stroke's centre line (strokes stored as a path `d` aren't hit).
+    static func strokeHit(_ stroke: Stroke, _ p: (Double, Double), radius: Double) -> Bool {
+        guard let pts = stroke.points, !pts.isEmpty else { return false }
+        let r = radius + stroke.width / 2
+        if pts.count == 1 { return distanceToSegment(p, pts[0], pts[0]) <= r }
+        for i in 1..<pts.count where distanceToSegment(p, pts[i - 1], pts[i]) <= r { return true }
+        return false
+    }
+
     /// `encodeURIComponent`, with ( and ) escaped too — the web's data-URI encoding for Markdown.
     static func dataURI(_ svg: String) -> String {
         var allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'")

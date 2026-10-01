@@ -83,7 +83,7 @@ enum BlockStyles {
         default:
             break
         }
-        return s
+        return BlockStyles.applyLook(BlockLook(block.content), to: s, document: document, palette: palette)
     }
 
     static func lineHeight(_ style: TextRenderStyle) -> CGFloat {
@@ -94,7 +94,7 @@ enum BlockStyles {
         switch block.content {
         case .heading(let h): return h.level == .level1 ? (26, 6) : h.level == .level2 ? (20, 4) : (14, 2)
         case .divider: return (4, 4)
-        case .image, .table, .code, .callout, .page, .bookmark, .collection, .file: return (7, 7)
+        case .image, .table, .code, .callout, .page, .bookmark, .collection, .file, .formula, .whiteboard: return (7, 7)
         case .quote: return (5, 5)
         default: return (3, 3)
         }
@@ -147,10 +147,12 @@ struct BlockRowView: View {
             Color.clear.frame(width: indent, height: 1)
             hoverGutter
                 .frame(width: BlockMetrics.gutter, alignment: .trailing)
+            if lookPadding.leading > 0 { Color.clear.frame(width: lookPadding.leading, height: 1) }
             marker
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.vertical, look.isPlain ? 0 : lookPadding.vertical)
         .padding(.top, pad.top)
         .padding(.bottom, pad.bottom)
         .padding(.trailing, 2)
@@ -160,6 +162,13 @@ struct BlockRowView: View {
                 popupView(popup)
                     .alignmentGuide(.bottom) { d in d[.top] - 4 }
                     .padding(.leading, BlockMetrics.gutter + indent)
+            } else if let request = model.datePick, request.blockId == block.id {
+                DatePickPopover(today: TaskLogic.localDate()) { date in model.insertDate(date, for: request) } onCancel: {
+                    model.datePick = nil
+                    model.focus = FocusRequest(blockId: request.blockId, caret: .offset(request.location))
+                }
+                .alignmentGuide(.bottom) { d in d[.top] - 4 }
+                .padding(.leading, BlockMetrics.gutter + indent)
             }
         }
         .opacity(isDragged ? 0.35 : 1)
@@ -187,9 +196,29 @@ struct BlockRowView: View {
         .modifier(HeadingAccessibility(block: block))
     }
 
+    /// The block's own styling (decoration, colour, card group…).
+    private var look: BlockLook { BlockLook(block.content) }
+
+    private var lookPadding: (vertical: CGFloat, leading: CGFloat) {
+        if look.group == .card { return (4, 14) }
+        if look.decoration != nil { return (4, 12) }
+        return (0, 0)
+    }
+
+    /// Whether this block opens / closes a run of card-grouped blocks.
+    private var cardEdges: (first: Bool, last: Bool) {
+        guard look.group == .card, let i = model.rows.firstIndex(where: { $0.id == block.id }) else { return (true, true) }
+        let grouped: (Int) -> Bool = { j in model.rows.indices.contains(j) && BlockLook(model.rows[j].block.content).group == .card }
+        return (!grouped(i - 1), !grouped(i + 1))
+    }
+
     @ViewBuilder private var rowBackground: some View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         ZStack {
+            if !look.isPlain {
+                BlockLookBackground(look: look, edges: cardEdges, document: model.style, palette: model.sheetPalette)
+                    .padding(.vertical, look.group == .card ? 0 : 2)
+            }
             if isSelected {
                 shape.fill(FoleviColor.selection.opacity(0.7))
             } else if isMatch && !model.findQuery.isEmpty {
@@ -399,26 +428,23 @@ struct BlockRowView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .foleviSurface(.color(tone.bg), shape: .rounded(14), shadow: FoleviDepth.calloutRim)
+        case .code(let p) where p.language == "mermaid":
+            MermaidBlockView(block: block, props: p, model: model, focusRequest: focusRequest)
         case .code(let p):
             CodeBlockView(block: block, props: p, model: model, focusRequest: focusRequest)
-        case .divider:
-            Rectangle()
-                .fill(FoleviColor.line)
-                .frame(height: 1)
-                .padding(.vertical, 12)
+        case .divider(let p):
+            DividerLineView(style: p.style, separator: model.style.separator, palette: model.sheetPalette,
+                            selected: isSelected, accent: docAccent)
                 .contentShape(Rectangle().inset(by: -8))
                 .onTapGesture { model.select(block.id, extend: false) }
-                .accessibilityLabel(Text("Divider"))
         case .pageBreak:
-            PageBreakBlockView()
+            PageBreakBlockView(palette: model.sheetPalette)
                 .contentShape(Rectangle())
                 .onTapGesture { model.select(block.id, extend: false) }
         case .formula(let p):
-            FormulaBlockView(props: p)
-                .onTapGesture { model.select(block.id, extend: false) }
+            FormulaBlockView(block: block, props: p, model: model)
         case .whiteboard(let p):
-            WhiteboardBlockView(props: p)
-                .onTapGesture { model.select(block.id, extend: false) }
+            WhiteboardBlockView(block: block, props: p, model: model)
         case .image(let p):
             ImageBlockView(block: block, props: p, model: model)
         case .file(let p):
@@ -430,7 +456,7 @@ struct BlockRowView: View {
         case .bookmark(let p):
             BookmarkBlockView(block: block, props: p, model: model)
         case .collection(let p):
-            CollectionBlockView(props: p, openDocument: openDocument)
+            CollectionBlockView(props: p, isEditable: !model.isReadOnly, openDocument: openDocument)
         case .unknown(AudioProps.type, let props):
             if let p = AudioProps(props) {
                 AudioBlockView(block: block, props: p, model: model)

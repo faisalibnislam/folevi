@@ -1,6 +1,7 @@
 import Foundation
 
-public let defaultDocumentStyle = DocumentStyle(font: .sans, width: .default, background: .paper, accent: .accent, card: .folio)
+/// New notes start Plain (no cover) and wide, as the web (editor-schema DEFAULT_DOCUMENT_STYLE).
+public let defaultDocumentStyle = DocumentStyle(font: .sans, width: .wide, background: .paper, accent: .accent, card: .folio)
 public let defaultDocumentCover = DocumentCover(kind: .none)
 
 /// Server document summary (convex/lib/documents.ts `toSummary`), also used for locally created documents.

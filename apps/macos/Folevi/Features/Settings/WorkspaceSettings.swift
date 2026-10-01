@@ -579,26 +579,3 @@ struct GuestsSettings: View {
         }
     }
 }
-
-// MARK: - Plan & billing (workspace)
-
-/// A workspace's plan and billing are managed on the web, by the owner and the admins they allow.
-struct WorkspaceBillingLink: View {
-    @Environment(AppModel.self) private var app
-
-    var body: some View {
-        SettingsPage {
-            if let w = app.workspace {
-                SettingsCard(title: String(localized: "Plan & billing"),
-                             description: String(localized: "\(w.name)'s plan, seats, payment method and invoices are managed on the web.")) {
-                    HStack {
-                        Text("Plan: \(w.plan?.name ?? PlanTier.name(w.plan?.tier ?? "free"))").font(.ui(13))
-                        Spacer()
-                        Button("Open Plan & billing on the web") { openWebApp("settings/workspace-billing", config: app.config) }
-                            .buttonStyle(.folevi(.primary, .small))
-                    }
-                }
-            }
-        }
-    }
-}

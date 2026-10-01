@@ -25,7 +25,7 @@ struct InsertInspector: View {
         Item(id: "code", label: "Code Block", systemImage: "chevron.left.forwardslash.chevron.right", keywords: "code snippet programming"),
         Item(id: "formula", label: "TeX Formula", systemImage: "sum", keywords: "formula math latex tex equation katex"),
         Item(id: "mermaid", label: "Mermaid Diagram", systemImage: "point.3.connected.trianglepath.dotted", keywords: "mermaid diagram flowchart chart graph"),
-        Item(id: "flowchart", label: "Flowchart", systemImage: "point.3.connected.trianglepath.dotted", keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro"),
+        Item(id: "flowchart", label: "Flowchart", systemImage: "rectangle.connected.to.line.below", keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro"),
         Item(id: "whiteboard", label: "Whiteboard", systemImage: "pencil.tip", keywords: "drawing sketch draw pen canvas"),
     ]
 

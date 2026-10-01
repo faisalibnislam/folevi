@@ -85,6 +85,9 @@ struct SharePanel: View {
         }
         .frame(width: 480)
         .frame(maxHeight: 640)
+        // An opaque card: the system popover is see-through glass, and the note behind made the text hard to read.
+        .background(FoleviColor.surface)
+        .presentationBackground(FoleviColor.surface)
         .task { await watch() }
     }
 

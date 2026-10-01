@@ -262,38 +262,47 @@ struct MembersSettings: View {
 
     private func memberRow(_ m: WorkspaceMembers.Member, data: WorkspaceMembers, workspace w: WorkspaceInfo) -> some View {
         let isOwner = data.yourRole == "owner"
-        return HStack(spacing: 10) {
+        return HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(m.displayName).font(.ui(13.5, .medium)).foregroundStyle(FoleviColor.heading)
+                    Text(m.displayName).font(.ui(13.5, .medium)).foregroundStyle(FoleviColor.heading).lineLimit(1)
                     if m.isYou { Text("(you)").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted) }
                 }
-                Text(m.email).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
+                Text(m.email).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1).truncationMode(.middle)
                 if isOwner && m.role == "admin" {
                     HStack(spacing: 6) {
                         SettingsSwitch(label: String(localized: "\(m.displayName) can manage billing"),
                                        isOn: Binding(get: { m.canManageBilling }, set: { setBilling(m, $0, w.id) }))
-                        Text("Can manage billing").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("Can manage billing").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).fixedSize()
                     }
                     .padding(.top, 4)
                 } else if m.role == "admin" && m.canManageBilling {
                     Text("Can manage billing").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
                 }
+                // The other actions sit under the name, so the row never squeezes them.
+                if m.canManage {
+                    HStack(spacing: 2) {
+                        if isOwner {
+                            Button("Make owner") { confirm = Confirm(kind: .owner, profileId: m.profileId, name: m.displayName) }
+                                .buttonStyle(.folevi(.quiet, .small))
+                        }
+                        Button("Convert to guest") { confirm = Confirm(kind: .guest, profileId: m.profileId, name: m.displayName) }
+                            .buttonStyle(.folevi(.quiet, .small))
+                        Button("Remove") { confirm = Confirm(kind: .remove, profileId: m.profileId, name: m.displayName) }
+                            .buttonStyle(.folevi(.quiet, .small))
+                            .foregroundStyle(FoleviColor.destructive)
+                    }
+                    .padding(.leading, -12)
+                    .padding(.top, 2)
+                }
             }
+            .layoutPriority(1)
             Spacer(minLength: 8)
             if m.canManage {
                 FoleviSelect(selection: Binding(get: { MemberRoleChoice(role: m.role, access: m.memberAccess) }, set: { setChoice(m, $0, w.id) }),
                              options: MemberRoleChoice.allCases.filter { $0 != .admin || isOwner }.map { .init(value: $0, title: $0.title) },
                              accessibilityLabel: String(localized: "Role for \(m.displayName)"), height: 28)
-                if isOwner {
-                    Button("Make owner") { confirm = Confirm(kind: .owner, profileId: m.profileId, name: m.displayName) }
-                        .buttonStyle(.folevi(.quiet, .small))
-                }
-                Button("Convert to guest") { confirm = Confirm(kind: .guest, profileId: m.profileId, name: m.displayName) }
-                    .buttonStyle(.folevi(.quiet, .small))
-                Button("Remove") { confirm = Confirm(kind: .remove, profileId: m.profileId, name: m.displayName) }
-                    .buttonStyle(.folevi(.quiet, .small))
-                    .foregroundStyle(FoleviColor.destructive)
+                    .fixedSize()
             } else {
                 HStack(spacing: 6) {
                     Text(workspaceRoleLabel(m.role)).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)

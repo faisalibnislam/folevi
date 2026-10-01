@@ -65,7 +65,7 @@ private struct ScopeMenu: View {
             plain(String(localized: "Help"), systemImage: "questionmark.circle") { close(); app.showHelp = true }
             plain(String(localized: "Contact support…"), systemImage: "lifepreserver") { web("help") }
             separator
-            ForEach(AppearancePreference.allCases) { a in
+            ForEach([AppearancePreference.light, .dark, .system]) { a in
                 item(appearanceName(a), detail: nil, checked: app.appearance == a, icon: {
                     Image(systemName: a == .light ? "sun.max" : a == .dark ? "moon" : "desktopcomputer").font(.system(size: 12))
                 }) { app.appearance = a }

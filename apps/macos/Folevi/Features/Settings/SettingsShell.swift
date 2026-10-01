@@ -108,7 +108,7 @@ struct SettingsRoot: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(width: 880, height: 640)
+        .frame(width: 980, height: 680)
         .background(CanvasBackground())
         .sheet(isPresented: $newWorkspace) { NewWorkspaceSheet().environment(app) }
     }

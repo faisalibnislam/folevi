@@ -92,6 +92,8 @@ private struct TabChip: View {
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
+        // VoiceOver and Switch Control "press" the tab like a click.
+        .accessibilityAction { open() }
         .accessibilityAction(named: Text("Close")) { if closable { close() } }
     }
 }

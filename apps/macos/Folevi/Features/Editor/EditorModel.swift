@@ -104,7 +104,7 @@ struct SlashItem: Identifiable, Equatable {
         SlashItem(id: "table", title: "Table", searchText: "table grid spreadsheet", systemImage: "tablecells", shortcut: nil),
         SlashItem(id: "formula", title: "TeX formula", searchText: "formula math latex tex equation katex", systemImage: "sum", shortcut: nil),
         SlashItem(id: "mermaid", title: "Mermaid diagram", searchText: "mermaid diagram flowchart chart graph sequence", systemImage: "point.3.connected.trianglepath.dotted", shortcut: nil),
-        SlashItem(id: "flowchart", title: "Flowchart", searchText: "flowchart diagram process flow chart shapes boxes arrows", systemImage: "point.3.connected.trianglepath.dotted", shortcut: nil),
+        SlashItem(id: "flowchart", title: "Flowchart", searchText: "flowchart diagram process flow chart shapes boxes arrows", systemImage: "rectangle.connected.to.line.below", shortcut: nil),
         SlashItem(id: "whiteboard", title: "Whiteboard", searchText: "whiteboard drawing sketch draw pen canvas", systemImage: "pencil.tip", shortcut: nil),
         SlashItem(id: "page", title: "Page", searchText: "page nested subpage child link", systemImage: "doc.text", shortcut: nil),
         SlashItem(id: "card", title: "Card", searchText: "card page nested subpage child", systemImage: "rectangle.stack", shortcut: nil),

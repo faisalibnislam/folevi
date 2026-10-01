@@ -134,7 +134,7 @@ function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: str
       </nav>
 
       {/* Where the app shows the account: signing in, and the way in for new people. */}
-      <div className="flex-none space-y-3.5 px-2.5 pb-10 pt-2">
+      <div className="flex-none space-y-3.5 px-2.5 pb-0 pt-2">
         <a href={signInUrl} className="mk-btn mk-btn-secondary h-10 w-full text-[14px]">
           <LogIn size={15} aria-hidden className="flex-none" />
           Sign in

@@ -594,9 +594,8 @@ private struct BrowserListRow<MenuItems: View>: View {
                 .accessibilityLabel(Text(selected ? "\(doc.displayTitle) (selected)" : doc.displayTitle))
             if unsynced { UnsyncedMarker() }
             if doc.kind != .template { FolderBadge(folder: folder) }
-            if let tags = doc.tags, !tags.isEmpty {
-                Text(tags.map { "#" + $0.name }.joined(separator: " ")).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
-            }
+            // Always there, as on the web (an empty slot still takes its gap), so the dates line up.
+            Text((doc.tags ?? []).map { "#" + $0.name }.joined(separator: " ")).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
             Text(inTrash && doc.deletedAt != nil ? "Deleted \(CollabTime.relative(doc.deletedAt ?? 0))" : CollabTime.relative(doc.updatedAt))
                 .font(.ui(12))
                 .foregroundStyle(FoleviColor.inkFaint)
@@ -606,8 +605,8 @@ private struct BrowserListRow<MenuItems: View>: View {
             NoteMenuButton(title: doc.displayTitle, items: menu)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 6)
-        .frame(minHeight: 44)
+        .padding(.vertical, 10)
+        .frame(minHeight: 52)
         .background(selected ? FoleviGlass.active : hovering ? FoleviColor.surface : .clear)
         .overlay(alignment: .top) { if dropTarget { FoleviColor.heading.frame(height: 2) } }
         .onHover { hovering = $0 }

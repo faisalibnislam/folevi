@@ -147,12 +147,23 @@ private struct TabChip: View {
     @State private var hovering = false
 
     var body: some View {
+        // A page tab is as wide as its title, between 172 and 284pt (the web's min-w-[172px] flex-[0_1_284px]);
+        // other tabs fit their label.
+        if kind == .page {
+            ClampWidth(min: 172, max: 284) { chip }
+        } else {
+            chip
+        }
+    }
+
+    private var chip: some View {
         HStack(spacing: 8) {
             // A real button: in the title bar a tap gesture loses the click to window dragging.
             Button(action: open) {
                 HStack(spacing: 8) {
                     Image(systemName: systemImage)
                         .font(.system(size: 12, weight: .medium))
+                        .frame(width: 14) // the web's 14pt icons
                         .opacity(kind == .page ? 0.7 : 1)
                         .accessibilityHidden(true)
                     Text(title)
@@ -177,7 +188,7 @@ private struct TabChip: View {
         .padding(.leading, 10)
         .padding(.trailing, kind == .page ? 4 : 10)
         .frame(height: 32)
-        .frame(minWidth: kind == .page ? 172 : nil, idealWidth: kind == .page ? 284 : nil, maxWidth: kind == .page ? 284 : kind == .view ? 240 : nil)
+        .frame(maxWidth: kind == .view ? 240 : kind == .page ? .infinity : nil)
         .background {
             if isActive {
                 Color.clear.foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(6), shadow: FoleviGlassDepth.activeOutline)
@@ -190,6 +201,24 @@ private struct TabChip: View {
         .layoutPriority(kind == .page ? 0 : 1)
         .onHover { hovering = $0 }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Sizes its content to its ideal width clamped to `min`…`max`, shrinking below the ideal (not below `min`)
+/// when the row runs out of room, like a CSS flex item with a min-width and a flex-basis.
+private struct ClampWidth: Layout {
+    var min: CGFloat
+    var max: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let ideal = child.sizeThatFits(ProposedViewSize(width: nil, height: proposal.height))
+        let room = Swift.max(min, Swift.min(proposal.width ?? max, max))
+        return CGSize(width: Swift.min(Swift.max(ideal.width, min), room), height: ideal.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(bounds.size))
     }
 }
 

@@ -35,7 +35,9 @@ enum TaskStore {
         guard let engine = app.session?.engine else { return [] }
         let docs = Dictionary(app.documents.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         return await engine.todoBlocks().compactMap { entry -> LocalTask? in
-            guard let doc = docs[entry.documentId], doc.deletedAt == nil,
+            // As the server's task index (convex/lib/documents.ts): checklists inside templates are blueprints,
+            // not tasks.
+            guard let doc = docs[entry.documentId], doc.deletedAt == nil, doc.kind != .template,
                   let p = try? entry.block.props.decode(TodoProps.self) else { return nil }
             return LocalTask(blockId: entry.block.id, documentId: entry.documentId, documentTitle: doc.title, documentIcon: doc.icon,
                              title: String(RichText.plainText(entry.block.inlineText).prefix(500)), checked: p.checked, canceled: p.canceled == true,
@@ -179,7 +181,7 @@ struct TasksView: View {
                         statusIdentifier: "tasks.title") {
                     if let openCalendar {
                         Button(action: openCalendar) { Label("Calendar", systemImage: "calendar") }
-                            .buttonStyle(.folevi(.secondary, .small))
+                            .buttonStyle(.folevi(.secondary, .small, horizontalPadding: 12))
                             .accessibilityIdentifier("tasks.calendar")
                     }
                     Button { openWindow(id: "quickAdd") } label: { Label("Add task", systemImage: "plus") }
@@ -342,6 +344,7 @@ struct TaskItemRow<Action: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title.isEmpty ? String(localized: "Untitled task") : task.title)
                     .font(.ui(15))
+                    .uiLineHeight(15 * 1.375, size: 15) // text-[15px] leading-snug
                     .strikethrough(closed, color: FoleviColor.inkMuted)
                     .foregroundStyle(closed ? FoleviColor.inkMuted : FoleviColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -360,6 +363,7 @@ struct TaskItemRow<Action: View>: View {
                     if task.status == .done, let done = task.completedAt { Text("· done \(CollabTime.relative(done))") }
                 }
                 .font(.ui(12))
+                .uiLineHeight(16, size: 12) // text-xs
                 .foregroundStyle(FoleviColor.inkMuted)
                 if !(action is EmptyView) { action.padding(.top, 4) }
             }
@@ -367,6 +371,7 @@ struct TaskItemRow<Action: View>: View {
             if task.priority != .none {
                 Text(PriorityChoice.label(task.priority))
                     .font(.ui(11, .medium))
+                    .uiLineHeight(11 * 1.55, size: 11, weight: .medium)
                     .foregroundStyle(task.priority == .high ? FoleviColor.coralInk : task.priority == .medium ? FoleviColor.marigoldInk : FoleviColor.inkMuted)
                     .padding(.horizontal, 8)
                     .background(task.priority == .high ? FoleviColor.coralSoft : task.priority == .medium ? FoleviColor.marigoldSoft : FoleviColor.surfaceSunken,
@@ -376,6 +381,7 @@ struct TaskItemRow<Action: View>: View {
             if let due = task.dueDate {
                 Text("\(overdue ? "Overdue · " : "")\(BrowseFormat.dueLabel(due, today: today))\(task.dueTime.map { " \($0)" } ?? "")")
                     .font(.ui(12, overdue ? .medium : .regular))
+                    .uiLineHeight(16, size: 12, weight: overdue ? .medium : .regular)
                     .foregroundStyle(overdue ? FoleviColor.destructive : FoleviColor.inkMuted)
                     .lineLimit(1)
                     .fixedSize()

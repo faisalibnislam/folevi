@@ -32,10 +32,12 @@ struct FoleviSelect<Value: Hashable>: View {
                     .font(.ui(fontSize))
                     .foregroundStyle(look == .well ? (hover ? FoleviColor.ink : FoleviColor.inkMuted) : FoleviColor.ink)
                     .lineLimit(1)
-                Spacer(minLength: 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                // The web's 14pt ChevronDown, 6pt after the label.
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(FoleviColor.ink)
+                    .frame(width: 14, height: 14)
                     .opacity(0.6)
                     .rotationEffect(.degrees(open ? 180 : 0))
                     .animation(.easeOut(duration: 0.15), value: open)

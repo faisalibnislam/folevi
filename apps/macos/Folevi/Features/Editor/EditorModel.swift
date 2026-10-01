@@ -20,6 +20,8 @@ struct EditorRow: Identifiable, Equatable {
     var depth: Int
     var number: Int?
     var hasChildren: Bool
+    /// The block shown just above (margins between blocks collapse, as on the web).
+    var previous: Block? = nil
 }
 
 struct SlashItem: Identifiable, Equatable {
@@ -392,7 +394,7 @@ final class EditorModel {
             // Deeper levels restart when we return to a shallower block.
             for d in prevTypeAtDepth.keys where d > entry.depth { prevTypeAtDepth[d] = nil }
             let hasChildren = !(children[b.id] ?? []).isEmpty
-            out.append(EditorRow(id: b.id, block: b, depth: entry.depth, number: number, hasChildren: hasChildren))
+            out.append(EditorRow(id: b.id, block: b, depth: entry.depth, number: number, hasChildren: hasChildren, previous: out.last?.block))
             if case .toggle(let p) = b.content, p.collapsed { hiddenDepth = entry.depth }
         }
         rows = out

@@ -220,7 +220,9 @@ final class SurfaceView: NSView {
             gradientLayer.startPoint = CGPoint(x: 0.5, y: 1)
             gradientLayer.endPoint = CGPoint(x: 0.5, y: 0)
         }
-        outerContainer.mask = spec.clipInside ? outerMask : nil
+        // CSS never paints an outer box-shadow under the box itself, so a translucent fill (glass) shows what
+        // is behind it, not its own shadow: without this mask the tab strip and content panel read grey.
+        outerContainer.mask = spec.outer.isEmpty ? nil : outerMask
         CATransaction.commit()
         updatePaths()
     }
@@ -242,7 +244,7 @@ final class SurfaceView: NSView {
             let r = rect.insetBy(dx: -l.spread, dy: -l.spread)
             layer.shadowPath = expanded(shape: spec.shape, rect: r, spread: l.spread)
         }
-        if spec.clipInside {
+        if !spec.outer.isEmpty {
             let big = CGMutablePath()
             big.addRect(rect.insetBy(dx: -200, dy: -200))
             big.addPath(shapePath)

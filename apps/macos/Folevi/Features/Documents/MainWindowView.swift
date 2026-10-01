@@ -379,11 +379,11 @@ struct ContentPanel: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        // No system material: the panel only ever sits on the smooth canvas, which the web's blur leaves as it
+        // is, and the material's grey tint made the panel darker than the web's.
         Color.clear
             .foleviSurface(.color(reduceTransparency ? FoleviColor.surfaceRaised : FoleviGlass.content), shape: .rounded(14),
                            shadow: FoleviGlassDepth.edge + FoleviGlassDepth.shadow)
-            .background { if !reduceTransparency { shape.fill(.ultraThinMaterial) } }
     }
 }
 

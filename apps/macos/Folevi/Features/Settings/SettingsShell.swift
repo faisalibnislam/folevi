@@ -154,13 +154,15 @@ struct SettingsRoot: View {
             HStack(alignment: .top, spacing: 40) {
                 nav
                     .frame(width: 216, alignment: .topLeading)
-                    // Sticky, as on the web (md:sticky top-[76px]): it stays in view while the page scrolls.
-                    .offset(y: max(0, scrollY - 8))
+                    // Sticky, as on the web (md:sticky top-[76px] inside the scroller that starts under the tab
+                    // bar): it sits 52pt below the heading's top and stays there while the page scrolls.
+                    .offset(y: 52 + max(0, scrollY))
                     .zIndex(1)
                 VStack(alignment: .leading, spacing: 20) {
                     Text(heading)
                         .font(FoleviType.display(34))
                         .tracking(FoleviType.displayTracking(34))
+                        .cssLineHeight(34 * 1.25, family: .serif, size: 34, weight: .semibold) // leading-tight
                         .foregroundStyle(FoleviColor.heading)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("settings.heading")
@@ -201,6 +203,7 @@ struct SettingsRoot: View {
             Text(label.uppercased())
                 .font(.ui(11, .semibold))
                 .tracking(0.77)
+                .uiLineHeight(11 * 1.55, size: 11, weight: .semibold)
                 .foregroundStyle(FoleviColor.inkFaint)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -218,8 +221,10 @@ struct SettingsRoot: View {
     private var createWorkspaceNudge: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("WORKSPACE").font(.ui(11, .semibold)).tracking(0.77).foregroundStyle(FoleviColor.inkFaint)
+                .uiLineHeight(11 * 1.55, size: 11, weight: .semibold)
             Text("Work with a team: shared notes, folders and tasks, with its own plan and members.")
                 .font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
+                .uiLineHeight(12.5 * 1.55, size: 12.5)
                 .frame(maxWidth: 208, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 4)
@@ -227,7 +232,7 @@ struct SettingsRoot: View {
                 .buttonStyle(.folevi(.secondary, .small))
                 .padding(.top, 8)
         }
-        .padding(12)
+        .padding(13) // p-3 inside a 1px border
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(FoleviColor.line))
         .padding(.top, 4)

@@ -116,27 +116,42 @@ enum BlockStyles {
     }
 
     /// Space above and below a block (editor.css: 3px block padding, heading and quote margins, the
-    /// margins of callouts, code and the atoms' frames), at the editor zoom.
-    static func verticalPadding(for block: Block, document: DocumentStyle = defaultDocumentStyle, scale: CGFloat = 1) -> (top: CGFloat, bottom: CGFloat) {
+    /// margins of callouts, code and the atoms' frames), at the editor zoom. As in CSS, the margin between two
+    /// blocks is the larger of the two (margins collapse): pass the block above as `previous`.
+    static func verticalPadding(for block: Block, document: DocumentStyle = defaultDocumentStyle, scale: CGFloat = 1,
+                                previous: Block? = nil) -> (top: CGFloat, bottom: CGFloat) {
+        let pad = padding(for: block)
+        let margin = margins(for: block, document: document)
+        let above = previous.map { margins(for: $0, document: document).bottom } ?? 0
+        return ((pad.top + max(0, margin.top - above)) * scale, (pad.bottom + margin.bottom) * scale)
+    }
+
+    /// A block's own padding (never collapses).
+    private static func padding(for block: Block) -> (top: CGFloat, bottom: CGFloat) {
+        switch block.content {
+        case .divider, .callout, .code: return (0, 0)
+        default: return (3, 3)
+        }
+    }
+
+    /// A block's CSS margins, unscaled.
+    private static func margins(for block: Block, document: DocumentStyle) -> (top: CGFloat, bottom: CGFloat) {
         let body = bodySize(document.font)
-        let pad: (CGFloat, CGFloat)
         switch block.content {
         case .heading(let h):
             let size = body * headingFactor(h.level, font: document.font)
             // margin-top 1.1em + padding-top 0.1em (h1), 0.95em (h2), 0.75em (h3), of the heading's size.
             let top: CGFloat = h.level == .level1 ? size * 1.2 : h.level == .level2 ? size * 0.95 : size * 0.75
-            pad = (3 + top, 3)
-        case .divider: pad = (0, 0)
-        case .quote: pad = (3 + body * 0.35, 3 + body * 0.35)
-        case .callout: pad = (body * 0.5, body * 0.5)
-        case .code: pad = (13.5 * 0.5, 13.5 * 0.5)
-        case .file: pad = (3 + 6, 3 + 6)
-        case .page(let p): pad = p.display == .card ? (3 + 8, 3 + 8) : (3 + 2, 3 + 2)
-        case .collection: pad = (3 + 12, 3 + 12)
-        case .image, .table, .bookmark, .unknown: pad = (3 + 8, 3 + 8)
-        default: pad = (3, 3)
+            return (top, 0)
+        case .quote: return (body * 0.35, body * 0.35)
+        case .callout: return (body * 0.5, body * 0.5)
+        case .code: return (13.5 * 0.5, 13.5 * 0.5)
+        case .file: return (6, 6)
+        case .page(let p): return p.display == .card ? (8, 8) : (2, 2)
+        case .collection: return (12, 12)
+        case .image, .table, .bookmark, .unknown: return (8, 8)
+        default: return (0, 0)
         }
-        return (pad.0 * scale, pad.1 * scale)
     }
 
     static func accessibilityName(_ block: Block) -> String {
@@ -190,7 +205,7 @@ struct BlockRowView: View {
     private var glyphLine: CGFloat { NSLayoutManager().defaultLineHeight(for: textStyle.font) }
 
     var body: some View {
-        let pad = BlockStyles.verticalPadding(for: block, document: model.style, scale: scale)
+        let pad = BlockStyles.verticalPadding(for: block, document: model.style, scale: scale, previous: row.previous)
         HStack(alignment: .top, spacing: 0) {
             Color.clear.frame(width: indent, height: 1)
             hoverGutter

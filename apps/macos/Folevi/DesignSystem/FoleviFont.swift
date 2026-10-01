@@ -190,6 +190,20 @@ extension Font {
 }
 
 extension View {
+    /// A CSS line-height for Instrument Sans text: the extra space goes between lines and, split in half, above
+    /// and below, so a block of text is as tall as the web's (e.g. body 16px × 1.55, Tailwind text-sm 13px × 1.43).
+    func uiLineHeight(_ lineHeight: CGFloat, size: CGFloat, weight: Font.Weight = .regular) -> some View {
+        cssLineHeight(lineHeight, family: .sans, size: size, weight: weight)
+    }
+
+    /// A CSS line-height for any Folevi family. A line-height tighter than the font's own (display headings at
+    /// leading-tight) trims the space above and below, as CSS does.
+    func cssLineHeight(_ lineHeight: CGFloat, family: FoleviFont.Family, size: CGFloat, weight: Font.Weight = .regular) -> some View {
+        let natural = NSLayoutManager().defaultLineHeight(for: FoleviFont.nsFont(family, size: size, weight: FoleviFont.Face(weight)))
+        let extra = lineHeight - natural
+        return lineSpacing(max(0, extra)).padding(.vertical, extra / 2)
+    }
+
     /// Letter spacing from a `FoleviTracking` token (a fraction of the point size).
     func foleviTracking(_ tracking: CGFloat, size: CGFloat) -> some View {
         self.tracking(tracking * size)

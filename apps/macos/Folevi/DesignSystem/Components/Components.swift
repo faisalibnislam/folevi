@@ -2,24 +2,23 @@ import SwiftUI
 
 // MARK: - Canvas
 
-/// `canvas` plus two very large, very soft radial glows, peach top-right, rose bottom-left
-/// (`.ui-canvas` on the web). Flat under Reduce Transparency.
+/// The web's `.ui-canvas`: the glass canvas grey with three soft radial lights over it (white top-right,
+/// a cool blue-grey bottom-left, a warm white in the middle). Flat under Reduce Transparency.
 struct CanvasBackground: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
             ZStack {
-                FoleviColor.canvas
+                FoleviGlass.canvas
                 if !reduceTransparency {
-                    glow(FoleviColor.glowPeach, strength: colorScheme == .dark ? 0.55 : 0.42)
-                        .frame(width: w * 1.3, height: h * 1.05)
-                        .position(x: w, y: -0.05 * h)
-                    glow(FoleviColor.glowRose, strength: colorScheme == .dark ? 0.5 : 0.38)
-                        .frame(width: w * 1.2, height: h * 1.15)
-                        .position(x: -0.05 * w, y: 1.05 * h)
+                    // radial-gradient(70vw 60vh at 85% -10%, light-a, transparent 70%)
+                    light(FoleviGlass.lightA, rx: 0.7 * w, ry: 0.6 * h, stop: 0.7).position(x: 0.85 * w, y: -0.1 * h)
+                    // radial-gradient(60vw 70vh at -10% 110%, light-b, transparent 70%)
+                    light(FoleviGlass.lightB, rx: 0.6 * w, ry: 0.7 * h, stop: 0.7).position(x: -0.1 * w, y: 1.1 * h)
+                    // radial-gradient(50vw 50vh at 50% 50%, light-c, transparent 75%)
+                    light(FoleviGlass.lightC, rx: 0.5 * w, ry: 0.5 * h, stop: 0.75).position(x: 0.5 * w, y: 0.5 * h)
                 }
             }
             .frame(width: w, height: h)
@@ -30,12 +29,11 @@ struct CanvasBackground: View {
         .accessibilityHidden(true)
     }
 
-    private func glow(_ color: Color, strength: Double) -> some View {
-        EllipticalGradient(gradient: Gradient(stops: [
-            .init(color: color.opacity(strength), location: 0),
-            .init(color: color.opacity(strength * 0.45), location: 0.35),
-            .init(color: color.opacity(0), location: 0.72),
-        ]), center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5)
+    /// A CSS elliptical radial gradient: `color` at the centre fading to clear at `stop` of the radii.
+    private func light(_ color: Color, rx: CGFloat, ry: CGFloat, stop: CGFloat) -> some View {
+        RadialGradient(colors: [color, color.opacity(0)], center: .center, startRadius: 0, endRadius: max(1, rx * stop))
+            .frame(width: 2 * rx, height: 2 * rx)
+            .scaleEffect(x: 1, y: ry / max(1, rx))
     }
 }
 
@@ -86,9 +84,11 @@ struct FoleviButtonStyle: ButtonStyle {
     var kind: FoleviButtonKind = .secondary
     var size: FoleviButtonSize = .medium
     var fullWidth = false
+    /// Overrides the size's side padding (the web's `px-3` links styled as buttons).
+    var horizontalPadding: CGFloat?
 
     func makeBody(configuration: Configuration) -> some View {
-        FoleviButtonBody(configuration: configuration, kind: kind, size: size, fullWidth: fullWidth)
+        FoleviButtonBody(configuration: configuration, kind: kind, size: size, fullWidth: fullWidth, horizontalPadding: horizontalPadding)
     }
 }
 
@@ -97,6 +97,7 @@ private struct FoleviButtonBody: View {
     let kind: FoleviButtonKind
     let size: FoleviButtonSize
     let fullWidth: Bool
+    var horizontalPadding: CGFloat?
     @State private var hovering = false
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -108,7 +109,7 @@ private struct FoleviButtonBody: View {
             .tracking(-0.005 * size.font)
             .lineLimit(1)
             .foregroundStyle(foreground)
-            .padding(.horizontal, size.padding)
+            .padding(.horizontal, horizontalPadding ?? size.padding)
             .frame(minHeight: size.height)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background { background(pressed: pressed) }
@@ -158,8 +159,9 @@ extension ButtonStyle where Self == FoleviButtonStyle {
     static var foleviPrimary: FoleviButtonStyle { FoleviButtonStyle(kind: .primary) }
     static var foleviSecondary: FoleviButtonStyle { FoleviButtonStyle(kind: .secondary) }
     static var foleviGhost: FoleviButtonStyle { FoleviButtonStyle(kind: .ghost) }
-    static func folevi(_ kind: FoleviButtonKind, _ size: FoleviButtonSize = .medium, fullWidth: Bool = false) -> FoleviButtonStyle {
-        FoleviButtonStyle(kind: kind, size: size, fullWidth: fullWidth)
+    static func folevi(_ kind: FoleviButtonKind, _ size: FoleviButtonSize = .medium, fullWidth: Bool = false,
+                       horizontalPadding: CGFloat? = nil) -> FoleviButtonStyle {
+        FoleviButtonStyle(kind: kind, size: size, fullWidth: fullWidth, horizontalPadding: horizontalPadding)
     }
 }
 

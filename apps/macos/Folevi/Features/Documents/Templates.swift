@@ -45,6 +45,7 @@ struct BuiltInTemplatesSection: View {
         VStack(alignment: .leading, spacing: 12) {
             if !templates.isEmpty {
                 Text("Built-in templates").font(.ui(12, .semibold)).textCase(.uppercase).tracking(0.06 * 12)
+                    .uiLineHeight(12 * 1.55, size: 12, weight: .semibold)
                     .foregroundStyle(FoleviColor.inkFaint).accessibilityAddTraits(.isHeader)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: columns), spacing: 12) {
                     ForEach(templates) { t in
@@ -54,6 +55,7 @@ struct BuiltInTemplatesSection: View {
                     }
                 }
                 Text("Your templates").font(.ui(12, .semibold)).textCase(.uppercase).tracking(0.06 * 12)
+                    .uiLineHeight(12 * 1.55, size: 12, weight: .semibold)
                     .foregroundStyle(FoleviColor.inkFaint).accessibilityAddTraits(.isHeader).padding(.top, 20)
             }
         }
@@ -88,7 +90,10 @@ private struct BuiltInTemplateCard: View {
                 TemplateTile(name: template.icon)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(template.name).font(.ui(16, .medium)).foregroundStyle(FoleviColor.ink)
-                    Text(template.description).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
+                        .uiLineHeight(16 * 1.55, size: 16, weight: .medium)
+                    Text(template.description).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
+                        .uiLineHeight(13 * 1.4286, size: 13)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }

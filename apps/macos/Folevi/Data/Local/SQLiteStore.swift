@@ -22,7 +22,7 @@ public actor SQLiteStore {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     public init(url: URL) throws {
         self.url = url
@@ -89,6 +89,9 @@ public actor SQLiteStore {
             """,
             "CREATE TABLE IF NOT EXISTS upload_sources (upload_id TEXT PRIMARY KEY, local_path TEXT NOT NULL, name TEXT, mime_type TEXT, kind TEXT)",
         ],
+        // Pages saved before card previews existed never get one from a delta pull: start every scope's pull
+        // over so each page comes back with its preview (cards keep their paragraphs and lists, as on the web).
+        3: ["DELETE FROM kv WHERE key LIKE 'cursor.%'"],
     ]
 
     private static func migrate(_ db: OpaquePointer) throws {

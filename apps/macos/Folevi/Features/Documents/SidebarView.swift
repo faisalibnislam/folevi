@@ -210,7 +210,7 @@ private struct SidebarNavigation: View {
                 let shown = starredDocs.enumerated().filter { $0.offset < Self.limit || $0.element.id == nav.openDocumentId }.map(\.element)
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(shown) { d in
-                        SidebarRow(title: Text(d.displayTitle), isActive: nav.openDocumentId == d.id) {
+                        SidebarRow(title: Text(d.displayTitle), isActive: nav.openDocumentId == d.id, iconWidth: 15) {
                             Image(systemName: "doc.text").font(.system(size: 12.5, weight: .medium))
                         } action: {
                             openDocument(d.id)
@@ -284,7 +284,7 @@ private struct SidebarNavigation: View {
     private func folderRow(_ f: FolderInfo) -> some View {
         HStack(spacing: 0) {
             SidebarRow(title: Text(f.name), isActive: nav.selection == .folder(f.id) && nav.openDocumentId == nil,
-                       isDropTarget: dropTarget == f.id) {
+                       isDropTarget: dropTarget == f.id, iconWidth: 13) {
                 FolderGlyph(color: f.color, size: 18)
             } action: {
                 nav.show(.folder(f.id))
@@ -319,7 +319,7 @@ private struct SidebarNavigation: View {
             }
             ForEach(shown) { t in
                 HStack(spacing: 0) {
-                    SidebarRow(title: Text(t.name), isActive: nav.selection == .tag(t.id) && nav.openDocumentId == nil) {
+                    SidebarRow(title: Text(t.name), isActive: nav.selection == .tag(t.id) && nav.openDocumentId == nil, iconWidth: 15) {
                         Image(systemName: "number").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Color.folevi(tag: t.color))
                     } action: {
                         nav.show(.tag(t.id))
@@ -741,6 +741,9 @@ struct SidebarRow<Icon: View>: View {
     var count: Int?
     var isActive: Bool
     var isDropTarget = false
+    /// The icon's width: the web lays each icon out at its own size (16 for the fixed items, 15 for pages and
+    /// tags, 13 for a folder's glyph), so labels line up with the web's.
+    var iconWidth: CGFloat = 16
     @ViewBuilder var icon: Icon
     var action: () -> Void
     @State private var hovering = false
@@ -751,7 +754,7 @@ struct SidebarRow<Icon: View>: View {
                 icon
                     .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(isActive || hovering || isDropTarget ? FoleviColor.heading : FoleviColor.inkMuted)
-                    .frame(width: 18)
+                    .frame(width: iconWidth)
                     .accessibilityHidden(true)
                 title
                     .font(.ui(13.5, isActive ? .semibold : .regular))

@@ -18,7 +18,7 @@ final class SQLiteStoreTests: XCTestCase {
     func testMigrationsApplied() async throws {
         let store = try SQLiteStore(url: dir.appendingPathComponent("a.sqlite"))
         let applied = try await store.appliedMigrations()
-        XCTAssertEqual(applied, [1, 2])
+        XCTAssertEqual(applied, [1, 2, 3])
     }
 
     func testKeyValueAndDocumentsCRUD() async throws {

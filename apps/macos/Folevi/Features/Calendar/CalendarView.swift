@@ -58,6 +58,7 @@ struct CalendarView: View {
                             grid
                             aside.frame(width: wide ? 300 : nil)
                         }
+                        .fixedSize(horizontal: false, vertical: true)
                     } else {
                         agenda
                     }
@@ -111,11 +112,13 @@ struct CalendarView: View {
                 ForEach(0..<7, id: \.self) { i in
                     Text(BrowseFormat.calendarDate("2024-01-0\(1 + i)", .weekdayShort))
                         .font(.ui(12, .medium))
+                        .uiLineHeight(16, size: 12, weight: .medium)
                         .foregroundStyle(FoleviColor.inkMuted)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                 }
             }
+            .padding(.bottom, 1)
             .background(FoleviColor.surface)
             .overlay(alignment: .bottom) { FoleviColor.line.frame(height: 1) }
             ForEach(0..<6, id: \.self) { week in
@@ -125,7 +128,11 @@ struct CalendarView: View {
                         if days.indices.contains(i) { dayCell(days[i], lastColumn: col == 6) }
                     }
                 }
+                // A week is as tall as its tallest day, and every day in it fills that height.
+                .fixedSize(horizontal: false, vertical: true)
             }
+            // The card stretches to the side column's height (CSS grid's stretch); the weeks don't.
+            Spacer(minLength: 0)
         }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .foleviCard(radius: 8)
@@ -141,7 +148,7 @@ struct CalendarView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(BrowseFormat.calendarDate("\(month)-01", .monthYear)))
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func dayCell(_ date: String, lastColumn: Bool) -> some View {
@@ -175,10 +182,9 @@ struct CalendarView: View {
                 }
             }
             .padding(.top, 2)
-            Spacer(minLength: 0)
         }
         .padding(6)
-        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 104, maxHeight: .infinity, alignment: .topLeading)
         .background(dropDay == date ? FoleviColor.accentSoft : isSelected ? FoleviColor.accentSoft.opacity(0.4) : inMonth ? .clear : FoleviColor.surface.opacity(0.6))
         .overlay(alignment: .bottom) { FoleviColor.line.frame(height: 1) }
         .overlay(alignment: .trailing) { if !lastColumn { FoleviColor.line.frame(width: 1) } }
@@ -206,12 +212,13 @@ struct CalendarView: View {
         return VStack(alignment: .leading, spacing: 0) {
             Text(BrowseFormat.calendarDate(selected, .weekdayMonthDay))
                 .font(.ui(16, .semibold))
+                .uiLineHeight(16 * 1.55, size: 16, weight: .semibold)
                 .foregroundStyle(FoleviColor.heading)
                 .accessibilityAddTraits(.isHeader)
             Group {
                 if list.isEmpty {
                     Text("No tasks due. Drag a task here to schedule it.")
-                        .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        .font(.ui(13)).uiLineHeight(13 * 1.4286, size: 13).foregroundStyle(FoleviColor.inkMuted)
                         .padding(.horizontal, 16).padding(.vertical, 12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .foleviCard(radius: 8)
@@ -226,6 +233,7 @@ struct CalendarView: View {
             .padding(.top, 12)
             Text("Drag tasks between days to reschedule, or use a task’s edit button to pick a date. Arrow keys move between days.")
                 .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
+                .uiLineHeight(16, size: 12)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 12)
             unscheduledSection(target: selected)
@@ -243,7 +251,7 @@ struct CalendarView: View {
         return VStack(alignment: .leading, spacing: 24) {
             if !overdue.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Overdue").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.destructive).accessibilityAddTraits(.isHeader)
+                    Text("Overdue").font(.ui(13, .semibold)).uiLineHeight(13 * 1.4286, size: 13, weight: .semibold).foregroundStyle(FoleviColor.destructive).accessibilityAddTraits(.isHeader)
                     TaskList(items: overdue, today: today, openDocument: openDocument, onEdit: { editing = $0 })
                 }
                 .accessibilityElement(children: .contain)
@@ -253,9 +261,9 @@ struct CalendarView: View {
                 let list = items(on: d)
                 VStack(alignment: .leading, spacing: 8) {
                     Text(d == today ? String(localized: "Today") : BrowseFormat.calendarDate(d, .weekdayMonthDay))
-                        .font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                        .font(.ui(13, .semibold)).uiLineHeight(13 * 1.4286, size: 13, weight: .semibold).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
                     if list.isEmpty {
-                        Text("Nothing due.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("Nothing due.").font(.ui(13)).uiLineHeight(13 * 1.4286, size: 13).foregroundStyle(FoleviColor.inkMuted)
                             .padding(.horizontal, 16).padding(.vertical, 12)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .foleviCard(radius: 8)
@@ -281,9 +289,9 @@ struct CalendarView: View {
         let list = unscheduled
         let label = target == today ? String(localized: "today") : BrowseFormat.calendarDate(target, .monthDay)
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Unscheduled").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+            Text("Unscheduled").font(.ui(13, .semibold)).uiLineHeight(13 * 1.4286, size: 13, weight: .semibold).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
             if list.isEmpty {
-                Text("Every open task has a date.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                Text("Every open task has a date.").font(.ui(13)).uiLineHeight(13 * 1.4286, size: 13).foregroundStyle(FoleviColor.inkMuted)
             } else {
                 TaskList(items: Array(list.prefix(8)), today: today, openDocument: openDocument, onEdit: { editing = $0 }) { t in
                     Button { reschedule(t.blockId, to: target) } label: {
@@ -299,7 +307,7 @@ struct CalendarView: View {
                     TasksRoute.pending = .all
                     openTasks?()
                 } label: {
-                    Text(CalendarMonth.moreUnscheduled(list.count - 8)).font(.ui(14)).underline().foregroundStyle(FoleviColor.accent)
+                    Text(CalendarMonth.moreUnscheduled(list.count - 8)).font(.ui(13)).uiLineHeight(13 * 1.4286, size: 13).underline().foregroundStyle(FoleviColor.accent)
                 }
                 .buttonStyle(.plain)
             }

@@ -106,7 +106,7 @@ enum DragAutomation {
         try? await Task.sleep(for: .seconds(0.8))
         guard let frame = editor.drag.rowFrames[row.id] else { return }
         let scale = CGFloat(editor.app.editorScale)
-        let pad = BlockStyles.verticalPadding(for: row.block)
+        let pad = BlockStyles.verticalPadding(for: row.block, previous: row.previous)
         let lh = BlockStyles.lineHeight(BlockStyles.style(for: row.block, document: editor.style, scale: scale))
         let indent = CGFloat(row.depth) * BlockMetrics.indent(scale)
         let gripInBlocks = CGPoint(x: frame.minX + indent + BlockMetrics.gutter - 15, y: frame.minY + pad.top + max(24, lh) / 2)

@@ -8,7 +8,7 @@ import { artVars } from "../product/Replica";
 import { useSiteAmbient } from "../SiteShell";
 import { cx } from "../ui";
 import type { HeroEditorProps } from "./HeroEditor";
-import { HERO_STYLES, heroBand as band, heroBandSet as bandSet, heroGlow as glow } from "./heroStyles";
+import { HERO_PHONE_MEDIA, HERO_STYLES, heroBand as band, heroBandSet as bandSet, heroGlow as glow, heroPhone as phone } from "./heroStyles";
 
 /** The editable note loads after the page has painted (on idle, or at once when the visitor reaches for it). */
 let editorModule: Promise<ComponentType<HeroEditorProps>> | null = null;
@@ -39,8 +39,10 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
   // The note's style lights the site's chrome too, as a note's style lights the app's glass.
   useSiteAmbient(glow(art));
 
-  // The first style's cover is the largest thing above the fold: fetch it early, at the size it shows.
-  preload(band(HERO_STYLES[0]!), { as: "image", imageSrcSet: bandSet(HERO_STYLES[0]!), imageSizes: BAND_SIZES, fetchPriority: "high" });
+  // The first style's cover is the largest thing above the fold: fetch it early, at the size it shows, and
+  // only the one the screen will use (the phone crop below 640 px, the band above).
+  preload(phone(HERO_STYLES[0]!), { as: "image", fetchPriority: "high", media: HERO_PHONE_MEDIA });
+  preload(band(HERO_STYLES[0]!), { as: "image", imageSrcSet: bandSet(HERO_STYLES[0]!), imageSizes: BAND_SIZES, fetchPriority: "high", media: "(min-width: 640px)" });
 
   // The style's colours also tint the rest of the home page (the section pictures and wells, via .mk-home).
   const stageRef = useRef<HTMLDivElement>(null);
@@ -110,6 +112,7 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
                   src={band(layer.art)}
                   srcSet={bandSet(layer.art)}
                   sizes={BAND_SIZES}
+                  phoneSrc={phone(layer.art)}
                   first={layer.key === 0}
                   priority={layer.key === 0}
                   onShown={() => shown(layer.key)}
@@ -203,6 +206,7 @@ function FadeImage({
   src,
   srcSet,
   sizes,
+  phoneSrc,
   first,
   priority,
   className,
@@ -211,6 +215,8 @@ function FadeImage({
   src: string;
   srcSet?: string;
   sizes?: string;
+  /** A crop for phones, used below 640 px. */
+  phoneSrc?: string;
   first: boolean;
   priority?: boolean;
   className?: string;
@@ -223,20 +229,22 @@ function FadeImage({
     onShown?.();
   };
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- sized artwork from /public, cross-faded by hand
-    <img
-      src={src}
-      srcSet={srcSet}
-      sizes={sizes}
-      alt=""
-      decoding="async"
-      fetchPriority={priority ? "high" : undefined}
-      ref={(node) => {
-        if (node?.complete && node.naturalWidth) show();
-      }}
-      onLoad={show}
-      data-ready={ready ? "true" : undefined}
-      className={cx("mk-hero-layer", className)}
-    />
+    <picture>
+      {phoneSrc ? <source media={HERO_PHONE_MEDIA} srcSet={phoneSrc} /> : null}
+      <img
+        src={src}
+        srcSet={srcSet}
+        sizes={sizes}
+        alt=""
+        decoding="async"
+        fetchPriority={priority ? "high" : undefined}
+        ref={(node) => {
+          if (node?.complete && node.naturalWidth) show();
+        }}
+        onLoad={show}
+        data-ready={ready ? "true" : undefined}
+        className={cx("mk-hero-layer", className)}
+      />
+    </picture>
   );
 }

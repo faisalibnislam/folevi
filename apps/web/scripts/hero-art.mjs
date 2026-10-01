@@ -4,6 +4,8 @@
 //   <id>-band.webp       1080 × 450: the note's cover band on regular (1×) screens
 //   <id>-band-lg.webp    1440 × 600: the same where the sheet is wider than 1080 px (desktop, 1×)
 //   <id>-band-2x.webp    2160 × 900: the same on Retina (2×) screens
+//   <id>-phone.webp       720 × 520: the cover on phones (narrower than 640 px), cropped to the phone's shape.
+//                         One size for every phone: it shows more of the picture than the band did, in fewer bytes.
 //   <id>-glow.webp        200 px: the backdrop behind the note, drawn heavily blurred
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -25,6 +27,7 @@ for (const id of IDS) {
   await sharp(input).resize(1080, 450, { fit: "cover" }).webp(webp).toFile(resolve(out, `${id}-band.webp`));
   await sharp(input).resize(1440, 600, { fit: "cover" }).webp({ ...webp, quality: 70 }).toFile(resolve(out, `${id}-band-lg.webp`));
   await sharp(input).resize(2160, 900, { fit: "cover" }).webp({ ...webp, quality: 62 }).toFile(resolve(out, `${id}-band-2x.webp`));
+  await sharp(input).resize(720, 520, { fit: "cover" }).webp({ ...webp, quality: 56 }).toFile(resolve(out, `${id}-phone.webp`));
   await sharp(input).resize(200, 200, { fit: "cover" }).webp({ ...webp, quality: 55 }).toFile(resolve(out, `${id}-glow.webp`));
 }
 console.log(`wrote hero artwork for ${IDS.length} styles to ${out}`);

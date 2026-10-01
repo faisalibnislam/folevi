@@ -8,5 +8,9 @@ export const HERO_STYLES = ["art-03", "art-01", "art-30", "art-49", "art-09"].ma
 export const heroBand = (art: CoverArt) => `/marketing/hero/${art.id}-band.webp`;
 export const heroBandSet = (art: CoverArt) =>
   `${heroBand(art)} 1080w, /marketing/hero/${art.id}-band-lg.webp 1440w, /marketing/hero/${art.id}-band-2x.webp 2160w`;
+/** The cover on phones (narrower than 640 px): cropped to the phone's shape, 720 × 520. */
+export const heroPhone = (art: CoverArt) => `/marketing/hero/${art.id}-phone.webp`;
+/** Below this width the hero shows the phone crop. */
+export const HERO_PHONE_MEDIA = "(max-width: 639px)";
 /** A 200 px copy for the light behind the note (drawn heavily blurred) and the style picker's tiles. */
 export const heroGlow = (art: CoverArt) => `/marketing/hero/${art.id}-glow.webp`;

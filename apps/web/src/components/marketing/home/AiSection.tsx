@@ -1,28 +1,15 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  BookOpen,
-  Check,
-  ChevronRight,
-  CornerDownLeft,
-  FileText,
-  Languages,
-  Lightbulb,
-  Maximize2,
-  Minimize2,
-  PenLine,
-  RotateCcw,
-  SpellCheck,
-  Wand2,
-  X,
-} from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AI_LANGUAGES } from "@/components/ai/languages";
-import { artById, artThumb, artVars } from "../product/Replica";
+import { artById, artThumb } from "../product/Replica";
 import { Icon } from "../icons";
 import { AskDemo } from "../demos/AskDemo";
 import { WriteDemo } from "../demos/WriteDemo";
 import { FlowchartDemo } from "../demos/FlowchartDemo";
+import { EditDemo } from "../demos/EditDemo";
+import { CatchUpDemo } from "../demos/CatchUpDemo";
+import { TitleDemo } from "../demos/TitleDemo";
 import { Kbd, SectionHeading, box, container, cx } from "../ui";
 
 /*
@@ -82,7 +69,7 @@ export function AiSection() {
             eyebrow="Edit with ⌘J"
             title="Select text and tell it what to change."
             art="art-16"
-            picture={<EditPicture />}
+            picture={<EditDemo />}
             points={[
               <>
                 Improve the writing, fix spelling, make it shorter, longer or simpler, or make it
@@ -160,13 +147,13 @@ export function AiSection() {
         <div className="mt-16 grid gap-6 sm:mt-20 lg:grid-cols-2">
           <SmallFeature
             art="art-30"
-            picture={<CatchUpPicture />}
+            picture={<CatchUpDemo />}
             title="Catch me up"
             body="On Home, one click writes a short brief of your week: what changed in your notes, and the tasks due next, with links to each note."
           />
           <SmallFeature
             art="art-01"
-            picture={<TitlePicture />}
+            picture={<TitleDemo />}
             title="Titles"
             body="Select words in a title for Edit with AI, or let Folevi suggest a title from what the note says. Untitled notes offer it on their own."
           />
@@ -316,190 +303,6 @@ function SmallFeature({
       </div>
       <h3 className="mk-h3 mt-5 text-[17px]">{title}</h3>
       <p className="mt-1.5 max-w-[48ch] text-[14.5px] leading-relaxed text-muted">{body}</p>
-    </div>
-  );
-}
-
-/* Shared pieces of the AI popover ------------------------------------------------------------------ */
-
-const AI_VIOLET = "text-[#7c6cf0]";
-
-function AiFoot({
-  children = "AI can make mistakes. Sent to Google Gemini.",
-}: {
-  children?: ReactNode;
-}) {
-  return (
-    <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">
-      {children}
-    </p>
-  );
-}
-
-function SourceChip({ n, title }: { n: number; title: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
-      <span className="font-semibold text-muted">{n}</span>
-      <FileText size={12} className="text-muted" />
-      {title}
-    </span>
-  );
-}
-
-/* Edit with ⌘J ------------------------------------------------------------------------------------- */
-
-const EDIT_ROWS: Array<{ icon: ReactNode; label: string; more?: boolean }> = [
-  { icon: <Wand2 size={15} />, label: "Improve writing" },
-  { icon: <SpellCheck size={15} />, label: "Fix spelling & grammar" },
-  { icon: <Minimize2 size={15} />, label: "Make shorter" },
-  { icon: <Maximize2 size={15} />, label: "Make longer" },
-  { icon: <BookOpen size={15} />, label: "Simplify language" },
-  { icon: <PenLine size={15} />, label: "Sound professional" },
-  { icon: <PenLine size={15} />, label: "Sound casual" },
-  { icon: <Languages size={15} />, label: "Translate to…", more: true },
-];
-
-function EditPicture() {
-  const selected =
-    "the swap moved to the library hall because the café is closed for repairs, so everyone should bring their seeds there";
-  return (
-    <div
-      role="img"
-      aria-label="A note with a sentence selected and the AI composer open under it. It says Editing, then the selected text, and lists Improve writing, Fix spelling and grammar, Make shorter, Make longer, Simplify language, Sound professional, Sound casual and Translate to."
-      className="mx-auto max-w-[480px]"
-    >
-      <div aria-hidden="true">
-        <div
-          className="mk-note rounded-[14px] px-5 pb-6 pt-5 text-[14px] leading-[1.65] shadow-(--glass-edge)"
-          style={{ ...artVars(artById("art-16")), fontFamily: "var(--font-serif)" }}
-        >
-          <p className="mk-note-h text-[19px]">Swap day update</p>
-          <p className="mt-2">
-            Quick note for the group:{" "}
-            <span className="rounded-[2px] bg-[color-mix(in_oklab,#7c6cf0_24%,transparent)]">
-              {selected}
-            </span>
-            .
-          </p>
-        </div>
-        <div className="mk-app-pop relative z-10 -mt-3 ml-4 overflow-hidden rounded-[14px] text-[13.5px] sm:ml-10">
-          <p className="truncate border-b border-(--color-line) px-3.5 py-2 text-[12px] text-muted">
-            <span className="font-semibold">Editing:</span> “{selected}”
-          </p>
-          <div className="flex items-center gap-2 px-3 py-2.5">
-            <AiIcon size={16} className={cx("flex-none", AI_VIOLET)} />
-            <span className="min-w-0 flex-1 truncate text-[14px] text-faint">
-              Ask AI to edit the selected text…
-            </span>
-            <X size={15} className="flex-none text-muted" />
-          </div>
-          <ul className="border-t border-(--color-line) p-1.5">
-            <li className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
-              Edit or review
-            </li>
-            {EDIT_ROWS.map((row, i) => (
-              <li
-                key={row.label}
-                className={cx(
-                  "flex items-center gap-2.5 rounded-[8px] px-2.5 py-[7px]",
-                  i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink",
-                )}
-              >
-                <span className="text-muted">{row.icon}</span>
-                <span className="min-w-0 flex-1 truncate">{row.label}</span>
-                {row.more ? <ChevronRight size={14} className="text-faint" /> : null}
-                {i === 0 ? <CornerDownLeft size={13} className="text-faint" /> : null}
-              </li>
-            ))}
-          </ul>
-          <AiFoot />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* Catch me up -------------------------------------------------------------------------------------- */
-
-function CatchUpPicture() {
-  return (
-    <div
-      role="img"
-      aria-label="The Catch me up brief on Home, titled Your week. This week: the swap moved to the library hall, and the trip is booked. Up next: print seed labels by Friday and book the ferry. Three notes are linked as sources."
-      className="mx-auto w-full max-w-[420px]"
-    >
-      <div
-        aria-hidden="true"
-        className="mk-app-pop rounded-[16px] p-5 text-[13px] leading-relaxed text-ink"
-      >
-        <div className="mb-2 flex items-center gap-2">
-          <AiIcon size={15} className={AI_VIOLET} />
-          <p className="mk-display flex-1 text-[18px]">Your week</p>
-          <RotateCcw size={14} className="text-muted" />
-          <X size={15} className="ml-2 text-muted" />
-        </div>
-        <p className="mt-2 font-semibold text-(--color-heading)">This week</p>
-        <ul className="mt-1 list-disc space-y-0.5 pl-5">
-          <li>Swap day moved to the library hall [1].</li>
-          <li>The coast trip is booked for the 18th [2].</li>
-        </ul>
-        <p className="mt-2.5 font-semibold text-(--color-heading)">Up next</p>
-        <ul className="mt-1 list-disc space-y-0.5 pl-5">
-          <li>Print seed labels, due Friday [1]</li>
-          <li>Book the ferry, due Monday [3]</li>
-        </ul>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <SourceChip n={1} title="Seed library" />
-          <SourceChip n={2} title="Trip sketch" />
-          <SourceChip n={3} title="Travel list" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* Titles ------------------------------------------------------------------------------------------- */
-
-function TitlePicture() {
-  return (
-    <div
-      role="img"
-      aria-label="A note title with its words selected, and the title AI menu open under it: Suggest a new title from the note, Improve writing, Fix spelling and grammar, Make shorter."
-      className="mx-auto w-full max-w-[400px]"
-    >
-      <div aria-hidden="true">
-        <p className="mk-display text-[24px] text-(--color-heading)">
-          <span className="rounded-[2px] bg-[color-mix(in_oklab,#7c6cf0_24%,transparent)]">
-            notes from tuesdays call w/ ines
-          </span>
-        </p>
-        <div className="mk-app-pop mt-2.5 overflow-hidden rounded-[14px] text-[13.5px]">
-          <div className="flex items-center gap-2 px-3 py-2.5">
-            <AiIcon size={16} className={cx("flex-none", AI_VIOLET)} />
-            <span className="min-w-0 flex-1 truncate text-faint">Ask AI to edit the title…</span>
-          </div>
-          <ul className="border-t border-(--color-line) p-1.5">
-            {[
-              { icon: <Lightbulb size={15} />, label: "Suggest a new title from the note" },
-              { icon: <Wand2 size={15} />, label: "Improve writing" },
-              { icon: <SpellCheck size={15} />, label: "Fix spelling & grammar" },
-              { icon: <Minimize2 size={15} />, label: "Make shorter" },
-            ].map((row, i) => (
-              <li
-                key={row.label}
-                className={cx(
-                  "flex items-center gap-2.5 rounded-[8px] px-2.5 py-[7px]",
-                  i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink",
-                )}
-              >
-                <span className="text-muted">{row.icon}</span>
-                <span className="min-w-0 flex-1 truncate">{row.label}</span>
-                {i === 0 ? <Check size={13} className="text-faint" /> : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
     </div>
   );
 }

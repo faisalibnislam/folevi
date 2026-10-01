@@ -129,12 +129,14 @@ struct RecordingTarget: Identifiable, Equatable {
 }
 
 struct PopupState: Equatable {
-    enum Kind { case slash, pageLink }
+    enum Kind { case slash, pageLink, mention }
     var kind: Kind
     var blockId: String
     var anchor: Int
     var query = ""
     var selectedIndex = 0
+    /// Where the trigger character sits (its bottom left, in the row's coordinates): the list hangs below it.
+    var origin: CGPoint?
 }
 
 struct PageChoice: Identifiable, Equatable {
@@ -164,25 +166,38 @@ final class EditorModel {
     var selectedBlockIds: Set<String> = []
     var selectionAnchor: String?
     var popup: PopupState?
+    /// The "/", "[[" or "@" dismissed with Escape (kind and start), so it stays closed until it changes.
+    @ObservationIgnored var dismissedTrigger: String?
+    /// The grip's block menu, while it is open.
+    var blockMenu: BlockMenuRequest?
+    /// The floating formatting toolbar over a text selection (SelectionBubble.swift).
+    var bubble: BubbleState?
     /// "Date…": the date picker waiting for a pick (EditorInserts.swift).
     var datePick: DatePickRequest?
     /// "Image from Unsplash": the block the picked photo goes after, while the picker is open.
     var unsplashAnchor: String?
     var activeMarks: Set<String> = []
-    var findQuery = "" { didSet { updateFind() } }
-    var findMatches: [String] = []
+    var findQuery = "" { didSet { if findQuery != oldValue { findIndex = 0; updateFind() } } }
+    /// Every occurrence of the query, in document order (at most 1,000, as on the web).
+    var findMatches: [FindMatch] = []
     var findIndex = 0
+    /// "Match case" in the find bar.
+    var findCaseSensitive = false { didSet { if findCaseSensitive != oldValue { findIndex = 0; updateFind() } } }
     /// The find bar shows its Replace row (⌘⌥F).
     var findShowsReplace = false
     var titleDraft = ""
     var pendingBookmarkBlock: String?
+    /// "Add a bookmark" is open; the bookmark goes after this block.
+    var bookmarkPrompt: String?
+    /// The to-do whose task details popover is open (its chip, or ⌘⇧D).
+    var taskDetailsFor: String?
     /// Where a recording goes while the recorder sheet is open ("/record").
     var recordingTarget: RecordingTarget?
     var showLinkPrompt = false
     var linkDraft = ""
     var containerFocusToken = UUID()
     /// True once the editor holds the document's real content. No edit (and no diff) is ever sent
-    /// before this — an unhydrated editor must never be mistaken for an empty document.
+    /// before this: an unhydrated editor must never be mistaken for an empty document.
     private(set) var isHydrated = false
     /// Pointer-driven block drag and drop (and Insert-tile drags) for this document.
     @ObservationIgnored let drag = BlockDragController()
@@ -595,12 +610,20 @@ final class EditorModel {
         if popup?.blockId == blockId {
             // Keep popups while clicking inside them; they close on commit/escape.
         }
+        // The formatting toolbar closes when the text loses the keyboard (not while its link field has it).
+        if let b = bubble, b.blockId == blockId, b.mode != .link {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(120))
+                guard let self, let current = self.bubble, current.blockId == blockId, current.mode != .link else { return }
+                if let tv = self.textView(blockId), tv.window?.firstResponder === tv { return }
+                self.bubble = nil
+            }
+        }
     }
 
     func selectionChanged(blockId: String, range: NSRange, view: BlockTextView) {
         let marks = view.activeMarks()
         if marks != activeMarks { activeMarks = marks }
-        if let p = popup, p.blockId == blockId, range.location < p.anchor { popup = nil }
         if blockId == "__title__" {
             let words: NSRange? = range.length > 0 ? range : nil
             if ai.titleSelection != words { ai.titleSelection = words }
@@ -714,6 +737,12 @@ final class EditorModel {
         }
     }
 
+    /// Return (the web's BlockKeymap Enter): an empty list item, quote, toggle or callout leaves the list
+    /// (outdenting first when nested); list items continue the list; toggles, quotes and callouts continue
+    /// with text; a heading continues with text from its end and stays a heading when split in the middle;
+    /// a paragraph keeps its styling. At the start of a block an empty line opens above. The new block takes
+    /// over the block's nested blocks (they follow it, as in the web's flat list), except in an open
+    /// toggle, where it becomes the first nested line.
     private func split(blockId: String, left: [InlineNode], right: [InlineNode], atStart: Bool) {
         guard var block = blocks[blockId] else { return }
         let listLike: Bool = {
@@ -732,38 +761,53 @@ final class EditorModel {
             }
             return
         }
+        if atStart {
+            // Caret at the start of a non-empty block: an empty line opens above.
+            let siblings = self.siblings(of: block)
+            let idx = siblings.firstIndex { $0.id == blockId } ?? 0
+            let prevId = idx > 0 ? siblings[idx - 1].id : nil
+            let newBlock = Block(id: ULID.make(), parentId: block.parentId, rank: rank(parentId: block.parentId, after: prevId), content: .paragraph(ParagraphProps()))
+            commit(upserts: [newBlock], focus: FocusRequest(blockId: blockId, caret: .start), actionName: String(localized: "New Block"))
+            return
+        }
         let newContent: BlockContent = {
             switch block.content {
             case .bulleted: return .bulleted(BulletedProps())
             case .numbered: return .numbered(NumberedProps())
             case .todo: return .todo(TodoProps(checked: false))
+            case .heading(let h):
+                // At the end a heading continues with text; in the middle both halves stay headings.
+                return right.isEmpty ? .paragraph(ParagraphProps()) : .heading(h)
+            case .paragraph(let p): return .paragraph(p)
             default: return .paragraph(ParagraphProps())
             }
         }()
-        if atStart {
-            // Caret at the start of a non-empty block: open an empty block above.
-            let siblings = self.siblings(of: block)
-            let idx = siblings.firstIndex { $0.id == blockId } ?? 0
-            let prevId = idx > 0 ? siblings[idx - 1].id : nil
-            let newBlock = Block(id: ULID.make(), parentId: block.parentId, rank: rank(parentId: block.parentId, after: prevId), content: newContent)
-            commit(upserts: [newBlock], focus: FocusRequest(blockId: blockId, caret: .start), actionName: String(localized: "New Block"))
-            return
-        }
         block.text = left
-        var parentId = block.parentId
-        var afterId: String? = blockId
-        if case .toggle(let p) = block.content, !p.collapsed {
-            // New block goes inside an expanded toggle, as its first child.
-            parentId = blockId
-            afterId = nil
-        } else if !children(of: blockId).isEmpty {
-            parentId = blockId
-            afterId = nil
-        }
-        var newBlock = Block(id: ULID.make(), parentId: parentId, rank: "V", text: right, content: newContent)
+        var newBlock = Block(id: ULID.make(), parentId: block.parentId, rank: "V", text: right, content: newContent)
         blocks[blockId] = block
-        newBlock.rank = rank(parentId: parentId, after: afterId)
-        commit(upserts: [block, newBlock], focus: FocusRequest(blockId: newBlock.id, caret: .start), actionName: String(localized: "New Block"))
+        var upserts = [block]
+        if case .toggle(let p) = block.content, !p.collapsed {
+            // In an open toggle the new line is its first nested line.
+            newBlock.parentId = blockId
+            newBlock.rank = rank(parentId: blockId, after: nil)
+            blocks[newBlock.id] = newBlock
+            upserts.append(newBlock)
+        } else {
+            newBlock.rank = rank(parentId: block.parentId, after: blockId)
+            blocks[newBlock.id] = newBlock
+            upserts.append(newBlock)
+            // The block's nested lines now follow the new line.
+            var after: String?
+            for child in children(of: blockId) {
+                var c = child
+                c.parentId = newBlock.id
+                c.rank = rank(parentId: newBlock.id, after: after, moving: c.id)
+                blocks[c.id] = c
+                upserts.append(c)
+                after = c.id
+            }
+        }
+        commit(upserts: upserts, focus: FocusRequest(blockId: newBlock.id, caret: .start), actionName: String(localized: "New Block"))
     }
 
     private func backspaceAtStart(_ blockId: String) -> Bool {
@@ -813,7 +857,10 @@ final class EditorModel {
             commit(deletes: [blockId], actionName: String(localized: "Delete Block"))
             select(prev.id, extend: false)
         } else {
-            select(prev.id, extend: false)
+            // As on the web (ProseMirror's joinBackward): Backspace at the start of a line removes the
+            // object (image, divider, table…) right above it. ⌘Z brings it back.
+            let removed = [prev.id] + Tree.descendantIds(allNodes(), rootId: prev.id)
+            commit(deletes: removed, focus: FocusRequest(blockId: blockId, caret: .start), actionName: String(localized: "Delete Block"), explicitDelete: true)
         }
         return true
     }
@@ -1104,14 +1151,14 @@ final class EditorModel {
         return ""
     }
 
-    /// Markdown shortcuts typed at the start of a block ("# ", "- ", "[] ", "> ", "---", "```"…).
+    /// Markdown shortcuts typed at the start of a block (the web's MarkdownShortcuts): "# " to "### ",
+    /// "- ", "* ", "+ ", "1. ", "[] ", "[x] ", "> ", "!! " (callout) and "```lang " work in any text
+    /// block; "---" and "***" (a divider) in a paragraph.
     func markdownShortcut(prefix: String, blockId: String, rest: [InlineNode]) -> Bool {
-        guard var b = blocks[blockId], !isReadOnly else { return false }
-        guard case .paragraph = b.content else {
-            // Only "# " style shortcuts on plain paragraphs.
-            return false
-        }
+        guard var b = blocks[blockId], !isReadOnly, b.content.carriesText else { return false }
+        let isParagraph: Bool = { if case .paragraph = b.content { return true } else { return false } }()
         let type: String
+        var language = "plaintext"
         switch prefix {
         case "#": type = "heading1"
         case "##": type = "heading2"
@@ -1119,11 +1166,16 @@ final class EditorModel {
         case "-", "*", "+": type = "bulleted"
         case "1.", "1)": type = "numbered"
         case "[]", "[ ]": type = "todo"
-        case "[x]", "[X]": type = "todo-checked"
+        case "[x]": type = "todo-checked"
         case ">": type = "quote"
-        case "---": type = "divider"
-        case "```": type = "code"
-        default: return false
+        case "!!": type = "callout"
+        case "---", "***":
+            guard isParagraph else { return false }
+            type = "divider"
+        default:
+            guard prefix.hasPrefix("```"), prefix.dropFirst(3).allSatisfy({ $0.isASCII && $0.isLowercase }) else { return false }
+            type = "code"
+            if prefix.count > 3 { language = String(prefix.dropFirst(3)) }
         }
         switch type {
         case "divider":
@@ -1135,7 +1187,7 @@ final class EditorModel {
             n.rank = rank(parentId: b.parentId, after: blockId)
             commit(upserts: [b, n], focus: FocusRequest(blockId: n.id, caret: .start), actionName: String(localized: "Divider"))
         case "code":
-            b.content = .code(CodeProps(language: "plaintext", code: ""))
+            b.content = .code(CodeProps(language: language, code: ""))
             b.text = []
             commit(upserts: [b], focus: FocusRequest(blockId: blockId, caret: .start), actionName: String(localized: "Code Block"))
         case "todo-checked":
@@ -1150,89 +1202,140 @@ final class EditorModel {
         return true
     }
 
-    // MARK: Popups (slash menu, page-link picker)
+    // MARK: Popups ("/" block menu, "[[" page links, "@" people and dates)
 
-    func openSlash(blockId: String, at location: Int) {
-        guard !isReadOnly else { return }
-        popup = PopupState(kind: .slash, blockId: blockId, anchor: location)
+    /// The web's Triggers plugin: whenever the text before the caret changes, look for "/" (after a space or
+    /// at the start, up to 24 word characters), "[[" (up to 60 characters, no "]") or "@" (up to 30 word
+    /// characters, spaces, dots or hyphens). `text` has inline objects as U+FFFC. Escape dismisses one until
+    /// it changes.
+    func updateTrigger(blockId: String, text: String, caret: Int?) {
+        guard !isReadOnly, blockId != "__title__", let caret, let block = blocks[blockId], block.content.carriesText else {
+            if popup?.blockId == blockId { popup = nil }
+            return
+        }
+        let ns = text as NSString
+        let before = ns.substring(to: max(0, min(caret, ns.length)))
+        var found: (kind: PopupState.Kind, from: Int, query: String)?
+        if let m = Self.lastMatch(#"(?:^|\s)/([\w-]{0,24})$"#, before) {
+            found = (.slash, (before as NSString).length - (m as NSString).length - 1, m)
+        }
+        if let m = Self.lastMatch(#"\[\[([^\]\n]{0,60})$"#, before) {
+            found = (.pageLink, (before as NSString).length - (m as NSString).length - 2, m)
+        }
+        if found == nil, let m = Self.lastMatch(#"(?:^|\s)@([\w .-]{0,30})$"#, before) {
+            found = (.mention, (before as NSString).length - (m as NSString).length - 1, m)
+        }
+        guard let found else {
+            dismissedTrigger = nil
+            if popup?.blockId == blockId || popup?.blockId == nil { popup = nil }
+            return
+        }
+        let key = "\(blockId):\(found.kind):\(found.from)"
+        if dismissedTrigger == key {
+            popup = nil
+            return
+        }
+        dismissedTrigger = nil
+        if found.kind == .mention { Task { await comments.loadPeople() } }
+        var next = PopupState(kind: found.kind, blockId: blockId, anchor: found.from, query: found.query)
+        if let tv = textView(blockId), let r = bubbleRect(view: tv, blockId: blockId, range: NSRange(location: found.from, length: 0)) {
+            next.origin = CGPoint(x: r.minX, y: r.maxY)
+        }
+        if let p = popup, p.blockId == blockId, p.kind == found.kind, p.anchor == found.from, p.query == found.query {
+            next.selectedIndex = p.selectedIndex
+        }
+        if next != popup { popup = next }
     }
 
-    func openPagePicker(blockId: String, at location: Int) {
-        guard !isReadOnly else { return }
-        popup = PopupState(kind: .pageLink, blockId: blockId, anchor: location)
+    /// The first capture group of `pattern`'s match in `s`.
+    private static func lastMatch(_ pattern: String, _ s: String) -> String? {
+        guard let re = try? NSRegularExpression(pattern: pattern),
+              let m = re.firstMatch(in: s, range: NSRange(location: 0, length: (s as NSString).length)),
+              m.numberOfRanges > 1, let r = Range(m.range(at: 1), in: s) else { return nil }
+        return String(s[r])
     }
 
     func popupActive(for blockId: String) -> Bool {
         popup?.blockId == blockId
     }
 
-    func popupTextChanged(blockId: String, text: String, caret: Int) {
-        guard var p = popup, p.blockId == blockId else { return }
-        let ns = text as NSString
-        let start = p.kind == .slash ? p.anchor + 1 : p.anchor + 2
-        guard caret >= start - (p.kind == .slash ? 0 : 1), p.anchor < ns.length else {
-            popup = nil
-            return
-        }
-        if p.kind == .slash, ns.substring(with: NSRange(location: p.anchor, length: 1)) != "/" {
-            popup = nil
-            return
-        }
-        let q = caret > start ? ns.substring(with: NSRange(location: start, length: caret - start)) : ""
-        if p.kind == .slash && (q.contains(" ") && slashItems(for: q).isEmpty || q.count > 24) {
-            popup = nil
-            return
-        }
-        if p.kind == .pageLink && q.contains("]]") {
-            popup = nil
-            return
-        }
-        p.query = q
-        p.selectedIndex = min(p.selectedIndex, max(0, popupCount(p) - 1))
-        popup = p
-    }
-
-    /// Label matches first, then keyword-only matches (the web's `slashRank`).
+    /// Label matches first, then keyword-only matches (the web's `slashRank`). The AI commands sit after the
+    /// divider styles, where the web lists them.
     func slashItems(for query: String) -> [SlashItem] {
-        InsertCatalog.filter(SlashItem.all + (aiWritable ? SlashItem.ai : []), query: query, label: \.plainTitle, keywords: \.searchText)
+        var all = SlashItem.all
+        if aiWritable, let i = all.firstIndex(where: { $0.id == "divider-strong" }) {
+            all.insert(contentsOf: SlashItem.ai, at: i + 1)
+        }
+        return InsertCatalog.filter(all, query: query, label: \.plainTitle, keywords: \.searchText)
     }
 
     func pageChoices(for query: String) -> [PageChoice] {
-        let q = SearchText.normalize(query)
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        let q = SearchText.normalize(trimmed)
         var out = app.documents
             .filter { $0.deletedAt == nil && $0.id != documentId && $0.kind != .collectionRow }
             .filter { q.isEmpty || SearchText.normalize($0.title).contains(q) }
             .sorted { $0.updatedAt > $1.updatedAt }
             .prefix(8)
-            .map { PageChoice(id: $0.id, title: $0.displayTitle, icon: $0.icon, isCreate: false) }
-        if !query.trimmingCharacters(in: .whitespaces).isEmpty {
-            out.append(PageChoice(id: "__create__", title: query, icon: nil, isCreate: true))
+            .map { PageChoice(id: $0.id, title: $0.title.isEmpty ? String(localized: "Untitled") : $0.title, icon: nil, isCreate: false) }
+        if !trimmed.isEmpty {
+            out.append(PageChoice(id: "__create__", title: trimmed, icon: nil, isCreate: true))
         }
         return out
     }
 
-    private func popupCount(_ p: PopupState) -> Int {
-        p.kind == .slash ? slashItems(for: p.query).count : pageChoices(for: p.query).count
+    /// "@": the people on the note, then Today, Tomorrow, Next week (a typed YYYY-MM-DD first) and "Pick a
+    /// date…" (the web's mention menu).
+    func mentionChoices(for query: String) -> [MentionChoice] {
+        let mq = query.lowercased()
+        let today = TaskLogic.localDate()
+        let typed = query.trimmingCharacters(in: .whitespaces)
+        let explicit = typed.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil ? [(MentionChoice.dateLabel(typed), typed)] : []
+        let dates = explicit + [
+            (String(localized: "Today"), today),
+            (String(localized: "Tomorrow"), TaskLogic.addDays(today, 1)),
+            (String(localized: "Next week"), TaskLogic.addDays(today, 7)),
+        ]
+        var dateItems = dates
+            .filter { mq.isEmpty || $0.0.lowercased().contains(mq) || $0.1.hasPrefix(mq) || !explicit.isEmpty }
+            .map { MentionChoice(id: "date-\($0.1)-\($0.0)", kind: .date($0.1), label: $0.0, hint: MentionChoice.dateLabel($0.1)) }
+        if mq.isEmpty || "pick a date".contains(mq) || "date".hasPrefix(mq) {
+            dateItems.append(MentionChoice(id: "date-pick", kind: .pickDate, label: String(localized: "Pick a date…"), hint: nil))
+        }
+        let people = comments.people
+            .filter { mq.isEmpty || $0.displayName.lowercased().contains(mq) }
+            .prefix(8)
+            .map { MentionChoice(id: $0.profileId, kind: .person($0.profileId), label: $0.displayName,
+                                 hint: $0.isYou == true ? String(localized: "you") : $0.guest == true ? String(localized: "guest") : nil) }
+        return Array(people) + dateItems
     }
 
+    private func popupCount(_ p: PopupState) -> Int {
+        switch p.kind {
+        case .slash: return slashItems(for: p.query).count
+        case .pageLink: return pageChoices(for: p.query).count
+        case .mention: return mentionChoices(for: p.query).count
+        }
+    }
+
+    /// Keys while a suggestion list is open: ↑/↓ move (stopping at the ends), Return or Tab runs the active
+    /// row, Escape dismisses the list.
     func popupKey(_ key: BlockTextView.MenuKey) -> Bool {
         guard var p = popup else { return false }
         let count = popupCount(p)
         switch key {
         case .up:
-            p.selectedIndex = count == 0 ? 0 : (p.selectedIndex - 1 + count) % count
+            p.selectedIndex = max(0, p.selectedIndex - 1)
             popup = p
         case .down:
-            p.selectedIndex = count == 0 ? 0 : (p.selectedIndex + 1) % count
+            p.selectedIndex = max(0, min(count - 1, p.selectedIndex + 1))
             popup = p
         case .cancel:
+            dismissedTrigger = "\(p.blockId):\(p.kind):\(p.anchor)"
             popup = nil
         case .commit:
-            if count == 0 {
-                popup = nil
-                return false
-            }
-            commitPopup(index: p.selectedIndex)
+            guard count > 0 else { return false }
+            commitPopup(index: min(p.selectedIndex, count - 1))
         }
         return true
     }
@@ -1264,6 +1367,19 @@ final class EditorModel {
             } else {
                 tv.replace(range: range, with: [.pageLink(documentId: choice.id, label: choice.title), .text(text: " ", marks: nil)], style: style)
             }
+        case .mention:
+            let choices = mentionChoices(for: p.query)
+            guard choices.indices.contains(index) else { return }
+            let choice = choices[index]
+            switch choice.kind {
+            case .person(let id):
+                tv.replace(range: range, with: [.mention(userId: id, label: choice.label), .text(text: " ", marks: nil)], style: style)
+            case .date(let date):
+                tv.replace(range: range, with: [.date(date: date), .text(text: " ", marks: nil)], style: style)
+            case .pickDate:
+                tv.replace(range: range, with: [], style: style)
+                datePick = DatePickRequest(blockId: p.blockId, location: p.anchor)
+            }
         }
     }
 
@@ -1289,14 +1405,13 @@ final class EditorModel {
         case "record":
             recordingTarget = RecordingTarget(blockId: blockId, replace: isEmpty && block.typeName == "paragraph")
         case "pagelink":
+            // Typing "[[" opens the page list (updateTrigger).
             if let tv = textView(blockId) {
                 tv.insertText("[[", replacementRange: tv.selectedRange())
-                popup = PopupState(kind: .pageLink, blockId: blockId, anchor: tv.selectedRange().location - 2)
             }
         case "bookmark":
-            let b = Block(id: ULID.make(), parentId: block.parentId, rank: "V", content: .bookmark(BookmarkProps(url: "")))
-            insert(b, after: blockId, replacing: isEmpty && block.typeName == "paragraph")
-            pendingBookmarkBlock = b.id
+            // The web's "Add a bookmark" dialog (BookmarkPrompt in NonTextBlocks.swift).
+            bookmarkPrompt = blockId
         case "date":
             let target = ensureTextCaret(at: blockId)
             insertDate(TaskLogic.localDate(), for: DatePickRequest(blockId: target.blockId, location: target.location))
@@ -1458,28 +1573,7 @@ final class EditorModel {
         tv.clearFormatting(style: currentTextStyle(for: id))
     }
 
-    func beginLink() {
-        guard let id = focusedBlockId, let tv = textView(id), tv.selectedRange().length > 0 || tv.linkAtSelection() != nil else {
-            NSSound.beep()
-            return
-        }
-        linkDraft = tv.linkAtSelection() ?? ""
-        showLinkPrompt = true
-    }
-
-    func applyLink(_ raw: String) {
-        showLinkPrompt = false
-        guard let id = focusedBlockId, let tv = textView(id) else { return }
-        let style = currentTextStyle(for: id)
-        if raw.trimmingCharacters(in: .whitespaces).isEmpty {
-            tv.removeMark(.foleviLink, style: style)
-        } else if let href = RichText.sanitizeHref(raw) {
-            tv.toggle(mark: .link(href: href), style: style)
-        } else {
-            NSSound.beep()
-        }
-        focus = FocusRequest(blockId: id, caret: .offset(NSMaxRange(tv.selectedRange())))
-    }
+    // Links: beginLink / applyLink / removeLink live in EditorParity.swift (the formatting toolbar).
 
     // MARK: Files
 
@@ -1571,19 +1665,58 @@ final class EditorModel {
 
     // MARK: Find
 
+    /// The web's findReplace.ts: every occurrence of the query in the note's text blocks (and code), in
+    /// document order, at most 1,000. Ranges are in the block's text view (inline objects never match).
     func updateFind() {
-        let q = SearchText.normalize(findQuery)
-        guard !q.isEmpty else {
+        guard !findQuery.isEmpty else {
             if !findMatches.isEmpty { findMatches = [] }
+            findIndex = 0
             return
         }
-        let matches = rows.filter { SearchText.normalize(SearchText.blockText($0.block.wire)).contains(q) }.map(\.id)
-        if matches != findMatches {
-            findMatches = matches
-            findIndex = 0
+        var out: [FindMatch] = []
+        for entry in Tree.flatten(Array(blocks.values)) {
+            for r in findRanges(in: entry.block) {
+                out.append(FindMatch(blockId: entry.block.id, range: r))
+                if out.count >= 1000 { break }
+            }
+            if out.count >= 1000 { break }
         }
+        if out != findMatches { findMatches = out }
+        findIndex = out.isEmpty ? 0 : ((findIndex % out.count) + out.count) % out.count
     }
 
+    /// The query's ranges in a block, in its text view's offsets.
+    func findRanges(in block: Block) -> [NSRange] {
+        guard !findQuery.isEmpty else { return [] }
+        if case .code(let p) = block.content { return FindReplace.ranges(of: findQuery, in: p.code, caseSensitive: findCaseSensitive) }
+        guard block.content.carriesText else { return [] }
+        return FindReplace.ranges(of: findQuery, in: Self.searchableText(block.text), caseSensitive: findCaseSensitive)
+    }
+
+    /// A block's text as its text view shows it, with inline objects (mentions, dates, page links) blanked
+    /// out so nothing matches inside them.
+    static func searchableText(_ nodes: [InlineNode]) -> String {
+        var out = ""
+        for node in nodes {
+            if case .text(let t, _) = node {
+                out += t
+            } else {
+                let n = InlineAttributedString.length([node])
+                out += String(repeating: "\u{FFFC}", count: n)
+            }
+        }
+        return out
+    }
+
+    /// The highlights for one block: every match there, and the current one.
+    func findHighlights(for blockId: String) -> (all: [NSRange], current: NSRange?) {
+        guard !findQuery.isEmpty, !findMatches.isEmpty else { return ([], nil) }
+        let all = findMatches.filter { $0.blockId == blockId }.map(\.range)
+        let current = findMatches.indices.contains(findIndex) && findMatches[findIndex].blockId == blockId ? findMatches[findIndex].range : nil
+        return (all, current)
+    }
+
+    /// Steps to the next (or previous) match and scrolls it into view; the find bar keeps the keyboard.
     func findNext(backwards: Bool = false) {
         guard !findMatches.isEmpty else {
             NSSound.beep()
@@ -1595,15 +1728,21 @@ final class EditorModel {
 
     func revealMatch() {
         guard findMatches.indices.contains(findIndex) else { return }
-        let id = findMatches[findIndex]
-        guard let block = blocks[id] else { return }
-        let text = RichText.plainText(block.text) as NSString
-        let r = text.range(of: findQuery, options: [.caseInsensitive, .diacriticInsensitive])
-        if block.content.carriesText, r.location != NSNotFound {
-            focus = FocusRequest(blockId: id, caret: .range(r.location, r.length))
-        } else {
-            select(id, extend: false)
+        let id = findMatches[findIndex].blockId
+        if !rows.contains(where: { $0.id == id }) { return }
+        revealBlockId = id
+    }
+
+    /// Closing the find bar: back to the note with the current match selected.
+    func closeFind() {
+        if findMatches.indices.contains(findIndex) {
+            let m = findMatches[findIndex]
+            if blocks[m.blockId].map({ $0.content.carriesText || $0.typeName == "code" }) == true, rows.contains(where: { $0.id == m.blockId }) {
+                focus = FocusRequest(blockId: m.blockId, caret: .range(m.range.location, m.range.length))
+            }
         }
+        findQuery = ""
+        findShowsReplace = false
     }
 
     // MARK: Conflicts

@@ -122,7 +122,7 @@ struct FoleviCommands: Commands {
             Menu("Turn Into") {
                 ForEach(TurnIntoOption.all) { option in
                     Button(option.title) { editor?.turnInto(option.id) }
-                        .keyboardShortcut(option.shortcut, modifiers: [.command, .option])
+                        .optionalShortcut(option.shortcut, modifiers: option.modifiers)
                 }
             }
         }

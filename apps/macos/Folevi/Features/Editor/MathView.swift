@@ -582,6 +582,9 @@ struct MathFormulaView: View {
     var fontSize: CGFloat
     var color: Color = FoleviColor.ink
 
+    /// A mistake renders in red instead of failing, in KaTeX's own error colour (`errorColor` #cc0000).
+    static let errorColor = NSColor(srgbRed: 0.8, green: 0, blue: 0, alpha: 1)
+
     var body: some View {
         let box = MathTypesetter.layout(LaTeX.parse(latex), MathTypesetter.Style(level: 0, base: fontSize))
         let pad = fontSize * 0.1
@@ -589,7 +592,7 @@ struct MathFormulaView: View {
         let ink = NSColor(color)
         Canvas { ctx, _ in
             ctx.withCGContext { cg in
-                MathTypesetter.draw(box, in: cg, at: CGPoint(x: pad, y: pad + box.ascent), color: ink, errorColor: NSColor(FoleviColor.coralInk))
+                MathTypesetter.draw(box, in: cg, at: CGPoint(x: pad, y: pad + box.ascent), color: ink, errorColor: Self.errorColor)
             }
         }
         .frame(width: width, height: height)

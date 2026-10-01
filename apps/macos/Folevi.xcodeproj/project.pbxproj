@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00E832A3E5866770FA235780 /* PasteHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651BC50FA118A531253DD280 /* PasteHTML.swift */; };
 		0169FE8990D886D0B26A07E0 /* FlowchartLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894EA878518A1ED82FB754AE /* FlowchartLayout.swift */; };
 		01A1A25BBE92E45D6956FF71 /* InsertCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA39209A5871448D46B21B33 /* InsertCatalog.swift */; };
 		03B9DBE4C6059D33DD67F836 /* Whiteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */; };
@@ -20,10 +21,12 @@
 		0F5B30E5BA62E83F181AF4B2 /* DatePickPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5074707D6745EDF4725D821 /* DatePickPopover.swift */; };
 		101326CC537ADDA96E68AF1F /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */; };
 		119D856AB69BA51062F31729 /* AiStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCF5D0AE8D7E30F62411E76 /* AiStream.swift */; };
+		11C28E909D04B9B032AD01B1 /* EditorParity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0B3833D91CABC615050C69 /* EditorParity.swift */; };
 		126BECD7488E72CD338C4DD8 /* FlowchartCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1711D69BB51E5E76762CD619 /* FlowchartCanvas.swift */; };
 		1293EB55B903080AF59D4478 /* BlockSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF52F09620D4DD7D2837804 /* BlockSchema.swift */; };
 		1409E74913EBB7EF3F26777C /* Organize.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2DF75F64A2B74B00D061E3 /* Organize.swift */; };
 		14DA214364C4CC1A61AF5561 /* SyncScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8687F771CF0B4E201557BA19 /* SyncScenarioTests.swift */; };
+		15EA721BA01CD7F296D6C6D5 /* CollectionEmbedParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 539CD64A77B748F0B3176DF6 /* CollectionEmbedParts.swift */; };
 		15FEFFB4022A9797CF6E10BE /* CollaborationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10AC0DD457E8E3E624312CF /* CollaborationTests.swift */; };
 		18B2FF723BEE21EC65E64BA1 /* RankTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAE0742A02D411799235409 /* RankTests.swift */; };
 		19AF1600E120AABD6D152C38 /* SQLiteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376035683CC3F41336F41070 /* SQLiteStore.swift */; };
@@ -81,6 +84,7 @@
 		670557090FE34E4F72D02DEF /* CoverArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42122FC37C2F0057901A6606 /* CoverArt.swift */; };
 		6A3CE3155F5163DDA607BBBC /* NoteDock.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45C9992BF3F3A94E983E937 /* NoteDock.swift */; };
 		6A883B928AD79CF560D51154 /* MonthGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60DBCCC4E93F2A34C14FFE59 /* MonthGrid.swift */; };
+		6C801DE9A7DCAB9727A9B5CC /* PasteHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651BC50FA118A531253DD280 /* PasteHTML.swift */; };
 		6EC20350796262AA00ACB927 /* NoteSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56FEE621930B731F7F9DBDFE /* NoteSelection.swift */; };
 		70DB7DB4170ED10813FE68EF /* SQLiteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376035683CC3F41336F41070 /* SQLiteStore.swift */; };
 		713250803A20F82A4D87A671 /* Tree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E4AF08906F26C6AFA1053E /* Tree.swift */; };
@@ -97,6 +101,7 @@
 		81F10BAE45F5D5A42AF1BAD2 /* FlexibleDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1537182453B34751A655E02B /* FlexibleDecoding.swift */; };
 		825F18E7F6950D849E43F10B /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CE807CA5595FD32F69BC7F /* Logging.swift */; };
 		8272528FEE36D191A5565814 /* TreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877451F13058A9A35EBC1BE6 /* TreeTests.swift */; };
+		855C2006C8BA6B9F7C4A09A4 /* MermaidConvert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A564E561A98E2461BD49B36 /* MermaidConvert.swift */; };
 		857AB223F59154D0E40936C8 /* OrganizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 642429CBDE5F9521FDB16D9F /* OrganizeTests.swift */; };
 		8892061A7337207A4E631984 /* FindReplace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E84728138DB1DFCCCF25F10 /* FindReplace.swift */; };
 		8A1308644B77A49A783E3B72 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79138D6A4BD52836E1242F43 /* TasksView.swift */; };
@@ -110,6 +115,7 @@
 		8F851AADD02DEF8524E9EA94 /* CommandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22AEE9F0D974540815E971F6 /* CommandPalette.swift */; };
 		910045BDE30C2031EABB93E9 /* MonthGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60DBCCC4E93F2A34C14FFE59 /* MonthGrid.swift */; };
 		911AA177002D786A63743643 /* NoteMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7965554F790EC40998AAA830 /* NoteMenu.swift */; };
+		91AC345A56CFD09720F3AB46 /* MermaidConvert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A564E561A98E2461BD49B36 /* MermaidConvert.swift */; };
 		91DCDBA36109EC91DBE16D1E /* RichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1453B0B437427892BFA595 /* RichText.swift */; };
 		937E1967DD5924A4E12B4C19 /* Folders.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDC3E1DEB42D59731DDD1C3 /* Folders.swift */; };
 		9578C1CC4038DD8DFBAF8670 /* NotificationTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4C3B603BE647464B00AB1C /* NotificationTopics.swift */; };
@@ -129,6 +135,7 @@
 		A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */; };
 		A6AD85034DBEDB281B29C7D6 /* PageBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE50B893EA237C548FADA9B9 /* PageBackdrop.swift */; };
 		A938381B822B8D6B6FCA07A9 /* FlowchartOps.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61ABAB7147EC5D4FE329905 /* FlowchartOps.swift */; };
+		A9AE07A320F88F27B4BC351C /* SelectionBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4EC94B50C04C277835EFE76 /* SelectionBubble.swift */; };
 		A9FB12148055F3582A363098 /* CollaborationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558B2E6789A4B1C291C50079 /* CollaborationRepository.swift */; };
 		AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E496B814D8B72A36CF417C4F /* PlanSettings.swift */; };
 		ACDE0FA46D66C1FACF416B5D /* Covers in Resources */ = {isa = PBXBuildFile; fileRef = 267FDB9FA33CE6745D1F8769 /* Covers */; };
@@ -162,6 +169,7 @@
 		D71AC08E27E4ACE8790C1554 /* Surfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A90A0994B97E70A8FE249 /* Surfaces.swift */; };
 		D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 928BED4D96939AEFA7D64C3E /* Rank.swift */; };
 		D9A1F77CA7E8AA32318A35BF /* FoleviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 190C86CC285A3AF163AA972F /* FoleviApp.swift */; };
+		DCAFF41F1BB1DA66E4C7FEB7 /* EditorParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 340FE3199CFB44BF5707F356 /* EditorParityTests.swift */; };
 		DDACF93CC9ABE9C9CF856351 /* DocumentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B8AA8B4080456A1D47FD51 /* DocumentModels.swift */; };
 		DF677EA35638172E5F904D20 /* ULID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51F373F3397161B4614F1000 /* ULID.swift */; };
 		E222C01E7C0582A11A181418 /* HTMLExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8944B20D5C21961BDA9306 /* HTMLExport.swift */; };
@@ -236,6 +244,7 @@
 		30B8821EC08FD811EE1FE1A6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		320393EFF315ACCA5F39470A /* Select.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Select.swift; sourceTree = "<group>"; };
 		338F3C4CB476BCF3E8688E51 /* WireBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WireBlock.swift; sourceTree = "<group>"; };
+		340FE3199CFB44BF5707F356 /* EditorParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorParityTests.swift; sourceTree = "<group>"; };
 		3489657AE3324D753E15ED23 /* FoleviCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviCommands.swift; sourceTree = "<group>"; };
 		34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
 		36792CB853DBCAC3A0E5E49B /* AuthProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthProviders.swift; sourceTree = "<group>"; };
@@ -253,13 +262,16 @@
 		51F373F3397161B4614F1000 /* ULID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ULID.swift; sourceTree = "<group>"; };
 		52B399E09AF317C32247BECF /* FoleviUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		52E4AF08906F26C6AFA1053E /* Tree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tree.swift; sourceTree = "<group>"; };
+		539CD64A77B748F0B3176DF6 /* CollectionEmbedParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionEmbedParts.swift; sourceTree = "<group>"; };
 		54868339AEA485B6D950B340 /* FoleviTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviTokens.swift; sourceTree = "<group>"; };
 		558B2E6789A4B1C291C50079 /* CollaborationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollaborationRepository.swift; sourceTree = "<group>"; };
 		56FEE621930B731F7F9DBDFE /* NoteSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSelection.swift; sourceTree = "<group>"; };
 		5711B449350DC58169BEE580 /* FlowchartExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowchartExport.swift; sourceTree = "<group>"; };
 		5941E38A8CFEA2C511226CE9 /* CollectionBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionBlock.swift; sourceTree = "<group>"; };
 		59B07ABD605CC17525A83B8B /* ScopeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScopeTests.swift; sourceTree = "<group>"; };
+		5A564E561A98E2461BD49B36 /* MermaidConvert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MermaidConvert.swift; sourceTree = "<group>"; };
 		5D311FC2B991BDA75DBA8FF1 /* AudioProps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProps.swift; sourceTree = "<group>"; };
+		5E0B3833D91CABC615050C69 /* EditorParity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorParity.swift; sourceTree = "<group>"; };
 		5E37A613B12C1772C7DE3830 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
 		604CAFE235326740449F3E17 /* BlockRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockRowView.swift; sourceTree = "<group>"; };
 		60A28DF80BC79635F16750DC /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
@@ -267,6 +279,7 @@
 		61BCF01EE647069EAA3AE52C /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		620E6B9737FF3FF44A5034BD /* UnsplashSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnsplashSheet.swift; sourceTree = "<group>"; };
 		642429CBDE5F9521FDB16D9F /* OrganizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizeTests.swift; sourceTree = "<group>"; };
+		651BC50FA118A531253DD280 /* PasteHTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteHTML.swift; sourceTree = "<group>"; };
 		66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainAndAuthTests.swift; sourceTree = "<group>"; };
 		6B8635693C6AA6119F047BF8 /* LaTeX.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaTeX.swift; sourceTree = "<group>"; };
 		6C0EC64316AD1AFC8391DF31 /* Dialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dialog.swift; sourceTree = "<group>"; };
@@ -352,6 +365,7 @@
 		F3CCE0AD3FA1C1D0EA350752 /* DocumentGoldenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentGoldenTests.swift; sourceTree = "<group>"; };
 		F4CCBECCF299E20709617FF6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		F4CE807CA5595FD32F69BC7F /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
+		F4EC94B50C04C277835EFE76 /* SelectionBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionBubble.swift; sourceTree = "<group>"; };
 		F59E49485426A3BD1B95BBA2 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		F61ABAB7147EC5D4FE329905 /* FlowchartOps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowchartOps.swift; sourceTree = "<group>"; };
 		FA39209A5871448D46B21B33 /* InsertCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertCatalog.swift; sourceTree = "<group>"; };
@@ -394,11 +408,13 @@
 				0F3CD96AA81DFC63886DC50E /* JSONValue.swift */,
 				6B8635693C6AA6119F047BF8 /* LaTeX.swift */,
 				09123928534E4B78174DD3E7 /* Markdown.swift */,
+				5A564E561A98E2461BD49B36 /* MermaidConvert.swift */,
 				2D16EE0B931B4973645DC501 /* MermaidFlow.swift */,
 				60DBCCC4E93F2A34C14FFE59 /* MonthGrid.swift */,
 				8B4C3B603BE647464B00AB1C /* NotificationTopics.swift */,
 				CB2DF75F64A2B74B00D061E3 /* Organize.swift */,
 				AE50B893EA237C548FADA9B9 /* PageBackdrop.swift */,
+				651BC50FA118A531253DD280 /* PasteHTML.swift */,
 				928BED4D96939AEFA7D64C3E /* Rank.swift */,
 				EA1453B0B437427892BFA595 /* RichText.swift */,
 				219CA5C95B319426FA101A45 /* Scope.swift */,
@@ -525,9 +541,11 @@
 				604CAFE235326740449F3E17 /* BlockRowView.swift */,
 				AA1630F5696B3AD13E03D2D1 /* BlockTextView.swift */,
 				5941E38A8CFEA2C511226CE9 /* CollectionBlock.swift */,
+				539CD64A77B748F0B3176DF6 /* CollectionEmbedParts.swift */,
 				B5074707D6745EDF4725D821 /* DatePickPopover.swift */,
 				3F2F427684E5E2B836F66C61 /* EditorInserts.swift */,
 				B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */,
+				5E0B3833D91CABC615050C69 /* EditorParity.swift */,
 				9764CABA30C2B0015130D53B /* EditorView.swift */,
 				9258B965E3DB0592C35B974F /* FindReplaceBar.swift */,
 				86C58FB8BBB8B7A7D60C6E58 /* FlowchartBlock.swift */,
@@ -541,6 +559,7 @@
 				27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */,
 				D45C9992BF3F3A94E983E937 /* NoteDock.swift */,
 				6E5C18371B46E9EA64423B7F /* NoteStylePanel.swift */,
+				F4EC94B50C04C277835EFE76 /* SelectionBubble.swift */,
 				620E6B9737FF3FF44A5034BD /* UnsplashSheet.swift */,
 				D238757AED22C48CBE710112 /* WhiteboardBlock.swift */,
 			);
@@ -746,6 +765,7 @@
 				BF86BC8D150F09B7E5EDFF0C /* BlocksAndStyleTests.swift */,
 				B10AC0DD457E8E3E624312CF /* CollaborationTests.swift */,
 				F3CCE0AD3FA1C1D0EA350752 /* DocumentGoldenTests.swift */,
+				340FE3199CFB44BF5707F356 /* EditorParityTests.swift */,
 				B37565BFA5DBC3FB84C2EC50 /* FlowchartTests.swift */,
 				869B7AC67359552ABB0C4A41 /* JSONValueTests.swift */,
 				66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */,
@@ -922,6 +942,7 @@
 				B8C5EE1C5A3956A425AA8D9A /* CollectionView.swift in Sources */,
 				2969D5F8CC85DC26A3599DAB /* DocumentGoldenTests.swift in Sources */,
 				295F507045C94685D6069391 /* DocumentModels.swift in Sources */,
+				DCAFF41F1BB1DA66E4C7FEB7 /* EditorParityTests.swift in Sources */,
 				6134F109FFCD21F789D4D1A0 /* FindReplace.swift in Sources */,
 				3642CAA1416E7E99CD127435 /* FlexibleDecoding.swift in Sources */,
 				6400D8FFFB02DFD1E8366866 /* Flowchart.swift in Sources */,
@@ -939,12 +960,14 @@
 				F582C449055307C434B11BBC /* LaTeX.swift in Sources */,
 				F01AB02004266BC1C4B71B39 /* Markdown.swift in Sources */,
 				4BAA2AEEA48E84FBD2A4C081 /* MarkdownTests.swift in Sources */,
+				855C2006C8BA6B9F7C4A09A4 /* MermaidConvert.swift in Sources */,
 				61DBDAC0399DD3A327E38227 /* MermaidFlow.swift in Sources */,
 				910045BDE30C2031EABB93E9 /* MonthGrid.swift in Sources */,
 				9578C1CC4038DD8DFBAF8670 /* NotificationTopics.swift in Sources */,
 				1409E74913EBB7EF3F26777C /* Organize.swift in Sources */,
 				857AB223F59154D0E40936C8 /* OrganizeTests.swift in Sources */,
 				A6AD85034DBEDB281B29C7D6 /* PageBackdrop.swift in Sources */,
+				6C801DE9A7DCAB9727A9B5CC /* PasteHTML.swift in Sources */,
 				2609298E8EE4CD552222781E /* Rank.swift in Sources */,
 				18B2FF723BEE21EC65E64BA1 /* RankTests.swift in Sources */,
 				91DCDBA36109EC91DBE16D1E /* RichText.swift in Sources */,
@@ -996,6 +1019,7 @@
 				A3D1F303BB454EC5D50C5F2E /* CollaborationModels.swift in Sources */,
 				A9FB12148055F3582A363098 /* CollaborationRepository.swift in Sources */,
 				1A762423D9893988146E8D22 /* CollectionBlock.swift in Sources */,
+				15EA721BA01CD7F296D6C6D5 /* CollectionEmbedParts.swift in Sources */,
 				7A13C64502B6B4CD6D9E7931 /* CollectionView.swift in Sources */,
 				8F851AADD02DEF8524E9EA94 /* CommandPalette.swift in Sources */,
 				D40926BEF5E799D332383BE6 /* CommentViews.swift in Sources */,
@@ -1008,6 +1032,7 @@
 				DDACF93CC9ABE9C9CF856351 /* DocumentModels.swift in Sources */,
 				9C7ABFF9F42AB672563F45FE /* EditorInserts.swift in Sources */,
 				A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */,
+				11C28E909D04B9B032AD01B1 /* EditorParity.swift in Sources */,
 				453D038092E66A995B4F3544 /* EditorView.swift in Sources */,
 				091A1564F7B1B2F351BF533C /* ExportService.swift in Sources */,
 				8892061A7337207A4E631984 /* FindReplace.swift in Sources */,
@@ -1042,6 +1067,7 @@
 				8E9CFD203A2D756BF6E85C9A /* Markdown.swift in Sources */,
 				FB5BE7282CEE08C44E840E50 /* MathView.swift in Sources */,
 				8C14AF4F9918041A68449575 /* MermaidBlock.swift in Sources */,
+				91AC345A56CFD09720F3AB46 /* MermaidConvert.swift in Sources */,
 				43918E61804BEB937EFADC4E /* MermaidFlow.swift in Sources */,
 				6A883B928AD79CF560D51154 /* MonthGrid.swift in Sources */,
 				B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */,
@@ -1057,6 +1083,7 @@
 				EF71660F19EB61A167546064 /* NotificationsBell.swift in Sources */,
 				2E1D0899E24C6770DFD54FE3 /* Organize.swift in Sources */,
 				D221A52ED11C05541859648E /* PageBackdrop.swift in Sources */,
+				00E832A3E5866770FA235780 /* PasteHTML.swift in Sources */,
 				EC3D000229B9CF8586B252CE /* PersonalSettings.swift in Sources */,
 				AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */,
 				D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */,
@@ -1066,6 +1093,7 @@
 				3861B5EC60126E965FBE28AF /* Scope.swift in Sources */,
 				7CEDFDCA1D780F3C3E63966A /* ScopeMenu.swift in Sources */,
 				CA479268FE73BF91B0EA577E /* Select.swift in Sources */,
+				A9AE07A320F88F27B4BC351C /* SelectionBubble.swift in Sources */,
 				CA7A5DE3AD2D9ED2C9A2A6C7 /* SettingsAPIModels.swift in Sources */,
 				EECB158A09001308290ED573 /* SettingsRepositories.swift in Sources */,
 				E51CFBC5E126B0548860DF1F /* SettingsShell.swift in Sources */,

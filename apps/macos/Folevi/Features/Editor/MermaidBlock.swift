@@ -1,9 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// A Mermaid code block, as on the web: a diagram card with the source folded away until it's being
-/// edited ("Edit diagram" / "Done", or while the caret is in it). Flowcharts are laid out and drawn
-/// natively (Domain/MermaidFlow.swift); other diagram kinds keep showing their source.
+/// A Mermaid code block, as on the web (codeView.ts): a diagram card with the source folded away until it's
+/// being edited ("Edit diagram" / "Done", or while the caret is in it), and "Convert to flowchart" for
+/// flowchart diagrams. Flowcharts are laid out and drawn natively (Domain/MermaidFlow.swift); other diagram
+/// kinds keep showing their source.
 struct MermaidBlockView: View {
     let block: Block
     let props: CodeProps
@@ -11,18 +12,20 @@ struct MermaidBlockView: View {
     var focusRequest: FocusRequest?
     @State private var editingByButton = false
     @State private var hovering = false
+    @State private var note: String?
 
     private var editing: Bool {
         editingByButton || model.focusedBlockId == block.id || props.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
+    private var selected: Bool { model.selectedBlockIds.contains(block.id) }
 
     var body: some View {
         let parsed = MermaidFlow.parse(props.code)
         VStack(spacing: 0) {
             if editing {
                 bar(editingHeader: true)
-                CodeBlockView(block: block, props: props, model: model, focusRequest: focusRequest)
-                    .padding(6)
+                CodeBlockView(block: block, props: props, model: model, focusRequest: focusRequest, flat: true)
                     .overlay(alignment: .bottom) { line.frame(height: 1) }
             }
             switch parsed {
@@ -33,7 +36,7 @@ struct MermaidBlockView: View {
                     .frame(maxWidth: .infinity, minHeight: 64)
             case .failure(let error):
                 if !editing {
-                    CodeBlockView(block: block, props: props, model: model, focusRequest: focusRequest).padding(6)
+                    CodeBlockView(block: block, props: props, model: model, focusRequest: focusRequest, flat: true)
                 }
                 if !props.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(message(error))
@@ -43,25 +46,33 @@ struct MermaidBlockView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(FoleviColor.coralSoft.mix(with: FoleviColor.surface, by: 0.4)))
-                        .padding(14)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 22)
+                } else {
+                    Text("Write a Mermaid diagram above to see it here.")
+                        .font(.ui(13))
+                        .foregroundStyle(FoleviColor.inkMuted)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 22)
+                        .frame(maxWidth: .infinity, minHeight: 64)
                 }
             }
         }
         .background(model.sheetPalette?.surface ?? FoleviColor.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
-            let selected = model.selectedBlockIds.contains(block.id)
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(selected ? Color.folevi(accent: model.style.accent) : hovering || editing ? FoleviColor.lineStrong : line,
                               lineWidth: selected ? 2 : 1)
         }
         .overlay(alignment: .topTrailing) {
-            if !editing && !model.isReadOnly && hovering { bar(editingHeader: false).padding(8) }
+            if !editing && !model.isReadOnly && (hovering || selected) { bar(editingHeader: false).padding(8) }
         }
         .onHover { hovering = $0 }
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .onTapGesture(count: 2) { if !model.isReadOnly { edit() } }
         .onTapGesture { if !editing { model.select(block.id, extend: false) } }
+        .onChange(of: editing) { _, on in if !on { note = nil } }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Mermaid diagram"))
     }
@@ -76,16 +87,25 @@ struct MermaidBlockView: View {
         }
     }
 
-    /// The slim bar: "Edit diagram" over the drawing, or a header ("Mermaid", "Done") while editing.
+    /// The slim bar (12pt, weight 550): over the drawing a glass pill at the top right, shown on hover; while
+    /// editing a header above the source with the "Mermaid" label.
     @ViewBuilder private func bar(editingHeader: Bool) -> some View {
         HStack(spacing: 4) {
             if editingHeader {
-                Text("Mermaid").font(.ui(12, .medium)).tracking(0.24).foregroundStyle(FoleviColor.inkMuted)
+                Text("Mermaid").font(.ui(12, .semibold)).tracking(0.24).foregroundStyle(FoleviColor.inkMuted)
                 Spacer()
             }
+            if let note {
+                Text(note).font(.ui(12, .medium)).foregroundStyle(FoleviColor.coralInk).lineLimit(1).truncationMode(.tail)
+                    .frame(maxWidth: 220, alignment: .trailing)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
             if !model.isReadOnly {
-                Button(editing ? "Done" : "Edit diagram") { editing ? done() : edit() }
-                    .buttonStyle(.folevi(.quiet, .small))
+                if MermaidConvert.isFlowchartSource(props.code) {
+                    MermaidBarButton(title: "Convert to flowchart", help: "Turn this diagram into an editable flowchart") { convert() }
+                }
+                MermaidBarButton(title: editing ? "Done" : "Edit diagram", help: nil) { editing ? done() : edit() }
+                    .accessibilityValue(Text(editing ? "Expanded" : "Collapsed"))
             }
         }
         .padding(editingHeader ? EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 6) : EdgeInsets(top: 3, leading: 3, bottom: 3, trailing: 3))
@@ -107,6 +127,44 @@ struct MermaidBlockView: View {
     private func done() {
         editingByButton = false
         model.select(block.id, extend: false)
+    }
+
+    /// Replaces the block with an editable flowchart (one undo step), or says why it can't.
+    private func convert() {
+        switch MermaidConvert.convert(props.code) {
+        case .failure(let e):
+            note = e.text
+        case .success(let r):
+            let flow = FlowchartProps(data: Flowchart.serialize(r.data), height: r.height)
+            editingByButton = false
+            model.update(block.id, actionName: String(localized: "Convert to Flowchart")) { b in
+                b.content = .unknown(type: FlowchartProps.type, props: flow.json)
+            }
+            model.select(block.id, extend: false)
+        }
+    }
+}
+
+/// A bar button (26pt tall, 7pt corners): ink text, a glass fill and the heading colour on hover.
+private struct MermaidBarButton: View {
+    var title: LocalizedStringKey
+    var help: LocalizedStringKey?
+    var action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.ui(12, .semibold))
+                .foregroundStyle(hovering ? FoleviColor.heading : FoleviColor.ink)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(hovering ? FoleviColor.accentSoft : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help.map { Text($0) } ?? Text(""))
     }
 }
 

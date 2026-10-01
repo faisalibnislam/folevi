@@ -35,32 +35,58 @@ final class BlockTextView: NSTextView {
     var isCode = false
     /// Plain single-field mode (document title): Return submits.
     var isPlain = false
-    /// Runs an AI action on the selected text (task, range, text); nil hides the AI menu.
-    var onAiTask: ((String, NSRange, String) -> Void)?
-
-    /// The AI actions on selected text, as on the web (ai:write tasks).
-    static let aiTasks: [(task: String, title: String)] = [
-        ("improve", String(localized: "Improve Writing")), ("fix", String(localized: "Fix Spelling & Grammar")),
-        ("shorter", String(localized: "Make Shorter")), ("longer", String(localized: "Make Longer")),
-        ("simplify", String(localized: "Simplify")), ("professional", String(localized: "More Professional")),
-        ("casual", String(localized: "More Casual")), ("summarizeText", String(localized: "Summarize")),
-        ("explain", String(localized: "Explain")),
-    ]
+    /// AI on the selected text: a task (nil opens the composer), a language for Translate, the range and
+    /// the text. Nil hides the AI menu.
+    var onAiTask: ((_ task: String?, _ language: String?, _ range: NSRange, _ text: String) -> Void)?
+    /// ⌘J: the AI composer (or, in the title, the title's AI). Returns whether it was handled.
+    var onAiShortcut: (() -> Bool)?
+    /// Whether AI writing is offered right now (the AI menu shows only then).
+    var aiOffered: (() -> Bool)?
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = super.menu(for: event) ?? NSMenu()
         let range = selectedRange()
+        guard aiOffered?() == true else { return menu }
+        if isPlain, let onAiShortcut {
+            // The title: "Edit with AI" (the selected words, or the whole title).
+            menu.insertItem(ClosureMenuItem(String(localized: "Edit with AI"), key: "j", modifiers: [.command], enabled: true) { _ = onAiShortcut() }, at: 0)
+            menu.insertItem(.separator(), at: 1)
+            return menu
+        }
         guard let onAiTask, range.length > 0, !isCode else { return menu }
         let text = (string as NSString).substring(with: range)
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return menu }
+        // The same actions as the web's AI menu on selected text.
         let ai = NSMenu(title: String(localized: "AI"))
-        for (task, title) in Self.aiTasks {
-            ai.addItem(ClosureMenuItem(title, enabled: true) { onAiTask(task, range, text) })
+        ai.addItem(ClosureMenuItem(String(localized: "Ask AI…"), key: "j", modifiers: [.command], enabled: true) { onAiTask(nil, nil, range, text) })
+        ai.addItem(.separator())
+        for s in AiCatalog.edit {
+            if s.languages {
+                let languages = NSMenu(title: s.label)
+                for language in AiCatalog.languages {
+                    languages.addItem(ClosureMenuItem(language, enabled: true) { onAiTask("translate", language, range, text) })
+                }
+                let item = NSMenuItem(title: s.label.replacingOccurrences(of: "…", with: ""), action: nil, keyEquivalent: "")
+                item.submenu = languages
+                ai.addItem(item)
+            } else if let task = s.task {
+                ai.addItem(ClosureMenuItem(s.label, enabled: true) { onAiTask(task, nil, range, text) })
+            }
         }
         let item = NSMenuItem(title: String(localized: "AI"), action: nil, keyEquivalent: "")
         item.submenu = ai
         menu.insertItem(item, at: 0)
         menu.insertItem(.separator(), at: 1)
         return menu
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        if flags == .command, event.charactersIgnoringModifiers?.lowercased() == "j", window?.firstResponder === self,
+           let onAiShortcut, onAiShortcut() {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 
     enum MenuKey { case up, down, commit, cancel }
@@ -400,11 +426,15 @@ struct BlockTextEditor: NSViewRepresentable {
         view.onCommand = { [weak coordinator] command in coordinator?.handle(command) ?? false }
         if !isPlain {
             let blockId = self.blockId
-            view.onAiTask = { [weak model] task, range, text in
-                guard let model, model.app.aiAvailable, !model.isReadOnly else { return }
-                model.runInlineAi(task: task, blockId: blockId, range: range, text: text)
+            view.onAiTask = { [weak model] task, language, range, text in
+                model?.openInlineAi(blockId: blockId, range: range, text: text, task: task, language: language)
             }
         }
+        view.onAiShortcut = { [weak model, weak view] in
+            guard let model else { return false }
+            return model.aiShortcut(from: view)
+        }
+        view.aiOffered = { [weak model] in model?.aiWritable ?? false }
         view.onFocusChange = { [weak coordinator] focused in coordinator?.focusChanged(focused) }
         view.forwardUndo = { [weak model] in model?.undoManager?.undo() }
         view.forwardRedo = { [weak model] in model?.undoManager?.redo() }

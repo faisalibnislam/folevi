@@ -94,6 +94,8 @@ struct Entitlements: Codable, Sendable, Hashable {
     /// What they pay for (or were given); "free" during a trial.
     var paidPlan: String
     var planId: String?
+    /// The plan they pay for, with its interval ("personal_pro_yearly"); "personal_free" during a trial.
+    var paidPlanId: String?
     var paid: Bool?
     /// AI credits a month (Core has none; the trial has its own allowance).
     var monthlyCredits: Double?
@@ -119,9 +121,10 @@ struct Entitlements: Codable, Sendable, Hashable {
     }
 }
 
-/// billing:mine — plan, subscription, usage.
+/// billing:mine: plan, subscription, storage, AI credits in Personal and payments.
 struct BillingSummary: Decodable, Sendable {
     struct Subscription: Decodable, Sendable {
+        var planId: String?
         var plan: String
         var interval: String?
         var status: String
@@ -132,8 +135,20 @@ struct BillingSummary: Decodable, Sendable {
     var entitlements: Entitlements
     var subscription: Subscription?
     var storageUsedBytes: Double
+    /// Personal storage limit (on Free: the pool shared with the free workspaces they own).
+    var storageLimitBytes: Double?
+    /// "shared_free" | "per_person" | "override"
+    var storageRule: String?
+    /// On Free: how many free workspaces share the pool.
+    var poolWorkspaces: Double?
     var devicesActive: Double
-    var aiRequestsThisMonth: Double
+    var aiRequestsThisMonth: Double?
+    /// AI credits in Personal (also used in free workspaces and as a guest).
+    var credits: PersonalCredits?
+    var payments: [BillingPayment]?
+    var checkoutAvailable: Bool?
+    var creditsCheckoutAvailable: Bool?
+    var testPurchases: Bool?
 }
 
 /// Plan tiers (convex/lib/plans.ts `TIER_NAMES`), the same for Personal and team workspaces.

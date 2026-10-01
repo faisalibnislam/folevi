@@ -306,6 +306,8 @@ struct DocumentHeaderView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("documentTitle")
+            // The title's AI ("Edit with AI" on selected words, ⌘J).
+            .overlay(alignment: .bottom) { TitleAiAttachment(model: model) }
     }
 
     var body: some View {

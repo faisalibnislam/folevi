@@ -100,6 +100,7 @@ final class ConvexService: @unchecked Sendable {
             switch c {
             case .ConvexError(let data):
                 if let json = try? JSONValue(jsonString: data) {
+                    if let problem = AiProblem(convexError: json) { return .ai(problem) }
                     let code = json["code"]?.stringValue ?? "server_error"
                     let message = json["message"]?.stringValue ?? String(localized: "Something went wrong.")
                     return .server(code: code, message: message)

@@ -94,6 +94,7 @@ targets:
       - path: Folevi/Data/Local/SQLiteStore.swift
       - path: Folevi/Data/Remote/APIModels.swift
       - path: Folevi/Data/Remote/CollaborationModels.swift
+      - path: Folevi/Data/Remote/AiModels.swift
       - path: Folevi/Support/Keychain.swift
       - path: Folevi/Features/Auth/AuthCallback.swift
     settings:

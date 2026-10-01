@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText } from "lucide-react";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { CheckMark } from "../product/Replica";
 import { Icon } from "../icons";
 import { DateChip, type ChipTone } from "../mini";
@@ -43,11 +43,71 @@ function snippet(body: string, terms: string[]): string {
   return `…${body.slice(start + 1)}`;
 }
 
+/** What the demo types by itself, with the task it ticks after each search (if any). */
+const AUTOPLAY: Array<{ query: string; tick?: string }> = [
+  { query: "labels", tick: "t1" },
+  { query: "printer" },
+  { query: "april" },
+  { query: "keys", tick: "t2" },
+];
+
 export function ReturnDemo() {
   const baseId = useId();
   const [query, setQuery] = useState("labels");
   const [done, setDone] = useState<Set<string>>(() => new Set());
   const [taskMessage, setTaskMessage] = useState("");
+  const [auto, setAuto] = useState(true);
+  const root = useRef<HTMLDivElement>(null);
+
+  // Until someone touches it, the demo searches by itself while it's on screen: it types a query, the
+  // results narrow with each letter, a matching task gets ticked, then it erases and tries the next one.
+  useEffect(() => {
+    if (!auto || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let alive = true;
+    let visible = false;
+    const io = new IntersectionObserver(([e]) => (visible = Boolean(e?.isIntersecting)), { threshold: 0.25 });
+    if (root.current) io.observe(root.current);
+    const sleep = async (ms: number) => {
+      let left = ms;
+      while (alive && left > 0) {
+        await new Promise((r) => setTimeout(r, Math.min(left, 100)));
+        if (visible && !document.hidden) left -= 100;
+      }
+      if (!alive) throw new Error("stopped");
+    };
+    (async () => {
+      let current = "labels";
+      await sleep(1800);
+      for (;;) {
+        setDone(new Set());
+        for (const step of AUTOPLAY) {
+          while (current.length) {
+            current = current.slice(0, -1);
+            setQuery(current);
+            await sleep(45);
+          }
+          await sleep(350);
+          for (const ch of step.query) {
+            current += ch;
+            setQuery(current);
+            await sleep(130);
+          }
+          await sleep(1300);
+          if (step.tick) {
+            const id = step.tick;
+            setDone((d) => new Set(d).add(id));
+            await sleep(1100);
+          }
+          await sleep(900);
+        }
+      }
+    })().catch(() => undefined);
+    return () => {
+      alive = false;
+      io.disconnect();
+    };
+  }, [auto]);
+  const takeOver = () => setAuto(false);
 
   const terms = useMemo(
     () =>
@@ -89,7 +149,8 @@ export function ReturnDemo() {
   };
 
   return (
-    <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-4">
+    // Any touch, click or key hands the demo over to the visitor and stops the autoplay.
+    <div ref={root} onPointerDown={takeOver} onKeyDown={takeOver} onFocus={takeOver} className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-4">
       <div className="mk-card overflow-hidden">
         <div className="flex items-center gap-2.5 border-b mk-hair px-4">
           <Icon name="search" size={17} className="shrink-0 text-muted" />
@@ -113,7 +174,7 @@ export function ReturnDemo() {
         </p>
         <ul className="min-h-[244px] divide-y divide-line" aria-label="Search results">
           {results.map(({ doc }) => (
-            <li key={doc.id} className="px-4 py-3">
+            <li key={doc.id} className="mk-appear px-4 py-3">
               <p className="flex items-center gap-2 text-[14px] font-medium text-ink">
                 <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                 {highlight(doc.title, terms)}

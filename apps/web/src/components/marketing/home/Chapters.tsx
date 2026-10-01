@@ -76,6 +76,7 @@ export function Chapters() {
         name="Return"
         art="art-41"
         title="Find it again."
+        reverse
         hint={
           <>
             <TryIt /> search for <span className="font-medium text-ink">labels</span> or{" "}

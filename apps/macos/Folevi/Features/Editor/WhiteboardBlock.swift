@@ -48,7 +48,7 @@ struct WhiteboardBlockView: View {
         .background(model.sheetPalette?.surface ?? FoleviColor.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(lineColor, lineWidth: 1))
-        .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: Color.folevi(accent: model.style.accent))
+        .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: model.documentAccent)
         .onDisappear { flush() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Whiteboard"))

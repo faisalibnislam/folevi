@@ -94,7 +94,7 @@ final class BlockTextView: NSTextView {
 
     static func make() -> BlockTextView {
         let storage = NSTextStorage()
-        let layout = NSLayoutManager()
+        let layout = FoleviLayoutManager()
         storage.addLayoutManager(layout)
         let container = NSTextContainer(size: NSSize(width: 600, height: CGFloat.greatestFiniteMagnitude))
         container.widthTracksTextView = true

@@ -52,7 +52,7 @@ extension BlockStyles {
         if color == .black { return palette?.heading ?? FoleviColor.heading }
         guard let light = BlockLook.colorHex(color, darkPage: false).flatMap(NSColor.init(foleviHex:)),
               let dark = BlockLook.colorHex(color, darkPage: true).flatMap(NSColor.init(foleviHex:)) else {
-            return Color.folevi(accent: document.accent)
+            return palette?.notePalette.map { Color($0.accent) } ?? Color.folevi(accent: document.accent)
         }
         if let palette { return Color(nsColor: palette.isDark ? dark : light) }
         // On the app's own page: follow the appearance.
@@ -80,14 +80,14 @@ struct BlockLookBackground: View {
     var palette: SheetPalette?
 
     var body: some View {
-        let tint = look.color.map { BlockStyles.blockColor($0, document: document, palette: palette) } ?? Color.folevi(accent: document.accent)
+        let tint = look.color.map { BlockStyles.blockColor($0, document: document, palette: palette) } ?? palette?.notePalette.map { Color($0.accent) } ?? Color.folevi(accent: document.accent)
         let surface = palette?.surface ?? FoleviColor.surface
         ZStack(alignment: .leading) {
             if look.group == .card {
                 let e = edges ?? (true, true)
                 UnevenRoundedRectangle(topLeadingRadius: e.first ? 8 : 0, bottomLeadingRadius: e.last ? 8 : 0,
                                        bottomTrailingRadius: e.last ? 8 : 0, topTrailingRadius: e.first ? 8 : 0, style: .continuous)
-                    .fill(FoleviColor.surfaceRaised.mix(with: Color.folevi(accentSoft: document.accent), by: 0.3))
+                    .fill(FoleviColor.surfaceRaised.mix(with: palette?.notePalette.map { Color($0.accentSoft) } ?? Color.folevi(accentSoft: document.accent), by: 0.3))
                     .overlay {
                         UnevenRoundedRectangle(topLeadingRadius: e.first ? 8 : 0, bottomLeadingRadius: e.last ? 8 : 0,
                                                bottomTrailingRadius: e.last ? 8 : 0, topTrailingRadius: e.first ? 8 : 0, style: .continuous)

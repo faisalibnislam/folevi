@@ -18,7 +18,7 @@ struct FlowchartBlockView: View {
 
     private var surface: Color { model.sheetPalette?.surface ?? FoleviColor.surface }
     private var ink: Color { model.sheetPalette?.ink ?? FoleviColor.ink }
-    private var accent: Color { Color.folevi(accent: model.style.accent) }
+    private var accent: Color { model.documentAccent }
     private var height: Double { liveHeight ?? props.height }
 
     var body: some View {

@@ -262,6 +262,9 @@ final class EditorModel {
     /// The page's colours (SheetPalette), set by the page view for the current appearance.
     var sheetPalette: SheetPalette?
 
+    /// The web's `--doc-accent`: the note style palette's accent while it applies, else the page accent.
+    var documentAccent: Color { sheetPalette?.notePalette.map { Color($0.accent) } ?? Color.folevi(accent: style.accent) }
+
     /// The note's AI: the inline composer and the title's AI menu (Features/AI/InlineAiComposer.swift).
     let ai = EditorAi()
 

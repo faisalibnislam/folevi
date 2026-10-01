@@ -18,9 +18,19 @@ enum CoverArt {
         var tone: String?
         var accent: String?
         var accentDark: String?
+        /// The five text colours (accent, moss, marigold, plum, coral slots) and their names, light and dark.
+        var text: [String]?
+        var textDark: [String]?
+        var names: [String]?
         /// The four highlights (yellow, green, blue, pink), light and dark.
         var highlight: [String]?
         var highlightDark: [String]?
+
+        /// The style's palette for the page's accents, text colours and highlights (nil when incomplete).
+        var notePalette: NoteStylePalette? {
+            NoteStylePalette(accent: accent, accentDark: accentDark, text: text, textDark: textDark,
+                             highlight: highlight, highlightDark: highlightDark, names: names)
+        }
     }
 
     static let all: [Entry] = {

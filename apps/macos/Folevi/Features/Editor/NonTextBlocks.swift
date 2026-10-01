@@ -17,6 +17,8 @@ struct CodeBlockView: View {
     @Environment(AppModel.self) private var app
 
     private var scale: CGFloat { CGFloat(app.editorScale) }
+    /// `--color-code-bg`: on a note style palette, the style's accent 6% into the page.
+    private var codeBackground: Color { model.sheetPalette?.notePalette.map { Color($0.codeBackground) } ?? FoleviColor.codeBg }
 
     private var style: TextRenderStyle {
         var s = BlockStyles.style(for: block, document: model.style, scale: scale, palette: model.sheetPalette)
@@ -36,13 +38,13 @@ struct CodeBlockView: View {
                 .padding(.horizontal, 16 * scale)
                 .padding(.vertical, 12 * scale)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(FoleviColor.codeBg)
+                .background(codeBackground)
         } else {
             editor
                 .padding(.horizontal, 13.5 * scale)
                 .padding(.vertical, 0.85 * 13.5 * scale)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(FoleviColor.codeBg))
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(codeBackground))
                 .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(FoleviColor.heading.opacity(0.08), lineWidth: 1))
                 .overlay(alignment: .topTrailing) {
                     Text(verbatim: props.language.lowercased())
@@ -53,7 +55,7 @@ struct CodeBlockView: View {
                         .allowsHitTesting(false)
                         .accessibilityLabel(Text("Language \(props.language)"))
                 }
-                .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: Color.folevi(accent: model.style.accent))
+                .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: model.documentAccent)
         }
     }
 }
@@ -419,7 +421,7 @@ struct ImageBlockView: View {
                     caption.padding(.top, 6)
                 }
             }
-            .richAtomOutline(selected, accent: Color.folevi(accent: model.style.accent))
+            .richAtomOutline(selected, accent: model.documentAccent)
             if selected && editable { tools.padding(.top, 8).padding(.bottom, 8) }
         }
         .task(id: key) { await load() }
@@ -598,7 +600,7 @@ struct FileBlockView: View {
             if let localURL, let provider = NSItemProvider(contentsOf: localURL) { return provider }
             return NSItemProvider()
         }
-        .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: Color.folevi(accent: model.style.accent))
+        .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: model.documentAccent)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Attachment \(props.name)"))
     }
@@ -716,7 +718,7 @@ struct TableBlockView: View {
                 }
             }
         }
-        .richAtomOutline(selected, accent: Color.folevi(accent: model.style.accent))
+        .richAtomOutline(selected, accent: model.documentAccent)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Table"))
     }
@@ -969,7 +971,7 @@ struct BookmarkBlockView: View {
             }
             .padding(16)
             .foleviCard(radius: 8)
-            .richAtomOutline(selected, accent: Color.folevi(accent: model.style.accent))
+            .richAtomOutline(selected, accent: model.documentAccent)
             .contentShape(Rectangle())
             .onTapGesture { model.select(block.id, extend: NSEvent.modifierFlags.contains(.shift)) }
             .accessibilityElement(children: .contain)

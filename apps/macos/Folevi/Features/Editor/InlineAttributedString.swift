@@ -11,6 +11,9 @@ extension NSAttributedString.Key {
     static let foleviHighlight = NSAttributedString.Key("folevi.highlight")
     /// JSON of a non-text inline node (mention, date, pageLink) rendered as its label.
     static let foleviInline = NSAttributedString.Key("folevi.inline")
+    /// An underline drawn at a set thickness and offset (`FoleviLayoutManager`), as editor.css's
+    /// `text-decoration-thickness` / `text-underline-offset`. A visual attribute, derived like the colours.
+    static let foleviUnderlineOffset = NSAttributedString.Key("folevi.underlineOffset")
 }
 
 /// Visual style of a text-bearing block.
@@ -25,10 +28,12 @@ struct TextRenderStyle: Equatable {
     var kern: CGFloat = 0
     /// A block's own alignment (Format → align).
     var alignment: NSTextAlignment = .natural
+    /// The note style's palette (text colour and highlight marks, links, underlines, inline code).
+    var notePalette: NotePaletteLook?
 
     static func == (a: TextRenderStyle, b: TextRenderStyle) -> Bool {
         a.font == b.font && a.color == b.color && a.lineSpacing == b.lineSpacing && a.placeholder == b.placeholder
-            && a.strikethrough == b.strikethrough && a.kern == b.kern && a.alignment == b.alignment
+            && a.strikethrough == b.strikethrough && a.kern == b.kern && a.alignment == b.alignment && a.notePalette == b.notePalette
     }
 }
 
@@ -75,11 +80,13 @@ enum InlineAttributedString {
         text.enumerateAttributes(in: range, options: []) { attrs, r, _ in
             var visual: [NSAttributedString.Key: Any] = [.paragraphStyle: paragraph]
             var font = style.font
+            let pal = style.notePalette
             if attrs[.foleviCode] != nil {
-                // editor.css `.fb-inline-code`: 0.86em mono on the code background, in ember ink.
+                // editor.css `.fb-inline-code`: 0.86em mono on the code background, in ember ink (on a note
+                // style palette: the style's accent, on the accent 6% into the page).
                 font = FoleviFont.nsFont(.mono, size: style.font.pointSize * 0.86)
-                visual[.backgroundColor] = NSColor.foleviCodeBg
-                visual[.foregroundColor] = NSColor(FoleviColor.emberInk)
+                visual[.backgroundColor] = pal.map { NSColor($0.codeBackground) } ?? NSColor.foleviCodeBg
+                visual[.foregroundColor] = pal.map { NSColor($0.accent) } ?? NSColor(FoleviColor.emberInk)
             }
             let bold = attrs[.foleviBold] != nil, italic = attrs[.foleviItalic] != nil
             if bold || italic { font = FoleviFont.applying(bold: bold, italic: italic, to: font) }
@@ -87,19 +94,36 @@ enum InlineAttributedString {
             if style.kern != 0, attrs[.foleviCode] == nil { visual[.kern] = style.kern }
             var color = style.color
             if let c = attrs[.foleviColor] as? String, let tc = TextColor(rawValue: c) {
-                // `.fb-color-accent` is the ember ink; the others their own ink.
-                color = tc == .accent ? NSColor(FoleviColor.emberInk) : NSColor.folevi(text: tc)
+                // `.fb-color-accent` is the ember ink; the others their own ink. A note style palette fills
+                // the slots with its own colours (muted stays muted).
+                if let slot = pal?.text(tc) {
+                    color = NSColor(slot)
+                } else {
+                    color = tc == .accent ? NSColor(FoleviColor.emberInk) : NSColor.folevi(text: tc)
+                }
             }
-            if let h = attrs[.foleviHighlight] as? String, let hc = HighlightColor(rawValue: h) { visual[.backgroundColor] = NSColor.folevi(highlight: hc) }
-            if attrs[.foleviUnderline] != nil { visual[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+            if let h = attrs[.foleviHighlight] as? String, let hc = HighlightColor(rawValue: h) {
+                visual[.backgroundColor] = pal.map { NSColor($0.highlight(hc)) } ?? NSColor.folevi(highlight: hc)
+            }
+            if attrs[.foleviUnderline] != nil {
+                visual[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                if let pal {
+                    // `.fb-sheet[data-palette] u`: the accent at 70%, 1.5pt thick, 3pt below the baseline.
+                    visual[.underlineColor] = NSColor(pal.underline)
+                    visual[.foleviUnderlineOffset] = FoleviLayoutManager.cssUnderline
+                }
+            }
             if attrs[.foleviStrike] != nil || style.strikethrough {
                 visual[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
                 visual[.strikethroughColor] = NSColor.foleviInkMuted.withAlphaComponent(0.6)
             }
             if let href = attrs[.foleviLink] as? String {
-                color = NSColor.foleviAccent
+                // `.fb-link`: `--color-accent` (the style's accent on a palette), its underline at 35%, 1.5pt
+                // thick, 3pt below the baseline.
+                color = pal.map { NSColor($0.accent) } ?? NSColor.foleviAccent
                 visual[.underlineStyle] = NSUnderlineStyle.single.rawValue
-                visual[.underlineColor] = NSColor.foleviAccent.withAlphaComponent(0.35)
+                visual[.underlineColor] = pal.map { NSColor($0.linkUnderline) } ?? NSColor.foleviAccent.withAlphaComponent(0.35)
+                visual[.foleviUnderlineOffset] = FoleviLayoutManager.cssUnderline
                 visual[.toolTip] = href
             }
             if let json = attrs[.foleviInline] as? String {
@@ -109,7 +133,7 @@ enum InlineAttributedString {
                     color = style.color
                     font = Self.weighted(font, .medium)
                     visual[.underlineStyle] = NSUnderlineStyle.thick.rawValue
-                    visual[.underlineColor] = NSColor(FoleviColor.ember).withAlphaComponent(0.55)
+                    visual[.underlineColor] = pal.map { NSColor($0.pageLinkUnderline) } ?? NSColor(FoleviColor.ember).withAlphaComponent(0.55)
                 } else {
                     let isDate = json.contains("\"date\"")
                     font = Self.weighted(FoleviFont.nsFont(FoleviFont.describe(style.font)?.family ?? .sans, size: style.font.pointSize * 0.92), .semibold)
@@ -121,7 +145,7 @@ enum InlineAttributedString {
             if visual[.foregroundColor] == nil { visual[.foregroundColor] = color }
             if visual[.font] == nil { visual[.font] = font }
             // Remove stale visual attributes, keep Folevi marks.
-            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern] {
+            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .foleviUnderlineOffset, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern] {
                 text.removeAttribute(key, range: r)
             }
             text.addAttributes(visual, range: r)

@@ -73,6 +73,7 @@
 		3F03064595105B8C0DEDB746 /* OnboardingPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F07D7DEEE9DD16E5D75C37 /* OnboardingPreview.swift */; };
 		41203E06365B91E1168CFCFB /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701168B1C40B05259BDC0ECE /* SyncEngine.swift */; };
 		4287995E2CF737FE3114949D /* AudioProps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D311FC2B991BDA75DBA8FF1 /* AudioProps.swift */; };
+		4340F2DFF4D86E94DD28A55E /* FoleviLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B8BB65AFC3E8E8511D74B /* FoleviLayoutManager.swift */; };
 		43918E61804BEB937EFADC4E /* MermaidFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D16EE0B931B4973645DC501 /* MermaidFlow.swift */; };
 		43A37D39E0BEBE2E8203F871 /* SettingsParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD025512FE9ACCD12F768FC /* SettingsParityTests.swift */; };
 		4439A438E23E213CB22A5BAF /* BlockLook.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9DCA457BC212D19BCB8B94 /* BlockLook.swift */; };
@@ -124,6 +125,7 @@
 		7BCBDA705E4CC1A573501B54 /* DocumentPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E510CE5DCCFC5CDAE781AD /* DocumentPage.swift */; };
 		7CEDFDCA1D780F3C3E63966A /* ScopeMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9108AB8DDCF98E30FF1B218 /* ScopeMenu.swift */; };
 		7EA1BEE9EF3F86F5F77564E4 /* BlocksAndStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF86BC8D150F09B7E5EDFF0C /* BlocksAndStyleTests.swift */; };
+		7F8862AB2E8EE31A82D64860 /* NoteStylePalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD39B10919D0185F65C927EA /* NoteStylePalette.swift */; };
 		81F10BAE45F5D5A42AF1BAD2 /* FlexibleDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1537182453B34751A655E02B /* FlexibleDecoding.swift */; };
 		825F18E7F6950D849E43F10B /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CE807CA5595FD32F69BC7F /* Logging.swift */; };
 		8272528FEE36D191A5565814 /* TreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877451F13058A9A35EBC1BE6 /* TreeTests.swift */; };
@@ -181,10 +183,12 @@
 		B2CBA3AC45F70E9BC05916A4 /* WireBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338F3C4CB476BCF3E8688E51 /* WireBlock.swift */; };
 		B69A5C655AAE582995E54060 /* QuickAddTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A09E7A8DA6789E36C918594 /* QuickAddTask.swift */; };
 		B6D5B46F48AD04286D1CE787 /* SettingsAPIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13B84B04331BA82C48E6CA7 /* SettingsAPIModels.swift */; };
+		B8502A588EF579CF9469E46A /* NoteStylePalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD39B10919D0185F65C927EA /* NoteStylePalette.swift */; };
 		B8C5EE1C5A3956A425AA8D9A /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E37A613B12C1772C7DE3830 /* CollectionView.swift */; };
 		B93D1674ED59DBFB4A9CEDDF /* AuthCallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D5C2CDE8D60DA93116A294 /* AuthCallback.swift */; };
 		BE17046A20532B17A955A9A9 /* InviteViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A064B921659A06B0D145D65 /* InviteViews.swift */; };
 		BEB519463607420EB13AAE3C /* FoleviUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C97E8048E4772C8AF3F8B /* FoleviUITests.swift */; };
+		BFB62FB8581FE77C02735ABB /* NoteStylePaletteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1965F424ADDC518C762DB0 /* NoteStylePaletteTests.swift */; };
 		C0EF162736B8446447D583EE /* BlockSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF52F09620D4DD7D2837804 /* BlockSchema.swift */; };
 		C0FBF9ED58E99FA1A83E836D /* FlowchartGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947E45D600983685C09B01E8 /* FlowchartGeometry.swift */; };
 		C11D422E9394443C6DF6CF8D /* WorkspaceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E817D3AAFA1AE6E155B0498D /* WorkspaceSettings.swift */; };
@@ -332,6 +336,7 @@
 		441C2FFE29369E8B2BB86075 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		47B8AA8B4080456A1D47FD51 /* DocumentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentModels.swift; sourceTree = "<group>"; };
 		4BF52F09620D4DD7D2837804 /* BlockSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockSchema.swift; sourceTree = "<group>"; };
+		4C1965F424ADDC518C762DB0 /* NoteStylePaletteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStylePaletteTests.swift; sourceTree = "<group>"; };
 		4F24CC7666AB8E8617D918C1 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		517C0CE1E7645442E65FD6C5 /* BillingRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingRepository.swift; sourceTree = "<group>"; };
 		51F373F3397161B4614F1000 /* ULID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ULID.swift; sourceTree = "<group>"; };
@@ -395,6 +400,7 @@
 		947E45D600983685C09B01E8 /* FlowchartGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowchartGeometry.swift; sourceTree = "<group>"; };
 		9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDrop.swift; sourceTree = "<group>"; };
 		9643824A736735CB8DB7B694 /* NoteComments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteComments.swift; sourceTree = "<group>"; };
+		968B8BB65AFC3E8E8511D74B /* FoleviLayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviLayoutManager.swift; sourceTree = "<group>"; };
 		9764CABA30C2B0015130D53B /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
 		99E9A49C6E1B5AD22ADDB236 /* NoteActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteActions.swift; sourceTree = "<group>"; };
 		9C3AF66CB0259C2291D1A201 /* Flowchart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Flowchart.swift; sourceTree = "<group>"; };
@@ -444,6 +450,7 @@
 		D521EF350EAE4076E43AE4EB /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		D5C4F89E0E654AA1C441D23D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		DA763499A687D1E479FDAEC4 /* FoleviMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviMark.swift; sourceTree = "<group>"; };
+		DD39B10919D0185F65C927EA /* NoteStylePalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStylePalette.swift; sourceTree = "<group>"; };
 		DF82705384D1A2CADC9CA52C /* PageExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageExport.swift; sourceTree = "<group>"; };
 		DFAE0742A02D411799235409 /* RankTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankTests.swift; sourceTree = "<group>"; };
 		E0E510CE5DCCFC5CDAE781AD /* DocumentPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPage.swift; sourceTree = "<group>"; };
@@ -536,6 +543,7 @@
 				5A564E561A98E2461BD49B36 /* MermaidConvert.swift */,
 				2D16EE0B931B4973645DC501 /* MermaidFlow.swift */,
 				60DBCCC4E93F2A34C14FFE59 /* MonthGrid.swift */,
+				DD39B10919D0185F65C927EA /* NoteStylePalette.swift */,
 				8B4C3B603BE647464B00AB1C /* NotificationTopics.swift */,
 				CB2DF75F64A2B74B00D061E3 /* Organize.swift */,
 				AE50B893EA237C548FADA9B9 /* PageBackdrop.swift */,
@@ -684,6 +692,7 @@
 				9258B965E3DB0592C35B974F /* FindReplaceBar.swift */,
 				86C58FB8BBB8B7A7D60C6E58 /* FlowchartBlock.swift */,
 				1711D69BB51E5E76762CD619 /* FlowchartCanvas.swift */,
+				968B8BB65AFC3E8E8511D74B /* FoleviLayoutManager.swift */,
 				2265DC1D61FA18351DB03357 /* FormatPanel.swift */,
 				BA7CCDB9F32B7ECDC34095C8 /* FormulaBlock.swift */,
 				05445DDCFDEC1AEDBBD52FF2 /* InlineAttributedString.swift */,
@@ -944,6 +953,7 @@
 				869B7AC67359552ABB0C4A41 /* JSONValueTests.swift */,
 				66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */,
 				2ACBAB1371653FF027D7F2FD /* MarkdownTests.swift */,
+				4C1965F424ADDC518C762DB0 /* NoteStylePaletteTests.swift */,
 				896F39345AE6FEFB55EE19F3 /* OnboardingCatalogTests.swift */,
 				642429CBDE5F9521FDB16D9F /* OrganizeTests.swift */,
 				DFAE0742A02D411799235409 /* RankTests.swift */,
@@ -1151,6 +1161,8 @@
 				855C2006C8BA6B9F7C4A09A4 /* MermaidConvert.swift in Sources */,
 				61DBDAC0399DD3A327E38227 /* MermaidFlow.swift in Sources */,
 				910045BDE30C2031EABB93E9 /* MonthGrid.swift in Sources */,
+				B8502A588EF579CF9469E46A /* NoteStylePalette.swift in Sources */,
+				BFB62FB8581FE77C02735ABB /* NoteStylePaletteTests.swift in Sources */,
 				9578C1CC4038DD8DFBAF8670 /* NotificationTopics.swift in Sources */,
 				4885157F589C67E2ED3867EE /* OnboardingCatalog.swift in Sources */,
 				C360A2FED01EC8F1A891CCE4 /* OnboardingCatalogTests.swift in Sources */,
@@ -1255,6 +1267,7 @@
 				D9A1F77CA7E8AA32318A35BF /* FoleviApp.swift in Sources */,
 				550DC0E1F11D91328AAB15AE /* FoleviCommands.swift in Sources */,
 				9DFC7AB2E11A3388FAD057E8 /* FoleviFont.swift in Sources */,
+				4340F2DFF4D86E94DD28A55E /* FoleviLayoutManager.swift in Sources */,
 				EEC9E4C411F152437FE6B4AC /* FoleviMark.swift in Sources */,
 				E2D2598A0526702F42EA5124 /* FoleviTokens.swift in Sources */,
 				A151C502166C94388272C5DD /* FormatPanel.swift in Sources */,
@@ -1293,6 +1306,7 @@
 				911AA177002D786A63743643 /* NoteMenu.swift in Sources */,
 				6EC20350796262AA00ACB927 /* NoteSelection.swift in Sources */,
 				A088D66E6C4847DD7570BD6A /* NoteSidebar.swift in Sources */,
+				7F8862AB2E8EE31A82D64860 /* NoteStylePalette.swift in Sources */,
 				783F65D13B144C1643B34B12 /* NoteStylePanel.swift in Sources */,
 				E6488B055F2D74B773BFB650 /* NotificationTopics.swift in Sources */,
 				EF71660F19EB61A167546064 /* NotificationsBell.swift in Sources */,

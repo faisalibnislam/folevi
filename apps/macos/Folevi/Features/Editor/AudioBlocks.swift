@@ -391,7 +391,7 @@ struct AudioBlockView: View {
         .foleviSurface(.color(model.sheetPalette?.surface ?? FoleviColor.surface), shape: .rounded(10), shadow: FoleviShadow.card)
         .contentShape(Rectangle())
         .onTapGesture { model.select(block.id, extend: false) }
-        .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: Color.folevi(accent: model.style.accent))
+        .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: model.documentAccent)
         .padding(.vertical, 6)
         .onDisappear { stop() }
         .accessibilityElement(children: .contain)

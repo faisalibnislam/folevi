@@ -45,7 +45,9 @@ final class WebSignIn: NSObject, ASWebAuthenticationPresentationContextProviding
     func run(_ url: URL) async throws -> URL {
         defer { session = nil }
         return try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callback: .customScheme(AuthCallback.scheme)) { callbackURL, error in
+            // AuthenticationServices calls this on a background queue: it must not be main-actor isolated
+            // (Swift 6 traps on the isolation check otherwise), so it is @Sendable and only resumes.
+            let session = ASWebAuthenticationSession(url: url, callback: .customScheme(AuthCallback.scheme)) { @Sendable callbackURL, error in
                 if let callbackURL {
                     continuation.resume(returning: callbackURL)
                 } else if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {

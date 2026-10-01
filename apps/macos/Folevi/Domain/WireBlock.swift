@@ -234,6 +234,7 @@ extension BlockContent {
         case "quote": return .quote(QuoteProps())
         case "callout": return .callout(CalloutProps(tone: .note, icon: nil))
         case "divider": return .divider(DividerProps())
+        case "flowchart": return .unknown(type: FlowchartProps.type, props: FlowchartProps().json)
         case "code": return .code(CodeProps(language: "plaintext", code: ""))
         case "table":
             let empty: [InlineNode] = []

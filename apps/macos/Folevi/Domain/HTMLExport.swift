@@ -76,6 +76,7 @@ mark{background:#F7E7A6;color:inherit}
 .page-break{break-after:page;page-break-after:always;height:0;margin:32px 0;border-top:1px dashed var(--line)}
 .formula{margin:16px 0;text-align:center;overflow-x:auto}.formula pre{text-align:left}
 .whiteboard svg{width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
+.flowchart{margin:16px 0}.flowchart svg{display:block;max-width:100%;height:auto;margin:0 auto}
 hr.divider-extralight{border:0;border-top:2px dotted var(--line);opacity:.7}hr.divider-light{border:0;border-top:1px dotted var(--muted)}
 hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{border:0;border-top:3px solid var(--ink)}
 @media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
@@ -138,6 +139,10 @@ hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{b
                 parts.append("<div class=\"formula\"><pre><code class=\"language-latex\">\(escape((p["latex"]?.isNull == false ? str(p["latex"]) : "")))</code></pre></div>")
             case "whiteboard":
                 parts.append("<figure class=\"whiteboard\">\(Whiteboard.svg(data: (p["data"]?.isNull == false ? str(p["data"]) : ""), height: p["height"]?.doubleValue))</figure>")
+            case FlowchartProps.type:
+                if let data = p["data"]?.stringValue, !data.isEmpty {
+                    parts.append("<figure class=\"flowchart\">\(FlowchartExport.svg(data))</figure>")
+                }
             case "code":
                 let code = p["code"].flatMap { $0.isNull ? nil : $0 }.map { str($0) } ?? ""
                 parts.append("<pre><code class=\"language-\(escape(str(p["language"])))\">\(escape(code))</code></pre>")

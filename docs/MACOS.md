@@ -36,6 +36,7 @@ Helper scripts (in `apps/macos/scripts/`):
 | --- | --- |
 | `packages/design-tokens/scripts/brand-icons.mjs` | Writes the app icon (a Liquid Glass Icon Composer document, `Resources/AppIcon.icon`, which Xcode compiles, with a flat `AppIcon.icns` for older macOS) plus the in-app mark (`FoleviMark.imageset`), the menu-bar glyph (`FoleviMenuBar.imageset`) and the wordmark, from the brand files in `packages/design-tokens/brand/source`, along with the web's icons and the email mark. Run: `node packages/design-tokens/scripts/brand-icons.mjs`. |
 | `generate-test-fixtures.mjs` | Bundles `packages/editor-schema` with esbuild and writes `FoleviTests/Fixtures/reference-outputs.json`: expected Markdown/HTML export, Markdown import, inline parsing, tree and number-formatting outputs from the TypeScript reference. Run with `node`. |
+| `generate-flowchart-fixtures.mjs` | Runs the flowchart TypeScript (`packages/editor-schema/src/flowchart*.ts` and the web canvas's `ops.ts`) with Node's type stripping and writes `FoleviTests/Fixtures/flowchart-reference.json`: parsing, validation, text wrapping, routing, layout, Mermaid and SVG outputs the Swift port is tested against. Run with `node` (22.18 or later); no `node_modules` needed. |
 | `update-string-catalog.py` | Refreshes `Resources/Localizable.xcstrings` (English source strings) from the compiler's extracted `.stringsdata`. Run after a build. |
 
 ## Configuration

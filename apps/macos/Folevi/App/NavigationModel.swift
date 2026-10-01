@@ -7,6 +7,8 @@ enum SidebarItem: Hashable, Codable, Sendable {
     case drafts
     case notes
     case folders
+    /// Every tag (the web's /tags).
+    case tags
     case tasks
     case calendar
     case shared
@@ -23,6 +25,7 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .drafts: return "Drafts"
         case .notes: return "All notes"
         case .folders: return "Folders"
+        case .tags: return "Tags"
         case .tasks: return "Tasks"
         case .calendar: return "Calendar"
         case .shared: return "Shared with Me"
@@ -41,6 +44,7 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .drafts: return String(localized: "Drafts")
         case .notes: return String(localized: "All notes")
         case .folders: return String(localized: "Folders")
+        case .tags: return String(localized: "Tags")
         case .tasks: return String(localized: "Tasks")
         case .calendar: return String(localized: "Calendar")
         case .shared: return String(localized: "Shared with Me")
@@ -58,16 +62,18 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .all: return "house"
         case .drafts: return "tray"
         case .notes: return "doc.on.doc"
+        // The web's lucide icons, as the nearest SF Symbols.
         case .folders: return "folder"
-        case .tasks: return "checklist"
+        case .tags: return "number"
+        case .tasks: return "checkmark.square"
         case .calendar: return "calendar"
-        case .shared: return "person.2"
-        case .templates: return "square.on.square.dashed"
+        case .shared: return "point.3.connected.trianglepath.dotted"
+        case .templates: return "rectangle.3.group"
         case .starred: return "star"
         case .archive: return "archivebox"
         case .trash: return "trash"
         case .folder: return "folder"
-        case .tag: return "tag"
+        case .tag: return "number"
         }
     }
 
@@ -77,6 +83,7 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .drafts: return "sidebar.drafts"
         case .notes: return "sidebar.notes"
         case .folders: return "sidebar.folders"
+        case .tags: return "sidebar.tags"
         case .tasks: return "sidebar.tasks"
         case .calendar: return "sidebar.calendar"
         case .shared: return "sidebar.shared"
@@ -152,6 +159,31 @@ final class NavigationModel {
     var showHistory = false
     var showExport = false
 
+    /// On a note, the left sidebar shows the note's tools ("document", the default) or the app's folders.
+    /// Remembered on this Mac, as on the web.
+    enum DocSidebarMode: String { case document, folders }
+    var docSidebarMode: DocSidebarMode = DocSidebarMode(rawValue: UserDefaults.standard.string(forKey: "docSidebarMode") ?? "") ?? .document {
+        didSet { UserDefaults.standard.set(docSidebarMode.rawValue, forKey: "docSidebarMode") }
+    }
+
+    /// Shows the folders or the note's tools in the sidebar, opening it if it's hidden (the web's setDocSidebarMode).
+    func setDocSidebarMode(_ mode: DocSidebarMode) {
+        docSidebarMode = mode
+        if !sidebarVisible { toggleSidebar() }
+    }
+
+    /// Focus mode: both sidebars hidden.
+    var focusMode: Bool { !sidebarVisible && !showInspector }
+
+    func setFocusMode(_ on: Bool) {
+        if on {
+            if sidebarVisible { toggleSidebar() }
+            showInspector = false
+        } else if !sidebarVisible {
+            toggleSidebar()
+        }
+    }
+
     private var back: [Location] = []
     private var forward: [Location] = []
     private var isRestoring = false
@@ -167,8 +199,15 @@ final class NavigationModel {
         forward.removeAll()
     }
 
-    func open(_ documentId: String) {
-        addTab(documentId)
+    /// Opens a page. As on the web, a page opened from another page (a link, a backlink, a parent) takes over
+    /// that page's tab; one opened from a list, the palette, the sidebar's Starred or as a new note gets a
+    /// tab of its own (`newTab`).
+    func open(_ documentId: String, newTab: Bool = false) {
+        if !newTab, !tabs.contains(documentId), let from = openDocumentId, let i = tabs.firstIndex(of: from) {
+            tabs[i] = documentId
+        } else {
+            addTab(documentId)
+        }
         guard documentId != openDocumentId else { return }
         pushHistory(current)
         openDocumentId = documentId
@@ -204,8 +243,11 @@ final class NavigationModel {
     init(persistsTabs: Bool = true) {
         self.persistsTabs = persistsTabs
         if !persistsTabs { tabs = [] }
+        // The main window remembers whether its sidebar was hidden, as the web does.
+        if persistsTabs, UserDefaults.standard.bool(forKey: "sidebarCollapsed") { columnVisibility = .detailOnly }
     }
-    private static let maxTabs = 8
+    /// The web keeps at most 12 page tabs.
+    private static let maxTabs = 12
 
     func addTab(_ documentId: String) {
         guard !tabs.contains(documentId) else { return }
@@ -265,6 +307,36 @@ final class NavigationModel {
 
     func toggleSidebar() {
         columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
+        if persistsTabs { UserDefaults.standard.set(columnVisibility == .detailOnly, forKey: "sidebarCollapsed") }
+    }
+
+    /// Where "Up" leads from here (the web's UpButton): a nested page to its parent, a note to its folder (or
+    /// Drafts, or Templates), a folder to Folders, a tag to Tags, any other view to Home; nothing on Home.
+    @MainActor
+    func upTarget(app: AppModel) -> (label: String, go: () -> Void)? {
+        if let id = openDocumentId {
+            guard let doc = app.document(id) else { return nil }
+            if let parentId = doc.parentDocumentId {
+                let title = app.document(parentId)?.displayTitle ?? String(localized: "Untitled")
+                return (title, { [weak self] in self?.open(parentId) })
+            }
+            if let folderId = doc.folderId, let folder = app.sidebar.folders.first(where: { $0.id == folderId }) {
+                return (folder.name, { [weak self] in self?.show(.folder(folderId)) })
+            }
+            if doc.kind == .template { return (String(localized: "Templates"), { [weak self] in self?.show(.templates) }) }
+            return (String(localized: "Drafts"), { [weak self] in self?.show(.drafts) })
+        }
+        switch selection {
+        case .all: return nil
+        case .folder: return (String(localized: "Folders"), { [weak self] in self?.show(.folders) })
+        case .tag: return (String(localized: "Tags"), { [weak self] in self?.show(.tags) })
+        default: return (String(localized: "Home"), { [weak self] in self?.show(.all) })
+        }
+    }
+
+    /// Shows a list view, leaving any open note (even when that view is already selected).
+    func show(_ item: SidebarItem) {
+        if selection == item { closeDocument() } else { selection = item }
     }
 }
 

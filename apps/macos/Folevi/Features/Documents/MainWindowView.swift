@@ -11,13 +11,16 @@ struct MainWindowView: View {
     @State private var noteAiOpen = false
 
     var body: some View {
-        HStack(spacing: 0) {
+        // As the web's Shell: the sidebar sits on the canvas; beside it, 8pt in, the content panel (rounded
+        // glass) with the tab strip at its top. A note brings its own page, so it sits straight on the canvas.
+        HStack(spacing: 8) {
             if nav.sidebarVisible {
-                SidebarView(nav: nav, editor: editorIfOpen)
+                SidebarView(nav: nav, editor: editorIfOpen, openDocument: { nav.open($0, newTab: true) })
+                    .zIndex(2)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
             VStack(spacing: 0) {
-                MainToolbar(nav: nav, editor: editorIfOpen, crumbs: crumbs, primary: primaryAction)
+                MainToolbar(nav: nav, editor: editorIfOpen, crumbs: crumbs, openDocument: { nav.open($0) })
                     // In front of the page: the page's scroll view reaches up under the bar and took its clicks.
                     .zIndex(1)
                 StatusBanners()
@@ -60,6 +63,11 @@ struct MainWindowView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { if editorIfOpen == nil { ContentPanel() } }
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+            .padding(.trailing, 8)
+            .padding(.leading, nav.sidebarVisible ? 0 : 8)
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(AmbientBackground(cover: editorIfOpen?.document?.cover))
@@ -90,6 +98,15 @@ struct MainWindowView: View {
             guard NSApp.keyWindow?.isMainWindow == true || editor == nil, app.aiAvailable else { return }
             if editorIfOpen != nil { noteAiOpen.toggle() } else { aiOpen.toggle() }
         }
+        .onChange(of: app.askAiRequest) { _, request in
+            // The palette's "Ask AI", a folder's "Ask AI about this folder…": open the assistant here.
+            guard request != nil, NSApp.keyWindow?.isMainWindow == true || editor == nil, app.aiAvailable else { return }
+            if editorIfOpen != nil { noteAiOpen = true } else { aiOpen = true }
+        }
+        .sheet(isPresented: Binding(get: { app.showQuickAdd && (NSApp.keyWindow?.isMainWindow ?? true) }, set: { app.showQuickAdd = $0 })) {
+            QuickAddTaskDialog(documentId: editorIfOpen?.documentId) { id in nav.open(id) }
+                .environment(app)
+        }
         .onChange(of: nav.openDocumentId) { _, id in
             noteAiOpen = false
             switchEditor(to: id)
@@ -115,23 +132,6 @@ struct MainWindowView: View {
     private var editorIfOpen: EditorModel? {
         guard let editor, nav.openDocumentId == editor.documentId else { return nil }
         return editor
-    }
-
-    private var primaryAction: (title: LocalizedStringKey, systemImage: String, action: () -> Void)? {
-        // On a note, as on the web: always "New note".
-        let selection: SidebarItem = editorIfOpen == nil ? nav.selection : .notes
-        switch selection {
-        case .tasks:
-            return ("Add Task", "plus", { NotificationCenter.default.post(name: .foleviFocusQuickTask, object: nil) })
-        case .calendar, .shared, .trash, .archive, .starred, .tag:
-            return nil
-        default:
-            return ("New note", "plus", {
-                Task {
-                    if let id = await app.createDocument(folderId: nav.currentFolderId) { nav.open(id) }
-                }
-            })
-        }
     }
 
     private var crumbs: [Crumb] {
@@ -165,7 +165,8 @@ struct MainWindowView: View {
         } else {
             switch nav.selection {
             case .all: HomeDashboardView(nav: nav, openDocument: open)
-            case .folders: FoldersIndexView(nav: nav)
+            case .folders: FoldersIndex(nav: nav)
+            case .tags: TagsIndex(nav: nav)
             case .tasks: TasksView(openDocument: open, openCalendar: { nav.selection = .calendar })
             case .calendar: CalendarView(openDocument: open)
             case .shared: SharedWithMeView(openDocument: open)
@@ -310,75 +311,109 @@ struct DocumentWindowView: View {
     }
 }
 
-/// Offline / maintenance banners.
+/// The maintenance banner (the web's Shell banner): the admin's message on the warning tint, centred, with
+/// a note when Folevi is read-only. Connection state is never a banner: the sidebar's sync icon shows it.
 struct StatusBanners: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        VStack(spacing: 0) {
-            if !app.sync.isOnline {
-                banner(icon: "icloud.slash", text: app.sync.forcedOffline
-                       ? String(localized: "Offline mode is on. Changes are saved on this Mac and will sync when you turn it off.")
-                       : String(localized: "You're offline. Changes are saved on this Mac and will sync when you reconnect."),
-                       tint: FoleviColor.warning, bg: FoleviColor.warningSoft)
-                    .accessibilityIdentifier("offlineBanner")
-            }
-            if let message = app.bannerMessage {
-                banner(icon: "wrench.and.screwdriver", text: message, tint: FoleviColor.accentSoftInk, bg: FoleviColor.accentSoft)
-            }
-            if app.readOnlyMode {
-                banner(icon: "lock", text: String(localized: "Folevi is in read-only maintenance mode. Editing will be back shortly."),
-                       tint: FoleviColor.accentSoftInk, bg: FoleviColor.accentSoft)
-            }
+        if let message = app.bannerMessage {
+            Text(app.readOnlyMode ? message + String(localized: " Folevi is read-only right now; your edits are kept on this device.") : message)
+                .font(.ui(14))
+                .foregroundStyle(FoleviColor.ink)
+                .multilineTextAlignment(.center)
+                // No fixedSize here: the window's minimum size is measured at zero width.
+                .lineLimit(3)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(FoleviColor.warningSoft)
+                .overlay(alignment: .bottom) { FoleviColor.line.frame(height: 1) }
+                .accessibilityAddTraits(.updatesFrequently)
         }
-    }
-
-    private func banner(icon: String, text: String, tint: Color, bg: Color) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon).accessibilityHidden(true)
-            // No fixedSize here: the window's minimum size is measured at zero width.
-            Text(text).font(.ui(12)).lineLimit(2).truncationMode(.tail)
-            Spacer()
-            if app.sync.pendingCount > 0 && !app.sync.isOnline {
-                Text("\(app.sync.pendingCount) waiting").font(.ui(11.5).monospacedDigit())
-            }
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity)
-        .background(bg)
-        .accessibilityElement(children: .combine)
     }
 }
 
+/// The content panel beside the sidebar (the web's `.ui-content`): nearly opaque glass, radius 14, the glass
+/// edge and shadow. Solid when Reduce Transparency is on.
+struct ContentPanel: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        Color.clear
+            .foleviSurface(.color(reduceTransparency ? FoleviColor.surfaceRaised : FoleviGlass.content), shape: .rounded(14),
+                           shadow: FoleviGlassDepth.edge + FoleviGlassDepth.shadow)
+            .background { if !reduceTransparency { shape.fill(.ultraThinMaterial) } }
+    }
+}
+
+/// Toasts at the bottom centre (the web's ToastProvider): up to four, newest last. Neutral ones are the
+/// accent bar; success and error use soft tints. An action (Undo, Open) and a dismiss button on each.
 struct ToastView: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        if let toast = app.toast {
-            HStack(spacing: 10) {
-                Text(toast).font(.ui(12, .medium))
-                if let action = app.toastAction {
-                    Button(action.title) {
-                        app.toast = nil
-                        app.toastAction = nil
-                        action.run()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.ui(12, .semibold))
-                    .foregroundStyle(FoleviColor.heading)
-                    .underline()
-                }
+        VStack(spacing: 8) {
+            ForEach(app.toasts) { toast in
+                ToastRow(toast: toast) { app.dismissToast(toast.id) }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .foleviChrome()
-                .padding(.bottom, 20)
-                .transition(.opacity)
-                .accessibilityAddTraits(.updatesFrequently)
-                .onAppear { AccessibilityNotification.Announcement(toast).post() }
         }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+        .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: app.toasts.map(\.id))
+    }
+}
+
+private struct ToastRow: View {
+    var toast: ToastItem
+    var dismiss: () -> Void
+
+    private var fill: Color {
+        switch toast.tone {
+        case .error: return FoleviColor.destructiveSoft
+        case .success: return FoleviColor.successSoft
+        case .neutral: return FoleviColor.accentStrong
+        }
+    }
+
+    private var ink: Color { toast.tone == .neutral ? FoleviColor.accentInk : FoleviColor.ink }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(toast.message).font(.ui(14, .medium)).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let action = toast.action {
+                Button {
+                    action.run()
+                    dismiss()
+                } label: {
+                    Text(action.title).font(.ui(14, .semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(ink.opacity(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            Button(action: dismiss) {
+                Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).opacity(0.7)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Dismiss"))
+        }
+        .foregroundStyle(ink)
+        .padding(.leading, 20)
+        .padding(.trailing, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: 448)
+        .fixedSize(horizontal: true, vertical: false)
+        .foleviSurface(.color(fill), shape: .rounded(6), shadow: FoleviShadow.pop)
+        .accessibilityElement(children: .contain)
+        .onAppear { AccessibilityNotification.Announcement(toast.message).post() }
     }
 }
 

@@ -13,20 +13,21 @@ struct NotificationsBell: View {
 
     var body: some View {
         Button { open.toggle() } label: {
+            // The web's 32pt square (radius 6), Bell 16; the unread badge sits on its corner.
             Image(systemName: "bell")
-                .font(.system(size: 13.5, weight: .medium))
-                .frame(width: 28, height: 28)
+                .font(.system(size: 14, weight: .regular))
+                .frame(width: 32, height: 32)
                 .overlay(alignment: .topTrailing) {
                     if unread > 0 {
                         Text(unread > 9 ? "9+" : "\(unread)")
-                            .font(.ui(9.5, .semibold))
+                            .font(.ui(10, .semibold))
                             .monospacedDigit()
                             .foregroundStyle(.white)
                             .padding(.horizontal, 4)
                             .frame(minWidth: 16, minHeight: 16)
                             .background(Capsule().fill(FoleviColor.coral))
-                            .overlay(Capsule().strokeBorder(FoleviColor.sidebar, lineWidth: 1.5))
-                            .offset(x: 4, y: -3)
+                            .background(Capsule().stroke(FoleviColor.sidebar, lineWidth: 4))
+                            .offset(x: 2, y: -2)
                             .accessibilityHidden(true)
                     }
                 }
@@ -94,6 +95,7 @@ private struct NotificationsPanel: View {
                 .disabled(unread == 0)
                 IconButton(systemImage: "gearshape", label: "Notification settings", size: 28) {
                     close()
+                    SettingsRouter.shared.section = .notifications
                     openSettings()
                 }
             }

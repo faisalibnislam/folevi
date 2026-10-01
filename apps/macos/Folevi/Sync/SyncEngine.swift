@@ -11,6 +11,10 @@ struct SyncSnapshot: Sendable, Equatable {
     var forcedOffline = false
     var lastSyncedAt: Date?
     var lastErrorMessage: String?
+    /// Pages with changes still waiting on this Mac (the sync details list them, as on the web).
+    var pendingDocuments: [PendingDocument] = []
+    /// The session needs refreshing before changes can be sent.
+    var authRequired = false
 }
 
 enum SyncEvent: Sendable {
@@ -144,7 +148,9 @@ actor SyncEngine {
         if !canTalk && status != .conflict && status != .error { status = .offline }
         return SyncSnapshot(status: status, pendingCount: state.outstandingCount, uploadCount: state.uploads.count,
                             conflicts: state.conflicts, errors: state.errors, isOnline: canTalk, forcedOffline: forcedOffline,
-                            lastSyncedAt: lastSyncedAt, lastErrorMessage: lastErrorMessage)
+                            lastSyncedAt: lastSyncedAt, lastErrorMessage: lastErrorMessage,
+                            pendingDocuments: PendingDocument.from(ops: state.pending + state.inflight, uploads: state.uploads),
+                            authRequired: state.authRequired)
     }
 
     // MARK: Connectivity

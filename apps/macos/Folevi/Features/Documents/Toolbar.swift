@@ -153,7 +153,8 @@ struct BackForwardPill: View {
     }
 }
 
-/// The 52pt toolbar row over the canvas.
+/// The top of the window. In the main window, the web's tab strip: a 44pt glass bar 8pt in from the edges
+/// (Up, Home and the open pages, New note). A document window has no tabs: its breadcrumb instead.
 struct MainToolbar: View {
     @Bindable var nav: NavigationModel
     var editor: EditorModel?
@@ -161,66 +162,77 @@ struct MainToolbar: View {
     var showsHistory = true
     /// Document windows have no sidebar: always leave room for the traffic lights.
     var hasSidebar = true
-    /// The view's primary action (e.g. "New" in lists, "Add task" in Tasks), shown as a cocoa pill.
-    var primary: (title: LocalizedStringKey, systemImage: String, action: () -> Void)?
+    /// Opens a note (sync details in the strip while the sidebar is hidden).
+    var openDocument: (String) -> Void = { _ in }
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        HStack(spacing: 10) {
-            if !hasSidebar {
-                Color.clear.frame(width: 62, height: 1)
-            } else if !nav.sidebarVisible {
-                // Room for the traffic lights, then the sidebar toggle.
-                Color.clear.frame(width: 66, height: 1)
-                IconButton(systemImage: "sidebar.left", label: "Show Sidebar", shortcutHint: "⌃⌘S", size: 28) { withSidebarAnimation { nav.toggleSidebar() } }
+        if hasSidebar {
+            // Room for the traffic lights while the sidebar (which normally holds them) is hidden.
+            TabStrip(nav: nav, openDocument: openDocument, leadingInset: nav.sidebarVisible ? 0 : 58) {
+                trailing
             }
-            if showsHistory { BackForwardPill(nav: nav) }
-            if hasSidebar {
-                // The main window: tabs, as on the web.
-                TabStrip(nav: nav)
-                    .padding(.leading, 2)
-            } else {
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+            .frame(height: FoleviLayout.toolbarHeight, alignment: .bottom)
+        } else {
+            HStack(spacing: 10) {
+                Color.clear.frame(width: 62, height: 1)
+                if showsHistory { BackForwardPill(nav: nav) }
                 BreadcrumbBar(crumbs: crumbs)
                     .padding(.leading, 2)
+                // Only the empty space moves the window. A drag area behind the whole row took clicks meant
+                // for the tabs and buttons on top of it.
+                Color.clear
+                    .frame(minWidth: 8, maxWidth: .infinity, maxHeight: .infinity)
+                    .titlebarDragArea()
+                // No sidebar here: save state sits in this row (as the web shows it in the header without one).
+                SyncStatusButton(documentId: editor?.documentId)
+                documentItems
             }
-            // Only the empty space moves the window. A drag area behind the whole row took clicks meant
-            // for the tabs and buttons on top of it.
-            Color.clear
-                .frame(minWidth: 8, maxWidth: .infinity, maxHeight: .infinity)
-                .titlebarDragArea()
-            trailing
+            .padding(.horizontal, 14)
+            .frame(height: FoleviLayout.toolbarHeight)
         }
-        .padding(.horizontal, 14)
-        .frame(height: FoleviLayout.toolbarHeight)
     }
 
+    /// Always here: a new note opens in its own tab (in the open folder, else in Drafts).
     @ViewBuilder private var trailing: some View {
         HStack(spacing: 6) {
-            SyncStatusPill(snapshot: app.sync)
-                .frame(width: 118)
-                .padding(.trailing, 4)
-            if hasSidebar || editor == nil, let primary {
-                Button(action: primary.action) {
-                    Label(primary.title, systemImage: primary.systemImage)
+            let inFolder = nav.currentFolderId != nil
+            Button {
+                let folderId = nav.currentFolderId
+                Task { if let id = await app.createDocument(folderId: folderId) { nav.open(id, newTab: true) } }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus").font(.system(size: 12, weight: .semibold))
+                    Text("New note")
                 }
-                .buttonStyle(.folevi(.primary, .medium))
-                .padding(.trailing, 2)
             }
-            if let editor {
+            .buttonStyle(.folevi(.primary, .small))
+            .help(Text(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"))
+            .accessibilityIdentifier("toolbar.newNote")
+            documentItems
+        }
+    }
+
+    /// The open note's Share, "…" and the inspector (the note's own chrome; see the document page).
+    @ViewBuilder private var documentItems: some View {
+        if let editor {
+            HStack(spacing: 6) {
                 // Comments live in the note's dock (NoteDock), as on the web. Share opens who can see the note.
                 ShareNoteButton(editor: editor)
                     .padding(.horizontal, 2)
                 DocumentMoreMenu(editor: editor, nav: nav)
+                IconButton(systemImage: "sidebar.right", label: "Inspector", shortcutHint: "⌥⌘I", size: 32, isActive: nav.showInspector) {
+                    withSidebarAnimation { nav.showInspector.toggle() }
+                }
+                .accessibilityIdentifier("toolbar.inspector")
             }
-            IconButton(systemImage: "sidebar.right", label: "Inspector", shortcutHint: "⌥⌘I", size: 30, isActive: nav.showInspector) {
-                withSidebarAnimation { nav.showInspector.toggle() }
-            }
-            .accessibilityIdentifier("toolbar.inspector")
         }
     }
 }
 
-/// "…" menu for the open document — real actions only.
+/// "…" menu for the open document, real actions only.
 struct DocumentMoreMenu: View {
     var editor: EditorModel
     @Bindable var nav: NavigationModel

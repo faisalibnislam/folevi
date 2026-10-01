@@ -63,6 +63,10 @@ struct Profile: Codable, Sendable, Hashable {
     var aiEnabled: Bool?
     /// When a requested account deletion happens (status "pending_deletion").
     var deletionScheduledFor: Double?
+    /// Folevi staff: the workspace menu offers the Admin console.
+    var platformRole: String?
+    /// Their profile picture (Personal's mark in the workspace menu).
+    var avatarUrl: String?
 
     /// AI is available: their plan includes it and they haven't turned it off (the server enforces it).
     var aiOn: Bool { aiEnabled != false && (entitlements?.ai ?? true) }
@@ -79,7 +83,7 @@ struct OnboardingStepChoice: Sendable {
     var aiEnabled: Bool? = nil
 }
 
-/// ai:ask / ai:brief — Markdown with [n] citations, and the notes cited.
+/// ai:ask / ai:brief, Markdown with [n] citations, and the notes cited.
 struct AiAnswer: Decodable, Sendable {
     struct Source: Decodable, Sendable, Hashable, Identifiable {
         var id: String
@@ -255,6 +259,28 @@ struct TagInfo: Codable, Sendable, Hashable, Identifiable {
 struct SidebarData: Codable, Sendable, Hashable {
     var folders: [FolderInfo]
     var tags: [TagInfo]
+}
+
+/// organization:index: every folder and tag with its page count and dates (the Folders and Tags pages).
+struct OrganizationIndex: Decodable, Sendable, Hashable {
+    struct Folder: Decodable, Sendable, Hashable, Identifiable {
+        var id: String
+        var name: String
+        var color: String?
+        var parentFolderId: String?
+        var createdAt: Double
+        var updatedAt: Double
+        var documentCount: Int
+    }
+    struct Tag: Decodable, Sendable, Hashable, Identifiable {
+        var id: String
+        var name: String
+        var color: String
+        var createdAt: Double
+        var documentCount: Int
+    }
+    var folders: [Folder]
+    var tags: [Tag]
 }
 
 struct DocumentPage: Decodable, Sendable {

@@ -81,9 +81,11 @@ final class AppModel {
     var sidebar = SidebarData(folders: [], tags: [])
     var bannerMessage: String?
     var readOnlyMode = false
-    var toast: String?
-    /// What the toast offers to do (Undo), as on the web.
-    var toastAction: ToastAction?
+    /// Toasts on screen, newest last (at most four, as on the web).
+    var toasts: [ToastItem] = []
+    /// A request to open Ask AI (⌘J, the palette's "Ask AI: …", a folder's menu): the question to ask and the
+    /// folder to ask about. The window opens its Ask AI panel and clears it.
+    var askAiRequest: AskAiRequest?
     var showQuickAdd = false
     var showCommandPalette = false
     var showHelp = false
@@ -544,6 +546,16 @@ final class AppModel {
         }
     }
 
+    /// Asks the server for the scope's folders and tags once (alongside the live subscription, which can
+    /// fall behind after the connection drops): the sidebar then lists every folder the web does.
+    func refreshSidebar() async {
+        guard let session, sync.isOnline else { return }
+        let scope = session.scope
+        guard let data = try? await session.organization.sidebar(scope: scope), self.session?.scope == scope else { return }
+        if sidebar != data { sidebar = data }
+        try? await session.store.setCodable(data, forKey: sidebarCacheKey(session))
+    }
+
     func reloadDocuments() async {
         guard let engine = session?.engine else { return }
         documents = await engine.documents()
@@ -600,8 +612,8 @@ final class AppModel {
         return id
     }
 
-    /// The person's Inbox page (Quick Add target). Its id is deterministic, so every device — even
-    /// offline — converges on the same page: created locally when missing, restored from the Trash
+    /// The person's Inbox page (Quick Add target). Its id is deterministic, so every device, even
+    /// offline, converges on the same page: created locally when missing, restored from the Trash
     /// when it was deleted (the server does the same).
     func inboxDocumentId() async -> String? {
         guard let profile, let session else { return nil }
@@ -622,23 +634,35 @@ final class AppModel {
         await session?.engine.updateDocument(id, patch: patch)
     }
 
-    func showToast(_ message: String, action: ToastAction? = nil) {
-        toast = message
-        toastAction = action
+    /// Shows a toast at the bottom (the web's toast): neutral, success or error; with an action (Undo, Open)
+    /// it stays 8 seconds, otherwise 4.5. Up to four stack; each has its own dismiss.
+    func showToast(_ message: String, action: ToastAction? = nil, tone: ToastTone = .neutral) {
+        let item = ToastItem(message: message, tone: tone, action: action)
+        toasts = Array(toasts.suffix(3)) + [item]
+        let id = item.id
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(action == nil ? 4 : 7))
-            if self?.toast == message {
-                self?.toast = nil
-                self?.toastAction = nil
-            }
+            try? await Task.sleep(for: .seconds(action == nil ? 4.5 : 8))
+            self?.dismissToast(id)
         }
+    }
+
+    func dismissToast(_ id: UUID) {
+        toasts.removeAll { $0.id == id }
+    }
+
+    /// The latest toast's text (tests and the menu bar read it).
+    var toast: String? { toasts.last?.message }
+
+    /// Opens Ask AI in the front window, with a question typed in or about one folder's notes.
+    func askAi(question: String? = nil, folder: (id: String, name: String)? = nil) {
+        askAiRequest = AskAiRequest(question: question, folderId: folder?.id, folderName: folder?.name)
     }
 
     /// Online-only document action with a friendly offline message.
     func perform(_ label: String, _ action: @escaping @Sendable (SessionContext) async throws -> Void) {
         guard let session else { return }
         guard sync.isOnline else {
-            showToast(String(localized: "This needs a connection. Try again when you're back online."))
+            showToast(String(localized: "This needs a connection. Try again when you're back online."), tone: .error)
             Log.app.info("online-only action skipped offline: \(label, privacy: .private)")
             return
         }
@@ -647,7 +671,7 @@ final class AppModel {
                 try await action(session)
                 await session.engine.syncNow()
             } catch {
-                showToast(ConvexService.mapError(error).localizedDescription)
+                showToast(ConvexService.mapError(error).localizedDescription, tone: .error)
             }
         }
     }
@@ -655,6 +679,24 @@ final class AppModel {
     func setForcedOffline(_ offline: Bool) async {
         await session?.engine.setForcedOffline(offline)
     }
+}
+
+/// How a toast reads: neutral (the accent bar), success or error (soft tints).
+enum ToastTone: Sendable { case neutral, success, error }
+
+struct ToastItem: Identifiable {
+    let id = UUID()
+    var message: String
+    var tone: ToastTone
+    var action: ToastAction?
+}
+
+/// What Ask AI should open with.
+struct AskAiRequest: Equatable {
+    let id = UUID()
+    var question: String?
+    var folderId: String?
+    var folderName: String?
 }
 
 extension Notification.Name {

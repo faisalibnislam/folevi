@@ -247,7 +247,7 @@ struct SettingsRoot: View {
             case .workspace: WorkspaceGeneralSettings()
             case .members: MembersSettings()
             case .workspaceGuests: GuestsSettings()
-            case .workspaceBilling: WorkspaceBillingLink()
+            case .workspaceBilling: WorkspaceBillingSettings()
             case .workspaceData:
                 if let w = app.workspace { DataSettings(scope: .workspace(w.id), name: w.name) }
             }

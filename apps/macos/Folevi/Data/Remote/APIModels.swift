@@ -61,6 +61,8 @@ struct Profile: Codable, Sendable, Hashable {
     var entitlements: Entitlements?
     /// Whether they've left the AI Assistant on (Settings → Account on the web).
     var aiEnabled: Bool?
+    /// When a requested account deletion happens (status "pending_deletion").
+    var deletionScheduledFor: Double?
 
     /// AI is available: their plan includes it and they haven't turned it off (the server enforces it).
     var aiOn: Bool { aiEnabled != false && (entitlements?.ai ?? true) }

@@ -23,7 +23,7 @@ struct RootView: View {
                 MainWindowView()
             }
         }
-        .sheet(isPresented: Binding(get: { app.showHelp }, set: { app.showHelp = $0 })) { HelpView() }
+        .sheet(isPresented: Binding(get: { app.showHelp }, set: { app.showHelp = $0 })) { HelpView().environment(app) }
         .sheet(isPresented: Binding(get: { app.showNewWorkspace }, set: { app.showNewWorkspace = $0 })) { NewWorkspaceSheet().environment(app) }
     }
 }
@@ -585,9 +585,11 @@ private struct ArtSwatch: View {
 
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var app
 
     private let shortcuts: [(String, LocalizedStringKey)] = [
-        ("⌘N", "New document"), ("⌘K", "Search or jump to"), ("⇧⌘A", "Quick Add Task"),
+        ("⌘N", "New document"), ("⌥⌘N", "New note in the open folder"), ("⌘F / ⌥⌘F", "Find / Find and replace"),
+        ("⌘-click / ⇧-click", "Select notes in a list"), ("⌘A", "Select every note shown"), ("⌘K", "Search or jump to"), ("⇧⌘A", "Quick Add Task"),
         ("/", "Insert or convert a block"), ("[[", "Link to a page"), ("# ", "Heading 1 (## and ### too)"),
         ("- ", "Bulleted list"), ("1. ", "Numbered list"), ("[] ", "To-do"), ("> ", "Quote"), ("---", "Divider"), ("```", "Code block"),
         ("⌘B / ⌘I / ⌘U", "Bold, italic, underline"), ("⇧⌘X", "Strikethrough"), ("⌘E", "Inline code"), ("⇧⌘K", "Link"),
@@ -605,18 +607,23 @@ struct HelpView: View {
             Text("Everything you write is saved on this Mac first and synced when you're online. The status pill in the toolbar always tells you where things stand.")
                 .foregroundStyle(FoleviColor.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Keyboard shortcuts").font(.ui(14, .semibold))
             ScrollView {
-                Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 6) {
-                    ForEach(shortcuts, id: \.0) { key, label in
-                        GridRow {
-                            Keycap(text: key)
-                            Text(label).font(.ui(12))
+                VStack(alignment: .leading, spacing: 16) {
+                    if app.phase == .ready { SupportRequestsSection() }
+                    Text("Keyboard shortcuts").font(.ui(14, .semibold))
+                    Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 6) {
+                        ForEach(shortcuts, id: \.0) { key, label in
+                            GridRow {
+                                Keycap(text: key)
+                                Text(label).font(.ui(12))
+                            }
                         }
                     }
                 }
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(height: 260)
+            .frame(height: app.phase == .ready ? 440 : 260)
             HStack {
                 Link("Read the full guide at folevi.com/help", destination: URL(string: "https://folevi.com/help") ?? URL(fileURLWithPath: "/"))
                 Spacer()

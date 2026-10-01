@@ -5,17 +5,9 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        TabView {
-            AccountSettings().tabItem { Label("Account", systemImage: "person.crop.circle") }
-            PlanSettings().tabItem { Label("Plan & Billing", systemImage: "creditcard") }
-            DevicesSettings().tabItem { Label("Devices", systemImage: "laptopcomputer.and.iphone") }
-            AppearanceSettings().tabItem { Label("Appearance", systemImage: "paintbrush") }
-            NotificationSettings().tabItem { Label("Notifications", systemImage: "bell") }
-            SyncSettings().tabItem { Label("Offline & Sync", systemImage: "arrow.triangle.2.circlepath") }
-            AboutSettings().tabItem { Label("About", systemImage: "info.circle") }
-        }
-        .frame(width: 620, height: 460)
-        .environment(app)
+        SettingsRoot()
+            .environment(app)
+            .overlay(alignment: .bottom) { ToastView() }
     }
 }
 
@@ -30,7 +22,12 @@ struct AccountSettings: View {
                 Section("Profile") {
                     TextField("Name", text: $name)
                         .onSubmit { save() }
-                    LabeledContent("Email", value: profile.email)
+                    LabeledContent("Email") {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(profile.email)
+                            Text("Your sign-in address. Contact support to change it.").font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
+                        }
+                    }
                     LabeledContent("Space", value: app.scopeName)
                     HStack {
                         Spacer()
@@ -48,13 +45,6 @@ struct AccountSettings: View {
                         }
                     }
                     .disabled(!app.sync.isOnline)
-                }
-                Section("Security") {
-                    HStack {
-                        Text("Password and two-step verification are managed on the web.").foregroundStyle(FoleviColor.inkMuted)
-                        Spacer()
-                        Button("Open Security…") { openWebApp("settings/security", config: app.config) }
-                    }
                 }
                 Section {
                     Button("Sign Out of Folevi…", role: .destructive) { confirmSignOut = true }
@@ -88,155 +78,6 @@ struct AccountSettings: View {
         app.profile?.displayName = n
     }
 
-}
-
-struct AppearanceSettings: View {
-    @Environment(AppModel.self) private var app
-
-    var body: some View {
-        @Bindable var app = app
-        Form {
-            Section("Appearance") {
-                Picker("Appearance", selection: $app.appearance) {
-                    ForEach(AppearancePreference.allCases) { p in Text(p.title).tag(p) }
-                }
-                .pickerStyle(.radioGroup)
-                .accessibilityIdentifier("settings.appearance")
-                .onChange(of: app.appearance) { _, value in
-                    if app.sync.isOnline, let session = app.session {
-                        Task { try? await session.account.updateProfile(appearance: value.rawValue) }
-                    }
-                }
-            }
-            Section("Editor") {
-                LabeledContent("Text size") {
-                    HStack {
-                        Button("Smaller") { app.zoomOut() }
-                        Text("\(Int(app.editorScale * 100))%").monospacedDigit().frame(width: 48)
-                        Button("Larger") { app.zoomIn() }
-                        Button("Reset") { app.zoomReset() }
-                    }
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background(CanvasBackground())
-    }
-}
-
-struct NotificationSettings: View {
-    @Environment(AppModel.self) private var app
-    @State private var status: UNAuthorizationStatus = .notDetermined
-
-    var body: some View {
-        Form {
-            Section("Task Reminders") {
-                switch status {
-                case .authorized, .provisional, .ephemeral:
-                    Label("Folevi will remind you about tasks with a reminder time.", systemImage: "checkmark.circle")
-                    Button("Reschedule Reminders Now") { Task { await ReminderScheduler.shared.reschedule(app: app) } }
-                case .denied:
-                    Text("Notifications are turned off for Folevi. Reminders still appear in Tasks and Calendar. You can enable notifications in System Settings › Notifications.")
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button("Open Notification Settings") {
-                        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
-                    }
-                default:
-                    Text("Allow notifications to get a reminder when a task is due. Folevi works fully without them.")
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button("Allow Notifications…") {
-                        Task {
-                            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
-                            await refresh()
-                            await ReminderScheduler.shared.reschedule(app: app)
-                        }
-                    }
-                }
-            }
-            if let prefs = app.profile?.notificationPrefs {
-                Section("Email") {
-                    LabeledContent("Mentions", value: prefs.mentions ? String(localized: "On") : String(localized: "Off"))
-                    LabeledContent("Comments", value: prefs.comments ? String(localized: "On") : String(localized: "Off"))
-                    Text("Email preferences are managed on folevi.com.").font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background(CanvasBackground())
-        .task { await refresh() }
-    }
-
-    private func refresh() async {
-        status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
-    }
-}
-
-struct SyncSettings: View {
-    @Environment(AppModel.self) private var app
-    @State private var confirmReset = false
-    @State private var forcedOffline = false
-
-    var body: some View {
-        Form {
-            Section("Status") {
-                LabeledContent("Connection", value: app.sync.isOnline ? String(localized: "Online") : String(localized: "Offline"))
-                LabeledContent("Changes waiting to sync", value: "\(app.sync.pendingCount)")
-                    .accessibilityIdentifier("settings.pendingCount")
-                if let last = app.sync.lastSyncedAt {
-                    LabeledContent("Last synced") { Text(last, style: .relative) }
-                }
-                HStack {
-                    Spacer()
-                    Button("Sync Now") { Task { await app.session?.engine.syncNow() } }.disabled(!app.sync.isOnline)
-                }
-            }
-            Section {
-                Toggle("Work offline", isOn: $forcedOffline)
-                    .onChange(of: forcedOffline) { _, v in Task { await app.setForcedOffline(v) } }
-                    .accessibilityIdentifier("settings.workOffline")
-                Text("Keeps all edits on this Mac without contacting Folevi. Turn it off to sync.")
-                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
-            }
-            Section("Local Cache") {
-                Text("Folevi keeps a copy of your workspace on this Mac so you can keep writing offline.")
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Reset Local Cache…", role: .destructive) { confirmReset = true }
-            }
-        }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background(CanvasBackground())
-        .onAppear { forcedOffline = app.sync.forcedOffline }
-        .confirmationDialog("Reset the local cache?", isPresented: $confirmReset) {
-            Button("Reset", role: .destructive) {
-                Task {
-                    await app.session?.engine.resetLocalCache()
-                    await app.reloadDocuments()
-                }
-            }
-        } message: {
-            Text(app.sync.pendingCount > 0
-                 ? "\(app.sync.pendingCount) changes haven't synced yet and will be lost. Folevi will download your workspace again."
-                 : "Folevi will download your workspace again.")
-        }
-    }
-}
-
-struct AboutSettings: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            FoleviMark(size: 64)
-            Text("Folevi").font(.ui(28, .semibold)).tracking(FoleviTracking.tight * 28).foregroundStyle(FoleviColor.heading)
-            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
-                .foregroundStyle(FoleviColor.inkMuted)
-            Text("A calm place for notes, plans and everything in between.").foregroundStyle(FoleviColor.inkMuted)
-            Link("folevi.com", destination: URL(string: "https://folevi.com") ?? URL(fileURLWithPath: "/"))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(CanvasBackground())
-    }
 }
 
 /// Schedules local notifications for tasks with a reminder time (only after explicit permission).

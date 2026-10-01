@@ -136,6 +136,8 @@ final class EditorModel {
     var findQuery = "" { didSet { updateFind() } }
     var findMatches: [String] = []
     var findIndex = 0
+    /// The find bar shows its Replace row (⌘⌥F).
+    var findShowsReplace = false
     var titleDraft = ""
     var pendingBookmarkBlock: String?
     /// Where a recording goes while the recorder sheet is open ("/record").
@@ -1554,7 +1556,7 @@ final class EditorModel {
 
     // MARK: Find
 
-    private func updateFind() {
+    func updateFind() {
         let q = SearchText.normalize(findQuery)
         guard !q.isEmpty else {
             if !findMatches.isEmpty { findMatches = [] }

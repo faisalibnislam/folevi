@@ -7,17 +7,28 @@ struct HomeDashboardView: View {
     var openDocument: (String, Bool) -> Void
     @Environment(AppModel.self) private var app
     @State private var starred: [DocumentSummary]?
+    /// documents:recentNotes (without the notes you removed); nil until loaded, or offline.
+    @State private var serverRecent: [DocumentSummary]?
+    @State private var dialog: NoteDialog?
+    private var notes: NoteActions { .shared }
 
     private static let cardWidth: CGFloat = 250
     private static let carouselCount = 10
 
     private var recent: [DocumentSummary] {
-        app.documents
+        if let serverRecent {
+            // The server's list and order, with this Mac's fresher copies.
+            let local = Dictionary(app.documents.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            return serverRecent.map { local[$0.id] ?? $0 }.filter { $0.deletedAt == nil && $0.archivedAt == nil }
+        }
+        return app.documents
             .filter { ($0.kind == .document || $0.kind == .daily) && $0.deletedAt == nil && $0.archivedAt == nil && $0.parentDocumentId == nil }
             .sorted { $0.updatedAt > $1.updatedAt }
             .prefix(Self.carouselCount)
             .map { $0 }
     }
+
+    private struct ReloadKey: Equatable { var documents: Int; var organized: Int; var online: Bool }
 
     private struct FolderStats { var count: Int; var updatedAt: Double? }
 
@@ -44,14 +55,14 @@ struct HomeDashboardView: View {
                     if recent.isEmpty {
                         emptyText("No notes yet. Press New to write your first one.")
                     } else {
-                        carousel(recent)
+                        carousel(recent, recent: true)
                     }
                 }
                 section(title: "Starred", systemImage: "star", target: .starred) {
                     if let starred, starred.isEmpty {
                         emptyText("Star notes you come back to often and they’ll appear here.")
                     } else if let starred {
-                        carousel(starred)
+                        carousel(starred.filter { notes.isStarred($0) })
                     } else {
                         ProgressView().controlSize(.small).frame(height: 80)
                     }
@@ -64,7 +75,16 @@ struct HomeDashboardView: View {
             .padding(.bottom, 40)
         }
         .scrollContentBackground(.hidden)
-        .task(id: app.documentsRevision) { await loadStarred() }
+        .task(id: ReloadKey(documents: app.documentsRevision, organized: notes.revision, online: app.sync.isOnline)) {
+            await loadStarred()
+            await loadRecent()
+        }
+        .noteDialogs($dialog)
+    }
+
+    private func loadRecent() async {
+        guard let session = app.session, app.sync.isOnline else { return }
+        if let docs = try? await session.documents.recentNotes(scope: session.scope, limit: Self.carouselCount) { serverRecent = docs }
     }
 
     private func section<Content: View>(title: LocalizedStringKey, systemImage: String, target: SidebarItem, count: String? = nil, first: Bool = false,
@@ -111,15 +131,16 @@ struct HomeDashboardView: View {
         Text(text).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
     }
 
-    private func carousel(_ docs: [DocumentSummary]) -> some View {
+    private func carousel(_ docs: [DocumentSummary], recent: Bool = false) -> some View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: 32) {
                 ForEach(docs) { doc in
                     let folder = doc.folderId.flatMap { id in app.sidebar.folders.first { $0.id == id } }
-                    NoteCard(document: doc, folder: folder)
+                    NoteCard(document: { var d = doc; d.starred = notes.isStarred(doc); return d }(), folder: folder)
                         .frame(width: Self.cardWidth)
                         .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
-                        .contextMenu { DocumentContextMenu(document: doc, openDocument: openDocument) }
+                        .draggable(DocumentDragPayload(documentId: doc.id))
+                        .contextMenu { DocumentContextMenu(document: doc, openDocument: openDocument, recent: recent, present: { dialog = $0 }) }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityAction { openDocument(doc.id, false) }
                 }
@@ -163,6 +184,7 @@ struct HomeDashboardView: View {
 
     private func loadStarred() async {
         guard let session = app.session else { return }
+        notes.scopeChanged(session.scope)
         let key = "browser.sidebar.starred"
         if starred == nil, let cached = try? await session.store.codable([DocumentSummary].self, forKey: key) { starred = cached }
         guard app.sync.isOnline else {
@@ -170,6 +192,7 @@ struct HomeDashboardView: View {
             return
         }
         if let docs = try? await session.documents.list(scope: session.scope, view: "starred", tagId: nil) {
+            notes.noteStarred(docs, scope: session.scope)
             let local = Dictionary(app.documents.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             starred = docs.prefix(Self.carouselCount).map { local[$0.id].map { var d = $0; d.starred = true; return d } ?? $0 }.filter { $0.deletedAt == nil }
             try? await session.store.setCodable(docs, forKey: key)

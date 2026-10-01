@@ -10,7 +10,6 @@ struct EditorView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var containerFocused: Bool
-    @FocusState private var findFocused: Bool
     var showFind: Binding<Bool>
 
     private var scale: CGFloat { CGFloat(app.editorScale) }
@@ -35,7 +34,7 @@ struct EditorView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if showFind.wrappedValue { findBar.padding(.top, 10).padding(.trailing, 24) }
+            if showFind.wrappedValue { FindReplaceBar(model: model, showFind: showFind).padding(.top, 10).padding(.trailing, 24) }
         }
         .task(id: model.documentId) { model.comments.start() }
         .onAppear {
@@ -209,38 +208,6 @@ struct EditorView: View {
                         .clipShape(RoundedRectangle(cornerRadius: FoleviRadius.sheet, style: .continuous))
                 }
             }
-    }
-
-    private var findBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
-            TextField("Find in document", text: $model.findQuery)
-                .textFieldStyle(.plain)
-                .frame(width: 200)
-                .focused($findFocused)
-                .onSubmit { model.findNext() }
-                .accessibilityIdentifier("findField")
-            if !model.findQuery.isEmpty {
-                Text(model.findMatches.isEmpty ? String(localized: "No matches") : String(localized: "\(model.findIndex + 1) of \(model.findMatches.count)"))
-                    .font(.ui(11.5))
-                    .foregroundStyle(FoleviColor.inkMuted)
-                    .monospacedDigit()
-            }
-            IconButton(systemImage: "chevron.up", label: "Previous Match") { model.findNext(backwards: true) }
-            IconButton(systemImage: "chevron.down", label: "Next Match") { model.findNext() }
-            IconButton(systemImage: "xmark", label: "Close Find") {
-                model.findQuery = ""
-                showFind.wrappedValue = false
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .foleviChrome()
-        .onAppear { findFocused = true }
-        .onExitCommand {
-            model.findQuery = ""
-            showFind.wrappedValue = false
-        }
     }
 }
 

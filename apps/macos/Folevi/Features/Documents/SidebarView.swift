@@ -3,6 +3,9 @@ import SwiftUI
 /// Drag payload for documents (browser cards → sidebar folders).
 struct DocumentDragPayload: Codable, Transferable {
     var documentId: String
+    /// A whole selection being dragged (it includes `documentId`); nil for one note.
+    var documentIds: [String]? = nil
+    var ids: [String] { documentIds ?? [documentId] }
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .foleviDocument)
     }
@@ -58,6 +61,10 @@ struct SidebarView: View {
                         row(.all)
                         row(.starred)
                         row(.drafts, count: draftCount)
+                            .dropDestination(for: DocumentDragPayload.self) { items, _ in
+                                NoteActions.shared.moveTo(items.flatMap(\.ids), .drafts, app: app)
+                                return !items.isEmpty
+                            }
                         row(.notes)
                         row(.tasks, count: todayTaskCount)
                         row(.shared)
@@ -237,10 +244,8 @@ struct SidebarView: View {
             nav.selection = .folder(folder.id)
         }
         .dropDestination(for: DocumentDragPayload.self) { items, _ in
-            for item in items {
-                Task { await app.updateDocument(item.documentId, patch: WireDocumentPatch(folderId: .some(folder.id))) }
-            }
-            app.showToast(String(localized: "Moved to \(folder.name)"))
+            // One note, or a whole selection; the toast offers Undo.
+            NoteActions.shared.moveTo(items.flatMap(\.ids), FolderTarget(id: folder.id, name: folder.name), app: app)
             return !items.isEmpty
         } isTargeted: { targeted in
             dropTargetFolder = targeted ? folder.id : (dropTargetFolder == folder.id ? nil : dropTargetFolder)

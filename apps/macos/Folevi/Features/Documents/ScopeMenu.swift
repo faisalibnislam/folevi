@@ -55,12 +55,12 @@ private struct ScopeMenu: View {
             plain(String(localized: "New workspace…"), systemImage: "plus") { close(); app.showNewWorkspace = true }
             separator
             if let w = app.workspace {
-                if w.canManage { plain(String(localized: "Invite people…"), systemImage: "person.badge.plus") { web("settings/members") } }
-                plain(String(localized: "Members"), systemImage: "person.2") { web("settings/members") }
-                plain(String(localized: "Workspace settings"), systemImage: "gearshape") { web("settings/workspace") }
+                if w.canManage { plain(String(localized: "Invite people…"), systemImage: "person.badge.plus") { settings(.members) } }
+                plain(String(localized: "Members"), systemImage: "person.2") { settings(.members) }
+                plain(String(localized: "Workspace settings"), systemImage: "gearshape") { settings(.workspace) }
                 separator
             }
-            plain(String(localized: "Account settings"), systemImage: "gearshape") { close(); openSettings() }
+            plain(String(localized: "Account settings"), systemImage: "gearshape") { settings(.account) }
             plain(String(localized: "Plan & billing"), systemImage: "creditcard") { web("settings/billing") }
             plain(String(localized: "Help"), systemImage: "questionmark.circle") { close(); app.showHelp = true }
             plain(String(localized: "Contact support…"), systemImage: "lifepreserver") { web("help") }
@@ -99,6 +99,13 @@ private struct ScopeMenu: View {
     private func switchTo(_ scope: Scope) {
         close()
         Task { await app.switchScope(scope) }
+    }
+
+    /// Opens Settings on one of its pages.
+    private func settings(_ section: SettingsSection) {
+        close()
+        SettingsRouter.shared.section = section
+        openSettings()
     }
 
     private func web(_ path: String) {

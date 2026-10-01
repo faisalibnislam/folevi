@@ -561,6 +561,7 @@ enum ShareRole: String, CaseIterable, Sendable, Identifiable {
         case .editor: return String(localized: "Can edit")
         }
     }
+    var title: String { label }
     static func label(_ raw: String) -> String { (ShareRole(rawValue: raw) ?? .viewer).label }
 }
 

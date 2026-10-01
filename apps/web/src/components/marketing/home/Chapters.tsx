@@ -1,8 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ConnectDemo } from "../demos/ConnectDemo";
 import { ReturnDemo } from "../demos/ReturnDemo";
-import { ShapeDemo } from "../demos/ShapeDemo";
 import { artById, artThumb } from "../product/Replica";
 import { Icon } from "../icons";
 import { Kbd, box, container, cx } from "../ui";
@@ -92,54 +90,6 @@ export function Chapters() {
         </p>
         <p>The calendar shows the rest of the week, and Quick Add puts a new task in your Inbox page.</p>
       </Chapter>
-    </section>
-  );
-}
-
-/** The features page's working editor demos: moving and nesting blocks, and linking pages. */
-export function EditorDemos() {
-  return (
-    <section id="try-the-editor" aria-label="Try the editor" className={cx(container, "mk-stack scroll-mt-20")}>
-      <Chapter
-        id="shape"
-        number="01"
-        name="Shape"
-        art="art-50"
-        title="Move blocks and nest them."
-        hint={
-          <>
-            <TryIt /> drag a handle, or select a line and press <Kbd>⌥⇧↑</Kbd> <Kbd>⌥⇧↓</Kbd> to move it, <Kbd>⌥⇧→</Kbd> to nest it
-          </>
-        }
-        demo={<ShapeDemo />}
-        more={{ label: "Keyboard shortcuts", href: "/docs/keyboard-shortcuts" }}
-      >
-        <p>Drag a block by its handle, or move it from the keyboard. Nest a block under another to turn a list into an outline.</p>
-        <p>Nested blocks move with their parent, so the outline stays in one piece.</p>
-      </Chapter>
-
-      <Chapter
-        id="connect"
-        number="02"
-        name="Connect"
-        art="art-42"
-        title="Link pages with two brackets."
-        reverse
-        hint={
-          <>
-            <TryIt /> type <Kbd>[[</Kbd> and pick a page
-          </>
-        }
-        demo={<ConnectDemo />}
-        more={{ label: "Linked notes and backlinks", href: "/features/linked-notes" }}
-      >
-        <p>
-          Type <span className="font-medium text-ink">[[</span> to link any page in your workspace. The page you link to lists a
-          backlink, so you can follow the link from either end.
-        </p>
-        <p>Sub-pages sit inside their parent page and show as a link or a card.</p>
-      </Chapter>
-
     </section>
   );
 }

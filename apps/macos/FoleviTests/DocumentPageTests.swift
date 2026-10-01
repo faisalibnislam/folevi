@@ -38,20 +38,6 @@ final class DocumentPageTests: XCTestCase {
         Block(id: "b1", parentId: nil, rank: "V", text: text, content: .paragraph(ParagraphProps()))
     }
 
-    func testHitsAreInDisplayedTextAndSkipAtoms() {
-        let block = para([.text(text: "say ", marks: nil), .mention(userId: "u", label: "hi"), .text(text: " hi", marks: nil)])
-        // "say @hi hi": the mention's label is shown but never matched.
-        XCTAssertEqual(FindReplace.hits(of: "hi", in: block), [NSRange(location: 8, length: 2)])
-    }
-
-    func testMatchCase() {
-        let block = para([.text(text: "Cat cat CAT", marks: nil)])
-        XCTAssertEqual(FindReplace.hits(of: "cat", in: block).count, 3)
-        XCTAssertEqual(FindReplace.hits(of: "cat", in: block, caseSensitive: true), [NSRange(location: 4, length: 3)])
-        // Accents count, as on the web.
-        XCTAssertEqual(FindReplace.hits(of: "cafe", in: para([.text(text: "café", marks: nil)])).count, 0)
-    }
-
     func testReplaceTheCurrentOccurrenceOnly() throws {
         let block = para([.text(text: "one two one two one", marks: nil)])
         let r = try XCTUnwrap(FindReplace.replace(in: block, query: "one", with: "1", limit: 1, skip: 1))

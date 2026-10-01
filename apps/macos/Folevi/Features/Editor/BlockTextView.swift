@@ -86,6 +86,7 @@ final class BlockTextView: NSTextView {
            let onAiShortcut, onAiShortcut() {
             return true
         }
+        if window?.firstResponder === self, shortcutHandled(event) { return true }
         return super.performKeyEquivalent(with: event)
     }
 
@@ -225,6 +226,11 @@ final class BlockTextView: NSTextView {
         return abs(r.minY - first.minY) < 1
     }
 
+    func lineIsLast(_ location: Int) -> Bool {
+        guard let r = lineRect(at: location), let last = lineRect(at: (string as NSString).length) else { return true }
+        return abs(r.minY - last.minY) < 1
+    }
+
     var caretOnLastLine: Bool {
         guard let r = lineRect(at: selectedRange().location), let last = lineRect(at: (string as NSString).length) else { return true }
         return abs(r.minY - last.minY) < 1
@@ -254,13 +260,56 @@ final class BlockTextView: NSTextView {
 
     // MARK: Keys
 
+    /// ⌘↩, ⌘. and ⌘⇧D (the web's Mod-Enter, block menu and task details shortcuts).
+    var onShortcut: ((Shortcut) -> Bool)?
+    enum Shortcut { case modEnter, blockMenu, taskDetails, highlight }
+    /// A click on an inline object (a date chip or a page link). Returns whether it was handled.
+    var onInlineClick: ((InlineNode, NSRange, NSEvent) -> Bool)?
+    /// Paste: lets the editor turn pasted files, HTML or Markdown into blocks. Returns whether it did.
+    var onPaste: ((NSPasteboard) -> Bool)?
+
     override func keyDown(with event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.option) && flags.contains(.shift) && !flags.contains(.command) {
             if event.keyCode == 126, onCommand?(.moveBlock(up: true)) == true { return }
             if event.keyCode == 125, onCommand?(.moveBlock(up: false)) == true { return }
         }
+        if shortcutHandled(event) { return }
         super.keyDown(with: event)
+    }
+
+    private func shortcutHandled(_ event: NSEvent) -> Bool {
+        let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        if mods == .command, event.keyCode == 36 || event.keyCode == 76 { return onShortcut?(.modEnter) == true }
+        if mods == .command, event.charactersIgnoringModifiers == "." { return onShortcut?(.blockMenu) == true }
+        if mods == [.command, .shift], event.keyCode == 2 { return onShortcut?(.taskDetails) == true }
+        if mods == [.command, .shift], event.keyCode == 4 { return onShortcut?(.highlight) == true }
+        return false
+    }
+
+    override func paste(_ sender: Any?) {
+        if !isCode, !isPlain, onPaste?(NSPasteboard.general) == true { return }
+        super.paste(sender)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if let (node, range) = inlineObject(at: event), onInlineClick?(node, range, event) == true { return }
+        super.mouseDown(with: event)
+    }
+
+    /// The inline object (mention, date, page link) under the pointer, with its range.
+    private func inlineObject(at event: NSEvent) -> (InlineNode, NSRange)? {
+        guard let layout = layoutManager, let container = textContainer, let storage = textStorage, storage.length > 0 else { return nil }
+        let point = convert(event.locationInWindow, from: nil)
+        let p = NSPoint(x: point.x - textContainerOrigin.x, y: point.y - textContainerOrigin.y)
+        let glyph = layout.glyphIndex(for: p, in: container)
+        guard layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container).contains(p) else { return nil }
+        let index = layout.characterIndexForGlyph(at: glyph)
+        guard index < storage.length else { return nil }
+        var range = NSRange()
+        guard let json = storage.attribute(.foleviInline, at: index, longestEffectiveRange: &range, in: NSRange(location: 0, length: storage.length)) as? String,
+              let node = try? JSONValue(jsonString: json).decode(InlineNode.self) else { return nil }
+        return (node, range)
     }
 
     override func doCommand(by selector: Selector) {
@@ -283,18 +332,15 @@ final class BlockTextView: NSTextView {
         if isCode {
             switch selector {
             case #selector(insertNewline(_:)):
-                // Keep indentation of the current line.
-                let ns = string as NSString
-                let lineRange = ns.lineRange(for: NSRange(location: sel.location, length: 0))
-                let line = ns.substring(with: NSRange(location: lineRange.location, length: max(0, sel.location - lineRange.location)))
-                let indent = String(line.prefix { $0 == " " || $0 == "\t" })
-                insertText("\n" + indent, replacementRange: sel)
+                // A plain new line, as the web's code blocks do.
+                insertText("\n", replacementRange: sel)
                 return true
             case #selector(insertTab(_:)):
                 insertText("  ", replacementRange: sel)
                 return true
             case #selector(insertBacktab(_:)):
-                return true
+                // ⇧Tab outdents the block (the web's Shift-Tab).
+                return onCommand?(.outdent) ?? true
             default:
                 break
             }
@@ -335,10 +381,11 @@ final class BlockTextView: NSTextView {
             if sel.location == length && sel.length == 0 { return onCommand?(.focusNext(caretAtStart: true)) ?? false }
             return false
         case #selector(moveUpAndModifySelection(_:)):
-            if caretOnFirstLine && sel.location == 0 { return onCommand?(.selectBlockExtending(up: true)) ?? false }
+            // The web's block selection: ⇧↑ on the first line (⇧↓ on the last) selects whole blocks.
+            if caretOnFirstLine { return onCommand?(.selectBlockExtending(up: true)) ?? false }
             return false
         case #selector(moveDownAndModifySelection(_:)):
-            if caretOnLastLine && NSMaxRange(sel) == length { return onCommand?(.selectBlockExtending(up: false)) ?? false }
+            if lineIsLast(NSMaxRange(sel)) { return onCommand?(.selectBlockExtending(up: false)) ?? false }
             return false
         case #selector(cancelOperation(_:)):
             return onCommand?(.escape) ?? false
@@ -397,8 +444,17 @@ struct BlockTextEditor: NSViewRepresentable {
         if text != c.lastText && !view.hasMarkedText() {
             c.install(text: text, style: style, preserveSelection: true)
             view.resetUndo()
+            // New text: paint the find matches again.
+            c.findTextVersion = -1
         }
         model.register(view, for: blockId)
+        let highlights = model.findHighlights(for: blockId)
+        if highlights.all != c.findHighlights || highlights.current != c.findCurrent || c.findTextVersion != c.lastText.count {
+            c.findHighlights = highlights.all
+            c.findCurrent = highlights.current
+            c.findTextVersion = c.lastText.count
+            view.showFindHighlights(highlights.all, current: highlights.current)
+        }
         if let request = focusRequest, request.blockId == blockId, c.handledFocus != request.id {
             c.handledFocus = request.id
             c.applyFocus(request, attempt: 0)
@@ -446,6 +502,39 @@ struct BlockTextEditor: NSViewRepresentable {
         view.onMenuKey = { [weak model] key in model?.popupKey(key) ?? false }
         let id = blockId
         view.onRevealRequest = { [weak model] in model?.requestReveal(id) }
+        if !isPlain {
+            view.onShortcut = { [weak model] shortcut in
+                guard let model else { return false }
+                switch shortcut {
+                case .modEnter: return model.modEnter(id)
+                case .blockMenu:
+                    model.openBlockMenuForCurrent()
+                    return true
+                case .taskDetails: return model.openTaskDetails(id)
+                case .highlight:
+                    // ⌘⇧H: yellow highlight on or off (the web's Mod-Shift-h).
+                    let on = model.marksAtSelection().highlight != nil
+                    model.setHighlight(on ? nil : .yellow)
+                    return true
+                }
+            }
+            view.onPaste = { [weak model] pasteboard in model?.paste(into: id, from: pasteboard) ?? false }
+            view.onInlineClick = { [weak model] node, range, event in
+                guard let model else { return false }
+                switch node {
+                case .pageLink(let documentId, _):
+                    let flags = event.modifierFlags
+                    model.openPageLink(documentId, newWindow: flags.contains(.option) || flags.contains(.command) || flags.contains(.shift))
+                    return true
+                case .date(let date):
+                    guard !model.isReadOnly else { return false }
+                    model.editDate(blockId: id, range: range, date: date)
+                    return true
+                default:
+                    return false
+                }
+            }
+        }
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: BlockTextView, context: Context) -> CGSize? {
@@ -464,6 +553,9 @@ struct BlockTextEditor: NSViewRepresentable {
         var lastText: [InlineNode] = []
         var style: TextRenderStyle
         var handledFocus: UUID?
+        var findHighlights: [NSRange] = []
+        var findCurrent: NSRange?
+        var findTextVersion = -1
         private var isInstalling = false
 
         init(parent: BlockTextEditor) {
@@ -473,7 +565,7 @@ struct BlockTextEditor: NSViewRepresentable {
 
         /// Makes this view first responder for a focus request. A freshly created view may not be in a
         /// window yet (or the window may be mid-transition), so keep trying briefly instead of dropping
-        /// the request — otherwise keystrokes typed right after ⌘N land nowhere.
+        /// the request; otherwise keystrokes typed right after ⌘N land nowhere.
         func applyFocus(_ request: FocusRequest, attempt: Int) {
             DispatchQueue.main.asyncAfter(deadline: .now() + (attempt == 0 ? 0 : 0.03)) { [weak self] in
                 guard let self, let view = self.view else { return }
@@ -548,30 +640,58 @@ struct BlockTextEditor: NSViewRepresentable {
         func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString: String?) -> Bool {
             guard let replacement = replacementString, let view = self.view, !isInstalling, !parent.isCode, !parent.isPlain else { return true }
             let current = view.string as NSString
-            // Markdown shortcuts at the start of a block.
-            if replacement == " " && range.length == 0 {
-                let prefix = current.substring(to: range.location)
-                if parent.model.markdownShortcut(prefix: prefix, blockId: parent.blockId, rest: remainder(after: range.location)) {
+            guard range.length == 0, range.location <= current.length else { return true }
+            let before = current.substring(to: range.location)
+            // Markdown shortcuts at the start of a block (the web's input rules).
+            if replacement == " " {
+                if parent.model.markdownShortcut(prefix: before, blockId: parent.blockId, rest: remainder(after: range.location)) {
                     return false
                 }
             }
-            if replacement == "-" && range.location == 2 && current.substring(to: 2) == "--" && current.length == 2 {
-                if parent.model.markdownShortcut(prefix: "---", blockId: parent.blockId, rest: []) { return false }
+            if (replacement == "-" && before == "--") || (replacement == "*" && before == "**") {
+                if parent.model.markdownShortcut(prefix: before + replacement, blockId: parent.blockId, rest: []) { return false }
             }
-            if replacement == "`" && range.location == 2 && current.substring(to: 2) == "``" && current.length == 2 {
-                if parent.model.markdownShortcut(prefix: "```", blockId: parent.blockId, rest: []) { return false }
-            }
-            if replacement == "/" && range.length == 0 {
-                let before = range.location == 0 ? " " : current.substring(with: NSRange(location: range.location - 1, length: 1))
-                if before.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    parent.model.openSlash(blockId: parent.blockId, at: range.location)
-                }
-            }
-            if replacement == "[" && range.length == 0 && range.location > 0
-                && current.substring(with: NSRange(location: range.location - 1, length: 1)) == "[" {
-                parent.model.openPagePicker(blockId: parent.blockId, at: range.location - 1)
+            // **bold**, _italic_, `code` and ~~strike~~ as the closing character is typed.
+            if ["*", "_", "`", "~"].contains(replacement), applyMarkRule(before: before, typed: replacement, at: range.location) {
+                return false
             }
             return true
+        }
+
+        /// The web's inline mark rules: the text between the markers becomes marked text (the markers go),
+        /// and typing carries on unmarked.
+        private func applyMarkRule(before: String, typed: String, at location: Int) -> Bool {
+            guard let view, !parent.model.isReadOnly else { return false }
+            let rules: [(String, Mark)] = [
+                (#"(?:^|\s)(\*\*([^*]+)\*\*)$"#, .bold),
+                (#"(?:^|\s)(_([^_]+)_)$"#, .italic),
+                (#"(?:^|\s)(`([^`]+)`)$"#, .code),
+                (#"(?:^|\s)(~~([^~]+)~~)$"#, .strike),
+            ]
+            let candidate = before + typed
+            let ns = candidate as NSString
+            for (pattern, mark) in rules {
+                guard let re = try? NSRegularExpression(pattern: pattern),
+                      let m = re.firstMatch(in: candidate, range: NSRange(location: 0, length: ns.length)) else { continue }
+                let full = m.range(at: 1), inner = m.range(at: 2)
+                guard full.location < location else { continue }
+                let text = ns.substring(with: inner)
+                let replaceRange = NSRange(location: full.location, length: location - full.location)
+                // After AppKit has finished with the keystroke (the typed marker itself is dropped).
+                DispatchQueue.main.async { [weak self, weak view] in
+                    guard let self, let view, NSMaxRange(replaceRange) <= (view.string as NSString).length else { return }
+                    view.replace(range: replaceRange, with: [.text(text: text, marks: [mark])], style: self.style)
+                    let caret = full.location + (text as NSString).length
+                    view.setSelectedRange(NSRange(location: caret, length: 0))
+                    var attrs = self.typingAttributes(at: caret)
+                    attrs[InlineAttributedString.key(for: mark)] = nil
+                    let tmp = NSMutableAttributedString(string: " ", attributes: attrs.filter { InlineAttributedString.markKeys.contains($0.key) })
+                    InlineAttributedString.applyStyle(to: tmp, range: NSRange(location: 0, length: 1), style: self.style)
+                    view.typingAttributes = tmp.attributes(at: 0, effectiveRange: nil)
+                }
+                return true
+            }
+            return false
         }
 
         private func remainder(after location: Int) -> [InlineNode] {
@@ -591,7 +711,17 @@ struct BlockTextEditor: NSViewRepresentable {
             let inline = InlineAttributedString.inline(from: storage)
             lastText = inline
             parent.model.textChanged(blockId: parent.blockId, text: inline)
-            parent.model.popupTextChanged(blockId: parent.blockId, text: view.string, caret: view.selectedRange().location)
+            let sel = view.selectedRange()
+            parent.model.updateTrigger(blockId: parent.blockId, text: searchable(storage), caret: sel.length == 0 ? sel.location : nil)
+        }
+
+        /// The text with inline objects blanked (U+FFFC), so "@" or "/" inside a chip never opens a menu.
+        private func searchable(_ storage: NSTextStorage) -> String {
+            let out = NSMutableString(string: storage.string)
+            storage.enumerateAttribute(.foleviInline, in: NSRange(location: 0, length: storage.length), options: []) { v, r, _ in
+                if v != nil { out.replaceCharacters(in: r, with: String(repeating: "\u{FFFC}", count: r.length)) }
+            }
+            return out as String
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
@@ -599,6 +729,11 @@ struct BlockTextEditor: NSViewRepresentable {
             let sel = view.selectedRange()
             if sel.length == 0 { view.typingAttributes = typingAttributes(at: sel.location) }
             parent.model.selectionChanged(blockId: parent.blockId, range: sel, view: view)
+            guard !parent.isPlain else { return }
+            if !parent.isCode, let storage = view.textStorage {
+                parent.model.updateTrigger(blockId: parent.blockId, text: searchable(storage), caret: sel.length == 0 ? sel.location : nil)
+            }
+            if view.window?.firstResponder === view { parent.model.updateBubble(blockId: parent.blockId, view: view) }
         }
 
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
@@ -701,6 +836,46 @@ extension BlockTextView {
         if let href = attrs[.foleviLink] as? String { out.insert("href.\(href)") }
         if sel.length > 0 { out.insert("selection") }
         return out
+    }
+
+    /// Sets a mark on the selection (never toggles it off).
+    func setMark(_ mark: Mark, style: TextRenderStyle) {
+        let key = InlineAttributedString.key(for: mark)
+        let sel = selectedRange()
+        guard let storage = textStorage, sel.length > 0, shouldChangeText(in: sel, replacementString: nil) else { return }
+        let value: Any
+        switch mark {
+        case .link(let href): value = href
+        case .color(let v): value = v.rawValue
+        case .highlight(let v): value = v.rawValue
+        default: value = true
+        }
+        storage.addAttribute(key, value: value, range: sel)
+        InlineAttributedString.applyStyle(to: storage, range: sel, style: style)
+        didChangeText()
+    }
+
+    /// The whole link around `location` (the character before or at it), if there is one.
+    func linkRange(at location: Int) -> NSRange? {
+        guard let storage = textStorage, storage.length > 0 else { return nil }
+        for loc in [location, location - 1] where loc >= 0 && loc < storage.length {
+            var range = NSRange()
+            if storage.attribute(.foleviLink, at: loc, longestEffectiveRange: &range, in: NSRange(location: 0, length: storage.length)) != nil {
+                return range
+            }
+        }
+        return nil
+    }
+
+    /// Paints the find matches (the web's `.fb-find-match` / `.fb-find-current`) without touching the text.
+    func showFindHighlights(_ all: [NSRange], current: NSRange?) {
+        guard let layout = layoutManager else { return }
+        let length = (string as NSString).length
+        layout.removeTemporaryAttribute(.backgroundColor, forCharacterRange: NSRange(location: 0, length: length))
+        let marigold = NSColor(FoleviColor.marigold)
+        for r in all where NSMaxRange(r) <= length {
+            layout.addTemporaryAttribute(.backgroundColor, value: marigold.withAlphaComponent(r == current ? 0.78 : 0.32), forCharacterRange: r)
+        }
     }
 
     /// The link href under the caret, if any.

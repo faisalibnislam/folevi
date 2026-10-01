@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// "Date…" (slash menu, Insert → Date): pick a day and insert it as a date mention. The web's date popover
-/// (a date, Today / Tomorrow / Next week, Insert), with a month grid for the date field.
+/// "Date…" (slash menu, Insert → Date, "@" → Pick a date…) and a click on a date chip: the web's date
+/// popover (DatePopover in EditorMenus.tsx): a date, Today / Tomorrow / Next week, then Insert, or when
+/// changing a date, Remove date and Done. A month grid stands in for the date field.
 struct DatePickPopover: View {
     var today: String
+    var initial: String? = nil
+    var editing = false
     var onPick: (String) -> Void
+    var onRemove: () -> Void = {}
     var onCancel: () -> Void
     @State private var value = ""
     @FocusState private var focused: Bool
@@ -21,19 +25,25 @@ struct DatePickPopover: View {
                 }
             }
             HStack {
+                if editing {
+                    Button("Remove date", action: onRemove)
+                        .buttonStyle(.folevi(.quiet, .small))
+                        .foregroundStyle(FoleviColor.destructive)
+                }
                 Spacer()
-                Button("Insert") { onPick(value) }
+                Button(editing ? "Done" : "Insert") { onPick(value) }
                     .buttonStyle(.folevi(.primary, .small))
             }
         }
-        .padding(10)
+        .padding(8)
+        .padding(6)
         .frame(width: 260)
         .foleviPop()
         .focusable()
         .focused($focused)
         .focusEffectDisabled()
         .onAppear {
-            if value.isEmpty { value = today }
+            if value.isEmpty { value = initial ?? today }
             focused = true
         }
         .onExitCommand(perform: onCancel)
@@ -42,7 +52,7 @@ struct DatePickPopover: View {
             return .handled
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Insert a date"))
+        .accessibilityLabel(Text(editing ? "Change date" : "Insert a date"))
     }
 
     private var quick: [(String, String)] {

@@ -30,6 +30,7 @@ struct WhiteboardBlockView: View {
     @State private var liveHeight: Double?
     @State private var resizeStart: Double?
     @State private var resizeScale: Double = 1
+    @State private var resizeHovering = false
     @FocusState private var resizeFocused: Bool
 
     private var editable: Bool { !model.isReadOnly }
@@ -47,11 +48,7 @@ struct WhiteboardBlockView: View {
         .background(model.sheetPalette?.surface ?? FoleviColor.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(lineColor, lineWidth: 1))
-        .overlay {
-            if model.selectedBlockIds.contains(block.id) {
-                RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.folevi(accent: model.style.accent), lineWidth: 2)
-            }
-        }
+        .richAtomOutline(model.selectedBlockIds.contains(block.id), accent: Color.folevi(accent: model.style.accent))
         .onDisappear { flush() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Whiteboard"))
@@ -61,69 +58,92 @@ struct WhiteboardBlockView: View {
 
     // MARK: Toolbar
 
+    /// `.fb-wb-toolbar`: one row with Undo and Clear at the end, wrapping onto more rows when narrow.
     private var toolbar: some View {
-        HStack(spacing: 4) {
-            toolButton(.pen, "pencil.line", "Pen")
-            toolButton(.highlighter, "highlighter", "Highlighter")
-            toolButton(.eraser, "eraser", "Eraser (removes whole strokes)")
-            Rectangle().fill(FoleviColor.lineStrong).frame(width: 1, height: 18).padding(.horizontal, 4)
-            if tool != .eraser {
-                HStack(spacing: 4) {
-                    ForEach(tool == .highlighter ? Self.highlightColors : Self.penColors, id: \.self) { c in
-                        let active = (tool == .highlighter ? markColor : penColor) == c
-                        Button {
-                            if tool == .highlighter { markColor = c } else { penColor = c }
-                        } label: {
-                            Circle().fill(strokeColor(c))
-                                .overlay(Circle().strokeBorder(.black.opacity(0.18), lineWidth: 1))
-                                .frame(width: 24, height: 24)
-                                .padding(3)
-                                .overlay(Circle().strokeBorder(active ? FoleviColor.ink : .clear, lineWidth: 2))
-                                .contentShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .help(Text(Self.colorNames[c] ?? c))
-                        .accessibilityLabel(Text(Self.colorNames[c] ?? c))
-                        .accessibilityAddTraits(active ? .isSelected : [])
-                    }
-                }
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(Text(tool == .highlighter ? "Highlighter colour" : "Pen colour"))
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 4) {
+                toolGroups
+                Spacer(minLength: 4)
+                historyButtons
             }
-            if tool == .pen {
-                HStack(spacing: 4) {
-                    ForEach(Self.penSizes, id: \.width) { s in
-                        WhiteboardToolButton(isActive: penWidth == s.width, label: "\(s.label) pen") {
-                            penWidth = s.width
-                        } content: {
-                            Circle().fill(.primary).frame(width: 3 + s.width * 0.9, height: 3 + s.width * 0.9)
-                        }
-                    }
-                }
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(Text("Pen size"))
+            FlowLayout(spacing: 4) {
+                toolGroups
+                historyButtons
             }
-            Spacer(minLength: 4)
-            WhiteboardToolButton(isActive: false, label: "Undo") { undo() } content: {
-                Image(systemName: "arrow.uturn.backward").font(.system(size: 13, weight: .medium))
-            }
-            .disabled(undoStack.isEmpty)
-            WhiteboardToolButton(isActive: false, label: "Clear whiteboard", help: "Clear") { clear() } content: {
-                Image(systemName: "trash").font(.system(size: 13, weight: .medium))
-            }
-            .disabled(strokes.isEmpty)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(FoleviColor.surfaceSunken.mix(with: model.sheetPalette?.surface ?? FoleviColor.surface, by: 0.45))
         .overlay(alignment: .bottom) { lineColor.frame(height: 1) }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Whiteboard tools"))
     }
 
+    @ViewBuilder private var toolGroups: some View {
+        toolButton(.pen, "pencil.line", "Pen")
+        toolButton(.highlighter, "highlighter", "Highlighter")
+        toolButton(.eraser, "eraser", "Eraser (removes whole strokes)")
+        Rectangle().fill(FoleviColor.lineStrong).frame(width: 1, height: 18).padding(.horizontal, 4)
+        if tool != .eraser {
+            HStack(spacing: 4) {
+                ForEach(tool == .highlighter ? Self.highlightColors : Self.penColors, id: \.self) { c in
+                    let active = (tool == .highlighter ? markColor : penColor) == c
+                    Button {
+                        if tool == .highlighter { markColor = c } else { penColor = c }
+                    } label: {
+                        // A 24pt swatch; the chosen one gets a 2pt ink ring 2pt outside it.
+                        Circle().fill(strokeColor(c))
+                            .overlay(Circle().strokeBorder(.black.opacity(0.18), lineWidth: 1))
+                            .frame(width: 24, height: 24)
+                            .overlay {
+                                if active {
+                                    Circle().strokeBorder(FoleviColor.ink, lineWidth: 2).frame(width: 32, height: 32)
+                                }
+                            }
+                            .frame(height: 30)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(Text(Self.colorNames[c] ?? c))
+                    .accessibilityLabel(Text(Self.colorNames[c] ?? c))
+                    .accessibilityAddTraits(active ? .isSelected : [])
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(tool == .highlighter ? "Highlighter colour" : "Pen colour"))
+        }
+        if tool == .pen {
+            HStack(spacing: 4) {
+                ForEach(Self.penSizes, id: \.width) { s in
+                    WhiteboardToolButton(isActive: penWidth == s.width, label: "\(s.label) pen") {
+                        penWidth = s.width
+                    } content: {
+                        Circle().fill(.primary).frame(width: 3 + s.width * 0.9, height: 3 + s.width * 0.9)
+                    }
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("Pen size"))
+        }
+    }
+
+    private var historyButtons: some View {
+        HStack(spacing: 4) {
+            WhiteboardToolButton(isActive: false, label: "Undo") { undo() } content: {
+                Image(systemName: "arrow.uturn.backward").font(.system(size: 14, weight: .medium))
+            }
+            .disabled(undoStack.isEmpty)
+            WhiteboardToolButton(isActive: false, label: "Clear whiteboard", help: "Clear") { clear() } content: {
+                Image(systemName: "trash").font(.system(size: 14, weight: .medium))
+            }
+            .disabled(strokes.isEmpty)
+        }
+    }
+
     private func toolButton(_ t: Tool, _ icon: String, _ label: String) -> some View {
         WhiteboardToolButton(isActive: tool == t, label: label, help: t == .eraser ? "Eraser" : label) { tool = t } content: {
-            Image(systemName: icon).font(.system(size: 13.5, weight: .medium))
+            Image(systemName: icon).font(.system(size: 14, weight: .medium))
         }
     }
 
@@ -135,9 +155,11 @@ struct WhiteboardBlockView: View {
         let shown = strokes
         let current = draft
         let h = height
+        let dotStep = 22 * model.app.editorScale
+        let dotColor = FoleviColor.lineStrong.opacity(0.7)
         return Canvas { ctx, size in
-            // Dot grid (22pt at 1000 wide).
-            let step = 22 * size.width / Double(Whiteboard.width)
+            // Dot grid: a dot every 22pt of the page (the web's 22px background tile), not of the drawing.
+            let step = dotStep
             if step > 4 {
                 var dots = Path()
                 var y = step / 2
@@ -149,7 +171,7 @@ struct WhiteboardBlockView: View {
                     }
                     y += step
                 }
-                ctx.fill(dots, with: .color(FoleviColor.lineStrong.opacity(0.7)))
+                ctx.fill(dots, with: .color(dotColor))
             }
             let k = size.width / Double(Whiteboard.width)
             ctx.scaleBy(x: k, y: k)
@@ -168,6 +190,7 @@ struct WhiteboardBlockView: View {
         .accessibilityElement()
         .accessibilityLabel(Text(shown.isEmpty
             ? (editable ? String(localized: "Empty whiteboard. Draw with a mouse, pen or finger") : String(localized: "Empty whiteboard"))
+            : shown.count == 1 ? String(localized: "Whiteboard drawing with 1 stroke")
             : String(localized: "Whiteboard drawing with \(shown.count) strokes")))
     }
 
@@ -303,12 +326,13 @@ struct WhiteboardBlockView: View {
 
     private var resizeHandle: some View {
         ZStack {
-            Capsule().fill(resizeStart != nil ? FoleviColor.inkFaint : FoleviColor.lineStrong).frame(width: 36, height: 4)
+            Capsule().fill(resizeStart != nil || resizeHovering ? FoleviColor.inkFaint : FoleviColor.lineStrong).frame(width: 36, height: 4)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 14)
         .overlay(alignment: .top) { lineColor.frame(height: 1) }
         .contentShape(Rectangle())
+        .onHover { resizeHovering = $0 }
         .pointerStyle(.frameResize(position: .bottom))
         .gesture(
             DragGesture(minimumDistance: 1, coordinateSpace: .global)
@@ -327,7 +351,7 @@ struct WhiteboardBlockView: View {
         .focusable()
         .focused($resizeFocused)
         .focusEffectDisabled()
-        .overlay { if resizeFocused { Capsule().strokeBorder(FoleviColor.focus, lineWidth: 2).frame(width: 44, height: 10) } }
+        .overlay { if resizeFocused { Rectangle().strokeBorder(FoleviColor.focus, lineWidth: 2) } }
         .onKeyPress(.downArrow) { commitHeight(clampHeight(height + 40)); return .handled }
         .onKeyPress(.upArrow) { commitHeight(clampHeight(height - 40)); return .handled }
         .help(Text("Drag to resize (or use the arrow keys)"))
@@ -381,6 +405,21 @@ private struct WhiteboardToolButton<Content: View>: View {
         .help(Text(help ?? label))
         .accessibilityLabel(Text(label))
         .accessibilityAddTraits(isActive ? .isSelected : [])
+    }
+}
+
+extension View {
+    /// `.fb-atom-selected`: a 2pt outline in the note's accent, 3pt outside a selected rich block
+    /// (formula, whiteboard, audio).
+    func richAtomOutline(_ selected: Bool, accent: Color) -> some View {
+        overlay {
+            if selected {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .strokeBorder(accent, lineWidth: 2)
+                    .padding(-5)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
 

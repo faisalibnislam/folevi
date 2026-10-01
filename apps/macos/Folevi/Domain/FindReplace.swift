@@ -1,13 +1,10 @@
 import Foundation
 
-/// Find and replace inside a note (the web's findReplace.ts): every occurrence of the query in each block's
-/// text, in page order; a replacement keeps the marks of the text it replaces (the first matched
-/// character's). Inline atoms (mentions, dates, page links) are never matched across or changed. Matching
-/// ignores case unless "Match case" is on, as on the web.
+/// Find and replace inside a note (the web's findReplace.ts): matches are found in each block's text, and a
+/// replacement keeps the marks of the text it replaces (the first matched character's). Inline atoms
+/// (mentions, dates, page links) are never matched across or changed. Matching ignores case unless
+/// `caseSensitive` (the web's "Match case").
 public enum FindReplace {
-    /// The web stops counting here (shown as "1000+").
-    public static let maxMatches = 1000
-
     static func options(_ caseSensitive: Bool) -> String.CompareOptions { caseSensitive ? [.literal] : [.caseInsensitive] }
 
     /// UTF-16 ranges of every non-overlapping occurrence of `query` in `text`.
@@ -27,43 +24,19 @@ public enum FindReplace {
 
     /// How many times `query` occurs in the block's own editable text (inline text, or a code block's code).
     public static func count(of query: String, in block: Block, caseSensitive: Bool = false) -> Int {
-        hits(of: query, in: block, caseSensitive: caseSensitive).count
-    }
-
-    /// Where `query` occurs in the block, in the block's displayed text (atoms show as their labels, but are
-    /// never matched): the ranges to select in its text view.
-    public static func hits(of query: String, in block: Block, caseSensitive: Bool = false) -> [NSRange] {
-        if case .code(let p) = block.content { return ranges(of: query, in: p.code, caseSensitive: caseSensitive) }
-        guard block.content.carriesText else { return [] }
-        var out: [NSRange] = []
-        var offset = 0
-        var run = ""
-        func flush() {
-            out += ranges(of: query, in: run, caseSensitive: caseSensitive).map { NSRange(location: $0.location + offset, length: $0.length) }
-            offset += (run as NSString).length
-            run = ""
-        }
-        for node in block.text {
-            if case .text(let text, _) = node {
-                run += text
-            } else {
-                flush()
-                offset += (RichText.plainText([node]) as NSString).length
-            }
-        }
-        flush()
-        return out
+        if case .code(let p) = block.content { return ranges(of: query, in: p.code, caseSensitive: caseSensitive).count }
+        guard block.content.carriesText else { return 0 }
+        return segments(block.text).reduce(0) { $0 + ranges(of: query, in: $1.text, caseSensitive: caseSensitive).count }
     }
 
     /// Replaces occurrences of `query` with `replacement` in inline text: all of them, or only the first
-    /// `limit`. Returns the new text (normalized) and how many were replaced.
+    /// `limit`, after skipping the first `skip`. Returns the new text (normalized) and how many were replaced.
     public static func replace(in nodes: [InlineNode], query: String, with replacement: String, limit: Int? = nil,
-                               caseSensitive: Bool = false, skip: Int = 0) -> (nodes: [InlineNode], count: Int) {
+                               skip: Int = 0, caseSensitive: Bool = false) -> (nodes: [InlineNode], count: Int) {
         guard !query.isEmpty else { return (nodes, 0) }
         var out: [InlineNode] = []
         var replaced = 0
-        // Occurrences seen so far in the block (the first `skip` are left as they are).
-        var seen = 0
+        var toSkip = skip
         for segment in segments(nodes) {
             guard let runs = segment.runs else {
                 out.append(contentsOf: segment.atoms)
@@ -71,9 +44,9 @@ public enum FindReplace {
             }
             let remaining = limit.map { max(0, $0 - replaced) }
             var matches = ranges(of: query, in: segment.text, caseSensitive: caseSensitive)
-            let drop = max(0, min(matches.count, skip - seen))
-            seen += matches.count
-            matches = Array(matches.dropFirst(drop))
+            let skipped = min(toSkip, matches.count)
+            matches.removeFirst(skipped)
+            toSkip -= skipped
             if let remaining { matches = Array(matches.prefix(remaining)) }
             if matches.isEmpty {
                 out.append(contentsOf: runs.map { .text(text: $0.text, marks: $0.marks) })
@@ -87,7 +60,7 @@ public enum FindReplace {
 
     /// The block with occurrences replaced (all, or the first `limit`), or nil when nothing changed.
     public static func replace(in block: Block, query: String, with replacement: String, limit: Int? = nil,
-                               caseSensitive: Bool = false, skip: Int = 0) -> (block: Block, count: Int)? {
+                               skip: Int = 0, caseSensitive: Bool = false) -> (block: Block, count: Int)? {
         var b = block
         if case .code(var p) = block.content {
             var matches = Array(ranges(of: query, in: p.code, caseSensitive: caseSensitive).dropFirst(skip))
@@ -100,7 +73,7 @@ public enum FindReplace {
             return (b, matches.count)
         }
         guard block.content.carriesText else { return nil }
-        let result = replace(in: block.text, query: query, with: replacement, limit: limit, caseSensitive: caseSensitive, skip: skip)
+        let result = replace(in: block.text, query: query, with: replacement, limit: limit, skip: skip, caseSensitive: caseSensitive)
         guard result.count > 0 else { return nil }
         b.text = result.nodes
         return (b, result.count)

@@ -522,7 +522,7 @@ private struct FindInPage: View {
             guard let b = model.blocks[entry.block.id] else { continue }
             let text: String
             if case .code(let p) = b.content { text = p.code } else if b.content.carriesText { text = RichText.plainText(b.text) } else { continue }
-            for r in FindReplace.hits(of: q, in: b) {
+            for r in FindReplace.ranges(of: q, in: text) {
                 let s = FindSnippet.around(text, at: r.location, length: r.length)
                 out.append(Match(id: out.count, blockId: b.id, before: s.before, hit: s.hit, after: s.after))
                 if out.count >= 500 { return out }

@@ -67,7 +67,6 @@ struct EditorView: View {
             if model.sheetPalette != palette { model.sheetPalette = palette }
         }
         .onChange(of: app.editorScale, initial: true) { _, s in model.drag.indentStep = BlockMetrics.indent(CGFloat(s)) }
-        .sheet(item: $model.recordingTarget) { _ in AudioRecorderSheet(model: model).environment(app) }
         .sheet(isPresented: Binding(get: { model.unsplashAnchor != nil }, set: { if !$0 { model.unsplashAnchor = nil } })) {
             if let anchor = model.unsplashAnchor { UnsplashSheet(model: model, anchor: anchor).environment(app) }
         }
@@ -111,6 +110,8 @@ struct EditorView: View {
             .focused($containerFocused)
             .focusEffectDisabled()
             .onKeyPress(phases: .down) { press in handleSelectionKey(press) }
+            .onCopyCommand { model.selectedBlockIds.isEmpty ? [] : model.copySelectedBlocks() }
+            .onCutCommand { model.selectedBlockIds.isEmpty || model.isReadOnly ? [] : model.cutSelectedBlocks() }
             .onChange(of: model.focus) { _, request in
                 if let id = request?.blockId, id != "__title__" {
                     withAnimation(reduceMotion ? nil : .easeOut(duration: FoleviMotion.fast)) { proxy.scrollTo(id) }
@@ -196,35 +197,40 @@ struct EditorView: View {
         model.commit(upserts: [b], focus: FocusRequest(blockId: b.id, caret: .start), actionName: String(localized: "New Block"))
     }
 
+    /// Keys while whole blocks are selected (the web's blockSelection.ts): ⇧↑/↓ grow or shrink it, ⌥⇧↑/↓
+    /// move, Tab / ⇧Tab indent, Delete deletes, ⌘A selects every block; ↑/↓, Return, Escape and typing go
+    /// back to the text.
     private func handleSelectionKey(_ press: KeyPress) -> KeyPress.Result {
         guard !model.selectedBlockIds.isEmpty else { return .ignored }
         let shift = press.modifiers.contains(.shift)
+        let command = press.modifiers.contains(.command)
         switch press.key {
         case .upArrow:
-            if press.modifiers.contains(.option) && shift { model.move(model.commandTargets, up: true) } else if shift { model.extendSelection(up: true) } else { model.moveSelection(up: true) }
+            if press.modifiers.contains(.option) && shift { model.move(model.commandTargets, up: true) } else if shift { model.extendSelection(up: true) } else { model.leaveSelection(atEnd: false) }
             return .handled
         case .downArrow:
-            if press.modifiers.contains(.option) && shift { model.move(model.commandTargets, up: false) } else if shift { model.extendSelection(up: false) } else { model.moveSelection(up: false) }
+            if press.modifiers.contains(.option) && shift { model.move(model.commandTargets, up: false) } else if shift { model.extendSelection(up: false) } else { model.leaveSelection(atEnd: true) }
             return .handled
         case .delete, .deleteForward:
             if !model.isReadOnly { model.delete(model.commandTargets) }
             return .handled
         case .return:
-            model.editSelected()
+            if model.commandTargets.count == 1, model.blocks[model.commandTargets[0]]?.typeName == "formula" { model.editSelected() } else { model.leaveSelection(atEnd: true) }
             return .handled
         case .escape:
-            model.clearSelection()
+            model.leaveSelection(atEnd: true)
             return .handled
-        case .space:
-            if let id = model.commandTargets.first, let block = model.blocks[id] {
-                QuickLookCoordinator.shared.preview(block: block, app: app)
-                return .handled
-            }
-            return .ignored
         case .tab:
             if shift { model.outdent(model.commandTargets) } else { model.indent(model.commandTargets) }
             return .handled
         default:
+            if command && press.characters.lowercased() == "a" {
+                model.selectAllBlocks()
+                return .handled
+            }
+            if command || press.modifiers.contains(.control) { return .ignored }
+            // Typing goes back to the text.
+            model.leaveSelection(atEnd: true)
             return .ignored
         }
     }

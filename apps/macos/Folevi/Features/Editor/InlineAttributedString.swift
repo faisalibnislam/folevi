@@ -55,13 +55,7 @@ enum InlineAttributedString {
                 }
                 out.append(NSAttributedString(string: text, attributes: attrs))
             case .mention, .date, .pageLink:
-                let label: String
-                switch node {
-                case .mention(_, let l): label = "@" + l
-                case .date(let d): label = d
-                case .pageLink(_, let l): label = l
-                default: label = ""
-                }
+                let label = displayLabel(node)
                 let json = (try? JSONValue(encoding: node).canonicalString) ?? ""
                 out.append(NSAttributedString(string: label, attributes: [.foleviInline: json]))
             }
@@ -82,7 +76,8 @@ enum InlineAttributedString {
             var visual: [NSAttributedString.Key: Any] = [.paragraphStyle: paragraph]
             var font = style.font
             if attrs[.foleviCode] != nil {
-                font = FoleviFont.nsFont(.mono, size: style.font.pointSize * 0.88)
+                // editor.css `.fb-inline-code`: 0.86em mono on the code background, in ember ink.
+                font = FoleviFont.nsFont(.mono, size: style.font.pointSize * 0.86)
                 visual[.backgroundColor] = NSColor.foleviCodeBg
                 visual[.foregroundColor] = NSColor(FoleviColor.emberInk)
             }
@@ -91,7 +86,10 @@ enum InlineAttributedString {
             visual[.font] = font
             if style.kern != 0, attrs[.foleviCode] == nil { visual[.kern] = style.kern }
             var color = style.color
-            if let c = attrs[.foleviColor] as? String, let tc = TextColor(rawValue: c) { color = NSColor.folevi(text: tc) }
+            if let c = attrs[.foleviColor] as? String, let tc = TextColor(rawValue: c) {
+                // `.fb-color-accent` is the ember ink; the others their own ink.
+                color = tc == .accent ? NSColor(FoleviColor.emberInk) : NSColor.folevi(text: tc)
+            }
             if let h = attrs[.foleviHighlight] as? String, let hc = HighlightColor(rawValue: h) { visual[.backgroundColor] = NSColor.folevi(highlight: hc) }
             if attrs[.foleviUnderline] != nil { visual[.underlineStyle] = NSUnderlineStyle.single.rawValue }
             if attrs[.foleviStrike] != nil || style.strikethrough {
@@ -104,16 +102,38 @@ enum InlineAttributedString {
                 visual[.underlineColor] = NSColor.foleviAccent.withAlphaComponent(0.35)
                 visual[.toolTip] = href
             }
-            if attrs[.foleviInline] != nil {
-                color = NSColor.foleviAccent
-                visual[.backgroundColor] = NSColor.foleviSelection.withAlphaComponent(0.35)
+            if let json = attrs[.foleviInline] as? String {
+                // editor.css: mentions in ember, dates in marigold (soft fill, 0.92em, weight 550); page
+                // links in the ink at weight 500 with an accent underline and an ember arrow.
+                if json.contains("\"pageLink\"") {
+                    color = style.color
+                    font = Self.weighted(font, .medium)
+                    visual[.underlineStyle] = NSUnderlineStyle.thick.rawValue
+                    visual[.underlineColor] = NSColor(FoleviColor.ember).withAlphaComponent(0.55)
+                } else {
+                    let isDate = json.contains("\"date\"")
+                    font = Self.weighted(FoleviFont.nsFont(FoleviFont.describe(style.font)?.family ?? .sans, size: style.font.pointSize * 0.92), .semibold)
+                    color = NSColor(isDate ? FoleviColor.marigoldInk : FoleviColor.emberInk)
+                    visual[.backgroundColor] = NSColor(isDate ? FoleviColor.marigoldSoft : FoleviColor.emberSoft)
+                }
+                visual[.font] = font
             }
             if visual[.foregroundColor] == nil { visual[.foregroundColor] = color }
+            if visual[.font] == nil { visual[.font] = font }
             // Remove stale visual attributes, keep Folevi marks.
             for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern] {
                 text.removeAttribute(key, range: r)
             }
             text.addAttributes(visual, range: r)
+        }
+        // The page link's arrow: ember ink at 0.85em.
+        text.enumerateAttribute(.foleviInline, in: range, options: []) { v, r, _ in
+            guard let json = v as? String, json.contains("\"pageLink\""), r.length >= 2 else { return }
+            let arrow = NSRange(location: r.location, length: 1)
+            text.addAttribute(.foregroundColor, value: NSColor(FoleviColor.emberInk), range: arrow)
+            if let f = text.attribute(.font, at: r.location, effectiveRange: nil) as? NSFont {
+                text.addAttribute(.font, value: f.withSize(f.pointSize * 0.85), range: arrow)
+            }
         }
         text.endEditing()
     }
@@ -126,14 +146,7 @@ enum InlineAttributedString {
             let s = string.substring(with: range)
             if let json = attrs[.foleviInline] as? String,
                let node = try? JSONValue(jsonString: json).decode(InlineNode.self) {
-                let label: String
-                switch node {
-                case .mention(_, let l): label = "@" + l
-                case .date(let d): label = d
-                case .pageLink(_, let l): label = l
-                case .text(let t, _): label = t
-                }
-                if s == label {
+                if s == displayLabel(node) {
                     nodes.append(node)
                     return
                 }
@@ -159,6 +172,22 @@ enum InlineAttributedString {
         let left = text.attributedSubstring(from: NSRange(location: 0, length: loc))
         let right = text.attributedSubstring(from: NSRange(location: loc, length: text.length - loc))
         return (inline(from: left), inline(from: right))
+    }
+
+    /// How an inline object reads in the text: "@Name", a date as "Thu, Oct 1", "↗ Page title".
+    static func displayLabel(_ node: InlineNode) -> String {
+        switch node {
+        case .mention(_, let l): return "@" + l
+        case .date(let d): return MentionChoice.dateLabel(d)
+        case .pageLink(_, let l): return "\u{2197} " + (l.isEmpty ? String(localized: "Untitled") : l)
+        case .text(let t, _): return t
+        }
+    }
+
+    /// The same face at another weight.
+    static func weighted(_ font: NSFont, _ face: FoleviFont.Face) -> NSFont {
+        let d = FoleviFont.describe(font)
+        return FoleviFont.nsFont(d?.family ?? .sans, size: font.pointSize, weight: face, italic: d?.italic ?? false)
     }
 
     static func length(_ nodes: [InlineNode]) -> Int {

@@ -2,10 +2,16 @@ import AppKit
 import SwiftUI
 
 /// A "Date…" request: the date picker shows under `blockId`; the picked date goes in at `location`.
+/// With `editing`, a click on an existing date chip: the picked date replaces it (or it's removed).
 struct DatePickRequest: Identifiable, Equatable {
+    struct Editing: Equatable {
+        var date: String
+        var range: NSRange
+    }
     let id = UUID()
     var blockId: String
     var location: Int
+    var editing: Editing?
 }
 
 /// Inserts from the slash menu and the Insert panel that work like the web's `insertBlockAfterCurrent`
@@ -110,6 +116,11 @@ extension EditorModel {
     func insertDate(_ date: String, for request: DatePickRequest) {
         datePick = nil
         guard !isReadOnly, let block = blocks[request.blockId] else { return }
+        if let editing = request.editing, let tv = textView(request.blockId) {
+            tv.replace(range: editing.range, with: [.date(date: date)], style: currentTextStyle(for: request.blockId))
+            focus = FocusRequest(blockId: request.blockId, caret: .offset(editing.range.location + InlineAttributedString.length([.date(date: date)])))
+            return
+        }
         let nodes: [InlineNode] = [.date(date: date), .text(text: " ", marks: nil)]
         if let tv = textView(request.blockId) {
             let length = (tv.string as NSString).length

@@ -7,9 +7,9 @@ import { MONTHLY_CREDITS, PLANS, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "
 import { Card, PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
-  title: "Support",
+  title: "Folevi support: contact us and quick answers",
   description:
-    "Contact Folevi support, or find quick answers about your account, sync and offline editing, plans and billing, two-step verification, exporting your notes, sharing and deleting your account.",
+    "Contact Folevi support, or find quick answers about your account, sync, plans and billing, two-step verification, export and deleting your account.",
   path: "/support",
 });
 

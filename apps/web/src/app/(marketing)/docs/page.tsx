@@ -8,9 +8,9 @@ import { SUPPORT_EMAIL, absoluteUrl } from "@/components/marketing/site";
 import { Eyebrow } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
-  title: "Documentation",
+  title: "Folevi docs: how the notes app works",
   description:
-    "Folevi documentation: getting started, keyboard shortcuts, blocks and slash commands, tasks and calendar, sync and offline, sharing and permissions, workspaces and plans, import and export, the AI Assistant and account security.",
+    "How Folevi works: getting started, blocks and the / menu, tasks, sync and offline, sharing, workspaces, import and export, the AI Assistant and security.",
   path: "/docs",
   ogImage: "segment",
 });

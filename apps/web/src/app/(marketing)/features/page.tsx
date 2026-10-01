@@ -10,9 +10,9 @@ import { absoluteUrl } from "@/components/marketing/site";
 import { Eyebrow, container, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
-  title: "Features",
+  title: "Notes app features: tasks, offline sync and AI",
   description:
-    "What Folevi does: offline notes that sync, tasks and a calendar, the / menu, search, comments, version history, linked pages and backlinks, flowcharts and whiteboards, audio recordings, note styles, sharing and public links, team workspaces, templates, export and an AI Assistant.",
+    "Everything the Folevi notes app does: offline sync, tasks and a calendar, the / menu, search, comments, flowcharts, audio, sharing, templates and AI.",
   path: "/features",
   ogImage: "segment",
 });

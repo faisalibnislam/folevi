@@ -9,8 +9,8 @@ import { Eyebrow, container } from "@/components/marketing/ui";
 import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 
 const base = pageMetadata({
-  title: "Blog",
-  description: "The Folevi blog: how offline sync works, why there’s a plan with no AI, what an AI credit is, meeting notes that become tasks, and moving your notes into Folevi.",
+  title: "Folevi blog: notes, offline sync and calm tools",
+  description: "The Folevi blog: how offline sync works, why there’s a plan with no AI, what an AI credit is, and meeting notes that turn into tasks.",
   path: "/blog",
   ogImage: "segment",
 });

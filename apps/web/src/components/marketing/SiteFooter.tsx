@@ -4,7 +4,7 @@ import { SECURITY_EMAIL, SUPPORT_EMAIL } from "./site";
 import { Wordmark, container, cx } from "./ui";
 
 // Feature pages listed in the footer (the full list is on /features).
-const FOOTER_FEATURES = ["ai-notes", "offline-notes", "tasks", "linked-notes", "flowcharts", "team-workspaces"];
+const FOOTER_FEATURES = ["ai-notes", "offline-notes", "tasks", "calendar", "search", "blocks", "comments", "version-history", "linked-notes", "flowcharts"];
 
 const columns: Array<{ title: string; links: Array<{ label: string; href: string }> }> = [
   {

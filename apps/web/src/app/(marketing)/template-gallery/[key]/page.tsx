@@ -34,9 +34,12 @@ type Params = { params: Promise<{ key: string }> };
 /** "Meeting notes" → "meeting notes", but "OKRs" and "1:1" stay as they are. */
 const inSentence = (name: string) => (/^[A-Z][a-z]/.test(name) ? name[0]!.toLowerCase() + name.slice(1) : name);
 
+/** The page's meta description: the template's line, then its sections when they fit in 160 characters. */
 function describe(t: GalleryTemplate): string {
   const sections = templateSections(t);
-  return `${t.description} A free ${inSentence(t.searchName)} template for Folevi${sections.length ? `, with sections for ${listJoin(sections)}` : ""}.`;
+  const base = `${t.description} A free ${inSentence(t.searchName)} template for Folevi`;
+  const full = sections.length ? `${base}, with sections for ${listJoin(sections)}.` : `${base}.`;
+  return full.length <= 160 ? full : `${base}.`;
 }
 
 export async function generateMetadata({ params }: Params) {
@@ -78,7 +81,10 @@ export default async function TemplatePage({ params }: Params) {
   const group = TEMPLATE_GROUPS.find((g) => g.id === t.group);
   const sections = templateSections(t);
   const stats = templateStats(t);
-  const more = available.filter((x) => x.group === t.group && x.key !== t.key).slice(0, 3);
+  // The next three in the group, wrapping around, so every template is linked from the ones before it.
+  const siblings = available.filter((x) => x.group === t.group);
+  const at = siblings.findIndex((x) => x.key === t.key);
+  const more = [1, 2, 3].map((k) => siblings[(at + k) % siblings.length]!).filter((x, i, all) => x.key !== t.key && all.findIndex((y) => y.key === x.key) === i);
   const heading = `${t.searchName} template`;
 
   return (

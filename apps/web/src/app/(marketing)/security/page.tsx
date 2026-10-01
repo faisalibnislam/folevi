@@ -5,9 +5,9 @@ import { PageHeader } from "@/components/marketing/ui";
 import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
-  title: "Security",
+  title: "Security and privacy for your notes",
   description:
-    "How Folevi protects your account and notes: verified email, optional two-step verification, encryption in transit and at rest, private-by-default sharing, full export and account deletion. Plus our subprocessors and how to report a vulnerability.",
+    "How Folevi protects your notes: verified email, two-step verification, encryption in transit and at rest, private sharing, full export and subprocessors.",
   path: "/security",
 });
 

@@ -60,7 +60,7 @@ const POSTS: BlogPost[] = [
   {
     slug: "how-offline-first-notes-work",
     title: "How offline-first notes work in Folevi",
-    description: "Folevi saves every edit on your device before it syncs. Here is where edits wait, what each sync status means, and what happens when two devices change the same block.",
+    description: "Folevi saves every edit on your device before it syncs. Where edits wait, what each sync status means, and what happens when two devices edit one block.",
     published: "2026-09-30",
     updated: "2026-09-30",
     author: BLOG_AUTHOR,
@@ -148,7 +148,7 @@ const POSTS: BlogPost[] = [
   {
     slug: "why-folevi-has-a-plan-with-no-ai",
     title: "Why Folevi has a plan with no AI",
-    description: `Core costs ${p(PRICES.core.month)} a month and never sends your notes to an AI model. The server refuses AI in a Core space for everyone in it. Here is what that covers and who it’s for.`,
+    description: `Core costs ${p(PRICES.core.month)} a month and never sends your notes to an AI model. The server refuses AI in a Core space for everyone in it.`,
     published: "2026-09-30",
     updated: "2026-09-30",
     author: BLOG_AUTHOR,
@@ -217,7 +217,7 @@ const POSTS: BlogPost[] = [
   {
     slug: "what-an-ai-credit-is",
     title: "What an AI credit is, and why we count them",
-    description: "One Folevi AI credit is one cent of what the AI model costs to run. Here is how a request becomes credits, what common actions cost, and how monthly credits, packs and fair use work.",
+    description: "One Folevi AI credit is one cent of what the AI costs to run. How a request becomes credits, what common actions cost, and how packs and fair use work.",
     published: "2026-09-30",
     updated: "2026-09-30",
     author: BLOG_AUTHOR,

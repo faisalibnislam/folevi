@@ -8,9 +8,9 @@ import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
-  title: "Mac app",
+  title: "Mac notes app: native and offline (coming soon)",
   description:
-    "A native Mac app for Folevi: real menus and keyboard shortcuts, multiple windows, offline editing, Quick Look, drag from Finder and menu bar Quick Add. Requires macOS 15 or later. Coming soon.",
+    "A native Mac app for Folevi, with real menus, keyboard shortcuts, windows and offline editing. Requires macOS 15 or later. Coming soon.",
   path: "/mac",
 });
 

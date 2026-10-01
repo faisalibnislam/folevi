@@ -10,8 +10,8 @@ const gb = (bytes: number) => `${bytes / GB} GB`;
 const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
-  title: "Pricing",
-  description: `Folevi is free to start, with ${MONTHLY_CREDITS.free} AI credits a month. Core is ${formatPrice(PRICES.core.month)} a month with ${gb(STORAGE_BYTES.core)} and no AI. Pro is ${formatPrice(PRICES.pro.month)} with ${MONTHLY_CREDITS.pro} AI credits a month, and Pro AI is ${formatPrice(PRICES.pro_ai.month)} with unlimited AI, fair use. Team plans are billed per member. Try ${trialName} free for ${TRIAL_DAYS} days.`,
+  title: `Pricing: a free notes app, with plans from ${formatPrice(PRICES.core.month)}`,
+  description: `Folevi is free to start. Core is ${formatPrice(PRICES.core.month)} a month with no AI, Pro is ${formatPrice(PRICES.pro.month)} with ${MONTHLY_CREDITS.pro} AI credits, and Pro AI is ${formatPrice(PRICES.pro_ai.month)} with unlimited AI. Try it free.`,
   path: "/pricing",
 });
 

@@ -38,8 +38,8 @@ export function SlashSection() {
                 </li>
               ))}
             </ul>
-            <Link href="/docs/blocks-and-slash-commands" className="mk-link mt-6 inline-flex min-h-11 items-center gap-1.5 text-[15px]">
-              Blocks and slash commands <Icon name="arrow-right" size={15} />
+            <Link href="/features/blocks" className="mk-link mt-6 inline-flex min-h-11 items-center gap-1.5 text-[15px]">
+              Blocks and the / menu <Icon name="arrow-right" size={15} />
             </Link>
           </div>
           <div className="mk-stage px-3 py-8 sm:px-10 sm:py-10" style={{ ["--stage-art" as string]: artThumb(artById("art-30")) }}>

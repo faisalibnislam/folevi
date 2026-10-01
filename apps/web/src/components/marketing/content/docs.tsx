@@ -103,7 +103,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             Type <code>/</code> on any line to turn it into a heading, checklist, quote or any other block, or <code>/record</code> to record a voice note.
           </li>
           <li>
-            Link pages together with <code>[[</code>, and find anything later with <code>⌘K</code>.
+            Link pages together with <code>[[</code>, and find anything later with <Link href="/features/search">search</Link> (<code>⌘K</code>).
           </li>
         </ol>
         <p>
@@ -147,7 +147,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "blocks-and-slash-commands",
     title: "Blocks and slash commands",
     nav: "Blocks and slash commands",
-    description: "Every paragraph in Folevi is a block. Use the slash menu to insert headings, checklists, callouts, tables, flowcharts, audio recordings and more, move blocks from the keyboard, and style a page.",
+    description: "Every paragraph in Folevi is a block. Use the / menu for headings, checklists, tables, flowcharts and audio, move blocks from the keyboard and style a page.",
     legacyAnchor: "blocks",
     published: "2026-09-25",
     updated: "2026-10-01",
@@ -157,7 +157,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           Every paragraph in Folevi is a block. Type <code>/</code> at the start of a line to open the block menu, keep typing to filter it (for example <code>/check</code>, or <code>/record</code> for a voice note), then press Return. Use the handle beside a block to drag it, or <code>⌥⇧↑</code> and <code>⌥⇧↓</code> to move it. Nested blocks move with their parent.
         </p>
         <Table label="Block types table" head={["Block", "What it’s for"]} rows={blocks} />
-        <p>Inside a block you can use bold, italic, underline, strikethrough, inline code, links, text colours and highlights, and insert dates, mentions and links to other pages.</p>
+        <p>Inside a block you can use bold, italic, underline, strikethrough, inline code, links, text colours and highlights, and insert dates, mentions and links to other pages. See <Link href="/features/blocks">Blocks and the / menu</Link> for a tour.</p>
         <h2 id="page-style">Page style</h2>
         <p>
           Each page has a note style: one of 57 artworks, Plain, or your own image. The style colours the cover, the paper and the text. In the Style panel you can also blur the style image behind the page, pick the document and text colours, the separator style, the font (System, Serif, Mono or Rounded) and the page width (Narrow or Wide). See <Link href="/features/note-styles">Note styles</Link>.
@@ -169,7 +169,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "tasks-and-calendar",
     title: "Tasks and calendar",
     nav: "Tasks and calendar",
-    description: "Any checklist item in Folevi is a task. Give it a due date, time and priority, find it in Today, Tasks and the Calendar, and use Quick Add to save a task to your Inbox page.",
+    description: "Any checklist item in Folevi is a task. Give it a date, time and priority, find it in Today, Tasks and the Calendar, and add tasks with Quick Add.",
     legacyAnchor: "tasks",
     published: "2026-09-25",
     updated: "2026-09-30",
@@ -179,7 +179,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           Any checklist item is a task. Give it a due date (and optionally a time and a priority) and it appears in <strong>Today</strong> on that day, and in <strong>Tasks</strong> alongside every other open task in your Personal (or the workspace you’re in). Overdue tasks show up there too, so nothing slips quietly past.
         </p>
         <p>
-          The <strong>Calendar</strong> shows dated tasks by day. <strong>Quick Add</strong> (⇧⌘A) saves a task straight into your <strong>Inbox</strong> page, so it always lives somewhere you can find it.
+          The <Link href="/features/calendar">Calendar</Link> shows dated tasks by day. <strong>Quick Add</strong> (⇧⌘A) saves a task straight into your <strong>Inbox</strong> page, so it always lives somewhere you can find it.
         </p>
         <h2 id="views">Task views</h2>
         <ul>
@@ -226,7 +226,9 @@ export const DOC_ARTICLES: DocArticle[] = [
           When a page shows a conflict, choose <strong>Keep mine</strong>, <strong>Keep theirs</strong> or <strong>Keep both</strong>.
         </p>
         <h2 id="versions">Version snapshots</h2>
-        <p>Version snapshots are taken automatically as you work, so you can go back to an earlier state of a page.</p>
+        <p>
+          Version snapshots are taken automatically as you work, so you can go back to an earlier state of a page. See <Link href="/features/version-history">Version history</Link>.
+        </p>
       </>
     ),
   },
@@ -234,7 +236,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "sharing-and-permissions",
     title: "Sharing and permissions",
     nav: "Sharing and permissions",
-    description: "Who can open a Folevi page by default, how to restrict a page, share it with people by email to view, comment or edit, and create a public link with an expiry date and password.",
+    description: "Who can open a Folevi page, how to restrict one, share it by email to view, comment or edit, and make a public link with an expiry and password.",
     legacyAnchor: "sharing",
     published: "2026-09-25",
     updated: "2026-09-30",
@@ -253,7 +255,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ul>
         <p>
-          More in <Link href="/features/sharing">Sharing notes</Link> and on the <Link href="/security#sharing">Security</Link> page.
+          People who can comment or edit can also leave <Link href="/features/comments">comments</Link>. More in <Link href="/features/sharing">Sharing notes</Link> and on the <Link href="/security#sharing">Security</Link> page.
         </p>
       </>
     ),
@@ -262,7 +264,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "workspaces-and-plans",
     title: "Workspaces and plans",
     nav: "Workspaces and plans",
-    description: "The difference between your Personal and a Folevi workspace: roles, per-member plans, separate storage and AI credits, and what happens when someone leaves or a workspace is deleted.",
+    description: "Your Personal and a Folevi workspace compared: roles, per-member plans, separate storage and AI credits, and what happens when someone leaves.",
     legacyAnchor: "workspaces",
     published: "2026-09-25",
     updated: "2026-09-30",
@@ -319,7 +321,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "ai-assistant",
     title: "AI Assistant and AI credits",
     nav: "AI Assistant and credits",
-    description: "How the Folevi AI Assistant works: Ask AI, editing and writing with ⌘J, titles, Catch me up and flowcharts, what an AI credit is, how many each plan includes, and how to turn AI off.",
+    description: "How the Folevi AI Assistant works: Ask AI, editing and writing with ⌘J, titles, Catch me up and flowcharts, AI credits per plan, and turning AI off.",
     published: "2026-09-30",
     updated: "2026-10-01",
     body: () => (

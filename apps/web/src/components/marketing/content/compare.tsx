@@ -176,7 +176,7 @@ export const COMPETITORS: Competitor[] = [
     name: "Notion",
     trademarks: ["Notion"],
     title: "Folevi vs Notion: a calm notes app that works offline",
-    description: "A Notion alternative for notes: compare Folevi and Notion on price, offline editing, AI, apps, sharing, export and import, with sources checked on 30 September 2026.",
+    description: "A Notion alternative for notes: compare Folevi and Notion on price, offline editing, AI, apps, sharing, export and import, with every fact sourced.",
     h1: "Folevi vs Notion",
     intro:
       "Notion is a workspace for documents, wikis, databases and projects, with apps on every major platform and a large set of integrations. It suits teams that run their work from linked databases. Folevi is a smaller notes app: pages, tasks and linked notes that you can edit offline in the browser, from $1.99 a month.",
@@ -252,7 +252,7 @@ export const COMPETITORS: Competitor[] = [
     name: "Craft",
     trademarks: ["Craft"],
     title: "Folevi vs Craft: a notes app with a plan without AI",
-    description: "A Craft alternative for notes: compare Folevi and Craft on price, offline editing, AI, apps, sharing, export and import, with sources checked on 30 September 2026.",
+    description: "A Craft alternative for notes: compare Folevi and Craft on price, offline editing, AI, apps, sharing, export and import, with every fact sourced.",
     h1: "Folevi vs Craft",
     intro:
       "Craft is a documents and notes app with native apps for Apple devices, Windows and Android, plus a web app. It includes tasks, a calendar, whiteboards and publishing, and suits people who want designed documents on many devices. Folevi is a notes app for the web with tasks and linked pages, offline editing in the browser, and a plan with no AI.",
@@ -321,8 +321,8 @@ export const COMPETITORS: Competitor[] = [
     slug: "apple-notes",
     name: "Apple Notes",
     trademarks: ["Apple", "Apple Notes", "iPhone", "iPad", "Mac", "iCloud"],
-    title: "Folevi vs Apple Notes: notes with tasks, linked pages and workspaces",
-    description: "An Apple Notes alternative: compare Folevi and Apple Notes on price, apps, offline notes, AI, sharing, export and encryption, with sources checked on 30 September 2026.",
+    title: "Folevi vs Apple Notes: tasks, linked pages, workspaces",
+    description: "An Apple Notes alternative: compare Folevi and Apple Notes on price, apps, offline notes, AI, sharing, export and encryption, with every fact sourced.",
     h1: "Folevi vs Apple Notes",
     intro:
       "Apple Notes comes with every iPhone, iPad and Mac and syncs through iCloud. It’s good for quick notes, scanned documents, handwriting with Apple Pencil and checklists, especially if everyone you share with uses Apple devices. Folevi is a notes app in the browser with tasks that have dates, linked pages, team workspaces and export to Markdown, HTML and PDF.",
@@ -389,8 +389,8 @@ export const COMPETITORS: Competitor[] = [
     slug: "obsidian",
     name: "Obsidian",
     trademarks: ["Obsidian"],
-    title: "Folevi vs Obsidian: linked notes in the browser, with sync included",
-    description: "An Obsidian alternative for linked notes: compare Folevi and Obsidian on price, sync, offline files, AI, apps, sharing and export, with sources checked on 30 September 2026.",
+    title: "Folevi vs Obsidian: linked notes with sync included",
+    description: "An Obsidian alternative for linked notes: compare Folevi and Obsidian on price, sync, offline files, AI, apps, sharing and export, with every fact sourced.",
     h1: "Folevi vs Obsidian",
     intro:
       "Obsidian keeps your notes as Markdown files in a folder on your own device, and it’s free to use. It has apps for desktop and mobile, a large library of community plugins and themes, and paid add-ons for sync and publishing. It suits people who want local files and to shape the app themselves. Folevi is a hosted notes app: sync, sharing and team workspaces are part of every plan, and it runs in the browser.",
@@ -468,8 +468,8 @@ export const COMPETITORS: Competitor[] = [
     slug: "bear",
     name: "Bear",
     trademarks: ["Bear"],
-    title: "Folevi vs Bear: notes with tasks, sharing and team workspaces",
-    description: "A Bear alternative for notes: compare Folevi and Bear on price, apps, offline notes, sync, export and encryption, with sources checked on 30 September 2026.",
+    title: "Folevi vs Bear: notes with tasks and team workspaces",
+    description: "A Bear alternative for notes: compare Folevi and Bear on price, apps, offline notes, sync, export and encryption, with every fact sourced.",
     h1: "Folevi vs Bear",
     intro:
       "Bear is a Markdown notes app for Mac, iPhone and iPad, with tags, a clean editor and iCloud sync on its Pro plan. It suits people who write on Apple devices and want a quiet place for text. Folevi is a notes app in the browser with tasks that have dates, linked pages, sharing and team workspaces.",
@@ -537,7 +537,7 @@ export const COMPETITORS: Competitor[] = [
     name: "Evernote",
     trademarks: ["Evernote"],
     title: "Folevi vs Evernote: notes and tasks from $1.99 a month",
-    description: "An Evernote alternative: compare Folevi and Evernote on price, free plan limits, offline notes, AI, apps, sharing, export and import, with sources checked on 30 September 2026.",
+    description: "An Evernote alternative: compare Folevi and Evernote on price, free plan limits, offline notes, AI, apps, sharing, export and import, with every fact sourced.",
     h1: "Folevi vs Evernote",
     intro:
       "Evernote is a notes app with a web clipper, document scanning, tasks and a calendar, and apps for the web, Mac, Windows, iOS and Android. It suits people who collect a lot of material from the web and from paper. Folevi is a notes app in the browser with block documents, linked pages, tasks and team workspaces, and paid plans from $1.99 a month.",

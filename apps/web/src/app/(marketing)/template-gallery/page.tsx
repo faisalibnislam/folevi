@@ -15,7 +15,7 @@ export async function generateMetadata() {
   const count = (await availableGalleryTemplates()).length;
   return pageMetadata({
     title: "Free note templates",
-    description: `${count} free note templates for Folevi: meeting notes, 1:1s, a weekly reset, project briefs, decision records, class notes, a travel plan, a budget and more. Preview each one and start a page from it.`,
+    description: `${count} free note templates: meeting notes, 1:1s, a weekly reset, project briefs, class notes, a travel plan and more. Preview one and start a page from it.`,
     path: "/template-gallery",
     ogImage: "segment",
   });

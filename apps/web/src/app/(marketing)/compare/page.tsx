@@ -9,7 +9,7 @@ import { Eyebrow } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Folevi alternatives and comparisons",
   description:
-    "How Folevi compares with Notion, Craft, Apple Notes, Obsidian, Bear and Evernote on price, offline editing, AI, apps, sharing and export, with every competitor fact linked to its source.",
+    "How Folevi compares with Notion, Craft, Apple Notes, Obsidian, Bear and Evernote on price, offline editing, AI, apps and export, with every fact sourced.",
   path: "/compare",
   ogImage: "segment",
 });

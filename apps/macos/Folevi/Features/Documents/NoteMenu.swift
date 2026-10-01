@@ -19,8 +19,9 @@ enum NoteDialog: Identifiable {
     }
 }
 
-/// A note's actions on right-click, as the web's card menu: open, star, duplicate, move to a folder,
-/// archive, Remove from recent (Home), Select, Move to Trash; in the Trash, Restore and Delete permanently.
+/// A note's actions (its right-click menu and its "…" button), as the web's card menu: New page from template,
+/// Open, Open in new window, Star, Duplicate, Move to folder…, Archive, Remove from recent (Home), Select, Move
+/// up / Move down (manual order), Move to Trash; in the Trash, Restore, Select and Delete permanently….
 struct DocumentContextMenu: View {
     let document: DocumentSummary
     var openDocument: (String, Bool) -> Void
@@ -28,6 +29,8 @@ struct DocumentContextMenu: View {
     var recent = false
     /// Offer "Select" / "Deselect" (the keyboard way into multi-select).
     var select: (selected: Bool, toggle: () -> Void)?
+    /// Offer "Move up" / "Move down" (a list in manual order).
+    var arrange: (up: () -> Void, down: () -> Void)?
     /// Shows a dialog (Move to folder…, Delete permanently…) over the list.
     var present: ((NoteDialog) -> Void)?
     @Environment(AppModel.self) private var app
@@ -37,73 +40,81 @@ struct DocumentContextMenu: View {
 
     var body: some View {
         if document.deletedAt != nil {
-            Button("Restore") { actions.restore(ids, app: app) }
+            Button { actions.restore(ids, app: app) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
             selectItem
             Divider()
-            Button("Delete permanently…", role: .destructive) {
+            Button(role: .destructive) {
                 present?(.deletePermanently(id: document.id, title: document.title))
-            }
+            } label: { Label("Delete permanently…", systemImage: "trash") }
             .disabled(present == nil)
         } else {
             if document.kind == .template {
-                Button("New page from template") { useTemplate() }
+                Button { Templates.use(document.id, title: document.title, app: app, open: { openDocument($0, false) }) } label: {
+                    Label("New page from template", systemImage: "doc.badge.plus")
+                }
             }
-            Button(document.kind == .template ? "Edit template" : "Open") { openDocument(document.id, false) }
-            Button("Open in new window") { openDocument(document.id, true) }
+            Button { openDocument(document.id, false) } label: {
+                Label(document.kind == .template ? "Edit template" : "Open", systemImage: "arrow.up.right.square")
+            }
+            Button { openDocument(document.id, true) } label: { Label("Open in new window", systemImage: "arrow.up.right.square") }
             if actions.isStarred(document) {
-                Button("Unstar") { actions.star(ids, false, app: app) }
+                Button { actions.star(ids, false, app: app) } label: { Label("Unstar", systemImage: "star.slash") }
             } else {
-                Button("Star") { actions.star(ids, true, app: app) }
+                Button { actions.star(ids, true, app: app) } label: { Label("Star", systemImage: "star") }
             }
-            Button("Duplicate") {
+            Button {
                 app.perform(String(localized: "Duplicating")) { session in
                     let copy = try await session.documents.duplicate(document.id)
                     await session.engine.storeDocuments([copy])
                     await MainActor.run { app.showToast(String(localized: "Duplicated")) }
                 }
-            }
+            } label: { Label("Duplicate", systemImage: "doc.on.doc") }
             if document.kind != .template, let present {
-                Button("Move to folder…") {
+                Button {
                     present(.move(ids: ids, title: document.title, current: .some(document.folderId)))
-                }
+                } label: { Label("Move to folder…", systemImage: "folder") }
             }
             if document.archivedAt != nil {
-                Button("Unarchive") { actions.archive(ids, false, app: app) }
+                Button { actions.archive(ids, false, app: app) } label: { Label("Unarchive", systemImage: "archivebox") }
             } else {
-                Button("Archive") { actions.archive(ids, true, app: app) }
+                Button { actions.archive(ids, true, app: app) } label: { Label("Archive", systemImage: "archivebox") }
             }
             if recent {
-                Button("Remove from recent") { actions.removeFromRecent(ids, app: app) }
+                Button { actions.removeFromRecent(ids, app: app) } label: { Label("Remove from recent", systemImage: "eye.slash") }
             }
             selectItem
+            if let arrange {
+                Divider()
+                Button(action: arrange.up) { Label("Move up", systemImage: "arrow.up") }
+                Button(action: arrange.down) { Label("Move down", systemImage: "arrow.down") }
+            }
             Divider()
-            Button("Move to Trash", role: .destructive) { actions.trash(ids, app: app) }
+            Button(role: .destructive) { actions.trash(ids, app: app) } label: { Label("Move to Trash", systemImage: "trash") }
         }
     }
 
     @ViewBuilder private var selectItem: some View {
         if let select {
-            Button(select.selected ? "Deselect" : "Select") { select.toggle() }
+            Button(action: select.toggle) { Label(select.selected ? "Deselect" : "Select", systemImage: "checkmark.square") }
+        }
+    }
+}
+
+/// New pages from templates, through the sync engine (so it works offline, as on the web): the server fills
+/// in the template's blocks when the page syncs.
+@MainActor
+enum Templates {
+    /// "Use" / "New page from template": a page titled like the template (a built-in's key is "builtin:…").
+    static func use(_ templateId: String, title: String, app: AppModel, open: @escaping (String) -> Void) {
+        Task {
+            if let id = await app.createDocument(title: title, templateId: templateId) { open(id) }
         }
     }
 
-    private func useTemplate() {
-        guard let session = app.session else { return }
-        guard app.sync.isOnline else {
-            app.showToast(String(localized: "Templates need a connection. Try again when you're online."))
-            return
-        }
-        let id = ULID.make()
-        let title = document.title
-        let templateId = document.id
+    /// "New template": an empty template page.
+    static func newTemplate(app: AppModel, open: @escaping (String) -> Void) {
         Task {
-            do {
-                try await session.documents.createFromTemplate(id: id, scope: session.scope, templateId: templateId, title: title, folderId: nil)
-                await session.engine.syncNow()
-                openDocument(id, false)
-            } catch {
-                app.showToast(ConvexService.mapError(error).localizedDescription)
-            }
+            if let id = await app.createDocument(folderId: nil, kind: .template) { open(id) }
         }
     }
 }

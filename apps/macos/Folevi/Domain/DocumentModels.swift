@@ -34,6 +34,8 @@ public struct DocumentSummary: Codable, Sendable, Hashable, Identifiable {
     /// Present in `documents:list` results only.
     public var starred: Bool?
     public var tags: [TagRef]?
+    /// The page's first blocks as plain lines (documents.preview), drawn on note cards.
+    public var preview: [PreviewLine]?
 
     public struct TagRef: Codable, Sendable, Hashable {
         public var id: String
@@ -73,7 +75,7 @@ public struct DocumentSummary: Codable, Sendable, Hashable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, workspaceId, ownerProfileId, parentDocumentId, folderId, kind, title, icon, cover, style, dailyDate, rank, createdAt, updatedAt,
-             createdBy, archivedAt, deletedAt, revision, titleRev, seq, excerpt, wordCount, blockCount, starred, tags
+             createdBy, archivedAt, deletedAt, revision, titleRev, seq, excerpt, wordCount, blockCount, starred, tags, preview
     }
 
     public init(from decoder: Decoder) throws {
@@ -103,6 +105,7 @@ public struct DocumentSummary: Codable, Sendable, Hashable, Identifiable {
         blockCount = try c.decodeFlexibleIntIfPresent(forKey: .blockCount) ?? 0
         starred = try c.decodeIfPresent(Bool.self, forKey: .starred)
         tags = try c.decodeIfPresent([TagRef].self, forKey: .tags)
+        preview = try? c.decodeIfPresent([PreviewLine].self, forKey: .preview)
     }
 
     public var displayTitle: String {

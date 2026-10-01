@@ -1,249 +1,334 @@
 import SwiftUI
 
-/// Month grid + agenda of tasks (by due date). Drag a task onto a day to reschedule
-/// (tasks:update when online, a local block edit when offline) — undoable.
+/// Where Tasks should open next (the calendar's "N more undated tasks in Tasks" opens All).
+@MainActor
+enum TasksRoute {
+    static var pending: TaskLogic.View?
+}
+
+/// The month grid and an agenda of dated tasks (the web's CalendarView). Drag a task onto a day to
+/// reschedule it (with Undo); undated tasks can be scheduled from the Unscheduled list.
 struct CalendarView: View {
     var openDocument: (String, Bool) -> Void
+    /// Opens Tasks (All), for the undated tasks that don't fit here.
+    var openTasks: (() -> Void)?
     @Environment(AppModel.self) private var app
-    @Environment(\.undoManager) private var undoManager
-    @State private var month = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
-    @State private var selectedDay = TaskLogic.localDate()
+    @State private var month = String(TaskLogic.localDate().prefix(7))
+    @State private var mode: Mode = .month
+    @State private var selected = TaskLogic.localDate()
     @State private var tasks: [LocalTask] = []
-    @State private var overrides: [String: String?] = [:]
+    @State private var editing: LocalTask?
     @State private var dropDay: String?
+    @State private var wide = true
+    @FocusState private var gridFocused: Bool
 
-    private let calendar = Calendar.current
+    enum Mode: String { case month, agenda }
 
-    private var days: [Date?] {
-        guard let range = calendar.range(of: .day, in: .month, for: month) else { return [] }
-        let firstWeekday = calendar.component(.weekday, from: month)
-        let leading = (firstWeekday - calendar.firstWeekday + 7) % 7
-        var out: [Date?] = Array(repeating: nil, count: leading)
-        for d in range {
-            out.append(calendar.date(byAdding: .day, value: d - 1, to: month))
-        }
-        while out.count % 7 != 0 { out.append(nil) }
-        return out
+    private var today: String { TaskLogic.localDate() }
+    /// Open and done tasks (the calendar leaves canceled ones out).
+    private var dated: [LocalTask] { tasks.filter { $0.status != .canceled } }
+
+    private func items(on day: String) -> [LocalTask] {
+        dated.filter { $0.dueDate == day }.sorted { TaskBrowse.openOrder(($0.dueDate, $0.dueTime, $0.updatedAt), ($1.dueDate, $1.dueTime, $1.updatedAt)) }
     }
 
-    private func due(_ t: LocalTask) -> String? {
-        if let o = overrides[t.blockId] { return o }
-        return t.dueDate
+    private var unscheduled: [LocalTask] {
+        tasks.filter { $0.status == .open && $0.dueDate == nil }
+            .sorted { TaskBrowse.openOrder(($0.dueDate, $0.dueTime, $0.updatedAt), ($1.dueDate, $1.dueTime, $1.updatedAt)) }
     }
-
-    private func tasks(on day: String) -> [LocalTask] {
-        tasks.filter { due($0) == day }.sorted { !$0.checked && $1.checked }
-    }
-
 
     var body: some View {
-        HStack(alignment: .top, spacing: 28) {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                VStack(spacing: 0) {
-                    weekdayHeader
-                        .frame(height: 38)
-                    FoleviColor.line.frame(height: 1)
-                    let rows = days.count / 7
-                    Grid(horizontalSpacing: 0, verticalSpacing: 0) {
-                        ForEach(0..<rows, id: \.self) { r in
-                            GridRow {
-                                ForEach(0..<7, id: \.self) { c in
-                                    let date = days[r * 7 + c]
-                                    Group {
-                                        if let date { dayCell(date) } else { Color.clear }
-                                    }
-                                    .frame(maxWidth: .infinity, minHeight: 96, maxHeight: .infinity)
-                                    .overlay(alignment: .trailing) { if c < 6 { FoleviColor.line.frame(width: 1) } }
-                                    .overlay(alignment: .bottom) { if r < rows - 1 { FoleviColor.line.frame(height: 1) } }
-                                }
-                            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ViewBar(subtitle: mode == .month ? BrowseFormat.calendarDate("\(month)-01", .monthYear) : String(localized: "Next 30 days")) {
+                    modePicker
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    if mode == .month {
+                        HStack(spacing: 4) {
+                            Spacer()
+                            IconButton(systemImage: "chevron.left", label: "Previous month", size: 32) { month = CalendarMonth.shift(month, -1) }
+                            Button("Today") { month = String(today.prefix(7)) }.buttonStyle(.folevi(.secondary, .small))
+                            IconButton(systemImage: "chevron.right", label: "Next month", size: 32) { month = CalendarMonth.shift(month, 1) }
                         }
+                        .frame(minHeight: 32)
+                        .padding(.bottom, 16)
+                        let layout = wide ? AnyLayout(HStackLayout(alignment: .top, spacing: 24)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 24))
+                        layout {
+                            grid
+                            aside.frame(width: wide ? 300 : nil)
+                        }
+                    } else {
+                        agenda
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous))
-                .foleviCard()
+                .frame(maxWidth: 1180, alignment: .leading)
+                .padding(.horizontal, 32)
+                .padding(.top, 12)
+                .padding(.bottom, 96)
+                .frame(maxWidth: .infinity)
+                .onGeometryChange(for: Bool.self) { $0.size.width >= 760 } action: { wide = $0 }
             }
-            .frame(maxWidth: .infinity)
-            agenda
-                .frame(width: 290)
-                .padding(.top, 66)
         }
-        .padding(.horizontal, 32)
-        .padding(.top, 30)
-        .padding(.bottom, 28)
+        .scrollContentBackground(.hidden)
         .task { await reload() }
+        .task(id: app.scope.key) { await TaskPeople.shared.load(app: app) }
         .onChange(of: app.blockRevision) { _, _ in Task { await reload() } }
+        .onChange(of: app.documentsRevision) { _, _ in Task { await reload() } }
+        .sheet(item: $editing) { t in TaskEditSheet(task: t, openDocument: openDocument).environment(app) }
     }
 
-    private var header: some View {
-        HStack(alignment: .center) {
-            Text(month, format: .dateTime.month(.wide).year())
-                .foleviViewTitle(size: 34)
-            Spacer()
-            IconButton(systemImage: "chevron.left", label: "Previous Month") { shiftMonth(-1) }
-            Button("Today") {
-                month = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
-                selectedDay = TaskLogic.localDate()
-            }
-            .buttonStyle(.folevi(.secondary, .medium))
-            IconButton(systemImage: "chevron.right", label: "Next Month") { shiftMonth(1) }
-        }
-    }
-
-    private var weekdayHeader: some View {
-        let symbols = calendar.shortWeekdaySymbols
-        let ordered = Array(symbols[(calendar.firstWeekday - 1)...] + symbols[..<(calendar.firstWeekday - 1)])
-        return HStack(spacing: 0) {
-            ForEach(ordered, id: \.self) { s in
-                Text(s).font(.ui(13, .medium)).foregroundStyle(FoleviColor.inkMuted).frame(maxWidth: .infinity)
+    /// Month / Agenda.
+    private var modePicker: some View {
+        HStack(spacing: 0) {
+            ForEach([Mode.month, .agenda], id: \.self) { m in
+                let on = mode == m
+                Button { mode = m } label: {
+                    Text(m == .month ? "Month" : "Agenda")
+                        .font(.ui(12, on ? .medium : .regular))
+                        .foregroundStyle(on ? FoleviColor.ink : FoleviColor.inkMuted)
+                        .padding(.horizontal, 10)
+                        .frame(height: 28)
+                        .background { if on { Color.clear.foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(6), shadow: FoleviShadow.control) } }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? [.isSelected] : [])
             }
         }
+        .padding(2)
+        .foleviWell(shape: .rounded(6))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Calendar layout"))
     }
 
-    private func dayCell(_ date: Date) -> some View {
-        let key = TaskLogic.localDate(date)
-        let dayTasks = tasks(on: key)
-        let isToday = key == TaskLogic.localDate()
-        let isSelected = key == selectedDay
-        let inMonth = calendar.isDate(date, equalTo: month, toGranularity: .month)
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("\(calendar.component(.day, from: date))")
-                    .font(.ui(13, isToday ? .bold : .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(isToday ? Color.white : inMonth ? FoleviColor.ink : FoleviColor.inkFaint)
-                    .frame(minWidth: 24, minHeight: 24)
-                    .background(Circle().fill(isToday ? FoleviColor.emberInk : Color.clear))
-                Spacer()
+    // MARK: Month
+
+    private var grid: some View {
+        let days = CalendarMonth.days(month: month)
+        return VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { i in
+                    Text(BrowseFormat.calendarDate("2024-01-0\(1 + i)", .weekdayShort))
+                        .font(.ui(12, .medium))
+                        .foregroundStyle(FoleviColor.inkMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
             }
-            ForEach(dayTasks.prefix(3)) { t in
-                Text(t.title)
-                    .font(.ui(12))
-                    .strikethrough(t.checked)
-                    .foregroundStyle(t.checked ? FoleviColor.inkMuted : FoleviColor.accentSoftInk)
-                    .lineLimit(1)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(FoleviColor.accentSoft))
-                    .draggable(TaskDragPayload(blockId: t.blockId))
+            .background(FoleviColor.surface)
+            .overlay(alignment: .bottom) { FoleviColor.line.frame(height: 1) }
+            ForEach(0..<6, id: \.self) { week in
+                HStack(spacing: 0) {
+                    ForEach(0..<7, id: \.self) { col in
+                        let i = week * 7 + col
+                        if days.indices.contains(i) { dayCell(days[i], lastColumn: col == 6) }
+                    }
+                }
             }
-            if dayTasks.count > 3 {
-                Text("+\(dayTasks.count - 3) more").font(.ui(11, .medium)).foregroundStyle(FoleviColor.inkMuted)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .foleviCard(radius: 8)
+        .focusable()
+        .focused($gridFocused)
+        .focusEffectDisabled()
+        .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+            let delta = press.key == .rightArrow ? 1 : press.key == .leftArrow ? -1 : press.key == .downArrow ? 7 : -7
+            let next = CalendarMonth.move(selected, by: delta, shownMonth: month)
+            selected = next.date
+            if next.month != month { month = next.month }
+            return .handled
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(BrowseFormat.calendarDate("\(month)-01", .monthYear)))
+        .frame(maxWidth: .infinity)
+    }
+
+    private func dayCell(_ date: String, lastColumn: Bool) -> some View {
+        let inMonth = date.hasPrefix(month)
+        let list = items(on: date)
+        let isToday = date == today
+        let isSelected = date == selected
+        return VStack(alignment: .leading, spacing: 2) {
+            Text("\(Int(date.suffix(2)) ?? 0)")
+                .font(.ui(12, isToday ? .semibold : .regular))
+                .monospacedDigit()
+                .foregroundStyle(isToday ? FoleviColor.canvas : inMonth ? FoleviColor.ink : FoleviColor.inkFaint)
+                .padding(.horizontal, 4)
+                .frame(minWidth: 24, minHeight: 24)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(isToday ? FoleviColor.heading : .clear))
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(list.prefix(3)) { t in
+                    Text("\(t.dueTime.map { "\($0) " } ?? "")\(t.title)")
+                        .font(.ui(11.5))
+                        .strikethrough(t.status == .done)
+                        .foregroundStyle(t.status == .done ? FoleviColor.inkFaint : FoleviColor.accentSoftInk)
+                        .lineLimit(1)
+                        .padding(.horizontal, 4)
+                        .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(t.status == .done ? FoleviColor.surfaceSunken : FoleviColor.accentSoft))
+                        .help(Text(t.title))
+                        .draggable(TaskDragPayload(blockId: t.blockId))
+                }
+                if list.count > 3 {
+                    Text("+\(list.count - 3) more").font(.ui(11)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 4)
+                }
             }
+            .padding(.top, 2)
             Spacer(minLength: 0)
         }
-        .padding(8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(dropDay == key ? FoleviColor.accentSoft : isToday ? FoleviColor.emberSoft.opacity(0.7) : isSelected ? FoleviColor.accentSoft.opacity(0.45) : FoleviColor.surface)
-        .overlay {
-            if isSelected && !isToday { Rectangle().strokeBorder(FoleviColor.ember.opacity(0.5), lineWidth: 1.5) }
-        }
+        .padding(6)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .background(dropDay == date ? FoleviColor.accentSoft : isSelected ? FoleviColor.accentSoft.opacity(0.4) : inMonth ? .clear : FoleviColor.surface.opacity(0.6))
+        .overlay(alignment: .bottom) { FoleviColor.line.frame(height: 1) }
+        .overlay(alignment: .trailing) { if !lastColumn { FoleviColor.line.frame(width: 1) } }
+        .overlay { if isSelected && gridFocused { Rectangle().strokeBorder(FoleviColor.focus, lineWidth: 2) } }
         .contentShape(Rectangle())
-        .onTapGesture { selectedDay = key }
+        .onTapGesture {
+            selected = date
+            gridFocused = true
+        }
         .dropDestination(for: TaskDragPayload.self) { items, _ in
-            for item in items { reschedule(item.blockId, to: key) }
+            for item in items { reschedule(item.blockId, to: date) }
+            dropDay = nil
             return !items.isEmpty
-        } isTargeted: { targeted in
-            dropDay = targeted ? key : (dropDay == key ? nil : dropDay)
+        } isTargeted: { on in
+            dropDay = on ? date : (dropDay == date ? nil : dropDay)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(date, format: .dateTime.weekday(.wide).month(.wide).day()))
-        .accessibilityValue(Text("\(dayTasks.count) tasks"))
+        .accessibilityLabel(Text(CalendarMonth.dayLabel(date, count: list.count)))
         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
     }
 
+    /// The selected day: its tasks, the tip, and Unscheduled.
+    private var aside: some View {
+        let list = items(on: selected)
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(BrowseFormat.calendarDate(selected, .weekdayMonthDay))
+                .font(.ui(16, .semibold))
+                .foregroundStyle(FoleviColor.heading)
+                .accessibilityAddTraits(.isHeader)
+            Group {
+                if list.isEmpty {
+                    Text("No tasks due. Drag a task here to schedule it.")
+                        .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foleviCard(radius: 8)
+                        .dropDestination(for: TaskDragPayload.self) { items, _ in
+                            for item in items { reschedule(item.blockId, to: selected) }
+                            return !items.isEmpty
+                        }
+                } else {
+                    TaskList(items: list, today: today, openDocument: openDocument, onEdit: { editing = $0 })
+                }
+            }
+            .padding(.top, 12)
+            Text("Drag tasks between days to reschedule, or use a task’s edit button to pick a date. Arrow keys move between days.")
+                .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+            unscheduledSection(target: selected)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Selected day"))
+    }
+
+    // MARK: Agenda
+
     private var agenda: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(TaskLogic.parseLocalDate(selectedDay) ?? Date(), format: .dateTime.weekday(.wide).month(.wide).day())
-                    .font(.ui(17, .semibold))
-                    .foregroundStyle(FoleviColor.heading)
-                    .accessibilityAddTraits(.isHeader)
-            }
-            let dayTasks = tasks(on: selectedDay)
-            if dayTasks.isEmpty {
-                Text("No tasks due.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
-            }
-            ScrollView {
+        let overdue = dated.filter { $0.status == .open && ($0.dueDate ?? "9999") < today }
+            .sorted { ($0.dueDate ?? "") < ($1.dueDate ?? "") }
+        let days = (0...30).map { TaskLogic.addDays(today, $0) }.filter { $0 == today || !items(on: $0).isEmpty }
+        return VStack(alignment: .leading, spacing: 24) {
+            if !overdue.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(dayTasks) { t in
-                        TaskRow(task: t, today: TaskLogic.localDate(), openDocument: openDocument) { checked in
-                            Task {
-                                await TaskStore.setChecked(t, checked, app: app)
-                                await reload()
-                            }
-                        }
-                        .padding(14)
-                        .foleviCard(radius: 14)
-                        .draggable(TaskDragPayload(blockId: t.blockId))
-                    }
-                    Text("Tip: drag tasks between days to reschedule.")
-                        .font(.ui(12))
-                        .foregroundStyle(FoleviColor.inkMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 4)
-                    let undated = tasks.filter { due($0) == nil && !$0.checked }
-                    if !undated.isEmpty {
-                        Text("Unscheduled").foleviCapsLabel().padding(.top, 14)
-                        ForEach(undated.prefix(30)) { t in
-                            Text(t.title.isEmpty ? String(localized: "Untitled task") : t.title)
-                                .font(.ui(13))
-                                .foregroundStyle(FoleviColor.ink)
-                                .lineLimit(2)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(10), shadow: FoleviShadow.control)
-                                .draggable(TaskDragPayload(blockId: t.blockId))
-                                .accessibilityHint(Text("Drag onto a day to schedule"))
-                        }
+                    Text("Overdue").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.destructive).accessibilityAddTraits(.isHeader)
+                    TaskList(items: overdue, today: today, openDocument: openDocument, onEdit: { editing = $0 })
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(Text("Overdue"))
+            }
+            ForEach(days, id: \.self) { d in
+                let list = items(on: d)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(d == today ? String(localized: "Today") : BrowseFormat.calendarDate(d, .weekdayMonthDay))
+                        .font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                    if list.isEmpty {
+                        Text("Nothing due.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .foleviCard(radius: 8)
+                    } else {
+                        TaskList(items: list, today: today, openDocument: openDocument, onEdit: { editing = $0 })
                     }
                 }
-                .padding(4)
+                .dropDestination(for: TaskDragPayload.self) { items, _ in
+                    for item in items { reschedule(item.blockId, to: d) }
+                    return !items.isEmpty
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(Text(d))
             }
-            .scrollIndicators(.never)
-            Spacer(minLength: 0)
+            unscheduledSection(target: today)
         }
     }
 
-    private func shiftMonth(_ delta: Int) {
-        month = calendar.date(byAdding: .month, value: delta, to: month) ?? month
+    // MARK: Unscheduled
+
+    /// Open tasks without a date: drag onto a day, or schedule them for `target` in one click.
+    private func unscheduledSection(target: String) -> some View {
+        let list = unscheduled
+        let label = target == today ? String(localized: "today") : BrowseFormat.calendarDate(target, .monthDay)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Unscheduled").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+            if list.isEmpty {
+                Text("Every open task has a date.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+            } else {
+                TaskList(items: Array(list.prefix(8)), today: today, openDocument: openDocument, onEdit: { editing = $0 }) { t in
+                    Button { reschedule(t.blockId, to: target) } label: {
+                        Label("Schedule for \(label)", systemImage: "calendar.badge.plus")
+                    }
+                    .buttonStyle(.folevi(.ghost, .small))
+                    .padding(.leading, -10)
+                    .accessibilityLabel(Text("Schedule “\(t.title.isEmpty ? String(localized: "Untitled task") : t.title)” for \(label)"))
+                }
+            }
+            if list.count > 8 {
+                Button {
+                    TasksRoute.pending = .all
+                    openTasks?()
+                } label: {
+                    Text(CalendarMonth.moreUnscheduled(list.count - 8)).font(.ui(14)).underline().foregroundStyle(FoleviColor.accent)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 24)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Unscheduled tasks"))
     }
+
+    // MARK: Data
 
     private func reload() async {
-        tasks = await TaskStore.load(app: app)
-        // Drop optimistic overrides the data has caught up with.
-        overrides = overrides.filter { id, value in tasks.first { $0.blockId == id }?.dueDate != value }
+        tasks = await TaskStore.loadAll(app: app)
     }
 
-    private func reschedule(_ blockId: String, to day: String) {
-        guard let task = tasks.first(where: { $0.blockId == blockId }) else { return }
-        let previous = due(task)
-        guard previous != day else { return }
-        setDue(task, day, undoTo: previous)
-    }
-
-    private func setDue(_ task: LocalTask, _ day: String?, undoTo previous: String?) {
-        overrides[task.blockId] = .some(day)
-        let online = app.sync.isOnline
+    /// Moves a task to a day, with the web's toast and Undo.
+    private func reschedule(_ blockId: String, to date: String) {
+        guard let task = tasks.first(where: { $0.blockId == blockId }), task.dueDate != date else { return }
+        let previous = task.dueDate
         Task {
-            let hasLocalWork = await app.session?.engine.state.pending.contains { $0.targetBlockId == task.blockId } ?? false
-            if online, !hasLocalWork, let session = app.session {
-                do {
-                    _ = try await session.tasks.update(blockId: task.blockId, fields: ["dueDate": day.map { .string($0) } ?? .null])
-                    await session.engine.syncNow()
-                } catch {
-                    await TaskStore.mutate(task, app: app) { $0.dueDate = day }
+            await TaskStore.edit(task, TaskEdit(dueDate: .some(date)), app: app)
+            await reload()
+            app.showToast(CalendarMonth.movedMessage(date), action: .undo {
+                Task {
+                    var moved = task
+                    moved.dueDate = date
+                    await TaskStore.edit(moved, TaskEdit(dueDate: .some(previous)), app: app)
                 }
-            } else {
-                await TaskStore.mutate(task, app: app) { $0.dueDate = day }
-            }
+            })
         }
-        undoManager?.registerUndo(withTarget: app) { _ in
-            MainActor.assumeIsolated { setDue(task, previous, undoTo: day) }
-        }
-        undoManager?.setActionName(String(localized: "Reschedule Task"))
     }
 }

@@ -34,7 +34,9 @@ struct SelectionBar: View {
                 BarButton(title: a.title, systemImage: a.systemImage, danger: a.danger, action: a.run)
             }
             divider
-            IconButton(systemImage: "xmark", label: "Clear selection", shortcutHint: "Esc", size: 32, action: onClear)
+            BarButton(title: nil, systemImage: "xmark", muted: true, action: onClear)
+                .help(Text("Clear selection (Esc)"))
+                .accessibilityLabel(Text("Clear selection"))
         }
         .padding(6)
         .foleviPop(radius: 14)
@@ -48,7 +50,7 @@ struct SelectionBar: View {
     }
 
     private struct BarButton: View {
-        var title: String
+        var title: String?
         var systemImage: String?
         var danger = false
         var muted = false
@@ -58,13 +60,14 @@ struct SelectionBar: View {
         var body: some View {
             Button(action: action) {
                 HStack(spacing: 6) {
-                    if let systemImage { Image(systemName: systemImage).font(.system(size: 12.5, weight: .medium)).accessibilityHidden(true) }
-                    Text(title).lineLimit(1)
+                    if let systemImage { Image(systemName: systemImage).font(.system(size: 13, weight: .medium)).accessibilityHidden(true) }
+                    if let title { Text(title).lineLimit(1) }
                 }
                 .font(.ui(13, .medium))
                 .foregroundStyle(danger ? FoleviColor.destructive : muted && !hovering ? FoleviColor.inkMuted : hovering ? FoleviColor.heading : FoleviColor.ink)
-                .padding(.horizontal, 10)
-                .frame(height: 34)
+                .padding(.horizontal, title == nil ? 0 : 10)
+                .frame(minWidth: 36)
+                .frame(height: 36)
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(hovering ? (danger ? FoleviColor.destructive.opacity(0.1) : FoleviColor.accentSoft) : .clear))
                 .contentShape(Rectangle())
@@ -84,9 +87,10 @@ struct SelectedCardMark: ViewModifier {
         content
             .overlay {
                 if selected {
-                    RoundedRectangle(cornerRadius: radius + 4, style: .continuous)
+                    // ring-2 ring-heading ring-offset-4: a 2 pt ring 4 pt outside the card.
+                    RoundedRectangle(cornerRadius: radius + 6, style: .continuous)
                         .strokeBorder(FoleviColor.heading, lineWidth: 2)
-                        .padding(-5)
+                        .padding(-6)
                         .allowsHitTesting(false)
                 }
             }
@@ -98,7 +102,7 @@ struct SelectedCardMark: ViewModifier {
                         .frame(width: 24, height: 24)
                         .background(Circle().fill(FoleviColor.heading))
                         .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-                        .offset(x: -10, y: -10)
+                        .offset(x: -8, y: -8)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }

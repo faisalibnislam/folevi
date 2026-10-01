@@ -30,48 +30,36 @@ struct TemplateTile: View {
     }
 }
 
-/// "Built-in templates" above your own templates (the web's Templates view): a tile per template that
-/// creates a note from it.
+/// "Built-in templates" above your own templates (the web's Templates view): a card per template that starts
+/// a new page from it, then the "Your templates" heading.
 struct BuiltInTemplatesSection: View {
     var openDocument: (String, Bool) -> Void
     @Environment(AppModel.self) private var app
     @State private var templates: [BuiltInTemplate] = []
-    @State private var creating: String?
+    @State private var columns = 3
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if !templates.isEmpty {
-                Text("Built-in templates").foleviCapsLabel()
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 420), spacing: 12)], spacing: 12) {
+                Text("Built-in templates").font(.ui(12, .semibold)).textCase(.uppercase).tracking(0.06 * 12)
+                    .foregroundStyle(FoleviColor.inkFaint).accessibilityAddTraits(.isHeader)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: columns), spacing: 12) {
                     ForEach(templates) { t in
-                        Button {
-                            create(t)
-                        } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                TemplateTile(name: t.icon)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(t.name).font(.ui(14, .medium)).foregroundStyle(FoleviColor.heading)
-                                    Text(t.description).font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(2)
-                                }
-                                Spacer(minLength: 0)
-                                if creating == t.key { ProgressView().controlSize(.small) }
-                            }
-                            .padding(14)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(FoleviColor.surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(FoleviGlass.border))
-                            .contentShape(Rectangle())
+                        BuiltInTemplateCard(template: t) {
+                            Templates.use(t.key, title: t.name, app: app, open: { openDocument($0, false) })
                         }
-                        .buttonStyle(.plain)
-                        .disabled(creating != nil)
-                        .accessibilityLabel(Text("New page from \(t.name)"))
                     }
                 }
-                Text("Your templates").foleviCapsLabel().padding(.top, 20)
+                Text("Your templates").font(.ui(12, .semibold)).textCase(.uppercase).tracking(0.06 * 12)
+                    .foregroundStyle(FoleviColor.inkFaint).accessibilityAddTraits(.isHeader).padding(.top, 20)
             }
         }
-        .padding(.top, templates.isEmpty ? 0 : 22)
+        .padding(.bottom, templates.isEmpty ? 0 : 40)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { w in
+            let c = w < 560 ? 1 : w < 900 ? 2 : 3
+            if c != columns { columns = c }
+        }
         .task { await load() }
     }
 
@@ -83,24 +71,52 @@ struct BuiltInTemplatesSection: View {
         templates = fresh
         try? await session.store.setCodable(fresh, forKey: key)
     }
+}
 
-    private func create(_ t: BuiltInTemplate) {
-        guard let session = app.session else { return }
-        guard app.sync.isOnline else {
-            app.showToast(String(localized: "Templates need a connection. Try again when you're online."))
-            return
-        }
-        let id = ULID.make()
-        creating = t.key
-        Task {
-            defer { creating = nil }
-            do {
-                try await session.documents.createFromTemplate(id: id, scope: session.scope, templateId: t.key, title: t.name, folderId: nil)
-                await session.engine.syncNow()
-                openDocument(id, false)
-            } catch {
-                app.showToast(ConvexService.mapError(error).localizedDescription)
+private struct BuiltInTemplateCard: View {
+    let template: BuiltInTemplate
+    var action: () -> Void
+    @State private var hovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .top, spacing: 12) {
+                TemplateTile(name: template.icon)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(template.name).font(.ui(16, .medium)).foregroundStyle(FoleviColor.ink)
+                    Text(template.description).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.clear.foleviSurface(.color(FoleviColor.surface), shape: .rounded(8), shadow: hovering ? FoleviShadow.pop : FoleviShadow.card))
+            .offset(y: hovering && !reduceMotion ? -1 : 0)
+            .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityLabel(Text("New page from \(template.name)"))
     }
 }
+
+/// "Use" on a template card or row: a new page from it.
+struct UseTemplateButton: View {
+    let document: DocumentSummary
+    var raised = false
+    var openDocument: (String, Bool) -> Void
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        Button {
+            Templates.use(document.id, title: document.title, app: app, open: { openDocument($0, false) })
+        } label: {
+            Label("Use", systemImage: "doc.badge.plus")
+        }
+        .buttonStyle(.folevi(raised ? .secondary : .ghost, .small))
+        .accessibilityLabel(Text("New page from template \(document.displayTitle)"))
+    }
+}
+

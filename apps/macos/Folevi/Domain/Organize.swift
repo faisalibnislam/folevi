@@ -127,6 +127,9 @@ public struct NoteSelectionState: Equatable, Sendable {
 
     public mutating func selectAll(_ shown: [String]) { picked = Set(shown) }
 
+    /// A selection rectangle's result (the cards it touches, plus what was picked before when adding).
+    public mutating func setPicked(_ ids: Set<String>) { picked = ids }
+
     public mutating func clear() {
         picked = []
         anchor = nil

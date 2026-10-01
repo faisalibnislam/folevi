@@ -7,6 +7,8 @@ enum SidebarItem: Hashable, Codable, Sendable {
     case drafts
     case notes
     case folders
+    /// Every tag (the web's /tags).
+    case tags
     case tasks
     case calendar
     case shared
@@ -23,6 +25,7 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .drafts: return "Drafts"
         case .notes: return "All notes"
         case .folders: return "Folders"
+        case .tags: return "Tags"
         case .tasks: return "Tasks"
         case .calendar: return "Calendar"
         case .shared: return "Shared with Me"
@@ -41,6 +44,7 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .drafts: return String(localized: "Drafts")
         case .notes: return String(localized: "All notes")
         case .folders: return String(localized: "Folders")
+        case .tags: return String(localized: "Tags")
         case .tasks: return String(localized: "Tasks")
         case .calendar: return String(localized: "Calendar")
         case .shared: return String(localized: "Shared with Me")
@@ -59,6 +63,7 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .drafts: return "tray"
         case .notes: return "doc.on.doc"
         case .folders: return "folder"
+        case .tags: return "number"
         case .tasks: return "checklist"
         case .calendar: return "calendar"
         case .shared: return "person.2"
@@ -77,6 +82,7 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .drafts: return "sidebar.drafts"
         case .notes: return "sidebar.notes"
         case .folders: return "sidebar.folders"
+        case .tags: return "sidebar.tags"
         case .tasks: return "sidebar.tasks"
         case .calendar: return "sidebar.calendar"
         case .shared: return "sidebar.shared"

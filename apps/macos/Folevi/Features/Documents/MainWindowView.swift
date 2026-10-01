@@ -166,8 +166,9 @@ struct MainWindowView: View {
             switch nav.selection {
             case .all: HomeDashboardView(nav: nav, openDocument: open)
             case .folders: FoldersIndexView(nav: nav)
+            case .tags: TagsIndexView(nav: nav)
             case .tasks: TasksView(openDocument: open, openCalendar: { nav.selection = .calendar })
-            case .calendar: CalendarView(openDocument: open)
+            case .calendar: CalendarView(openDocument: open, openTasks: { nav.selection = .tasks })
             case .shared: SharedWithMeView(openDocument: open)
             default: BrowserView(nav: nav, openDocument: open)
             }
@@ -382,6 +383,7 @@ struct ToastView: View {
     }
 }
 
+/// Pages people shared with you directly, from their Personal or any workspace (the web's SharedView).
 struct SharedWithMeView: View {
     var openDocument: (String, Bool) -> Void
     @Environment(AppModel.self) private var app
@@ -390,55 +392,80 @@ struct SharedWithMeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Shared with Me").foleviViewTitle(size: 34)
-                Text("Documents other people have shared with you.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 6)
-                if let docs, !docs.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(Array(docs.enumerated()), id: \.element.id) { idx, d in
-                            Button {
-                                openDocument(d.id, NSEvent.modifierFlags.contains(.option))
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "doc.text").font(.system(size: 13, weight: .medium)).foregroundStyle(FoleviColor.inkMuted)
-                                        .frame(width: 30, height: 30)
-                                        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(d.title.isEmpty ? String(localized: "Untitled") : d.title).font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading)
-                                        Text(d.workspaceName.map { "\(d.sharedBy) · \($0)" } ?? d.sharedBy).font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
-                                    }
-                                    Spacer()
-                                    Chip(text: d.role.capitalized, tint: FoleviColor.accentSoftInk, fill: FoleviColor.accentSoft)
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            if idx < docs.count - 1 { FoleviColor.line.frame(height: 1).padding(.leading, 56) }
+                ViewBar(subtitle: docs.map { "\($0.count) \($0.count == 1 ? "page" : "pages") · from anyone" }) { EmptyView() }
+                VStack(alignment: .leading, spacing: 0) {
+                    if let docs, docs.isEmpty {
+                        VStack(spacing: 8) {
+                            Text("Nothing has been shared with you yet.")
+                                .font(FoleviType.display(24))
+                                .tracking(FoleviType.displayTracking(24))
+                                .foregroundStyle(FoleviColor.inkMuted)
+                            Text("Pages people share with you directly, from their Personal or from any workspace, show up here.")
+                                .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
                         }
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 64)
+                    } else if let docs {
+                        VStack(spacing: 0) {
+                            ForEach(Array(docs.enumerated()), id: \.element.id) { idx, d in
+                                SharedRow(doc: d) { openDocument(d.id, NSEvent.modifierFlags.contains(.option)) }
+                                if idx < docs.count - 1 { FoleviColor.line.frame(height: 1) }
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .foleviCard(radius: 8)
+                        .padding(.top, 24)
+                    } else {
+                        PulsePlaceholder(radius: 6, fill: FoleviColor.surface).frame(height: 96).padding(.top, 24)
                     }
-                    .padding(.vertical, 6)
-                    .foleviCard(radius: 18)
-                    .padding(.top, 22)
-                } else if docs == nil && app.sync.isOnline {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 300)
-                } else {
-                    EmptyStateView(systemImage: "person.2", title: "Nothing shared yet",
-                                   message: app.sync.isOnline ? "Documents others share with you appear here." : "Shared documents appear here when you're online.")
-                        .frame(minHeight: 360)
                 }
+                .frame(maxWidth: 768, alignment: .leading)
+                .padding(.horizontal, 32)
+                .padding(.top, 24)
+                .padding(.bottom, 96)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 30)
-            .padding(.bottom, 40)
         }
         .scrollContentBackground(.hidden)
-        .task {
-            guard let session = app.session, app.sync.isOnline else {
-                docs = []
-                return
-            }
-            docs = (try? await session.documents.sharedWithMe()) ?? []
+        .task(id: app.sync.isOnline) {
+            guard let session = app.session, app.sync.isOnline else { return }
+            if let fresh = try? await session.documents.sharedWithMe() { docs = fresh }
         }
+    }
+}
+
+private struct SharedRow: View {
+    let doc: SharedDocument
+    var open: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: open) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "doc.text").font(.system(size: 14)).foregroundStyle(FoleviColor.inkMuted).frame(width: 16).padding(.top, 4)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(doc.title.isEmpty ? String(localized: "Untitled") : doc.title).font(.ui(16, .medium)).foregroundStyle(FoleviColor.ink)
+                    if !doc.excerpt.isEmpty {
+                        Text(doc.excerpt).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
+                    }
+                    Text(meta).font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(hovering ? FoleviColor.surface : .clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+    }
+
+    private var meta: String {
+        let place = doc.workspaceName ?? "Personal · \(doc.ownerName ?? "someone")"
+        let role = doc.role == "editor" ? "Can edit" : doc.role == "commenter" ? "Can comment" : "Can view"
+        return "Shared by \(doc.sharedBy) · \(place) · \(role) · updated \(CollabTime.relative(doc.updatedAt))"
     }
 }

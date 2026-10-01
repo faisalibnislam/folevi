@@ -497,8 +497,10 @@ struct NoteCard: View {
                     .font(.system(size: 5.6 * u))
                     .foregroundStyle(heading)
                     .frame(width: 12 * u, height: 12 * u)
-                    .background(chip, in: UnevenRoundedRectangle(bottomLeadingRadius: 2 * u, style: .continuous))
-                    .clipShape(shape)
+                    // The web's rounded-bl-[2cqw] in the card's corner: square but for a small bottom-left round,
+                    // the top right following the card's own corner. (Clipping it with the card's shape rounded
+                    // its bottom right too.)
+                    .background(chip, in: UnevenRoundedRectangle(bottomLeadingRadius: 2 * u, topTrailingRadius: 4.6 * u, style: .continuous))
                     .accessibilityLabel(Text("Starred"))
             }
         }

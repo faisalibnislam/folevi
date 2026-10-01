@@ -468,7 +468,7 @@ struct BlockRowView: View {
             let tone = CalloutLook(tone: p.tone)
             HStack(alignment: .top, spacing: 0.6 * em) {
                 // The tone's mark (a text symbol, never an emoji), bold, 1.4em wide.
-                Text(verbatim: CalloutLook.symbol(p.tone))
+                Text(verbatim: p.icon.flatMap { $0.isEmpty ? nil : $0 } ?? CalloutLook.symbol(p.tone)) // the stored icon first, as the web
                     .font(Font(FoleviFont.nsFont(FoleviFont.Family(model.style.font), size: em, weight: FoleviFont.Face.bold)))
                     .foregroundStyle(tone.ink)
                     .frame(width: 1.4 * em, height: glyphLine)

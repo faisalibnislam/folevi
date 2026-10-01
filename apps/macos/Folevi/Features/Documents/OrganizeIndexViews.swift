@@ -174,8 +174,8 @@ struct FoldersIndexView: View {
                         .accessibilityLabel(Text("Folders"))
                     }
                 }
-                .frame(maxWidth: 1152, alignment: .leading)
                 .padding(.horizontal, 32)
+                .frame(maxWidth: 1152, alignment: .leading) // the max width includes the padding, as in CSS
                 .padding(.top, 12)
                 .padding(.bottom, 96)
                 .frame(maxWidth: .infinity)
@@ -303,8 +303,8 @@ struct TagsIndexView: View {
                     .accessibilityLabel(Text("Tags"))
                 }
             }
-            .frame(maxWidth: 1152, alignment: .leading)
             .padding(.horizontal, 32)
+            .frame(maxWidth: 1152, alignment: .leading) // the max width includes the padding, as in CSS
             .padding(.top, 12)
             .padding(.bottom, 96)
             .frame(maxWidth: .infinity)

@@ -82,6 +82,8 @@ final class AiCreditsWatcher {
 /// "Buy more" (Pro, Pro AI) or "Upgrade". Nothing otherwise.
 struct AiCreditsNote: View {
     var documentId: String?
+    /// Space above the note, only while it shows (the web's flex gap, which an empty note doesn't take).
+    var spacingAbove: CGFloat = 0
     @Environment(AppModel.self) private var app
     @State private var watcher = AiCreditsWatcher()
 
@@ -104,6 +106,7 @@ struct AiCreditsNote: View {
                 .background(FoleviGlass.hover, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("ai.creditsNote")
+                .padding(.top, spacingAbove)
             }
         }
         .task(id: "\(app.scope.key)|\(documentId ?? "")|\(app.sync.isOnline)") { await watcher.watch(app, documentId: documentId) }

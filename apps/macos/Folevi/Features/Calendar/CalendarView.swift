@@ -62,8 +62,8 @@ struct CalendarView: View {
                         agenda
                     }
                 }
-                .frame(maxWidth: 1180, alignment: .leading)
                 .padding(.horizontal, 32)
+                .frame(maxWidth: 1180, alignment: .leading) // the max width includes the padding, as in CSS
                 .padding(.top, 12)
                 .padding(.bottom, 96)
                 .frame(maxWidth: .infinity)

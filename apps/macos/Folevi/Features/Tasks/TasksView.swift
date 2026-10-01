@@ -224,14 +224,15 @@ struct TasksView: View {
                         }
                     }
                 }
-                .frame(maxWidth: 768, alignment: .leading)
                 .padding(.horizontal, 32)
+                .frame(maxWidth: 768, alignment: .leading) // the max width includes the padding, as in CSS
                 .padding(.top, 12)
                 .padding(.bottom, 96)
                 .frame(maxWidth: .infinity)
             }
         }
         .scrollContentBackground(.hidden)
+        .onChange(of: view, initial: true) { _, v in app.tasksViewLabel = TaskBrowse.label(v) }
         .task { await reload() }
         .task(id: app.scope.key) { await people.load(app: app) }
         .onAppear {
@@ -345,7 +346,9 @@ struct TaskItemRow<Action: View>: View {
                     .foregroundStyle(closed ? FoleviColor.inkMuted : FoleviColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 FlowLayout(spacing: 8) {
-                    PageLink(title: task.documentTitle.isEmpty ? String(localized: "Untitled") : task.documentTitle) {
+                    // The web's "{icon} {title}" (the page's own icon first, when it has one).
+                    PageLink(title: (task.documentIcon.flatMap { $0.isEmpty ? nil : $0 + " " } ?? "")
+                             + (task.documentTitle.isEmpty ? String(localized: "Untitled") : task.documentTitle)) {
                         openDocument(task.documentId, NSEvent.modifierFlags.contains(.option))
                     }
                     if let name = people.name(task.assigneeId) { Text("· \(name)") }

@@ -54,9 +54,15 @@ struct TabStrip<Trailing: View>: View {
         .padding(.horizontal, 6)
         .frame(height: 44)
         .background {
+            // The web's light glass (white 36%). Over the content panel it reads white, as on the web; the
+            // system material's grey tint is only used over a note's artwork, where the web blurs it too.
             Color.clear.foleviSurface(.color(FoleviGlass.sidebar), shape: .rounded(12),
                                       shadow: FoleviGlassDepth.edge + FoleviGlassDepth.shadow)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background {
+                    if nav.openDocumentId != nil {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.ultraThinMaterial)
+                    }
+                }
         }
         .onChange(of: app.documentsRevision, initial: true) { _, _ in
             guard !app.documents.isEmpty else { return }
@@ -77,6 +83,7 @@ struct TabStrip<Trailing: View>: View {
         guard nav.openDocumentId == nil, nav.selection != .all else { return nil }
         if case .folder(let id) = nav.selection { return app.sidebar.folders.first { $0.id == id }?.name ?? nav.selection.titleString }
         if case .tag(let id) = nav.selection { return app.sidebar.tags.first { $0.id == id }?.name ?? nav.selection.titleString }
+        if nav.selection == .tasks { return String(localized: "Tasks · \(app.tasksViewLabel)") }
         return nav.selection.titleString
     }
 

@@ -169,8 +169,8 @@ struct SettingsRoot: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .frame(maxWidth: 1024, alignment: .topLeading)
             .padding(.horizontal, 32)
+            .frame(maxWidth: 1024, alignment: .topLeading) // the max width includes the padding, as in CSS
             .padding(.top, 24)
             .padding(.bottom, 96)
             .frame(maxWidth: .infinity)

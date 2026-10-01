@@ -116,8 +116,9 @@ struct AskAiPanel: View {
         }
         .frame(width: 420)
         .frame(minHeight: 200, idealHeight: 640, maxHeight: 640)
-        .foleviPop(radius: 18)
+        // Clip the content first, then the pop surface and its shadow (clipping after it cut the shadow away).
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .foleviPop(radius: 18)
         .claimsFocus($focused)
         .onChange(of: chat.focusToken) { _, _ in focused = true }
         .onExitCommand(perform: close)
@@ -389,7 +390,7 @@ struct CatchUpView: View {
     var body: some View {
         Group {
             if data == nil && !busy {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 12) {
                         Button(action: run) {
                             HStack(spacing: 8) {
@@ -408,8 +409,9 @@ struct CatchUpView: View {
                         Text("A quick AI brief of this week’s notes and what’s due.").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
                         Spacer(minLength: 0)
                     }
+                    // The web's flex-wrap row: the notice takes the 12pt gap only when it shows.
                     Group {
-                        if let problem { AiProblemNotice(problem: problem) } else { AiCreditsNote() }
+                        if let problem { AiProblemNotice(problem: problem).padding(.top, 12) } else { AiCreditsNote(spacingAbove: 12) }
                     }
                     .frame(maxWidth: 576, alignment: .leading)
                 }

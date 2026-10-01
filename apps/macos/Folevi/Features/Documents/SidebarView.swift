@@ -31,9 +31,10 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // The title bar band: the traffic lights sit here; the empty space moves the window.
+            // The title bar band: just tall enough for the traffic lights (they end 34pt down), so the logo
+            // row sits as close to the top as on the web. The empty space moves the window.
             Color.clear
-                .frame(height: FoleviLayout.toolbarHeight)
+                .frame(height: 36)
                 .titlebarDragArea()
             SidebarTopBar(nav: nav, editor: editor, openDocument: openDocument)
             if let editor, nav.docSidebarMode == .document {

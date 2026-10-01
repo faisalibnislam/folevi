@@ -91,6 +91,8 @@ final class AppModel {
     /// A request to open Ask AI (⌘J, the palette's "Ask AI: …", a folder's menu): the question to ask and the
     /// folder to ask about. The window opens its Ask AI panel and clears it.
     var askAiRequest: AskAiRequest?
+    /// The open Tasks view's name ("Today"), for its tab ("Tasks · Today", as on the web).
+    var tasksViewLabel = String(localized: "Today")
     var showQuickAdd = false
     var showCommandPalette = false
     /// Help is a page of the main window, as on the web; setting this shows it (see `openHelp`).

@@ -48,6 +48,7 @@ struct HomeDashboardView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if app.aiAvailable {
                     CatchUpView(openDocument: { openDocument($0, false) })
+                        .padding(.top, 24) // the web's first:mt-6
                 }
                 section(title: "Recent notes", systemImage: "clock", target: .notes, top: app.aiAvailable ? 37 : 24,
                         empty: recent.map { $0.isEmpty } == true ? "No notes yet. Press New to write your first one." : nil) {
@@ -61,8 +62,9 @@ struct HomeDashboardView: View {
                 }
                 foldersSection(org)
             }
-            .frame(maxWidth: 1400, alignment: .leading)
+            // max-w-[1400px] px-8: the 1400 includes the padding (1336 of content), as in CSS.
             .padding(.horizontal, 32)
+            .frame(maxWidth: 1400, alignment: .leading)
             .padding(.top, 8)
             .padding(.bottom, 32)
             .frame(maxWidth: .infinity)

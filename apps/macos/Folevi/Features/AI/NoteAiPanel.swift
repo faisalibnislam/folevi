@@ -109,8 +109,9 @@ struct NoteAiPanel: View {
         }
         .frame(width: 400)
         .frame(maxHeight: 640)
-        .foleviPop(radius: 14)
+        // Clip the content first, then the pop surface and its shadow (clipping after it cut the shadow away).
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .foleviPop(radius: 14)
         .claimsFocus($focused)
         .onExitCommand(perform: close)
         .onDisappear { stream.end() }

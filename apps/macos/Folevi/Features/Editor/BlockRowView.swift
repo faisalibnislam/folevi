@@ -625,9 +625,15 @@ struct SlashMenuView: View {
                     ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
                         Button { onChoose(idx) } label: {
                             HStack(spacing: 10) {
-                                Image(systemName: item.systemImage)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(InsertTile.tint(for: item.id))
+                                Group {
+                                    if item.systemImage == SlashItem.aiSymbol {
+                                        AiIcon(size: 14)
+                                    } else {
+                                        Image(systemName: item.systemImage)
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(InsertTile.tint(for: item.id))
+                                    }
+                                }
                                     .frame(width: 26, height: 26)
                                     .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(7), shadow: FoleviShadow.control)
                                     .accessibilityHidden(true)

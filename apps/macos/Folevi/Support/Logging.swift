@@ -129,6 +129,8 @@ enum FoleviError: Error, LocalizedError, Equatable {
     case notConfigured
     case server(code: String, message: String)
     case invalidResponse(String)
+    /// An AI request refused for credits or plan (out of credits, or AI not included here).
+    case ai(AiProblem)
 
     var errorDescription: String? {
         switch self {
@@ -138,6 +140,7 @@ enum FoleviError: Error, LocalizedError, Equatable {
         case .notConfigured: return String(localized: "Folevi isn't configured for sign-in yet.")
         case .server(_, let message): return message
         case .invalidResponse: return String(localized: "The server sent an unexpected response.")
+        case .ai(let problem): return problem.message
         }
     }
 
@@ -149,6 +152,7 @@ enum FoleviError: Error, LocalizedError, Equatable {
         case .notConfigured: return "not_configured"
         case .server(let code, _): return code
         case .invalidResponse: return "invalid_response"
+        case .ai(let problem): return problem.kind == .outOfCredits ? "out_of_credits" : "forbidden"
         }
     }
 

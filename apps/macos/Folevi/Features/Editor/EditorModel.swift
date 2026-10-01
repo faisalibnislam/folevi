@@ -33,6 +33,7 @@ struct SlashItem: Identifiable, Equatable {
 
     /// The title as a plain string (drag chips, announcements).
     var plainTitle: String {
+        if let ai = AiCatalog.slash.first(where: { $0.id == id }) { return ai.label }
         switch id {
         case "paragraph": return String(localized: "Text")
         case "heading1": return String(localized: "Heading 1")
@@ -56,6 +57,14 @@ struct SlashItem: Identifiable, Equatable {
         default: return String(localized: "Today's Date")
         }
     }
+
+    /// The AI commands ("Ask AI…", "AI · Continue writing"…), offered where AI is on (AiCatalog.slash).
+    static var ai: [SlashItem] {
+        AiCatalog.slash.map { SlashItem(id: $0.id, title: LocalizedStringKey($0.label), searchText: $0.keywords, systemImage: SlashItem.aiSymbol, shortcut: $0.id == "ai" ? "⌘J" : nil) }
+    }
+
+    /// Drawn as the AI mark rather than an SF Symbol.
+    static let aiSymbol = "folevi.ai"
 
     static var all: [SlashItem] { [
         SlashItem(id: "paragraph", title: "Text", searchText: "text paragraph plain", systemImage: "text.alignleft", shortcut: "⌥⌘0"),
@@ -196,69 +205,8 @@ final class EditorModel {
     /// The page's colours (SheetPalette), set by the page view for the current appearance.
     var sheetPalette: SheetPalette?
 
-    /// An AI action on selected text, waiting for its result or for Replace / Insert below / Discard.
-    struct InlineAi: Identifiable {
-        let id = UUID()
-        var task: String
-        var blockId: String
-        var range: NSRange
-        var source: String
-        var result: String?
-        var error: String?
-        /// Explain and Summarize answer about the text rather than rewrite it: offer Insert below only.
-        var replaces: Bool { task != "explain" && task != "summarizeText" }
-    }
-    var inlineAi: InlineAi?
-
-    func runInlineAi(task: String, blockId: String, range: NSRange, text: String) {
-        guard let session = app.session else { return }
-        let request = InlineAi(task: task, blockId: blockId, range: range, source: text)
-        inlineAi = request
-        let docId = documentId
-        Task { @MainActor in
-            struct Written: Decodable { let text: String }
-            do {
-                let out: Written = try await session.convex.action("ai:write", [
-                    "scope": session.scope.arg, "task": .string(task), "text": .string(text), "documentId": .string(docId),
-                ], timeout: 90)
-                if inlineAi?.id == request.id { inlineAi?.result = out.text.trimmingCharacters(in: .whitespacesAndNewlines) }
-            } catch {
-                if inlineAi?.id == request.id { inlineAi?.error = ConvexService.mapError(error).localizedDescription }
-            }
-        }
-    }
-
-    /// Replaces the selected text with the result (through the text view, so the block's other formatting
-    /// stays), or inserts the result as blocks below it.
-    func applyInlineAi(replace: Bool) {
-        guard let ai = inlineAi, let result = ai.result, !result.isEmpty, !isReadOnly else { return }
-        inlineAi = nil
-        if replace, let tv = textView(ai.blockId), NSMaxRange(ai.range) <= (tv.string as NSString).length,
-           (tv.string as NSString).substring(with: ai.range) == ai.source {
-            let plain = result.replacingOccurrences(of: "\n\n", with: "\n")
-            if tv.shouldChangeText(in: ai.range, replacementString: plain) {
-                tv.textStorage?.replaceCharacters(in: ai.range, with: plain)
-                tv.didChangeText()
-                tv.setSelectedRange(NSRange(location: ai.range.location, length: (plain as NSString).length))
-            }
-            return
-        }
-        let imported = MarkdownCodec.markdownToBlocks(result, titleFromHeading: false).blocks
-        guard !imported.isEmpty, let anchor = blocks[ai.blockId] else { return }
-        var upserts: [Block] = []
-        var previous = anchor.id
-        for wire in imported {
-            var b = Block(wire: wire)
-            if wire.parentId == nil {
-                b.parentId = anchor.parentId
-                b.rank = rank(parentId: anchor.parentId, after: previous)
-                previous = b.id
-            }
-            blocks[b.id] = b
-            upserts.append(b)
-        }
-        commit(upserts: upserts, actionName: String(localized: "Insert AI Text"))
-    }
+    /// The note's AI: the inline composer and the title's AI menu (Features/AI/InlineAiComposer.swift).
+    let ai = EditorAi()
 
     var conflicts: [ConflictRecord] { app.sync.conflicts.filter { $0.documentId == documentId } }
 
@@ -612,6 +560,10 @@ final class EditorModel {
         let marks = view.activeMarks()
         if marks != activeMarks { activeMarks = marks }
         if let p = popup, p.blockId == blockId, range.location < p.anchor { popup = nil }
+        if blockId == "__title__" {
+            let words: NSRange? = range.length > 0 ? range : nil
+            if ai.titleSelection != words { ai.titleSelection = words }
+        }
     }
 
     // MARK: Helpers
@@ -636,7 +588,7 @@ final class EditorModel {
         return d
     }
 
-    private func rank(parentId: String?, after afterId: String?, moving: String? = nil) -> String {
+    func rank(parentId: String?, after afterId: String?, moving: String? = nil) -> String {
         (try? Tree.rankForPosition(allNodes(), parentId: parentId, afterId: afterId, movingId: moving))
             ?? Rank.betweenOrAfter(afterId.flatMap { blocks[$0]?.rank }, nil)
     }
@@ -1201,8 +1153,9 @@ final class EditorModel {
 
     func slashItems(for query: String) -> [SlashItem] {
         let q = query.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return SlashItem.all }
-        return SlashItem.all.filter { $0.searchText.contains(q) || $0.id.contains(q) }
+        let all = SlashItem.all + (aiWritable ? SlashItem.ai : [])
+        guard !q.isEmpty else { return all }
+        return all.filter { $0.searchText.contains(q) || $0.id.contains(q) }
     }
 
     func pageChoices(for query: String) -> [PageChoice] {
@@ -1283,6 +1236,11 @@ final class EditorModel {
 
     func performSlash(_ id: String, blockId: String, at location: Int) {
         guard let block = blocks[blockId] else { return }
+        // AI: the composer at the cursor (the "/" is already gone), some running a task at once.
+        if let task = AiCatalog.slashTask(id) {
+            openInlineAi(task: task, cursorBlockId: blockId)
+            return
+        }
         let isEmpty = RichText.plainText(block.text).trimmingCharacters(in: .whitespaces).isEmpty
         switch id {
         case "image", "file":

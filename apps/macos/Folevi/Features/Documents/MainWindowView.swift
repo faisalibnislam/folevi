@@ -26,8 +26,9 @@ struct MainWindowView: View {
                         .overlay(alignment: .bottom) {
                             if let editor = editorIfOpen {
                                 VStack(spacing: 12) {
-                                    if editor.inlineAi != nil {
-                                        InlineAiCard(model: editor)
+                                    if let composer = editor.ai.composer {
+                                        InlineAiComposer(model: composer)
+                                            .id(composer.id)
                                             .transition(.scale(scale: 0.97, anchor: .bottom).combined(with: .opacity))
                                     }
                                     if noteAiOpen {
@@ -82,6 +83,11 @@ struct MainWindowView: View {
         .navigationTitle(windowTitle)
         .focusedSceneValue(\.navigation, nav)
         .focusedSceneValue(\.editor, editor)
+        .onReceive(NotificationCenter.default.publisher(for: .foleviToggleAskAi)) { _ in
+            // ⌘J outside a note opens Ask AI (in a note, ⌘J writes there).
+            guard NSApp.keyWindow?.isMainWindow == true || editor == nil, app.aiAvailable else { return }
+            if editorIfOpen != nil { noteAiOpen.toggle() } else { aiOpen.toggle() }
+        }
         .onChange(of: nav.openDocumentId) { _, id in
             noteAiOpen = false
             switchEditor(to: id)
@@ -252,6 +258,14 @@ struct DocumentWindowView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
+                .overlay(alignment: .bottom) {
+                    if let composer = editor?.ai.composer {
+                        InlineAiComposer(model: composer)
+                            .id(composer.id)
+                            .padding(.bottom, 24)
+                            .transition(.scale(scale: 0.97, anchor: .bottom).combined(with: .opacity))
+                    }
+                }
                 if nav.showInspector, let editor {
                     InspectorCard {
                         InspectorView(model: editor, nav: nav, openDocument: { id, _ in openWindow(id: "document", value: id) })

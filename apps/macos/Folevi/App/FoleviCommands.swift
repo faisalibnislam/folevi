@@ -11,16 +11,23 @@ struct FoleviCommands: Commands {
     private var ready: Bool { app.phase == .ready }
     private var canEdit: Bool { editor.map { !$0.isReadOnly } ?? false }
 
+    private func newNote() {
+        let folderId = nav?.currentFolderId
+        Task {
+            guard let id = await app.createDocument(folderId: folderId) else { return }
+            if let nav { nav.open(id) } else { openWindow(id: "document", value: id) }
+        }
+    }
+
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("New Document") {
-                Task {
-                    guard let id = await app.createDocument() else { return }
-                    if let nav { nav.open(id) } else { openWindow(id: "document", value: id) }
-                }
-            }
-            .keyboardShortcut("n")
-            .disabled(!ready)
+            // A new note starts in the open folder, as on the web (⌘⌥N there).
+            Button("New Document") { newNote() }
+                .keyboardShortcut("n")
+                .disabled(!ready)
+            Button("New Note") { newNote() }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+                .disabled(!ready)
             Button("New Window") { openWindow(id: "main") }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Divider()
@@ -59,9 +66,18 @@ struct FoleviCommands: Commands {
         }
 
         CommandGroup(after: .textEditing) {
-            Button("Find in Document") { nav?.showFind = true }
+            Button("Find in Document") {
+                editor?.findShowsReplace = false
+                nav?.showFind = true
+            }
                 .keyboardShortcut("f")
                 .disabled(editor == nil)
+            Button("Find and Replace…") {
+                editor?.findShowsReplace = true
+                nav?.showFind = true
+            }
+                .keyboardShortcut("f", modifiers: [.command, .option])
+                .disabled(editor == nil || !canEdit)
             Button("Find Next") { editor?.findNext() }
                 .keyboardShortcut("g")
                 .disabled(editor == nil)

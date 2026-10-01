@@ -82,6 +82,8 @@ final class AppModel {
     var bannerMessage: String?
     var readOnlyMode = false
     var toast: String?
+    /// What the toast offers to do (Undo), as on the web.
+    var toastAction: ToastAction?
     var showQuickAdd = false
     var showCommandPalette = false
     var showHelp = false
@@ -620,11 +622,15 @@ final class AppModel {
         await session?.engine.updateDocument(id, patch: patch)
     }
 
-    func showToast(_ message: String) {
+    func showToast(_ message: String, action: ToastAction? = nil) {
         toast = message
+        toastAction = action
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(4))
-            if self?.toast == message { self?.toast = nil }
+            try? await Task.sleep(for: .seconds(action == nil ? 4 : 7))
+            if self?.toast == message {
+                self?.toast = nil
+                self?.toastAction = nil
+            }
         }
     }
 

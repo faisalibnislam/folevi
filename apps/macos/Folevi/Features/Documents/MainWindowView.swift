@@ -120,9 +120,7 @@ struct MainWindowView: View {
         default:
             return ("New note", "plus", {
                 Task {
-                    var folderId: String?
-                    if case .folder(let fid) = nav.selection { folderId = fid }
-                    if let id = await app.createDocument(folderId: folderId) { nav.open(id) }
+                    if let id = await app.createDocument(folderId: nav.currentFolderId) { nav.open(id) }
                 }
             })
         }
@@ -341,8 +339,20 @@ struct ToastView: View {
 
     var body: some View {
         if let toast = app.toast {
-            Text(toast)
-                .font(.ui(12, .medium))
+            HStack(spacing: 10) {
+                Text(toast).font(.ui(12, .medium))
+                if let action = app.toastAction {
+                    Button(action.title) {
+                        app.toast = nil
+                        app.toastAction = nil
+                        action.run()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.ui(12, .semibold))
+                    .foregroundStyle(FoleviColor.heading)
+                    .underline()
+                }
+            }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .foleviChrome()

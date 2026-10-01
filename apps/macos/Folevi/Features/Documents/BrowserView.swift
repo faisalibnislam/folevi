@@ -7,8 +7,12 @@ struct BrowserView: View {
     @Environment(AppModel.self) private var app
     @State private var remoteDocs: [DocumentSummary]?
     @State private var loadingRemote = false
+    @State private var picked = NoteSelectionState()
+    @State private var dialog: NoteDialog?
+    private var notes: NoteActions { .shared }
 
     private var selection: SidebarItem { nav.selection }
+    private struct RemoteKey: Equatable { var selection: SidebarItem; var organized: Int }
 
     private var title: String {
         switch selection {
@@ -38,6 +42,7 @@ struct BrowserView: View {
             let ids = Set((remoteDocs ?? []).map(\.id))
             let local = Dictionary(app.documents.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             docs = (remoteDocs ?? []).map { local[$0.id] ?? $0 }.filter { ids.contains($0.id) && $0.deletedAt == nil }
+            if selection == .starred { docs = docs.filter { notes.isStarred($0) } }
         } else {
             docs = app.documents.filter { d in
                 switch selection {
@@ -93,10 +98,76 @@ struct BrowserView: View {
             }
             .padding(.horizontal, 32)
             .padding(.top, 30)
-            .padding(.bottom, 40)
+            .padding(.bottom, picked.isEmpty ? 40 : 96)
         }
         .scrollContentBackground(.hidden)
-        .task(id: selection) { await loadRemote() }
+        .task(id: RemoteKey(selection: selection, organized: notes.revision)) { await loadRemote() }
+        .onChange(of: selection) { _, _ in picked.clear() }
+        .overlay(alignment: .bottom) {
+            let ids = docs.map(\.id)
+            let selected = picked.selectedIds(in: ids)
+            if !selected.isEmpty {
+                SelectionBar(count: selected.count, total: ids.count, actions: bulkActions(selected, docs: docs),
+                             onSelectAll: { picked.selectAll(ids) }, onClear: { picked.clear() })
+                    .padding(.bottom, 20)
+            }
+        }
+        .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: picked.isEmpty)
+        .noteSelectionKeys(enabled: selectable, hasSelection: !picked.isEmpty,
+                           selectAll: { picked.selectAll(docs.map(\.id)) }, clear: { picked.clear() })
+        .noteDialogs($dialog) { picked.clear() }
+    }
+
+    /// Templates have their own actions and aren't selectable (as on the web).
+    private var selectable: Bool { selection != .templates }
+
+    private func bulkActions(_ ids: [String], docs: [DocumentSummary]) -> [SelectionBarAction] {
+        let run: ([String]) -> Void = { _ in picked.clear() }
+        if selection == .trash {
+            return [
+                SelectionBarAction(title: String(localized: "Restore"), systemImage: "arrow.uturn.backward") { run(ids); notes.restore(ids, app: app) },
+                SelectionBarAction(title: String(localized: "Delete permanently…"), systemImage: "trash", danger: true) { dialog = .deleteSelection(ids: ids) },
+            ]
+        }
+        let chosen = docs.filter { ids.contains($0.id) }
+        let folders = Set(chosen.map { $0.folderId ?? "" })
+        let current: String?? = folders.count == 1 ? .some(chosen.first?.folderId) : .none
+        let allStarred = !chosen.isEmpty && chosen.allSatisfy { notes.isStarred($0) }
+        return [
+            SelectionBarAction(title: String(localized: "Move to folder…"), systemImage: "folder") {
+                dialog = .move(ids: ids, title: chosen.first?.title, current: current)
+            },
+            allStarred
+                ? SelectionBarAction(title: String(localized: "Unstar"), systemImage: "star.slash") { run(ids); notes.star(ids, false, app: app) }
+                : SelectionBarAction(title: String(localized: "Star"), systemImage: "star") { run(ids); notes.star(ids, true, app: app) },
+            selection == .archive
+                ? SelectionBarAction(title: String(localized: "Unarchive"), systemImage: "archivebox") { run(ids); notes.archive(ids, false, app: app) }
+                : SelectionBarAction(title: String(localized: "Archive"), systemImage: "archivebox") { run(ids); notes.archive(ids, true, app: app) },
+            SelectionBarAction(title: String(localized: "Move to Trash"), systemImage: "trash", danger: true) { run(ids); notes.trash(ids, app: app) },
+        ]
+    }
+
+    /// ⌘-click toggles a note, Shift-click selects the range from the last one; a plain click opens it.
+    private func tap(_ doc: DocumentSummary, in docs: [DocumentSummary]) {
+        let flags = NSEvent.modifierFlags
+        if selectable, flags.contains(.command) {
+            picked.toggle(doc.id)
+        } else if selectable, flags.contains(.shift) {
+            picked.selectRange(to: doc.id, in: docs.map(\.id))
+        } else {
+            openDocument(doc.id, flags.contains(.option))
+        }
+    }
+
+    private func dragIds(_ doc: DocumentSummary) -> [String]? {
+        guard picked.isSelected(doc.id) else { return nil }
+        return picked.selectedIds(in: documents.map(\.id))
+    }
+
+    private func menu(_ doc: DocumentSummary) -> DocumentContextMenu {
+        DocumentContextMenu(document: doc, openDocument: openDocument,
+                            select: selectable ? (picked.isSelected(doc.id), { picked.toggle(doc.id) }) : nil,
+                            present: { dialog = $0 })
     }
 
     private func header(count: Int) -> some View {
@@ -137,6 +208,11 @@ struct BrowserView: View {
             FoleviSegmented(selection: $nav.layout, items: BrowserLayout.allCases.map { .init(value: $0, title: $0.title, systemImage: $0.systemImage) },
                             showTitles: false, height: 26, fontSize: 12.5, accessibilityLabel: "Layout")
                 .frame(width: 118)
+            if selection == .trash, count > 0 {
+                Button("Empty Trash") { dialog = .emptyTrash }
+                    .buttonStyle(.folevi(.quiet, .small))
+                    .accessibilityIdentifier("browser.emptyTrash")
+            }
         }
     }
 
@@ -161,36 +237,48 @@ struct BrowserView: View {
 
     private func card(_ doc: DocumentSummary) -> some View {
         let folder = doc.folderId.flatMap { id in app.sidebar.folders.first { $0.id == id } }
+        var shown = doc
+        shown.starred = notes.isStarred(doc)
+        let dragged = dragIds(doc)
         return Group {
             if nav.layout == .compact {
-                CompactNoteCard(document: doc, folder: folder)
+                CompactNoteCard(document: shown, folder: folder)
             } else {
-                NoteCard(document: doc, folder: folder)
+                NoteCard(document: shown, folder: folder)
             }
         }
-            .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
-            .draggable(DocumentDragPayload(documentId: doc.id)) {
-                Text(doc.displayTitle).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading)
+            .selectedCard(picked.isSelected(doc.id))
+            .onTapGesture { tap(doc, in: documents) }
+            .draggable(DocumentDragPayload(documentId: doc.id, documentIds: dragged)) {
+                Text(dragged.map { Organize.notes($0.count) } ?? doc.displayTitle).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading)
                     .padding(.horizontal, 16).frame(height: 36).foleviSurface(.color(FoleviColor.surface), shape: .capsule, shadow: FoleviShadow.lift)
             }
-            .contextMenu { DocumentContextMenu(document: doc, openDocument: openDocument) }
+            .contextMenu { menu(doc) }
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("doc.\(doc.displayTitle)")
             .accessibilityAction { openDocument(doc.id, false) }
     }
 
     private func listRow(_ doc: DocumentSummary) -> some View {
-        BrowserListRow(doc: doc)
+        BrowserListRow(doc: doc, selected: picked.isSelected(doc.id), inTrash: selection == .trash)
             .contentShape(Rectangle())
-            .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
-            .draggable(DocumentDragPayload(documentId: doc.id))
-            .contextMenu { DocumentContextMenu(document: doc, openDocument: openDocument) }
+            .onTapGesture { tap(doc, in: documents) }
+            .draggable(DocumentDragPayload(documentId: doc.id, documentIds: dragIds(doc)))
+            .contextMenu { menu(doc) }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("doc.\(doc.displayTitle)")
     }
 
     private func loadRemote() async {
+        if let session = app.session {
+            notes.scopeChanged(session.scope)
+            // Stars are kept on the server; the cards and menus need them in every list.
+            if !notes.starredLoaded, selection != .starred, app.sync.isOnline,
+               let starred = try? await session.documents.list(scope: session.scope, view: "starred") {
+                notes.noteStarred(starred, scope: session.scope)
+            }
+        }
         guard usesServerList, let session = app.session else {
             remoteDocs = nil
             return
@@ -210,6 +298,7 @@ struct BrowserView: View {
         default: return
         }
         if let docs = try? await session.documents.list(scope: session.scope, view: view, tagId: tagId) {
+            if view == "starred" { notes.noteStarred(docs, scope: session.scope) }
             remoteDocs = docs
             try? await session.store.setCodable(docs, forKey: key)
         }
@@ -217,71 +306,46 @@ struct BrowserView: View {
 
 }
 
-/// Context menu shared by cards and list rows.
-struct DocumentContextMenu: View {
-    let document: DocumentSummary
-    var openDocument: (String, Bool) -> Void
-    @Environment(AppModel.self) private var app
-
-    var body: some View {
-        Button("Open") { openDocument(document.id, false) }
-        Button("Open in New Window") { openDocument(document.id, true) }
-        Divider()
-        if document.deletedAt == nil {
-            Button(document.starred == true ? "Unstar" : "Star") {
-                let starred = !(document.starred ?? false)
-                app.perform(String(localized: "Starring")) { try await $0.documents.setStarred(document.id, starred) }
-            }
-            Menu("Move to Folder") {
-                Button("No Folder") { Task { await app.updateDocument(document.id, patch: WireDocumentPatch(folderId: .some(nil))) } }
-                ForEach(app.sidebar.folders) { f in
-                    Button(f.name) { Task { await app.updateDocument(document.id, patch: WireDocumentPatch(folderId: .some(f.id))) } }
-                }
-            }
-            Button("Duplicate") {
-                app.perform(String(localized: "Duplicating")) { session in
-                    let copy = try await session.documents.duplicate(document.id)
-                    await session.engine.storeDocuments([copy])
-                }
-            }
-            Button(document.archivedAt == nil ? "Archive" : "Unarchive") {
-                let archive = document.archivedAt == nil
-                app.perform(String(localized: "Archiving")) { try await $0.documents.setArchived(document.id, archive) }
-            }
-            Divider()
-            Button("Move to Trash", role: .destructive) {
-                app.perform(String(localized: "Moving to Trash")) { try await $0.documents.moveToTrash(document.id) }
-            }
-        } else {
-            Button("Restore") {
-                app.perform(String(localized: "Restoring")) { try await $0.documents.restoreFromTrash(document.id) }
-            }
-        }
-    }
-}
-
 private struct BrowserListRow: View {
     var doc: DocumentSummary
+    var selected = false
+    var inTrash = false
     @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(doc.icon ?? "📄")
-                .font(.system(size: 15))
-                .frame(width: 30, height: 30)
-                .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
-                .accessibilityHidden(true)
+            Group {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(FoleviColor.canvas)
+                        .frame(width: 30, height: 30)
+                        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(FoleviColor.heading))
+                } else {
+                    Text(doc.icon ?? "📄")
+                        .font(.system(size: 15))
+                        .frame(width: 30, height: 30)
+                        .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
+                }
+            }
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(doc.displayTitle).font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).lineLimit(1)
                 if !doc.excerpt.isEmpty { Text(doc.excerpt).font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1) }
             }
             Spacer()
-            Text(Date(timeIntervalSince1970: doc.updatedAt / 1000), format: .relative(presentation: .named))
-                .font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
+            if inTrash, let deleted = doc.deletedAt {
+                Text("Deleted \(Date(timeIntervalSince1970: deleted / 1000).formatted(.relative(presentation: .named)))")
+                    .font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
+            } else {
+                Text(Date(timeIntervalSince1970: doc.updatedAt / 1000), format: .relative(presentation: .named))
+                    .font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? FoleviColor.accentSoft.opacity(0.6) : .clear).padding(.horizontal, 6))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(selected ? FoleviGlass.active : hovering ? FoleviColor.accentSoft.opacity(0.6) : .clear).padding(.horizontal, 6))
+        .accessibilityAddTraits(selected ? .isSelected : [])
         .onHover { hovering = $0 }
     }
 }

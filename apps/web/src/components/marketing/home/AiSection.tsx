@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  ArrowUp,
   BookOpen,
   Check,
   ChevronRight,
@@ -17,16 +16,13 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { emptyFlowchart, serializeFlowchart } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { chartFromDraft, type FlowDraft } from "@/components/editor/flowchart/ops";
-import { FlowchartStatic } from "@/components/editor/flowchart/render";
-import "@/components/editor/flowchart/flowchart.css";
 import { AI_LANGUAGES } from "@/components/ai/languages";
 import { artById, artThumb, artVars } from "../product/Replica";
 import { Icon } from "../icons";
 import { AskDemo } from "../demos/AskDemo";
 import { WriteDemo } from "../demos/WriteDemo";
+import { FlowchartDemo } from "../demos/FlowchartDemo";
 import { Kbd, SectionHeading, box, container, cx } from "../ui";
 
 /*
@@ -140,7 +136,7 @@ export function AiSection() {
             eyebrow="Flowcharts with AI"
             title="Describe a process. Get a flowchart."
             art="art-42"
-            picture={<FlowchartPicture />}
+            picture={<FlowchartDemo />}
             points={[
               <>
                 Write the steps, or a single sentence. Folevi draws the shapes, the decisions and
@@ -417,89 +413,6 @@ function EditPicture() {
             ))}
           </ul>
           <AiFoot />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* Flowcharts with AI ------------------------------------------------------------------------------- */
-
-/** What the AI sends back for "Customer refund process": shapes, colours and connectors, no positions. */
-const REFUND_DRAFT: FlowDraft = {
-  direction: "TD",
-  nodes: [
-    { id: "start", shape: "terminator", text: "Refund requested", color: "accent" },
-    { id: "check", shape: "process", text: "Check the order", color: "neutral" },
-    { id: "days", shape: "decision", text: "Within 30 days?", color: "yellow" },
-    { id: "refund", shape: "process", text: "Approve the refund", color: "green" },
-    { id: "credit", shape: "process", text: "Offer store credit", color: "pink" },
-    { id: "pay", shape: "io", text: "Send the money back", color: "blue" },
-    { id: "done", shape: "terminator", text: "Email the customer", color: "neutral" },
-  ],
-  edges: [
-    { from: "start", to: "check" },
-    { from: "check", to: "days" },
-    { from: "days", to: "refund", label: "Yes" },
-    { from: "days", to: "credit", label: "No" },
-    { from: "refund", to: "pay" },
-    { from: "pay", to: "done" },
-    { from: "credit", to: "done", style: "dashed" },
-  ],
-};
-
-function FlowchartPicture() {
-  const data = serializeFlowchart(chartFromDraft(REFUND_DRAFT, emptyFlowchart(), "create"));
-  return (
-    <div
-      role="img"
-      aria-label="A flowchart block with the AI panel open. The request reads: Customer refund process, refunds within 30 days, store credit after that. Below it, the chart the AI drew: Refund requested, Check the order, then a decision, Within 30 days? Yes leads to Approve the refund and Send the money back; No leads to Offer store credit. Both end at Email the customer."
-      className="mx-auto max-w-[760px]"
-    >
-      <div aria-hidden="true" className="mk-card overflow-hidden">
-        <div className="flex items-center gap-2 border-b mk-hair px-4 py-2.5 text-[12px] font-medium text-muted">
-          <span className="rounded-[5px] bg-(--glass-hover) px-1.5 leading-5 text-ink">
-            Flowchart
-          </span>
-          <span className="flex-1" />
-          <span>Tidy up</span>
-          <span className="inline-flex items-center gap-1 rounded-[6px] bg-(--glass-hover) px-2 py-0.5 text-(--color-heading)">
-            <AiIcon size={12} /> AI
-          </span>
-        </div>
-        <div className="grid items-start md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <div className="mk-app-pop m-3 overflow-hidden rounded-[12px] text-[13.5px] md:m-5">
-            <div className="flex gap-1 px-2.5 pt-2 text-[12px] font-[550]">
-              <span className="rounded-full px-2.5 py-1 text-muted">Update this chart</span>
-              <span className="rounded-full bg-(--glass-hover) px-2.5 py-1 text-(--color-heading) shadow-[inset_0_0_0_1px_var(--glass-border)]">
-                Start over
-              </span>
-            </div>
-            <div className="flex items-start gap-2 p-2.5">
-              <AiIcon size={15} className={cx("mt-[3px] flex-none", AI_VIOLET)} />
-              <p className="min-w-0 flex-1 text-[14px] leading-[1.45] text-ink">
-                Customer refund process: refunds within 30 days, store credit after that
-              </p>
-              <span className="grid size-7 flex-none place-items-center rounded-full bg-(--color-heading) text-(--color-canvas)">
-                <ArrowUp size={15} />
-              </span>
-            </div>
-            <ul className="border-t border-(--color-line) px-1.5 py-1.5 text-[13px] text-muted">
-              {[
-                "Add an approval step after review",
-                "Add error handling to every step",
-                "Simplify it to the main steps",
-              ].map((idea) => (
-                <li key={idea} className="rounded-[8px] px-2 py-1.5">
-                  {idea}
-                </li>
-              ))}
-            </ul>
-            <AiFoot>AI can make mistakes. Sent to Google Gemini. Undo with ⌘Z.</AiFoot>
-          </div>
-          <div className="px-2 pb-5 md:pt-3 [&_.fc-static]:flex [&_.fc-static]:justify-center">
-            <FlowchartStatic data={data} height={560} />
-          </div>
         </div>
       </div>
     </div>

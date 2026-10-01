@@ -140,10 +140,19 @@ private struct InsertRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: item.systemImage)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(FoleviColor.inkMuted)
-                .frame(width: 18)
+            Group {
+                if item.id.hasPrefix("heading") {
+                    // Lucide's Heading1–3: an H with its level.
+                    HStack(alignment: .lastTextBaseline, spacing: 0) {
+                        Text("H").font(.ui(13, .semibold))
+                        Text(item.id.suffix(1)).font(.ui(9, .semibold))
+                    }
+                } else {
+                    Image(systemName: item.systemImage).font(.system(size: 13, weight: .medium))
+                }
+            }
+            .foregroundStyle(FoleviColor.inkMuted)
+            .frame(width: 18)
             Text(item.label).font(.ui(13.5, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
             Spacer(minLength: 4)
             GripDots(highlighted: false).frame(width: 14, height: 18).opacity(hovering ? 1 : 0.75)

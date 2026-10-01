@@ -26,44 +26,39 @@ struct MainWindowView: View {
                     // In front of the page: the page's scroll view reaches up under the bar and took its clicks.
                     .zIndex(1)
                 StatusBanners()
-                HStack(spacing: 0) {
-                    detail
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                        .overlay(alignment: .bottom) {
-                            if let editor = editorIfOpen {
+                detail
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .overlay(alignment: .bottom) {
+                        if let editor = editorIfOpen {
+                            // The page tools: the dock at the bottom of the note, its panel floating just above it.
+                            GeometryReader { geo in
                                 VStack(spacing: 12) {
+                                    Spacer(minLength: 0)
                                     // The note's AI panel (the web's AiPanel in the dock's floating panel).
                                     if noteAiOpen && app.aiAvailable {
                                         NoteAiPanel(editor: editor, close: { noteAiOpen = false },
                                                     openAsk: { askChat.open(question: $0) }, openDocument: { nav.open($0) })
                                             .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
+                                    } else if nav.showInspector {
+                                        FloatingInspector(availableHeight: geo.size.height) {
+                                            InspectorView(model: editor, nav: nav, openDocument: open)
+                                        }
+                                        .transition(.offset(y: 8).combined(with: .opacity))
                                     }
                                     NoteDock(nav: nav, aiOpen: $noteAiOpen, aiAvailable: app.aiAvailable, editor: editor)
                                 }
-                                .padding(.top, 28)
-                                .padding(.bottom, 18)
-                                .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: noteAiOpen)
+                                .frame(maxWidth: .infinity)
+                                .padding(.bottom, 20)
                             }
+                            .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: noteAiOpen)
+                            .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: nav.showInspector)
                         }
-                        // The inline AI composer and the title's AI, floating at the text they're about.
-                        .overlay {
-                            if let editor = editorIfOpen { EditorAiOverlay(editor: editor) }
-                        }
-                    if nav.showInspector {
-                        InspectorCard {
-                            if let editor = editorIfOpen {
-                                InspectorView(model: editor, nav: nav, openDocument: open)
-                            } else {
-                                EmptyStateView(systemImage: "sidebar.right", title: "No document", message: "Open a document to see its details.")
-                            }
-                        }
-                        .padding(.trailing, 12)
-                        .padding(.bottom, 12)
-                        .padding(.top, 4)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
-                }
+                    // The inline AI composer and the title's AI, floating at the text they're about.
+                    .overlay {
+                        if let editor = editorIfOpen { EditorAiOverlay(editor: editor) }
+                    }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { if editorIfOpen == nil { ContentPanel() } }
@@ -175,7 +170,7 @@ struct MainWindowView: View {
 
     @ViewBuilder private var detail: some View {
         if let editor, nav.openDocumentId == editor.documentId {
-            EditorView(model: editor, openDocument: open, showFind: $nav.showFind)
+            EditorView(model: editor, openDocument: open, showFind: $nav.showFind, nav: nav)
                 .id(editor.documentId)
         } else {
             switch nav.selection {
@@ -257,35 +252,46 @@ struct DocumentWindowView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var nav = NavigationModel(persistsTabs: false)
     @State private var editor: EditorModel?
+    @State private var windowAiOpen = false
 
     var body: some View {
         VStack(spacing: 0) {
             MainToolbar(nav: nav, editor: editor, crumbs: crumbs, showsHistory: false, hasSidebar: false)
                 .zIndex(1)
             StatusBanners()
-            HStack(spacing: 0) {
-                Group {
-                    if app.phase != .ready {
-                        EmptyStateView(systemImage: "lock", title: "Sign in to open this document", message: "Your documents appear here after you sign in.")
-                    } else if let editor {
-                        EditorView(model: editor, openDocument: { id, _ in openWindow(id: "document", value: id) }, showFind: $nav.showFind)
-                    } else {
-                        ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+            Group {
+                if app.phase != .ready {
+                    EmptyStateView(systemImage: "lock", title: "Sign in to open this document", message: "Your documents appear here after you sign in.")
+                } else if let editor {
+                    EditorView(model: editor, openDocument: { id, _ in openWindow(id: "document", value: id) }, showFind: $nav.showFind, nav: nav)
+                } else {
+                    ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                // The inline AI composer and the title's AI, floating at the text they're about.
-                .overlay {
-                    if let editor { EditorAiOverlay(editor: editor) }
-                }
-                if nav.showInspector, let editor {
-                    InspectorCard {
-                        InspectorView(model: editor, nav: nav, openDocument: { id, _ in openWindow(id: "document", value: id) })
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            .overlay(alignment: .bottom) {
+                if let editor {
+                    GeometryReader { geo in
+                        VStack(spacing: 12) {
+                            Spacer(minLength: 0)
+                            if windowAiOpen && app.aiAvailable {
+                                NoteAiPanel(editor: editor, close: { windowAiOpen = false }, openAsk: { _ in },
+                                            openDocument: { openWindow(id: "document", value: $0) })
+                                    .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
+                            } else if nav.showInspector {
+                                FloatingInspector(availableHeight: geo.size.height) {
+                                    InspectorView(model: editor, nav: nav, openDocument: { id, _ in openWindow(id: "document", value: id) })
+                                }
+                                .transition(.offset(y: 8).combined(with: .opacity))
+                            }
+                            NoteDock(nav: nav, aiOpen: $windowAiOpen, aiAvailable: app.aiAvailable, editor: editor)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 20)
                     }
-                    .padding([.trailing, .bottom], 12)
-                    .padding(.top, 4)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: nav.showInspector)
+                    .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: windowAiOpen)
                 }
             }
         }
@@ -295,6 +301,8 @@ struct DocumentWindowView: View {
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .overlay { BlockDragOverlay(controller: editor?.drag) }
+        // The inline AI composer and the title's AI, floating at the text they're about.
+        .overlay { if let editor { EditorAiOverlay(editor: editor) } }
         .onAppear { nav.columnVisibility = .all }
         .navigationTitle(editor?.document?.displayTitle ?? String(localized: "Untitled"))
         .focusedSceneValue(\.editor, editor)

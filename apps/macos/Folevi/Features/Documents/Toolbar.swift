@@ -188,7 +188,6 @@ struct MainToolbar: View {
                     .titlebarDragArea()
                 // No sidebar here: save state sits in this row (as the web shows it in the header without one).
                 SyncStatusButton(documentId: editor?.documentId)
-                documentItems
             }
             .padding(.horizontal, 14)
             .frame(height: FoleviLayout.toolbarHeight)
@@ -211,97 +210,7 @@ struct MainToolbar: View {
             .buttonStyle(.folevi(.primary, .small))
             .help(Text(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"))
             .accessibilityIdentifier("toolbar.newNote")
-            documentItems
+            // Comments, Share, the page's "…" menu and its tools live in the note's dock (NoteDock), as on the web.
         }
-    }
-
-    /// The open note's Share, "…" and the inspector (the note's own chrome; see the document page).
-    @ViewBuilder private var documentItems: some View {
-        if let editor {
-            HStack(spacing: 6) {
-                // Comments live in the note's dock (NoteDock), as on the web. Share opens who can see the note.
-                ShareNoteButton(editor: editor)
-                    .padding(.horizontal, 2)
-                DocumentMoreMenu(editor: editor, nav: nav)
-                IconButton(systemImage: "sidebar.right", label: "Inspector", shortcutHint: "⌥⌘I", size: 32, isActive: nav.showInspector) {
-                    withSidebarAnimation { nav.showInspector.toggle() }
-                }
-                .accessibilityIdentifier("toolbar.inspector")
-            }
-        }
-    }
-}
-
-/// "…" menu for the open document, real actions only.
-struct DocumentMoreMenu: View {
-    var editor: EditorModel
-    @Bindable var nav: NavigationModel
-    @Environment(AppModel.self) private var app
-    @Environment(\.openWindow) private var openWindow
-
-    var body: some View {
-        Menu {
-            Button("Find in Document") { nav.showFind = true }
-            Button("Version history…") { nav.showHistory = true }
-            Button("Open in new window") { openWindow(id: "document", value: editor.documentId) }
-            ShareLink(item: MarkdownShareItem(title: editor.document?.displayTitle ?? "Untitled",
-                                              markdown: MarkdownCodec.blocksToMarkdown(editor.exportBlocks(), .init(title: editor.document?.displayTitle))),
-                      preview: SharePreview(editor.document?.displayTitle ?? "Untitled")) {
-                Text("Share as Markdown")
-            }
-            Divider()
-            Menu("Export") {
-                ForEach(ExportService.Format.allCases) { format in
-                    Button {
-                        ExportService.export(format, title: editor.document?.displayTitle ?? String(localized: "Untitled"), blocks: editor.exportBlocks(), app: app)
-                    } label: {
-                        Text("Export as \(Text(format.title))…")
-                    }
-                }
-            }
-            Divider()
-            Button("Page style…") {
-                nav.inspectorTab = .style
-                nav.showInspector = true
-            }
-            // Following or muting this note's comment notifications, as in the web's note menu.
-            if editor.comments.subscription != nil {
-                Divider()
-                NoteNotifyMenuItems(comments: editor.comments)
-            }
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 14, weight: .semibold))
-                .frame(width: 30, height: 30)
-                .contentShape(Circle())
-        }
-        .menuStyle(.button)
-        .buttonStyle(IconButtonStyle())
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help(Text("More"))
-        .accessibilityLabel(Text("More"))
-    }
-}
-
-/// Floating inspector card: surface (+ material unless Reduce Transparency), card shadow, radius 16.
-struct InspectorCard<Content: View>: View {
-    @ViewBuilder var content: Content
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    var body: some View {
-        content
-            .frame(width: FoleviLayout.inspectorDefault)
-            .frame(maxHeight: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous))
-            .foleviSurface(.color(reduceTransparency ? FoleviColor.surface : FoleviColor.surface.opacity(0.86)),
-                           shape: .rounded(FoleviRadius.card), shadow: FoleviShadow.card, clipShadowInside: !reduceTransparency)
-            .background {
-                if !reduceTransparency {
-                    RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).fill(.regularMaterial)
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(Text("Inspector"))
     }
 }

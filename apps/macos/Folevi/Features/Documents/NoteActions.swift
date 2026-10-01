@@ -46,6 +46,12 @@ final class NoteActions {
         starredLoaded = true
     }
 
+    /// One note's star changed from its own page menu.
+    func noteStarChanged(_ id: String, _ starred: Bool) {
+        if starred { starredIds.insert(id) } else { starredIds.remove(id) }
+        revision += 1
+    }
+
     func scopeChanged(_ scope: Scope) {
         guard starredScope != scope.key else { return }
         starredIds = []

@@ -57,8 +57,4 @@ extension View {
                       shadow: focused ? FoleviGlassDepth.activeOutline : FoleviGlassDepth.input)
     }
 
-    /// `.ui-pop` (menus, popovers, dialogs): strong glass, radius 10 unless asked, glass edge + pop shadow.
-    func foleviGlassPop(radius: CGFloat = 10) -> some View {
-        foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(radius), shadow: FoleviGlassDepth.edge + FoleviShadow.pop)
-    }
 }

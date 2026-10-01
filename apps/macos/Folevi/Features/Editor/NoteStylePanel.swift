@@ -1,3 +1,4 @@
+import UniformTypeIdentifiers
 import SwiftUI
 
 // MARK: - Backdrop
@@ -11,6 +12,7 @@ struct PageBackdropView: View {
     /// The full-size artwork for a page; the thumbnail for small previews.
     var thumbnail = false
     var blurRadius: CGFloat = 32
+    @Environment(AppModel.self) private var app
 
     var body: some View {
         GeometryReader { geo in
@@ -37,25 +39,12 @@ struct PageBackdropView: View {
             LinearGradient(stops: stops.map { Gradient.Stop(color: Color(hex: $0.hex) ?? .clear, location: $0.at) }, startPoint: .top, endPoint: .bottom)
         case .cover(let kind, let accent):
             CoverGlow(accent: Color.folevi(accent: accent), soft: Color.folevi(accentSoft: accent), intensity: kind == .color ? 0.7 : 1)
-        case .image:
-            FoleviColor.surfaceSunken
-        }
-    }
-}
-
-/// Behind the scrolling page, as on the web: the note floats on its backdrop in a rounded panel (blurred
-/// when the note asks for it). Nothing for a Plain note.
-struct NoteBackdropLayer: View {
-    @Bindable var model: EditorModel
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    var body: some View {
-        if let backdrop = model.pageBackdrop {
-            PageBackdropView(backdrop: backdrop, blur: model.style.blur == true && !reduceTransparency)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
-                .transition(.opacity)
+        case .image(let fileId):
+            if let image = CoverImages.shared.image(fileId, app: app) {
+                ArtCoverImage(image: image)
+            } else {
+                FoleviColor.surfaceSunken
+            }
         }
     }
 }
@@ -86,7 +75,9 @@ extension EditorModel {
 struct StyleInspector: View {
     @Bindable var model: EditorModel
     @State private var open: String?
+    @State private var uploading = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(AppModel.self) private var app
 
     static let plainSwatch = Color(hex: "#F1F1F3")!
     static let sheets: [(DocumentSheet, String, String)] = [
@@ -131,9 +122,12 @@ struct StyleInspector: View {
                     ColorDot { noteStyleSwatch }
                 } content: {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-                        Choice(label: "Plain", isOn: cover.kind != .art && cover.kind != .image) { model.setNoteStyle(DocumentCover(kind: .none)) } content: {
+                        Choice(label: "Plain", isOn: cover.kind != .art && !ownImage) { model.setNoteStyle(DocumentCover(kind: .none)) } content: {
                             Text("Plain").font(.ui(11)).foregroundStyle(FoleviColor.inkMuted)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity).background(Self.plainSwatch)
+                        }
+                        if ownImage {
+                            Choice(label: "Note style: Your image", isOn: true) {} content: { ownImageSwatch }
                         }
                         ForEach(CoverArt.all) { a in
                             Choice(label: "Note style: \(a.name)", isOn: art?.id == a.id) { model.setNoteStyle(DocumentCover(kind: .art, value: a.id)) } content: {
@@ -141,6 +135,28 @@ struct StyleInspector: View {
                             }
                         }
                     }
+                    Button {
+                        chooseImage()
+                    } label: {
+                        HStack(spacing: 8) {
+                            if uploading { ProgressView().controlSize(.small) } else { Image(systemName: "photo.badge.plus").font(.system(size: 13)) }
+                            Text(uploading ? "Uploading…" : ownImage ? "Replace your image…" : "Upload your own image…").font(.ui(13, .medium))
+                        }
+                        .foregroundStyle(FoleviColor.heading)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 36)
+                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(FoleviColor.ink.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.isReadOnly || uploading)
+                    .padding(.top, 10)
+                    Text(Self.imageHint)
+                        .font(.ui(11.5)).foregroundStyle(FoleviColor.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 2)
+                        .padding(.top, 6)
                     Text(art.map { "\($0.name): the cover and page background. Auto colours come from it." }
                          ?? (cover.kind == .image ? String(localized: "Your image: the cover and page background. Auto colours are picked from it.")
                              : String(localized: "Plain: a very light grey page background, no cover.")))
@@ -199,24 +215,26 @@ struct StyleInspector: View {
             }
             VStack(alignment: .leading, spacing: 8) {
                 legend("Separator style")
-                FoleviSegmented(selection: Binding(get: { style.separator ?? .line }, set: { v in set { $0.separator = v == .line ? nil : v } }), items: [
-                    .init(value: SeparatorStyle.line, title: "Line", systemImage: "equal"),
-                    .init(value: .dots, title: "Dots", systemImage: "circle.grid.2x2"),
-                    .init(value: .doodle, title: "Doodle", systemImage: "scribble"),
-                ], height: 32, fontSize: 13, accessibilityLabel: "Separator style")
+                PageSegmented(selection: Binding(get: { style.separator ?? .line }, set: { v in set { $0.separator = v == .line ? nil : v } }), items: [
+                    .init(value: SeparatorStyle.line, title: String(localized: "Line"), systemImage: "equal", accessibilityLabel: String(localized: "Separator: Line")),
+                    .init(value: .dots, title: String(localized: "Dots"), systemImage: "circle.grid.3x3", accessibilityLabel: String(localized: "Separator: Dots")),
+                    .init(value: .doodle, title: String(localized: "Doodle"), systemImage: "scribble", accessibilityLabel: String(localized: "Separator: Doodle")),
+                ], label: String(localized: "Separator style"))
             }
             VStack(alignment: .leading, spacing: 8) {
                 legend("Font")
-                FoleviSegmented(selection: Binding(get: { style.font }, set: { v in set { $0.font = v } }), items: [
-                    .init(value: DocumentFont.sans, title: "System"), .init(value: .serif, title: "Serif"),
-                    .init(value: .mono, title: "Mono"), .init(value: .rounded, title: "Rounded"),
-                ], height: 32, fontSize: 13, accessibilityLabel: "Font")
+                PageSegmented(selection: Binding(get: { style.font }, set: { v in set { $0.font = v } }), items: [
+                    .init(value: DocumentFont.sans, title: String(localized: "System"), font: .document(.sans, 12.5, .semibold), accessibilityLabel: String(localized: "Font: System")),
+                    .init(value: .serif, title: String(localized: "Serif"), font: .document(.serif, 12.5, .semibold), accessibilityLabel: String(localized: "Font: Serif")),
+                    .init(value: .mono, title: String(localized: "Mono"), font: .document(.mono, 12.5, .semibold), accessibilityLabel: String(localized: "Font: Mono")),
+                    .init(value: .rounded, title: String(localized: "Rounded"), font: .document(.rounded, 12.5, .semibold), accessibilityLabel: String(localized: "Font: Rounded")),
+                ], label: String(localized: "Font"))
             }
             VStack(alignment: .leading, spacing: 8) {
                 legend("Page width")
-                FoleviSegmented(selection: Binding(get: { style.width == .wide ? DocumentWidth.wide : .default }, set: { v in set { $0.width = v } }), items: [
-                    .init(value: DocumentWidth.default, title: "Narrow"), .init(value: .wide, title: "Wide"),
-                ], height: 32, fontSize: 13, accessibilityLabel: "Page width")
+                PageSegmented(selection: Binding(get: { style.width == .wide ? DocumentWidth.wide : .default }, set: { v in set { $0.width = v } }), items: [
+                    .init(value: DocumentWidth.default, title: String(localized: "Narrow")), .init(value: .wide, title: String(localized: "Wide")),
+                ], label: String(localized: "Page width"))
             }
         }
         .disabled(model.isReadOnly)
@@ -225,8 +243,62 @@ struct StyleInspector: View {
     @ViewBuilder private var noteStyleSwatch: some View {
         if let art, let image = CoverArt.thumbnail(art.id) {
             ArtCoverImage(image: image)
+        } else if ownImage {
+            ownImageSwatch
         } else {
             Self.plainSwatch
+        }
+    }
+
+    private var ownImage: Bool { cover.kind == .image && cover.value != nil }
+
+    @ViewBuilder private var ownImageSwatch: some View {
+        if let id = cover.value, let image = CoverImages.shared.image(id, app: app) {
+            ArtCoverImage(image: image)
+        } else {
+            FoleviColor.surfaceSunken
+        }
+    }
+
+    static let imageHint = String(localized: "Best at 2400 × 1500 px (16:10, landscape). PNG, JPEG, WebP or GIF, up to 20 MB.")
+    static let imageTypes = ["png", "jpg", "jpeg", "webp", "gif"]
+
+    /// A friendly reason the file can't be used (checked before uploading; the server enforces the same).
+    static func imageProblem(ext: String, size: Int) -> String? {
+        if !imageTypes.contains(ext.lowercased()) { return String(localized: "Choose a PNG, JPEG, WebP or GIF image.") }
+        if size > 20 * 1024 * 1024 { return String(localized: "Images can be up to 20 MB.") }
+        if size == 0 { return String(localized: "That file is empty.") }
+        return nil
+    }
+
+    /// Your own image: checked, uploaded into this note (online only), then used as its style.
+    private func chooseImage() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = Self.imageTypes.compactMap { UTType(filenameExtension: $0) }
+        panel.allowsMultipleSelection = false
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            MainActor.assumeIsolated { upload(url) }
+        }
+    }
+
+    private func upload(_ url: URL) {
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        if let problem = Self.imageProblem(ext: url.pathExtension, size: size) { return app.showToast(problem) }
+        guard app.sync.isOnline, let session = app.session else { return app.showToast(String(localized: "Connect to the internet to upload an image.")) }
+        uploading = true
+        let scope = model.document?.homeScope ?? session.scope
+        let id = model.documentId
+        Task {
+            defer { uploading = false }
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let result = try await session.files.upload(fileURL: url, scope: scope, documentId: id, kind: "cover")
+                model.setNoteStyle(DocumentCover(kind: .image, value: result.fileId))
+            } catch {
+                app.showToast(ConvexService.mapError(error).localizedDescription)
+            }
         }
     }
 

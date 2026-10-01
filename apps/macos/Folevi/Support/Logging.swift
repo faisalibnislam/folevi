@@ -77,7 +77,7 @@ enum DeviceIdentity {
 
     static var label: String {
         let name = Host.current().localizedName ?? "Mac"
-        return String(localized: "Folevi for Mac — \(name)")
+        return String(localized: "Folevi for Mac (\(name))")
     }
 }
 

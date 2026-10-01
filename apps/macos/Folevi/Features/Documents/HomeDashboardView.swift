@@ -36,7 +36,7 @@ struct HomeDashboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if app.profile?.aiOn == true {
+                if app.aiAvailable {
                     CatchUpView(openDocument: { openDocument($0, false) })
                         .padding(.top, 16)
                 }

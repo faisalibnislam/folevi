@@ -401,7 +401,7 @@ struct BlockTextEditor: NSViewRepresentable {
         if !isPlain {
             let blockId = self.blockId
             view.onAiTask = { [weak model] task, range, text in
-                guard let model, model.app.profile?.aiOn == true, !model.isReadOnly else { return }
+                guard let model, model.app.aiAvailable, !model.isReadOnly else { return }
                 model.runInlineAi(task: task, blockId: blockId, range: range, text: text)
             }
         }

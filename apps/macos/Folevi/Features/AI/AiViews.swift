@@ -133,15 +133,15 @@ struct AskAiPanel: View {
             .padding(.horizontal, 14)
             .frame(height: 48)
             Divider().opacity(0.5)
-            if app.profile?.aiEntitled == false {
+            if !app.aiIncludedHere {
                 upsell
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 14) {
                             if turns.isEmpty {
-                                Text(documentId == nil ? "Ask anything about your notes — Folevi answers from them and shows which notes it used."
-                                     : "Ask about this note — or anything in your notes. Folevi starts with this one and shows which notes it used.")
+                                Text(documentId == nil ? "Ask anything about your notes. Folevi answers from them and shows which notes it used."
+                                     : "Ask about this note, or anything in your notes. Folevi starts with this one and shows which notes it used.")
                                     .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             }
                             ForEach(turns) { turn in message(turn).id(turn.id) }

@@ -115,7 +115,7 @@ struct MenuBarContent: View {
         switch app.sync.status {
         case .saved: return String(localized: "All changes saved")
         case .saving, .syncing: return String(localized: "Syncing…")
-        case .offline: return String(localized: "Offline — \(app.sync.pendingCount) waiting")
+        case .offline: return String(localized: "Offline · \(app.sync.pendingCount) waiting")
         case .conflict: return String(localized: "Conflict needs review")
         case .error: return String(localized: "Sync error")
         }

@@ -35,7 +35,7 @@ struct MainWindowView: View {
                                                    documentId: editor.documentId)
                                             .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
                                     }
-                                    NoteDock(nav: nav, aiOpen: $noteAiOpen, aiAvailable: app.profile?.aiEnabled != false)
+                                    NoteDock(nav: nav, aiOpen: $noteAiOpen, aiAvailable: app.aiAvailable)
                                 }
                                 .padding(.bottom, 18)
                                 .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: noteAiOpen)
@@ -66,7 +66,7 @@ struct MainWindowView: View {
         .overlay { BlockDragOverlay(controller: editorIfOpen?.drag) }
         .overlay(alignment: .bottomTrailing) {
             // The AI Assistant: a floating launcher and chat, everywhere but on a note (as on the web).
-            if app.profile?.aiEnabled != false, editorIfOpen == nil, app.phase == .ready {
+            if app.aiAvailable, editorIfOpen == nil, app.phase == .ready {
                 VStack(alignment: .trailing, spacing: 12) {
                     if aiOpen {
                         AskAiPanel(openDocument: { id in aiOpen = false; nav.open(id) }, close: { aiOpen = false })

@@ -175,6 +175,8 @@ final class EditorModel {
         if app.readOnlyMode { return true }
         if case .unavailable = loadState { return true }
         if let detail, !detail.canWrite { return true }
+        // Offline, before the server says: a member with view or comment access can't edit the workspace's pages.
+        if detail == nil, let w = app.workspace, !w.canEdit, document?.workspaceId == w.id { return true }
         if document?.deletedAt != nil { return true }
         return false
     }

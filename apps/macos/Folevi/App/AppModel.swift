@@ -409,6 +409,12 @@ final class AppModel {
     /// Whether you can add and edit pages here (members with view or comment access can't).
     var canEditHere: Bool { workspace?.canEdit ?? true }
 
+    /// Whether this scope's plan includes AI: your Personal plan (Core has none), or the workspace's plan.
+    var aiIncludedHere: Bool { workspace?.aiIncluded ?? profile?.entitlements?.ai ?? true }
+
+    /// AI entry points show only when it's included here and you haven't switched it off (as on the web).
+    var aiAvailable: Bool { profile?.aiEnabled != false && aiIncludedHere }
+
     /// Opens another scope: the same local library and op queue, a new engine for its pages and cursor.
     /// Queued page creations keep the scope they were stamped with, so nothing moves.
     func switchScope(_ scope: Scope) async {
@@ -573,6 +579,10 @@ final class AppModel {
     func createDocument(id explicitId: String? = nil, title: String = "", icon: String? = nil, folderId: String? = nil, parentDocumentId: String? = nil,
                         kind: DocumentKind = .document, dailyDate: String? = nil, blocks: [WireBlock]? = nil) async -> String? {
         guard let session, let profile else { return nil }
+        if parentDocumentId == nil, !canEditHere {
+            showToast(String(localized: "You can view this workspace but not add pages to it."))
+            return nil
+        }
         let id = explicitId ?? ULID.make()
         let now = Date().timeIntervalSince1970 * 1000
         // A nested page lives in its parent's scope; a top-level one is stamped with the scope open now.

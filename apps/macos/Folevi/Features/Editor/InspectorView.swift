@@ -462,7 +462,7 @@ struct StyleInspector: View {
     private var coverHint: String {
         if let cover = model.document?.cover, cover.kind == .art {
             let name = CoverArt.all.first(where: { $0.id == cover.value })?.name ?? String(localized: "Artwork")
-            return String(localized: "\(name) — pick any artwork above.")
+            return String(localized: "\(name). Pick any artwork above.")
         }
         return String(localized: "Color and gradient covers follow the page accent; artwork covers are fixed illustrations.")
     }
@@ -918,7 +918,7 @@ struct VersionHistorySheet: View {
         switch b.type {
         case "bulleted": return "• " + text
         case "todo": return ((b.props["checked"]?.boolValue ?? false) ? "☑ " : "☐ ") + text
-        case "divider": return "———"
+        case "divider": return "───"
         default: return text
         }
     }

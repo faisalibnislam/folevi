@@ -5,7 +5,7 @@ import SwiftUI
 /// each, the current workspace's people and settings, your account, help, appearance and sign out.
 struct ScopeMenuButton: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openFoleviSettings) private var openSettings
     @State private var open = false
 
     var body: some View {
@@ -61,9 +61,9 @@ private struct ScopeMenu: View {
                 separator
             }
             plain(String(localized: "Account settings"), systemImage: "gearshape") { settings(.account) }
-            plain(String(localized: "Plan & billing"), systemImage: "creditcard") { web("settings/billing") }
+            plain(String(localized: "Plan & billing"), systemImage: "creditcard") { settings(.billing) }
             plain(String(localized: "Help"), systemImage: "questionmark.circle") { close(); app.showHelp = true }
-            plain(String(localized: "Contact support…"), systemImage: "lifepreserver") { web("help") }
+            plain(String(localized: "Contact support…"), systemImage: "lifepreserver") { close(); app.openHelp(contact: true) }
             separator
             ForEach([AppearancePreference.light, .dark, .system]) { a in
                 item(appearanceName(a), detail: nil, checked: app.appearance == a, icon: {

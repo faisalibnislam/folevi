@@ -185,10 +185,17 @@ struct FoleviCommands: Commands {
             #endif
         }
 
+        // Settings is a page of the main window, as on the web (/settings); ⌘, opens it there.
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") { SettingsRouter.shared.open() }
+                .keyboardShortcut(",", modifiers: [.command])
+                .disabled(!ready)
+        }
+
         CommandGroup(replacing: .help) {
             Button("Folevi Help") { app.showHelp = true }
                 .keyboardShortcut("?", modifiers: [.command])
-            Link("Folevi Guide on the Web", destination: URL(string: "https://folevi.com/help") ?? URL(fileURLWithPath: "/"))
+            Link("Folevi Guide on the Web", destination: HelpPage.docsURL)
         }
     }
 }

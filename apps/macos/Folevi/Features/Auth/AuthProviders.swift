@@ -187,6 +187,53 @@ final class FoleviAccountAuth: @unchecked Sendable {
         return creds
     }
 
+    /// A Better Auth call made with this Mac's session (the bearer plugin), the same endpoints the web's
+    /// authClient uses: Settings → Security changes the password and two-step verification through these.
+    /// Better Auth replaces the session on some of them (a password change, turning two-step verification
+    /// on or off); the new token comes back in `set-auth-token` and is kept here, so this Mac stays signed in.
+    func authCall(_ path: String, method: String = "POST", body: Data? = nil) async throws -> AuthCallResult {
+        guard let session = storedSession else { throw FoleviError.notSignedIn }
+        var request = URLRequest(url: endpoint("api/auth/" + path), timeoutInterval: 20)
+        request.httpMethod = method
+        request.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if method != "GET" {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            // Better Auth checks the origin of state-changing requests; this is the web app's own origin.
+            request.setValue(originHeader, forHTTPHeaderField: "Origin")
+            request.httpBody = body ?? Data("{}".utf8)
+        }
+        let (data, response) = try await http.data(for: request)
+        let http = response as? HTTPURLResponse
+        let status = http?.statusCode ?? 0
+        var rotated = false
+        if let next = http?.value(forHTTPHeaderField: "set-auth-token"), !next.isEmpty, Self.base(next) != Self.base(session) {
+            storeSession(next)
+            rotated = true
+        }
+        let json = try? JSONValue(jsonData: data)
+        guard (200..<300).contains(status) else {
+            throw AuthCallError(status: status, code: json?["code"]?.stringValue ?? "", message: json?["message"]?.stringValue)
+        }
+        return AuthCallResult(json: json, rotated: rotated)
+    }
+
+    /// The session token without its signature (`token.signature`, possibly URL-encoded).
+    private static func base(_ token: String) -> String {
+        let decoded = token.removingPercentEncoding ?? token
+        return String(decoded.split(separator: ".").first ?? Substring(decoded))
+    }
+
+    /// Keeps a replacement session token (Better Auth rotated this Mac's session).
+    func storeSession(_ token: String) {
+        lock.lock()
+        let ephemeral = ephemeralSession != nil
+        if ephemeral { ephemeralSession = token }
+        cached = nil
+        lock.unlock()
+        if !ephemeral { try? keychain.setString(token, for: Self.sessionKey) }
+    }
+
     /// Ends this Mac's session on the server (best effort) and forgets it here.
     func signOut() async {
         if let session = storedSession {
@@ -228,6 +275,41 @@ final class FoleviAccountAuth: @unchecked Sendable {
         let code = body?["error"]?.stringValue ?? body?["code"]?.stringValue ?? "auth_failed"
         let message = body?["error_description"]?.stringValue ?? body?["message"]?.stringValue
         return .server(code: code, message: message ?? String(localized: fallback))
+    }
+}
+
+/// What a Better Auth call returned, and whether it replaced this Mac's session.
+struct AuthCallResult: Sendable {
+    var json: JSONValue?
+    var rotated: Bool
+}
+
+/// A refused Better Auth call: its status and code (INVALID_PASSWORD, INVALID_CODE…).
+struct AuthCallError: Error, Sendable {
+    var status: Int
+    var code: String
+    var message: String?
+
+    /// The web's `authErrorMessage`: plain language, generic for credentials, honest about rate limits.
+    func userMessage(fallback: String = String(localized: "Something went wrong. Please try again."), wait: String = String(localized: "a minute")) -> String {
+        if status == 429 || code == "TOO_MANY_REQUESTS" { return String(localized: "Too many attempts. Wait \(wait), then try again.") }
+        switch code {
+        case "INVALID_EMAIL_OR_PASSWORD", "INVALID_PASSWORD", "USER_NOT_FOUND", "INVALID_EMAIL", "CREDENTIAL_ACCOUNT_NOT_FOUND":
+            return String(localized: "The email or password is incorrect.")
+        case "EMAIL_NOT_VERIFIED": return String(localized: "Verify your email address first. We've sent you a new link.")
+        case "PASSWORD_TOO_SHORT": return String(localized: "Use at least 10 characters for your password.")
+        case "PASSWORD_TOO_LONG": return String(localized: "Use at most 128 characters for your password.")
+        case "INVALID_CODE": return String(localized: "That code didn't work. Check your authenticator app and try again.")
+        case "INVALID_BACKUP_CODE": return String(localized: "That backup code didn't work. Each code works only once.")
+        case "OTP_HAS_EXPIRED", "TWO_FACTOR_NOT_ENABLED", "INVALID_TWO_FACTOR_COOKIE", "SESSION_EXPIRED":
+            return String(localized: "This sign-in attempt expired. Start again from the sign-in page.")
+        case "INVALID_TOKEN", "TOKEN_EXPIRED": return String(localized: "This link is invalid or has expired. Request a new one.")
+        case "ACCOUNT_TEMPORARILY_LOCKED", "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE":
+            return String(localized: "Too many incorrect codes. For your security this account is locked for a while. Try again later or reset your password.")
+        default:
+            if let message, !message.isEmpty, message.range(of: "internal", options: .caseInsensitive) == nil { return message }
+            return fallback
+        }
     }
 }
 

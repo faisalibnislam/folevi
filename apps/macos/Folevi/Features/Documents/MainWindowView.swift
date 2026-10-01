@@ -9,6 +9,7 @@ struct MainWindowView: View {
     @State private var editor: EditorModel?
     @State private var aiOpen = false
     @State private var noteAiOpen = false
+    @State private var router = SettingsRouter.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -100,6 +101,18 @@ struct MainWindowView: View {
             nav.open(id)
         }
         .onChange(of: app.documentsRevision, initial: true) { _, _ in openFromLaunchArgument() }
+        // ⌘, and Help (and every "Settings" or "Help" button) show those pages here, as on the web.
+        .onChange(of: router.pending, initial: true) { _, route in
+            guard let route, app.phase == .ready else { return }
+            router.pending = nil
+            switch route {
+            case .settings: nav.selection = .settings
+            case .help: nav.selection = .help
+            case .invite(let token): nav.selection = .invite(token)
+            case .shareInvite(let token): nav.selection = .shareInvite(token)
+            }
+            nav.closeDocument()
+        }
         .sheet(isPresented: $nav.showHistory) {
             if let id = nav.openDocumentId { VersionHistorySheet(documentId: id).environment(app) }
         }
@@ -169,6 +182,10 @@ struct MainWindowView: View {
             case .tasks: TasksView(openDocument: open, openCalendar: { nav.selection = .calendar })
             case .calendar: CalendarView(openDocument: open)
             case .shared: SharedWithMeView(openDocument: open)
+            case .settings: SettingsRoot()
+            case .help: HelpPage()
+            case .invite(let token): InviteView(token: token, nav: nav)
+            case .shareInvite(let token): ShareInviteView(token: token, nav: nav, openDocument: { nav.open($0) })
             default: BrowserView(nav: nav, openDocument: open)
             }
         }

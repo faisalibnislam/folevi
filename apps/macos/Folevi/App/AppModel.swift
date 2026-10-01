@@ -59,6 +59,11 @@ final class AppModel {
         case suspended
         case sessionRevoked
         case deviceLimit(limit: Int, active: Int)
+        /// First sign-in: Personal is being set up (users.bootstrap), or that failed.
+        case settingUp
+        case setupFailed(String)
+        /// Signed in on this Mac, but the server can't be reached and there's no copy here yet.
+        case offline
         case onboarding
         case ready
     }
@@ -86,7 +91,11 @@ final class AppModel {
     var toastAction: ToastAction?
     var showQuickAdd = false
     var showCommandPalette = false
-    var showHelp = false
+    /// Help is a page of the main window, as on the web; setting this shows it (see `openHelp`).
+    var showHelp: Bool {
+        get { false }
+        set { if newValue { openHelp() } }
+    }
     var showImporter = false
     var showNewWorkspace = false
     /// A document to open once the main window appears (onboarding, notifications, launch arguments).
@@ -122,7 +131,7 @@ final class AppModel {
         }
         appearance = AppearancePreference(rawValue: UserDefaults.standard.string(forKey: "appearance") ?? "") ?? .system
         let scale = UserDefaults.standard.double(forKey: "editorScale")
-        editorScale = scale == 0 ? 1 : min(1.6, max(0.8, scale))
+        editorScale = scale == 0 ? 1 : min(1.35, max(0.85, scale))
     }
 
     // MARK: Appearance
@@ -295,7 +304,13 @@ final class AppModel {
         do {
             var me = try await account.me()
             if me.state == .needsBootstrap {
-                try await account.bootstrap()
+                phase = .settingUp
+                do {
+                    try await account.bootstrap()
+                } catch {
+                    phase = .setupFailed(ConvexService.mapError(error).localizedDescription)
+                    return
+                }
                 me = try await account.me()
             }
             switch me.state {
@@ -321,7 +336,9 @@ final class AppModel {
             case .emailUnverified: phase = .emailUnverified
             case .mfaRequired: phase = .mfaRequired
             case .suspended: phase = .suspended
-            case .sessionRevoked: phase = .sessionRevoked
+            case .sessionRevoked:
+                phase = .sessionRevoked
+                Task { await self.recoverRevokedSession() }
             case .deviceLimit: phase = .deviceLimit(limit: Int(me.limit ?? 0), active: Int(me.active ?? 0))
             case .needsBootstrap: phase = .signedOut(String(localized: "We couldn't finish setting up your account. Try again."))
             }
@@ -334,8 +351,11 @@ final class AppModel {
                 scheduleAuthRetry()
             } else if silent, session != nil {
                 scheduleAuthRetry()
+            } else if mapped.isNetwork {
+                // Offline cold start with nothing on this Mac yet: the web's "You're offline" page.
+                phase = .offline
             } else {
-                phase = .signedOut(mapped.isNetwork ? String(localized: "Can't reach Folevi right now. Check your connection and try again.") : mapped.localizedDescription)
+                phase = .signedOut(mapped.localizedDescription)
             }
         }
     }
@@ -499,7 +519,10 @@ final class AppModel {
                     guard let self else { return }
                     switch me.state {
                     case .sessionRevoked:
-                        await self.signOut(message: String(localized: "This Mac was signed out from another device."))
+                        // A password or two-step change on this Mac replaced the session: recover; otherwise
+                        // it was signed out elsewhere, revoked or expired (the web's AccountGate does the same).
+                        self.meTask = nil
+                        Task { await self.recoverRevokedSession() }
                         return
                     case .suspended:
                         self.phase = .suspended
@@ -620,6 +643,52 @@ final class AppModel {
 
     func updateDocument(_ id: String, patch: WireDocumentPatch) async {
         await session?.engine.updateDocument(id, patch: patch)
+    }
+
+    // MARK: Session changes (Security)
+
+    /// Set while Settings → Security replaces this Mac's session, so a "session revoked" meanwhile waits.
+    private(set) var sessionRotation: Task<Void, Never>?
+    private var recovering = false
+
+    /// Better Auth replaced this Mac's session (a password change, two-step verification turned on or off):
+    /// fetch a token for the new one and re-register this device, before anything else asks.
+    func sessionReplaced() async {
+        let work = Task { @MainActor [weak self] in
+            guard let self, let convex = self.convex else { return }
+            _ = await convex.loginFromCache()
+            try? await AccountRepository(convex: convex).registerSession()
+        }
+        sessionRotation = work
+        await work.value
+        sessionRotation = nil
+    }
+
+    /// The server says this session is gone. When this Mac just replaced it, the new one takes over;
+    /// otherwise, after a few tries, sign out with the web's "session ended" notice. Work written offline
+    /// stays on this Mac and syncs after signing back in to the same account.
+    func recoverRevokedSession() async {
+        guard !recovering, let convex else { return }
+        recovering = true
+        defer { recovering = false }
+        for _ in 0..<3 {
+            if let rotation = sessionRotation { await rotation.value }
+            if case .success = await convex.loginFromCache(), let me = try? await AccountRepository(convex: convex).me(), me.state == .ready {
+                await routeAfterAuth(silent: true)
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(700))
+        }
+        await signOut(message: String(localized: "Your session ended. Sign in again to keep writing. Anything you wrote offline is still on this device."))
+    }
+
+    /// Shows Help in the main window (`contact` also opens Contact support). Signed out, the guide on the web.
+    func openHelp(contact: Bool = false) {
+        guard phase == .ready else {
+            NSWorkspace.shared.open(HelpPage.docsURL)
+            return
+        }
+        SettingsRouter.shared.openHelp(contact: contact)
     }
 
     func showToast(_ message: String, action: ToastAction? = nil) {

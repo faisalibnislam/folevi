@@ -63,6 +63,8 @@ struct Profile: Codable, Sendable, Hashable {
     var aiEnabled: Bool?
     /// When a requested account deletion happens (status "pending_deletion").
     var deletionScheduledFor: Double?
+    /// The profile picture (a signed URL), or nil for the initial.
+    var avatarUrl: String?
 
     /// AI is available: their plan includes it and they haven't turned it off (the server enforces it).
     var aiOn: Bool { aiEnabled != false && (entitlements?.ai ?? true) }

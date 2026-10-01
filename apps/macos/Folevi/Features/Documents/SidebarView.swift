@@ -19,7 +19,7 @@ struct SidebarView: View {
     /// The open note: the sidebar then shows its tools (NoteSidebarContent) instead of navigation, as on the web.
     var editor: EditorModel? = nil
     @Environment(AppModel.self) private var app
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openFoleviSettings) private var openSettings
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var newFolderName = ""
     @State private var showNewFolder = false
@@ -196,7 +196,7 @@ struct SidebarView: View {
         // Only in Personal: a Personal plan doesn't change what a team workspace includes.
         if app.scope.isPersonal, let e = app.profile?.entitlements, e.trialing || e.paid == false || (e.paid == nil && e.paidPlan == "free") {
             Button {
-                openWebApp("settings/billing", config: app.config)
+                SettingsRouter.shared.open(.billing)
             } label: {
                 HStack(spacing: 8) {
                     AiIcon(size: 13).foregroundStyle(FoleviColor.heading)
@@ -213,7 +213,6 @@ struct SidebarView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help(Text("Plans open in your browser"))
         }
     }
 

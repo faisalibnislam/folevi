@@ -13,10 +13,10 @@ extension AiProblem {
     }
 }
 
-/// Plan & billing on the web, where credits are bought and plans changed.
+/// Settings → Plan & billing, where credits are bought and plans changed (as on the web).
 @MainActor
 func openBilling(_ app: AppModel) {
-    openWebApp("settings/billing", config: app.config)
+    SettingsRouter.shared.open(.billing)
 }
 
 /// A refused AI request: the server's message, and "Buy more" or "Upgrade" when that helps. Other errors

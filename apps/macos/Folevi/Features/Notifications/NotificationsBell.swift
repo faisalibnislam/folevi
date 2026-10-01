@@ -74,7 +74,7 @@ private struct NotificationsPanel: View {
     var openNote: (AppNotification) -> Void
     var close: () -> Void
     @Environment(AppModel.self) private var app
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openFoleviSettings) private var openSettings
     @State private var items: [AppNotification]?
     @State private var filter = "all"
 
@@ -94,7 +94,7 @@ private struct NotificationsPanel: View {
                 .disabled(unread == 0)
                 IconButton(systemImage: "gearshape", label: "Notification settings", size: 28) {
                     close()
-                    openSettings()
+                    SettingsRouter.shared.open(.notifications)
                 }
             }
             .padding(.leading, 16)

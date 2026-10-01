@@ -50,12 +50,6 @@ struct FoleviApp: App {
         .windowResizability(.contentSize)
         .defaultPosition(.center)
 
-        Settings {
-            SettingsView()
-                .environment(app)
-                .foleviTypography()
-        }
-
         MenuBarExtra {
             MenuBarContent()
                 .environment(app)

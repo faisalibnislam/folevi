@@ -18,6 +18,9 @@ enum CoverArt {
         var tone: String?
         var accent: String?
         var accentDark: String?
+        /// The four highlights (yellow, green, blue, pink), light and dark.
+        var highlight: [String]?
+        var highlightDark: [String]?
     }
 
     static let all: [Entry] = {

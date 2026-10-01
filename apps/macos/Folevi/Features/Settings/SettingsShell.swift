@@ -92,6 +92,16 @@ final class SettingsRouter {
         Self.showMainWindow()
     }
 
+    /// Comes back to Settings after something else moved the main window (switching to a workspace or to
+    /// Personal shows its Home), as on the web, where those changes keep the Settings page open.
+    func stayInSettings(_ section: SettingsSection) {
+        self.section = section
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(80))
+            self.pending = .settings
+        }
+    }
+
     /// Shows Help in the main window; `contact` also opens Contact support.
     func openHelp(contact: Bool = false) {
         if contact { contactSupport = true }
@@ -169,7 +179,7 @@ struct SettingsRoot: View {
         .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { _, y in scrollY = y }
         .sheet(isPresented: $newWorkspace, onDismiss: {
             // Created: its settings open next, as on the web.
-            if app.workspace != nil { router.section = .workspace }
+            if app.workspace != nil { router.stayInSettings(.workspace) }
         }) { NewWorkspaceSheet().environment(app) }
     }
 
@@ -310,7 +320,7 @@ private struct NoWorkspaceCard: View {
                 .buttonStyle(.folevi(.primary, .medium))
         }
         .sheet(isPresented: $open, onDismiss: {
-            if app.workspace != nil { SettingsRouter.shared.section = .workspace }
+            if app.workspace != nil { SettingsRouter.shared.stayInSettings(.workspace) }
         }) { NewWorkspaceSheet().environment(app) }
     }
 }
@@ -332,6 +342,8 @@ struct SettingsPage<Content: View>: View {
 struct SettingsCard<Content: View>: View {
     var title: String
     var description: String? = nil
+    /// A description with links in it (opened through `openURL`), instead of `description`.
+    var descriptionText: Text? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -346,6 +358,13 @@ struct SettingsCard<Content: View>: View {
                 Text(description)
                     .font(.ui(14))
                     .foregroundStyle(FoleviColor.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+            } else if let descriptionText {
+                descriptionText
+                    .font(.ui(14))
+                    .foregroundStyle(FoleviColor.inkMuted)
+                    .tint(FoleviColor.heading)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
             }

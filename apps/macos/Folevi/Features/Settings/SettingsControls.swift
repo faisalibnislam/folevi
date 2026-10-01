@@ -538,6 +538,65 @@ enum SHA256Hex {
     }
 }
 
+// MARK: - Wrapping row
+
+/// CSS `flex flex-wrap items-center gap-*`: children left to right, wrapping onto new lines when they don't
+/// fit; on each line the `flexible` child (the web's `flex-1 min-w-0`) takes the space that's left.
+struct WrapHStack: Layout {
+    var spacing: CGFloat = 12
+    var lineSpacing: CGFloat? = nil
+    /// The index of the child that grows (nil: none does).
+    var flexible: Int? = 0
+
+    private struct Line { var indices: [Int] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
+
+    private func lines(_ widths: [CGFloat], heights: [CGFloat], max: CGFloat) -> [Line] {
+        var out: [Line] = []
+        var line = Line()
+        for i in widths.indices {
+            let w = Swift.min(widths[i], max)
+            let next = line.indices.isEmpty ? w : line.width + spacing + w
+            if !line.indices.isEmpty && next > max {
+                out.append(line)
+                line = Line()
+            }
+            line.width = line.indices.isEmpty ? w : line.width + spacing + w
+            line.height = Swift.max(line.height, heights[i])
+            line.indices.append(i)
+        }
+        if !line.indices.isEmpty { out.append(line) }
+        return out
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let max = proposal.width ?? .infinity
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let ls = lines(sizes.map(\.width), heights: sizes.map(\.height), max: max)
+        let height = ls.map(\.height).reduce(0, +) + CGFloat(Swift.max(0, ls.count - 1)) * (lineSpacing ?? spacing)
+        let width = proposal.width ?? (ls.map(\.width).max() ?? 0)
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let ls = lines(sizes.map(\.width), heights: sizes.map(\.height), max: bounds.width)
+        var y = bounds.minY
+        for line in ls {
+            let extra = Swift.max(0, bounds.width - line.width)
+            var x = bounds.minX
+            for i in line.indices {
+                var w = Swift.min(sizes[i].width, bounds.width)
+                if i == flexible { w += extra }
+                let h = sizes[i].height
+                subviews[i].place(at: CGPoint(x: x, y: y + (line.height - h) / 2), anchor: .topLeading,
+                                  proposal: ProposedViewSize(width: w, height: h))
+                x += w + spacing
+            }
+            y += line.height + (lineSpacing ?? spacing)
+        }
+    }
+}
+
 // MARK: - Select
 
 /// The web's Select in a `ui-input` trigger (`h-9 rounded-[6px] px-3`, a chevron that turns when open),

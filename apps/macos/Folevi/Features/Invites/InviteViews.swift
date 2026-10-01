@@ -7,23 +7,8 @@ import SwiftUI
 /// Routes an invitation link to its page in the main window.
 @MainActor
 enum InviteLink {
-    enum Kind: Equatable { case workspace(String), page(String) }
-
-    /// `…/invite/<token>` or `…/share-invite/<token>` (an https link to the web app, or the app's scheme).
-    nonisolated static func parse(_ url: URL) -> Kind? {
-        var parts = url.pathComponents.filter { $0 != "/" }
-        // com.folevi.mac://invite/<token>: the host is the first part.
-        if let scheme = url.scheme?.lowercased(), scheme != "https", scheme != "http", let host = url.host() { parts.insert(host, at: 0) }
-        guard parts.count >= 2, let token = parts.last, !token.isEmpty else { return nil }
-        switch parts[parts.count - 2] {
-        case "invite": return .workspace(token)
-        case "share-invite": return .page(token)
-        default: return nil
-        }
-    }
-
     static func open(_ url: URL) {
-        guard let kind = parse(url) else { return }
+        guard let kind = InviteLinkKind.parse(url) else { return }
         let router = SettingsRouter.shared
         switch kind {
         case .workspace(let token): router.pending = .invite(token)

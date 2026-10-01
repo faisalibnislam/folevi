@@ -24,13 +24,16 @@ enum SyncEvent: Sendable {
     case acknowledged(Set<String>)
 }
 
-/// The sync engine for one workspace. Owns the reducer state (docs/SYNC_PROTOCOL.md), persists every
+/// The sync engine for one scope (Personal or a team workspace); the op queue is the account's, shared by every scope. Owns the reducer state (docs/SYNC_PROTOCOL.md), persists every
 /// change to SQLite, and runs the reconnect pipeline:
 /// refresh auth → subscribe to `sync:head` → pull since cursor → reconcile (remoteUpdate) →
 /// push pending ops in order (takeBatch → sync:pushJson → applyResults) → surface conflicts.
 actor SyncEngine {
-    let workspaceId: String
+    let scope: Scope
+    let profileId: String
     let deviceId: String
+    /// Where this scope's pages and pull cursor are filed locally (`Scope.storeKey`).
+    private var storeKey: String { scope.storeKey(profileId: profileId) }
     private let store: SQLiteStore
     private let convex: ConvexService
     private let files: FilesRepository
@@ -69,12 +72,13 @@ actor SyncEngine {
     /// Called when the server says the token is no longer valid. Returns true when auth was refreshed.
     private var refreshAuth: (@Sendable () async -> Bool)?
 
-    init(store: SQLiteStore, convex: ConvexService, files: FilesRepository, monitor: ConnectionMonitor, workspaceId: String, deviceId: String) {
+    init(store: SQLiteStore, convex: ConvexService, files: FilesRepository, monitor: ConnectionMonitor, scope: Scope, profileId: String, deviceId: String) {
         self.store = store
         self.convex = convex
         self.files = files
         self.monitor = monitor
-        self.workspaceId = workspaceId
+        self.scope = scope
+        self.profileId = profileId
         self.deviceId = deviceId
     }
 
@@ -190,7 +194,7 @@ actor SyncEngine {
 
     private func ensureHeadSubscription() {
         guard headTask == nil else { return }
-        let stream: AsyncThrowingStream<HeadResponse, Error> = convex.subscribe("sync:head", ["workspaceId": .string(workspaceId)])
+        let stream: AsyncThrowingStream<HeadResponse, Error> = convex.subscribe("sync:head", ["scope": scope.arg])
         headTask = Task { [weak self] in
             do {
                 for try await head in stream { await self?.onHead(head.seq) }
@@ -211,7 +215,7 @@ actor SyncEngine {
     private func onHead(_ seq: Double) async {
         if socketConnected == nil { socketConnected = true }
         headSeq = max(headSeq, seq)
-        let cursor = (try? await store.cursor(workspaceId: workspaceId)) ?? 0
+        let cursor = (try? await store.cursor(scopeKey: storeKey)) ?? 0
         if seq > cursor { kick() }
     }
 
@@ -272,7 +276,7 @@ actor SyncEngine {
     }
 
     func documents() async -> [DocumentSummary] {
-        (try? await store.documents(workspaceId: workspaceId)) ?? []
+        (try? await store.documents(storeKey: storeKey)) ?? []
     }
 
     func document(_ id: String) async -> DocumentSummary? {
@@ -378,7 +382,7 @@ actor SyncEngine {
                 try? await Task.sleep(for: .seconds(min(60, pow(2, Double(upload.attempts)))))
             }
             do {
-                let result = try await files.upload(fileURL: URL(fileURLWithPath: source.localPath), workspaceId: workspaceId,
+                let result = try await files.upload(fileURL: URL(fileURLWithPath: source.localPath), scope: scope,
                                                     documentId: upload.documentId, kind: source.kind)
                 var patchProps: [String: JSONValue] = [:]
                 if let w = result.width { patchProps["naturalWidth"] = .number(w) }
@@ -450,7 +454,7 @@ actor SyncEngine {
             try await pullAll()
             await processUploads()
             try await pushAll()
-            let cursor = (try? await store.cursor(workspaceId: workspaceId)) ?? 0
+            let cursor = (try? await store.cursor(scopeKey: storeKey)) ?? 0
             if headSeq > cursor { try await pullAll() }
             lastSyncedAt = Date()
             retryDelay = 0
@@ -515,12 +519,12 @@ actor SyncEngine {
     }
 
     private func pullAll() async throws {
-        var cursor = try await store.cursor(workspaceId: workspaceId)
+        var cursor = try await store.cursor(scopeKey: storeKey)
         var changedDocs = Set<String>()
         var anyDocuments = false
         while true {
             let json: String = try await convex.query("sync:pullJson", [
-                "workspaceId": .string(workspaceId), "cursor": .number(cursor), "limit": 300,
+                "scope": scope.arg, "cursor": .number(cursor), "limit": 300,
             ], timeout: 15)
             let page = try JSONDecoder().decode(PullResponse.self, from: Data(json.utf8))
             if !page.documents.isEmpty {
@@ -540,7 +544,7 @@ actor SyncEngine {
             }
             if !touched.isEmpty { markDirty(touched) }
             cursor = page.nextCursor
-            try await store.setCursor(cursor, workspaceId: workspaceId)
+            try await store.setCursor(cursor, scopeKey: storeKey)
             headSeq = max(headSeq, page.head)
             if !page.hasMore { break }
         }
@@ -569,7 +573,7 @@ actor SyncEngine {
             let resultJSON: String
             do {
                 resultJSON = try await convex.mutation("sync:pushJson", [
-                    "workspaceId": .string(workspaceId), "deviceId": .string(deviceId), "payload": .string(payload),
+                    "scope": scope.arg, "deviceId": .string(deviceId), "payload": .string(payload),
                 ], timeout: 30)
             } catch {
                 let mapped = ConvexService.mapError(error)

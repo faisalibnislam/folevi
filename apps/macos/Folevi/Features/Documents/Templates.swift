@@ -95,7 +95,7 @@ struct BuiltInTemplatesSection: View {
         Task {
             defer { creating = nil }
             do {
-                try await session.documents.createFromTemplate(id: id, workspaceId: session.workspaceId, templateId: t.key, title: t.name, folderId: nil)
+                try await session.documents.createFromTemplate(id: id, scope: session.scope, templateId: t.key, title: t.name, folderId: nil)
                 await session.engine.syncNow()
                 openDocument(id, false)
             } catch {

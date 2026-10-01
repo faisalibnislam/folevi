@@ -22,10 +22,12 @@ struct AccountRepository: Sendable {
         ])
     }
 
-    func completeOnboarding(step: String, workspaceName: String? = nil, appearance: String? = nil) async throws {
-        var args: [String: JSONValue] = ["step": .string(step)]
-        if let workspaceName { args["workspaceName"] = .string(workspaceName) }
-        if let appearance { args["appearance"] = .string(appearance) }
+    func completeOnboarding(_ choice: OnboardingStepChoice) async throws {
+        var args: [String: JSONValue] = ["step": .string(choice.step)]
+        if let v = choice.appearance { args["appearance"] = .string(v) }
+        if let v = choice.useCases { args["useCases"] = .array(v.map { .string($0) }) }
+        if let v = choice.noteStyle { args["noteStyle"] = .string(v) }
+        if let v = choice.aiEnabled { args["aiEnabled"] = .bool(v) }
         try await convex.mutationVoid("users:completeOnboardingStep", args)
     }
 
@@ -43,6 +45,12 @@ struct AccountRepository: Sendable {
     func revokeSession(_ id: String) async throws { try await convex.mutationVoid("users:revokeSession", ["sessionId": .string(id)]) }
     func revokeOtherSessions() async throws { try await convex.mutationVoid("users:revokeOtherSessions") }
     func workspaces() async throws -> [WorkspaceInfo] { try await convex.query("workspaces:mine") }
+    /// A new team workspace you own; returns its public id.
+    func createWorkspace(name: String) async throws -> String {
+        struct Created: Decodable { let id: String }
+        let created: Created = try await convex.mutation("workspaces:createTeamWorkspace", ["name": .string(name)])
+        return created.id
+    }
     func settingsStatus() async throws -> SettingsStatus { try await convex.query("settings:status") }
 }
 
@@ -55,17 +63,17 @@ struct DocumentsRepository: Sendable {
     func builtInTemplates() async throws -> [BuiltInTemplate] { try await convex.query("settings:builtInTemplates") }
 
     /// Creates a note from a template online; the server fills in the template's blocks.
-    func createFromTemplate(id: String, workspaceId: String, templateId: String, title: String, folderId: String?) async throws {
+    func createFromTemplate(id: String, scope: Scope, templateId: String, title: String, folderId: String?) async throws {
         var args: [String: JSONValue] = [
-            "id": .string(id), "workspaceId": .string(workspaceId), "templateId": .string(templateId), "title": .string(title),
+            "id": .string(id), "scope": scope.arg, "templateId": .string(templateId), "title": .string(title),
         ]
         if let folderId { args["folderId"] = .string(folderId) }
         try await convex.mutationVoid("documents:create", args)
     }
 
-    func list(workspaceId: String, view: String, folderId: String? = nil, tagId: String? = nil, sort: String = "updated") async throws -> [DocumentSummary] {
+    func list(scope: Scope, view: String, folderId: String? = nil, tagId: String? = nil, sort: String = "updated") async throws -> [DocumentSummary] {
         var args: [String: JSONValue] = [
-            "workspaceId": .string(workspaceId), "view": .string(view), "sort": .string(sort),
+            "scope": scope.arg, "view": .string(view), "sort": .string(sort),
             "paginationOpts": ["numItems": 200, "cursor": nil],
         ]
         if let folderId { args["folderId"] = .string(folderId) }
@@ -106,9 +114,9 @@ struct DocumentsRepository: Sendable {
         let _: JSONValue = try await convex.mutation("comments:create", args)
     }
     func collection(_ id: String) async throws -> CollectionData { try await convex.query("collections:get", ["collectionId": .string(id)]) }
-    func importText(workspaceId: String, filename: String, content: String, markdown: Bool) async throws -> ImportTextResult {
+    func importText(scope: Scope, filename: String, content: String, markdown: Bool) async throws -> ImportTextResult {
         try await convex.mutation("imports:importText", [
-            "workspaceId": .string(workspaceId), "filename": .string(filename), "content": .string(content),
+            "scope": scope.arg, "filename": .string(filename), "content": .string(content),
             "format": .string(markdown ? "markdown" : "text"),
         ], timeout: 60)
     }
@@ -116,25 +124,25 @@ struct DocumentsRepository: Sendable {
 
 struct OrganizationRepository: Sendable {
     let convex: ConvexService
-    func sidebar(workspaceId: String) async throws -> SidebarData { try await convex.query("organization:sidebar", ["workspaceId": .string(workspaceId)]) }
-    func sidebarUpdates(workspaceId: String) -> AsyncThrowingStream<SidebarData, Error> {
-        convex.subscribe("organization:sidebar", ["workspaceId": .string(workspaceId)])
+    func sidebar(scope: Scope) async throws -> SidebarData { try await convex.query("organization:sidebar", ["scope": scope.arg]) }
+    func sidebarUpdates(scope: Scope) -> AsyncThrowingStream<SidebarData, Error> {
+        convex.subscribe("organization:sidebar", ["scope": scope.arg])
     }
-    func createFolder(workspaceId: String, name: String) async throws {
-        let _: JSONValue = try await convex.mutation("organization:createFolder", ["workspaceId": .string(workspaceId), "name": .string(name)])
+    func createFolder(scope: Scope, name: String) async throws {
+        let _: JSONValue = try await convex.mutation("organization:createFolder", ["scope": scope.arg, "name": .string(name)])
     }
 }
 
 struct TasksRepository: Sendable {
     let convex: ConvexService
-    func list(workspaceId: String, view: String, today: String) async throws -> [TaskItem] {
-        try await convex.query("tasks:list", ["workspaceId": .string(workspaceId), "view": .string(view), "today": .string(today)])
+    func list(scope: Scope, view: String, today: String) async throws -> [TaskItem] {
+        try await convex.query("tasks:list", ["scope": scope.arg, "view": .string(view), "today": .string(today)])
     }
-    func counts(workspaceId: String, today: String) async throws -> TaskCounts {
-        try await convex.query("tasks:counts", ["workspaceId": .string(workspaceId), "today": .string(today)])
+    func counts(scope: Scope, today: String) async throws -> TaskCounts {
+        try await convex.query("tasks:counts", ["scope": scope.arg, "today": .string(today)])
     }
-    func range(workspaceId: String, from: String, to: String) async throws -> [TaskItem] {
-        try await convex.query("tasks:range", ["workspaceId": .string(workspaceId), "from": .string(from), "to": .string(to), "includeCompleted": true])
+    func range(scope: Scope, from: String, to: String) async throws -> [TaskItem] {
+        try await convex.query("tasks:range", ["scope": scope.arg, "from": .string(from), "to": .string(to), "includeCompleted": true])
     }
     /// Server-side task edit (calendar drag). Returns the props before the change for Undo.
     func update(blockId: String, fields: [String: JSONValue]) async throws -> TaskUpdateResult {
@@ -143,8 +151,8 @@ struct TasksRepository: Sendable {
         args["deviceId"] = .string(DeviceIdentity.deviceId)
         return try await convex.mutation("tasks:update", args)
     }
-    func quickAdd(workspaceId: String, title: String, today: String, dueDate: String?) async throws {
-        var args: [String: JSONValue] = ["workspaceId": .string(workspaceId), "title": .string(title), "today": .string(today),
+    func quickAdd(scope: Scope, title: String, today: String, dueDate: String?) async throws {
+        var args: [String: JSONValue] = ["scope": scope.arg, "title": .string(title), "today": .string(today),
                                          "deviceId": .string(DeviceIdentity.deviceId)]
         if let dueDate { args["dueDate"] = .string(dueDate) }
         let _: JSONValue = try await convex.mutation("tasks:quickAdd", args)
@@ -153,8 +161,8 @@ struct TasksRepository: Sendable {
 
 struct SearchRepository: Sendable {
     let convex: ConvexService
-    func search(workspaceId: String, query: String) async throws -> [SearchHit] {
-        try await convex.query("search:documents", ["workspaceId": .string(workspaceId), "query": .string(query), "limit": 30], timeout: 10)
+    func search(scope: Scope, query: String) async throws -> [SearchHit] {
+        try await convex.query("search:documents", ["scope": scope.arg, "query": .string(query), "limit": 30], timeout: 10)
     }
 }
 
@@ -175,12 +183,12 @@ struct FilesRepository: Sendable {
         UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
     }
 
-    func upload(fileURL: URL, workspaceId: String, documentId: String, kind: String,
+    func upload(fileURL: URL, scope: Scope, documentId: String, kind: String,
                 progress: (@Sendable (Double) -> Void)? = nil) async throws -> FinalizeResult {
         let data = try Data(contentsOf: fileURL)
         let mime = FilesRepository.mimeType(for: fileURL)
         let ticket: UploadTicket = try await convex.mutation("files:generateUploadUrl", [
-            "workspaceId": .string(workspaceId), "documentId": .string(documentId), "filename": .string(fileURL.lastPathComponent),
+            "scope": scope.arg, "documentId": .string(documentId), "filename": .string(fileURL.lastPathComponent),
             "size": .number(Double(data.count)), "mimeType": .string(mime), "kind": .string(kind),
         ])
         guard let uploadURL = URL(string: ticket.uploadUrl) else { throw FoleviError.invalidResponse("upload url") }

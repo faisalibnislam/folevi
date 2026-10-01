@@ -52,8 +52,9 @@ public enum DailyNote {
         return String(repeating: "0", count: max(0, 16 - hex.count)) + hex
     }
 
-    public static func documentId(profileId: String, workspaceId: String, date: String) -> String {
-        "daily-\(date)-\(fnv1a64("\(profileId):\(workspaceId)"))"
+    /// `dailyDocumentId`: hashes `profileId:scopeKey` (`Scope.key`).
+    public static func documentId(profileId: String, scopeKey: String, date: String) -> String {
+        "daily-\(date)-\(fnv1a64("\(profileId):\(scopeKey)"))"
     }
 
     /// "Friday, September 25, 2026" (matches convex/tasks.ts `dailyTitle`).
@@ -67,13 +68,13 @@ public enum DailyNote {
     }
 }
 
-/// The person's Inbox page (Quick Add target): `inbox-<fnv1a64("profileId:workspaceId")>`, identical to
+/// The person's Inbox page (Quick Add target): `inbox-<fnv1a64("profileId:scopeKey")>`, identical to
 /// packages/editor-schema `inboxDocumentId`, so offline devices converge on one page.
 public enum InboxPage {
     public static let title = "Inbox"
     public static let icon = "📥"
 
-    public static func documentId(profileId: String, workspaceId: String) -> String {
-        "inbox-\(DailyNote.fnv1a64("\(profileId):\(workspaceId)"))"
+    public static func documentId(profileId: String, scopeKey: String) -> String {
+        "inbox-\(DailyNote.fnv1a64("\(profileId):\(scopeKey)"))"
     }
 }

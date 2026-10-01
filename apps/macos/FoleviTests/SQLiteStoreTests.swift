@@ -33,18 +33,18 @@ final class SQLiteStoreTests: XCTestCase {
         let doc = DocumentSummary(id: "d1", workspaceId: "w1", title: "First", createdAt: 1, updatedAt: 2)
         var doc2 = DocumentSummary(id: "d2", workspaceId: "w1", title: "Second", createdAt: 1, updatedAt: 5)
         try await store.upsertDocuments([doc, doc2])
-        var list = try await store.documents(workspaceId: "w1")
+        var list = try await store.documents(storeKey: "w1")
         XCTAssertEqual(list.map(\.id), ["d2", "d1"])
         doc2.title = "Renamed"
         try await store.upsertDocuments([doc2])
         let fetched = try await store.document(id: "d2")
         XCTAssertEqual(fetched?.title, "Renamed")
         try await store.deleteDocument(id: "d1")
-        list = try await store.documents(workspaceId: "w1")
+        list = try await store.documents(storeKey: "w1")
         XCTAssertEqual(list.map(\.id), ["d2"])
 
-        try await store.setCursor(42, workspaceId: "w1")
-        let cursor = try await store.cursor(workspaceId: "w1")
+        try await store.setCursor(42, scopeKey: "w1")
+        let cursor = try await store.cursor(scopeKey: "w1")
         XCTAssertEqual(cursor, 42)
     }
 
@@ -113,7 +113,7 @@ final class SQLiteStoreTests: XCTestCase {
         try await store.resetAll()
         let loaded = try await store.loadSyncState()
         XCTAssertTrue(loaded.blocks.isEmpty && loaded.pending.isEmpty)
-        let docs = try await store.documents(workspaceId: "w")
+        let docs = try await store.documents(storeKey: "w")
         XCTAssertTrue(docs.isEmpty)
     }
 

@@ -169,7 +169,7 @@ struct HomeDashboardView: View {
             if starred == nil { starred = [] }
             return
         }
-        if let docs = try? await session.documents.list(workspaceId: session.workspaceId, view: "starred", tagId: nil) {
+        if let docs = try? await session.documents.list(scope: session.scope, view: "starred", tagId: nil) {
             let local = Dictionary(app.documents.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             starred = docs.prefix(Self.carouselCount).map { local[$0.id].map { var d = $0; d.starred = true; return d } ?? $0 }.filter { $0.deletedAt == nil }
             try? await session.store.setCodable(docs, forKey: key)

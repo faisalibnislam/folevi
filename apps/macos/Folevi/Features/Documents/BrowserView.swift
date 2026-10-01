@@ -209,7 +209,7 @@ struct BrowserView: View {
             tagId = id
         default: return
         }
-        if let docs = try? await session.documents.list(workspaceId: session.workspaceId, view: view, tagId: tagId) {
+        if let docs = try? await session.documents.list(scope: session.scope, view: view, tagId: tagId) {
             remoteDocs = docs
             try? await session.store.setCodable(docs, forKey: key)
         }

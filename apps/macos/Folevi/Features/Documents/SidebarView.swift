@@ -179,13 +179,14 @@ struct SidebarView: View {
 
     /// Trial days left, or an upgrade nudge on Free; nothing once they're paying (the web's sidebar pill).
     @ViewBuilder private var planPill: some View {
-        if let e = app.profile?.entitlements, e.trialing || e.paidPlan == "free" {
+        // Only in Personal: a Personal plan doesn't change what a team workspace includes.
+        if app.scope.isPersonal, let e = app.profile?.entitlements, e.trialing || e.paid == false || (e.paid == nil && e.paidPlan == "free") {
             Button {
                 openWebApp("settings/billing", config: app.config)
             } label: {
                 HStack(spacing: 8) {
                     AiIcon(size: 13).foregroundStyle(FoleviColor.heading)
-                    Text(e.trialing ? String(localized: "Pro trial · \(e.trialDaysLeft) days left") : String(localized: "Upgrade to Pro"))
+                    Text(e.trialing ? String(localized: "Pro AI trial · \(e.trialDaysLeft) days left") : String(localized: "Upgrade to Pro"))
                         .font(.ui(12.5, .medium))
                         .foregroundStyle(FoleviColor.heading)
                         .lineLimit(1)
@@ -203,35 +204,14 @@ struct SidebarView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 4) {
-            Button {
-                openSettings()
-            } label: {
-                HStack(spacing: 8) {
-                    Text(String((app.profile?.displayName ?? "F").prefix(1)).uppercased())
-                        .font(.ui(12, .semibold))
-                        .foregroundStyle(FoleviColor.heading)
-                        .frame(width: 28, height: 28)
-                        .background(Circle().fill(FoleviGlass.hover))
-                        .overlay(Circle().strokeBorder(FoleviGlass.border, lineWidth: 1))
-                        .accessibilityHidden(true)
-                    Text(app.profile?.displayName ?? "")
-                        .font(.ui(13, .medium))
-                        .foregroundStyle(FoleviColor.ink)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                }
-                .padding(.leading, 4)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Account settings"))
+        HStack(spacing: 2) {
+            ScopeMenuButton()
             IconButton(systemImage: "questionmark.circle", label: "Help", shortcutHint: "⌘?", size: 30) { app.showHelp = true }
                 .accessibilityIdentifier("sidebar.help")
             IconButton(systemImage: "gearshape", label: "Settings", shortcutHint: "⌘,", size: 30) { openSettings() }
                 .accessibilityIdentifier("sidebar.settings")
         }
-        .padding(6)
+        .padding(.vertical, 4)
     }
 
     // MARK: Rows
@@ -344,9 +324,9 @@ struct SidebarView: View {
     private func createFolder() {
         let name = newFolderName.trimmingCharacters(in: .whitespaces)
         newFolderName = ""
-        guard !name.isEmpty, let workspaceId = app.session?.workspaceId else { return }
+        guard !name.isEmpty, let scope = app.session?.scope else { return }
         app.perform(String(localized: "Creating a folder")) { session in
-            try await session.organization.createFolder(workspaceId: workspaceId, name: name)
+            try await session.organization.createFolder(scope: scope, name: name)
         }
     }
 }

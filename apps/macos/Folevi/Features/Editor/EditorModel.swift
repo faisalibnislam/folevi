@@ -207,7 +207,7 @@ final class EditorModel {
             struct Written: Decodable { let text: String }
             do {
                 let out: Written = try await session.convex.action("ai:write", [
-                    "workspaceId": .string(session.workspaceId), "task": .string(task), "text": .string(text), "documentId": .string(docId),
+                    "scope": session.scope.arg, "task": .string(task), "text": .string(text), "documentId": .string(docId),
                 ], timeout: 90)
                 if inlineAi?.id == request.id { inlineAi?.result = out.text.trimmingCharacters(in: .whitespacesAndNewlines) }
             } catch {

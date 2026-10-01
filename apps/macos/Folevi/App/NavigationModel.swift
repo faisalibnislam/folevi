@@ -177,8 +177,26 @@ final class NavigationModel {
     // MARK: Tabs
 
     /// Open notes as tabs (the web's tab strip), remembered for the main window.
-    var tabs: [String] = (UserDefaults.standard.array(forKey: "openTabs") as? [String]) ?? [] {
-        didSet { if persistsTabs { UserDefaults.standard.set(tabs, forKey: "openTabs") } }
+    var tabs: [String] = [] {
+        didSet { if persistsTabs, let tabsKey { UserDefaults.standard.set(tabs, forKey: tabsKey) } }
+    }
+    /// Where this scope's tabs are remembered; each scope (Personal, each workspace) has its own, as on the web.
+    private var tabsKey: String?
+
+    /// Shows a scope: its own tabs, and (when switching, not at launch) its Home with fresh history.
+    func enterScope(_ key: String, goHome: Bool) {
+        guard persistsTabs else { return }
+        let newKey = "openTabs.\(key)"
+        guard newKey != tabsKey else { return }
+        tabsKey = newKey
+        tabs = (UserDefaults.standard.array(forKey: newKey) as? [String]) ?? []
+        guard goHome else { return }
+        back.removeAll()
+        forward.removeAll()
+        isRestoring = true
+        selection = .all
+        openDocumentId = nil
+        isRestoring = false
     }
     /// Document windows keep their own tabs out of the saved list.
     let persistsTabs: Bool

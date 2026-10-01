@@ -32,6 +32,7 @@
 		3124A906509978C2678F9BAA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FD1BA79570FBBDE419AEABBD /* Assets.xcassets */; };
 		35B82347CCE496556BB3290D /* SyncReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A38FBF55BB93FA47B5E0FB2 /* SyncReducer.swift */; };
 		3642CAA1416E7E99CD127435 /* FlexibleDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1537182453B34751A655E02B /* FlexibleDecoding.swift */; };
+		3861B5EC60126E965FBE28AF /* Scope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219CA5C95B319426FA101A45 /* Scope.swift */; };
 		3D9DF648EA9A0CB323304BE2 /* SQLiteStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAA172BDC79C4CBC205E802A /* SQLiteStoreTests.swift */; };
 		3E2F40E7D0B1CD44901454BA /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F24CC7666AB8E8617D918C1 /* AppModel.swift */; };
 		3EEE9746D056BCCFE5DFF7A3 /* InlineAttributedString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05445DDCFDEC1AEDBBD52FF2 /* InlineAttributedString.swift */; };
@@ -50,6 +51,7 @@
 		713250803A20F82A4D87A671 /* Tree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E4AF08906F26C6AFA1053E /* Tree.swift */; };
 		7319025DADA60D6658EAA0AB /* BlockDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9614AF41E4EAA3E6543C1778 /* BlockDrop.swift */; };
 		74DA55791FDC4668604AA950 /* NonTextBlocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */; };
+		7CEDFDCA1D780F3C3E63966A /* ScopeMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9108AB8DDCF98E30FF1B218 /* ScopeMenu.swift */; };
 		81F10BAE45F5D5A42AF1BAD2 /* FlexibleDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1537182453B34751A655E02B /* FlexibleDecoding.swift */; };
 		825F18E7F6950D849E43F10B /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CE807CA5595FD32F69BC7F /* Logging.swift */; };
 		8272528FEE36D191A5565814 /* TreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877451F13058A9A35EBC1BE6 /* TreeTests.swift */; };
@@ -64,6 +66,7 @@
 		91DCDBA36109EC91DBE16D1E /* RichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1453B0B437427892BFA595 /* RichText.swift */; };
 		937E1967DD5924A4E12B4C19 /* Folders.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDC3E1DEB42D59731DDD1C3 /* Folders.swift */; };
 		96FD231E741DBDF2A4954467 /* Automation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFDF0C6E1756ADAF3EC4466F /* Automation.swift */; };
+		974640B4DFF7EAB2A4A80EDF /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 441C2FFE29369E8B2BB86075 /* APIModels.swift */; };
 		9AD4F5FB98F13921D83B5D71 /* KeychainAndAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */; };
 		9BBE1FABAFFAE0EFE0996408 /* reference-outputs.json in Resources */ = {isa = PBXBuildFile; fileRef = 9D17CE53B422079DD74B262C /* reference-outputs.json */; };
 		9DFC7AB2E11A3388FAD057E8 /* FoleviFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56CB70FC209619CF7304013 /* FoleviFont.swift */; };
@@ -85,6 +88,8 @@
 		CD19AECFC8FC263DE65F9CB0 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F59E49485426A3BD1B95BBA2 /* Localizable.xcstrings */; };
 		CE7AC193968D91C617574153 /* ConvexMobile in Frameworks */ = {isa = PBXBuildFile; productRef = F044F3544B6292154DF27C05 /* ConvexMobile */; };
 		CF4980E09A02B11003D3322C /* HTMLExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8944B20D5C21961BDA9306 /* HTMLExport.swift */; };
+		D06F7B794C5E0BF66B96D022 /* Scope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219CA5C95B319426FA101A45 /* Scope.swift */; };
+		D295D06F48E030A9069B4852 /* ScopeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59B07ABD605CC17525A83B8B /* ScopeTests.swift */; };
 		D71AC08E27E4ACE8790C1554 /* Surfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A90A0994B97E70A8FE249 /* Surfaces.swift */; };
 		D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 928BED4D96939AEFA7D64C3E /* Rank.swift */; };
 		D9A1F77CA7E8AA32318A35BF /* FoleviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 190C86CC285A3AF163AA972F /* FoleviApp.swift */; };
@@ -130,6 +135,7 @@
 		160F2F7A5055D14E027F9A6D /* SheetPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetPalette.swift; sourceTree = "<group>"; };
 		190C86CC285A3AF163AA972F /* FoleviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviApp.swift; sourceTree = "<group>"; };
 		20F406F4BC175F6055EDF933 /* TabStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStrip.swift; sourceTree = "<group>"; };
+		219CA5C95B319426FA101A45 /* Scope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scope.swift; sourceTree = "<group>"; };
 		22AEE9F0D974540815E971F6 /* CommandPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalette.swift; sourceTree = "<group>"; };
 		232119F7184516D1E495B084 /* BlockDropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockDropTests.swift; sourceTree = "<group>"; };
 		254FC1B4800C33B010EDCF13 /* AiViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiViews.swift; sourceTree = "<group>"; };
@@ -156,6 +162,7 @@
 		52B399E09AF317C32247BECF /* FoleviUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		52E4AF08906F26C6AFA1053E /* Tree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tree.swift; sourceTree = "<group>"; };
 		54868339AEA485B6D950B340 /* FoleviTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviTokens.swift; sourceTree = "<group>"; };
+		59B07ABD605CC17525A83B8B /* ScopeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScopeTests.swift; sourceTree = "<group>"; };
 		604CAFE235326740449F3E17 /* BlockRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockRowView.swift; sourceTree = "<group>"; };
 		60A28DF80BC79635F16750DC /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
 		61BCF01EE647069EAA3AE52C /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
@@ -186,6 +193,7 @@
 		C56CB70FC209619CF7304013 /* FoleviFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviFont.swift; sourceTree = "<group>"; };
 		C6BF1B7B39DD24E84C6B8C6B /* Folevi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Folevi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C79F8DBDD8CC37789B62517B /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		C9108AB8DDCF98E30FF1B218 /* ScopeMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScopeMenu.swift; sourceTree = "<group>"; };
 		CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Whiteboard.swift; sourceTree = "<group>"; };
 		CACD826A2F5AD954969F8FF4 /* FoleviTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Templates.swift; sourceTree = "<group>"; };
@@ -234,6 +242,7 @@
 				09123928534E4B78174DD3E7 /* Markdown.swift */,
 				928BED4D96939AEFA7D64C3E /* Rank.swift */,
 				EA1453B0B437427892BFA595 /* RichText.swift */,
+				219CA5C95B319426FA101A45 /* Scope.swift */,
 				E32AF325017C6C9685ED4A98 /* TasksAndSearch.swift */,
 				52E4AF08906F26C6AFA1053E /* Tree.swift */,
 				51F373F3397161B4614F1000 /* ULID.swift */,
@@ -385,6 +394,7 @@
 				34A8AC653BEA99A6ADBA7EFB /* HomeDashboardView.swift */,
 				EADA41A31CED9F9D59E60E8A /* MainWindowView.swift */,
 				108029BC222AB2486B986775 /* NoteSidebar.swift */,
+				C9108AB8DDCF98E30FF1B218 /* ScopeMenu.swift */,
 				305D3469EDCEC13E6E97EAE8 /* SidebarView.swift */,
 				20F406F4BC175F6055EDF933 /* TabStrip.swift */,
 				D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */,
@@ -513,6 +523,7 @@
 				66276978D567D1DACA453D03 /* KeychainAndAuthTests.swift */,
 				2ACBAB1371653FF027D7F2FD /* MarkdownTests.swift */,
 				DFAE0742A02D411799235409 /* RankTests.swift */,
+				59B07ABD605CC17525A83B8B /* ScopeTests.swift */,
 				EAA172BDC79C4CBC205E802A /* SQLiteStoreTests.swift */,
 				8687F771CF0B4E201557BA19 /* SyncScenarioTests.swift */,
 				FA53900F854C513CC2D7695A /* TestSupport.swift */,
@@ -666,6 +677,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				974640B4DFF7EAB2A4A80EDF /* APIModels.swift in Sources */,
 				B93D1674ED59DBFB4A9CEDDF /* AuthCallback.swift in Sources */,
 				07776219DE53B36CEE9EF4D8 /* BlockDrop.swift in Sources */,
 				EE3FEE9F66CEA14595C95B9E /* BlockDropTests.swift in Sources */,
@@ -685,6 +697,8 @@
 				91DCDBA36109EC91DBE16D1E /* RichText.swift in Sources */,
 				19AF1600E120AABD6D152C38 /* SQLiteStore.swift in Sources */,
 				3D9DF648EA9A0CB323304BE2 /* SQLiteStoreTests.swift in Sources */,
+				D06F7B794C5E0BF66B96D022 /* Scope.swift in Sources */,
+				D295D06F48E030A9069B4852 /* ScopeTests.swift in Sources */,
 				EF930C5D23D821C387904129 /* SyncReducer.swift in Sources */,
 				14DA214364C4CC1A61AF5561 /* SyncScenarioTests.swift in Sources */,
 				62E372AAE10CBD27824373E8 /* TasksAndSearch.swift in Sources */,
@@ -749,6 +763,8 @@
 				8E9E7251154AF98B5ECB2103 /* Repositories.swift in Sources */,
 				EE9EF0B72AEA3430B9B61776 /* RichText.swift in Sources */,
 				70DB7DB4170ED10813FE68EF /* SQLiteStore.swift in Sources */,
+				3861B5EC60126E965FBE28AF /* Scope.swift in Sources */,
+				7CEDFDCA1D780F3C3E63966A /* ScopeMenu.swift in Sources */,
 				083E6CBC635BDDA358344BE3 /* SettingsView.swift in Sources */,
 				E3DDF988DD6B4739BC842433 /* SheetPalette.swift in Sources */,
 				F2F3CC2B3BDB6B92261BFB14 /* SidebarView.swift in Sources */,

@@ -95,6 +95,7 @@ struct MainWindowView: View {
         .sheet(isPresented: $nav.showHistory) {
             if let id = nav.openDocumentId { VersionHistorySheet(documentId: id).environment(app) }
         }
+        .onChange(of: app.scope, initial: true) { old, new in nav.enterScope(new.key, goHome: old != new) }
         .onReceive(NotificationCenter.default.publisher(for: .foleviOpenDocument)) { note in
             guard let id = note.userInfo?["documentId"] as? String, NSApp.keyWindow?.isMainWindow == true || editor == nil else { return }
             nav.open(id)
@@ -148,7 +149,7 @@ struct MainWindowView: View {
 
     private var windowTitle: String {
         if let editor { return editor.document?.displayTitle ?? String(localized: "Untitled") }
-        return app.workspace?.name ?? "Folevi"
+        return app.scopeName
     }
 
     @ViewBuilder private var detail: some View {
@@ -375,7 +376,7 @@ struct SharedWithMeView: View {
                                         .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(d.title.isEmpty ? String(localized: "Untitled") : d.title).font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading)
-                                        Text("\(d.sharedBy) · \(d.workspaceName)").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
+                                        Text(d.workspaceName.map { "\(d.sharedBy) · \($0)" } ?? d.sharedBy).font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
                                     }
                                     Spacer()
                                     Chip(text: d.role.capitalized, tint: FoleviColor.accentSoftInk, fill: FoleviColor.accentSoft)

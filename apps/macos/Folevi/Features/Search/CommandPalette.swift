@@ -194,7 +194,7 @@ struct CommandPalette: View {
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else { return }
-            let hits = (try? await session.search.search(workspaceId: session.workspaceId, query: q)) ?? []
+            let hits = (try? await session.search.search(scope: session.scope, query: q)) ?? []
             guard !Task.isCancelled else { return }
             searching = false
             if !hits.isEmpty {

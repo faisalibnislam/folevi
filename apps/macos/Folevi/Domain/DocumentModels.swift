@@ -6,7 +6,10 @@ public let defaultDocumentCover = DocumentCover(kind: .none)
 /// Server document summary (convex/lib/documents.ts `toSummary`), also used for locally created documents.
 public struct DocumentSummary: Codable, Sendable, Hashable, Identifiable {
     public var id: String
+    /// The page's workspace, or "" for a Personal page (the server sends null).
     public var workspaceId: String
+    /// The owner of a Personal page; nil for workspace pages.
+    public var ownerProfileId: String?
     public var parentDocumentId: String?
     public var folderId: String?
     public var kind: DocumentKind
@@ -37,13 +40,14 @@ public struct DocumentSummary: Codable, Sendable, Hashable, Identifiable {
         public var color: String
     }
 
-    public init(id: String, workspaceId: String, parentDocumentId: String? = nil, folderId: String? = nil, kind: DocumentKind = .document,
+    public init(id: String, workspaceId: String, ownerProfileId: String? = nil, parentDocumentId: String? = nil, folderId: String? = nil, kind: DocumentKind = .document,
                 title: String, icon: String? = nil, cover: DocumentCover = defaultDocumentCover, style: DocumentStyle = defaultDocumentStyle,
                 dailyDate: String? = nil, rank: String = "V", createdAt: Double, updatedAt: Double, createdBy: String = "",
                 archivedAt: Double? = nil, deletedAt: Double? = nil, revision: Int = 0, titleRev: Int = 0, seq: Double = 0,
                 excerpt: String = "", wordCount: Int = 0, blockCount: Int = 0) {
         self.id = id
         self.workspaceId = workspaceId
+        self.ownerProfileId = ownerProfileId
         self.parentDocumentId = parentDocumentId
         self.folderId = folderId
         self.kind = kind
@@ -67,7 +71,7 @@ public struct DocumentSummary: Codable, Sendable, Hashable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, workspaceId, parentDocumentId, folderId, kind, title, icon, cover, style, dailyDate, rank, createdAt, updatedAt,
+        case id, workspaceId, ownerProfileId, parentDocumentId, folderId, kind, title, icon, cover, style, dailyDate, rank, createdAt, updatedAt,
              createdBy, archivedAt, deletedAt, revision, titleRev, seq, excerpt, wordCount, blockCount, starred, tags
     }
 
@@ -75,6 +79,7 @@ public struct DocumentSummary: Codable, Sendable, Hashable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
         workspaceId = try c.decodeIfPresent(String.self, forKey: .workspaceId) ?? ""
+        ownerProfileId = try c.decodeIfPresent(String.self, forKey: .ownerProfileId)
         parentDocumentId = try c.decodeIfPresent(String.self, forKey: .parentDocumentId)
         folderId = try c.decodeIfPresent(String.self, forKey: .folderId)
         kind = (try? c.decode(DocumentKind.self, forKey: .kind)) ?? .document
@@ -120,10 +125,15 @@ public struct WireDocumentCreate: Codable, Sendable, Hashable {
     public var cover: DocumentCover?
     public var dailyDate: String?
     public var templateId: String?
+    /// Where a top-level page is created (a nested page always lives in its parent's scope). Stamped when
+    /// the op is queued, so switching scope before it syncs can't move it.
+    public var scope: Scope?
 
     public init(id: String, parentDocumentId: String? = nil, folderId: String? = nil, kind: DocumentKind = .document, title: String,
-                icon: String? = nil, style: DocumentStyle? = nil, cover: DocumentCover? = nil, dailyDate: String? = nil, templateId: String? = nil) {
+                icon: String? = nil, style: DocumentStyle? = nil, cover: DocumentCover? = nil, dailyDate: String? = nil, templateId: String? = nil,
+                scope: Scope? = nil) {
         self.id = id
+        self.scope = scope
         self.parentDocumentId = parentDocumentId
         self.folderId = folderId
         self.kind = kind
@@ -135,7 +145,7 @@ public struct WireDocumentCreate: Codable, Sendable, Hashable {
         self.templateId = templateId
     }
 
-    enum CodingKeys: String, CodingKey { case id, parentDocumentId, folderId, kind, title, icon, style, cover, dailyDate, templateId }
+    enum CodingKeys: String, CodingKey { case id, parentDocumentId, folderId, kind, title, icon, style, cover, dailyDate, templateId, scope }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -149,6 +159,7 @@ public struct WireDocumentCreate: Codable, Sendable, Hashable {
         try c.encodeIfPresent(cover, forKey: .cover)
         try c.encodeIfPresent(dailyDate, forKey: .dailyDate)
         try c.encodeIfPresent(templateId, forKey: .templateId)
+        try c.encodeIfPresent(scope, forKey: .scope)
     }
 }
 

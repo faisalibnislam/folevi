@@ -2,10 +2,11 @@ import AppKit
 import Observation
 import SwiftUI
 
-/// Everything that exists only while someone is signed in to a workspace.
+/// Everything that exists only while someone is signed in, for the scope they have open (Personal or a
+/// team workspace). Switching scope builds a new context over the same local library and op queue.
 final class SessionContext: Sendable {
     let profileId: String
-    let workspaceId: String
+    let scope: Scope
     let store: SQLiteStore
     let engine: SyncEngine
     let account: AccountRepository
@@ -16,9 +17,9 @@ final class SessionContext: Sendable {
     let files: FilesRepository
     let convex: ConvexService
 
-    init(profileId: String, workspaceId: String, store: SQLiteStore, engine: SyncEngine, convex: ConvexService, files: FilesRepository) {
+    init(profileId: String, scope: Scope, store: SQLiteStore, engine: SyncEngine, convex: ConvexService, files: FilesRepository) {
         self.profileId = profileId
-        self.workspaceId = workspaceId
+        self.scope = scope
         self.store = store
         self.engine = engine
         self.files = files
@@ -69,7 +70,10 @@ final class AppModel {
 
     var phase: Phase = .launching
     var profile: Profile?
+    /// The team workspace that's open; nil in Personal.
     var workspace: WorkspaceInfo?
+    /// The team workspaces you belong to (Personal is never one of them).
+    var workspaces: [WorkspaceInfo] = []
     var session: SessionContext?
     var isAuthenticatedOnline = false
     var sync = SyncSnapshot()
@@ -82,6 +86,7 @@ final class AppModel {
     var showCommandPalette = false
     var showHelp = false
     var showImporter = false
+    var showNewWorkspace = false
     /// A document to open once the main window appears (onboarding, notifications, launch arguments).
     var pendingOpenDocumentId: String?
     var signInError: String?
@@ -172,7 +177,7 @@ final class AppModel {
         if authProvider.restoreSavedMode() {
             // Offline-first: open the last session from the local cache immediately, then authenticate.
             if let cached = await cachedSession() {
-                await openSession(profile: cached.profile, workspace: cached.workspace, authenticated: false)
+                await openSession(profile: cached.profile, scope: cached.scope, workspaces: cached.workspaces, authenticated: false)
                 phase = .ready
                 Task { await self.authenticateInBackground() }
                 return
@@ -194,16 +199,24 @@ final class AppModel {
 
     private struct CachedSession {
         var profile: Profile
-        var workspace: WorkspaceInfo
+        var scope: Scope
+        var workspaces: [WorkspaceInfo]
     }
 
     private func cachedSession() async -> CachedSession? {
         guard let id = UserDefaults.standard.string(forKey: "lastProfileId"),
               let store = try? SQLiteStore(url: SQLiteStore.defaultURL(account: id)),
-              let profile = try? await store.codable(Profile.self, forKey: "profile"),
-              let workspace = try? await store.codable(WorkspaceInfo.self, forKey: "workspace") else { return nil }
+              let profile = try? await store.codable(Profile.self, forKey: "profile") else { return nil }
+        let workspaces = (try? await store.codable([WorkspaceInfo].self, forKey: "workspaces")) ?? []
         await store.close()
-        return CachedSession(profile: profile, workspace: workspace)
+        return CachedSession(profile: profile, scope: rememberedScope(profileId: profile.id, workspaces: workspaces), workspaces: workspaces)
+    }
+
+    /// The scope last open for this person, when it still exists; Personal otherwise.
+    private func rememberedScope(profileId: String, workspaces: [WorkspaceInfo]) -> Scope {
+        let scope = Scope(key: UserDefaults.standard.string(forKey: "lastScope.\(profileId)") ?? "personal")
+        guard let id = scope.workspaceId else { return .personal }
+        return workspaces.contains { $0.id == id } ? scope : .personal
     }
 
     private func authenticateInBackground() async {
@@ -288,15 +301,15 @@ final class AppModel {
                 guard let profile = me.profile else { throw FoleviError.invalidResponse("profile") }
                 self.profile = profile
                 isAuthenticatedOnline = true
+                let workspaces = try await account.workspaces()
                 if session == nil || session?.profileId != profile.id {
-                    let workspaces = try await account.workspaces()
-                    guard let ws = workspaces.first(where: { $0.id == profile.defaultWorkspaceId }) ?? workspaces.first else {
-                        throw FoleviError.invalidResponse("workspace")
-                    }
-                    await openSession(profile: profile, workspace: ws, authenticated: true)
+                    await openSession(profile: profile, scope: rememberedScope(profileId: profile.id, workspaces: workspaces),
+                                      workspaces: workspaces, authenticated: true)
                 } else {
                     await session?.engine.setAuthReady(true)
                     if let store = session?.store { try? await store.setCodable(profile, forKey: "profile") }
+                    await applyWorkspaces(workspaces)
+                    startSidebarWatch()
                 }
                 phase = profile.onboardingStep == "done" ? .ready : .onboarding
                 startAccountWatch()
@@ -314,7 +327,7 @@ final class AppModel {
             let mapped = ConvexService.mapError(error)
             Log.auth.error("route after auth failed: \(mapped.code, privacy: .public)")
             if mapped.isNetwork, let cached = await cachedSession() {
-                if session == nil { await openSession(profile: cached.profile, workspace: cached.workspace, authenticated: false) }
+                if session == nil { await openSession(profile: cached.profile, scope: cached.scope, workspaces: cached.workspaces, authenticated: false) }
                 phase = .ready
                 scheduleAuthRetry()
             } else if silent, session != nil {
@@ -339,6 +352,7 @@ final class AppModel {
         session = nil
         profile = nil
         workspace = nil
+        workspaces = []
         documents = []
         isAuthenticatedOnline = false
         phase = .signedOut(message)
@@ -346,20 +360,23 @@ final class AppModel {
 
     // MARK: Session
 
-    func openSession(profile: Profile, workspace: WorkspaceInfo, authenticated: Bool) async {
+    func openSession(profile: Profile, scope: Scope, workspaces: [WorkspaceInfo], authenticated: Bool) async {
         guard let convex else { return }
         do {
             let store = try SQLiteStore(url: SQLiteStore.defaultURL(account: profile.id))
             try await store.setCodable(profile, forKey: "profile")
-            try await store.setCodable(workspace, forKey: "workspace")
+            try await store.setCodable(workspaces, forKey: "workspaces")
             UserDefaults.standard.set(profile.id, forKey: "lastProfileId")
+            UserDefaults.standard.set(scope.key, forKey: "lastScope.\(profile.id)")
             let files = FilesRepository(convex: convex, store: store)
-            let engine = SyncEngine(store: store, convex: convex, files: files, monitor: monitor, workspaceId: workspace.id, deviceId: DeviceIdentity.deviceId)
-            let context = SessionContext(profileId: profile.id, workspaceId: workspace.id, store: store, engine: engine, convex: convex, files: files)
+            let engine = SyncEngine(store: store, convex: convex, files: files, monitor: monitor, scope: scope, profileId: profile.id,
+                                    deviceId: DeviceIdentity.deviceId)
+            let context = SessionContext(profileId: profile.id, scope: scope, store: store, engine: engine, convex: convex, files: files)
             self.profile = profile
-            self.workspace = workspace
+            self.workspaces = workspaces
+            self.workspace = scope.workspaceId.flatMap { id in workspaces.first { $0.id == id } }
             self.session = context
-            if let cachedSidebar = try? await store.codable(SidebarData.self, forKey: "sidebar") { sidebar = cachedSidebar }
+            sidebar = (try? await store.codable(SidebarData.self, forKey: sidebarCacheKey(context))) ?? SidebarData(folders: [], tags: [])
             await engine.start(forcedOffline: LaunchOptions.forceOffline) { [weak self] in
                 await self?.refreshAuthForSync() ?? false
             }
@@ -375,6 +392,64 @@ final class AppModel {
             Log.store.error("open session failed: \(String(describing: error), privacy: .public)")
             phase = .signedOut(String(localized: "Folevi couldn't open its local library on this Mac."))
         }
+    }
+
+    private func sidebarCacheKey(_ session: SessionContext) -> String {
+        "sidebar.\(session.scope.storeKey(profileId: session.profileId))"
+    }
+
+    // MARK: Scope (Personal or a team workspace)
+
+    /// Where new pages, lists, search and AI go right now.
+    var scope: Scope { session?.scope ?? .personal }
+
+    /// "Personal" or the open workspace's name.
+    var scopeName: String { workspace?.name ?? String(localized: "Personal") }
+
+    /// Whether you can add and edit pages here (members with view or comment access can't).
+    var canEditHere: Bool { workspace?.canEdit ?? true }
+
+    /// Opens another scope: the same local library and op queue, a new engine for its pages and cursor.
+    /// Queued page creations keep the scope they were stamped with, so nothing moves.
+    func switchScope(_ scope: Scope) async {
+        guard let session, let profile, scope != session.scope else { return }
+        sidebarTask?.cancel()
+        sidebarTask = nil
+        eventTask?.cancel()
+        eventTask = nil
+        await session.engine.flushNow()
+        await session.engine.stop()
+        documents = []
+        await openSession(profile: profile, scope: scope, workspaces: workspaces, authenticated: isAuthenticatedOnline)
+        NotificationCenter.default.post(name: .foleviScopeChanged, object: nil)
+    }
+
+    /// Takes a fresh workspaces list; leaves a workspace that's gone (removed, deleted) for Personal.
+    func applyWorkspaces(_ list: [WorkspaceInfo]) async {
+        workspaces = list
+        if let session { try? await session.store.setCodable(list, forKey: "workspaces") }
+        guard let id = scope.workspaceId else { return }
+        if let current = list.first(where: { $0.id == id }) {
+            workspace = current
+        } else {
+            await switchScope(.personal)
+            showToast(String(localized: "That workspace isn't available anymore. You're in Personal."))
+        }
+    }
+
+    /// Creates a team workspace and opens it.
+    func createWorkspace(name: String) async throws {
+        guard let session else { return }
+        let id = try await session.account.createWorkspace(name: name)
+        let list = try await session.account.workspaces()
+        workspaces = list
+        try? await session.store.setCodable(list, forKey: "workspaces")
+        await switchScope(.workspace(id))
+    }
+
+    func refreshWorkspaces() async {
+        guard let session, let list = try? await session.account.workspaces() else { return }
+        await applyWorkspaces(list)
     }
 
     private func refreshAuthForSync() async -> Bool {
@@ -437,13 +512,15 @@ final class AppModel {
         guard let session, sidebarTask == nil else { return }
         let org = session.organization
         let store = session.store
-        let workspaceId = session.workspaceId
+        let scope = session.scope
+        let cacheKey = sidebarCacheKey(session)
         sidebarTask = Task { [weak self] in
             while !Task.isCancelled {
                 do {
-                    for try await data in org.sidebarUpdates(workspaceId: workspaceId) {
+                    for try await data in org.sidebarUpdates(scope: scope) {
+                        guard self?.session?.scope == scope else { return }
                         self?.sidebar = data
-                        try? await store.setCodable(data, forKey: "sidebar")
+                        try? await store.setCodable(data, forKey: cacheKey)
                     }
                 } catch {
                     Log.remote.error("sidebar subscription ended")
@@ -467,17 +544,18 @@ final class AppModel {
 
     // MARK: Onboarding
 
-    func completeOnboarding(step: String, workspaceName: String? = nil, appearance: String? = nil) async throws {
+    func completeOnboarding(_ choice: OnboardingStepChoice) async throws {
         guard let session else { return }
-        try await session.account.completeOnboarding(step: step, workspaceName: workspaceName, appearance: appearance)
-        if step == "welcome" {
+        try await session.account.completeOnboarding(choice)
+        if let ai = choice.aiEnabled { profile?.aiEnabled = ai }
+        if let ids = choice.useCases { profile?.onboardingUseCases = Array(Set((profile?.onboardingUseCases ?? []) + ids)) }
+        if choice.step == "welcome" {
             profile?.onboardingStep = "done"
-            if let p = profile { try? await session.store.setCodable(p, forKey: "profile") }
             phase = .ready
-        } else if step == "workspace", let name = workspaceName {
-            workspace?.name = name
-            if let w = workspace { try? await session.store.setCodable(w, forKey: "workspace") }
+            // A new account's first pages are in Personal.
+            if !scope.isPersonal { await switchScope(.personal) }
         }
+        if let p = profile { try? await self.session?.store.setCodable(p, forKey: "profile") }
     }
 
     // MARK: Documents
@@ -497,9 +575,14 @@ final class AppModel {
         guard let session, let profile else { return nil }
         let id = explicitId ?? ULID.make()
         let now = Date().timeIntervalSince1970 * 1000
-        let create = WireDocumentCreate(id: id, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind, title: title, icon: icon, dailyDate: dailyDate)
-        let summary = DocumentSummary(id: id, workspaceId: session.workspaceId, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind,
-                                      title: title, icon: icon, dailyDate: dailyDate, createdAt: now, updatedAt: now, createdBy: profile.id)
+        // A nested page lives in its parent's scope; a top-level one is stamped with the scope open now.
+        let parent = parentDocumentId.flatMap { document($0) }
+        let create = WireDocumentCreate(id: id, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind, title: title, icon: icon,
+                                        dailyDate: dailyDate, scope: parentDocumentId == nil ? session.scope : nil)
+        let workspaceId = parent?.workspaceId ?? session.scope.workspaceId ?? ""
+        let owner = parent.map { $0.ownerProfileId } ?? (session.scope.isPersonal ? profile.id : nil)
+        let summary = DocumentSummary(id: id, workspaceId: workspaceId, ownerProfileId: owner, parentDocumentId: parentDocumentId, folderId: folderId,
+                                      kind: kind, title: title, icon: icon, dailyDate: dailyDate, createdAt: now, updatedAt: now, createdBy: profile.id)
         let initial = blocks ?? [WireBlock(id: ULID.make(), type: "paragraph", parentId: nil, rank: "V")]
         await session.engine.createDocument(create, summary: summary, blocks: initial)
         return id
@@ -509,12 +592,12 @@ final class AppModel {
     /// offline — converges on the same page: created locally when missing, restored from the Trash
     /// when it was deleted (the server does the same).
     func inboxDocumentId() async -> String? {
-        guard let profile, let workspace else { return nil }
-        let id = InboxPage.documentId(profileId: profile.id, workspaceId: workspace.id)
+        guard let profile, let session else { return nil }
+        let id = InboxPage.documentId(profileId: profile.id, scopeKey: session.scope.key)
         var existing = document(id)
-        if existing == nil { existing = await session?.engine.document(id) }
+        if existing == nil { existing = await session.engine.document(id) }
         if let existing {
-            if existing.deletedAt != nil, sync.isOnline, let session {
+            if existing.deletedAt != nil, sync.isOnline {
                 try? await session.documents.restoreFromTrash(id)
             }
             return id
@@ -561,6 +644,8 @@ final class AppModel {
 extension Notification.Name {
     static let foleviAcknowledged = Notification.Name("FoleviAcknowledged")
     static let foleviOpenDocument = Notification.Name("FoleviOpenDocument")
+    /// Personal ↔ workspace: windows go back to Home.
+    static let foleviScopeChanged = Notification.Name("FoleviScopeChanged")
 }
 
 extension Double {

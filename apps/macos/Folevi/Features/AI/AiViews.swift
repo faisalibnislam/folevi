@@ -232,7 +232,7 @@ struct AskAiPanel: View {
             defer { busy = false }
             do {
                 var args: [String: JSONValue] = [
-                    "workspaceId": .string(session.workspaceId), "question": .string(q), "history": .array(Array(history)),
+                    "scope": session.scope.arg, "question": .string(q), "history": .array(Array(history)),
                 ]
                 if let documentId { args["documentId"] = .string(documentId) }
                 let answer: AiAnswer = try await session.convex.action("ai:ask", args, timeout: 90)
@@ -327,7 +327,7 @@ struct CatchUpView: View {
             defer { busy = false }
             do {
                 result = try await session.convex.action("ai:brief", [
-                    "workspaceId": .string(session.workspaceId), "today": .string(TaskLogic.localDate()),
+                    "scope": session.scope.arg, "today": .string(TaskLogic.localDate()),
                 ], timeout: 90)
             } catch {
                 self.error = ConvexService.mapError(error).localizedDescription

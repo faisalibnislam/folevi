@@ -60,18 +60,15 @@ final class FoleviUITests: XCTestCase {
         app.launchArguments += extraArgs
         app.launch()
         let library = element("sidebar.all")
-        let onboarding = element("onboarding.workspace")
+        let skipSetup = element("onboarding.skipAll")
         let deadline = Date().addingTimeInterval(40)
         while Date() < deadline {
             if library.exists { return }
-            if onboarding.exists {
-                onboarding.click()
-                onboarding.typeText("UI Test Folio")
-                element("onboarding.continue").click()
-                _ = element("onboarding.continue").waitForExistence(timeout: 5)
-                element("onboarding.continue").click()
-                _ = element("onboarding.continue").waitForExistence(timeout: 5)
-                element("onboarding.continue").click()
+            if skipSetup.exists {
+                // "Skip setup" jumps to the summary; its button opens the Welcome page.
+                skipSetup.click()
+                Thread.sleep(forTimeInterval: 1)
+                if element("onboarding.continue").waitForExistence(timeout: 5) { element("onboarding.continue").click() }
             }
             Thread.sleep(forTimeInterval: 0.5)
         }

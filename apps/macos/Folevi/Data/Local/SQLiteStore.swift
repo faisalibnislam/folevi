@@ -232,14 +232,15 @@ public actor SQLiteStore {
                 try SQLiteStore.run(db, """
                     INSERT INTO documents(id, workspace_id, json, updated_at) VALUES(?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET workspace_id = excluded.workspace_id, json = excluded.json, updated_at = excluded.updated_at
-                    """, [.text(d.id), .text(d.workspaceId), .text(try json(d)), .double(d.updatedAt)])
+                    """, [.text(d.id), .text(d.storeKey), .text(try json(d)), .double(d.updatedAt)])
             }
         }
     }
 
-    public func documents(workspaceId: String) throws -> [DocumentSummary] {
+    /// The pages filed under a scope's store key (`Scope.storeKey`, `DocumentSummary.storeKey`).
+    public func documents(storeKey: String) throws -> [DocumentSummary] {
         var out: [DocumentSummary] = []
-        try SQLiteStore.query(try handle(), "SELECT json FROM documents WHERE workspace_id = ? ORDER BY updated_at DESC", [.text(workspaceId)]) { stmt in
+        try SQLiteStore.query(try handle(), "SELECT json FROM documents WHERE workspace_id = ? ORDER BY updated_at DESC", [.text(storeKey)]) { stmt in
             if let s = SQLiteStore.text(stmt, 0), let d = try? decoder.decode(DocumentSummary.self, from: Data(s.utf8)) { out.append(d) }
         }
         return out
@@ -337,12 +338,13 @@ public actor SQLiteStore {
 
     // MARK: - Cursor
 
-    public func cursor(workspaceId: String) throws -> Double {
-        Double(try value(forKey: "cursor.\(workspaceId)") ?? "0") ?? 0
+    /// The pull cursor for a scope (`Scope.storeKey`). Each scope has its own change counter.
+    public func cursor(scopeKey: String) throws -> Double {
+        Double(try value(forKey: "cursor.\(scopeKey)") ?? "0") ?? 0
     }
 
-    public func setCursor(_ cursor: Double, workspaceId: String) throws {
-        try setValue(JSONValue.formatNumber(cursor), forKey: "cursor.\(workspaceId)")
+    public func setCursor(_ cursor: Double, scopeKey: String) throws {
+        try setValue(JSONValue.formatNumber(cursor), forKey: "cursor.\(scopeKey)")
     }
 
     // MARK: - Attachment cache

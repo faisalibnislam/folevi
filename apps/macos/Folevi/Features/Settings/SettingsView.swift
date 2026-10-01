@@ -31,7 +31,7 @@ struct AccountSettings: View {
                     TextField("Name", text: $name)
                         .onSubmit { save() }
                     LabeledContent("Email", value: profile.email)
-                    LabeledContent("Workspace", value: app.workspace?.name ?? "")
+                    LabeledContent("Space", value: app.scopeName)
                     HStack {
                         Spacer()
                         Button("Save Name") { save() }.disabled(name.isEmpty || name == profile.displayName || !app.sync.isOnline)

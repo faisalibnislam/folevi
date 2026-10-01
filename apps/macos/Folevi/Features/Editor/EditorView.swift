@@ -54,6 +54,9 @@ struct EditorView: View {
         }
         .onChange(of: app.editorScale, initial: true) { _, s in model.drag.indentStep = BlockMetrics.indent(CGFloat(s)) }
         .sheet(item: $model.recordingTarget) { _ in AudioRecorderSheet(model: model).environment(app) }
+        .sheet(isPresented: Binding(get: { model.unsplashAnchor != nil }, set: { if !$0 { model.unsplashAnchor = nil } })) {
+            if let anchor = model.unsplashAnchor { UnsplashSheet(model: model, anchor: anchor).environment(app) }
+        }
         .sheet(isPresented: $model.showLinkPrompt) {
             LinkPromptView(initial: model.linkDraft) { model.applyLink($0) } onCancel: { model.showLinkPrompt = false }
         }
@@ -73,6 +76,7 @@ struct EditorView: View {
                     .frame(maxWidth: .infinity)
             }
             .scrollContentBackground(.hidden)
+            .background { NoteBackdropLayer(model: model) }
             .focusable()
             .focused($containerFocused)
             .focusEffectDisabled()
@@ -121,7 +125,7 @@ struct EditorView: View {
                 ForEach(model.rows) { row in
                     BlockRowView(row: row, model: model, openDocument: openDocument)
                         .id(row.id)
-                        .zIndex(model.popup?.blockId == row.id ? 10 : 0)
+                        .zIndex(model.popup?.blockId == row.id || model.datePick?.blockId == row.id ? 10 : 0)
                 }
                 // Clicking below the last block continues writing.
                 Color.clear

@@ -481,164 +481,39 @@ struct BookmarkBlockView: View {
     }
 }
 
-// MARK: - Collection (read-only table view of rows)
+// MARK: - Page break (formula, whiteboard, collection and Mermaid have their own files)
 
-struct CollectionBlockView: View {
-    let props: CollectionProps
-    var openDocument: (String, Bool) -> Void
-    @Environment(AppModel.self) private var app
-    @State private var data: CollectionData?
-    @State private var failed = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "tablecells").accessibilityHidden(true)
-                Text(data?.name ?? String(localized: "Collection")).font(.ui(14, .semibold))
-                Spacer()
-                Text("Editing the collection's properties is available on the web.")
-                    .font(.ui(11.5)).foregroundStyle(FoleviColor.inkFaint)
-            }
-            if let data {
-                ScrollView(.horizontal) {
-                    Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
-                        GridRow {
-                            header(String(localized: "Name"))
-                            ForEach(data.properties) { p in header(p.name) }
-                        }
-                        ForEach(data.rows) { row in
-                            GridRow {
-                                Button {
-                                    openDocument(row.documentId, NSEvent.modifierFlags.contains(.option))
-                                } label: {
-                                    Text("\(row.icon ?? "📄") \(row.title.isEmpty ? String(localized: "Untitled") : row.title)")
-                                        .lineLimit(1)
-                                        .foregroundStyle(FoleviColor.ink)
-                                }
-                                .buttonStyle(.plain)
-                                .modifier(CellStyle())
-                                ForEach(data.properties) { p in
-                                    Text(display(row.values[p.id], property: p)).lineLimit(1).modifier(CellStyle())
-                                }
-                            }
-                        }
-                    }
-                    .font(.ui(12))
-                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(FoleviColor.line))
-                }
-            } else if failed {
-                Text("Connect to the internet to load this collection.").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
-            } else {
-                ProgressView().controlSize(.small)
-            }
-        }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).fill(FoleviColor.surfaceRaised))
-        .task(id: props.collectionId) { await load() }
-    }
-
-    private func header(_ text: String) -> some View {
-        Text(text).font(.ui(11, .semibold)).foregroundStyle(FoleviColor.inkMuted)
-            .modifier(CellStyle()).background(FoleviColor.surfaceSunken)
-    }
-
-    private func load() async {
-        guard let session = app.session else { return }
-        do {
-            data = try await session.documents.collection(props.collectionId)
-        } catch {
-            failed = data == nil
-        }
-    }
-
-    private func display(_ value: JSONValue?, property: CollectionData.Property) -> String {
-        guard let value else { return "" }
-        switch value {
-        case .string(let s):
-            if let options = property.options?.arrayValue,
-               let match = options.first(where: { $0["id"]?.stringValue == s }) { return match["name"]?.stringValue ?? s }
-            return s
-        case .number(let n): return JSONValue.formatNumber(n)
-        case .bool(let b): return b ? "✓" : ""
-        case .array(let items):
-            return items.compactMap { item -> String? in
-                if let s = item.stringValue, let options = property.options?.arrayValue,
-                   let match = options.first(where: { $0["id"]?.stringValue == s }) { return match["name"]?.stringValue }
-                return item.stringValue
-            }.joined(separator: ", ")
-        default: return ""
-        }
-    }
-}
-
-struct CellStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .frame(minWidth: 110, alignment: .leading)
-            .overlay(Rectangle().strokeBorder(FoleviColor.line.opacity(0.6), lineWidth: 0.5))
-    }
-}
-
-// MARK: - Page break, formula, whiteboard
-
-/// Where the page splits when printed or exported to PDF (web: a dashed rule with a small label).
+/// Where the page splits when printed or exported to PDF. As on the web: the page ends (a rounded edge
+/// with a soft shadow), a sunken gap with a small caps label, and the next page begins.
 struct PageBreakBlockView: View {
+    var palette: SheetPalette?
+
     var body: some View {
-        HStack(spacing: 10) {
-            dash
-            Text("Page break").font(.ui(11, .medium)).foregroundStyle(FoleviColor.inkFaint)
-            dash
+        let surface = palette?.surface ?? FoleviColor.surface
+        ZStack {
+            Rectangle().fill(FoleviColor.surfaceSunken)
+            VStack(spacing: 0) {
+                UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
+                    .fill(surface)
+                    .frame(height: 14)
+                    .shadow(color: .black.opacity(0.28), radius: 5, y: 4)
+                Spacer(minLength: 0)
+                UnevenRoundedRectangle(topLeadingRadius: 18, topTrailingRadius: 18, style: .continuous)
+                    .fill(surface)
+                    .frame(height: 14)
+                    .shadow(color: .black.opacity(0.28), radius: 5, y: -4)
+            }
+            Text("Page break")
+                .textCase(.uppercase)
+                .font(.ui(10.5, .semibold))
+                .tracking(10.5 * 0.06)
+                .foregroundStyle(palette?.faint ?? FoleviColor.inkFaint)
         }
-        .padding(.vertical, 12)
+        .frame(height: 56)
+        .clipped()
+        .padding(.vertical, 10)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Page break"))
-    }
-
-    private var dash: some View {
-        Line().stroke(FoleviColor.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])).frame(height: 1)
-    }
-
-    private struct Line: Shape {
-        func path(in rect: CGRect) -> Path {
-            Path { p in p.move(to: CGPoint(x: 0, y: rect.midY)); p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY)) }
-        }
-    }
-}
-
-/// A formula, shown as its LaTeX source until the Mac has a math renderer.
-struct FormulaBlockView: View {
-    let props: FormulaProps
-
-    var body: some View {
-        Text(props.latex.isEmpty ? "Empty formula" : props.latex)
-            .font(.mono(14))
-            .foregroundStyle(props.latex.isEmpty ? FoleviColor.inkFaint : FoleviColor.ink)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .padding(.horizontal, 16)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(FoleviColor.codeBg))
-            .accessibilityLabel(Text("Formula: \(props.latex)"))
-    }
-}
-
-/// A whiteboard drawn on the web. Its drawing is kept exactly as it is.
-struct WhiteboardBlockView: View {
-    let props: WhiteboardProps
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "scribble.variable").font(.system(size: 20)).foregroundStyle(FoleviColor.inkMuted)
-                .accessibilityHidden(true)
-            Text("Whiteboard").font(.ui(13, .medium))
-            Text("Open this page on the web to draw on it.").font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: min(max(props.height, 120), 480))
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(FoleviColor.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-        .accessibilityElement(children: .combine)
     }
 }
 

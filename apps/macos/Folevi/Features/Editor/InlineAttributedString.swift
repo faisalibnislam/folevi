@@ -23,10 +23,12 @@ struct TextRenderStyle: Equatable {
     var strikethrough = false
     /// Letter spacing in points (`FoleviTracking` × size).
     var kern: CGFloat = 0
+    /// A block's own alignment (Format → align).
+    var alignment: NSTextAlignment = .natural
 
     static func == (a: TextRenderStyle, b: TextRenderStyle) -> Bool {
         a.font == b.font && a.color == b.color && a.lineSpacing == b.lineSpacing && a.placeholder == b.placeholder
-            && a.strikethrough == b.strikethrough && a.kern == b.kern
+            && a.strikethrough == b.strikethrough && a.kern == b.kern && a.alignment == b.alignment
     }
 }
 
@@ -74,6 +76,7 @@ enum InlineAttributedString {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = style.lineSpacing
         paragraph.paragraphSpacing = style.paragraphSpacing
+        paragraph.alignment = style.alignment
         text.beginEditing()
         text.enumerateAttributes(in: range, options: []) { attrs, r, _ in
             var visual: [NSAttributedString.Key: Any] = [.paragraphStyle: paragraph]

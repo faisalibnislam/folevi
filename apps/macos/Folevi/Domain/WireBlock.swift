@@ -235,10 +235,7 @@ extension BlockContent {
         case "callout": return .callout(CalloutProps(tone: .note, icon: nil))
         case "divider": return .divider(DividerProps())
         case "code": return .code(CodeProps(language: "plaintext", code: ""))
-        case "table":
-            let empty: [InlineNode] = []
-            return .table(TableProps(rows: [[empty, empty], [empty, empty]], headerRow: true))
-        default: return .paragraph(ParagraphProps())
+        default: return InsertCatalog.content(for: type) ?? .paragraph(ParagraphProps())
         }
     }
 }

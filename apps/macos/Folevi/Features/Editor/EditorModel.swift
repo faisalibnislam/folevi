@@ -31,7 +31,7 @@ struct SlashItem: Identifiable, Equatable {
 
     static func == (a: SlashItem, b: SlashItem) -> Bool { a.id == b.id }
 
-    /// The title as a plain string (drag chips, announcements).
+    /// The title as a plain string (drag chips, announcements, ranking): the web's slash menu labels.
     var plainTitle: String {
         switch id {
         case "paragraph": return String(localized: "Text")
@@ -39,45 +39,75 @@ struct SlashItem: Identifiable, Equatable {
         case "heading2": return String(localized: "Heading 2")
         case "heading3": return String(localized: "Heading 3")
         case "todo": return String(localized: "To-do")
-        case "bulleted": return String(localized: "Bulleted List")
-        case "numbered": return String(localized: "Numbered List")
+        case "bulleted": return String(localized: "Bulleted list")
+        case "numbered": return String(localized: "Numbered list")
         case "toggle": return String(localized: "Toggle")
         case "quote": return String(localized: "Quote")
         case "callout": return String(localized: "Callout")
         case "divider": return String(localized: "Divider")
+        case "divider-extralight": return String(localized: "Divider: Extra light")
+        case "divider-light": return String(localized: "Divider: Light")
+        case "divider-regular": return String(localized: "Divider: Regular")
+        case "divider-strong": return String(localized: "Divider: Strong")
+        case "pagebreak": return String(localized: "Page break")
         case "code": return String(localized: "Code")
         case "table": return String(localized: "Table")
+        case "formula": return String(localized: "TeX formula")
+        case "mermaid": return String(localized: "Mermaid diagram")
+        case "whiteboard": return String(localized: "Whiteboard")
         case "image": return String(localized: "Image")
+        case "unsplash": return String(localized: "Image from Unsplash")
         case "file": return String(localized: "File")
-        case "record": return String(localized: "Audio Recording")
-        case "page": return String(localized: "New Page")
-        case "pagelink": return String(localized: "Link to Page")
+        case "record": return String(localized: "Audio recording")
+        case "page": return String(localized: "Page")
+        case "card": return String(localized: "Card")
+        case "pagelink": return String(localized: "Link to page")
         case "bookmark": return String(localized: "Bookmark")
-        default: return String(localized: "Today's Date")
+        case "collection": return String(localized: "Collection")
+        case "gallery": return String(localized: "Gallery")
+        case "board": return String(localized: "Kanban")
+        case "pickdate": return String(localized: "Date…")
+        case "date": return String(localized: "Today’s date")
+        default: return id
         }
     }
 
+    /// The web's slash menu (EditorMenus.tsx `slashItems`): the same items, labels, keywords, hints and order.
     static var all: [SlashItem] { [
-        SlashItem(id: "paragraph", title: "Text", searchText: "text paragraph plain", systemImage: "text.alignleft", shortcut: "⌥⌘0"),
-        SlashItem(id: "heading1", title: "Heading 1", searchText: "heading 1 h1 title", systemImage: "textformat.size.larger", shortcut: "#"),
-        SlashItem(id: "heading2", title: "Heading 2", searchText: "heading 2 h2 subtitle", systemImage: "textformat.size", shortcut: "##"),
-        SlashItem(id: "heading3", title: "Heading 3", searchText: "heading 3 h3", systemImage: "textformat.size.smaller", shortcut: "###"),
-        SlashItem(id: "todo", title: "To-do", searchText: "todo task checkbox check", systemImage: "checkmark.square", shortcut: "[]"),
-        SlashItem(id: "bulleted", title: "Bulleted List", searchText: "bullet bulleted list unordered", systemImage: "list.bullet", shortcut: "-"),
-        SlashItem(id: "numbered", title: "Numbered List", searchText: "numbered ordered list 1.", systemImage: "list.number", shortcut: "1."),
-        SlashItem(id: "toggle", title: "Toggle", searchText: "toggle disclosure collapse", systemImage: "chevron.right.square", shortcut: nil),
-        SlashItem(id: "quote", title: "Quote", searchText: "quote blockquote", systemImage: "text.quote", shortcut: ">"),
-        SlashItem(id: "callout", title: "Callout", searchText: "callout note info warning", systemImage: "exclamationmark.bubble", shortcut: nil),
-        SlashItem(id: "divider", title: "Divider", searchText: "divider line separator rule hr", systemImage: "minus", shortcut: "---"),
-        SlashItem(id: "code", title: "Code", searchText: "code snippet pre", systemImage: "chevron.left.forwardslash.chevron.right", shortcut: "```"),
-        SlashItem(id: "table", title: "Table", searchText: "table grid rows columns", systemImage: "tablecells", shortcut: nil),
-        SlashItem(id: "image", title: "Image", searchText: "image picture photo", systemImage: "photo", shortcut: nil),
-        SlashItem(id: "file", title: "File", searchText: "file attachment pdf", systemImage: "paperclip", shortcut: nil),
-        SlashItem(id: "record", title: "Audio Recording", searchText: "audio record recording voice memo microphone mic sound dictate", systemImage: "mic", shortcut: nil),
-        SlashItem(id: "page", title: "New Page", searchText: "page subpage nested document", systemImage: "doc.badge.plus", shortcut: nil),
-        SlashItem(id: "pagelink", title: "Link to Page", searchText: "link page mention [[", systemImage: "link", shortcut: "[["),
-        SlashItem(id: "bookmark", title: "Bookmark", searchText: "bookmark url web link embed", systemImage: "bookmark", shortcut: nil),
-        SlashItem(id: "date", title: "Today's Date", searchText: "date today", systemImage: "calendar", shortcut: nil),
+        SlashItem(id: "paragraph", title: "Text", searchText: "text paragraph plain", systemImage: "text.alignleft", shortcut: nil),
+        SlashItem(id: "heading1", title: "Heading 1", searchText: "heading title h1 large", systemImage: "textformat.size.larger", shortcut: "#"),
+        SlashItem(id: "heading2", title: "Heading 2", searchText: "heading subtitle h2", systemImage: "textformat.size", shortcut: "##"),
+        SlashItem(id: "heading3", title: "Heading 3", searchText: "heading h3 small", systemImage: "textformat.size.smaller", shortcut: "###"),
+        SlashItem(id: "todo", title: "To-do", searchText: "todo task checklist checkbox", systemImage: "checkmark.square", shortcut: "[]"),
+        SlashItem(id: "bulleted", title: "Bulleted list", searchText: "bullet list unordered", systemImage: "list.bullet", shortcut: "-"),
+        SlashItem(id: "numbered", title: "Numbered list", searchText: "numbered ordered list", systemImage: "list.number", shortcut: "1."),
+        SlashItem(id: "toggle", title: "Toggle", searchText: "toggle disclosure collapse details", systemImage: "chevron.right.square", shortcut: nil),
+        SlashItem(id: "quote", title: "Quote", searchText: "quote blockquote citation", systemImage: "text.quote", shortcut: ">"),
+        SlashItem(id: "callout", title: "Callout", searchText: "callout note info warning tip", systemImage: "note.text", shortcut: nil),
+        SlashItem(id: "code", title: "Code", searchText: "code snippet programming", systemImage: "chevron.left.forwardslash.chevron.right", shortcut: "```"),
+        SlashItem(id: "divider", title: "Divider", searchText: "divider rule separator line", systemImage: "minus", shortcut: "---"),
+        SlashItem(id: "divider-extralight", title: "Divider: Extra light", searchText: "divider rule separator line extra light extralight", systemImage: "minus", shortcut: nil),
+        SlashItem(id: "divider-light", title: "Divider: Light", searchText: "divider rule separator line light light", systemImage: "minus", shortcut: nil),
+        SlashItem(id: "divider-regular", title: "Divider: Regular", searchText: "divider rule separator line regular regular", systemImage: "minus", shortcut: nil),
+        SlashItem(id: "divider-strong", title: "Divider: Strong", searchText: "divider rule separator line strong strong", systemImage: "minus", shortcut: nil),
+        SlashItem(id: "pagebreak", title: "Page break", searchText: "page break print pdf new sheet", systemImage: "rectangle.split.1x2", shortcut: nil),
+        SlashItem(id: "table", title: "Table", searchText: "table grid spreadsheet", systemImage: "tablecells", shortcut: nil),
+        SlashItem(id: "formula", title: "TeX formula", searchText: "formula math latex tex equation katex", systemImage: "sum", shortcut: nil),
+        SlashItem(id: "mermaid", title: "Mermaid diagram", searchText: "mermaid diagram flowchart chart graph sequence", systemImage: "point.3.connected.trianglepath.dotted", shortcut: nil),
+        SlashItem(id: "whiteboard", title: "Whiteboard", searchText: "whiteboard drawing sketch draw pen canvas", systemImage: "pencil.tip", shortcut: nil),
+        SlashItem(id: "page", title: "Page", searchText: "page nested subpage child link", systemImage: "doc.text", shortcut: nil),
+        SlashItem(id: "card", title: "Card", searchText: "card page nested subpage child", systemImage: "rectangle.stack", shortcut: nil),
+        SlashItem(id: "pagelink", title: "Link to page", searchText: "link page reference backlink", systemImage: "link", shortcut: "[["),
+        SlashItem(id: "image", title: "Image", searchText: "image picture photo upload", systemImage: "photo", shortcut: nil),
+        SlashItem(id: "unsplash", title: "Image from Unsplash", searchText: "image picture photo unsplash stock search", systemImage: "photo.badge.plus", shortcut: nil),
+        SlashItem(id: "file", title: "File", searchText: "file attachment upload pdf", systemImage: "paperclip", shortcut: nil),
+        SlashItem(id: "record", title: "Audio recording", searchText: "audio record recording voice memo microphone mic sound dictate", systemImage: "mic", shortcut: nil),
+        SlashItem(id: "bookmark", title: "Bookmark", searchText: "bookmark web link url embed", systemImage: "bookmark", shortcut: nil),
+        SlashItem(id: "collection", title: "Collection", searchText: "collection database table", systemImage: "list.bullet.rectangle", shortcut: nil),
+        SlashItem(id: "gallery", title: "Gallery", searchText: "gallery collection database cards grid", systemImage: "square.grid.2x2", shortcut: nil),
+        SlashItem(id: "board", title: "Kanban", searchText: "kanban board collection database columns", systemImage: "rectangle.split.3x1", shortcut: nil),
+        SlashItem(id: "date", title: "Today’s date", searchText: "date today mention calendar", systemImage: "calendar", shortcut: nil),
+        SlashItem(id: "pickdate", title: "Date…", searchText: "date pick choose calendar day", systemImage: "calendar.badge.plus", shortcut: nil),
     ] }
 }
 
@@ -123,6 +153,10 @@ final class EditorModel {
     var selectedBlockIds: Set<String> = []
     var selectionAnchor: String?
     var popup: PopupState?
+    /// "Date…": the date picker waiting for a pick (EditorInserts.swift).
+    var datePick: DatePickRequest?
+    /// "Image from Unsplash": the block the picked photo goes after, while the picker is open.
+    var unsplashAnchor: String?
     var activeMarks: Set<String> = []
     var findQuery = "" { didSet { updateFind() } }
     var findMatches: [String] = []
@@ -988,7 +1022,7 @@ final class EditorModel {
     func insertBlock(type: String, at placement: BlockDrop.Placement) -> String? {
         guard !isReadOnly else { return nil }
         switch type {
-        case "image", "file", "record", "page", "pagelink", "bookmark", "date":
+        case "image", "file", "record", "page", "pagelink", "bookmark", "date", "card", "collection", "gallery", "board", "pickdate", "unsplash":
             // These need a picker or a text caret: anchor on the block before the drop line.
             let anchor = placement.afterId ?? placement.parentId ?? rows.first?.id
             if let anchor { performSlashOrInsert(type, anchor: anchor) } else { insertBlock(type: type) }
@@ -1199,10 +1233,9 @@ final class EditorModel {
         popup = p
     }
 
+    /// Label matches first, then keyword-only matches (the web's `slashRank`).
     func slashItems(for query: String) -> [SlashItem] {
-        let q = query.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return SlashItem.all }
-        return SlashItem.all.filter { $0.searchText.contains(q) || $0.id.contains(q) }
+        InsertCatalog.filter(SlashItem.all, query: query, label: \.plainTitle, keywords: \.searchText)
     }
 
     func pageChoices(for query: String) -> [PageChoice] {
@@ -1283,19 +1316,14 @@ final class EditorModel {
 
     func performSlash(_ id: String, blockId: String, at location: Int) {
         guard let block = blocks[blockId] else { return }
+        // Plain blocks, sub-pages, collections and "Date…" (EditorInserts.swift).
+        if performCatalogInsert(id, blockId: blockId) { return }
         let isEmpty = RichText.plainText(block.text).trimmingCharacters(in: .whitespaces).isEmpty
         switch id {
         case "image", "file":
             chooseFiles(kind: id, after: blockId, replace: isEmpty && block.typeName == "paragraph")
         case "record":
             recordingTarget = RecordingTarget(blockId: blockId, replace: isEmpty && block.typeName == "paragraph")
-        case "page":
-            Task {
-                guard let newId = await app.createDocument(title: "", parentDocumentId: documentId) else { return }
-                let page = Block(id: ULID.make(), parentId: block.parentId, rank: "V", content: .page(PageProps(documentId: newId, display: .card, titleCache: String(localized: "Untitled"))))
-                insert(page, after: blockId, replacing: isEmpty && block.typeName == "paragraph")
-                openDocumentHandler?(newId, false)
-            }
         case "pagelink":
             if let tv = textView(blockId) {
                 tv.insertText("[[", replacementRange: tv.selectedRange())
@@ -1306,27 +1334,8 @@ final class EditorModel {
             insert(b, after: blockId, replacing: isEmpty && block.typeName == "paragraph")
             pendingBookmarkBlock = b.id
         case "date":
-            if let tv = textView(blockId) {
-                tv.replace(range: tv.selectedRange(), with: [.date(date: TaskLogic.localDate()), .text(text: " ", marks: nil)], style: currentTextStyle(for: blockId))
-            }
-        case "table", "divider", "code":
-            let content = BlockContent.defaultContent(for: id)
-            if isEmpty && block.typeName == "paragraph" {
-                var b = block
-                b.content = content
-                b.text = []
-                var upserts = [b]
-                var focusReq = FocusRequest(blockId: b.id, caret: .start)
-                if id == "divider" || id == "table" {
-                    let next = Block(id: ULID.make(), parentId: b.parentId, rank: rank(parentId: b.parentId, after: b.id), content: .paragraph(ParagraphProps()))
-                    upserts.append(next)
-                    focusReq = FocusRequest(blockId: next.id, caret: .start)
-                }
-                commit(upserts: upserts, focus: focusReq, actionName: String(localized: "Insert Block"))
-            } else {
-                let b = Block(id: ULID.make(), parentId: block.parentId, rank: "V", content: content)
-                insert(b, after: blockId, replacing: false)
-            }
+            let target = ensureTextCaret(at: blockId)
+            insertDate(TaskLogic.localDate(), for: DatePickRequest(blockId: target.blockId, location: target.location))
         default:
             if isEmpty || block.content.carriesText {
                 turnInto(id, ids: [blockId])
@@ -1368,9 +1377,10 @@ final class EditorModel {
         case "image", "file", "record", "page", "pagelink", "bookmark", "date":
             performSlash(type, blockId: anchor, at: 0)
         default:
-            let content = BlockContent.defaultContent(for: type)
-            let b = Block(id: ULID.make(), parentId: nil, rank: "V", content: content)
-            insert(b, after: anchor, replacing: false)
+            // As the web's Insert panel: an empty paragraph is replaced, special flows run (EditorInserts.swift).
+            if !performCatalogInsert(type, blockId: anchor) {
+                insertAfterCurrent(BlockContent.defaultContent(for: type), anchor: anchor)
+            }
         }
     }
 
@@ -1440,6 +1450,10 @@ final class EditorModel {
 
     func editSelected() {
         guard let id = selectedBlockIds.first.flatMap({ orderedByRows(Array(selectedBlockIds)).first ?? $0 }) else { return }
+        if blocks[id]?.typeName == "formula", !isReadOnly {
+            FormulaEditing.shared.request = id
+            return
+        }
         if blocks[id]?.content.carriesText == true || blocks[id]?.typeName == "code" {
             selectedBlockIds = []
             focus = FocusRequest(blockId: id, caret: .end)

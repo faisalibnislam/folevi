@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import {
   AlertTriangle,
   Archive,
-  BookOpen,
-  Check,
   ChevronDown,
   Cloud,
   CloudOff,
@@ -16,23 +14,15 @@ import {
   Globe,
   Highlighter,
   History,
-  Languages,
   LayoutTemplate,
-  Lightbulb,
-  ListChecks,
   Loader2,
-  Maximize2,
-  Minimize2,
-  PenLine,
   Pencil,
   Printer,
   Share2,
-  SpellCheck,
   Star,
   Trash2,
   Undo2,
   Upload,
-  Wand2,
   X,
 } from "lucide-react";
 import { MERMAID_SAMPLE } from "@/components/editor/insertCatalog";
@@ -44,10 +34,14 @@ import { GALLERY_TEMPLATES } from "../content/templates";
 import type { FeatureVisual as VisualKey } from "../content/features";
 import { ConnectDemo } from "../demos/ConnectDemo";
 import { AskDemo } from "../demos/AskDemo";
+import { AudioDemo } from "../demos/AudioDemo";
+import { EditDemo } from "../demos/EditDemo";
+import { FlowchartDemo } from "../demos/FlowchartDemo";
+import { ReturnDemo } from "../demos/ReturnDemo";
 import { SECURITY_CONTROLS } from "../home/Closing";
 import { Icon } from "../icons";
-import { DateChip, StatusPill, type SyncStatus } from "../mini";
-import { CheckMark, artById, artThumb, artVars } from "../product/Replica";
+import { StatusPill, type SyncStatus } from "../mini";
+import { artById, artThumb, artVars } from "../product/Replica";
 import { FoldersPageReplica } from "../product/FoldersPageReplica";
 import { StyleShowcase } from "../product/StyleShowcase";
 import { TemplateSheet } from "../templates/TemplateSheet";
@@ -83,13 +77,19 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
       return (
         <div className="grid items-start gap-6 lg:grid-cols-2">
           <AskDemo />
-          <AiMenu />
+          <EditDemo />
         </div>
       );
+    case "audio":
+      return <AudioDemo />;
     case "offline":
       return <SyncStatuses />;
     case "tasks":
-      return <TasksPanel />;
+      return (
+        <div className="mx-auto max-w-[860px]">
+          <ReturnDemo />
+        </div>
+      );
     case "linked":
       return (
         <div className="mx-auto max-w-[860px]">
@@ -97,7 +97,12 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
         </div>
       );
     case "flowchart":
-      return <FlowchartPicture art={art} />;
+      return (
+        <div className="space-y-8">
+          <FlowchartDemo />
+          <FlowchartPicture art={art} />
+        </div>
+      );
     case "whiteboard":
       return <WhiteboardPicture art={art} />;
     case "sharing":
@@ -142,37 +147,6 @@ function MenuRow({ icon, label, hint, active = false }: { icon: ReactNode; label
 
 /* AI --------------------------------------------------------------------------------------------------- */
 
-function AiMenu() {
-  return (
-    <Pop
-      label="The AI menu for selected text: Improve writing, Fix spelling and grammar, Make shorter, Make longer, Simplify language, Translate to, Explain this and Summarize this. For the whole note: Continue writing, Summarize this note and Find action items."
-      title="Ask AI to…"
-      icon={<AiIcon size={16} />}
-      className="max-w-[420px]"
-    >
-      <div className="px-2 py-2">
-        <p className="mk-caps px-2.5 pb-1 pt-1 text-[10.5px]">Edit selection</p>
-        <ul className="space-y-0.5">
-          <MenuRow icon={<Wand2 size={14} />} label="Improve writing" active />
-          <MenuRow icon={<SpellCheck size={14} />} label="Fix spelling & grammar" />
-          <MenuRow icon={<Minimize2 size={14} />} label="Make shorter" />
-          <MenuRow icon={<Maximize2 size={14} />} label="Make longer" />
-          <MenuRow icon={<BookOpen size={14} />} label="Simplify language" />
-          <MenuRow icon={<Languages size={14} />} label="Translate to…" />
-          <MenuRow icon={<Lightbulb size={14} />} label="Explain this" />
-          <MenuRow icon={<FileText size={14} />} label="Summarize this" />
-        </ul>
-        <p className="mk-caps px-2.5 pb-1 pt-3 text-[10.5px]">Write</p>
-        <ul className="space-y-0.5">
-          <MenuRow icon={<PenLine size={14} />} label="Continue writing" />
-          <MenuRow icon={<FileText size={14} />} label="Summarize this note" />
-          <MenuRow icon={<ListChecks size={14} />} label="Find action items" />
-        </ul>
-      </div>
-      <p className="border-t border-(--color-line) px-4 py-2.5 text-[11px] text-faint">AI can make mistakes. Sent to Google Gemini.</p>
-    </Pop>
-  );
-}
 
 /* Offline and sync -------------------------------------------------------------------------------------- */
 
@@ -222,66 +196,6 @@ function SyncStatuses() {
 }
 
 /* Tasks ---------------------------------------------------------------------------------------------- */
-
-const TASK_ROWS: Array<{ text: string; page: string; when: string; tone: "coral" | "accent" | "neutral"; priority?: "High" | "Medium"; done?: boolean }> = [
-  { text: "Print seed labels", page: "Seed library", when: "Overdue · Mon", tone: "coral", priority: "High" },
-  { text: "Pick up keys from Ines", page: "Studio move", when: "Today", tone: "accent" },
-  { text: "Order glassine envelopes", page: "Seed library", when: "Today · 16:00", tone: "accent", priority: "Medium" },
-  { text: "Send the agenda", page: "Thursday notes", when: "Today", tone: "accent", done: true },
-];
-
-function TasksPanel() {
-  const views = ["Inbox", "Today", "Upcoming", "All", "Completed", "My Tasks"];
-  return (
-    <div
-      role="img"
-      aria-label="The Tasks view, on Today: an overdue task with high priority, two tasks due today (one at 16:00, with medium priority) and one done. Each task shows the page it comes from. The views are Inbox, Today, Upcoming, All, Completed and My Tasks."
-      className="mk-card mx-auto max-w-[680px] overflow-hidden"
-    >
-      <div aria-hidden="true">
-        <div className="flex items-center gap-3 px-4 pb-3 pt-4 sm:px-5">
-          <span className="mk-tile">
-            <Check size={16} />
-          </span>
-          <p className="mk-display flex-1 text-[22px]">Tasks</p>
-        </div>
-        <div className="px-4 sm:px-5">
-          <div className="mk-seg w-full flex-wrap text-[12px] font-medium sm:w-fit">
-            {views.map((view) => (
-              <span key={view} data-active={view === "Today" ? "true" : undefined} className="mk-seg-item px-2.5 py-1">
-                {view}
-              </span>
-            ))}
-          </div>
-        </div>
-        <ul className="mt-3 divide-y divide-(--mk-hair) border-t mk-hair">
-          {TASK_ROWS.map((task) => (
-            <li key={task.text} className="flex items-start gap-3 px-4 py-3 sm:px-5">
-              <span className="mk-check mt-0.5" data-checked={task.done ? "true" : undefined}>
-                {task.done ? <CheckMark /> : null}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className={cx("block text-[14px]", task.done ? "text-muted line-through" : "text-ink")}>{task.text}</span>
-                <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
-                  <FileText size={12} />
-                  {task.page}
-                  <DateChip tone={task.done ? "neutral" : task.tone}>{task.when}</DateChip>
-                  {task.priority ? (
-                    <span className={cx("rounded-[5px] px-1.5 text-[11px] font-medium leading-5", task.priority === "High" ? "bg-coral-soft text-coral-ink" : "bg-marigold-soft text-marigold-ink")}>{task.priority}</span>
-                  ) : null}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-center gap-2 border-t mk-hair bg-(--mk-well) px-4 py-3 text-[12.5px] text-muted sm:px-5">
-          <span className="rounded-[5px] bg-(--color-surface-raised) px-1.5 text-[11px] font-semibold leading-5 shadow-[0_0_0_1px_var(--color-line)]">⇧⌘A</span>
-          Quick Add saves a task to your Inbox page
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* Flowchart ------------------------------------------------------------------------------------------- */
 

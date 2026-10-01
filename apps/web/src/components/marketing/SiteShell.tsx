@@ -52,6 +52,7 @@ const FEATURES = [
   { label: "AI Assistant", slug: "ai-notes" },
   { label: "Offline and sync", slug: "offline-notes" },
   { label: "Folders", slug: "folders" },
+  { label: "Audio recordings", slug: "audio-recordings" },
   { label: "Note styles", slug: "note-styles" },
 ].map((f) => ({ ...f, href: `/features/${f.slug}` }));
 

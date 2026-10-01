@@ -13,7 +13,7 @@ import { Kbd } from "../ui";
  * text. FAQ answers are plain sentences because they also feed the FAQPage structured data.
  */
 
-export type FeatureVisual = "ai" | "offline" | "tasks" | "linked" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
+export type FeatureVisual = "ai" | "audio" | "offline" | "tasks" | "linked" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
 
 export type Feature = {
   slug: string;
@@ -51,14 +51,14 @@ export const FEATURES: Feature[] = [
   {
     slug: "ai-notes",
     name: "AI Assistant",
-    summary: "Ask your notes a question, rewrite and translate text, and get a brief of your week.",
+    summary: "Ask your notes a question, rewrite and translate text, draw flowcharts and get a brief of your week.",
     title: "AI notes app: ask your notes, summarize and rewrite",
     description: `Folevi’s AI Assistant answers questions from your notes with links to its sources, rewrites, translates and summarizes text, and writes a brief of your week. Free includes ${MONTHLY_CREDITS.free} AI credits a month. Core has no AI.`,
     h1: "An AI notes app that answers from your own notes",
     intro:
-      "The AI Assistant works with the notes you can already open. Ask it a question and it answers with links to the notes it used. Select a paragraph to rewrite, shorten or translate it, or ask it to summarize the whole note.",
+      "The AI Assistant works with the notes you can already open. Ask it a question and it answers with links to the notes it used. Select a paragraph to rewrite, shorten or translate it, turn a meeting into to-dos, draw a flowchart from a sentence, or ask it to sum up the whole note.",
     plans: `Free, Pro and Pro AI, and the ${TRIAL_DAYS}-day trial. Core has no AI.`,
-    updated: "2026-09-30",
+    updated: "2026-10-01",
     art: "art-49",
     visual: "ai",
     docs: { label: "AI Assistant and credits", href: "/docs/ai-assistant" },
@@ -69,28 +69,68 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              Ask AI answers from the open note, or from notes it finds by searching the ones you can read. Each answer lists its sources, so you can open the note and check. Answers appear word by word, and you can ask a follow-up in the same chat.
+              Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <strong>Ask AI about your notes</strong> in the <Kbd>⌘K</Kbd> palette. Ask AI answers from the open note, or from notes it finds by searching the ones you can read. Each answer lists its sources, so you can open the note and check. Answers appear word by word, and you can ask a follow-up in the same chat.
             </p>
-            <p>It only reads notes you already have access to. In a workspace, pages that are restricted from you stay out of its answers.</p>
+            <p>
+              From a folder’s menu, <strong>Ask AI about this folder</strong> keeps the answers inside that folder. If your notes don’t have the answer, it says so before it gives a general one. It only reads notes you already have access to: in a workspace, pages that are restricted from you stay out of its answers.
+            </p>
           </>
         ),
       },
       {
-        id: "write",
-        title: "Rewrite, translate and summarize",
+        id: "edit",
+        title: "Edit what you’ve selected",
         body: (
           <>
             <p>
-              Select text and open the AI from the selection toolbar, the slash menu or <Kbd>⌘J</Kbd>. The menu has these actions:
+              Select a sentence or a whole section and press <Kbd>⌘J</Kbd>, or use the AI button in the selection toolbar or <strong>Ask AI…</strong> in a block’s handle menu. The composer opens under the text with these actions:
             </p>
             <ul>
               <li>Improve writing, or fix spelling and grammar only.</li>
               <li>Make it shorter or longer, simplify the language, or make it sound professional or casual.</li>
               <li>Translate into one of 15 languages, from English and Spanish to Bengali, Japanese and Arabic.</li>
-              <li>Explain the text, or summarize it in a few bullet points.</li>
+              <li>Explain the text, or summarize it.</li>
             </ul>
-            <p>For the whole note, it can continue writing, write a summary, make an outline, brainstorm ideas or find the action items and list them as to-dos. It can also suggest a title.</p>
+            <p>
+              Or type your own instruction, like “turn this into a numbered list”. The result appears word by word, and you can press Stop at any time. Then <strong>Replace</strong> the selection, <strong>Insert below</strong> to keep both, <strong>Try again</strong>, or tweak it with one click: Shorter, Longer, Simpler, More formal or More casual.
+            </p>
           </>
+        ),
+      },
+      {
+        id: "write",
+        title: "Write with AI",
+        body: (
+          <>
+            <p>
+              On an empty line, type <Kbd>/</Kbd> and pick an <strong>AI</strong> item, or press <Kbd>⌘J</Kbd>. It uses the note you’re in as context:
+            </p>
+            <ul>
+              <li>Continue writing from where you stopped.</li>
+              <li>Summarize this note, or make an outline of it.</li>
+              <li>Find action items: they’re written as real to-dos, so they show up in Tasks.</li>
+              <li>Brainstorm ideas, or write anything you ask for, like “a friendly intro paragraph”.</li>
+            </ul>
+            <p>The AI panel in a note’s dock has the same tools, plus Ask for questions about the note.</p>
+          </>
+        ),
+      },
+      {
+        id: "titles",
+        title: "Titles",
+        body: (
+          <p>
+            Select words in a title and an <strong>Edit with AI</strong> button appears (or press <Kbd>⌘J</Kbd>). It can suggest a new title from what the note says, or improve, fix, shorten or change the tone of the one you have. An untitled note with some text in it offers <strong>Suggest a title</strong> on its own.
+          </p>
+        ),
+      },
+      {
+        id: "flowcharts",
+        title: "Flowcharts from a sentence",
+        body: (
+          <p>
+            In a flowchart block, describe a process and the AI draws the shapes, decisions and arrows and lays them out. Change it in words, like “add an approval step after review”, and undo the whole change with <Kbd>⌘Z</Kbd>. See <Link href="/features/flowcharts">flowcharts</Link>.
+          </p>
         ),
       },
       {
@@ -98,7 +138,7 @@ export const FEATURES: Feature[] = [
         title: "Catch me up",
         body: (
           <p>
-            On Home, <strong>Catch me up</strong> writes a short brief of your week: the notes you worked on and what’s due, with links to the notes it mentions. For diagrams, the flowchart block can draw a chart from a sentence. See <Link href="/features/flowcharts">flowcharts</Link>.
+            On Home, <strong>Catch me up</strong> writes a short brief of your week: what changed in the notes you worked on and the tasks due next, with links to the notes it mentions.
           </p>
         ),
       },
@@ -108,7 +148,7 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              AI use is counted in credits, and a credit is one cent of what the AI costs to run. Rewriting a paragraph uses about 1 credit, a question to Ask AI about 2, and a flowchart 3 to 5.
+              AI use is counted in credits, and a credit is one cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Ask AI or a new flowchart usually 3 to 5. Before a request starts, Folevi sets a few credits aside so it can finish, and gives back what it didn’t use.
             </p>
             <ul>
               <li>
@@ -142,7 +182,7 @@ export const FEATURES: Feature[] = [
     ],
     faq: [
       { q: "Which Folevi plans include AI?", a: `Free (${MONTHLY_CREDITS.free} AI credits a month), Pro (${MONTHLY_CREDITS.pro} a month) and Pro AI (unlimited with fair use, ${credits(MONTHLY_CREDITS.pro_ai)} a month). The ${TRIAL_DAYS}-day trial includes ${TRIAL_CREDITS} credits. Core has no AI.` },
-      { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Rewriting a paragraph uses about 1 credit, a question to Ask AI about 2, and a flowchart 3 to 5." },
+      { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Ask AI or a new flowchart usually 3 to 5. A request needs a few credits free before it starts." },
       { q: "Can the AI see notes I don’t have access to?", a: "No. Ask AI answers from the open note or from notes it finds by searching the ones you can already read." },
       { q: "Can I turn the AI off?", a: "Yes. Turn the AI Assistant off in Settings at any time. While it’s off, none of your notes are sent to it." },
       { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and Google doesn’t use requests to its paid Gemini API for training either." },
@@ -294,6 +334,76 @@ export const FEATURES: Feature[] = [
       { q: "Are tasks included on the Free plan?", a: "Yes. Tasks, Today, the calendar and Quick Add are part of every plan." },
     ],
     related: ["templates", "linked-notes", "ai-notes"],
+  },
+  {
+    slug: "audio-recordings",
+    name: "Audio recordings",
+    summary: "Record a voice note into any page with /record, and play it back right there.",
+    title: "Voice notes in your notes: record audio with /record",
+    description: "Record from your microphone straight into a Folevi note with /record. Pause and resume, play it back at 1, 1.5 or 2 times speed, and keep it with the rest of the page. Works offline and on every plan.",
+    h1: "Record a voice note right inside the page",
+    intro:
+      "Type /record on any line and Folevi starts recording from your microphone. Stop and save, and the recording sits in the note with a player, next to the text it belongs to.",
+    plans: "Every plan, including Free and Core. Recordings count towards your storage.",
+    updated: "2026-10-01",
+    art: "art-30",
+    visual: "audio",
+    docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
+    sections: [
+      {
+        id: "record",
+        title: "Record from the / menu",
+        body: (
+          <>
+            <p>
+              On an empty line, type <Kbd>/</Kbd> and then <strong>rec</strong>, or pick <strong>Audio recording</strong> in the Insert panel. The first time, your browser asks to use the microphone. While it records you see the time and a level meter, so you know it can hear you.
+            </p>
+            <ul>
+              <li>Pause and resume as often as you like. Paused time doesn’t count.</li>
+              <li>
+                <strong>Stop and save</strong> adds the recording to the note. Cancel throws it away, and pressing Escape never does, so a stray key can’t lose a recording.
+              </li>
+              <li>A recording can be up to an hour long. It stops by itself at the hour.</li>
+            </ul>
+          </>
+        ),
+      },
+      {
+        id: "play",
+        title: "Play it back in the note",
+        body: (
+          <p>
+            Each recording has its own player: play and pause, drag or use the arrow keys to move through it, switch between 1×, 1.5× and 2× speed, and download the file. Recordings are named by date and time, like “Recording 2026-10-01 09.12”, and <Kbd>⌘K</Kbd> search finds the note by that name. They’re listed with the note’s other attachments in its sidebar.
+          </p>
+        ),
+      },
+      {
+        id: "offline",
+        title: "Saved on your device first",
+        body: (
+          <p>
+            Like everything in Folevi, a recording is saved on your device as soon as you stop. It plays from there straight away, and uploads in the background when you’re online, so you can record on a train with no signal. Recordings count towards your storage, the same as images and files.
+          </p>
+        ),
+      },
+      {
+        id: "share",
+        title: "Sharing and export",
+        body: (
+          <p>
+            Recordings play on public links with the same player. Markdown and HTML exports include the audio files, and the HTML export plays them. The Mac app doesn’t play recordings yet; it keeps them untouched in your notes.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "How do I record audio in a Folevi note?", a: "Type /record on an empty line and press Return, or pick Audio recording in the Insert panel. Allow the microphone when your browser asks, then press Stop and save." },
+      { q: "How long can a recording be?", a: "Up to an hour. The recorder stops by itself at the hour, and you can pause and resume as often as you like." },
+      { q: "Does Folevi transcribe recordings?", a: "No. Recordings are kept as audio, with a player in the note. There’s no transcription." },
+      { q: "Which plans include audio recordings?", a: "Every plan, including Free and Core. Recordings count towards your storage." },
+      { q: "Which browsers can record?", a: "Recent versions of Chrome, Safari, Edge and Firefox. Chrome, Edge and Firefox record WebM audio and Safari records MP4 audio; recent browsers play both." },
+    ],
+    related: ["offline-notes", "import-and-export", "sharing"],
   },
   {
     slug: "linked-notes",
@@ -585,7 +695,7 @@ export const FEATURES: Feature[] = [
     title: "Note styles: themes and colours for your notes",
     description: `Pick one of ${STYLE_COUNT} artwork styles for a Folevi note, or your own image. The style colours the cover, the paper, the text, highlights and checkboxes, in light and dark mode.`,
     h1: "Note styles that give each page its own colours",
-    intro: `Folevi’s app stays white, or near-black in dark mode. The colour comes from your notes: pick one of ${STYLE_COUNT} note styles, or your own picture, and the page takes its colours from it.`,
+    intro: `Folevi’s app stays white, or near-black when you switch it to dark mode. The colour comes from your notes: pick one of ${STYLE_COUNT} note styles, or your own picture, and the page takes its colours from it.`,
     plans: "Every plan, including Free.",
     updated: "2026-09-30",
     art: "art-03",

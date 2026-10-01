@@ -89,7 +89,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Create a Folevi account, write your first page, turn lines into blocks with the slash menu, link pages with [[ and find anything with ⌘K.",
     legacyAnchor: "getting-started",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-01",
     body: () => (
       <>
         <ol>
@@ -100,7 +100,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             Your Personal space opens. It’s just yours. Create a page with the New page button and start typing. To work with a team, create a workspace from the menu at the bottom of the sidebar and switch between Personal and your workspaces there.
           </li>
           <li>
-            Type <code>/</code> on any line to turn it into a heading, checklist, quote or any other block.
+            Type <code>/</code> on any line to turn it into a heading, checklist, quote or any other block, or <code>/record</code> to record a voice note.
           </li>
           <li>
             Link pages together with <code>[[</code>, and find anything later with <code>⌘K</code>.
@@ -147,14 +147,14 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "blocks-and-slash-commands",
     title: "Blocks and slash commands",
     nav: "Blocks and slash commands",
-    description: "Every paragraph in Folevi is a block. Use the slash menu to insert headings, checklists, callouts, tables, flowcharts and more, move blocks from the keyboard, and style a page.",
+    description: "Every paragraph in Folevi is a block. Use the slash menu to insert headings, checklists, callouts, tables, flowcharts, audio recordings and more, move blocks from the keyboard, and style a page.",
     legacyAnchor: "blocks",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-01",
     body: () => (
       <>
         <p>
-          Every paragraph in Folevi is a block. Type <code>/</code> at the start of a line to open the block menu, keep typing to filter it (for example <code>/check</code>), then press Return. Use the handle beside a block to drag it, or <code>⌥⇧↑</code> and <code>⌥⇧↓</code> to move it. Nested blocks move with their parent.
+          Every paragraph in Folevi is a block. Type <code>/</code> at the start of a line to open the block menu, keep typing to filter it (for example <code>/check</code>, or <code>/record</code> for a voice note), then press Return. Use the handle beside a block to drag it, or <code>⌥⇧↑</code> and <code>⌥⇧↓</code> to move it. Nested blocks move with their parent.
         </p>
         <Table label="Block types table" head={["Block", "What it’s for"]} rows={blocks} />
         <p>Inside a block you can use bold, italic, underline, strikethrough, inline code, links, text colours and highlights, and insert dates, mentions and links to other pages.</p>
@@ -319,9 +319,9 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "ai-assistant",
     title: "AI Assistant and AI credits",
     nav: "AI Assistant and credits",
-    description: "How the Folevi AI Assistant works: Ask AI, writing help, Catch me up and flowcharts, what an AI credit is, how many each plan includes, and how to turn AI off.",
+    description: "How the Folevi AI Assistant works: Ask AI, editing and writing with ⌘J, titles, Catch me up and flowcharts, what an AI credit is, how many each plan includes, and how to turn AI off.",
     published: "2026-09-30",
-    updated: "2026-09-30",
+    updated: "2026-10-01",
     body: () => (
       <>
         <p>
@@ -330,21 +330,28 @@ export const DOC_ARTICLES: DocArticle[] = [
         <h2 id="use">Where to find it</h2>
         <ul>
           <li>
-            <strong>Ask AI</strong>: ask a question and get an answer with links to the notes it used.
+            <strong>Ask AI</strong>: press <code>⌘J</code> anywhere outside a note, or pick Ask AI about your notes in the <code>⌘K</code> palette. Ask a question and get an answer with links to the notes it used, then ask follow-ups. From a folder’s menu, Ask AI about this folder keeps the answers inside that folder.
           </li>
           <li>
-            <strong>Writing help</strong>: from the slash menu, the selection toolbar or <code>⌘J</code>. Improve, fix spelling and grammar, shorten, lengthen, simplify, change the tone, translate, explain or summarize a selection, or continue, summarize, outline or find the action items in a note.
+            <strong>Editing a selection</strong>: select text and press <code>⌘J</code>, or use the AI button in the selection toolbar or Ask AI… in a block’s handle menu. Improve it, fix spelling and grammar, make it shorter or longer, simplify it, make it sound professional or casual, translate it into one of 15 languages, explain it or summarize it. Or type your own instruction. Then Replace, Insert below, Try again, or tweak the result with Shorter, Longer, Simpler, More formal or More casual.
+          </li>
+          <li>
+            <strong>Writing</strong>: on an empty line, type <code>/</code> and pick an AI item, or press <code>⌘J</code>, to continue writing, summarize the note, make an outline, brainstorm ideas or find the action items (written as to-dos, so they appear in Tasks). The AI panel in a note’s dock has the same tools, plus questions about the note.
+          </li>
+          <li>
+            <strong>Titles</strong>: select words in a title for Edit with AI, or let it suggest a title from the note. Untitled notes with some text offer Suggest a title.
           </li>
           <li>
             <strong>Catch me up</strong>: on Home, a short brief of your week: recent notes and what’s due.
           </li>
           <li>
-            <strong>Flowcharts</strong>: describe a process and the AI draws it, or changes a chart you have.
+            <strong>Flowcharts</strong>: describe a process and the AI draws it, or changes a chart you have. Undo the whole change with <code>⌘Z</code>.
           </li>
         </ul>
+        <p>Answers and rewrites appear word by word, and you can press Stop at any time.</p>
         <h2 id="credits">AI credits</h2>
         <p>
-          AI use is counted in credits. A credit is one cent of what the AI costs to run: rewriting a paragraph uses about 1 credit, a question to Ask AI about 2, and a flowchart 3 to 5.
+          AI use is counted in credits. A credit is one cent of what the AI costs to run, and each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Ask AI or a new flowchart usually 3 to 5. Before a request starts, Folevi sets a few credits aside so it can finish, and gives back what it didn’t use.
         </p>
         <ul>
           <li>

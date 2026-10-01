@@ -43,7 +43,7 @@ export function NoteStyles() {
           <SectionHeading id="styles-title" eyebrow="Note styles and folders" title="The app stays neutral. Your notes bring the colour." />
           <p className="mk-lede max-w-[52ch] lg:pb-1">
             Pick one of {COVER_ART.length} note styles for a page. The style sets the cover, the paper and the text colour, and
-            the app around it stays white, or near-black in dark mode. File notes in folders when you’re ready, each folder in
+            the app around it stays white, or near-black when you switch the app to dark mode. File notes in folders when you’re ready, each folder in
             a colour of its own.
           </p>
         </div>

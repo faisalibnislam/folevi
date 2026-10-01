@@ -12,7 +12,7 @@ import { Eyebrow, container, cx } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Features",
   description:
-    "What Folevi does: offline notes that sync, tasks inside notes, linked pages and backlinks, flowcharts and whiteboards, note styles, sharing and public links, team workspaces, templates, export and an AI Assistant.",
+    "What Folevi does: offline notes that sync, tasks inside notes, linked pages and backlinks, flowcharts and whiteboards, audio recordings, note styles, sharing and public links, team workspaces, templates, export and an AI Assistant.",
   path: "/features",
   ogImage: "segment",
 });

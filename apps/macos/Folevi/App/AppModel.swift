@@ -579,7 +579,7 @@ final class AppModel {
     /// Creates a document locally (works offline) with a first empty paragraph. Returns its id.
     @discardableResult
     func createDocument(id explicitId: String? = nil, title: String = "", icon: String? = nil, folderId: String? = nil, parentDocumentId: String? = nil,
-                        kind: DocumentKind = .document, dailyDate: String? = nil, blocks: [WireBlock]? = nil) async -> String? {
+                        kind: DocumentKind = .document, dailyDate: String? = nil, blocks: [WireBlock]? = nil, templateId: String? = nil) async -> String? {
         guard let session, let profile else { return nil }
         if parentDocumentId == nil, !canEditHere {
             showToast(String(localized: "You can view this workspace but not add pages to it."))
@@ -590,12 +590,13 @@ final class AppModel {
         // A nested page lives in its parent's scope; a top-level one is stamped with the scope open now.
         let parent = parentDocumentId.flatMap { document($0) }
         let create = WireDocumentCreate(id: id, parentDocumentId: parentDocumentId, folderId: folderId, kind: kind, title: title, icon: icon,
-                                        dailyDate: dailyDate, scope: parentDocumentId == nil ? session.scope : nil)
+                                        dailyDate: dailyDate, templateId: templateId, scope: parentDocumentId == nil ? session.scope : nil)
         let workspaceId = parent?.workspaceId ?? session.scope.workspaceId ?? ""
         let owner = parent.map { $0.ownerProfileId } ?? (session.scope.isPersonal ? profile.id : nil)
         let summary = DocumentSummary(id: id, workspaceId: workspaceId, ownerProfileId: owner, parentDocumentId: parentDocumentId, folderId: folderId,
                                       kind: kind, title: title, icon: icon, dailyDate: dailyDate, createdAt: now, updatedAt: now, createdBy: profile.id)
-        let initial = blocks ?? [WireBlock(id: ULID.make(), type: "paragraph", parentId: nil, rank: "V")]
+        // From a template, the server fills in the template's blocks when the create syncs.
+        let initial = blocks ?? (templateId != nil ? [] : [WireBlock(id: ULID.make(), type: "paragraph", parentId: nil, rank: "V")])
         await session.engine.createDocument(create, summary: summary, blocks: initial)
         return id
     }

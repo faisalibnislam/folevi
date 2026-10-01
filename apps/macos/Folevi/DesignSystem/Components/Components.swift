@@ -529,6 +529,12 @@ struct SyncDetailsView: View {
 struct NoteCard: View {
     var document: DocumentSummary
     var folder: FolderInfo?
+    /// The footer time, e.g. "1 hour ago" (edited) or "Deleted 2 days ago"; the last edit by default.
+    var time: String? = nil
+    /// Templates don't show where they live.
+    var showFolder = true
+    /// Edits on this Mac the server hasn't confirmed yet.
+    var unsynced = false
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -559,7 +565,9 @@ struct NoteCard: View {
             }
         }
         .aspectRatio(Self.aspect, contentMode: .fit)
-        .shadow(color: .black.opacity(hovering ? 0.24 : 0.2), radius: hovering ? 18 : 15, x: hovering ? -5 : -4, y: hovering ? 12 : 9)
+        // -4px 18px 30px -18px rgb(20 20 30 / 0.2) and 0 2px 5px rgb(20 20 30 / 0.03), deeper on hover.
+        .shadow(color: Color(red: 0.08, green: 0.08, blue: 0.12).opacity(hovering ? 0.24 : 0.2), radius: hovering ? 18 : 15, x: hovering ? -5 : -4, y: hovering ? 12 : 9)
+        .shadow(color: Color(red: 0.08, green: 0.08, blue: 0.12).opacity(hovering ? 0.04 : 0.03), radius: hovering ? 4 : 2.5, y: hovering ? 3 : 2)
         .offset(y: hovering && !reduceMotion ? -2 : 0)
         .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)
         .contentShape(Rectangle())
@@ -570,7 +578,8 @@ struct NoteCard: View {
     }
 
     private func cover(u: CGFloat, shape: UnevenRoundedRectangle) -> some View {
-        HStack(spacing: 0) {
+        let text = BrowseFormat.previewText(document.preview, excerpt: document.excerpt)
+        return HStack(spacing: 0) {
             spine
                 .frame(width: 6 * u)
                 .overlay(alignment: .trailing) { Color.black.opacity(0.06).frame(width: 1) }
@@ -580,15 +589,17 @@ struct NoteCard: View {
                     .tracking(0.005 * 6.6 * u)
                     .foregroundStyle(heading)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.trailing, 7 * u)
-                Text(Date(timeIntervalSince1970: document.createdAt / 1000), format: .dateTime.day().month(.wide).year())
+                Text(BrowseFormat.ageText(document.createdAt, title: true))
                     .font(.ui(4.5 * u))
                     .foregroundStyle(faint)
                     .lineLimit(1)
                     .padding(.top, u)
-                Text(document.excerpt.isEmpty ? String(localized: "Empty page") : document.excerpt)
+                    .accessibilityLabel(Text("Created \(BrowseFormat.ageText(document.createdAt))"))
+                Text(text.isEmpty ? String(localized: "Empty page") : text)
                     .font(.ui(3.6 * u))
-                    .italic(document.excerpt.isEmpty)
+                    .italic(text.isEmpty)
                     .lineSpacing(1.4 * u)
                     .foregroundStyle(faint)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -617,10 +628,13 @@ struct NoteCard: View {
         }
     }
 
-    /// The spine: the note's style artwork, or a very light grey for plain notes.
+    /// The spine: a built-in style's thumbnail, else the page's backdrop or cover, or a very light grey for
+    /// plain notes (the web's strip).
     @ViewBuilder private var spine: some View {
-        if document.cover.kind == .art, let image = CoverArt.thumbnail(document.cover.value) {
+        if document.cover.kind == .art, document.style.backdrop == nil, let image = CoverArt.thumbnail(document.cover.value) {
             ArtCoverImage(image: image)
+        } else if let backdrop = PageBackdrop.resolve(style: document.style, cover: document.cover, artExists: { CoverArt.entry($0) != nil }) {
+            PageBackdropView(backdrop: backdrop, blur: false, thumbnail: true)
         } else {
             FoleviColor.heading.mix(with: FoleviColor.canvas, by: 0.93)
         }
@@ -630,61 +644,87 @@ struct NoteCard: View {
 
     private func footer(u: CGFloat) -> some View {
         HStack(spacing: 2 * u) {
-            Text(Date(timeIntervalSince1970: document.updatedAt / 1000), format: .relative(presentation: .named))
+            if unsynced { UnsyncedMarker(size: 3.8 * u) }
+            Text(time ?? BrowseFormat.ageText(document.updatedAt))
                 .foregroundStyle(muted)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 1.8 * u) {
-                if let folder {
-                    FolderGlyph(color: folder.color, size: 4.4 * u)
-                } else {
-                    Image(systemName: "pencil.line")
-                        .font(.system(size: 3.8 * u, weight: .semibold))
+            if showFolder {
+                HStack(spacing: 1.8 * u) {
+                    if let folder {
+                        FolderGlyph(color: folder.color, size: 4.4 * u)
+                    } else {
+                        Image(systemName: "pencil.line")
+                            .font(.system(size: 3.8 * u, weight: .semibold))
+                            .foregroundStyle(heading)
+                    }
+                    Text(folder?.name ?? String(localized: "Draft"))
+                        .fontWeight(.semibold)
                         .foregroundStyle(heading)
+                        .lineLimit(1)
+                        .accessibilityLabel(Text(folder.map { "In folder \($0.name)" } ?? String(localized: "Draft")))
                 }
-                Text(folder?.name ?? String(localized: "Draft"))
-                    .fontWeight(.semibold)
-                    .foregroundStyle(heading)
-                    .lineLimit(1)
+                .padding(.horizontal, 3 * u)
+                .frame(maxHeight: .infinity)
+                .background(chip, in: RoundedRectangle(cornerRadius: 1.5 * u, style: .continuous))
+                .frame(maxWidth: 55 * u, alignment: .trailing)
+                .fixedSize(horizontal: true, vertical: false)
             }
-            .padding(.horizontal, 3 * u)
-            .frame(maxHeight: .infinity)
-            .background(chip, in: RoundedRectangle(cornerRadius: 1.5 * u, style: .continuous))
-            .frame(maxWidth: 55 * u, alignment: .trailing)
-            .fixedSize(horizontal: true, vertical: false)
         }
         .font(.ui(3.8 * u))
     }
 }
 
-/// The compact card (Compact layout): title and folder, as the web's DocumentCardPreview.
+/// The compact card (Compact cards layout), as the web's DocumentCardPreview: the title, and a footer with
+/// the folder badge. Tinted and outlined note cards keep their look.
 struct CompactNoteCard: View {
     var document: DocumentSummary
     var folder: FolderInfo?
+    var showFolder = true
+    var unsynced = false
     @State private var hovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var accent: Color { Color.folevi(accent: document.style.accent) }
+    private var fill: Color {
+        switch document.style.card {
+        case .tinted: return Color.folevi(accentSoft: document.style.accent).mix(with: FoleviColor.surface, by: 0.4)
+        default: return FoleviColor.surface
+        }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        ZStack(alignment: .topLeading) {
+            fill
             Text(document.displayTitle)
                 .font(.serif(16.5, .semibold))
                 .foregroundStyle(FoleviColor.heading)
                 .lineLimit(2)
-            Spacer(minLength: 8)
-            HStack(spacing: 6) {
-                Text(folder?.name ?? String(localized: "Draft"))
-                Text("·")
-                Text(Date(timeIntervalSince1970: document.updatedAt / 1000), format: .relative(presentation: .named))
+                .lineSpacing(2)
+                .padding(14)
+            if unsynced || showFolder {
+                HStack(spacing: 8) {
+                    if unsynced { UnsyncedMarker() }
+                    Spacer(minLength: 0)
+                    if showFolder { FolderBadge(folder: folder) }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
+                .frame(maxHeight: .infinity, alignment: .bottom)
             }
-            .font(.ui(11.5))
-            .foregroundStyle(FoleviColor.inkFaint)
-            .lineLimit(1)
         }
-        .padding(14)
-        .frame(height: 120, alignment: .topLeading)
+        .frame(height: 112)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FoleviColor.surface, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.black.opacity(0.05)))
-        .shadow(color: .black.opacity(hovering ? 0.12 : 0.06), radius: hovering ? 10 : 4, y: 2)
+        .clipShape(shape)
+        .overlay {
+            if document.style.card == .outline { shape.strokeBorder(accent, lineWidth: 1.5) }
+        }
+        .overlay(shape.strokeBorder(Color.black.opacity(0.05)))
+        .background(Color.clear.foleviSurface(.color(FoleviColor.surface), shape: .rounded(6), shadow: hovering ? FoleviShadow.pop : FoleviShadow.card))
+        .offset(y: hovering && !reduceMotion ? -2 : 0)
+        .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)
+        .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
     }

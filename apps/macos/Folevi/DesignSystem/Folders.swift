@@ -70,7 +70,7 @@ struct FolderCard: View {
     var updatedAt: Double?
     var parentName: String?
     /// Up to three of the notes inside (most recent first), fanned behind the front cover.
-    var previews: [DocumentSummary] = []
+    var previews: [OrganizationIndex.Folder.Preview] = []
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -100,7 +100,7 @@ struct FolderCard: View {
                         .frame(width: geo.size.width * 0.76, height: h * 0.6)
                         .offset(x: geo.size.width * 0.12, y: h * (hovering && !reduceMotion ? 0.09 : 0.12))
                 } else {
-                    ForEach(Array(previews.prefix(3).enumerated().reversed()), id: \.element.id) { index, note in
+                    ForEach(Array(previews.prefix(3).enumerated().reversed()), id: \.offset) { index, note in
                         FolderNoteSheet(note: note, unit: u)
                             .frame(width: geo.size.width * 0.78, height: h * 0.7)
                             .rotationEffect(.degrees([-4, 3, -1][index]))
@@ -126,7 +126,7 @@ struct FolderCard: View {
                         .background(base.mix(with: Color(red: 0.557, green: 0.580, blue: 0.639), by: 0.45), in: RoundedRectangle(cornerRadius: 1.4 * u, style: .continuous))
                     Spacer(minLength: 4)
                     if let updatedAt {
-                        Text(Date(timeIntervalSince1970: updatedAt / 1000), format: .relative(presentation: .named))
+                        Text(BrowseFormat.shortAge(updatedAt))
                             .font(.serif(min(24, max(11, 5.6 * u))))
                             .foregroundStyle(base.mix(with: Color(red: 0.235, green: 0.259, blue: 0.314), by: 0.75))
                             .lineLimit(1)
@@ -155,7 +155,8 @@ struct FolderCard: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(folder.name)\(parentName.map { ", in \($0)" } ?? ""), \(documentCount) pages"))
+        .accessibilityLabel(Text("\(folder.name)\(parentName.map { ", in \($0)" } ?? ""), \(BrowseFormat.pages(documentCount))\(updatedAt.map { ", updated \(CollabTime.relative($0))" } ?? "")"))
+        .help(Text(parentName.map { "\(folder.name) (in \($0))" } ?? folder.name))
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -163,7 +164,7 @@ struct FolderCard: View {
 /// One note inside a folder card (the web's FolderNote): its page colour, a thin spine of its style,
 /// the serif title and a few lines of its text.
 private struct FolderNoteSheet: View {
-    var note: DocumentSummary
+    var note: OrganizationIndex.Folder.Preview
     var unit: CGFloat
 
     var body: some View {
@@ -179,12 +180,13 @@ private struct FolderNoteSheet: View {
                         .frame(width: geo.size.width * 0.07, height: geo.size.height).clipped()
                 }
                 VStack(alignment: .leading, spacing: 2 * u) {
-                    Text(note.displayTitle)
+                    Text((note.title ?? "").isEmpty ? String(localized: "Untitled") : note.title ?? "")
                         .font(.serif(5.4 * u, .medium))
                         .foregroundStyle(ink)
                         .lineLimit(2)
-                    Text(note.excerpt)
+                    Text(note.excerpt ?? "")
                         .font(.ui(3.2 * u))
+                        .lineSpacing(0.45 * 3.2 * u)
                         .foregroundStyle(ink.mix(with: paper, by: 0.18))
                 }
                 .padding(.leading, geo.size.width * 0.13)

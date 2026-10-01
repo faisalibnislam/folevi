@@ -194,6 +194,7 @@
 		F9D533A2F1721D4D315E57FE /* Templates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */; };
 		FA781DF278A5E6867B99EDF3 /* AccountDataSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D62EBE784F6DFD6B599D155 /* AccountDataSettings.swift */; };
 		FB5BE7282CEE08C44E840E50 /* MathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE03FC7B01B8A704E952C92 /* MathView.swift */; };
+		FFED0383FD66760145F1A993 /* Switch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 904F7EE001F9B173E16DFEF9 /* Switch.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -289,6 +290,7 @@
 		8B6DD6A99DCB7A9E5A051BFC /* AiModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiModels.swift; sourceTree = "<group>"; };
 		901F1FDAB6A415556EB5E61F /* SettingsRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRepositories.swift; sourceTree = "<group>"; };
 		9031950FCE20E863893F5A49 /* ConnectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionMonitor.swift; sourceTree = "<group>"; };
+		904F7EE001F9B173E16DFEF9 /* Switch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Switch.swift; sourceTree = "<group>"; };
 		9111917D43A42FC24062DDDA /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		9258B965E3DB0592C35B974F /* FindReplaceBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindReplaceBar.swift; sourceTree = "<group>"; };
 		928BED4D96939AEFA7D64C3E /* Rank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rank.swift; sourceTree = "<group>"; };
@@ -676,6 +678,7 @@
 				29B1E829D3BC461A2BFA76C2 /* Components.swift */,
 				6C0EC64316AD1AFC8391DF31 /* Dialog.swift */,
 				320393EFF315ACCA5F39470A /* Select.swift */,
+				904F7EE001F9B173E16DFEF9 /* Switch.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -1075,6 +1078,7 @@
 				F2F3CC2B3BDB6B92261BFB14 /* SidebarView.swift in Sources */,
 				49AF8A2C3D2DA8FCA4BB069E /* SupportRequestsView.swift in Sources */,
 				D71AC08E27E4ACE8790C1554 /* Surfaces.swift in Sources */,
+				FFED0383FD66760145F1A993 /* Switch.swift in Sources */,
 				41203E06365B91E1168CFCFB /* SyncEngine.swift in Sources */,
 				35B82347CCE496556BB3290D /* SyncReducer.swift in Sources */,
 				F8D0B1671DE2C0A0F484B353 /* TabStrip.swift in Sources */,

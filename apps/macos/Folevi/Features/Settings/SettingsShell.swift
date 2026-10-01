@@ -254,18 +254,14 @@ struct SettingsList<Content: View>: View {
     }
 }
 
-/// A switch as on the web (a small toggle, no label of its own).
+/// A switch as on the web (the web's Switch look, no visible label of its own).
 struct SettingsSwitch: View {
     var label: String
+    var hint: String? = nil
     @Binding var isOn: Bool
 
     var body: some View {
-        Toggle(label, isOn: $isOn)
-            .toggleStyle(.switch)
-            .labelsHidden()
-            .controlSize(.small)
-            .tint(FoleviColor.heading)
-            .accessibilityLabel(Text(label))
+        FoleviToggleSwitch(isOn: $isOn, label: label, hint: hint)
     }
 }
 

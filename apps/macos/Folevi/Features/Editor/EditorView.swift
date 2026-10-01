@@ -363,25 +363,6 @@ struct CoverGlow: View {
     }
 }
 
-struct IconPicker: View {
-    var onPick: (String?) -> Void
-    private let icons = ["📄", "📝", "📚", "🗂", "🌿", "☕️", "🧭", "🗺", "✈️", "🏔", "🌊", "💡", "🎯", "📅", "✅", "🧪", "🎨", "🎵", "🍳", "🏡", "💼", "🔖", "⭐️", "🌙"]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(32)), count: 6), spacing: 6) {
-                ForEach(icons, id: \.self) { icon in
-                    Button(icon) { onPick(icon) }
-                        .buttonStyle(.plain)
-                        .font(.ui(22))
-                        .accessibilityLabel(Text(icon))
-                }
-            }
-            Button("Remove Icon") { onPick(nil) }
-        }
-        .padding(12)
-    }
-}
 
 struct LinkPromptView: View {
     @State var initial: String
@@ -396,7 +377,7 @@ struct LinkPromptView: View {
                 .frame(width: 320)
                 .onSubmit { onSubmit(initial) }
             HStack {
-                Button("Remove Link") { onSubmit("") }
+                Button("Remove link") { onSubmit("") }
                 Spacer()
                 Button("Cancel", role: .cancel, action: onCancel).keyboardShortcut(.cancelAction)
                 Button("Apply") { onSubmit(initial) }.keyboardShortcut(.defaultAction)
@@ -427,9 +408,9 @@ struct ConflictBanner: View {
                     }
                     Spacer()
                     Button("Review…") { reviewing = conflict }
-                    Button("Keep Mine") { model.resolve(conflict, .mine) }
-                    Button("Keep Theirs") { model.resolve(conflict, .theirs) }
-                    Button("Keep Both") { model.resolve(conflict, .both) }
+                    Button("Keep mine") { model.resolve(conflict, .mine) }
+                    Button("Keep theirs") { model.resolve(conflict, .theirs) }
+                    Button("Keep both") { model.resolve(conflict, .both) }
                 }
                 .accessibilityElement(children: .contain)
             }
@@ -453,7 +434,7 @@ struct ConflictMergeSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Resolve Conflict").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading)
+            Text("Resolve conflict").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading)
             Text("Folevi kept both versions. Choose what this block should say.")
                 .foregroundStyle(FoleviColor.inkMuted)
             HStack(alignment: .top, spacing: 16) {
@@ -463,9 +444,9 @@ struct ConflictMergeSheet: View {
             HStack {
                 Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Keep Theirs") { onChoose(.theirs) }
-                Button("Keep Both") { onChoose(.both) }
-                Button("Keep Mine") { onChoose(.mine) }.keyboardShortcut(.defaultAction)
+                Button("Keep theirs") { onChoose(.theirs) }
+                Button("Keep both") { onChoose(.both) }
+                Button("Keep mine") { onChoose(.mine) }.keyboardShortcut(.defaultAction)
             }
         }
         .padding(24)

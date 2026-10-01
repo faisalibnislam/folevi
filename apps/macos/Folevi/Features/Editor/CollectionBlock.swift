@@ -165,7 +165,7 @@ struct CollectionBlockView: View {
                 }
                 .buttonStyle(HoverRowStyle(radius: 6))
                 .accessibilityLabel(Text("View settings: filter, sort, group, properties"))
-                .popover(isPresented: $showSettings, arrowEdge: .bottom) {
+                .foleviPopover(isPresented: $showSettings, arrowEdge: .bottom) {
                     CollectionViewSettings(data: data, view: view) { config, name in
                         optimistic { d in if let i = d.views.firstIndex(where: { $0.id == view.id }) { d.views[i].config = config; if let name { d.views[i].name = name } } }
                         var args: [String: JSONValue] = ["viewId": .string(view.id), "config": config.json]
@@ -181,7 +181,7 @@ struct CollectionBlockView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Add view"))
-                .popover(isPresented: $showAddView, arrowEdge: .bottom) {
+                .foleviPopover(isPresented: $showAddView, arrowEdge: .bottom) {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach([("table", "Table"), ("board", "Board"), ("gallery", "Gallery")], id: \.0) { type, name in
                             Button {
@@ -471,7 +471,7 @@ private struct BoardCard: View {
                 .buttonStyle(.plain)
                 .padding(.top, 2)
                 .accessibilityLabel(Text("Move \(row.title.isEmpty ? String(localized: "card") : row.title) to"))
-                .popover(isPresented: $showMove, arrowEdge: .bottom) {
+                .foleviPopover(isPresented: $showMove, arrowEdge: .bottom) {
                     OptionList(options: columns.map { ($0.id, $0.name, $0.color) }, selected: column) { id in
                         showMove = false
                         if id != column { moveTo(id) }
@@ -704,7 +704,7 @@ private struct CollectionCellEditor: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("\(prop.name) for \(rowName)"))
-        .popover(isPresented: $showPicker, arrowEdge: .bottom) { popover() }
+        .foleviPopover(isPresented: $showPicker, arrowEdge: .bottom) { popover() }
     }
 }
 

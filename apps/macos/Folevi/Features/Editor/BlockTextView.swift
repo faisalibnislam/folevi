@@ -116,6 +116,8 @@ final class BlockTextView: NSTextView {
         view.isAutomaticLinkDetectionEnabled = false
         view.usesFindBar = false
         view.usesFontPanel = false
+        // No system Writing Tools orb floating beside the caret: Folevi has its own AI (⌘J), as on the web.
+        view.writingToolsBehavior = .none
         view.focusRingType = .none
         view.linkTextAttributes = [.cursor: NSCursor.pointingHand]
         view.selectedTextAttributes = [.backgroundColor: NSColor.foleviSelection]

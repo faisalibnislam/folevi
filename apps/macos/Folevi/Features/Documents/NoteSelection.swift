@@ -255,7 +255,7 @@ struct MoveToFolderSheet: View {
         .padding(24)
         .frame(width: 420)
         .background(FoleviColor.surface)
-        .onAppear { fieldFocused = true }
+        .claimsFocus($fieldFocused)
     }
 
     private func row(_ o: Option, highlighted: Bool) -> some View {

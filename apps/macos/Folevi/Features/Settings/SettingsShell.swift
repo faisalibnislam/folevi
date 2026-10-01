@@ -155,7 +155,10 @@ struct SettingsRoot: View {
     private var createWorkspaceNudge: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("WORKSPACE").font(.ui(11, .semibold)).tracking(0.77).foregroundStyle(FoleviColor.inkFaint)
-            Text("Work with a team: shared notes, folders and tasks, with its own plan and members.")
+            // The web's card: Personal has no workspace settings; say how to reach a workspace's.
+            Text(app.workspaces.isEmpty
+                 ? "Work with a team: shared notes, folders and tasks, with its own plan and members."
+                 : "You're in Personal, which has no members or workspace settings. Switch to a workspace from the menu at the bottom of the sidebar.")
                 .font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
             Button { newWorkspace = true } label: { Label("Create a workspace", systemImage: "plus") }

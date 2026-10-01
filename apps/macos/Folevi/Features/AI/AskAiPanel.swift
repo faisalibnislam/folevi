@@ -59,7 +59,7 @@ struct AskAiPanel: View {
         .frame(width: 420, height: 560)
         .foleviPop(radius: 18)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .onAppear { focused = true }
+        .claimsFocus($focused)
         .onExitCommand(perform: close)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Ask AI"))

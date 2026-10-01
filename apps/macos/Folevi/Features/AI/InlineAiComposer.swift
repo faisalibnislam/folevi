@@ -494,7 +494,7 @@ struct InlineAiComposer: View {
         .frame(width: 560)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .foleviPop(radius: 14)
-        .onAppear { inputFocused = true }
+        .claimsFocus($inputFocused)
         .onChange(of: model.isBusy) { _, busy in if !busy { inputFocused = true } }
         .onChange(of: model.input) { _, _ in model.active = 0 }
         .onExitCommand { model.escape() }

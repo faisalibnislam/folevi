@@ -29,7 +29,7 @@ struct ScopeMenuButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text("\(app.scopeName): Personal, workspaces and account"))
         .accessibilityIdentifier("sidebar.scope")
-        .popover(isPresented: $open, arrowEdge: .top) {
+        .foleviPopover(isPresented: $open, arrowEdge: .top) {
             ScopeMenu(close: { open = false }, openSettings: { openSettings() })
                 .environment(app)
         }

@@ -322,8 +322,9 @@ private struct BrowserListRow: View {
                         .frame(width: 30, height: 30)
                         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(FoleviColor.heading))
                 } else {
-                    Text(doc.icon ?? "📄")
-                        .font(.system(size: 15))
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(FoleviColor.inkMuted)
                         .frame(width: 30, height: 30)
                         .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
                 }

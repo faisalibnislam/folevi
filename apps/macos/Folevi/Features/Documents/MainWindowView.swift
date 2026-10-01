@@ -18,6 +18,8 @@ struct MainWindowView: View {
             }
             VStack(spacing: 0) {
                 MainToolbar(nav: nav, editor: editorIfOpen, crumbs: crumbs, primary: primaryAction)
+                    // In front of the page: the page's scroll view reaches up under the bar and took its clicks.
+                    .zIndex(1)
                 StatusBanners()
                 HStack(spacing: 0) {
                     detail
@@ -136,14 +138,14 @@ struct MainWindowView: View {
         if let editor = editorIfOpen {
             let c = Crumbs.forDocument(editor.documentId, app: app, nav: nav) { id in nav.open(id) }
             if !c.isEmpty { return c }
-            return [Crumb(id: editor.documentId, title: editor.document?.displayTitle ?? String(localized: "Untitled"), icon: .emoji(editor.document?.icon ?? "📄"))]
+            return [Crumb(id: editor.documentId, title: editor.document?.displayTitle ?? String(localized: "Untitled"), icon: .symbol("doc.text"))]
         }
         let item = nav.selection
         switch item {
         case .folder(let id):
             let folder = app.sidebar.folders.first { $0.id == id }
             return [Crumb(id: "folder", title: folder?.name ?? String(localized: "Folder"),
-                          icon: folder?.icon.flatMap { $0.isEmpty ? nil : .emoji($0) } ?? .symbol("folder"))]
+                          icon: .symbol("folder"))]
         case .tag(let id):
             return [Crumb(id: "tag", title: app.sidebar.tags.first { $0.id == id }.map { "#" + $0.name } ?? String(localized: "Tag"), icon: .symbol("tag"))]
         default:
@@ -243,6 +245,7 @@ struct DocumentWindowView: View {
     var body: some View {
         VStack(spacing: 0) {
             MainToolbar(nav: nav, editor: editor, crumbs: crumbs, showsHistory: false, hasSidebar: false)
+                .zIndex(1)
             StatusBanners()
             HStack(spacing: 0) {
                 Group {
@@ -396,7 +399,7 @@ struct SharedWithMeView: View {
                                 openDocument(d.id, NSEvent.modifierFlags.contains(.option))
                             } label: {
                                 HStack(spacing: 12) {
-                                    Text(d.icon ?? "📄")
+                                    Image(systemName: "doc.text").font(.system(size: 13, weight: .medium)).foregroundStyle(FoleviColor.inkMuted)
                                         .frame(width: 30, height: 30)
                                         .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(9), shadow: FoleviShadow.control)
                                     VStack(alignment: .leading, spacing: 2) {

@@ -16,7 +16,7 @@ struct TitleAiAttachment: View {
         HStack(alignment: .bottom, spacing: 0) {
             Color.clear
                 .frame(width: 1, height: 1)
-                .popover(isPresented: Binding(get: { ai.titleRange != nil && model.aiWritable }, set: { if !$0 { ai.titleRange = nil } }),
+                .foleviPopover(isPresented: Binding(get: { ai.titleRange != nil && model.aiWritable }, set: { if !$0 { ai.titleRange = nil } }),
                          arrowEdge: .bottom) {
                     if let range = ai.titleRange {
                         TitleAiMenu(model: model, range: range)
@@ -120,7 +120,7 @@ struct TitleAiMenu: View {
         }
         .frame(width: 360)
         .background(FoleviColor.surfaceRaised)
-        .onAppear { focused = true }
+        .claimsFocus($focused)
         .onExitCommand(perform: close)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("AI for the title"))

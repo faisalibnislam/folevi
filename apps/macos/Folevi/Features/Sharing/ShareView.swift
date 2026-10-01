@@ -27,13 +27,13 @@ struct ShareNoteButton: View {
                         .background(open ? FoleviGlass.active : hover ? FoleviGlass.hover : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.chrome)
                 .onHover { hover = $0 }
             }
         }
         .help(Text("Share"))
         .accessibilityLabel(Text("Share"))
-        .popover(isPresented: $open, arrowEdge: style == .dock ? .top : .bottom) {
+        .foleviPopover(isPresented: $open, arrowEdge: style == .dock ? .top : .bottom) {
             SharePanel(documentId: editor.documentId, title: editor.document?.displayTitle ?? String(localized: "Untitled"),
                        personal: (editor.document?.workspaceId ?? "").isEmpty)
                 .environment(app)

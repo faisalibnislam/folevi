@@ -1357,6 +1357,7 @@ final class FlowchartTextEditor: NSTextView {
         isRichText = false
         importsGraphics = false
         allowsUndo = false
+        writingToolsBehavior = .none
         isAutomaticQuoteSubstitutionEnabled = false
         isAutomaticDashSubstitutionEnabled = false
         isAutomaticTextReplacementEnabled = false

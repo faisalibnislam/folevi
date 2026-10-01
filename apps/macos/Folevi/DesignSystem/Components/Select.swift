@@ -39,7 +39,7 @@ struct FoleviSelect<Value: Hashable>: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(accessibilityLabel))
         .accessibilityValue(Text(options.first { $0.value == selection }?.title ?? ""))
-        .popover(isPresented: $open, arrowEdge: .bottom) {
+        .foleviPopover(isPresented: $open, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 1) {
                 ForEach(options) { o in
                     SelectRow(title: o.title, checked: o.value == selection) {

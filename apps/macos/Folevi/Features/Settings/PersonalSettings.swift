@@ -135,14 +135,14 @@ struct NotificationSettings: View {
         case .authorized, .provisional, .ephemeral:
             VStack(alignment: .leading, spacing: 10) {
                 Label("Folevi will remind you about tasks with a reminder time.", systemImage: "checkmark.circle").font(.ui(13))
-                Button("Reschedule Reminders Now") { Task { await ReminderScheduler.shared.reschedule(app: app) } }
+                Button("Reschedule reminders now") { Task { await ReminderScheduler.shared.reschedule(app: app) } }
                     .buttonStyle(.folevi(.secondary, .small))
             }
         case .denied:
             VStack(alignment: .leading, spacing: 10) {
                 Text("Notifications are turned off for Folevi. Reminders still appear in Tasks and Calendar. You can enable notifications in System Settings › Notifications.")
                     .font(.ui(13)).fixedSize(horizontal: false, vertical: true)
-                Button("Open Notification Settings") {
+                Button("Open notification settings") {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
                 }
                 .buttonStyle(.folevi(.secondary, .small))
@@ -151,7 +151,7 @@ struct NotificationSettings: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Allow notifications to get a reminder when a task is due. Folevi works fully without them.")
                     .font(.ui(13)).fixedSize(horizontal: false, vertical: true)
-                Button("Allow Notifications…") {
+                Button("Allow notifications…") {
                     Task {
                         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
                         await refresh()

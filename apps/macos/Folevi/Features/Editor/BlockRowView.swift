@@ -158,17 +158,23 @@ struct BlockRowView: View {
         .padding(.trailing, 2)
         .background(alignment: .leading) { rowBackground }
         .overlay(alignment: .bottomLeading) {
-            if let popup = model.popup, popup.blockId == block.id {
-                popupView(popup)
-                    .alignmentGuide(.bottom) { d in d[.top] - 4 }
+            // A zero-height anchor on the row's bottom edge; the menu hangs below it. (An alignment-guide
+            // trick placed it above the line instead, over the text and under the top bar.)
+            Color.clear.frame(height: 0).overlay(alignment: .topLeading) {
+                if let popup = model.popup, popup.blockId == block.id {
+                    popupView(popup)
+                        .padding(.top, 4)
+                        .padding(.leading, BlockMetrics.gutter + indent)
+                        .fixedSize()
+                } else if let request = model.datePick, request.blockId == block.id {
+                    DatePickPopover(today: TaskLogic.localDate()) { date in model.insertDate(date, for: request) } onCancel: {
+                        model.datePick = nil
+                        model.focus = FocusRequest(blockId: request.blockId, caret: .offset(request.location))
+                    }
+                    .padding(.top, 4)
                     .padding(.leading, BlockMetrics.gutter + indent)
-            } else if let request = model.datePick, request.blockId == block.id {
-                DatePickPopover(today: TaskLogic.localDate()) { date in model.insertDate(date, for: request) } onCancel: {
-                    model.datePick = nil
-                    model.focus = FocusRequest(blockId: request.blockId, caret: .offset(request.location))
+                    .fixedSize()
                 }
-                .alignmentGuide(.bottom) { d in d[.top] - 4 }
-                .padding(.leading, BlockMetrics.gutter + indent)
             }
         }
         .opacity(isDragged ? 0.35 : 1)
@@ -274,9 +280,9 @@ struct BlockRowView: View {
             .accessibilityHint(Text("Opens block options"))
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { openOptions() }
-            .accessibilityAction(named: Text("Move Up")) { model.move([block.id], up: true) }
-            .accessibilityAction(named: Text("Move Down")) { model.move([block.id], up: false) }
-            .accessibilityAction(named: Text("Delete Block")) { model.delete([block.id]) }
+            .accessibilityAction(named: Text("Move up")) { model.move([block.id], up: true) }
+            .accessibilityAction(named: Text("Move down")) { model.move([block.id], up: false) }
+            .accessibilityAction(named: Text("Delete block")) { model.delete([block.id]) }
     }
 
     private func addBelow() {
@@ -505,15 +511,15 @@ struct BlockRowView: View {
 
     @ViewBuilder private var contextMenu: some View {
         let targets = model.selectedBlockIds.contains(block.id) ? model.orderedByRows(Array(model.selectedBlockIds)) : [block.id]
-        Menu("Turn Into") {
+        Menu("Turn into") {
             ForEach(TurnIntoOption.all) { option in
                 Button(option.title) { model.turnInto(option.id, ids: targets) }
             }
         }
         .disabled(model.isReadOnly)
         Button("Duplicate") { model.duplicate(targets) }.disabled(model.isReadOnly)
-        Button("Move Up") { model.move(targets, up: true) }.disabled(model.isReadOnly)
-        Button("Move Down") { model.move(targets, up: false) }.disabled(model.isReadOnly)
+        Button("Move up") { model.move(targets, up: true) }.disabled(model.isReadOnly)
+        Button("Move down") { model.move(targets, up: false) }.disabled(model.isReadOnly)
         Divider()
         Button("Comment") { model.comments.openBlock(block.id) }.disabled(model.comments.data?.canComment != true)
         Button("Copy as Markdown") {
@@ -717,7 +723,7 @@ struct PageLinkPickerView: View {
                             Image(systemName: "plus").frame(width: 20).accessibilityHidden(true)
                             Text("New page “\(choice.title)”")
                         } else {
-                            Text(choice.icon ?? "📄").frame(width: 20)
+                            Image(systemName: "doc.text").foregroundStyle(FoleviColor.inkMuted).frame(width: 20)
                             Text(choice.title).lineLimit(1)
                         }
                         Spacer()

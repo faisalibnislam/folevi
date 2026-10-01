@@ -273,7 +273,7 @@ struct TaskRow: View {
                 Button {
                     openDocument(task.documentId, NSEvent.modifierFlags.contains(.option))
                 } label: {
-                    Text("\(task.documentIcon ?? "📄") \(task.documentTitle)").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
+                    Text(task.documentTitle).font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Open \(task.documentTitle)"))
@@ -332,7 +332,7 @@ struct QuickAddView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 FoleviMark(size: 18)
-                Text("Quick Add Task").font(.ui(15, .semibold)).foregroundStyle(FoleviColor.heading)
+                Text("Quick add task").font(.ui(15, .semibold)).foregroundStyle(FoleviColor.heading)
             }
             if app.phase != .ready {
                 Text("Sign in to Folevi to add tasks.").foregroundStyle(FoleviColor.inkMuted)
@@ -355,7 +355,7 @@ struct QuickAddView: View {
                     Spacer()
                     Button("Cancel") { dismissWindow(id: "quickAdd") }.keyboardShortcut(.cancelAction)
                         .buttonStyle(.folevi(.quiet))
-                    Button("Add Task") { Task { await add() } }
+                    Button("Add task") { Task { await add() } }
                         .buttonStyle(.folevi(.primary))
                         .keyboardShortcut(.defaultAction)
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -365,7 +365,7 @@ struct QuickAddView: View {
         .padding(20)
         .frame(width: 400)
         .background(CanvasBackground())
-        .onAppear { focused = true }
+        .claimsFocus($focused)
     }
 
     private func add() async {

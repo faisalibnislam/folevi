@@ -82,7 +82,7 @@ struct TodoMetaView: View {
             .buttonStyle(.plain)
             .disabled(model.isReadOnly)
             .accessibilityLabel(Text(props.dueDate.map { "Due \($0)" } ?? "Set due date"))
-            .popover(isPresented: $showPicker) {
+            .foleviPopover(isPresented: $showPicker) {
                 VStack(alignment: .leading, spacing: 10) {
                     DatePicker("Due", selection: $date, displayedComponents: .date).datePickerStyle(.graphical).labelsHidden()
                     Picker("Priority", selection: Binding(get: { props.priority ?? .none }, set: { setPriority($0) })) {
@@ -91,7 +91,7 @@ struct TodoMetaView: View {
                     HStack {
                         Button("Clear") { setDue(nil) }
                         Spacer()
-                        Button("Set Date") { setDue(TaskLogic.localDate(date)) }.keyboardShortcut(.defaultAction)
+                        Button("Set date") { setDue(TaskLogic.localDate(date)) }.keyboardShortcut(.defaultAction)
                     }
                 }
                 .padding(14)
@@ -333,18 +333,27 @@ struct TableBlockView: View {
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(FoleviColor.line))
             .clipShape(RoundedRectangle(cornerRadius: 6))
             if !model.isReadOnly {
-                HStack(spacing: 10) {
-                    Button("Add Row") { mutate { p in p.rows.append(Array(repeating: [], count: max(1, p.rows.first?.count ?? 1))) } }
-                        .disabled(props.rows.count >= FoleviLimits.maxTableRows)
-                    Button("Add Column") { mutate { p in p.rows = p.rows.map { $0 + [[]] } } }
+                // The web's quiet table tools: + Row, + Column, a remove for each, and the header switch.
+                HStack(spacing: 4) {
+                    TableToolButton(systemImage: "plus", title: String(localized: "Row")) {
+                        mutate { p in p.rows.append(Array(repeating: [], count: max(1, p.rows.first?.count ?? 1))) }
+                    }
+                    .disabled(props.rows.count >= FoleviLimits.maxTableRows)
+                    TableToolButton(systemImage: "plus", title: String(localized: "Column")) { mutate { p in p.rows = p.rows.map { $0 + [[]] } } }
                         .disabled((props.rows.first?.count ?? 0) >= FoleviLimits.maxTableColumns)
-                    Button("Remove Row") { mutate { p in if p.rows.count > 1 { p.rows.removeLast() } } }
-                    Button("Remove Column") { mutate { p in if (p.rows.first?.count ?? 0) > 1 { p.rows = p.rows.map { Array($0.dropLast()) } } } }
-                    Toggle("Header Row", isOn: Binding(get: { props.headerRow }, set: { v in mutate { $0.headerRow = v } }))
-                        .toggleStyle(.checkbox)
+                    TableToolButton(systemImage: "minus", title: String(localized: "Row")) { mutate { p in if p.rows.count > 1 { p.rows.removeLast() } } }
+                        .disabled(props.rows.count <= 1)
+                        .accessibilityLabel(Text("Delete last row"))
+                    TableToolButton(systemImage: "minus", title: String(localized: "Column")) {
+                        mutate { p in if (p.rows.first?.count ?? 0) > 1 { p.rows = p.rows.map { Array($0.dropLast()) } } }
+                    }
+                    .disabled((props.rows.first?.count ?? 0) <= 1)
+                    .accessibilityLabel(Text("Delete last column"))
+                    TableToolButton(systemImage: props.headerRow ? "checkmark.square.fill" : "square", title: String(localized: "Header row")) {
+                        mutate { $0.headerRow.toggle() }
+                    }
+                    .accessibilityAddTraits(props.headerRow ? .isSelected : [])
                 }
-                .buttonStyle(.link)
-                .font(.ui(11.5))
             }
         }
     }
@@ -404,13 +413,12 @@ struct PageBlockView: View {
     var body: some View {
         let doc = app.document(props.documentId)
         let title = doc?.displayTitle ?? props.titleCache ?? String(localized: "Untitled")
-        let icon = doc?.icon ?? props.iconCache ?? "📄"
         Button {
             openDocument(props.documentId, NSEvent.modifierFlags.contains(.option))
         } label: {
             if props.display == .card {
                 HStack(spacing: 12) {
-                    Text(icon).font(.ui(22))
+                    Image(systemName: "doc.text").font(.system(size: 18, weight: .medium)).foregroundStyle(FoleviColor.inkMuted)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).font(FoleviType.cardTitle).foregroundStyle(FoleviColor.ink)
                         if let excerpt = doc?.excerpt, !excerpt.isEmpty {
@@ -425,7 +433,7 @@ struct PageBlockView: View {
                 .overlay(RoundedRectangle(cornerRadius: FoleviRadius.card, style: .continuous).strokeBorder(FoleviColor.line))
             } else {
                 HStack(spacing: 6) {
-                    Text(icon)
+                    Image(systemName: "doc.text").foregroundStyle(FoleviColor.inkMuted)
                     Text(title).underline().foregroundStyle(FoleviColor.accent)
                 }
             }
@@ -579,5 +587,31 @@ final class QuickLookCoordinator: NSObject, QLPreviewPanelDataSource, @unchecked
 extension UTTypeHelper {
     static func type(forMIME mime: String) -> UTType {
         UTType(mimeType: mime) ?? .data
+    }
+}
+
+/// A quiet table tool (muted text, soft fill on hover), like the web's "+ Row" buttons.
+private struct TableToolButton: View {
+    var systemImage: String
+    var title: String
+    var action: () -> Void
+    @State private var hover = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: systemImage).font(.system(size: 10, weight: .semibold))
+                Text(title).font(.ui(12))
+            }
+            .foregroundStyle(hover && isEnabled ? FoleviColor.heading : FoleviColor.inkMuted)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover && isEnabled ? FoleviColor.accentSoft : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.chrome)
+        .opacity(isEnabled ? 1 : 0.4)
+        .onHover { hover = $0 }
     }
 }

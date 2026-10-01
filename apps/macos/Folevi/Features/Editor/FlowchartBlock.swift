@@ -479,7 +479,7 @@ private struct FlowchartNodeBar: View {
             .buttonStyle(FlowBarButtonStyle(isOn: showShapes))
             .help(Text("Change shape"))
             .accessibilityLabel(Text("Change shape"))
-            .popover(isPresented: $showShapes, arrowEdge: .bottom) {
+            .foleviPopover(isPresented: $showShapes, arrowEdge: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(FlowShape.allCases, id: \.self) { s in
                         FlowMenuRow(isChecked: shape == s) {
@@ -742,7 +742,7 @@ private struct FlowchartAiPanel: View {
                 .overlay(alignment: .top) { Rectangle().fill(FoleviColor.line.opacity(0.6)).frame(height: 1) }
         }
         .foleviPop(radius: 12)
-        .onAppear { focused = true }
+        .claimsFocus($focused)
         .onExitCommand { controller.aiOpen = false }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(update ? "Change the flowchart with AI" : "Create a flowchart with AI"))

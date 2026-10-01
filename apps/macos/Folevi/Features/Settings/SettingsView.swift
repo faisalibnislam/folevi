@@ -31,7 +31,7 @@ struct AccountSettings: View {
                     LabeledContent("Space", value: app.scopeName)
                     HStack {
                         Spacer()
-                        Button("Save Name") { save() }.disabled(name.isEmpty || name == profile.displayName || !app.sync.isOnline)
+                        Button("Save name") { save() }.disabled(name.isEmpty || name == profile.displayName || !app.sync.isOnline)
                     }
                 }
                 Section("AI Assistant") {
@@ -47,7 +47,7 @@ struct AccountSettings: View {
                     .disabled(!app.sync.isOnline)
                 }
                 Section {
-                    Button("Sign Out of Folevi…", role: .destructive) { confirmSignOut = true }
+                    Button("Sign out of Folevi…", role: .destructive) { confirmSignOut = true }
                 }
             } else {
                 Text("You're not signed in.")
@@ -58,7 +58,7 @@ struct AccountSettings: View {
         .background(CanvasBackground())
         .onAppear { name = app.profile?.displayName ?? "" }
         .confirmationDialog("Sign out of Folevi?", isPresented: $confirmSignOut) {
-            Button("Sign Out", role: .destructive) { Task { await app.signOut() } }
+            Button("Sign out", role: .destructive) { Task { await app.signOut() } }
         } message: {
             Text(app.sync.pendingCount > 0
                  ? "\(app.sync.pendingCount) changes haven't synced yet. They stay on this Mac and sync the next time you sign in."

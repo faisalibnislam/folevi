@@ -7,22 +7,22 @@ struct TabStrip: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 6) {
-                TabChip(title: viewTitle, systemImage: nav.selection.systemImage, isActive: nav.openDocumentId == nil, closable: false) {
-                    nav.closeDocument()
-                } close: {}
-                ForEach(nav.tabs, id: \.self) { id in
-                    TabChip(title: title(id), systemImage: "doc.text", isActive: nav.openDocumentId == id, closable: true) {
-                        nav.open(id)
-                    } close: {
-                        nav.closeTab(id)
-                    }
+        // No horizontal ScrollView: in the title bar it swallowed clicks on the tabs. Tabs shrink to fit instead
+        // (titles truncate), and at most 8 note tabs stay open.
+        HStack(spacing: 6) {
+            TabChip(title: viewTitle, systemImage: nav.selection.systemImage, isActive: nav.openDocumentId == nil, closable: false) {
+                nav.closeDocument()
+            } close: {}
+            ForEach(nav.tabs, id: \.self) { id in
+                TabChip(title: title(id), systemImage: "doc.text", isActive: nav.openDocumentId == id, closable: true) {
+                    nav.open(id)
+                } close: {
+                    nav.closeTab(id)
                 }
             }
-            .padding(.vertical, 2)
         }
-        .scrollIndicators(.never)
+        .padding(.vertical, 2)
+        .clipped()
         .onChange(of: app.documentsRevision, initial: true) { _, _ in
             guard !app.documents.isEmpty else { return }
             let live = Set(app.documents.filter { $0.deletedAt == nil }.map(\.id))
@@ -53,23 +53,33 @@ private struct TabChip: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(isActive ? FoleviColor.heading : FoleviColor.inkMuted)
-                .accessibilityHidden(true)
-            Text(title)
-                .font(.ui(13, isActive ? .semibold : .regular))
-                .foregroundStyle(isActive ? FoleviColor.heading : FoleviColor.ink.opacity(0.85))
-                .lineLimit(1)
-                .frame(maxWidth: 160, alignment: .leading)
+        HStack(spacing: 2) {
+            // A real button: in the title bar a tap gesture loses the click to window dragging.
+            Button(action: open) {
+                HStack(spacing: 7) {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(isActive ? FoleviColor.heading : FoleviColor.inkMuted)
+                        .accessibilityHidden(true)
+                    Text(title)
+                        .font(.ui(13, isActive ? .semibold : .regular))
+                        .foregroundStyle(isActive ? FoleviColor.heading : FoleviColor.ink.opacity(0.85))
+                        .lineLimit(1)
+                        .frame(maxWidth: 160, alignment: .leading)
+                }
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.chrome)
+            .accessibilityLabel(Text(title))
+            .accessibilityAddTraits(isActive ? .isSelected : [])
             if closable {
                 Button(action: close) {
                     Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundStyle(FoleviColor.inkMuted)
                         .frame(width: 16, height: 16)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.chrome)
                 .opacity(isActive || hovering ? 1 : 0)
                 .accessibilityLabel(Text("Close \(title)"))
             }
@@ -88,12 +98,9 @@ private struct TabChip: View {
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .onTapGesture(perform: open)
+        // As wide as its title (up to 160pt), not stretched across the bar.
+        .fixedSize(horizontal: true, vertical: false)
         .onHover { hovering = $0 }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
-        // VoiceOver and Switch Control "press" the tab like a click.
-        .accessibilityAction { open() }
-        .accessibilityAction(named: Text("Close")) { if closable { close() } }
+        .accessibilityElement(children: .contain)
     }
 }

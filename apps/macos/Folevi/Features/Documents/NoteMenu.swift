@@ -49,7 +49,7 @@ struct DocumentContextMenu: View {
                 Button("New page from template") { useTemplate() }
             }
             Button(document.kind == .template ? "Edit template" : "Open") { openDocument(document.id, false) }
-            Button("Open in New Window") { openDocument(document.id, true) }
+            Button("Open in new window") { openDocument(document.id, true) }
             if actions.isStarred(document) {
                 Button("Unstar") { actions.star(ids, false, app: app) }
             } else {

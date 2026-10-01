@@ -445,7 +445,7 @@ struct InfoInspector: View {
             Button {
                 nav.showHistory = true
             } label: {
-                Label("Version History…", systemImage: "clock.arrow.circlepath")
+                Label("Version history…", systemImage: "clock.arrow.circlepath")
             }
             .buttonStyle(.folevi(.secondary, .small))
             VStack(alignment: .leading, spacing: 8) {
@@ -521,7 +521,7 @@ struct InfoInspector: View {
             openDocument(link.id, NSEvent.modifierFlags.contains(.option))
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(link.icon ?? "📄") \(link.title.isEmpty ? String(localized: "Untitled") : link.title)").font(.ui(12.5, .semibold)).foregroundStyle(FoleviColor.heading)
+                Text("\(link.title.isEmpty ? String(localized: "Untitled") : link.title)").font(.ui(12.5, .semibold)).foregroundStyle(FoleviColor.heading)
                 if !link.excerpt.isEmpty { Text(link.excerpt).font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(2) }
             }
             .padding(10)
@@ -550,9 +550,9 @@ struct VersionHistorySheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Version History").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading)
+                Text("Version history").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading)
                 Spacer()
-                Button("Save Version Now") {
+                Button("Save version now") {
                     Task {
                         try? await app.session?.documents.createSnapshot(documentId, reason: "manual")
                         await load()
@@ -590,7 +590,7 @@ struct VersionHistorySheet: View {
             HStack {
                 Spacer()
                 Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Restore This Version…") { confirmRestore = true }
+                Button("Restore this version…") { confirmRestore = true }
                     .disabled(selected == nil || !app.sync.isOnline)
                     .keyboardShortcut(.defaultAction)
             }

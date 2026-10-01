@@ -34,12 +34,13 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 0) {
             // The 52pt title bar band: traffic lights on the left, hide-sidebar on the right.
             HStack {
-                Spacer()
+                // The empty space moves the window; the button keeps its own clicks.
+                Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity).titlebarDragArea()
                 IconButton(systemImage: "sidebar.left", label: "Hide Sidebar", shortcutHint: "⌃⌘S", size: 28) { withSidebarAnimation { nav.toggleSidebar() } }
             }
             .frame(height: FoleviLayout.toolbarHeight)
             .padding(.horizontal, 10)
-            .titlebarDragArea()
+            .zIndex(2)
 
             // The Folevi logo and notifications, as at the top of the web's sidebar.
             HStack(spacing: 4) {
@@ -48,6 +49,7 @@ struct SidebarView: View {
             }
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
+            .zIndex(2)
 
             if let editor {
                 NoteSidebarContent(model: editor, nav: nav)
@@ -55,6 +57,7 @@ struct SidebarView: View {
             } else {
                 searchPill
                     .padding(.horizontal, 10)
+                    .zIndex(1)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {

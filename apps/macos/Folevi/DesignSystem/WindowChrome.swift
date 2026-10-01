@@ -57,3 +57,46 @@ struct TitlebarDragArea: ViewModifier {
 extension View {
     func titlebarDragArea() -> some View { modifier(TitlebarDragArea()) }
 }
+
+/// For buttons in the title bar row (tabs, back and forward, the sync pill, Share). The system `.plain`
+/// style there lost real mouse clicks to the window's title bar, while our own styles kept them, so these
+/// buttons draw their label as is and only dim while pressed.
+struct ChromeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .contentShape(Rectangle())
+    }
+}
+
+extension ButtonStyle where Self == ChromeButtonStyle {
+    static var chrome: ChromeButtonStyle { ChromeButtonStyle() }
+}
+
+extension View {
+    /// Focuses a SwiftUI field when it appears. A note's text view (AppKit) keeps the keyboard otherwise, so
+    /// typing and Return went to the note instead of the field: the window lets go of it first.
+    func claimsFocus(_ focus: FocusState<Bool>.Binding) -> some View {
+        onAppear {
+            if let window = NSApp.keyWindow, window.firstResponder is NSTextView { window.makeFirstResponder(nil) }
+            Task { @MainActor in
+                focus.wrappedValue = true
+                try? await Task.sleep(for: .milliseconds(60))
+                focus.wrappedValue = true
+            }
+        }
+    }
+}
+
+extension View {
+    /// A popover drawn as a solid card. The system popover is see-through glass, and the page behind made
+    /// panels like Notifications, Share and Sync hard to read.
+    func foleviPopover<Content: View>(isPresented: Binding<Bool>, arrowEdge: Edge? = nil,
+                                      @ViewBuilder content: @escaping () -> Content) -> some View {
+        popover(isPresented: isPresented, arrowEdge: arrowEdge) {
+            content()
+                .background(FoleviColor.surface)
+                .presentationBackground(FoleviColor.surface)
+        }
+    }
+}

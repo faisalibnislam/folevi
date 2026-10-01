@@ -429,13 +429,13 @@ struct SyncStatusPill: View {
             .foleviWell()
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.chrome)
         .onHover { hovering = $0 }
         .help(helpText)
         .accessibilityLabel(Text("Sync status"))
         .accessibilityValue(Text(info.label))
         .accessibilityIdentifier("syncStatusPill")
-        .popover(isPresented: $showDetails, arrowEdge: .bottom) {
+        .foleviPopover(isPresented: $showDetails, arrowEdge: .bottom) {
             SyncDetailsView(snapshot: snapshot)
                 .environment(app)
         }
@@ -501,10 +501,10 @@ struct SyncDetailsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 8) {
-                Button("Sync Now") { Task { await app.session?.engine.syncNow() } }
+                Button("Sync now") { Task { await app.session?.engine.syncNow() } }
                     .buttonStyle(.folevi(.secondary, .small))
                 if !snapshot.errors.isEmpty || snapshot.lastErrorMessage != nil {
-                    Button("Dismiss Errors") { Task { await app.session?.engine.clearErrors() } }
+                    Button("Dismiss errors") { Task { await app.session?.engine.clearErrors() } }
                         .buttonStyle(.folevi(.quiet, .small))
                 }
             }

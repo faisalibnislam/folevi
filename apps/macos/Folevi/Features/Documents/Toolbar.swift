@@ -26,7 +26,7 @@ enum Crumbs {
         let folderId = doc.folderId ?? ancestors.first?.folderId
         if let folderId, let folder = app.sidebar.folders.first(where: { $0.id == folderId }) {
             out.append(Crumb(id: "folder.\(folder.id)", title: folder.name,
-                             icon: folder.icon.flatMap { $0.isEmpty ? nil : .emoji($0) } ?? .symbol("folder"),
+                             icon: .symbol("folder"),
                              action: nav.map { n in { n.selection = .folder(folder.id) } }))
         } else {
             let root: SidebarItem = doc.kind == .template ? .templates : .all
@@ -34,9 +34,9 @@ enum Crumbs {
                              action: nav.map { n in { if n.selection == root { n.closeDocument() } else { n.selection = root } } }))
         }
         for a in ancestors {
-            out.append(Crumb(id: a.id, title: a.displayTitle, icon: a.icon.flatMap { $0.isEmpty ? nil : .emoji($0) }, action: { openDocument(a.id) }))
+            out.append(Crumb(id: a.id, title: a.displayTitle, icon: .symbol("doc.text"), action: { openDocument(a.id) }))
         }
-        out.append(Crumb(id: doc.id, title: doc.displayTitle, icon: .emoji(doc.icon?.isEmpty == false ? doc.icon! : "📄"), action: nil))
+        out.append(Crumb(id: doc.id, title: doc.displayTitle, icon: .symbol("doc.text"), action: nil))
         return out
     }
 
@@ -77,7 +77,7 @@ struct BreadcrumbBar: View {
                         Text("…").font(.ui(13.5, .semibold)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 6)
                     }
                     .menuStyle(.button)
-                    .buttonStyle(.plain)
+                    .buttonStyle(.chrome)
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .accessibilityLabel(Text("More locations"))
@@ -124,7 +124,7 @@ private struct CrumbPill: View {
 
         if let action = crumb.action {
             Button(action: action) { label }
-                .buttonStyle(.plain)
+                .buttonStyle(.chrome)
                 .onHover { hovering = $0 }
                 .help(Text(crumb.title))
         } else {
@@ -182,13 +182,16 @@ struct MainToolbar: View {
             } else {
                 BreadcrumbBar(crumbs: crumbs)
                     .padding(.leading, 2)
-                Spacer(minLength: 8)
             }
+            // Only the empty space moves the window. A drag area behind the whole row took clicks meant
+            // for the tabs and buttons on top of it.
+            Color.clear
+                .frame(minWidth: 8, maxWidth: .infinity, maxHeight: .infinity)
+                .titlebarDragArea()
             trailing
         }
         .padding(.horizontal, 14)
         .frame(height: FoleviLayout.toolbarHeight)
-        .background { Color.clear.titlebarDragArea() }
     }
 
     @ViewBuilder private var trailing: some View {
@@ -227,8 +230,8 @@ struct DocumentMoreMenu: View {
     var body: some View {
         Menu {
             Button("Find in Document") { nav.showFind = true }
-            Button("Version History…") { nav.showHistory = true }
-            Button("Open in New Window") { openWindow(id: "document", value: editor.documentId) }
+            Button("Version history…") { nav.showHistory = true }
+            Button("Open in new window") { openWindow(id: "document", value: editor.documentId) }
             ShareLink(item: MarkdownShareItem(title: editor.document?.displayTitle ?? "Untitled",
                                               markdown: MarkdownCodec.blocksToMarkdown(editor.exportBlocks(), .init(title: editor.document?.displayTitle))),
                       preview: SharePreview(editor.document?.displayTitle ?? "Untitled")) {
@@ -245,7 +248,7 @@ struct DocumentMoreMenu: View {
                 }
             }
             Divider()
-            Button("Page Style…") {
+            Button("Page style…") {
                 nav.inspectorTab = .style
                 nav.showInspector = true
             }

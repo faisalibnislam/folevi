@@ -99,7 +99,7 @@ struct SignInView: View {
                     Button {
                         Task { await app.signInWithFolevi() }
                     } label: {
-                        Text("Sign In or Create Account")
+                        Text("Sign in or Create Account")
                     }
                     .buttonStyle(.folevi(.primary, .large, fullWidth: true))
                     .disabled(!app.config.isSignInConfigured)
@@ -148,13 +148,13 @@ struct AccountStateView: View {
             Text(content.message).multilineTextAlignment(.center).foregroundStyle(FoleviColor.inkMuted)
             HStack {
                 if phase == .emailUnverified || phase == .mfaRequired {
-                    Button("Try Again") { Task { await app.signIn(interactive: false) } }
+                    Button("Try again") { Task { await app.signIn(interactive: false) } }
                         .buttonStyle(.folevi(.primary))
                 }
                 if phase == .sessionRevoked {
-                    Button("Sign In") { Task { await app.signOut() } }.buttonStyle(.folevi(.primary))
+                    Button("Sign in") { Task { await app.signOut() } }.buttonStyle(.folevi(.primary))
                 }
-                Button("Sign Out") { Task { await app.signOut() } }
+                Button("Sign out") { Task { await app.signOut() } }
             }
         }
     }
@@ -182,13 +182,13 @@ struct DeviceLimitView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(FoleviColor.inkMuted)
             VStack(spacing: 10) {
-                Button("Manage Devices…") { openWeb("settings/devices") }
+                Button("Manage devices…") { openWeb("settings/devices") }
                     .buttonStyle(.folevi(.primary, .large, fullWidth: true))
-                Button("See Plans…") { openWeb("settings/billing") }
+                Button("See plans…") { openWeb("settings/billing") }
                     .buttonStyle(.folevi(.secondary, .large, fullWidth: true))
                 HStack {
-                    Button("Try Again") { Task { await app.signIn(interactive: false) } }
-                    Button("Sign Out") { Task { await app.signOut() } }
+                    Button("Try again") { Task { await app.signIn(interactive: false) } }
+                    Button("Sign out") { Task { await app.signOut() } }
                 }
             }
         }

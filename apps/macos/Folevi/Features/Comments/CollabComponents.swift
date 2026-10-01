@@ -100,7 +100,7 @@ struct CollabMenuButton: View {
 
     var body: some View {
         IconButton(systemImage: systemImage, label: label, size: size, isActive: open) { open.toggle() }
-            .popover(isPresented: $open, arrowEdge: .bottom) {
+            .foleviPopover(isPresented: $open, arrowEdge: .bottom) {
                 CollabMenuList(items: items()) { open = false }
             }
     }
@@ -134,7 +134,7 @@ struct CollabChoiceButton<Value: Hashable>: View {
         .fixedSize(horizontal: width == nil, vertical: false)
         .accessibilityLabel(Text(accessibilityLabel))
         .accessibilityValue(Text(options.first { $0.value == selection }?.title ?? ""))
-        .popover(isPresented: $open, arrowEdge: .bottom) {
+        .foleviPopover(isPresented: $open, arrowEdge: .bottom) {
             CollabMenuList(items: options.map { o in
                 CollabMenuItem(title: o.title, checked: o.value == selection) { selection = o.value }
             }, width: max(180, width ?? 0)) { open = false }
@@ -194,6 +194,7 @@ struct MentionTextView: NSViewRepresentable {
         tv.isRichText = false
         tv.importsGraphics = false
         tv.allowsUndo = true
+        tv.writingToolsBehavior = .none
         tv.drawsBackground = false
         tv.font = FoleviFont.nsFont(.sans, size: fontSize)
         tv.textColor = .foleviInk

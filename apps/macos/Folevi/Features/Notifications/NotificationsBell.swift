@@ -35,7 +35,7 @@ struct NotificationsBell: View {
         .help(Text("Notifications"))
         .accessibilityLabel(Text(unread == 0 ? String(localized: "Notifications") : String(localized: "Notifications, \(unread) unread")))
         .accessibilityIdentifier("sidebar.notifications")
-        .popover(isPresented: $open, arrowEdge: .bottom) {
+        .foleviPopover(isPresented: $open, arrowEdge: .bottom) {
             NotificationsPanel(unread: unread, openNote: openNote, close: { open = false })
                 .environment(app)
         }

@@ -374,7 +374,7 @@ struct BlockCommentsModifier: ViewModifier {
                 .padding(.bottom, 4)
             }
         }
-        .popover(isPresented: Binding(get: { comments.openBlockId == row.id },
+        .foleviPopover(isPresented: Binding(get: { comments.openBlockId == row.id },
                                       set: { if !$0 && comments.openBlockId == row.id { comments.closeThread() } }),
                  arrowEdge: .bottom) {
             BlockThreadPopover(comments: comments, blockId: row.id).environment(app)

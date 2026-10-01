@@ -384,7 +384,7 @@ private struct FindInPage: View {
                 }
             }
         }
-        .onAppear { focused = true }
+        .claimsFocus($focused)
     }
 
     private func snippet(_ text: String, _ r: Range<String.Index>) -> Text {

@@ -9,6 +9,9 @@ struct FoleviApp: App {
     init() {
         // Instrument Sans, Spectral and JetBrains Mono before the first view renders.
         FoleviFont.registerBundledFonts()
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FOLEVI_TRACE_CLICKS"] != nil { ClickTrace.install() }
+        #endif
     }
 
     var body: some Scene {
@@ -154,3 +157,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         [.banner, .sound]
     }
 }
+
+#if DEBUG
+/// Debug only (FOLEVI_TRACE_CLICKS=1): prints which view each mouse-down lands on, to chase lost clicks.
+enum ClickTrace {
+    /// Unbuffered, so every line lands in the log at once.
+    nonisolated static func trace(_ line: String) { FileHandle.standardError.write(Data((line + "\n").utf8)) }
+
+    @MainActor static func install() {
+        NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { e in
+            if let w = e.window, let frame = w.contentView?.superview {
+                let p = frame.convert(e.locationInWindow, from: nil)
+                var chain: [String] = []
+                var v = frame.hitTest(p)
+                while let view = v, chain.count < 8 { chain.append(String(describing: type(of: view))); v = view.superview }
+                trace("CLICK \(e.type == .leftMouseDown ? "down" : "up") \(Int(e.locationInWindow.x)) \(Int(w.frame.height - e.locationInWindow.y)) \(chain.joined(separator: " < "))")
+            } else {
+                trace("CLICK no window \(e.type.rawValue)")
+            }
+            return e
+        }
+    }
+}
+#endif

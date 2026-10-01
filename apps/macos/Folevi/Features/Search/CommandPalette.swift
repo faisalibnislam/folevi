@@ -102,10 +102,8 @@ struct CommandPalette: View {
         .frame(width: 640)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .foleviPop(radius: 18)
-        .onAppear {
-            fieldFocused = true
-            refresh()
-        }
+        .claimsFocus($fieldFocused)
+        .onAppear { refresh() }
         .onChange(of: query) { _, _ in refresh() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Command palette"))
@@ -182,7 +180,7 @@ struct CommandPalette: View {
             let recent = app.documents.filter { $0.deletedAt == nil && $0.kind != .collectionRow }
                 .sorted { $0.updatedAt > $1.updatedAt }
                 .prefix(8)
-                .map { PaletteItem(id: "d.\($0.id)", kind: .document($0.id), title: $0.displayTitle, subtitle: $0.excerpt, icon: $0.icon ?? "📄", section: String(localized: "Recent")) }
+                .map { PaletteItem(id: "d.\($0.id)", kind: .document($0.id), title: $0.displayTitle, subtitle: $0.excerpt, icon: nil, section: String(localized: "Recent")) }
             results = Array(recent) + matchingActions
             return
         }
@@ -199,7 +197,7 @@ struct CommandPalette: View {
             searching = false
             if !hits.isEmpty {
                 let serverItems = hits.map { PaletteItem(id: "d.\($0.id)", kind: .document($0.id), title: $0.title.isEmpty ? String(localized: "Untitled") : $0.title,
-                                                         subtitle: $0.snippet, icon: $0.icon ?? "📄", section: String(localized: "Documents")) }
+                                                         subtitle: $0.snippet, icon: nil, section: String(localized: "Documents")) }
                 var seen = Set(serverItems.map(\.id))
                 let extraLocal = local.filter { seen.insert($0.id).inserted }
                 results = serverItems + extraLocal + matchingActions
@@ -213,11 +211,11 @@ struct CommandPalette: View {
         let normalized = SearchText.normalize(q)
         // Titles first.
         for d in docs where d.deletedAt == nil && SearchText.normalize(d.title).contains(normalized) {
-            out.append(PaletteItem(id: "d.\(d.id)", kind: .document(d.id), title: d.displayTitle, subtitle: d.excerpt, icon: d.icon ?? "📄", section: String(localized: "Documents")))
+            out.append(PaletteItem(id: "d.\(d.id)", kind: .document(d.id), title: d.displayTitle, subtitle: d.excerpt, icon: nil, section: String(localized: "Documents")))
         }
         let ids = Set(out.map(\.id))
         for d in docs where d.deletedAt == nil && !ids.contains("d.\(d.id)") && SearchText.normalize(d.excerpt).contains(normalized) {
-            out.append(PaletteItem(id: "d.\(d.id)", kind: .document(d.id), title: d.displayTitle, subtitle: d.excerpt, icon: d.icon ?? "📄", section: String(localized: "Documents")))
+            out.append(PaletteItem(id: "d.\(d.id)", kind: .document(d.id), title: d.displayTitle, subtitle: d.excerpt, icon: nil, section: String(localized: "Documents")))
         }
         return Array(out.prefix(20))
     }

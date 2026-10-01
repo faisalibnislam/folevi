@@ -1,12 +1,17 @@
 "use client";
 
+/** True when a demo should hold its first frame: reduced motion, or shown as a card cover (ScaledPreview). */
+export function isStill(el: Element): boolean {
+  return Boolean(el.closest("[data-demo-still]")) || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 /**
  * Runs a demo's script while `el` is on screen. `sleep` waits, holds while the element is off screen or the
  * tab is hidden, and throws once stopped so the script unwinds. Returns the stop function. Nothing runs
  * with reduced motion.
  */
 export function autoplay(el: Element | null, script: (sleep: (ms: number) => Promise<void>) => Promise<void>): () => void {
-  if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return () => undefined;
+  if (!el || isStill(el)) return () => undefined;
   let alive = true;
   let visible = false;
   const io = new IntersectionObserver(([e]) => (visible = Boolean(e?.isIntersecting)), { threshold: 0.25 });

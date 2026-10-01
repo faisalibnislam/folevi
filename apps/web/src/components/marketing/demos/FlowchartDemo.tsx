@@ -8,7 +8,7 @@ import { chartFromDraft, type FlowDraft } from "@/components/editor/flowchart/op
 import { FlowchartStatic } from "@/components/editor/flowchart/render";
 import "@/components/editor/flowchart/flowchart.css";
 import { cx } from "../ui";
-import { autoplay } from "./autoplay";
+import { autoplay, isStill } from "./autoplay";
 
 /*
  * Flowcharts with AI (components/editor/flowchart/FlowchartAi.tsx), playing by itself: a process is
@@ -106,9 +106,10 @@ type Mode = "create" | "update";
 type Busy = null | "drawing" | "updating";
 
 export function FlowchartDemo() {
-  const [chart, setChart] = useState<Draft | null>(null);
+  // The first frame (and a card cover's) shows the refund chart; the autoplay starts from an empty chart.
+  const [chart, setChart] = useState<Draft | null>(REFUND);
   const [prev, setPrev] = useState<Draft | null>(null);
-  const [mode, setMode] = useState<Mode>("create");
+  const [mode, setMode] = useState<Mode>("update");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<Busy>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -309,7 +310,7 @@ function DrawnChart({ data, before }: { data: string; before: Draft | null }) {
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = box.current;
-    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!el || isStill(el)) return;
     const known = new Set(before?.nodes.map((n) => n.text) ?? []);
     let i = 0;
     el.querySelectorAll<SVGGElement>(".fc-node").forEach((g) => {

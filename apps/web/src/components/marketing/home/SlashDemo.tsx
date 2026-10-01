@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { cx } from "../ui";
+import { isStill } from "../demos/autoplay";
 
 /*
  * The "/" menu, playing by itself: someone types "/" and a few letters, the menu filters the way the app's
@@ -110,7 +111,7 @@ export function SlashDemo() {
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!root.current || isStill(root.current)) return;
     let alive = true;
     let visible = false;
     const io = new IntersectionObserver(([e]) => (visible = Boolean(e?.isIntersecting)), { threshold: 0.2 });

@@ -13,7 +13,7 @@ import { Kbd } from "../ui";
  * text. FAQ answers are plain sentences because they also feed the FAQPage structured data.
  */
 
-export type FeatureVisual = "ai" | "audio" | "offline" | "tasks" | "linked" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
+export type FeatureVisual = "ai" | "audio" | "slash" | "search" | "calendar" | "comments" | "versions" | "offline" | "tasks" | "linked" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
 
 export type Feature = {
   slug: string;
@@ -404,6 +404,264 @@ export const FEATURES: Feature[] = [
       { q: "Which browsers can record?", a: "Recent versions of Chrome, Safari, Edge and Firefox. Chrome, Edge and Firefox record WebM audio and Safari records MP4 audio; recent browsers play both." },
     ],
     related: ["offline-notes", "import-and-export", "sharing"],
+  },
+  {
+    slug: "blocks",
+    name: "Blocks and the / menu",
+    summary: "Type / for headings, to-dos, tables, flowcharts, voice notes and more, without the mouse.",
+    title: "Blocks and the slash menu: write without the mouse",
+    description: "Every line in a Folevi note is a block. Type / to add a heading, to-do, table, collection, flowchart, whiteboard, formula or audio recording, then move and nest blocks from the keyboard.",
+    h1: "Type / and pick what comes next",
+    intro:
+      "Every line in a Folevi note is a block. Type / on any line to turn it into a heading, a to-do, a table, a flowchart or a voice note. Keep typing to filter the menu, then press Return.",
+    plans: "Every plan, including Free.",
+    updated: "2026-10-01",
+    art: "art-30",
+    visual: "slash",
+    docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
+    sections: [
+      {
+        id: "menu",
+        title: "What the / menu adds",
+        body: (
+          <ul>
+            <li>Write: text, headings, quotes, callouts, toggles, code and dividers.</li>
+            <li>Plan: to-dos, bulleted and numbered lists, today’s date or any date.</li>
+            <li>Organise: tables, collections as a table, gallery or kanban, sub-pages and links to pages.</li>
+            <li>Draw and explain: flowcharts, whiteboards, Mermaid diagrams and TeX formulas.</li>
+            <li>Add media: audio recordings, images (yours or from Unsplash), files and bookmarks.</li>
+            <li>Ask AI: continue writing, summarize the note, find action items, make an outline or brainstorm.</li>
+          </ul>
+        ),
+      },
+      {
+        id: "filter",
+        title: "Filter as you type",
+        body: (
+          <p>
+            The menu filters by name and by what each block is for, so <Kbd>/check</Kbd> finds To-do, <Kbd>/rec</Kbd> finds Audio recording and <Kbd>/flow</Kbd> finds Flowchart. Use the arrow keys to pick and Return to insert. Shortcuts like <Kbd>#</Kbd> for a heading and <Kbd>[]</Kbd> for a to-do work too.
+          </p>
+        ),
+      },
+      {
+        id: "move",
+        title: "Move and nest blocks",
+        body: (
+          <p>
+            Drag a block by its handle, or select it and press <Kbd>⌥⇧↑</Kbd> or <Kbd>⌥⇧↓</Kbd> to move it. <Kbd>⌥⇧→</Kbd> nests it under the block above, which turns a list into an outline. Nested blocks move with their parent.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "How do I open the block menu in Folevi?", a: "Type / at the start of any line. Keep typing to filter the list, use the arrow keys to pick a block and press Return." },
+      { q: "Can I move blocks without the mouse?", a: "Yes. Select a block and press Option Shift Up or Down to move it, and Option Shift Right to nest it under the block above." },
+      { q: "Which blocks are there?", a: "Text, headings, to-dos, lists, toggles, quotes, callouts, code, dividers, tables, collections, galleries, kanban boards, sub-pages, flowcharts, whiteboards, Mermaid diagrams, formulas, audio recordings, images, files, bookmarks and dates." },
+    ],
+    related: ["audio-recordings", "flowcharts", "tasks"],
+  },
+  {
+    slug: "search",
+    name: "Search",
+    summary: "Press ⌘K to find any note by its title or text, or to run a command.",
+    title: "Search your notes with ⌘K",
+    description: "Press ⌘K in Folevi to search the titles and text of your notes, with filters for folder, tag, person and time, and commands for going anywhere in the app.",
+    h1: "Find any note with ⌘K",
+    intro:
+      "Press ⌘K anywhere. Folevi searches the titles and text of your notes in the space you’re in, highlights the words it found, and opens the note you pick in a new tab.",
+    plans: "Every plan, including Free.",
+    updated: "2026-10-01",
+    art: "art-41",
+    visual: "search",
+    sections: [
+      {
+        id: "what",
+        title: "What it searches",
+        body: (
+          <p>
+            Note titles and everything written in them: text, code, captions and table cells, plus attachment and tag names. Search covers the space you’re in, your Personal or the workspace you’ve opened, and only the notes you can read. Notes in Trash and archived notes stay out of the results.
+          </p>
+        ),
+      },
+      {
+        id: "filters",
+        title: "Filters",
+        body: <p>Under the search field you can narrow the results to one folder, one tag or a time: the past week, month or year. In a workspace you can also pick whose notes to search.</p>,
+      },
+      {
+        id: "commands",
+        title: "Commands and recent notes",
+        body: (
+          <>
+            <p>
+              With nothing typed, ⌘K shows the notes you opened most recently. It also runs commands: New document, Go to Tasks · Today, Go to Calendar, Go to Home, Open Trash, Open Settings and switching the app between light and dark. With the AI Assistant on, it can ask AI about your notes.
+            </p>
+            <p>
+              Use the arrow keys and Return to open a result, and Escape to close. Inside a note, <Kbd>⌘F</Kbd> finds text and <Kbd>⌘⌥F</Kbd> replaces it.
+            </p>
+          </>
+        ),
+      },
+    ],
+    faq: [
+      { q: "What does Folevi search?", a: "Note titles and their text, including code, captions and table cells, plus attachment and tag names, in the space you’re in." },
+      { q: "Does search include Trash or archived notes?", a: "No. Notes in Trash and archived notes are left out of the results." },
+      { q: "Can I search inside one note?", a: "Yes. Press Command F inside a note to find text, and Command Option F to replace it." },
+    ],
+    related: ["linked-notes", "folders", "ai-notes"],
+  },
+  {
+    slug: "calendar",
+    name: "Calendar",
+    summary: "Every dated to-do on a month calendar or a 30-day agenda. Drag a task to move it.",
+    title: "A calendar for the tasks in your notes",
+    description: "Folevi’s calendar shows every to-do with a date, wherever it lives in your notes, as a month grid or a 30-day agenda. Drag a task to another day to reschedule it, and add tasks with Quick Add.",
+    h1: "A calendar of everything that’s due",
+    intro:
+      "To-dos with a date show up on the calendar, wherever they live in your notes. Switch between a month grid and a 30-day agenda, and drag a task to another day to move it.",
+    plans: "Every plan, including Free.",
+    updated: "2026-10-01",
+    art: "art-09",
+    visual: "calendar",
+    docs: { label: "Tasks and calendar", href: "/docs/tasks-and-calendar" },
+    sections: [
+      {
+        id: "layouts",
+        title: "Month and Agenda",
+        body: (
+          <p>
+            Month shows the whole month, with up to three tasks in each day and the selected day’s tasks beside it. Agenda lists what’s overdue, then today and every day with something due over the next 30 days. Open the calendar from Tasks or from <Kbd>⌘K</Kbd>.
+          </p>
+        ),
+      },
+      {
+        id: "reschedule",
+        title: "Drag to reschedule",
+        body: (
+          <p>
+            Drag a task onto another day and it moves, with Undo in case you dropped it in the wrong place. Or use a task’s edit button to pick a date and time. Tasks without a date wait in a list below, each with a button to schedule it for today.
+          </p>
+        ),
+      },
+      {
+        id: "quick-add",
+        title: "Quick Add and reminders",
+        body: (
+          <p>
+            Press <Kbd>⇧⌘A</Kbd> to add a task from anywhere, with a date, time and priority. It goes into the page you have open, or into your Inbox page. In a task’s details you can set a reminder, and Folevi shows it in your notifications when it’s due.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "What does the Folevi calendar show?", a: "Every to-do that has a due date, from all your notes. It doesn’t show notes themselves." },
+      { q: "Is there a week view?", a: "The calendar has two layouts: a month grid, and an agenda of the next 30 days." },
+      { q: "How do I move a task to another day?", a: "Drag it onto the day. A message with Undo lets you put it back." },
+    ],
+    related: ["tasks", "linked-notes", "offline-notes"],
+  },
+  {
+    slug: "comments",
+    name: "Comments",
+    summary: "Comment on a block or the whole note, reply, @mention people and resolve threads.",
+    title: "Comments and @mentions in your notes",
+    description: "Comment on any block in a Folevi note or on the whole note, reply in threads, @mention people who can see the page and resolve threads when they’re done.",
+    h1: "Talk about the page, on the page",
+    intro:
+      "Select a block and press ⌘⌥M, or pick Comment in its menu. The thread sits next to the text it’s about, with replies, @mentions and a button to resolve it.",
+    plans: "Every plan, including Free.",
+    updated: "2026-10-01",
+    art: "art-16",
+    visual: "comments",
+    sections: [
+      {
+        id: "add",
+        title: "Comment on a block or the whole note",
+        body: (
+          <p>
+            Comment on a block from its handle menu, from the selection toolbar or with <Kbd>⌘⌥M</Kbd>. The Comments panel in the note’s dock lists every thread, open or resolved, and lets you comment on the whole note. A block with comments shows how many, and who wrote them.
+          </p>
+        ),
+      },
+      {
+        id: "threads",
+        title: "Threads, replies and resolving",
+        body: <p>Reply in the thread, edit or delete your own comments, copy a link to a comment, or mark it unread. Resolve a thread when it’s done; replying to it opens it again.</p>,
+      },
+      {
+        id: "mentions",
+        title: "@mentions and notifications",
+        body: (
+          <p>
+            Type @ to mention someone who can see the page. Mentions, replies and new comments show up in your notifications, and you choose what you hear about: all comments, replies and @mentions, or only @mentions. Comment emails arrive as they happen or as one daily digest, which lists page titles only, never what was written.
+          </p>
+        ),
+      },
+      {
+        id: "who",
+        title: "Who can comment",
+        body: (
+          <p>
+            Anyone with comment or edit access to the page. When you share a page you pick Can view, Can comment or Can edit, and a workspace member can be set to comment only. Public links show the page, not its comments.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "Who can comment on a Folevi note?", a: "Anyone you’ve given comment or edit access to the page, including workspace members set to comment only." },
+      { q: "Do public links show comments?", a: "No. A public link shows the page without its comments." },
+      { q: "Can I get comment emails once a day?", a: "Yes. In Settings, choose a daily digest instead of an email for each comment. The digest lists page titles, not comment text." },
+    ],
+    related: ["sharing", "team-workspaces", "linked-notes"],
+  },
+  {
+    slug: "version-history",
+    name: "Version history",
+    summary: "Folevi saves versions as you write. Preview any of them and restore it.",
+    title: "Version history for every note",
+    description: "Folevi saves a version of each note after a pause in editing and when you close it. Preview older versions and restore one, and your current page is saved first so nothing is lost.",
+    h1: "Go back to any version of a page",
+    intro:
+      "Folevi saves a version after a pause in editing and when you close a page. Open Version history from the page’s menu to look at an older version and bring it back.",
+    plans: `Every plan, including Free. Versions are kept for at least ${VERSION_DAYS} days.`,
+    updated: "2026-10-01",
+    art: "art-50",
+    visual: "versions",
+    sections: [
+      {
+        id: "when",
+        title: "When versions are saved",
+        body: (
+          <p>
+            After two minutes without an edit, when you close the page or leave it, and whenever you press Save a version now. Imports get a version too. A version is only saved when something changed, so the list stays short.
+          </p>
+        ),
+      },
+      {
+        id: "restore",
+        title: "Preview and restore",
+        body: (
+          <p>
+            Pick a version to see it as it was. Restore brings it back, and your current page is saved as a version first, so a restore can always be undone. Each version shows when it was saved, why, and who made the change.
+          </p>
+        ),
+      },
+      {
+        id: "kept",
+        title: "How long versions are kept",
+        body: (
+          <p>
+            At least {VERSION_DAYS} days on every plan. After that, each note still keeps its 50 newest versions, however old they are.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "How long does Folevi keep versions?", a: `At least ${VERSION_DAYS} days on every plan, and each note keeps its 50 newest versions however old they are.` },
+      { q: "Can I undo a restore?", a: "Yes. Before a restore, Folevi saves your current page as a version, so you can go back to it." },
+      { q: "Is every keystroke a version?", a: "No. Versions are saved after a pause in editing, when you close a page, or when you save one yourself." },
+    ],
+    related: ["import-and-export", "offline-notes", "sharing"],
   },
   {
     slug: "linked-notes",

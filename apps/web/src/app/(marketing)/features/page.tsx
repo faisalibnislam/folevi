@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { FEATURES, featurePath } from "@/components/marketing/content/features";
 import { GALLERY_TEMPLATES } from "@/components/marketing/content/templates";
-import { FeatureIcon } from "@/components/marketing/features/FeatureIcon";
+import { FeatureCover } from "@/components/marketing/features/FeatureCover";
+import { AppWindow, READING_NOTE, artById, artThumb } from "@/components/marketing/product/Replica";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
@@ -11,7 +12,7 @@ import { Eyebrow, container, cx } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Features",
   description:
-    "What Folevi does: offline notes that sync, tasks inside notes, linked pages and backlinks, flowcharts and whiteboards, audio recordings, note styles, sharing and public links, team workspaces, templates, export and an AI Assistant.",
+    "What Folevi does: offline notes that sync, tasks and a calendar, the / menu, search, comments, version history, linked pages and backlinks, flowcharts and whiteboards, audio recordings, note styles, sharing and public links, team workspaces, templates, export and an AI Assistant.",
   path: "/features",
   ogImage: "segment",
 });
@@ -24,6 +25,15 @@ function collectionLd(): Record<string, unknown> {
     url: absoluteUrl("/features"),
     hasPart: FEATURES.map((f) => ({ "@type": "WebPage", name: f.h1, url: absoluteUrl(featurePath(f.slug)) })),
   };
+}
+
+/** The Mac app's card cover: the app window with its Mac chrome, as on the Mac page. */
+function MacCover() {
+  return (
+    <div className="mk-stage p-7" style={{ ["--stage-art" as string]: artThumb(artById("art-39")) }}>
+      <AppWindow art={artById("art-39")} chrome="mac" sidebar="main" note={READING_NOTE} className="h-[600px]" label="The Folevi Mac app" />
+    </div>
+  );
 }
 
 export default function FeaturesPage() {
@@ -47,9 +57,18 @@ export default function FeaturesPage() {
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature) => (
               <li key={feature.slug}>
-                <LinkCard href={featurePath(feature.slug)} title={feature.name} body={feature.summary} icon={<FeatureIcon slug={feature.slug} />} headingLevel="h2" />
+                <LinkCard href={featurePath(feature.slug)} title={feature.name} body={feature.summary} cover={<FeatureCover feature={feature} />} headingLevel="h2" />
               </li>
             ))}
+            <li>
+              <LinkCard
+                href="/mac"
+                title="Mac app"
+                body="A native Mac app with menus, windows and shortcuts, and your notes stored on the Mac. Coming soon."
+                cover={<FeatureCover picture={{ width: 1000, node: <MacCover /> }} />}
+                headingLevel="h2"
+              />
+            </li>
           </ul>
         </Card>
         <div className={cx(container, "grid gap-(--mk-stack-gap) md:grid-cols-2")}>

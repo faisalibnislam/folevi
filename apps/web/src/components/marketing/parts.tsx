@@ -71,6 +71,7 @@ export function LinkCard({
   title,
   body,
   icon,
+  cover,
   headingLevel = "h3",
   id,
   className,
@@ -79,23 +80,28 @@ export function LinkCard({
   title: string;
   body: ReactNode;
   icon?: ReactNode;
+  /** A picture across the top of the card (the features index's covers). */
+  cover?: ReactNode;
   headingLevel?: "h2" | "h3";
   id?: string;
   className?: string;
 }) {
   const Heading = headingLevel;
   return (
-    <div id={id} className={cx("mk-card group relative flex h-full scroll-mt-24 flex-col p-5 transition-shadow duration-150 hover:shadow-(--shadow-pop) sm:p-6", className)}>
-      {icon ? <span className="mb-4">{icon}</span> : null}
-      <Heading className="mk-h3 text-[16.5px] leading-snug">
-        <Link href={href} className="after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)">
-          {title}
-        </Link>
-      </Heading>
-      <div className="mt-1.5 flex-1 text-[14.5px] leading-relaxed text-muted">{body}</div>
-      <span aria-hidden="true" className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-(--color-heading)">
-        Read more <Icon name="arrow-right" size={14} className="transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" />
-      </span>
+    <div id={id} className={cx("mk-card group relative flex h-full scroll-mt-24 flex-col transition-shadow duration-150 hover:shadow-(--shadow-pop)", cover ? "overflow-hidden" : "p-5 sm:p-6", className)}>
+      {cover ? <div className="border-b mk-hair">{cover}</div> : null}
+      <div className={cx("flex flex-1 flex-col", cover ? "p-5 sm:p-6" : undefined)}>
+        {icon ? <span className="mb-4">{icon}</span> : null}
+        <Heading className="mk-h3 text-[16.5px] leading-snug">
+          <Link href={href} className="after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)">
+            {title}
+          </Link>
+        </Heading>
+        <div className="mt-1.5 flex-1 text-[14.5px] leading-relaxed text-muted">{body}</div>
+        <span aria-hidden="true" className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-(--color-heading)">
+          Read more <Icon name="arrow-right" size={14} className="transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" />
+        </span>
+      </div>
     </div>
   );
 }

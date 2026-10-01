@@ -7,6 +7,7 @@ import { Icon } from "../icons";
 import { DateChip, type ChipTone } from "../mini";
 import { cx } from "../ui";
 import { LiveRegion } from "./DemoCard";
+import { isStill } from "./autoplay";
 
 const DOCS = [
   { id: "seed", title: "Seed library", body: "Swap day is the first Saturday in April. Labels and glassine envelopes come from the printer on Alder Street." },
@@ -62,7 +63,7 @@ export function ReturnDemo() {
   // Until someone touches it, the demo searches by itself while it's on screen: it types a query, the
   // results narrow with each letter, a matching task gets ticked, then it erases and tries the next one.
   useEffect(() => {
-    if (!auto || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!auto || !root.current || isStill(root.current)) return;
     let alive = true;
     let visible = false;
     const io = new IntersectionObserver(([e]) => (visible = Boolean(e?.isIntersecting)), { threshold: 0.25 });

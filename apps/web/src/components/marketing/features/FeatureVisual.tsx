@@ -35,6 +35,8 @@ import type { FeatureVisual as VisualKey } from "../content/features";
 import { ConnectDemo } from "../demos/ConnectDemo";
 import { AskDemo } from "../demos/AskDemo";
 import { AudioDemo } from "../demos/AudioDemo";
+import { SlashDemo } from "../home/SlashDemo";
+import { CalendarPicture, CommentsPicture, PalettePicture, VersionsPicture } from "./MorePictures";
 import { EditDemo } from "../demos/EditDemo";
 import { FlowchartDemo } from "../demos/FlowchartDemo";
 import { ReturnDemo } from "../demos/ReturnDemo";
@@ -71,6 +73,43 @@ export function FeatureVisual({ visual, art }: { visual: VisualKey; art: string 
   );
 }
 
+/**
+ * The picture for a feature's card on the features index (FeatureCover): just the app piece, on its stage,
+ * at the width it is drawn at before being scaled into the card, so the UI fills the cover.
+ */
+export function coverPicture(visual: VisualKey, art: string): { width: number; node: ReactNode } {
+  const pieces: Record<VisualKey, [number, ReactNode]> = {
+    ai: [520, <AskDemo key="ai" />],
+    audio: [600, <AudioDemo key="audio" />],
+    slash: [520, <SlashDemo key="slash" />],
+    search: [660, <PalettePicture key="search" />],
+    calendar: [960, <CalendarPicture key="calendar" />],
+    comments: [640, <CommentsPicture key="comments" />],
+    versions: [820, <VersionsPicture key="versions" />],
+    offline: [640, <SyncStatuses key="offline" />],
+    tasks: [780, <ReturnDemo key="tasks" />],
+    linked: [820, <ConnectDemo key="linked" />],
+    folders: [1000, <FoldersPageReplica key="folders" />],
+    flowchart: [820, <FlowchartDemo key="flowchart" />],
+    whiteboard: [760, <WhiteboardPicture key="whiteboard" art={art} />],
+    styles: [980, <StyleShowcase key="styles" />],
+    sharing: [620, <SharePanel key="sharing" />],
+    workspaces: [780, <WorkspacePanels key="workspaces" />],
+    templates: [980, <TemplateTrio key="templates" />],
+    export: [780, <ExportPanels key="export" />],
+    security: [780, <SecurityGrid key="security" />],
+  };
+  const [width, piece] = pieces[visual];
+  return {
+    width,
+    node: (
+      <div className="mk-stage p-7" style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
+        {piece}
+      </div>
+    ),
+  };
+}
+
 function Visual({ visual, art }: { visual: VisualKey; art: string }) {
   switch (visual) {
     case "ai":
@@ -82,6 +121,16 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
       );
     case "audio":
       return <AudioDemo />;
+    case "slash":
+      return <SlashDemo />;
+    case "search":
+      return <PalettePicture />;
+    case "calendar":
+      return <CalendarPicture />;
+    case "comments":
+      return <CommentsPicture />;
+    case "versions":
+      return <VersionsPicture />;
     case "offline":
       return <SyncStatuses />;
     case "tasks":

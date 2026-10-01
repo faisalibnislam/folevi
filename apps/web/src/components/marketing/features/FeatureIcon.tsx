@@ -1,8 +1,13 @@
-import { CheckSquare, FileDown, Folder, LayoutTemplate, Link2, Mic, Network, Paintbrush, PenTool, Share2, ShieldCheck, Users, WifiOff, type LucideIcon } from "lucide-react";
+import { CalendarDays, CheckSquare, FileDown, Folder, History, LayoutTemplate, Link2, MessageSquare, Mic, Network, Search, SquareSlash, Paintbrush, PenTool, Share2, ShieldCheck, Users, WifiOff, type LucideIcon } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 
 const ICONS: Record<string, LucideIcon> = {
   "audio-recordings": Mic,
+  blocks: SquareSlash,
+  search: Search,
+  calendar: CalendarDays,
+  comments: MessageSquare,
+  "version-history": History,
   "offline-notes": WifiOff,
   tasks: CheckSquare,
   "linked-notes": Link2,

@@ -31,3 +31,13 @@ for (const id of IDS) {
   await sharp(input).resize(200, 200, { fit: "cover" }).webp({ ...webp, quality: 55 }).toFile(resolve(out, `${id}-glow.webp`));
 }
 console.log(`wrote hero artwork for ${IDS.length} styles to ${out}`);
+
+// Small tiles on the home page (components/marketing/home/Included.tsx: the fanned styles, drawn 72 × 96):
+// 240 × 320, instead of the 640 px thumbnails the app's style picker uses.
+const MINI = ["art-03", "art-01", "art-30", "art-49", "art-39"];
+const miniOut = resolve(import.meta.dirname, "../public/marketing/mini");
+mkdirSync(miniOut, { recursive: true });
+for (const id of MINI) {
+  await sharp(resolve(src, `${id}.webp`)).resize(240, 320, { fit: "cover" }).webp({ ...webp, quality: 64 }).toFile(resolve(miniOut, `${id}.webp`));
+}
+console.log(`wrote ${MINI.length} small tiles to ${miniOut}`);

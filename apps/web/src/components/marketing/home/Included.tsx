@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Check, CloudOff, FileCode, FileText, Moon, Printer, Sun } from "lucide-react";
 import { COVER_ART } from "@/lib/cover";
-import { artById, artThumb, artVars } from "../product/Replica";
+import { artById, artVars } from "../product/Replica";
 import { container } from "../ui";
 
 /*
@@ -157,11 +157,11 @@ function StylesPicture() {
         <span
           key={art.id}
           className="mk-mini-art absolute top-2"
-          style={{ left: `${i * 30}px`, backgroundImage: artThumb(art), transform: `rotate(${(i - 2) * 5}deg)`, zIndex: i }}
+          style={{ left: `${i * 30}px`, backgroundImage: `url("/marketing/mini/${art.id}.webp")`, transform: `rotate(${(i - 2) * 5}deg)`, zIndex: i }}
         />
       ))}
       <span className="mk-note absolute bottom-0 right-0 z-10 w-[112px] overflow-hidden shadow-(--shadow-pop)" style={artVars(note)}>
-        <span className="block h-7 bg-cover bg-center" style={{ backgroundImage: artThumb(note) }} />
+        <span className="block h-7 bg-cover bg-center" style={{ backgroundImage: `url("/marketing/mini/${note.id}.webp")` }} />
         <span className="block px-2.5 pb-2.5 pt-1.5">
           <span className="mk-note-h block text-[11px]">Trip sketch</span>
           <span className="mt-1 block h-[3px] w-[85%] rounded-full bg-[color-mix(in_oklab,var(--n-ink)_22%,transparent)]" />

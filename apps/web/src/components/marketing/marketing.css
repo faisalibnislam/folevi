@@ -760,6 +760,10 @@
 }
 .mk-stack { display: flex; flex-direction: column; gap: var(--mk-stack-gap); }
 .mk-home-stack { padding-bottom: 32px; }
+/* Below the hero, each card's contents are only laid out and painted near the screen, so their artwork
+   (stage lights, note covers, tiles) isn't fetched while the hero image is still loading on a phone.
+   On the contents, not the card, so the card's shadow isn't clipped; "auto" remembers the real height. */
+.mk-home-stack .mk-box > * { content-visibility: auto; contain-intrinsic-size: auto 560px; }
 @media (min-width: 640px) { .mk-home-stack { padding-bottom: 48px; } }
 /* Other pages: the stack starts the same distance from the top as the cards are from the panel's sides
    (below 1024 px, from under the glass top bar the page slides beneath). */

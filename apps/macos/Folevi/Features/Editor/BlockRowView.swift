@@ -437,6 +437,12 @@ struct BlockRowView: View {
             } else {
                 UnknownBlockView(type: AudioProps.type).onTapGesture { model.select(block.id, extend: false) }
             }
+        case .unknown(FlowchartProps.type, let props):
+            if let p = FlowchartProps(props) {
+                FlowchartBlockView(block: block, props: p, model: model)
+            } else {
+                UnknownBlockView(type: FlowchartProps.type).onTapGesture { model.select(block.id, extend: false) }
+            }
         case .unknown(let type, _):
             UnknownBlockView(type: type)
                 .onTapGesture { model.select(block.id, extend: false) }

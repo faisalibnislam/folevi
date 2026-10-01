@@ -133,7 +133,7 @@ struct InsertTile: View {
         case "heading1", "heading2", "heading3": return (FoleviColor.emberSoft, FoleviColor.emberInk)
         case "todo", "bulleted", "numbered", "toggle": return (FoleviColor.mossSoft, FoleviColor.mossInk)
         case "quote", "callout": return (FoleviColor.plumSoft, FoleviColor.plumInk)
-        case "code", "table": return (FoleviColor.marigoldSoft, FoleviColor.marigoldInk)
+        case "code", "table", "flowchart": return (FoleviColor.marigoldSoft, FoleviColor.marigoldInk)
         case "image", "file", "record", "bookmark", "date": return (FoleviColor.accentSoft, FoleviColor.accentSoftInk)
         default: return (FoleviColor.coralSoft, FoleviColor.coralInk)
         }
@@ -150,7 +150,7 @@ struct InsertInspector: View {
     private static let sections: [(LocalizedStringKey, [String])] = [
         ("Basics", ["paragraph", "heading1", "heading2", "heading3"]),
         ("Lists", ["todo", "bulleted", "numbered", "toggle"]),
-        ("Blocks", ["quote", "callout", "code", "table"]),
+        ("Blocks", ["quote", "callout", "code", "table", "flowchart"]),
         ("Media", ["image", "file", "record", "bookmark", "date"]),
         ("Structure", ["divider", "page", "pagelink"]),
     ]

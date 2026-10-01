@@ -1,0 +1,4492 @@
+{
+ "flowchartData": {
+  "approval": "{\"v\":1,\"nodes\":[{\"id\":\"start\",\"shape\":\"terminator\",\"x\":0,\"y\":0,\"w\":160,\"h\":56,\"text\":\"Start\"},{\"id\":\"review\",\"shape\":\"process\",\"x\":0,\"y\":120,\"w\":160,\"h\":64,\"text\":\"Review the request carefully before anything else\"},{\"id\":\"ok\",\"shape\":\"decision\",\"x\":-8,\"y\":240,\"w\":176,\"h\":96,\"text\":\"Approved?\"},{\"id\":\"yes\",\"shape\":\"process\",\"x\":-8,\"y\":400,\"w\":176,\"h\":64,\"text\":\"Ship it\",\"color\":\"green\"},{\"id\":\"no\",\"shape\":\"io\",\"x\":248,\"y\":256,\"w\":176,\"h\":64,\"text\":\"Send back\",\"color\":\"pink\"},{\"id\":\"memo\",\"shape\":\"note\",\"x\":480,\"y\":40,\"w\":176,\"h\":112,\"text\":\"Remember to log every step in the tracker\"},{\"id\":\"end\",\"shape\":\"circle\",\"x\":24,\"y\":520,\"w\":104,\"h\":104,\"text\":\"End\",\"color\":\"purple\"},{\"id\":\"aside\",\"shape\":\"text\",\"x\":480,\"y\":200,\"w\":160,\"h\":40,\"text\":\"A comment\",\"color\":\"accent\"}],\"edges\":[{\"id\":\"e1\",\"from\":\"start\",\"to\":\"review\"},{\"id\":\"e2\",\"from\":\"review\",\"to\":\"ok\"},{\"id\":\"e3\",\"from\":\"ok\",\"to\":\"yes\",\"label\":\"Yes\"},{\"id\":\"e4\",\"from\":\"ok\",\"to\":\"no\",\"label\":\"No\",\"style\":\"dashed\"},{\"id\":\"e5\",\"from\":\"no\",\"to\":\"review\",\"fromSide\":\"top\",\"toSide\":\"right\",\"arrow\":\"both\"},{\"id\":\"e6\",\"from\":\"yes\",\"to\":\"end\",\"arrow\":\"none\"},{\"id\":\"e7\",\"from\":\"memo\",\"to\":\"aside\",\"label\":\"a very long connector label that goes on and on and on past the cap\"}]}",
+  "sideways": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":160,\"h\":64,\"text\":\"One\"},{\"id\":\"b\",\"shape\":\"process\",\"x\":240,\"y\":8,\"w\":160,\"h\":64,\"text\":\"Two\"},{\"id\":\"c\",\"shape\":\"decision\",\"x\":480,\"y\":-16,\"w\":176,\"h\":96,\"text\":\"Three?\"},{\"id\":\"d\",\"shape\":\"terminator\",\"x\":720,\"y\":0,\"w\":160,\"h\":56,\"text\":\"Four\"},{\"id\":\"e\",\"shape\":\"process\",\"x\":480,\"y\":160,\"w\":160,\"h\":64,\"text\":\"Five\"}],\"edges\":[{\"id\":\"e1\",\"from\":\"a\",\"to\":\"b\"},{\"id\":\"e2\",\"from\":\"b\",\"to\":\"c\"},{\"id\":\"e3\",\"from\":\"c\",\"to\":\"d\",\"label\":\"ok\"},{\"id\":\"e4\",\"from\":\"c\",\"to\":\"e\"},{\"id\":\"e5\",\"from\":\"e\",\"to\":\"a\",\"style\":\"dashed\"}]}",
+  "tangled": "{\"v\":1,\"nodes\":[{\"id\":\"p\",\"shape\":\"process\",\"x\":300,\"y\":300,\"w\":160,\"h\":64,\"text\":\"P\"},{\"id\":\"q\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":200,\"h\":80,\"text\":\"Q\"},{\"id\":\"r\",\"shape\":\"decision\",\"x\":50,\"y\":500,\"w\":176,\"h\":96,\"text\":\"R\"},{\"id\":\"s\",\"shape\":\"circle\",\"x\":900,\"y\":100,\"w\":104,\"h\":104,\"text\":\"S\"},{\"id\":\"t\",\"shape\":\"process\",\"x\":600,\"y\":600,\"w\":160,\"h\":64,\"text\":\"T\"},{\"id\":\"u\",\"shape\":\"note\",\"x\":-400,\"y\":200,\"w\":176,\"h\":112,\"text\":\"U\"},{\"id\":\"v\",\"shape\":\"text\",\"x\":100,\"y\":900,\"w\":160,\"h\":40,\"text\":\"V\"},{\"id\":\"w\",\"shape\":\"io\",\"x\":700,\"y\":0,\"w\":176,\"h\":64,\"text\":\"W\"},{\"id\":\"x\",\"shape\":\"process\",\"x\":400,\"y\":0,\"w\":120,\"h\":64,\"text\":\"X\"}],\"edges\":[{\"id\":\"e1\",\"from\":\"q\",\"to\":\"p\"},{\"id\":\"e2\",\"from\":\"p\",\"to\":\"r\"},{\"id\":\"e3\",\"from\":\"r\",\"to\":\"q\"},{\"id\":\"e4\",\"from\":\"r\",\"to\":\"t\"},{\"id\":\"e5\",\"from\":\"q\",\"to\":\"t\"},{\"id\":\"e6\",\"from\":\"s\",\"to\":\"w\"},{\"id\":\"e7\",\"from\":\"x\",\"to\":\"p\"},{\"id\":\"e8\",\"from\":\"x\",\"to\":\"r\"},{\"id\":\"e9\",\"from\":\"q\",\"to\":\"r\"}]}",
+  "fan": "{\"v\":1,\"nodes\":[{\"id\":\"d\",\"shape\":\"decision\",\"x\":200,\"y\":0,\"w\":176,\"h\":96,\"text\":\"Which?\"},{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":200,\"w\":160,\"h\":64,\"text\":\"A\"},{\"id\":\"b\",\"shape\":\"process\",\"x\":200,\"y\":200,\"w\":160,\"h\":64,\"text\":\"B\"},{\"id\":\"c\",\"shape\":\"process\",\"x\":400,\"y\":200,\"w\":160,\"h\":64,\"text\":\"C\"},{\"id\":\"z\",\"shape\":\"process\",\"x\":600,\"y\":0,\"w\":160,\"h\":64,\"text\":\"Z\"}],\"edges\":[{\"id\":\"e1\",\"from\":\"d\",\"to\":\"a\"},{\"id\":\"e2\",\"from\":\"d\",\"to\":\"b\"},{\"id\":\"e3\",\"from\":\"d\",\"to\":\"c\"},{\"id\":\"e4\",\"from\":\"z\",\"to\":\"b\"},{\"id\":\"e5\",\"from\":\"z\",\"to\":\"c\"},{\"id\":\"e6\",\"from\":\"a\",\"to\":\"c\",\"fromSide\":\"bottom\",\"toSide\":\"bottom\"}]}"
+ },
+ "issues": [
+  {
+   "data": "",
+   "issue": null,
+   "parsed": ""
+  },
+  {
+   "data": "not json",
+   "issue": "expected JSON",
+   "parsed": ""
+  },
+  {
+   "data": "[]",
+   "issue": "expected an object",
+   "parsed": ""
+  },
+  {
+   "data": "{\"v\":2,\"nodes\":[]}",
+   "issue": "unsupported version",
+   "parsed": ""
+  },
+  {
+   "data": "{\"nodes\":[],\"extra\":1}",
+   "issue": "unexpected field extra",
+   "parsed": ""
+  },
+  {
+   "data": "{\"nodes\":{}}",
+   "issue": "nodes must be an array",
+   "parsed": ""
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":10,\"h\":40}]}",
+   "issue": "node 0: invalid w",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":24,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"blob\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}]}",
+   "issue": "node 0: invalid shape",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a b\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}]}",
+   "issue": "node 0: invalid id",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"ab\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40,\"text\":5}]}",
+   "issue": "node 0: invalid text",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40,\"color\":\"red\"}]}",
+   "issue": "node 0: invalid color",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40,\"z\":1}]}",
+   "issue": "node 0: unexpected field z",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":200000,\"y\":0,\"w\":100,\"h\":40}]}",
+   "issue": "node 0: invalid x",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":100000,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[{\"id\":\"e\",\"from\":\"a\",\"to\":\"b\"}]}",
+   "issue": "edge 0: unknown node",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40},{\"id\":\"b\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[{\"id\":\"e\",\"from\":\"a\",\"to\":\"b\",\"style\":\"dotted\"}]}",
+   "issue": "edge 0: invalid style",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40},{\"id\":\"b\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[{\"id\":\"e\",\"from\":\"a\",\"to\":\"b\"}]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40},{\"id\":\"b\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[{\"id\":\"e\",\"from\":\"a\",\"to\":\"b\",\"arrow\":\"none\",\"fromSide\":\"top\",\"label\":\"ok\"}]}",
+   "issue": null,
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40},{\"id\":\"b\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[{\"id\":\"e\",\"from\":\"a\",\"to\":\"b\",\"fromSide\":\"top\",\"label\":\"ok\",\"arrow\":\"none\"}]}"
+  },
+  {
+   "data": "{\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40},{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}]}",
+   "issue": "node 1: invalid id",
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40},{\"id\":\"nas0jnh9\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  },
+  {
+   "data": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}",
+   "issue": null,
+   "parsed": "{\"v\":1,\"nodes\":[{\"id\":\"a\",\"shape\":\"process\",\"x\":0,\"y\":0,\"w\":100,\"h\":40}],\"edges\":[]}"
+  }
+ ],
+ "tooLarge": "flowchart too large",
+ "normalize": [
+  {
+   "input": {
+    "nodes": [
+     {
+      "id": "a",
+      "shape": "decision",
+      "x": 10.4,
+      "y": -3.6,
+      "w": 2000,
+      "h": 5,
+      "text": "Line\r\nTwo\u0001\u0007 tab\there",
+      "color": "blue"
+     },
+     {
+      "id": 7,
+      "shape": "nope",
+      "text": 12,
+      "color": "orange"
+     },
+     {
+      "id": "b",
+      "shape": "circle",
+      "x": "4",
+      "y": 2,
+      "w": 100.5,
+      "h": 100.5,
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     null,
+     "string",
+     {
+      "id": "c-d_e",
+      "shape": "text",
+      "x": -200000,
+      "y": 200000
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "a",
+      "to": 7,
+      "label": "Multi\n\nline\rlabel",
+      "style": "dashed",
+      "arrow": "both",
+      "fromSide": "left",
+      "toSide": "nowhere"
+     },
+     {
+      "id": "e2",
+      "from": "a",
+      "to": 7,
+      "fromSide": "left"
+     },
+     {
+      "id": "e3",
+      "from": "a",
+      "to": "a"
+     },
+     {
+      "id": "e4",
+      "from": "a",
+      "to": "missing"
+     },
+     {
+      "id": "e5",
+      "from": 7,
+      "to": "b",
+      "style": "wavy",
+      "arrow": "sideways",
+      "label": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     {
+      "id": "e6",
+      "from": "b",
+      "to": "c-d_e",
+      "toSide": "top"
+     },
+     "nope"
+    ]
+   },
+   "out": {
+    "v": 1,
+    "nodes": [
+     {
+      "id": "a",
+      "shape": "decision",
+      "x": 10,
+      "y": -4,
+      "w": 960,
+      "h": 24,
+      "text": "Line\nTwo tabhere",
+      "color": "blue"
+     },
+     {
+      "id": "7",
+      "shape": "process",
+      "x": 0,
+      "y": 0,
+      "w": 160,
+      "h": 64,
+      "text": "",
+      "color": "neutral"
+     },
+     {
+      "id": "b",
+      "shape": "circle",
+      "x": 0,
+      "y": 0,
+      "w": 101,
+      "h": 101,
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "color": "neutral"
+     },
+     {
+      "id": "c-d_e",
+      "shape": "text",
+      "x": -100000,
+      "y": 100000,
+      "w": 160,
+      "h": 40,
+      "text": "",
+      "color": "neutral"
+     }
+    ],
+    "edges": [
+     {
+      "id": "e1",
+      "from": "a",
+      "to": "7",
+      "label": "Multi line label",
+      "style": "dashed",
+      "arrow": "both",
+      "fromSide": "left"
+     },
+     {
+      "id": "e5",
+      "from": "7",
+      "to": "b",
+      "label": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "style": "solid",
+      "arrow": "end"
+     },
+     {
+      "id": "e6",
+      "from": "b",
+      "to": "c-d_e",
+      "label": "",
+      "style": "solid",
+      "arrow": "end",
+      "toSide": "top"
+     }
+    ],
+    "unplaced": [
+     "7",
+     "b"
+    ]
+   }
+  },
+  {
+   "input": {
+    "nodes": "nope",
+    "edges": []
+   },
+   "out": {
+    "v": 1,
+    "nodes": [],
+    "edges": [],
+    "unplaced": []
+   }
+  },
+  {
+   "input": "string",
+   "out": {
+    "v": 1,
+    "nodes": [],
+    "edges": [],
+    "unplaced": []
+   }
+  }
+ ],
+ "texts": {
+  "approval": "Start · Review the request carefully before anything else · Approved? · Ship it · Send back · Remember to log every step in the tracker · End · A comment · Yes · No · a very long connector label that goes on and on and on past the cap",
+  "sideways": "One · Two · Three? · Four · Five · ok",
+  "tangled": "P · Q · R · S · T · U · V · W · X",
+  "fan": "Which? · A · B · C · Z"
+ },
+ "measures": [
+  {
+   "text": "Hello",
+   "w14": 30.800000000000004,
+   "w12": 27.500000000000004
+  },
+  {
+   "text": "iljI|!.,:;'`",
+   "w14": 43.67999999999999,
+   "w12": 38.99999999999999
+  },
+  {
+   "text": "frt()[]{}/\\-\"",
+   "w14": 65.52,
+   "w12": 58.5
+  },
+  {
+   "text": "mwMW@%",
+   "w14": 70.56,
+   "w12": 63
+  },
+  {
+   "text": "ABC xyz 0123",
+   "w14": 87.64000000000001,
+   "w12": 78.25000000000001
+  },
+  {
+   "text": "日本",
+   "w14": 28,
+   "w12": 25
+  },
+  {
+   "text": "é ü ß",
+   "w14": 32.76,
+   "w12": 29.25
+  },
+  {
+   "text": "🎉",
+   "w14": 14,
+   "w12": 12.5
+  }
+ ],
+ "wraps": [
+  {
+   "text": "Hello world",
+   "width": 200,
+   "lines": [
+    "Hello world"
+   ]
+  },
+  {
+   "text": "Review the request carefully before anything else",
+   "width": 136,
+   "lines": [
+    "Review the request",
+    "carefully before",
+    "anything else"
+   ]
+  },
+  {
+   "text": "Supercalifragilisticexpialidocious and more",
+   "width": 80,
+   "lines": [
+    "Supercalifra",
+    "gilisticexpial",
+    "idocious and",
+    "more"
+   ]
+  },
+  {
+   "text": "  leading and   multiple   spaces  ",
+   "width": 90,
+   "lines": [
+    "leading and",
+    "multiple",
+    "spaces "
+   ]
+  },
+  {
+   "text": "Line one\nLine two\n\nLine four",
+   "width": 120,
+   "lines": [
+    "Line one",
+    "Line two",
+    "",
+    "Line four"
+   ]
+  },
+  {
+   "text": "日本語のテキストを折り返す テスト",
+   "width": 100,
+   "lines": [
+    "日本語のテキス",
+    "トを折り返す",
+    "テスト"
+   ]
+  },
+  {
+   "text": "emoji 🎉🎉🎉 party time",
+   "width": 70,
+   "lines": [
+    "emoji",
+    "🎉🎉🎉",
+    "party time"
+   ]
+  },
+  {
+   "text": "Mix of WWW and iii and MMM and lll",
+   "width": 60,
+   "lines": [
+    "Mix of",
+    "WWW",
+    "and iii",
+    "and",
+    "MMM",
+    "and lll"
+   ]
+  },
+  {
+   "text": "row0\nrow1\nrow2\nrow3\nrow4\nrow5\nrow6\nrow7\nrow8\nrow9\nrow10\nrow11\nrow12\nrow13\nrow14\nrow15\nrow16\nrow17\nrow18\nrow19\nrow20\nrow21\nrow22\nrow23\nrow24\nrow25\nrow26\nrow27\nrow28\nrow29",
+   "width": 200,
+   "lines": [
+    "row0",
+    "row1",
+    "row2",
+    "row3",
+    "row4",
+    "row5",
+    "row6",
+    "row7",
+    "row8",
+    "row9",
+    "row10",
+    "row11",
+    "row12",
+    "row13",
+    "row14",
+    "row15",
+    "row16",
+    "row17",
+    "row18",
+    "row19",
+    "row20",
+    "row21",
+    "row22",
+    "row2…"
+   ]
+  },
+  {
+   "text": "",
+   "width": 100,
+   "lines": [
+    ""
+   ]
+  },
+  {
+   "text": "a",
+   "width": 1,
+   "lines": [
+    "a"
+   ]
+  }
+ ],
+ "fit": [
+  {
+   "input": {
+    "id": "f1",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 64,
+    "text": "Short",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f1",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 64,
+    "text": "Short",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f1",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 64,
+    "text": "Short",
+    "color": "neutral"
+   },
+   "lines": [
+    "Short"
+   ],
+   "needed": 48,
+   "textWidth": 136
+  },
+  {
+   "input": {
+    "id": "f2",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 64,
+    "text": "A much longer label that needs more width to fit on one line",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f2",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 104,
+    "text": "A much longer label that needs more width to fit on one line",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f2",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 64,
+    "text": "A much longer label that needs more width to fit on one line",
+    "color": "neutral"
+   },
+   "lines": [
+    "A much longer label",
+    "that needs more",
+    "width to fit on one",
+    "line"
+   ],
+   "needed": 104,
+   "textWidth": 136
+  },
+  {
+   "input": {
+    "id": "f3",
+    "shape": "decision",
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 96,
+    "text": "Is the request complete and signed by a manager?",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f3",
+    "shape": "decision",
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 176,
+    "text": "Is the request complete and signed by a manager?",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f3",
+    "shape": "decision",
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 144,
+    "text": "Is the request complete and signed by a manager?",
+    "color": "neutral"
+   },
+   "lines": [
+    "Is the request",
+    "complete and",
+    "signed by a",
+    "manager?"
+   ],
+   "needed": 176,
+   "textWidth": 96.08
+  },
+  {
+   "input": {
+    "id": "f4",
+    "shape": "circle",
+    "x": 0,
+    "y": 0,
+    "w": 104,
+    "h": 104,
+    "text": "A circle with a longer label inside",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f4",
+    "shape": "circle",
+    "x": 0,
+    "y": 0,
+    "w": 136,
+    "h": 136,
+    "text": "A circle with a longer label inside",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f4",
+    "shape": "circle",
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 240,
+    "text": "A circle with a longer label inside",
+    "color": "neutral"
+   },
+   "lines": [
+    "A circle",
+    "with a",
+    "longer label",
+    "inside"
+   ],
+   "needed": 136,
+   "textWidth": 72.8
+  },
+  {
+   "input": {
+    "id": "f5",
+    "shape": "terminator",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 56,
+    "text": "Begin the process\nwith two lines",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f5",
+    "shape": "terminator",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 56,
+    "text": "Begin the process\nwith two lines",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f5",
+    "shape": "terminator",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 56,
+    "text": "Begin the process\nwith two lines",
+    "color": "neutral"
+   },
+   "lines": [
+    "Begin the process",
+    "with two lines"
+   ],
+   "needed": 56,
+   "textWidth": 118.4
+  },
+  {
+   "input": {
+    "id": "f6",
+    "shape": "io",
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 64,
+    "text": "Input from the customer form",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f6",
+    "shape": "io",
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 64,
+    "text": "Input from the customer form",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f6",
+    "shape": "io",
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 64,
+    "text": "Input from the customer form",
+    "color": "neutral"
+   },
+   "lines": [
+    "Input from the",
+    "customer form"
+   ],
+   "needed": 64,
+   "textWidth": 120.47999999999999
+  },
+  {
+   "input": {
+    "id": "f7",
+    "shape": "note",
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 112,
+    "text": "A sticky note can hold a few thoughts about the process and what to check",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f7",
+    "shape": "note",
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 112,
+    "text": "A sticky note can hold a few thoughts about the process and what to check",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f7",
+    "shape": "note",
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 112,
+    "text": "A sticky note can hold a few thoughts about the process and what to check",
+    "color": "neutral"
+   },
+   "lines": [
+    "A sticky note can hold a",
+    "few thoughts about the",
+    "process and what to",
+    "check"
+   ],
+   "needed": 104,
+   "textWidth": 152
+  },
+  {
+   "input": {
+    "id": "f8",
+    "shape": "text",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 40,
+    "text": "Plain text",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f8",
+    "shape": "text",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 40,
+    "text": "Plain text",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f8",
+    "shape": "text",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 40,
+    "text": "Plain text",
+    "color": "neutral"
+   },
+   "lines": [
+    "Plain text"
+   ],
+   "needed": 32,
+   "textWidth": 152
+  },
+  {
+   "input": {
+    "id": "f9",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "plain": {
+    "id": "f9",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "wide": {
+    "id": "f9",
+    "shape": "process",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "lines": [],
+   "needed": 48,
+   "textWidth": 136
+  }
+ ],
+ "shapes": [
+  {
+   "node": {
+    "id": "s",
+    "shape": "process",
+    "x": 13.37,
+    "y": -21.5,
+    "w": 171,
+    "h": 83,
+    "text": "",
+    "color": "neutral"
+   },
+   "path": "M23.4 -21.5H174.4A10 10 0 0 1 184.4 -11.5V51.5A10 10 0 0 1 174.4 61.5H23.4A10 10 0 0 1 13.4 51.5V-11.5A10 10 0 0 1 23.4 -21.5Z",
+   "ports": [
+    [
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 44.15,
+      "y": -21.5
+     },
+     {
+      "x": 160.43,
+      "y": -21.5
+     }
+    ],
+    [
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 184.37,
+      "y": 49.879999999999995
+     }
+    ],
+    [
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 44.15,
+      "y": 61.5
+     },
+     {
+      "x": 160.43,
+      "y": 61.5
+     }
+    ],
+    [
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 13.37,
+      "y": 49.879999999999995
+     }
+    ]
+   ]
+  },
+  {
+   "node": {
+    "id": "s",
+    "shape": "decision",
+    "x": 13.37,
+    "y": -21.5,
+    "w": 171,
+    "h": 83,
+    "text": "",
+    "color": "neutral"
+   },
+   "path": "M91.7 -18Q98.9 -21.5 106.1 -18L177.2 16.5Q184.4 20 177.2 23.5L106.1 58Q98.9 61.5 91.7 58L20.6 23.5Q13.4 20 20.6 16.5Z",
+   "ports": [
+    [
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 98.87,
+      "y": -21.5
+     }
+    ],
+    [
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": 20
+     }
+    ],
+    [
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 98.87,
+      "y": 61.5
+     }
+    ],
+    [
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": 20
+     }
+    ]
+   ]
+  },
+  {
+   "node": {
+    "id": "s",
+    "shape": "terminator",
+    "x": 13.37,
+    "y": -21.5,
+    "w": 171,
+    "h": 83,
+    "text": "",
+    "color": "neutral"
+   },
+   "path": "M54.9 -21.5H142.9A41.5 41.5 0 0 1 184.4 20V20A41.5 41.5 0 0 1 142.9 61.5H54.9A41.5 41.5 0 0 1 13.4 20V20A41.5 41.5 0 0 1 54.9 -21.5Z",
+   "ports": [
+    [
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 70.71,
+      "y": -21.5
+     },
+     {
+      "x": 130.54999999999998,
+      "y": -21.5
+     }
+    ],
+    [
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": 20
+     }
+    ],
+    [
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 70.71,
+      "y": 61.5
+     },
+     {
+      "x": 130.54999999999998,
+      "y": 61.5
+     }
+    ],
+    [
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": 20
+     }
+    ]
+   ]
+  },
+  {
+   "node": {
+    "id": "s",
+    "shape": "io",
+    "x": 13.37,
+    "y": -21.5,
+    "w": 171,
+    "h": 83,
+    "text": "",
+    "color": "neutral"
+   },
+   "path": "M33.8 -15.7Q35.4 -21.5 41.4 -21.5L178.4 -21.5Q184.4 -21.5 182.8 -15.7L163.9 55.7Q162.4 61.5 156.4 61.5L19.4 61.5Q13.4 61.5 14.9 55.7Z",
+   "ports": [
+    [
+     {
+      "x": 109.87,
+      "y": -21.5
+     },
+     {
+      "x": 62.19,
+      "y": -21.5
+     },
+     {
+      "x": 163.51,
+      "y": -21.5
+     }
+    ],
+    [
+     {
+      "x": 173.37,
+      "y": 20
+     },
+     {
+      "x": 180.41,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 165.45000000000002,
+      "y": 49.879999999999995
+     }
+    ],
+    [
+     {
+      "x": 87.87,
+      "y": 61.5
+     },
+     {
+      "x": 40.19,
+      "y": 61.5
+     },
+     {
+      "x": 141.51,
+      "y": 61.5
+     }
+    ],
+    [
+     {
+      "x": 24.369999999999997,
+      "y": 20
+     },
+     {
+      "x": 31.410000000000004,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 16.45,
+      "y": 49.879999999999995
+     }
+    ]
+   ]
+  },
+  {
+   "node": {
+    "id": "s",
+    "shape": "circle",
+    "x": 13.37,
+    "y": -21.5,
+    "w": 171,
+    "h": 83,
+    "text": "",
+    "color": "neutral"
+   },
+   "path": "M13.4 20A85.5 41.5 0 1 0 184.4 20A85.5 41.5 0 1 0 13.4 20Z",
+   "ports": [
+    [
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 98.87,
+      "y": -21.5
+     }
+    ],
+    [
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": 20
+     }
+    ],
+    [
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 98.87,
+      "y": 61.5
+     }
+    ],
+    [
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": 20
+     }
+    ]
+   ]
+  },
+  {
+   "node": {
+    "id": "s",
+    "shape": "note",
+    "x": 13.37,
+    "y": -21.5,
+    "w": 171,
+    "h": 83,
+    "text": "",
+    "color": "neutral"
+   },
+   "path": "M17.4 -21.5H180.4A4 4 0 0 1 184.4 -17.5V57.5A4 4 0 0 1 180.4 61.5H17.4A4 4 0 0 1 13.4 57.5V-17.5A4 4 0 0 1 17.4 -21.5Z",
+   "ports": [
+    [
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 44.15,
+      "y": -21.5
+     },
+     {
+      "x": 160.43,
+      "y": -21.5
+     }
+    ],
+    [
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 184.37,
+      "y": 49.879999999999995
+     }
+    ],
+    [
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 44.15,
+      "y": 61.5
+     },
+     {
+      "x": 160.43,
+      "y": 61.5
+     }
+    ],
+    [
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 13.37,
+      "y": 49.879999999999995
+     }
+    ]
+   ]
+  },
+  {
+   "node": {
+    "id": "s",
+    "shape": "text",
+    "x": 13.37,
+    "y": -21.5,
+    "w": 171,
+    "h": 83,
+    "text": "",
+    "color": "neutral"
+   },
+   "path": "M19.4 -21.5H178.4A6 6 0 0 1 184.4 -15.5V55.5A6 6 0 0 1 178.4 61.5H19.4A6 6 0 0 1 13.4 55.5V-15.5A6 6 0 0 1 19.4 -21.5Z",
+   "ports": [
+    [
+     {
+      "x": 98.87,
+      "y": -21.5
+     },
+     {
+      "x": 44.15,
+      "y": -21.5
+     },
+     {
+      "x": 160.43,
+      "y": -21.5
+     }
+    ],
+    [
+     {
+      "x": 184.37,
+      "y": 20
+     },
+     {
+      "x": 184.37,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 184.37,
+      "y": 49.879999999999995
+     }
+    ],
+    [
+     {
+      "x": 98.87,
+      "y": 61.5
+     },
+     {
+      "x": 44.15,
+      "y": 61.5
+     },
+     {
+      "x": 160.43,
+      "y": 61.5
+     }
+    ],
+    [
+     {
+      "x": 13.37,
+      "y": 20
+     },
+     {
+      "x": 13.37,
+      "y": -6.5600000000000005
+     },
+     {
+      "x": 13.37,
+      "y": 49.879999999999995
+     }
+    ]
+   ]
+  }
+ ],
+ "autoSides": [
+  {
+   "a": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "b": {
+    "x": 0,
+    "y": 200,
+    "w": 100,
+    "h": 50
+   },
+   "sides": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "a": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "b": {
+    "x": 300,
+    "y": 20,
+    "w": 100,
+    "h": 50
+   },
+   "sides": [
+    "right",
+    "left"
+   ]
+  },
+  {
+   "a": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "b": {
+    "x": -300,
+    "y": -100,
+    "w": 100,
+    "h": 50
+   },
+   "sides": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "a": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "b": {
+    "x": 120,
+    "y": 80,
+    "w": 100,
+    "h": 50
+   },
+   "sides": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "a": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "b": {
+    "x": 50,
+    "y": 20,
+    "w": 100,
+    "h": 50
+   },
+   "sides": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "a": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "b": {
+    "x": 200,
+    "y": 140,
+    "w": 0,
+    "h": 0
+   },
+   "sides": [
+    "bottom",
+    "top"
+   ]
+  }
+ ],
+ "nearest": [
+  {
+   "n": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "p": {
+    "x": 50,
+    "y": -3
+   },
+   "side": "top"
+  },
+  {
+   "n": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "p": {
+    "x": 98,
+    "y": 25
+   },
+   "side": "right"
+  },
+  {
+   "n": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 50
+   },
+   "p": {
+    "x": 50,
+    "y": 25
+   },
+   "side": "top"
+  },
+  {
+   "n": {
+    "x": 0,
+    "y": 0,
+    "w": 100,
+    "h": 100
+   },
+   "p": {
+    "x": 0,
+    "y": 0
+   },
+   "side": "top"
+  }
+ ],
+ "ortho": [
+  {
+   "args": [
+    {
+     "x": 0,
+     "y": 50
+    },
+    "bottom",
+    {
+     "x": 200,
+     "y": 300
+    },
+    "top",
+    {
+     "x": -50,
+     "y": 0,
+     "w": 100,
+     "h": 50
+    },
+    {
+     "x": 150,
+     "y": 300,
+     "w": 100,
+     "h": 50
+    }
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 50
+    },
+    {
+     "x": 0,
+     "y": 282
+    },
+    {
+     "x": 200,
+     "y": 282
+    },
+    {
+     "x": 200,
+     "y": 300
+    }
+   ]
+  },
+  {
+   "args": [
+    {
+     "x": 100,
+     "y": 25
+    },
+    "right",
+    {
+     "x": 0,
+     "y": 225
+    },
+    "left",
+    {
+     "x": 0,
+     "y": 0,
+     "w": 100,
+     "h": 50
+    },
+    {
+     "x": 0,
+     "y": 200,
+     "w": 100,
+     "h": 50
+    }
+   ],
+   "points": [
+    {
+     "x": 100,
+     "y": 25
+    },
+    {
+     "x": 118,
+     "y": 25
+    },
+    {
+     "x": 118,
+     "y": 225
+    },
+    {
+     "x": 0,
+     "y": 225
+    }
+   ]
+  },
+  {
+   "args": [
+    {
+     "x": 50,
+     "y": 0
+    },
+    "top",
+    {
+     "x": 50,
+     "y": 250
+    },
+    "bottom",
+    {
+     "x": 0,
+     "y": 0,
+     "w": 100,
+     "h": 50
+    },
+    {
+     "x": 0,
+     "y": 200,
+     "w": 100,
+     "h": 50
+    }
+   ],
+   "points": [
+    {
+     "x": 50,
+     "y": 0
+    },
+    {
+     "x": 50,
+     "y": 250
+    }
+   ]
+  },
+  {
+   "args": [
+    {
+     "x": 50,
+     "y": 50
+    },
+    "bottom",
+    {
+     "x": 300,
+     "y": 100
+    },
+    "left",
+    {
+     "x": 0,
+     "y": 0,
+     "w": 100,
+     "h": 50
+    },
+    {
+     "x": 300,
+     "y": 100,
+     "w": 0,
+     "h": 0
+    }
+   ],
+   "points": [
+    {
+     "x": 50,
+     "y": 50
+    },
+    {
+     "x": 50,
+     "y": 100
+    },
+    {
+     "x": 300,
+     "y": 100
+    }
+   ]
+  }
+ ],
+ "polylines": [
+  {
+   "points": [
+    {
+     "x": 0,
+     "y": 0
+    },
+    {
+     "x": 0,
+     "y": 100
+    },
+    {
+     "x": 100,
+     "y": 100
+    }
+   ],
+   "radius": null,
+   "d": "M0 0L0 90Q0 100 10 100L100 100"
+  },
+  {
+   "points": [
+    {
+     "x": 0,
+     "y": 0
+    },
+    {
+     "x": 0,
+     "y": 7
+    },
+    {
+     "x": 13.3,
+     "y": 7
+    },
+    {
+     "x": 13.3,
+     "y": 90
+    }
+   ],
+   "radius": 6,
+   "d": "M0 0L0 3.5Q0 7 3.5 7L7.3 7Q13.3 7 13.3 13L13.3 90"
+  },
+  {
+   "points": [
+    {
+     "x": 5,
+     "y": 5
+    }
+   ],
+   "radius": null,
+   "d": "M5 5L5 5"
+  },
+  {
+   "points": [],
+   "radius": null,
+   "d": ""
+  }
+ ],
+ "routes": {
+  "approval": {
+   "routed": [
+    {
+     "id": "e1",
+     "points": [
+      {
+       "x": 80,
+       "y": 56
+      },
+      {
+       "x": 80,
+       "y": 120
+      }
+     ],
+     "d": "M80 56L80 113",
+     "heads": [
+      "M80 120L75.4 111Q80 113.5 84.6 111Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e2",
+     "points": [
+      {
+       "x": 80,
+       "y": 184
+      },
+      {
+       "x": 80,
+       "y": 240
+      }
+     ],
+     "d": "M80 184L80 233",
+     "heads": [
+      "M80 240L75.4 231Q80 233.5 84.6 231Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e3",
+     "points": [
+      {
+       "x": 80,
+       "y": 336
+      },
+      {
+       "x": 80,
+       "y": 400
+      }
+     ],
+     "d": "M80 336L80 393",
+     "heads": [
+      "M80 400L75.4 391Q80 393.5 84.6 391Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": {
+      "x": 63.5,
+      "y": 358,
+      "w": 33,
+      "h": 20,
+      "cx": 80,
+      "cy": 368
+     }
+    },
+    {
+     "id": "e4",
+     "points": [
+      {
+       "x": 168,
+       "y": 288
+      },
+      {
+       "x": 258.88,
+       "y": 288
+      }
+     ],
+     "d": "M168 288L251.9 288",
+     "heads": [
+      "M258.9 288L249.9 292.6Q252.4 288 249.9 283.4Z"
+     ],
+     "fromSide": "right",
+     "toSide": "left",
+     "label": {
+      "x": 200.19,
+      "y": 278,
+      "w": 26.5,
+      "h": 20,
+      "cx": 213.44,
+      "cy": 288
+     }
+    },
+    {
+     "id": "e5",
+     "points": [
+      {
+       "x": 346.88,
+       "y": 256
+      },
+      {
+       "x": 346.88,
+       "y": 152
+      },
+      {
+       "x": 160,
+       "y": 152
+      }
+     ],
+     "d": "M346.9 249L346.9 162Q346.9 152 336.9 152L167 152",
+     "heads": [
+      "M160 152L169 147.4Q166.5 152 169 156.6Z",
+      "M346.9 256L342.3 247Q346.9 249.5 351.5 247Z"
+     ],
+     "fromSide": "top",
+     "toSide": "right",
+     "label": null
+    },
+    {
+     "id": "e6",
+     "points": [
+      {
+       "x": 80,
+       "y": 464
+      },
+      {
+       "x": 80,
+       "y": 502
+      },
+      {
+       "x": 76,
+       "y": 502
+      },
+      {
+       "x": 76,
+       "y": 520
+      }
+     ],
+     "d": "M80 464L80 500Q80 502 78 502L78 502Q76 502 76 504L76 520",
+     "heads": [],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e7",
+     "points": [
+      {
+       "x": 568,
+       "y": 152
+      },
+      {
+       "x": 568,
+       "y": 182
+      },
+      {
+       "x": 560,
+       "y": 182
+      },
+      {
+       "x": 560,
+       "y": 200
+      }
+     ],
+     "d": "M568 152L568 178Q568 182 564 182L564 182Q560 182 560 186L560 193",
+     "heads": [
+      "M560 200L555.4 191Q560 193.5 564.6 191Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": {
+      "x": 452,
+      "y": 170,
+      "w": 232,
+      "h": 20,
+      "cx": 568,
+      "cy": 180
+     }
+    }
+   ],
+   "bounds": {
+    "x": -8,
+    "y": 0,
+    "w": 692,
+    "h": 624
+   }
+  },
+  "sideways": {
+   "routed": [
+    {
+     "id": "e1",
+     "points": [
+      {
+       "x": 160,
+       "y": 24.96
+      },
+      {
+       "x": 178,
+       "y": 24.96
+      },
+      {
+       "x": 178,
+       "y": 40
+      },
+      {
+       "x": 240,
+       "y": 40
+      }
+     ],
+     "d": "M160 25L170.5 25Q178 25 178 32.5L178 32.5Q178 40 185.5 40L233 40",
+     "heads": [
+      "M240 40L231 44.6Q233.5 40 231 35.4Z"
+     ],
+     "fromSide": "right",
+     "toSide": "left",
+     "label": null
+    },
+    {
+     "id": "e2",
+     "points": [
+      {
+       "x": 400,
+       "y": 40
+      },
+      {
+       "x": 418,
+       "y": 40
+      },
+      {
+       "x": 418,
+       "y": 32
+      },
+      {
+       "x": 480,
+       "y": 32
+      }
+     ],
+     "d": "M400 40L414 40Q418 40 418 36L418 36Q418 32 422 32L473 32",
+     "heads": [
+      "M480 32L471 36.6Q473.5 32 471 27.4Z"
+     ],
+     "fromSide": "right",
+     "toSide": "left",
+     "label": null
+    },
+    {
+     "id": "e3",
+     "points": [
+      {
+       "x": 656,
+       "y": 32
+      },
+      {
+       "x": 674,
+       "y": 32
+      },
+      {
+       "x": 674,
+       "y": 28
+      },
+      {
+       "x": 720,
+       "y": 28
+      }
+     ],
+     "d": "M656 32L672 32Q674 32 674 30L674 30Q674 28 676 28L713 28",
+     "heads": [
+      "M720 28L711 32.6Q713.5 28 711 23.4Z"
+     ],
+     "fromSide": "right",
+     "toSide": "left",
+     "label": {
+      "x": 673.5,
+      "y": 18,
+      "w": 25,
+      "h": 20,
+      "cx": 686,
+      "cy": 28
+     }
+    },
+    {
+     "id": "e4",
+     "points": [
+      {
+       "x": 568,
+       "y": 80
+      },
+      {
+       "x": 568,
+       "y": 142
+      },
+      {
+       "x": 560,
+       "y": 142
+      },
+      {
+       "x": 560,
+       "y": 160
+      }
+     ],
+     "d": "M568 80L568 138Q568 142 564 142L564 142Q560 142 560 146L560 153",
+     "heads": [
+      "M560 160L555.4 151Q560 153.5 564.6 151Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e5",
+     "points": [
+      {
+       "x": 480,
+       "y": 192
+      },
+      {
+       "x": 462,
+       "y": 192
+      },
+      {
+       "x": 462,
+       "y": 39.04
+      },
+      {
+       "x": 160,
+       "y": 39.04
+      }
+     ],
+     "d": "M480 192L471 192Q462 192 462 183L462 49Q462 39 452 39L167 39",
+     "heads": [
+      "M160 39L169 34.4Q166.5 39 169 43.6Z"
+     ],
+     "fromSide": "left",
+     "toSide": "right",
+     "label": null
+    }
+   ],
+   "bounds": {
+    "x": 0,
+    "y": -16,
+    "w": 880,
+    "h": 240
+   }
+  },
+  "tangled": {
+   "routed": [
+    {
+     "id": "e1",
+     "points": [
+      {
+       "x": 121.33333333333334,
+       "y": 80
+      },
+      {
+       "x": 121.33333333333334,
+       "y": 282
+      },
+      {
+       "x": 362.4,
+       "y": 282
+      },
+      {
+       "x": 362.4,
+       "y": 300
+      }
+     ],
+     "d": "M121.3 80L121.3 272Q121.3 282 131.3 282L356.9 282Q362.4 282 362.4 287.5L362.4 293",
+     "heads": [
+      "M362.4 300L357.8 291Q362.4 293.5 367 291Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e2",
+     "points": [
+      {
+       "x": 380,
+       "y": 364
+      },
+      {
+       "x": 380,
+       "y": 482
+      },
+      {
+       "x": 138,
+       "y": 482
+      },
+      {
+       "x": 138,
+       "y": 500
+      }
+     ],
+     "d": "M380 364L380 472Q380 482 370 482L143.5 482Q138 482 138 487.5L138 493",
+     "heads": [
+      "M138 500L133.4 491Q138 493.5 142.6 491Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e3",
+     "points": [
+      {
+       "x": 138,
+       "y": 500
+      },
+      {
+       "x": 138,
+       "y": 98
+      },
+      {
+       "x": 36,
+       "y": 98
+      },
+      {
+       "x": 36,
+       "y": 80
+      }
+     ],
+     "d": "M138 500L138 108Q138 98 128 98L41.5 98Q36 98 36 92.5L36 87",
+     "heads": [
+      "M36 80L40.6 89Q36 86.5 31.4 89Z"
+     ],
+     "fromSide": "top",
+     "toSide": "bottom",
+     "label": null
+    },
+    {
+     "id": "e4",
+     "points": [
+      {
+       "x": 226,
+       "y": 548
+      },
+      {
+       "x": 244,
+       "y": 548
+      },
+      {
+       "x": 244,
+       "y": 632
+      },
+      {
+       "x": 600,
+       "y": 632
+      }
+     ],
+     "d": "M226 548L235 548Q244 548 244 557L244 622Q244 632 254 632L593 632",
+     "heads": [
+      "M600 632L591 636.6Q593.5 632 591 627.4Z"
+     ],
+     "fromSide": "right",
+     "toSide": "left",
+     "label": null
+    },
+    {
+     "id": "e5",
+     "points": [
+      {
+       "x": 164,
+       "y": 80
+      },
+      {
+       "x": 164,
+       "y": 582
+      },
+      {
+       "x": 680,
+       "y": 582
+      },
+      {
+       "x": 680,
+       "y": 600
+      }
+     ],
+     "d": "M164 80L164 572Q164 582 174 582L674.5 582Q680 582 680 587.5L680 593",
+     "heads": [
+      "M680 600L675.4 591Q680 593.5 684.6 591Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e6",
+     "points": [
+      {
+       "x": 952,
+       "y": 100
+      },
+      {
+       "x": 952,
+       "y": 82
+      },
+      {
+       "x": 777.12,
+       "y": 82
+      },
+      {
+       "x": 777.12,
+       "y": 64
+      }
+     ],
+     "d": "M952 100L952 91Q952 82 943 82L782.6 82Q777.1 82 777.1 76.5L777.1 71",
+     "heads": [
+      "M777.1 64L781.7 73Q777.1 70.5 772.5 73Z"
+     ],
+     "fromSide": "top",
+     "toSide": "bottom",
+     "label": null
+    },
+    {
+     "id": "e7",
+     "points": [
+      {
+       "x": 473.2,
+       "y": 64
+      },
+      {
+       "x": 473.2,
+       "y": 282
+      },
+      {
+       "x": 397.6,
+       "y": 282
+      },
+      {
+       "x": 397.6,
+       "y": 300
+      }
+     ],
+     "d": "M473.2 64L473.2 272Q473.2 282 463.2 282L403.1 282Q397.6 282 397.6 287.5L397.6 293",
+     "heads": [
+      "M397.6 300L393 291Q397.6 293.5 402.2 291Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e8",
+     "points": [
+      {
+       "x": 446.8,
+       "y": 64
+      },
+      {
+       "x": 446.8,
+       "y": 482
+      },
+      {
+       "x": 138,
+       "y": 482
+      },
+      {
+       "x": 138,
+       "y": 500
+      }
+     ],
+     "d": "M446.8 64L446.8 472Q446.8 482 436.8 482L143.5 482Q138 482 138 487.5L138 493",
+     "heads": [
+      "M138 500L133.4 491Q138 493.5 142.6 491Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e9",
+     "points": [
+      {
+       "x": 78.66666666666666,
+       "y": 80
+      },
+      {
+       "x": 78.66666666666666,
+       "y": 482
+      },
+      {
+       "x": 138,
+       "y": 482
+      },
+      {
+       "x": 138,
+       "y": 500
+      }
+     ],
+     "d": "M78.7 80L78.7 472Q78.7 482 88.7 482L132.5 482Q138 482 138 487.5L138 493",
+     "heads": [
+      "M138 500L133.4 491Q138 493.5 142.6 491Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    }
+   ],
+   "bounds": {
+    "x": -400,
+    "y": 0,
+    "w": 1404,
+    "h": 940
+   }
+  },
+  "fan": {
+   "routed": [
+    {
+     "id": "e1",
+     "points": [
+      {
+       "x": 200,
+       "y": 48
+      },
+      {
+       "x": 80,
+       "y": 48
+      },
+      {
+       "x": 80,
+       "y": 200
+      }
+     ],
+     "d": "M200 48L90 48Q80 48 80 58L80 193",
+     "heads": [
+      "M80 200L75.4 191Q80 193.5 84.6 191Z"
+     ],
+     "fromSide": "left",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e2",
+     "points": [
+      {
+       "x": 288,
+       "y": 96
+      },
+      {
+       "x": 288,
+       "y": 182
+      },
+      {
+       "x": 280,
+       "y": 182
+      },
+      {
+       "x": 280,
+       "y": 200
+      }
+     ],
+     "d": "M288 96L288 178Q288 182 284 182L284 182Q280 182 280 186L280 193",
+     "heads": [
+      "M280 200L275.4 191Q280 193.5 284.6 191Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e3",
+     "points": [
+      {
+       "x": 376,
+       "y": 48
+      },
+      {
+       "x": 462.4,
+       "y": 48
+      },
+      {
+       "x": 462.4,
+       "y": 200
+      }
+     ],
+     "d": "M376 48L452.4 48Q462.4 48 462.4 58L462.4 193",
+     "heads": [
+      "M462.4 200L457.8 191Q462.4 193.5 467 191Z"
+     ],
+     "fromSide": "right",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e4",
+     "points": [
+      {
+       "x": 600,
+       "y": 32
+      },
+      {
+       "x": 582,
+       "y": 32
+      },
+      {
+       "x": 582,
+       "y": 232
+      },
+      {
+       "x": 360,
+       "y": 232
+      }
+     ],
+     "d": "M600 32L591 32Q582 32 582 41L582 222Q582 232 572 232L367 232",
+     "heads": [
+      "M360 232L369 227.4Q366.5 232 369 236.6Z"
+     ],
+     "fromSide": "left",
+     "toSide": "right",
+     "label": null
+    },
+    {
+     "id": "e5",
+     "points": [
+      {
+       "x": 680,
+       "y": 64
+      },
+      {
+       "x": 680,
+       "y": 182
+      },
+      {
+       "x": 497.6,
+       "y": 182
+      },
+      {
+       "x": 497.6,
+       "y": 200
+      }
+     ],
+     "d": "M680 64L680 172Q680 182 670 182L503.1 182Q497.6 182 497.6 187.5L497.6 193",
+     "heads": [
+      "M497.6 200L493 191Q497.6 193.5 502.2 191Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "top",
+     "label": null
+    },
+    {
+     "id": "e6",
+     "points": [
+      {
+       "x": 80,
+       "y": 264
+      },
+      {
+       "x": 80,
+       "y": 282
+      },
+      {
+       "x": 480,
+       "y": 282
+      },
+      {
+       "x": 480,
+       "y": 264
+      }
+     ],
+     "d": "M80 264L80 273Q80 282 89 282L474.5 282Q480 282 480 276.5L480 271",
+     "heads": [
+      "M480 264L484.6 273Q480 270.5 475.4 273Z"
+     ],
+     "fromSide": "bottom",
+     "toSide": "bottom",
+     "label": null
+    }
+   ],
+   "bounds": {
+    "x": 0,
+    "y": 0,
+    "w": 760,
+    "h": 282
+   }
+  }
+ },
+ "layouts": {
+  "approvalTD": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "start",
+     "shape": "terminator",
+     "x": 184,
+     "y": 0,
+     "w": 160,
+     "h": 56,
+     "text": "Start",
+     "color": "neutral"
+    },
+    {
+     "id": "review",
+     "shape": "process",
+     "x": 184,
+     "y": 120,
+     "w": 160,
+     "h": 64,
+     "text": "Review the request carefully before anything else",
+     "color": "neutral"
+    },
+    {
+     "id": "ok",
+     "shape": "decision",
+     "x": 128,
+     "y": 248,
+     "w": 176,
+     "h": 96,
+     "text": "Approved?",
+     "color": "neutral"
+    },
+    {
+     "id": "yes",
+     "shape": "process",
+     "x": -8,
+     "y": 408,
+     "w": 176,
+     "h": 64,
+     "text": "Ship it",
+     "color": "green"
+    },
+    {
+     "id": "no",
+     "shape": "io",
+     "x": 224,
+     "y": 408,
+     "w": 176,
+     "h": 64,
+     "text": "Send back",
+     "color": "pink"
+    },
+    {
+     "id": "memo",
+     "shape": "note",
+     "x": 496,
+     "y": 0,
+     "w": 176,
+     "h": 112,
+     "text": "Remember to log every step in the tracker",
+     "color": "neutral"
+    },
+    {
+     "id": "end",
+     "shape": "circle",
+     "x": 32,
+     "y": 536,
+     "w": 104,
+     "h": 104,
+     "text": "End",
+     "color": "purple"
+    },
+    {
+     "id": "aside",
+     "shape": "text",
+     "x": 504,
+     "y": 176,
+     "w": 160,
+     "h": 40,
+     "text": "A comment",
+     "color": "accent"
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "start",
+     "to": "review",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e2",
+     "from": "review",
+     "to": "ok",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e3",
+     "from": "ok",
+     "to": "yes",
+     "label": "Yes",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e4",
+     "from": "ok",
+     "to": "no",
+     "label": "No",
+     "style": "dashed",
+     "arrow": "end"
+    },
+    {
+     "id": "e5",
+     "from": "no",
+     "to": "review",
+     "label": "",
+     "style": "solid",
+     "arrow": "both"
+    },
+    {
+     "id": "e6",
+     "from": "yes",
+     "to": "end",
+     "label": "",
+     "style": "solid",
+     "arrow": "none"
+    },
+    {
+     "id": "e7",
+     "from": "memo",
+     "to": "aside",
+     "label": "a very long connector label that goes on and on and on past the cap",
+     "style": "solid",
+     "arrow": "end"
+    }
+   ]
+  },
+  "approvalLR": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "start",
+     "shape": "terminator",
+     "x": 104,
+     "y": 64,
+     "w": 160,
+     "h": 56,
+     "text": "Start",
+     "color": "neutral"
+    },
+    {
+     "id": "review",
+     "shape": "process",
+     "x": 336,
+     "y": 64,
+     "w": 160,
+     "h": 64,
+     "text": "Review the request carefully before anything else",
+     "color": "neutral"
+    },
+    {
+     "id": "ok",
+     "shape": "decision",
+     "x": 568,
+     "y": 24,
+     "w": 176,
+     "h": 96,
+     "text": "Approved?",
+     "color": "neutral"
+    },
+    {
+     "id": "yes",
+     "shape": "process",
+     "x": 816,
+     "y": -24,
+     "w": 176,
+     "h": 64,
+     "text": "Ship it",
+     "color": "green"
+    },
+    {
+     "id": "no",
+     "shape": "io",
+     "x": 816,
+     "y": 80,
+     "w": 176,
+     "h": 64,
+     "text": "Send back",
+     "color": "pink"
+    },
+    {
+     "id": "memo",
+     "shape": "note",
+     "x": 104,
+     "y": 216,
+     "w": 176,
+     "h": 112,
+     "text": "Remember to log every step in the tracker",
+     "color": "neutral"
+    },
+    {
+     "id": "end",
+     "shape": "circle",
+     "x": 1064,
+     "y": -40,
+     "w": 104,
+     "h": 104,
+     "text": "End",
+     "color": "purple"
+    },
+    {
+     "id": "aside",
+     "shape": "text",
+     "x": 352,
+     "y": 256,
+     "w": 160,
+     "h": 40,
+     "text": "A comment",
+     "color": "accent"
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "start",
+     "to": "review",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e2",
+     "from": "review",
+     "to": "ok",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e3",
+     "from": "ok",
+     "to": "yes",
+     "label": "Yes",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e4",
+     "from": "ok",
+     "to": "no",
+     "label": "No",
+     "style": "dashed",
+     "arrow": "end"
+    },
+    {
+     "id": "e5",
+     "from": "no",
+     "to": "review",
+     "label": "",
+     "style": "solid",
+     "arrow": "both"
+    },
+    {
+     "id": "e6",
+     "from": "yes",
+     "to": "end",
+     "label": "",
+     "style": "solid",
+     "arrow": "none"
+    },
+    {
+     "id": "e7",
+     "from": "memo",
+     "to": "aside",
+     "label": "a very long connector label that goes on and on and on past the cap",
+     "style": "solid",
+     "arrow": "end"
+    }
+   ]
+  },
+  "sidewaysAuto": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "a",
+     "shape": "process",
+     "x": 0,
+     "y": 56,
+     "w": 160,
+     "h": 64,
+     "text": "One",
+     "color": "neutral"
+    },
+    {
+     "id": "b",
+     "shape": "process",
+     "x": 232,
+     "y": 40,
+     "w": 160,
+     "h": 64,
+     "text": "Two",
+     "color": "neutral"
+    },
+    {
+     "id": "c",
+     "shape": "decision",
+     "x": 464,
+     "y": 16,
+     "w": 176,
+     "h": 96,
+     "text": "Three?",
+     "color": "neutral"
+    },
+    {
+     "id": "d",
+     "shape": "terminator",
+     "x": 712,
+     "y": -16,
+     "w": 160,
+     "h": 56,
+     "text": "Four",
+     "color": "neutral"
+    },
+    {
+     "id": "e",
+     "shape": "process",
+     "x": 712,
+     "y": 80,
+     "w": 160,
+     "h": 64,
+     "text": "Five",
+     "color": "neutral"
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "a",
+     "to": "b",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e2",
+     "from": "b",
+     "to": "c",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e3",
+     "from": "c",
+     "to": "d",
+     "label": "ok",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e4",
+     "from": "c",
+     "to": "e",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e5",
+     "from": "e",
+     "to": "a",
+     "label": "",
+     "style": "dashed",
+     "arrow": "end"
+    }
+   ]
+  },
+  "tangledTD": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "p",
+     "shape": "process",
+     "x": -384,
+     "y": 128,
+     "w": 160,
+     "h": 64,
+     "text": "P",
+     "color": "neutral"
+    },
+    {
+     "id": "q",
+     "shape": "process",
+     "x": -400,
+     "y": 416,
+     "w": 200,
+     "h": 80,
+     "text": "Q",
+     "color": "neutral"
+    },
+    {
+     "id": "r",
+     "shape": "decision",
+     "x": -392,
+     "y": 256,
+     "w": 176,
+     "h": 96,
+     "text": "R",
+     "color": "neutral"
+    },
+    {
+     "id": "s",
+     "shape": "circle",
+     "x": -64,
+     "y": 0,
+     "w": 104,
+     "h": 104,
+     "text": "S",
+     "color": "neutral"
+    },
+    {
+     "id": "t",
+     "shape": "process",
+     "x": -376,
+     "y": 560,
+     "w": 160,
+     "h": 64,
+     "text": "T",
+     "color": "neutral"
+    },
+    {
+     "id": "u",
+     "shape": "note",
+     "x": 176,
+     "y": 0,
+     "w": 176,
+     "h": 112,
+     "text": "U",
+     "color": "neutral"
+    },
+    {
+     "id": "v",
+     "shape": "text",
+     "x": 448,
+     "y": 0,
+     "w": 160,
+     "h": 40,
+     "text": "V",
+     "color": "neutral"
+    },
+    {
+     "id": "w",
+     "shape": "io",
+     "x": -104,
+     "y": 168,
+     "w": 176,
+     "h": 64,
+     "text": "W",
+     "color": "neutral"
+    },
+    {
+     "id": "x",
+     "shape": "process",
+     "x": -360,
+     "y": 0,
+     "w": 120,
+     "h": 64,
+     "text": "X",
+     "color": "neutral"
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "q",
+     "to": "p",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e2",
+     "from": "p",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e3",
+     "from": "r",
+     "to": "q",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e4",
+     "from": "r",
+     "to": "t",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e5",
+     "from": "q",
+     "to": "t",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e6",
+     "from": "s",
+     "to": "w",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e7",
+     "from": "x",
+     "to": "p",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e8",
+     "from": "x",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e9",
+     "from": "q",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    }
+   ]
+  },
+  "tangledLR": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "p",
+     "shape": "process",
+     "x": -232,
+     "y": 16,
+     "w": 160,
+     "h": 64,
+     "text": "P",
+     "color": "neutral"
+    },
+    {
+     "id": "q",
+     "shape": "process",
+     "x": 208,
+     "y": 8,
+     "w": 200,
+     "h": 80,
+     "text": "Q",
+     "color": "neutral"
+    },
+    {
+     "id": "r",
+     "shape": "decision",
+     "x": -16,
+     "y": 0,
+     "w": 176,
+     "h": 96,
+     "text": "R",
+     "color": "neutral"
+    },
+    {
+     "id": "s",
+     "shape": "circle",
+     "x": -400,
+     "y": 152,
+     "w": 104,
+     "h": 104,
+     "text": "S",
+     "color": "neutral"
+    },
+    {
+     "id": "t",
+     "shape": "process",
+     "x": 456,
+     "y": 16,
+     "w": 160,
+     "h": 64,
+     "text": "T",
+     "color": "neutral"
+    },
+    {
+     "id": "u",
+     "shape": "note",
+     "x": -400,
+     "y": 304,
+     "w": 176,
+     "h": 112,
+     "text": "U",
+     "color": "neutral"
+    },
+    {
+     "id": "v",
+     "shape": "text",
+     "x": -400,
+     "y": 472,
+     "w": 160,
+     "h": 40,
+     "text": "V",
+     "color": "neutral"
+    },
+    {
+     "id": "w",
+     "shape": "io",
+     "x": -248,
+     "y": 168,
+     "w": 176,
+     "h": 64,
+     "text": "W",
+     "color": "neutral"
+    },
+    {
+     "id": "x",
+     "shape": "process",
+     "x": -400,
+     "y": 16,
+     "w": 120,
+     "h": 64,
+     "text": "X",
+     "color": "neutral"
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "q",
+     "to": "p",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e2",
+     "from": "p",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e3",
+     "from": "r",
+     "to": "q",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e4",
+     "from": "r",
+     "to": "t",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e5",
+     "from": "q",
+     "to": "t",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e6",
+     "from": "s",
+     "to": "w",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e7",
+     "from": "x",
+     "to": "p",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e8",
+     "from": "x",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e9",
+     "from": "q",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    }
+   ]
+  },
+  "fanTD": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "d",
+     "shape": "decision",
+     "x": 8,
+     "y": 0,
+     "w": 176,
+     "h": 96,
+     "text": "Which?",
+     "color": "neutral"
+    },
+    {
+     "id": "a",
+     "shape": "process",
+     "x": 0,
+     "y": 160,
+     "w": 160,
+     "h": 64,
+     "text": "A",
+     "color": "neutral"
+    },
+    {
+     "id": "b",
+     "shape": "process",
+     "x": 216,
+     "y": 160,
+     "w": 160,
+     "h": 64,
+     "text": "B",
+     "color": "neutral"
+    },
+    {
+     "id": "c",
+     "shape": "process",
+     "x": 104,
+     "y": 288,
+     "w": 160,
+     "h": 64,
+     "text": "C",
+     "color": "neutral"
+    },
+    {
+     "id": "z",
+     "shape": "process",
+     "x": 240,
+     "y": 16,
+     "w": 160,
+     "h": 64,
+     "text": "Z",
+     "color": "neutral"
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "d",
+     "to": "a",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e2",
+     "from": "d",
+     "to": "b",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e3",
+     "from": "d",
+     "to": "c",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e4",
+     "from": "z",
+     "to": "b",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e5",
+     "from": "z",
+     "to": "c",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "e6",
+     "from": "a",
+     "to": "c",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    }
+   ]
+  }
+ },
+ "mermaid": {
+  "approval": {
+   "direction": "TD",
+   "text": "flowchart TD\n  n1([\"Start\"])\n  n2[\"Review the request carefully before anything else\"]\n  n3{\"Approved?\"}\n  n4[\"Ship it\"]\n  n5[/\"Send back\"/]\n  n6>\"Remember to log every step in the tracker\"]\n  n7((\"End\"))\n  n8[\"A comment\"]\n  n1 --> n2\n  n2 --> n3\n  n3 -->|\"Yes\"| n4\n  n3 -.->|\"No\"| n5\n  n5 <--> n2\n  n4 --- n7\n  n6 -->|\"a very long connector label that goes on and on and on past the cap\"| n8\n  classDef green fill:#e5f5ea,stroke:#86c79c\n  class n4 green\n  classDef pink fill:#fce8ee,stroke:#eba3b8\n  class n5 pink\n  classDef purple fill:#efe9fb,stroke:#b6a1e6\n  class n7 purple\n  classDef accent fill:#f1f1f3,stroke:#8e8e96\n  class n8 accent"
+  },
+  "sideways": {
+   "direction": "LR",
+   "text": "flowchart LR\n  n1[\"One\"]\n  n2[\"Two\"]\n  n3{\"Three?\"}\n  n4([\"Four\"])\n  n5[\"Five\"]\n  n1 --> n2\n  n2 --> n3\n  n3 -->|\"ok\"| n4\n  n3 --> n5\n  n5 -.-> n1"
+  },
+  "tangled": {
+   "direction": "TD",
+   "text": "flowchart TD\n  n1[\"P\"]\n  n2[\"Q\"]\n  n3{\"R\"}\n  n4((\"S\"))\n  n5[\"T\"]\n  n6>\"U\"]\n  n7[\"V\"]\n  n8[/\"W\"/]\n  n9[\"X\"]\n  n2 --> n1\n  n1 --> n3\n  n3 --> n2\n  n3 --> n5\n  n2 --> n5\n  n4 --> n8\n  n9 --> n1\n  n9 --> n3\n  n2 --> n3"
+  },
+  "fan": {
+   "direction": "LR",
+   "text": "flowchart LR\n  n1{\"Which?\"}\n  n2[\"A\"]\n  n3[\"B\"]\n  n4[\"C\"]\n  n5[\"Z\"]\n  n1 --> n2\n  n1 --> n3\n  n1 --> n4\n  n5 --> n3\n  n5 --> n4\n  n2 --> n4"
+  },
+  "escapes": {
+   "direction": "TD",
+   "text": "flowchart TD\n  n1[\"Say #quot;hi#quot; #amp; #lt;wave#gt; #124; bye<br/>next\"]\n  n2>\" \"]\n  n3[/\"c\"/]\n  n1 <-.->|\"a#124;b\"| n2\n  n2 --- n3\n  n2 -.- n3\n  n1 <--> n3\n  classDef blue fill:#e8f0fe,stroke:#8fb0ea\n  class n3 blue"
+  }
+ },
+ "svgs": {
+  "approval": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-32 -24 740 672\" width=\"740\" height=\"672\" role=\"img\" aria-label=\"Flowchart\" font-family=\"'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif\"><rect x=\"-32\" y=\"-24\" width=\"100%\" height=\"100%\" fill=\"#ffffff\"/><path d=\"M80 56L80 113\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M80 120L75.4 111Q80 113.5 84.6 111Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M80 184L80 233\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M80 240L75.4 231Q80 233.5 84.6 231Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M80 336L80 393\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M80 400L75.4 391Q80 393.5 84.6 391Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M168 288L251.9 288\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"6 5\"/><path d=\"M258.9 288L249.9 292.6Q252.4 288 249.9 283.4Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M346.9 249L346.9 162Q346.9 152 336.9 152L167 152\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M160 152L169 147.4Q166.5 152 169 156.6Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M346.9 256L342.3 247Q346.9 249.5 351.5 247Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M80 464L80 500Q80 502 78 502L78 502Q76 502 76 504L76 520\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M568 152L568 178Q568 182 564 182L564 182Q560 182 560 186L560 193\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M560 200L555.4 191Q560 193.5 564.6 191Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M28 0H132A28 28 0 0 1 160 28V28A28 28 0 0 1 132 56H28A28 28 0 0 1 0 28V28A28 28 0 0 1 28 0Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"33\">Start</tspan></text><path d=\"M10 120H150A10 10 0 0 1 160 130V174A10 10 0 0 1 150 184H10A10 10 0 0 1 0 174V130A10 10 0 0 1 10 120Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"138\">Review the request</tspan><tspan x=\"80\" y=\"157\">carefully before</tspan><tspan x=\"80\" y=\"176\">anything else</tspan></text><path d=\"M73 243.8Q80 240 87 243.8L161 284.2Q168 288 161 291.8L87 332.2Q80 336 73 332.2L-1 291.8Q-8 288 -1 284.2Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"293\">Approved?</tspan></text><path d=\"M2 400H158A10 10 0 0 1 168 410V454A10 10 0 0 1 158 464H2A10 10 0 0 1 -8 454V410A10 10 0 0 1 2 400Z\" fill=\"#e5f5ea\" stroke=\"#86c79c\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#1d4d2e\"><tspan x=\"80\" y=\"437\">Ship it</tspan></text><path d=\"M267.8 261.7Q269.8 256 275.8 256L418 256Q424 256 422.1 261.7L404.2 314.3Q402.2 320 396.2 320L254 320Q248 320 249.9 314.3Z\" fill=\"#fce8ee\" stroke=\"#eba3b8\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#6e2338\"><tspan x=\"336\" y=\"293\">Send back</tspan></text><path d=\"M484 40H652A4 4 0 0 1 656 44V148A4 4 0 0 1 652 152H484A4 4 0 0 1 480 148V44A4 4 0 0 1 484 40Z\" fill=\"#fdf3d0\" stroke=\"rgba(0,0,0,0.08)\" stroke-width=\"1\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#5a4608\"><tspan x=\"568\" y=\"68.5\">Remember to log every</tspan><tspan x=\"568\" y=\"87.5\">step in the tracker</tspan></text><path d=\"M24 572A52 52 0 1 0 128 572A52 52 0 1 0 24 572Z\" fill=\"#efe9fb\" stroke=\"#b6a1e6\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#3f2a6e\"><tspan x=\"76\" y=\"577\">End</tspan></text><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"560\" y=\"225\">A comment</tspan></text><rect x=\"63.5\" y=\"358\" width=\"33\" height=\"20\" rx=\"6\" fill=\"#ffffff\"/><text x=\"80\" y=\"372.375\" text-anchor=\"middle\" font-size=\"12.5\" fill=\"#56565e\">Yes</text><rect x=\"200.19\" y=\"278\" width=\"26.5\" height=\"20\" rx=\"6\" fill=\"#ffffff\"/><text x=\"213.44\" y=\"292.375\" text-anchor=\"middle\" font-size=\"12.5\" fill=\"#56565e\">No</text><rect x=\"452\" y=\"170\" width=\"232\" height=\"20\" rx=\"6\" fill=\"#ffffff\"/><text x=\"568\" y=\"184.375\" text-anchor=\"middle\" font-size=\"12.5\" fill=\"#56565e\">a very long connector label that goes on and on and on past the cap</text></svg>",
+  "approvalTitled": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-18 -10 712 644\" width=\"712\" height=\"644\" role=\"img\" aria-label=\"My chart  co\" font-family=\"'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif\"><rect x=\"-18\" y=\"-10\" width=\"100%\" height=\"100%\" fill=\"#ffffff\"/><path d=\"M80 56L80 113\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M80 120L75.4 111Q80 113.5 84.6 111Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M80 184L80 233\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M80 240L75.4 231Q80 233.5 84.6 231Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M80 336L80 393\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M80 400L75.4 391Q80 393.5 84.6 391Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M168 288L251.9 288\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"6 5\"/><path d=\"M258.9 288L249.9 292.6Q252.4 288 249.9 283.4Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M346.9 249L346.9 162Q346.9 152 336.9 152L167 152\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M160 152L169 147.4Q166.5 152 169 156.6Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M346.9 256L342.3 247Q346.9 249.5 351.5 247Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M80 464L80 500Q80 502 78 502L78 502Q76 502 76 504L76 520\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M568 152L568 178Q568 182 564 182L564 182Q560 182 560 186L560 193\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M560 200L555.4 191Q560 193.5 564.6 191Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M28 0H132A28 28 0 0 1 160 28V28A28 28 0 0 1 132 56H28A28 28 0 0 1 0 28V28A28 28 0 0 1 28 0Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"33\">Start</tspan></text><path d=\"M10 120H150A10 10 0 0 1 160 130V174A10 10 0 0 1 150 184H10A10 10 0 0 1 0 174V130A10 10 0 0 1 10 120Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"138\">Review the request</tspan><tspan x=\"80\" y=\"157\">carefully before</tspan><tspan x=\"80\" y=\"176\">anything else</tspan></text><path d=\"M73 243.8Q80 240 87 243.8L161 284.2Q168 288 161 291.8L87 332.2Q80 336 73 332.2L-1 291.8Q-8 288 -1 284.2Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"293\">Approved?</tspan></text><path d=\"M2 400H158A10 10 0 0 1 168 410V454A10 10 0 0 1 158 464H2A10 10 0 0 1 -8 454V410A10 10 0 0 1 2 400Z\" fill=\"#e5f5ea\" stroke=\"#86c79c\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#1d4d2e\"><tspan x=\"80\" y=\"437\">Ship it</tspan></text><path d=\"M267.8 261.7Q269.8 256 275.8 256L418 256Q424 256 422.1 261.7L404.2 314.3Q402.2 320 396.2 320L254 320Q248 320 249.9 314.3Z\" fill=\"#fce8ee\" stroke=\"#eba3b8\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#6e2338\"><tspan x=\"336\" y=\"293\">Send back</tspan></text><path d=\"M484 40H652A4 4 0 0 1 656 44V148A4 4 0 0 1 652 152H484A4 4 0 0 1 480 148V44A4 4 0 0 1 484 40Z\" fill=\"#fdf3d0\" stroke=\"rgba(0,0,0,0.08)\" stroke-width=\"1\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#5a4608\"><tspan x=\"568\" y=\"68.5\">Remember to log every</tspan><tspan x=\"568\" y=\"87.5\">step in the tracker</tspan></text><path d=\"M24 572A52 52 0 1 0 128 572A52 52 0 1 0 24 572Z\" fill=\"#efe9fb\" stroke=\"#b6a1e6\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#3f2a6e\"><tspan x=\"76\" y=\"577\">End</tspan></text><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"560\" y=\"225\">A comment</tspan></text><rect x=\"63.5\" y=\"358\" width=\"33\" height=\"20\" rx=\"6\" fill=\"#ffffff\"/><text x=\"80\" y=\"372.375\" text-anchor=\"middle\" font-size=\"12.5\" fill=\"#56565e\">Yes</text><rect x=\"200.19\" y=\"278\" width=\"26.5\" height=\"20\" rx=\"6\" fill=\"#ffffff\"/><text x=\"213.44\" y=\"292.375\" text-anchor=\"middle\" font-size=\"12.5\" fill=\"#56565e\">No</text><rect x=\"452\" y=\"170\" width=\"232\" height=\"20\" rx=\"6\" fill=\"#ffffff\"/><text x=\"568\" y=\"184.375\" text-anchor=\"middle\" font-size=\"12.5\" fill=\"#56565e\">a very long connector label that goes on and on and on past the cap</text></svg>",
+  "fan": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-24 -24 808 330\" width=\"808\" height=\"330\" role=\"img\" aria-label=\"Flowchart\" font-family=\"'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif\"><rect x=\"-24\" y=\"-24\" width=\"100%\" height=\"100%\" fill=\"#ffffff\"/><path d=\"M200 48L90 48Q80 48 80 58L80 193\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M80 200L75.4 191Q80 193.5 84.6 191Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M288 96L288 178Q288 182 284 182L284 182Q280 182 280 186L280 193\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M280 200L275.4 191Q280 193.5 284.6 191Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M376 48L452.4 48Q462.4 48 462.4 58L462.4 193\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M462.4 200L457.8 191Q462.4 193.5 467 191Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M600 32L591 32Q582 32 582 41L582 222Q582 232 572 232L367 232\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M360 232L369 227.4Q366.5 232 369 236.6Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M680 64L680 172Q680 182 670 182L503.1 182Q497.6 182 497.6 187.5L497.6 193\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M497.6 200L493 191Q497.6 193.5 502.2 191Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M80 264L80 273Q80 282 89 282L474.5 282Q480 282 480 276.5L480 271\" fill=\"none\" stroke=\"#8a8a93\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M480 264L484.6 273Q480 270.5 475.4 273Z\" fill=\"#8a8a93\" stroke=\"#8a8a93\" stroke-width=\"1\" stroke-linejoin=\"round\"/><path d=\"M281 3.8Q288 0 295 3.8L369 44.2Q376 48 369 51.8L295 92.2Q288 96 281 92.2L207 51.8Q200 48 207 44.2Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"288\" y=\"53\">Which?</tspan></text><path d=\"M10 200H150A10 10 0 0 1 160 210V254A10 10 0 0 1 150 264H10A10 10 0 0 1 0 254V210A10 10 0 0 1 10 200Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"237\">A</tspan></text><path d=\"M210 200H350A10 10 0 0 1 360 210V254A10 10 0 0 1 350 264H210A10 10 0 0 1 200 254V210A10 10 0 0 1 210 200Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"280\" y=\"237\">B</tspan></text><path d=\"M410 200H550A10 10 0 0 1 560 210V254A10 10 0 0 1 550 264H410A10 10 0 0 1 400 254V210A10 10 0 0 1 410 200Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"480\" y=\"237\">C</tspan></text><path d=\"M610 0H750A10 10 0 0 1 760 10V54A10 10 0 0 1 750 64H610A10 10 0 0 1 600 54V10A10 10 0 0 1 610 0Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"680\" y=\"37\">Z</tspan></text></svg>",
+  "escapes": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-24 -24 208 112\" width=\"208\" height=\"112\" role=\"img\" aria-label=\"Flowchart\" font-family=\"'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif\"><rect x=\"-24\" y=\"-24\" width=\"100%\" height=\"100%\" fill=\"#ffffff\"/><path d=\"M10 0H150A10 10 0 0 1 160 10V54A10 10 0 0 1 150 64H10A10 10 0 0 1 0 54V10A10 10 0 0 1 10 0Z\" fill=\"#ffffff\" stroke=\"#cfcfd5\" stroke-width=\"1.5\"/><text text-anchor=\"middle\" font-size=\"14\" fill=\"#18181b\"><tspan x=\"80\" y=\"37\">&lt;b&gt;bold&lt;/b&gt; &amp; &quot;q&quot;</tspan></text></svg>",
+  "empty": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 80\" width=\"320\" height=\"80\" role=\"img\" aria-label=\"Flowchart (empty)\"></svg>"
+ },
+ "resize": [
+  {
+   "handle": "n",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 48,
+    "w": 160,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "n",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": -272,
+    "w": 160,
+    "h": 360,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "n",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 16,
+    "w": 184,
+    "h": 72,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "ne",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 48,
+    "w": 200,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "ne",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": -272,
+    "w": 40,
+    "h": 360,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "ne",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 0,
+    "w": 216,
+    "h": 88,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "e",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 200,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "e",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 40,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "e",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 216,
+    "h": 88,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "se",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 200,
+    "h": 88,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "se",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 40,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "se",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 216,
+    "h": 88,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "s",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 88,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "s",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "s",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "sw",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 56,
+    "y": 24,
+    "w": 120,
+    "h": 88,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "sw",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": -280,
+    "y": 24,
+    "w": 456,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "sw",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 32,
+    "y": 24,
+    "w": 144,
+    "h": 56,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "w",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 56,
+    "y": 24,
+    "w": 120,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "w",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": -280,
+    "y": 24,
+    "w": 456,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "w",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "nw",
+   "dx": 37,
+   "dy": 21,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": 56,
+    "y": 48,
+    "w": 120,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "nw",
+   "dx": -300,
+   "dy": -300,
+   "keep": false,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": -280,
+    "y": -272,
+    "w": 456,
+    "h": 360,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "nw",
+   "dx": 55,
+   "dy": -12,
+   "keep": true,
+   "node": {
+    "id": "r",
+    "shape": "process",
+    "x": 16,
+    "y": 24,
+    "w": 160,
+    "h": 64,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "r",
+    "shape": "process",
+    "x": -8,
+    "y": 16,
+    "w": 184,
+    "h": 72,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "se",
+   "dx": 40,
+   "dy": 3,
+   "keep": false,
+   "node": {
+    "id": "c",
+    "shape": "circle",
+    "x": 0,
+    "y": 0,
+    "w": 104,
+    "h": 104,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "c",
+    "shape": "circle",
+    "x": 0,
+    "y": 0,
+    "w": 144,
+    "h": 144,
+    "text": "",
+    "color": "neutral"
+   }
+  },
+  {
+   "handle": "e",
+   "dx": 2000,
+   "dy": 0,
+   "keep": false,
+   "node": {
+    "id": "t",
+    "shape": "text",
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   },
+   "out": {
+    "id": "t",
+    "shape": "text",
+    "x": 0,
+    "y": 0,
+    "w": 960,
+    "h": 40,
+    "text": "",
+    "color": "neutral"
+   }
+  }
+ ],
+ "snap": [
+  {
+   "moving": {
+    "x": 3,
+    "y": 5,
+    "w": 160,
+    "h": 64
+   },
+   "out": {
+    "dx": -3,
+    "dy": -5,
+    "guides": [
+     {
+      "axis": "x",
+      "at": 0,
+      "from": 5,
+      "to": 340
+     },
+     {
+      "axis": "y",
+      "at": 0,
+      "from": 3,
+      "to": 360
+     }
+    ]
+   }
+  },
+  {
+   "moving": {
+    "x": 197,
+    "y": 150,
+    "w": 160,
+    "h": 64
+   },
+   "out": {
+    "dx": 3,
+    "dy": 2,
+    "guides": [
+     {
+      "axis": "x",
+      "at": 200,
+      "from": 0,
+      "to": 214
+     }
+    ]
+   }
+  },
+  {
+   "moving": {
+    "x": 43,
+    "y": 297,
+    "w": 100,
+    "h": 40
+   },
+   "out": {
+    "dx": -3,
+    "dy": 3,
+    "guides": [
+     {
+      "axis": "y",
+      "at": 300,
+      "from": 0,
+      "to": 143
+     }
+    ]
+   }
+  },
+  {
+   "moving": {
+    "x": 150,
+    "y": 2,
+    "w": 40,
+    "h": 40
+   },
+   "out": {
+    "dx": 2,
+    "dy": -2,
+    "guides": [
+     {
+      "axis": "y",
+      "at": 0,
+      "from": 150,
+      "to": 360
+     }
+    ]
+   }
+  }
+ ],
+ "setShape": [
+  {
+   "shape": "process",
+   "out": {
+    "id": "a",
+    "shape": "process",
+    "x": 0,
+    "y": 8,
+    "w": 200,
+    "h": 64,
+    "text": "A label that wraps over a couple of lines here",
+    "color": "blue"
+   }
+  },
+  {
+   "shape": "decision",
+   "out": {
+    "id": "a",
+    "shape": "decision",
+    "x": 0,
+    "y": -8,
+    "w": 200,
+    "h": 176,
+    "text": "A label that wraps over a couple of lines here",
+    "color": "blue"
+   }
+  },
+  {
+   "shape": "terminator",
+   "out": {
+    "id": "a",
+    "shape": "terminator",
+    "x": 0,
+    "y": 8,
+    "w": 200,
+    "h": 64,
+    "text": "A label that wraps over a couple of lines here",
+    "color": "blue"
+   }
+  },
+  {
+   "shape": "io",
+   "out": {
+    "id": "a",
+    "shape": "io",
+    "x": 0,
+    "y": 8,
+    "w": 200,
+    "h": 64,
+    "text": "A label that wraps over a couple of lines here",
+    "color": "blue"
+   }
+  },
+  {
+   "shape": "circle",
+   "out": {
+    "id": "a",
+    "shape": "circle",
+    "x": 48,
+    "y": -16,
+    "w": 136,
+    "h": 136,
+    "text": "A label that wraps over a couple of lines here",
+    "color": "blue"
+   }
+  },
+  {
+   "shape": "note",
+   "out": {
+    "id": "a",
+    "shape": "note",
+    "x": 0,
+    "y": -16,
+    "w": 200,
+    "h": 112,
+    "text": "A label that wraps over a couple of lines here",
+    "color": "blue"
+   }
+  },
+  {
+   "shape": "text",
+   "out": {
+    "id": "a",
+    "shape": "text",
+    "x": 0,
+    "y": 16,
+    "w": 200,
+    "h": 48,
+    "text": "A label that wraps over a couple of lines here",
+    "color": "blue"
+   }
+  }
+ ],
+ "drafts": {
+  "create": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "s",
+     "shape": "terminator",
+     "x": 72,
+     "y": 0,
+     "w": 160,
+     "h": 56,
+     "text": "Start",
+     "color": "neutral"
+    },
+    {
+     "id": "r",
+     "shape": "process",
+     "x": 32,
+     "y": 120,
+     "w": 240,
+     "h": 64,
+     "text": "Review the refund request and check the receipt",
+     "color": "neutral"
+    },
+    {
+     "id": "d",
+     "shape": "decision",
+     "x": 80,
+     "y": 248,
+     "w": 184,
+     "h": 96,
+     "text": "Within 30 days?",
+     "color": "yellow"
+    },
+    {
+     "id": "y",
+     "shape": "process",
+     "x": 0,
+     "y": 408,
+     "w": 160,
+     "h": 64,
+     "text": "Refund",
+     "color": "green"
+    },
+    {
+     "id": "n",
+     "shape": "io",
+     "x": 216,
+     "y": 408,
+     "w": 176,
+     "h": 64,
+     "text": "Explain the policy",
+     "color": "neutral"
+    },
+    {
+     "id": "bad",
+     "shape": "process",
+     "x": 216,
+     "y": 536,
+     "w": 160,
+     "h": 64,
+     "text": "Odd shape",
+     "color": "neutral"
+    }
+   ],
+   "edges": [
+    {
+     "id": "de0",
+     "from": "s",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "de1",
+     "from": "r",
+     "to": "d",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "de2",
+     "from": "d",
+     "to": "y",
+     "label": "Yes",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "de3",
+     "from": "d",
+     "to": "n",
+     "label": "No",
+     "style": "dashed",
+     "arrow": "end"
+    },
+    {
+     "id": "de4",
+     "from": "n",
+     "to": "bad",
+     "label": "",
+     "style": "solid",
+     "arrow": "none"
+    }
+   ]
+  },
+  "update": {
+   "v": 1,
+   "nodes": [
+    {
+     "id": "s",
+     "shape": "terminator",
+     "x": 104,
+     "y": 136,
+     "w": 160,
+     "h": 56,
+     "text": "Start",
+     "color": "neutral"
+    },
+    {
+     "id": "r",
+     "shape": "process",
+     "x": 336,
+     "y": 120,
+     "w": 240,
+     "h": 96,
+     "text": "Review the refund request and check the receipt",
+     "color": "pink"
+    },
+    {
+     "id": "d",
+     "shape": "decision",
+     "x": 648,
+     "y": 128,
+     "w": 184,
+     "h": 96,
+     "text": "Within 30 days?",
+     "color": "yellow"
+    },
+    {
+     "id": "y",
+     "shape": "process",
+     "x": 912,
+     "y": 104,
+     "w": 160,
+     "h": 64,
+     "text": "Refund",
+     "color": "green"
+    },
+    {
+     "id": "n",
+     "shape": "io",
+     "x": 904,
+     "y": 208,
+     "w": 176,
+     "h": 64,
+     "text": "Explain the policy",
+     "color": "neutral"
+    },
+    {
+     "id": "bad",
+     "shape": "process",
+     "x": 1152,
+     "y": 208,
+     "w": 160,
+     "h": 64,
+     "text": "Odd shape",
+     "color": "neutral"
+    }
+   ],
+   "edges": [
+    {
+     "id": "de0",
+     "from": "s",
+     "to": "r",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "de1",
+     "from": "r",
+     "to": "d",
+     "label": "",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "de2",
+     "from": "d",
+     "to": "y",
+     "label": "Yes",
+     "style": "solid",
+     "arrow": "end"
+    },
+    {
+     "id": "de3",
+     "from": "d",
+     "to": "n",
+     "label": "No",
+     "style": "dashed",
+     "arrow": "end"
+    },
+    {
+     "id": "de4",
+     "from": "n",
+     "to": "bad",
+     "label": "",
+     "style": "solid",
+     "arrow": "none"
+    }
+   ]
+  }
+ },
+ "draft": {
+  "nodes": [
+   {
+    "id": "s",
+    "shape": "terminator",
+    "text": "Start"
+   },
+   {
+    "id": "r",
+    "shape": "process",
+    "text": "Review the refund request and check the receipt"
+   },
+   {
+    "id": "d",
+    "shape": "decision",
+    "text": "Within 30 days?",
+    "color": "yellow"
+   },
+   {
+    "id": "y",
+    "shape": "process",
+    "text": "Refund",
+    "color": "green"
+   },
+   {
+    "id": "n",
+    "shape": "io",
+    "text": "Explain the policy"
+   },
+   {
+    "id": "bad",
+    "shape": "hexagon",
+    "text": "Odd shape"
+   }
+  ],
+  "edges": [
+   {
+    "from": "s",
+    "to": "r",
+    "id": "de0"
+   },
+   {
+    "from": "r",
+    "to": "d",
+    "id": "de1"
+   },
+   {
+    "from": "d",
+    "to": "y",
+    "label": "Yes",
+    "id": "de2"
+   },
+   {
+    "from": "d",
+    "to": "n",
+    "label": "No",
+    "style": "dashed",
+    "id": "de3"
+   },
+   {
+    "from": "n",
+    "to": "bad",
+    "arrow": "none",
+    "id": "de4"
+   }
+  ],
+  "direction": "TD"
+ },
+ "current": {
+  "v": 1,
+  "nodes": [
+   {
+    "id": "r",
+    "shape": "process",
+    "x": 100,
+    "y": 100,
+    "w": 240,
+    "h": 96,
+    "text": "Old review",
+    "color": "pink"
+   },
+   {
+    "id": "y",
+    "shape": "decision",
+    "x": 300,
+    "y": 300,
+    "w": 176,
+    "h": 96,
+    "text": "Old",
+    "color": "blue"
+   }
+  ],
+  "edges": []
+ }
+}

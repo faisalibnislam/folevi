@@ -103,6 +103,7 @@ public enum SearchText {
         case "bookmark": parts += [s("title"), s("description"), s("url")]
         case "page": parts.append(s("titleCache"))
         case "formula": parts.append(s("latex"))
+        case FlowchartProps.type: parts.append(Flowchart.text(Flowchart.parse(s("data"))))
         default: break
         }
         return parts.filter { !$0.isEmpty }.joined(separator: " ")

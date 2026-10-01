@@ -178,6 +178,10 @@ public enum MarkdownCodec {
                 let svg = Whiteboard.svg(data: (p["data"]?.isNull == false ? string(p["data"]) : ""), height: p["height"]?.doubleValue)
                 lines.append("\(indent)![Whiteboard](\(Whiteboard.dataURI(svg)))")
                 lines.append("")
+            case FlowchartProps.type:
+                // A Mermaid diagram, so the chart stays editable and renders in most Markdown viewers.
+                let fc = Flowchart.parse(p["data"]?.stringValue ?? "")
+                if !fc.nodes.isEmpty { lines.append(contentsOf: ["```mermaid", FlowchartExport.mermaid(fc), "```", ""]) }
             case "code":
                 let code = p["code"].flatMap { $0.isNull ? nil : $0 }.map { string($0) } ?? ""
                 let fence = code.contains("```") ? "~~~~" : "```"

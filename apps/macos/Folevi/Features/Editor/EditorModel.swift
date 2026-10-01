@@ -48,6 +48,7 @@ struct SlashItem: Identifiable, Equatable {
         case "divider": return String(localized: "Divider")
         case "code": return String(localized: "Code")
         case "table": return String(localized: "Table")
+        case "flowchart": return String(localized: "Flowchart")
         case "image": return String(localized: "Image")
         case "file": return String(localized: "File")
         case "record": return String(localized: "Audio Recording")
@@ -80,6 +81,7 @@ struct SlashItem: Identifiable, Equatable {
         SlashItem(id: "divider", title: "Divider", searchText: "divider line separator rule hr", systemImage: "minus", shortcut: "---"),
         SlashItem(id: "code", title: "Code", searchText: "code snippet pre", systemImage: "chevron.left.forwardslash.chevron.right", shortcut: "```"),
         SlashItem(id: "table", title: "Table", searchText: "table grid rows columns", systemImage: "tablecells", shortcut: nil),
+        SlashItem(id: "flowchart", title: "Flowchart", searchText: "flowchart diagram process flow chart shapes boxes arrows", systemImage: "point.3.connected.trianglepath.dotted", shortcut: nil),
         SlashItem(id: "image", title: "Image", searchText: "image picture photo", systemImage: "photo", shortcut: nil),
         SlashItem(id: "file", title: "File", searchText: "file attachment pdf", systemImage: "paperclip", shortcut: nil),
         SlashItem(id: "record", title: "Audio Recording", searchText: "audio record recording voice memo microphone mic sound dictate", systemImage: "mic", shortcut: nil),
@@ -1272,7 +1274,7 @@ final class EditorModel {
             if let tv = textView(blockId) {
                 tv.replace(range: tv.selectedRange(), with: [.date(date: TaskLogic.localDate()), .text(text: " ", marks: nil)], style: currentTextStyle(for: blockId))
             }
-        case "table", "divider", "code":
+        case "table", "divider", "code", "flowchart":
             let content = BlockContent.defaultContent(for: id)
             if isEmpty && block.typeName == "paragraph" {
                 var b = block
@@ -1280,7 +1282,7 @@ final class EditorModel {
                 b.text = []
                 var upserts = [b]
                 var focusReq = FocusRequest(blockId: b.id, caret: .start)
-                if id == "divider" || id == "table" {
+                if id == "divider" || id == "table" || id == "flowchart" {
                     let next = Block(id: ULID.make(), parentId: b.parentId, rank: rank(parentId: b.parentId, after: b.id), content: .paragraph(ParagraphProps()))
                     upserts.append(next)
                     focusReq = FocusRequest(blockId: next.id, caret: .start)

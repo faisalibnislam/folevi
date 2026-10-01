@@ -194,9 +194,10 @@ final class FoleviUITests: XCTestCase {
         app.menuBars.menuItems["System"].click()
     }
 
-    func testOfflineBannerWhenForcedOffline() {
+    func testOfflineStatusWhenForcedOffline() {
         launchToLibrary(extraArgs: ["-FoleviForceOffline", "YES"])
-        XCTAssertTrue(element("offlineBanner").waitForExistence(timeout: 10), "offline banner is shown")
+        // As on the web: no banner, the sidebar's sync icon turns to "Offline".
+        XCTAssertTrue(element("syncStatusPill").waitForExistence(timeout: 10), "sync status is shown")
         XCTAssertEqual(element("syncStatusPill").value as? String, "Offline")
     }
 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Menus: File, Edit (Find), Format, Block, View, Help — routed to the focused window's navigation
+/// Menus: File, Edit (Find), Format, Block, View, Help, routed to the focused window's navigation
 /// and editor models.
 struct FoleviCommands: Commands {
     let app: AppModel
@@ -15,7 +15,15 @@ struct FoleviCommands: Commands {
         let folderId = nav?.currentFolderId
         Task {
             guard let id = await app.createDocument(folderId: folderId) else { return }
-            if let nav { nav.open(id) } else { openWindow(id: "document", value: id) }
+            if let nav { nav.open(id, newTab: true) } else { openWindow(id: "document", value: id) }
+        }
+    }
+
+    private func quickAdd() {
+        if NSApp.keyWindow?.isMainWindow == true, nav != nil {
+            app.showQuickAdd = true
+        } else {
+            openWindow(id: "quickAdd")
         }
     }
 
@@ -34,10 +42,12 @@ struct FoleviCommands: Commands {
             Button("Open Quickly…") { app.showCommandPalette = true }
                 .keyboardShortcut("k")
                 .disabled(!ready)
-            Button("Quick Add Task…") { openWindow(id: "quickAdd") }
+            // ⇧⌘A, as on the web: the Quick add dialog in the window (its own small window when no Folevi
+            // window is in front).
+            Button("Quick Add Task…") { quickAdd() }
                 .keyboardShortcut("a", modifiers: [.command, .shift])
                 .disabled(!ready)
-            Button("Quick Add Task (Alternate)") { openWindow(id: "quickAdd") }
+            Button("Quick Add Task (Alternate)") { quickAdd() }
                 .keyboardShortcut(.space, modifiers: [.control, .option])
                 .disabled(!ready)
             Divider()
@@ -117,8 +127,8 @@ struct FoleviCommands: Commands {
                     Button(c.rawValue.capitalized) { editor?.setHighlight(c) }
                 }
             }
+            // No shortcut, as on the web: ⌘\ shows and hides the sidebar.
             Button("Clear Formatting") { editor?.clearFormatting() }
-                .keyboardShortcut("\\", modifiers: [.command])
             Divider()
             Menu("Turn Into") {
                 ForEach(TurnIntoOption.all) { option in
@@ -159,10 +169,17 @@ struct FoleviCommands: Commands {
         }
 
         CommandGroup(replacing: .sidebar) {
-            Button("Toggle Sidebar") { nav?.toggleSidebar() }
-                .keyboardShortcut("s", modifiers: [.control, .command])
+            // The web's shortcuts: ⌘\ sidebar, ⌥⌘I inspector, ⌥⌘T Tasks · Today.
+            Button(nav?.sidebarVisible == false ? "Show Sidebar" : "Hide Sidebar") { if let nav { withSidebarAnimation { nav.toggleSidebar() } } }
+                .keyboardShortcut("\\", modifiers: [.command])
+            Button(nav?.focusMode == true ? "Exit Focus Mode" : "Focus Mode") {
+                if let nav { withSidebarAnimation { nav.setFocusMode(!nav.focusMode) } }
+            }
             Button("Toggle Inspector") { nav?.showInspector.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])
+            Button("Go to Tasks") { nav?.show(.tasks) }
+                .keyboardShortcut("t", modifiers: [.command, .option])
+                .disabled(nav == nil || !ready)
             Divider()
             Button("Zoom In") { app.zoomIn() }.keyboardShortcut("+")
             Button("Zoom Out") { app.zoomOut() }.keyboardShortcut("-")

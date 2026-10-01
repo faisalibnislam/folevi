@@ -63,6 +63,10 @@ struct Profile: Codable, Sendable, Hashable {
     var aiEnabled: Bool?
     /// When a requested account deletion happens (status "pending_deletion").
     var deletionScheduledFor: Double?
+    /// Folevi staff: the workspace menu offers the Admin console.
+    var platformRole: String?
+    /// Their profile picture (Personal's mark in the workspace menu).
+    var avatarUrl: String?
 
     /// AI is available: their plan includes it and they haven't turned it off (the server enforces it).
     var aiOn: Bool { aiEnabled != false && (entitlements?.ai ?? true) }
@@ -79,7 +83,7 @@ struct OnboardingStepChoice: Sendable {
     var aiEnabled: Bool? = nil
 }
 
-/// ai:ask / ai:brief — Markdown with [n] citations, and the notes cited.
+/// ai:ask / ai:brief, Markdown with [n] citations, and the notes cited.
 struct AiAnswer: Decodable, Sendable {
     struct Source: Decodable, Sendable, Hashable, Identifiable {
         var id: String

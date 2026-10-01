@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Canvas
 
-/// `canvas` plus two very large, very soft radial glows — peach top-right, rose bottom-left
+/// `canvas` plus two very large, very soft radial glows, peach top-right, rose bottom-left
 /// (`.ui-canvas` on the web). Flat under Reduce Transparency.
 struct CanvasBackground: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -72,14 +72,16 @@ struct AmbientBackground: View {
 // MARK: - Buttons
 
 enum FoleviButtonKind { case primary, secondary, ghost, quiet, danger }
+/// The web's Button sizes: sm 32pt / 13pt, md 36pt / 14pt (large is for full-width calls to action).
 enum FoleviButtonSize {
     case small, medium, large
-    var height: CGFloat { switch self { case .small: return 28; case .medium: return 34; case .large: return 40 } }
-    var font: CGFloat { switch self { case .small: return 12.5; case .medium: return 13.5; case .large: return 14 } }
-    var padding: CGFloat { switch self { case .small: return 12; case .medium: return 15; case .large: return 20 } }
+    var height: CGFloat { switch self { case .small: return 32; case .medium: return 36; case .large: return 40 } }
+    var font: CGFloat { switch self { case .small: return 13; case .medium: return 14; case .large: return 14 } }
+    var padding: CGFloat { switch self { case .small: return 14; case .medium: return 16; case .large: return 20 } }
 }
 
-/// Pill buttons: primary (cocoa gradient), secondary (white pill + control shadow), ghost, quiet, danger.
+/// The web's `.ui-btn`: radius 6. Primary (accent, inset highlight, soft drop), secondary (raised glass with
+/// the glass edge), ghost, quiet (muted; glass hover), danger.
 struct FoleviButtonStyle: ButtonStyle {
     var kind: FoleviButtonKind = .secondary
     var size: FoleviButtonSize = .medium
@@ -110,7 +112,7 @@ private struct FoleviButtonBody: View {
             .frame(minHeight: size.height)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background { background(pressed: pressed) }
-            .contentShape(Capsule())
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .opacity(isEnabled ? 1 : 0.5)
             .onHover { hovering = $0 && isEnabled }
             .animation(reduceMotion ? nil : .easeOut(duration: FoleviMotion.fast), value: hovering)
@@ -119,32 +121,36 @@ private struct FoleviButtonBody: View {
     private var foreground: Color {
         switch kind {
         case .primary: return FoleviColor.accentInk
-        case .danger: return FoleviColor.accentInk
+        case .danger: return .white
         case .secondary, .ghost: return hovering ? FoleviColor.heading : FoleviColor.ink
         case .quiet: return hovering ? FoleviColor.heading : FoleviColor.inkMuted
         }
     }
 
+    /// `.ui-btn-primary`: inset white/14% top line, 0 1px 2px black/12%, 0 4px 12px -4px black/25%.
+    private static let primaryShadow: [FoleviShadowLayer] = [
+        FoleviShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: .white.opacity(0.14), inset: true),
+        FoleviShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: .black.opacity(0.12), inset: false),
+        FoleviShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: .black.opacity(0.25), inset: false),
+    ]
+
     @ViewBuilder private func background(pressed: Bool) -> some View {
+        let shape = SurfaceShape.rounded(6)
         switch kind {
         case .primary:
-            Color.clear.foleviSurface(.gradient(nearlyFlat(FoleviColor.accent, pressed: pressed)), shape: .capsule, shadow: FoleviShadow.primary)
+            // Hover brightens by 5%, pressed darkens by 4%.
+            let fill = pressed ? FoleviColor.accent.mix(with: .black, by: 0.04) : hovering ? FoleviColor.accent.mix(with: .white, by: 0.05) : FoleviColor.accent
+            Color.clear.foleviSurface(.color(fill), shape: shape, shadow: Self.primaryShadow)
         case .danger:
-            Color.clear.foleviSurface(.gradient(nearlyFlat(FoleviColor.destructive, pressed: pressed)), shape: .capsule, shadow: FoleviShadow.primary)
+            let base = pressed ? FoleviColor.destructive.mix(with: .black, by: 0.04) : FoleviColor.destructive
+            Color.clear.foleviSurface(.gradient([base.mix(with: .white, by: hovering ? 0.08 : 0.04), base]), shape: shape, shadow: FoleviShadow.primary)
         case .secondary:
-            let base = pressed ? FoleviColor.surfaceRaised.mix(with: FoleviColor.surfaceSunken, by: 0.35) : FoleviColor.surfaceRaised
-            Color.clear.foleviSurface(.gradient([base, base.mix(with: FoleviColor.surfaceSunken, by: hovering ? 0.0 : 0.04)]),
-                                      shape: .capsule, shadow: FoleviShadow.control)
+            let fill = pressed ? FoleviColor.surfaceSunken : hovering ? FoleviColor.surfaceRaised : FoleviColor.surfaceRaised.opacity(0.72)
+            Color.clear.foleviSurface(.color(fill), shape: shape,
+                                      shadow: FoleviGlassDepth.edge + [FoleviShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: .black.opacity(0.06), inset: false)])
         case .ghost, .quiet:
-            Capsule().fill(hovering || pressed ? FoleviColor.accentSoft.opacity(pressed ? 1 : 0.8) : Color.clear)
+            RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hovering || pressed ? FoleviGlass.hover : Color.clear)
         }
-    }
-
-    /// Nearly flat: at most a 4% lighter top; hover lifts a touch, pressed darkens slightly.
-    private func nearlyFlat(_ base: Color, pressed: Bool) -> [Color] {
-        if pressed { return [base.mix(with: .black, by: 0.07), base.mix(with: .black, by: 0.07)] }
-        let top = base.mix(with: .white, by: hovering ? 0.08 : 0.04)
-        return [top, hovering ? base.mix(with: .white, by: 0.04) : base]
     }
 }
 
@@ -157,19 +163,20 @@ extension ButtonStyle where Self == FoleviButtonStyle {
     }
 }
 
-/// 30pt ghost circle for icons. Always labelled; tooltip carries the shortcut.
+/// The web's IconButton: a quiet square (radius 6), 32pt by default. Always labelled; the tooltip carries
+/// the shortcut.
 struct IconButton: View {
     var systemImage: String
     var label: LocalizedStringKey
     var shortcutHint: String?
-    var size: CGFloat = 30
+    var size: CGFloat = 32
     var isActive = false
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: size * 0.47, weight: .medium))
+                .font(.system(size: size * 0.45, weight: .medium))
                 .frame(width: size, height: size)
         }
         .buttonStyle(IconButtonStyle(isActive: isActive))
@@ -185,6 +192,7 @@ struct IconButtonStyle: ButtonStyle {
     }
 }
 
+/// Quiet: muted, glass hover; pressed (active) shows the accent-soft fill, as `.ui-btn-quiet[aria-pressed]`.
 private struct IconButtonBody: View {
     let configuration: ButtonStyle.Configuration
     let isActive: Bool
@@ -192,10 +200,11 @@ private struct IconButtonBody: View {
     @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         configuration.label
             .foregroundStyle(isActive || hovering ? FoleviColor.heading : FoleviColor.inkMuted)
-            .background(Circle().fill(isActive || configuration.isPressed ? FoleviColor.accentSoft : hovering ? FoleviColor.accentSoft.opacity(0.8) : .clear))
-            .contentShape(Circle())
+            .background(shape.fill(isActive ? FoleviColor.accentSoft : hovering || configuration.isPressed ? FoleviGlass.hover : .clear))
+            .contentShape(shape)
             .opacity(isEnabled ? 1 : 0.4)
             .onHover { hovering = $0 && isEnabled }
     }
@@ -372,151 +381,6 @@ extension View {
             .foregroundStyle(FoleviColor.heading)
             .lineLimit(1)
             .accessibilityAddTraits(.isHeader)
-    }
-}
-
-// MARK: - Sync status pill
-
-/// Sunken pill: status dot + icon + label (never color alone). Saved = moss, saving/syncing = ember
-/// pulse, offline = faint, conflict/error = coral. "Saved" only after server ack (reducer status).
-struct SyncStatusPill: View {
-    var snapshot: SyncSnapshot
-    var compact = false
-    @State private var showDetails = false
-    @State private var pulse = false
-    @State private var hovering = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(AppModel.self) private var app
-
-    private var info: (label: LocalizedStringKey, icon: String, dot: Color, ink: Color) {
-        switch snapshot.status {
-        case .saved: return ("Saved", "checkmark", FoleviColor.moss, FoleviColor.inkMuted)
-        case .saving: return ("Saving", "arrow.up", FoleviColor.ember, FoleviColor.inkMuted)
-        case .syncing: return ("Syncing", "arrow.triangle.2.circlepath", FoleviColor.ember, FoleviColor.inkMuted)
-        case .offline: return ("Offline", "icloud.slash", FoleviColor.inkFaint, FoleviColor.warning)
-        case .conflict: return ("Conflict", "arrow.triangle.merge", FoleviColor.coral, FoleviColor.coralInk)
-        case .error: return ("Error", "exclamationmark.triangle", FoleviColor.coral, FoleviColor.destructive)
-        }
-    }
-
-    private var busy: Bool { snapshot.status == .saving || snapshot.status == .syncing }
-
-    var body: some View {
-        Button {
-            showDetails.toggle()
-        } label: {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(info.dot)
-                    .frame(width: 6, height: 6)
-                    .opacity(busy && pulse ? 0.35 : 1)
-                    .accessibilityHidden(true)
-                if !compact {
-                    Image(systemName: info.icon)
-                        .font(.ui(10.5, .semibold))
-                        .foregroundStyle(snapshot.status == .saved ? FoleviColor.mossInk : busy ? FoleviColor.emberInk : info.ink)
-                        .accessibilityHidden(true)
-                    Text(info.label)
-                    if snapshot.status == .offline && snapshot.pendingCount > 0 {
-                        Text("· \(snapshot.pendingCount)").monospacedDigit()
-                    }
-                }
-            }
-            .font(.ui(12, .semibold))
-            .foregroundStyle(hovering ? FoleviColor.heading : info.ink)
-            .padding(.horizontal, compact ? 9 : 12)
-            .frame(minWidth: compact ? 28 : 104, minHeight: 30)
-            .foleviWell()
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.chrome)
-        .onHover { hovering = $0 }
-        .help(helpText)
-        .accessibilityLabel(Text("Sync status"))
-        .accessibilityValue(Text(info.label))
-        .accessibilityIdentifier("syncStatusPill")
-        .foleviPopover(isPresented: $showDetails, arrowEdge: .bottom) {
-            SyncDetailsView(snapshot: snapshot)
-                .environment(app)
-        }
-        .onChange(of: snapshot.status) { _, newValue in announce(newValue) }
-        .onChange(of: busy, initial: true) { _, isBusy in
-            guard !reduceMotion else { return }
-            if isBusy {
-                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { pulse = true }
-            } else {
-                withAnimation(.easeOut(duration: 0.2)) { pulse = false }
-            }
-        }
-    }
-
-    private var helpText: String {
-        switch snapshot.status {
-        case .saved: return String(localized: "All changes are saved to Folevi.")
-        case .saving: return String(localized: "Saving your latest changes.")
-        case .syncing: return String(localized: "Syncing with Folevi.")
-        case .offline: return String(localized: "You're offline. \(snapshot.pendingCount) changes are stored on this Mac.")
-        case .conflict: return String(localized: "Some blocks were changed in two places. Review the conflict.")
-        case .error: return snapshot.lastErrorMessage ?? String(localized: "Some changes couldn't be saved.")
-        }
-    }
-
-    private func announce(_ status: SyncStatus) {
-        // Only announce meaningful transitions, not every save.
-        let message: String?
-        switch status {
-        case .offline: message = String(localized: "Offline. Changes will sync later.")
-        case .conflict: message = String(localized: "Sync conflict needs review.")
-        case .error: message = String(localized: "Sync error.")
-        default: message = nil
-        }
-        if let message {
-            AccessibilityNotification.Announcement(message).post()
-        }
-    }
-}
-
-struct SyncDetailsView: View {
-    var snapshot: SyncSnapshot
-    @Environment(AppModel.self) private var app
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Sync").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading)
-            Group {
-                LabeledContent("Status", value: statusText)
-                LabeledContent("Waiting to sync", value: "\(snapshot.pendingCount)")
-                if snapshot.uploadCount > 0 { LabeledContent("Uploads", value: "\(snapshot.uploadCount)") }
-                if let last = snapshot.lastSyncedAt {
-                    LabeledContent("Last synced") { Text(last, style: .relative) }
-                }
-            }
-            .font(.ui(12.5))
-            if let message = snapshot.lastErrorMessage {
-                Text(message).font(.ui(12.5)).foregroundStyle(FoleviColor.destructive).fixedSize(horizontal: false, vertical: true)
-            }
-            if !snapshot.errors.isEmpty {
-                Text("\(snapshot.errors.count) changes were rejected by the server and have been reverted.")
-                    .font(.ui(12.5))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack(spacing: 8) {
-                Button("Sync now") { Task { await app.session?.engine.syncNow() } }
-                    .buttonStyle(.folevi(.secondary, .small))
-                if !snapshot.errors.isEmpty || snapshot.lastErrorMessage != nil {
-                    Button("Dismiss errors") { Task { await app.session?.engine.clearErrors() } }
-                        .buttonStyle(.folevi(.quiet, .small))
-                }
-            }
-            .padding(.top, 2)
-        }
-        .foregroundStyle(FoleviColor.ink)
-        .padding(16)
-        .frame(width: 290)
-    }
-
-    private var statusText: String {
-        snapshot.isOnline ? (snapshot.forcedOffline ? String(localized: "Offline (forced)") : String(localized: "Connected")) : String(localized: "Offline")
     }
 }
 
@@ -801,7 +665,7 @@ extension View {
 
 // MARK: - Text fields
 
-/// Single-line input: a sunken pill with a focus halo.
+/// Single-line input, as the web's `.ui-input`.
 struct FoleviFieldStyle: TextFieldStyle {
     var height: CGFloat = 36
     func _body(configuration: TextField<Self._Label>) -> some View {
@@ -819,12 +683,10 @@ private struct FoleviFieldModifier: ViewModifier {
             .font(.ui(13.5))
             .foregroundStyle(FoleviColor.ink)
             .focused($focused)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .frame(minHeight: height)
-            .foleviSurface(.color(FoleviColor.surface), shape: .capsule,
-                           shadow: focused ? [FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: FoleviColor.focus, inset: false),
-                                              FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 4, color: FoleviColor.focus.opacity(0.2), inset: false)]
-                                   : FoleviDepth.well + [FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: FoleviColor.line, inset: false)])
+            // `.ui-input`: radius 6, a line ring; focused, the soft 16.5% ink outline (never a dark ring).
+            .foleviInputSurface(focused: focused)
     }
 }
 

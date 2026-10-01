@@ -15,23 +15,6 @@ extension OrganizationRepository {
         let r: CreatedFolder = try await convex.mutation("organization:createFolder", ["scope": scope.arg, "name": .string(name)])
         return r.id
     }
-
-    func renameFolder(_ folderId: String, name: String) async throws {
-        try await convex.mutationVoid("organization:renameFolder", ["folderId": .string(folderId), "name": .string(name)])
-    }
-
-    func setFolderColor(_ folderId: String, color: String?) async throws {
-        try await convex.mutationVoid("organization:setFolderColor", ["folderId": .string(folderId), "color": color.map { .string($0) } ?? .null])
-    }
-
-    /// Moves a folder to the top level (`parentFolderId` nil) or into another folder.
-    func moveFolder(_ folderId: String, parentFolderId: String?) async throws {
-        try await convex.mutationVoid("organization:moveFolder", ["folderId": .string(folderId), "parentFolderId": parentFolderId.map { .string($0) } ?? .null])
-    }
-
-    func deleteFolder(_ folderId: String) async throws {
-        try await convex.mutationVoid("organization:deleteFolder", ["folderId": .string(folderId)])
-    }
 }
 
 extension DocumentsRepository {

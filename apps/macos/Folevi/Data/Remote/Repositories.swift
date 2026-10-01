@@ -55,7 +55,7 @@ struct AccountRepository: Sendable {
 }
 
 /// Server-side document operations that are online-only (stars, trash, snapshots, metadata).
-/// Content edits never go through here — they are sync ops (see SyncEngine).
+/// Content edits never go through here, they are sync ops (see SyncEngine).
 struct DocumentsRepository: Sendable {
     let convex: ConvexService
 
@@ -80,6 +80,11 @@ struct DocumentsRepository: Sendable {
         if let tagId { args["tagId"] = .string(tagId) }
         let page: DocumentPage = try await convex.query("documents:list", args)
         return page.page
+    }
+
+    /// The pages you opened most recently in a scope (the palette's Recent).
+    func recent(scope: Scope, limit: Int = 8) async throws -> [DocumentSummary] {
+        try await convex.query("documents:recent", ["scope": scope.arg, "limit": .number(Double(limit))])
     }
 
     func get(_ id: String) async throws -> DocumentDetail? { try await convex.query("documents:get", ["documentId": .string(id)]) }
@@ -122,8 +127,39 @@ struct OrganizationRepository: Sendable {
     func sidebarUpdates(scope: Scope) -> AsyncThrowingStream<SidebarData, Error> {
         convex.subscribe("organization:sidebar", ["scope": scope.arg])
     }
-    func createFolder(scope: Scope, name: String) async throws {
-        let _: JSONValue = try await convex.mutation("organization:createFolder", ["scope": scope.arg, "name": .string(name)])
+    /// Creates a folder; returns its id (the Folders page opens it, as on the web).
+    @discardableResult
+    func createFolder(scope: Scope, name: String) async throws -> String {
+        struct Created: Decodable { let id: String }
+        let created: Created = try await convex.mutation("organization:createFolder", ["scope": scope.arg, "name": .string(name)])
+        return created.id
+    }
+    func renameFolder(_ id: String, name: String) async throws {
+        try await convex.mutationVoid("organization:renameFolder", ["folderId": .string(id), "name": .string(name)])
+    }
+    func setFolderColor(_ id: String, color: String?) async throws {
+        try await convex.mutationVoid("organization:setFolderColor", ["folderId": .string(id), "color": color.map { .string($0) } ?? .null])
+    }
+    /// Moves a folder under another (one level deep), or to the top level with nil.
+    func moveFolder(_ id: String, parentFolderId: String?) async throws {
+        try await convex.mutationVoid("organization:moveFolder", ["folderId": .string(id), "parentFolderId": parentFolderId.map { .string($0) } ?? .null])
+    }
+    /// The folder goes; its notes stay and move to Drafts.
+    func deleteFolder(_ id: String) async throws {
+        try await convex.mutationVoid("organization:deleteFolder", ["folderId": .string(id)])
+    }
+    func updateTag(_ id: String, name: String? = nil, color: String? = nil) async throws {
+        var args: [String: JSONValue] = ["tagId": .string(id)]
+        if let name { args["name"] = .string(name) }
+        if let color { args["color"] = .string(color) }
+        try await convex.mutationVoid("organization:updateTag", args)
+    }
+    func deleteTag(_ id: String) async throws {
+        try await convex.mutationVoid("organization:deleteTag", ["tagId": .string(id)])
+    }
+    /// Every folder and tag with counts and dates (the Folders and Tags pages).
+    func indexUpdates(scope: Scope) -> AsyncThrowingStream<OrganizationIndex, Error> {
+        convex.subscribe("organization:index", ["scope": scope.arg])
     }
 }
 
@@ -155,8 +191,15 @@ struct TasksRepository: Sendable {
 
 struct SearchRepository: Sendable {
     let convex: ConvexService
-    func search(scope: Scope, query: String) async throws -> [SearchHit] {
-        try await convex.query("search:documents", ["scope": scope.arg, "query": .string(query), "limit": 30], timeout: 10)
+    /// Full-text search, optionally narrowed (the palette's Folder, Tag, Created by and Updated filters).
+    func search(scope: Scope, query: String, limit: Int = 30, folderId: String? = nil, tagId: String? = nil,
+                creatorId: String? = nil, updatedAfter: Double? = nil) async throws -> [SearchHit] {
+        var args: [String: JSONValue] = ["scope": scope.arg, "query": .string(query), "limit": .number(Double(limit))]
+        if let folderId { args["folderId"] = .string(folderId) }
+        if let tagId { args["tagId"] = .string(tagId) }
+        if let creatorId { args["creatorId"] = .string(creatorId) }
+        if let updatedAfter { args["updatedAfter"] = .number(updatedAfter) }
+        return try await convex.query("search:documents", args, timeout: 10)
     }
 }
 

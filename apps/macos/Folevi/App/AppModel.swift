@@ -556,6 +556,7 @@ final class AppModel {
         guard let session else { return }
         try await session.account.completeOnboarding(choice)
         if let ai = choice.aiEnabled { profile?.aiEnabled = ai }
+        if let look = choice.appearance { profile?.appearance = look }
         if let ids = choice.useCases { profile?.onboardingUseCases = Array(Set((profile?.onboardingUseCases ?? []) + ids)) }
         if choice.step == "welcome" {
             profile?.onboardingStep = "done"

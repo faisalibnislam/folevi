@@ -5,13 +5,8 @@ import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SiteShell } from "@/components/marketing/SiteShell";
 import { SIGN_IN_URL, SIGN_UP_URL } from "@/components/marketing/site";
 
-// The marketing site uses the app's neutral chrome: white in light mode, near-black in dark mode.
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
-    { media: "(prefers-color-scheme: dark)", color: "#101011" },
-  ],
-};
+// The marketing site is always light (light and dark are an app setting), with the app's white chrome.
+export const viewport: Viewport = { themeColor: "#FFFFFF", colorScheme: "light" };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (

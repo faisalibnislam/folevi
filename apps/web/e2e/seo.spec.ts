@@ -118,7 +118,8 @@ for (const scheme of ["light", "dark"] as const) {
     const features = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname).filter((p) => p.startsWith("/features/") && !PAGES.some((x) => x.path === p));
     for (const { path, h1 } of [...PAGES, ...features.map((path) => ({ path, h1: null }))]) {
       await page.goto(`${SITE}${path}`);
-      await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
+      // The site is always light, whatever the system setting; dark mode is an app setting only.
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
       if (h1) await expect(page.getByRole("heading", { level: 1 })).toHaveText(h1);
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();

@@ -42,7 +42,7 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
 export function PricingSection() {
   return (
     <section id="pricing" aria-labelledby="pricing-title" className={cx(container, "scroll-mt-20")}>
-      <div className={box}>
+      <div className={cx(box, "mk-dark")}>
         <SectionHeading
           align="center"
           id="pricing-title"

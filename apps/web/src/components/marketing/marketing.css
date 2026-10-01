@@ -48,7 +48,9 @@
   --cover-art-tint: transparent;
 }
 
-:root[data-theme="dark"]:has(.mk-root) {
+:root[data-theme="dark"]:has(.mk-root),
+/* A dark card on the always-light site (the home pricing section): the same tokens, on one element. */
+.mk-dark {
   color-scheme: dark;
   --color-canvas: #101011;
   --color-sidebar: #18181A;
@@ -79,28 +81,6 @@
   --shadow-lift: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 10px 24px -6px rgba(0, 0, 0, 0.6), 0 40px 80px -30px rgba(0, 0, 0, 0.8);
   --mk-well: #17171A;
   --cover-art-tint: rgb(0 0 0 / 0.18);
-}
-
-/* Without scripting the theme attribute is never set, so follow the system setting. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]):has(.mk-root) {
-    color-scheme: dark;
-    --color-canvas: #101011;
-    --color-surface: #1C1C1E;
-    --color-surface-raised: #29292C;
-    --color-surface-sunken: rgba(255, 255, 255, 0.07);
-    --color-ink: #F2F2F3;
-    --color-heading: #FAFAFA;
-    --color-ink-muted: #A6A6AE;
-    --color-ink-faint: #93939B;
-    --color-line: #2C2C2F;
-    --color-line-strong: #3E3E43;
-    --color-accent: #F2F2F3;
-    --color-accent-ink: #101011;
-    --color-accent-soft: rgba(255, 255, 255, 0.07);
-    --color-focus: #F2F2F3;
-    --mk-well: #17171A;
-  }
 }
 
 @media (prefers-contrast: more) {
@@ -784,6 +764,22 @@
   background: var(--color-surface);
   box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -26px rgb(20 20 40 / 0.2);
 }
+/* The dark card's own text, glass and frame (the page around it stays light). */
+.mk-dark {
+  color: var(--color-ink);
+  --glass-hover: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-active: rgba(255, 255, 255, 0.12);
+  --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.4);
+  --mk-hair: var(--color-line);
+  --mk-hair-strong: var(--color-line-strong);
+}
+.mk-box.mk-dark {
+  background: var(--color-canvas);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.2), 0 24px 48px -24px rgb(0 0 0 / 0.55);
+}
+.mk-dark .mk-btn-primary:hover { filter: brightness(0.92); }
+
 :root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
 @media (min-width: 640px) { .mk-box { border-radius: 16px; } }
 

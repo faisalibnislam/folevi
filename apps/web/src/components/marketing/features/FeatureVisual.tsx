@@ -92,7 +92,7 @@ export function coverPicture(visual: VisualKey, art: string): { width: number; n
     folders: [1000, <FoldersPageReplica key="folders" />],
     flowchart: [820, <FlowchartDemo key="flowchart" />],
     whiteboard: [760, <WhiteboardPicture key="whiteboard" art={art} />],
-    styles: [980, <StyleShowcase key="styles" />],
+    styles: [980, <StyleShowcase key="styles" artSize="thumb" />],
     sharing: [620, <SharePanel key="sharing" />],
     workspaces: [780, <WorkspacePanels key="workspaces" />],
     templates: [980, <TemplateTrio key="templates" />],

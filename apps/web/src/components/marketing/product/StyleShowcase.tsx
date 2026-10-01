@@ -11,7 +11,8 @@ const STYLES = ["art-03", "art-01", "art-30", "art-49", "art-09"].map(artById);
  * A replica of the app with a note open, and the note's style as a real choice. Picking a
  * style recolours the note and the light behind the glass, as it does in the app; the chrome stays neutral.
  */
-export function StyleShowcase() {
+/** `artSize` "thumb" for small copies (card covers). */
+export function StyleShowcase({ artSize = "large" }: { artSize?: "thumb" | "large" } = {}) {
   const [index, setIndex] = useState(0);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const art = STYLES[index]!;
@@ -29,6 +30,7 @@ export function StyleShowcase() {
   return (
     <div>
       <AppWindow
+        artSize={artSize}
         art={art}
         label={`The Folevi app with a note called Seed library open. The note uses the ${art.name} style, which colours its cover, page and text.`}
         className="h-[500px] sm:h-[540px] lg:h-[600px]"

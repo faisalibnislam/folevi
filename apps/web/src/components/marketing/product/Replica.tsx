@@ -116,10 +116,13 @@ export function AppWindow({
   sidebar = "page",
   chrome = "web",
   active = "Style",
+  artSize = "large",
   className,
   label,
 }: {
   art: CoverArt;
+  /** The artwork's size: "thumb" where the window is drawn small (card covers). */
+  artSize?: "thumb" | "large";
   note?: NoteContent;
   sidebar?: "page" | "main" | "none";
   chrome?: "web" | "mac";
@@ -135,8 +138,8 @@ export function AppWindow({
         {sidebar === "page" ? <PageSidebar note={note} chrome={chrome} /> : sidebar === "main" ? <MainSidebar chrome={chrome} /> : null}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <TabStrip title={note.title} chrome={sidebar === "none" ? chrome : "web"} />
-          <div className="mk-note-page min-h-0 flex-1 px-2 pt-3 sm:px-6 sm:pt-5" style={artVars(art, "large")}>
-            <NoteSheet art={art} note={note} />
+          <div className="mk-note-page min-h-0 flex-1 px-2 pt-3 sm:px-6 sm:pt-5" style={artVars(art, artSize)}>
+            <NoteSheet art={art} note={note} artSize={artSize} />
             <Dock active={active} />
           </div>
         </div>
@@ -406,9 +409,9 @@ export function Dock({ active }: { active: DockItem }) {
 
 /* The note ---------------------------------------------------------------------------------------- */
 
-export function NoteSheet({ art, note, className }: { art: CoverArt; note: NoteContent; className?: string }) {
+export function NoteSheet({ art, note, artSize = "large", className }: { art: CoverArt; note: NoteContent; artSize?: "thumb" | "large"; className?: string }) {
   return (
-    <article className={cx("mk-note mx-auto h-[calc(100%+16px)] max-w-[720px] overflow-hidden", className)} style={artVars(art, "large")}>
+    <article className={cx("mk-note mx-auto h-[calc(100%+16px)] max-w-[720px] overflow-hidden", className)} style={artVars(art, artSize)}>
       <header className="mk-note-cover flex min-h-[112px] items-end px-5 pb-4 pt-10 sm:min-h-[150px] sm:px-12 sm:pb-5" data-tone={art.tone}>
         <p className="mk-note-title text-[27px] sm:text-[38px]">{note.title}</p>
       </header>

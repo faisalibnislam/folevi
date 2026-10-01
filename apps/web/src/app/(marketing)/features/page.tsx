@@ -31,7 +31,7 @@ function collectionLd(): Record<string, unknown> {
 function MacCover() {
   return (
     <div className="mk-stage p-7" style={{ ["--stage-art" as string]: artThumb(artById("art-39")) }}>
-      <AppWindow art={artById("art-39")} chrome="mac" sidebar="main" note={READING_NOTE} className="h-[600px]" label="The Folevi Mac app" />
+      <AppWindow art={artById("art-39")} artSize="thumb" chrome="mac" sidebar="main" note={READING_NOTE} className="h-[600px]" label="The Folevi Mac app" />
     </div>
   );
 }

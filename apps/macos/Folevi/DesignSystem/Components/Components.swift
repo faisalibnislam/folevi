@@ -440,11 +440,10 @@ struct NoteCard: View {
                 .padding(18)
                 .shadow(color: Self.shadowInk.opacity(hovering ? 0.24 : 0.2), radius: hovering ? 18 : 15, x: hovering ? -5 : -4, y: hovering ? 24 : 18)
         }
-        // 0 2px 5px rgb(20 20 30 / 0.03), the contact shadow, cast once by the card's outline.
-        .background {
-            Rectangle().fill(Color.white).padding(.trailing, 1)
-                .shadow(color: Self.shadowInk.opacity(hovering ? 0.04 : 0.03), radius: hovering ? 4 : 2.5, y: hovering ? 3 : 2)
-        }
+        // 0 2px 5px rgb(20 20 30 / 0.03), the contact shadow, cast once by the card's own outline (a white
+        // rectangle behind it showed at the rounded corners).
+        .compositingGroup()
+        .shadow(color: Self.shadowInk.opacity(hovering ? 0.04 : 0.03), radius: hovering ? 4 : 2.5, y: hovering ? 3 : 2)
         .offset(y: hovering && !reduceMotion ? -2 : 0)
         .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)
         .contentShape(Rectangle())

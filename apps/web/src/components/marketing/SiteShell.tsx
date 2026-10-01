@@ -22,7 +22,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
-import { FeatureGlyph } from "./features/FeatureIcon";
 import { Icon } from "./icons";
 import { cx } from "./ui";
 
@@ -47,18 +46,9 @@ const ROWS: Row[] = [
   { label: "Support", href: "/support", icon: LifeBuoy },
 ];
 
-/** A few feature pages, listed under a small caps label like the app's Folders section. */
-const FEATURES = [
-  { label: "AI Assistant", slug: "ai-notes" },
-  { label: "Offline and sync", slug: "offline-notes" },
-  { label: "Folders", slug: "folders" },
-  { label: "Audio recordings", slug: "audio-recordings" },
-  { label: "Note styles", slug: "note-styles" },
-].map((f) => ({ ...f, href: `/features/${f.slug}` }));
-
-/** The row for the current page: the most specific one whose path contains it (so /docs/x marks Docs). */
+/** The row for the current page: the most specific one whose path contains it (so /docs/x marks Docs and /features/x marks Features). */
 function currentHref(pathname: string): string | null {
-  const all = [...ROWS.map((r) => r.href), ...FEATURES.map((f) => f.href)];
+  const all = ROWS.map((r) => r.href);
   const hits = all.filter((href) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)));
   return hits.sort((a, b) => b.length - a.length)[0] ?? null;
 }
@@ -91,7 +81,6 @@ export function useSiteAmbient(image: string | null) {
 
 function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: string; signUpUrl: string; onNavigate?: () => void; onClose?: () => void }) {
   const pathname = usePathname() ?? "/";
-  const featuresId = useId();
   const current = currentHref(pathname);
   const row = (href: string) => ({ "aria-current": href === current ? ("page" as const) : undefined, className: cx(ROW, href === current ? ROW_ON : ROW_OFF) });
   return (
@@ -113,19 +102,6 @@ function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: str
             <li key={href}>
               <Link href={href} onClick={onNavigate} {...row(href)}>
                 <RowIcon size={16} aria-hidden className={cx("flex-none transition-colors", href === current ? "text-heading" : "text-muted group-hover:text-heading")} />
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <p id={featuresId} className="ui-caps mt-5 flex h-7 items-center px-2.5 text-ink/80">
-          Features
-        </p>
-        <ul aria-labelledby={featuresId} className="mt-1 space-y-0.5">
-          {FEATURES.map(({ label, href, slug }) => (
-            <li key={href}>
-              <Link href={href} onClick={onNavigate} {...row(href)}>
-                <FeatureGlyph slug={slug} size={16} className={cx("flex-none transition-colors", href === current ? "text-heading" : "text-muted group-hover:text-heading")} />
                 {label}
               </Link>
             </li>

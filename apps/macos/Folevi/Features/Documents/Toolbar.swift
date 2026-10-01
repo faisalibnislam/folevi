@@ -204,15 +204,9 @@ struct MainToolbar: View {
                 .padding(.trailing, 2)
             }
             if let editor {
-                // Comments live in the note's dock (NoteDock), as on the web.
-                ShareLink(item: MarkdownShareItem(title: editor.document?.displayTitle ?? "Untitled",
-                                                  markdown: MarkdownCodec.blocksToMarkdown(editor.exportBlocks(), .init(title: editor.document?.displayTitle))),
-                          preview: SharePreview(editor.document?.displayTitle ?? "Untitled")) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .buttonStyle(.folevi(.secondary, .medium))
-                .help(Text("Share as Markdown"))
-                .padding(.horizontal, 2)
+                // Comments live in the note's dock (NoteDock), as on the web. Share opens who can see the note.
+                ShareNoteButton(editor: editor)
+                    .padding(.horizontal, 2)
                 DocumentMoreMenu(editor: editor, nav: nav)
             }
             IconButton(systemImage: "sidebar.right", label: "Inspector", shortcutHint: "⌥⌘I", size: 30, isActive: nav.showInspector) {
@@ -235,6 +229,11 @@ struct DocumentMoreMenu: View {
             Button("Find in Document") { nav.showFind = true }
             Button("Version History…") { nav.showHistory = true }
             Button("Open in New Window") { openWindow(id: "document", value: editor.documentId) }
+            ShareLink(item: MarkdownShareItem(title: editor.document?.displayTitle ?? "Untitled",
+                                              markdown: MarkdownCodec.blocksToMarkdown(editor.exportBlocks(), .init(title: editor.document?.displayTitle))),
+                      preview: SharePreview(editor.document?.displayTitle ?? "Untitled")) {
+                Text("Share as Markdown")
+            }
             Divider()
             Menu("Export") {
                 ForEach(ExportService.Format.allCases) { format in
@@ -249,6 +248,11 @@ struct DocumentMoreMenu: View {
             Button("Page Style…") {
                 nav.inspectorTab = .style
                 nav.showInspector = true
+            }
+            // Following or muting this note's comment notifications, as in the web's note menu.
+            if editor.comments.subscription != nil {
+                Divider()
+                NoteNotifyMenuItems(comments: editor.comments)
             }
         } label: {
             Image(systemName: "ellipsis")

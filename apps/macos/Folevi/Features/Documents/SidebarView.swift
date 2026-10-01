@@ -38,9 +38,13 @@ struct SidebarView: View {
             .padding(.horizontal, 10)
             .titlebarDragArea()
 
-            workspaceHeader
-                .padding(.horizontal, 10)
-                .padding(.bottom, 10)
+            // The Folevi logo and notifications, as at the top of the web's sidebar.
+            HStack(spacing: 4) {
+                workspaceHeader
+                NotificationsBell(nav: nav, editor: editor)
+            }
+            .padding(.horizontal, 10)
+            .padding(.bottom, 10)
 
             if let editor {
                 NoteSidebarContent(model: editor, nav: nav)

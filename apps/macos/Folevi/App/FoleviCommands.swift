@@ -122,6 +122,10 @@ struct FoleviCommands: Commands {
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 .disabled(!canEdit)
             Divider()
+            Button("Comment") { editor?.comments.commentOnFocusedBlock() }
+                .keyboardShortcut("m", modifiers: [.command, .option])
+                .disabled(editor == nil)
+            Divider()
             Button("Version History…") { nav?.showHistory = true }
                 .disabled(editor == nil)
         }

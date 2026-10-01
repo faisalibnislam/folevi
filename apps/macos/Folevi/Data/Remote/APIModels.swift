@@ -392,27 +392,6 @@ struct SharedDocument: Decodable, Sendable, Hashable, Identifiable {
     var excerpt: String
 }
 
-struct CommentThreadList: Decodable, Sendable {
-    struct Comment: Decodable, Sendable, Hashable, Identifiable {
-        var id: String
-        var authorName: String
-        var body: [InlineNode]
-        var deleted: Bool
-        var createdAt: Double
-        var mine: Bool
-    }
-    struct Thread: Decodable, Sendable, Hashable, Identifiable {
-        var id: String
-        var blockId: String?
-        var status: String
-        var createdAt: Double
-        var unread: Bool
-        var comments: [Comment]
-    }
-    var threads: [Thread]
-    var canComment: Bool
-}
-
 struct CollectionData: Decodable, Sendable {
     struct Property: Decodable, Sendable, Hashable, Identifiable {
         var id: String

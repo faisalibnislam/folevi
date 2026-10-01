@@ -34,7 +34,7 @@ struct InspectorView: View {
                     case .style: StyleInspector(model: model)
                     case .outline: OutlineInspector(model: model)
                     case .info: InfoInspector(model: model, nav: nav, openDocument: openDocument)
-                    case .comments: CommentsInspector(model: model)
+                    case .comments: CommentsPanel(model: model)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -747,90 +747,7 @@ struct InfoInspector: View {
     }
 }
 
-// MARK: - Comments
-
-struct CommentsInspector: View {
-    @Bindable var model: EditorModel
-    @Environment(AppModel.self) private var app
-    @State private var threads: CommentThreadList?
-    @State private var draft = ""
-    @State private var sending = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(title: "Comments")
-            if !app.sync.isOnline {
-                Text("Comments are available when you're online.").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
-            } else if let threads {
-                if threads.threads.isEmpty {
-                    Text("No comments yet.").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
-                }
-                ForEach(threads.threads) { thread in
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(thread.comments) { c in
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack(spacing: 6) {
-                                    Text(String(c.authorName.prefix(1)).uppercased())
-                                        .font(.ui(10, .semibold))
-                                        .foregroundStyle(FoleviColor.heading)
-                                        .frame(width: 20, height: 20)
-                                        .background(Circle().fill(LinearGradient(colors: [FoleviColor.glowPeach, FoleviColor.emberSoft], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                                        .accessibilityHidden(true)
-                                    Text(c.authorName).font(.ui(12, .semibold)).foregroundStyle(FoleviColor.heading)
-                                    Spacer()
-                                    Text(Date(timeIntervalSince1970: c.createdAt / 1000), format: .relative(presentation: .named))
-                                        .font(.ui(10.5)).foregroundStyle(FoleviColor.inkFaint)
-                                }
-                                Text(c.deleted ? String(localized: "Comment deleted") : RichText.plainText(c.body))
-                                    .font(.ui(12.5))
-                                    .foregroundStyle(c.deleted ? FoleviColor.inkFaint : FoleviColor.ink)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        if thread.status == "resolved" {
-                            Label("Resolved", systemImage: "checkmark").font(.ui(11.5, .semibold)).foregroundStyle(FoleviColor.mossInk)
-                        }
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(12), shadow: FoleviShadow.control)
-                }
-                if threads.canComment {
-                    TextField("Add a comment", text: $draft, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .font(.ui(13))
-                        .lineLimit(1...5)
-                        .padding(10)
-                        .foleviWell(shape: .rounded(12))
-                    Button("Comment") { Task { await send() } }
-                        .buttonStyle(.folevi(.primary, .small))
-                        .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending)
-                }
-            } else {
-                ProgressView().controlSize(.small)
-            }
-        }
-        .task(id: model.documentId) { await load() }
-    }
-
-    private func load() async {
-        guard let session = app.session, app.sync.isOnline else { return }
-        threads = try? await session.documents.comments(model.documentId)
-    }
-
-    private func send() async {
-        guard let session = app.session else { return }
-        sending = true
-        defer { sending = false }
-        do {
-            try await session.documents.addComment(documentId: model.documentId, blockId: model.focusedBlockId == "__title__" ? nil : model.focusedBlockId, text: draft)
-            draft = ""
-            await load()
-        } catch {
-            app.showToast(ConvexService.mapError(error).localizedDescription)
-        }
-    }
-}
+// MARK: - Comments (Features/Comments/CommentViews.swift: CommentsPanel)
 
 // MARK: - Version history
 

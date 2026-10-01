@@ -35,7 +35,7 @@ struct MainWindowView: View {
                                                    documentId: editor.documentId)
                                             .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
                                     }
-                                    NoteDock(nav: nav, aiOpen: $noteAiOpen, aiAvailable: app.aiAvailable)
+                                    NoteDock(nav: nav, aiOpen: $noteAiOpen, aiAvailable: app.aiAvailable, editor: editor)
                                 }
                                 .padding(.bottom, 18)
                                 .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: noteAiOpen)
@@ -272,6 +272,7 @@ struct DocumentWindowView: View {
         .navigationTitle(editor?.document?.displayTitle ?? String(localized: "Untitled"))
         .focusedSceneValue(\.editor, editor)
         .focusedSceneValue(\.navigation, nav)
+        .opensCommentsPanel(editor: editor, nav: nav)
         .sheet(isPresented: $nav.showHistory) { VersionHistorySheet(documentId: documentId).environment(app) }
         .overlay(alignment: .bottom) { ToastView() }
         .task(id: app.phase == .ready) {

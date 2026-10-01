@@ -37,6 +37,7 @@ struct EditorView: View {
         .overlay(alignment: .topTrailing) {
             if showFind.wrappedValue { findBar.padding(.top, 10).padding(.trailing, 24) }
         }
+        .task(id: model.documentId) { model.comments.start() }
         .onAppear {
             model.undoManager = undoManager
             model.openDocumentHandler = openDocument
@@ -120,6 +121,7 @@ struct EditorView: View {
                 }
                 ForEach(model.rows) { row in
                     BlockRowView(row: row, model: model, openDocument: openDocument)
+                        .blockComments(model: model, row: row)
                         .id(row.id)
                         .zIndex(model.popup?.blockId == row.id ? 10 : 0)
                 }

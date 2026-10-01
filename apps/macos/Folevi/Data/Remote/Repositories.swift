@@ -107,12 +107,6 @@ struct DocumentsRepository: Sendable {
     func restoreSnapshot(_ id: String) async throws { try await convex.mutationVoid("documents:restoreSnapshot", ["snapshotId": .string(id)]) }
     func recordView(_ id: String) async throws { try await convex.mutationVoid("documents:recordView", ["documentId": .string(id)]) }
     func sharedWithMe() async throws -> [SharedDocument] { try await convex.query("sharing:sharedWithMe") }
-    func comments(_ id: String) async throws -> CommentThreadList { try await convex.query("comments:threads", ["documentId": .string(id)]) }
-    func addComment(documentId: String, blockId: String?, text: String) async throws {
-        var args: [String: JSONValue] = ["documentId": .string(documentId), "body": [["type": "text", "text": .string(text)]]]
-        if let blockId { args["blockId"] = .string(blockId) }
-        let _: JSONValue = try await convex.mutation("comments:create", args)
-    }
     func collection(_ id: String) async throws -> CollectionData { try await convex.query("collections:get", ["collectionId": .string(id)]) }
     func importText(scope: Scope, filename: String, content: String, markdown: Bool) async throws -> ImportTextResult {
         try await convex.mutation("imports:importText", [

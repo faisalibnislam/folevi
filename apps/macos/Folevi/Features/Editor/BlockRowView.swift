@@ -278,6 +278,8 @@ struct BlockRowView: View {
         menu.addItem(ClosureMenuItem(String(localized: "Indent"), key: "]", modifiers: [.command], enabled: editable) { model.indent(targets) })
         menu.addItem(ClosureMenuItem(String(localized: "Outdent"), key: "[", modifiers: [.command], enabled: editable) { model.outdent(targets) })
         menu.addItem(.separator())
+        menu.addItem(ClosureMenuItem(String(localized: "Comment"), key: "m", modifiers: [.command, .option],
+                                     enabled: model.comments.data?.canComment == true) { model.comments.openBlock(block.id) })
         menu.addItem(ClosureMenuItem(String(localized: "Copy as Markdown")) {
             let wires = targets.compactMap { model.blocks[$0]?.wire }
             NSPasteboard.general.clearContents()
@@ -481,6 +483,7 @@ struct BlockRowView: View {
         Button("Move Up") { model.move(targets, up: true) }.disabled(model.isReadOnly)
         Button("Move Down") { model.move(targets, up: false) }.disabled(model.isReadOnly)
         Divider()
+        Button("Comment") { model.comments.openBlock(block.id) }.disabled(model.comments.data?.canComment != true)
         Button("Copy as Markdown") {
             let wires = targets.compactMap { model.blocks[$0]?.wire }
             NSPasteboard.general.clearContents()

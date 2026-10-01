@@ -139,6 +139,8 @@ final class EditorModel {
     private(set) var isHydrated = false
     /// Pointer-driven block drag and drop (and Insert-tile drags) for this document.
     @ObservationIgnored let drag = BlockDragController()
+    /// Comment threads on this note, live while it's open (Features/Comments/NoteComments.swift).
+    @ObservationIgnored lazy var comments = NoteComments(documentId: documentId, editor: self, app: app)
 
     @ObservationIgnored var undoManager: UndoManager?
     @ObservationIgnored var openDocumentHandler: ((String, Bool) -> Void)?
@@ -453,6 +455,7 @@ final class EditorModel {
     }
 
     func close() {
+        comments.stop()
         editContinuation?.finish()
         if let ackObserver { NotificationCenter.default.removeObserver(ackObserver) }
         snapshotTask?.cancel()

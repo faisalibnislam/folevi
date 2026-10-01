@@ -95,9 +95,12 @@ targets:
       - path: Folevi/Data/Remote/APIModels.swift
       - path: Folevi/Data/Remote/CollaborationModels.swift
       - path: Folevi/Data/Remote/AiModels.swift
+      - path: Folevi/Data/Remote/BillingModels.swift
       - path: Folevi/Data/Remote/SettingsAPIModels.swift
       - path: Folevi/Support/Keychain.swift
       - path: Folevi/Features/Auth/AuthCallback.swift
+      - path: Folevi/Features/Auth/AuthCallError.swift
+      - path: Folevi/Features/Onboarding/OnboardingCatalog.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac.tests

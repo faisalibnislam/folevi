@@ -4,7 +4,7 @@ import SwiftUI
 /// upgrade nudge on Free, in Personal only) and the workspace menu.
 struct WorkspaceFooter: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openFoleviSettings) private var openSettings
 
     var body: some View {
         VStack(spacing: 6) {
@@ -71,7 +71,7 @@ private struct PlanPill: View {
 /// account, help, appearance and sign out.
 struct ScopeMenuButton: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openFoleviSettings) private var openSettings
     @State private var open = false
     @State private var hover = false
     @State private var creating = false

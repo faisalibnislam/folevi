@@ -51,7 +51,7 @@ struct CommandPalette: View {
     var openDocument: (String, Bool) -> Void
     var maxListHeight: CGFloat = 440
     @Environment(AppModel.self) private var app
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openFoleviSettings) private var openSettings
     @State private var query = ""
     @State private var debounced = ""
     @State private var results: [PaletteItem]?

@@ -31,8 +31,10 @@ struct AccountRepository: Sendable {
         try await convex.mutationVoid("users:completeOnboardingStep", args)
     }
 
-    func updateProfile(displayName: String? = nil, appearance: String? = nil, notificationPrefs: NotificationPrefs? = nil, aiEnabled: Bool? = nil) async throws {
+    func updateProfile(displayName: String? = nil, appearance: String? = nil, notificationPrefs: NotificationPrefs? = nil, aiEnabled: Bool? = nil,
+                       timeZone: String? = nil) async throws {
         var args: [String: JSONValue] = [:]
+        if let timeZone { args["timeZone"] = .string(timeZone) }
         if let aiEnabled { args["aiEnabled"] = .bool(aiEnabled) }
         if let displayName { args["displayName"] = .string(displayName) }
         if let appearance { args["appearance"] = .string(appearance) }
@@ -113,11 +115,14 @@ struct DocumentsRepository: Sendable {
     func recordView(_ id: String) async throws { try await convex.mutationVoid("documents:recordView", ["documentId": .string(id)]) }
     func sharedWithMe() async throws -> [SharedDocument] { try await convex.query("sharing:sharedWithMe") }
     func collection(_ id: String) async throws -> CollectionData { try await convex.query("collections:get", ["collectionId": .string(id)]) }
-    func importText(scope: Scope, filename: String, content: String, markdown: Bool) async throws -> ImportTextResult {
-        try await convex.mutation("imports:importText", [
+    /// `imageMap`: image sources as written in the Markdown → uploaded file ids (they become image blocks).
+    func importText(scope: Scope, filename: String, content: String, markdown: Bool, imageMap: [String: String] = [:]) async throws -> ImportTextResult {
+        var args: [String: JSONValue] = [
             "scope": scope.arg, "filename": .string(filename), "content": .string(content),
             "format": .string(markdown ? "markdown" : "text"),
-        ], timeout: 60)
+        ]
+        if !imageMap.isEmpty { args["imageMap"] = .object(imageMap.mapValues { .string($0) }) }
+        return try await convex.mutation("imports:importText", args, timeout: 60)
     }
 }
 

@@ -17,7 +17,7 @@ enum SignInMethod: String, Sendable, Codable {
     case developerToken
 }
 
-/// Minimal JWT payload reader (no verification — the backend verifies every token).
+/// Minimal JWT payload reader (no verification: the backend verifies every token).
 enum JWT {
     static func payload(_ token: String) -> JSONValue? {
         let parts = token.split(separator: ".")
@@ -187,6 +187,53 @@ final class FoleviAccountAuth: @unchecked Sendable {
         return creds
     }
 
+    /// A Better Auth call made with this Mac's session (the bearer plugin), the same endpoints the web's
+    /// authClient uses: Settings → Security changes the password and two-step verification through these.
+    /// Better Auth replaces the session on some of them (a password change, turning two-step verification
+    /// on or off); the new token comes back in `set-auth-token` and is kept here, so this Mac stays signed in.
+    func authCall(_ path: String, method: String = "POST", body: Data? = nil) async throws -> AuthCallResult {
+        guard let session = storedSession else { throw FoleviError.notSignedIn }
+        var request = URLRequest(url: endpoint("api/auth/" + path), timeoutInterval: 20)
+        request.httpMethod = method
+        request.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if method != "GET" {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            // Better Auth checks the origin of state-changing requests; this is the web app's own origin.
+            request.setValue(originHeader, forHTTPHeaderField: "Origin")
+            request.httpBody = body ?? Data("{}".utf8)
+        }
+        let (data, response) = try await http.data(for: request)
+        let http = response as? HTTPURLResponse
+        let status = http?.statusCode ?? 0
+        var rotated = false
+        if let next = http?.value(forHTTPHeaderField: "set-auth-token"), !next.isEmpty, Self.base(next) != Self.base(session) {
+            storeSession(next)
+            rotated = true
+        }
+        let json = try? JSONValue(jsonData: data)
+        guard (200..<300).contains(status) else {
+            throw AuthCallError(status: status, code: json?["code"]?.stringValue ?? "", message: json?["message"]?.stringValue)
+        }
+        return AuthCallResult(json: json, rotated: rotated)
+    }
+
+    /// The session token without its signature (`token.signature`, possibly URL-encoded).
+    private static func base(_ token: String) -> String {
+        let decoded = token.removingPercentEncoding ?? token
+        return String(decoded.split(separator: ".").first ?? Substring(decoded))
+    }
+
+    /// Keeps a replacement session token (Better Auth rotated this Mac's session).
+    func storeSession(_ token: String) {
+        lock.lock()
+        let ephemeral = ephemeralSession != nil
+        if ephemeral { ephemeralSession = token }
+        cached = nil
+        lock.unlock()
+        if !ephemeral { try? keychain.setString(token, for: Self.sessionKey) }
+    }
+
     /// Ends this Mac's session on the server (best effort) and forgets it here.
     func signOut() async {
         if let session = storedSession {
@@ -229,6 +276,12 @@ final class FoleviAccountAuth: @unchecked Sendable {
         let message = body?["error_description"]?.stringValue ?? body?["message"]?.stringValue
         return .server(code: code, message: message ?? String(localized: fallback))
     }
+}
+
+/// What a Better Auth call returned, and whether it replaced this Mac's session.
+struct AuthCallResult: Sendable {
+    var json: JSONValue?
+    var rotated: Bool
 }
 
 // MARK: - Routing provider handed to the Convex client

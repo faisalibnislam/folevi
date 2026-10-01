@@ -364,7 +364,8 @@ enum PlanCatalog {
         PlanCard(tier: "free", name: PlanTier.name("free"), monthlyCents: 0, yearlyCents: 0, monthlyCredits: 25,
                  blurb: String(localized: "Everything you need to write and organize."),
                  features: [String(localized: "1 GB storage, shared with the free workspaces you own"), String(localized: "25 AI credits a month"),
-                            String(localized: "Use on 2 devices"), String(localized: "Unlimited notes, folders and tasks")]),
+                            String(localized: "Use on 2 devices"), String(localized: "Unlimited notes, folders and tasks"),
+                            String(localized: "On the web · Mac app coming soon")]),
         PlanCard(tier: "core", name: PlanTier.name("core"), monthlyCents: 199, yearlyCents: 1900, monthlyCredits: 0,
                  blurb: String(localized: "More room, and no AI."),
                  features: [String(localized: "20 GB storage"), String(localized: "No AI. Your notes stay yours: nothing is sent to an AI model"),
@@ -510,6 +511,9 @@ struct CreditAccountsResponse: Decodable, Sendable {
         }
     }
     var accounts: [Account]
+    /// Whether credit packs can be bought through Polar Checkout, or (development) as test packs.
+    var checkoutAvailable: Bool?
+    var testPurchases: Bool?
 }
 
 // MARK: - The note's AI panel (AiPanel.tsx)

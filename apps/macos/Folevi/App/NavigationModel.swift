@@ -18,6 +18,12 @@ enum SidebarItem: Hashable, Codable, Sendable {
     case trash
     case folder(String)
     case tag(String)
+    /// Settings and Help: pages of the main window, as on the web (/settings/<section>, /help).
+    case settings
+    case help
+    /// An invitation link opened with Folevi (the web's /invite/<token> and /share-invite/<token>).
+    case invite(String)
+    case shareInvite(String)
 
     var title: LocalizedStringKey {
         switch self {
@@ -35,6 +41,10 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .trash: return "Trash"
         case .folder: return "Folder"
         case .tag: return "Tag"
+        case .settings: return "Settings"
+        case .help: return "Help"
+        case .invite: return "Invitation"
+        case .shareInvite: return "Shared page"
         }
     }
 
@@ -54,6 +64,10 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .trash: return String(localized: "Trash")
         case .folder: return String(localized: "Folder")
         case .tag: return String(localized: "Tag")
+        case .settings: return String(localized: "Settings")
+        case .help: return String(localized: "Help")
+        case .invite: return String(localized: "Invitation")
+        case .shareInvite: return String(localized: "Shared page")
         }
     }
 
@@ -74,6 +88,10 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .trash: return "trash"
         case .folder: return "folder"
         case .tag: return "number"
+        case .settings: return "gearshape"
+        case .help: return "questionmark.circle"
+        case .invite: return "envelope.open"
+        case .shareInvite: return "doc.text"
         }
     }
 
@@ -93,6 +111,10 @@ enum SidebarItem: Hashable, Codable, Sendable {
         case .trash: return "sidebar.trash"
         case .folder(let id): return "sidebar.folder.\(id)"
         case .tag(let id): return "sidebar.tag.\(id)"
+        case .settings: return "sidebar.settings"
+        case .help: return "sidebar.help"
+        case .invite: return "sidebar.invite"
+        case .shareInvite: return "sidebar.shareInvite"
         }
     }
 }

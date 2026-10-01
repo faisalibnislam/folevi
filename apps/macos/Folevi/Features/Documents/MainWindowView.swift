@@ -11,6 +11,7 @@ struct MainWindowView: View {
     @State private var askChat = AskAiChat()
     /// The note's AI panel (dock → AI).
     @State private var noteAiOpen = false
+    @State private var router = SettingsRouter.shared
 
     var body: some View {
         // As the web's Shell: the sidebar sits on the canvas; beside it, 8pt in, the content panel (rounded
@@ -127,6 +128,18 @@ struct MainWindowView: View {
             nav.open(id)
         }
         .onChange(of: app.documentsRevision, initial: true) { _, _ in openFromLaunchArgument() }
+        // ⌘, and Help (and every "Settings" or "Help" button) show those pages here, as on the web.
+        .onChange(of: router.pending, initial: true) { _, route in
+            guard let route, app.phase == .ready else { return }
+            router.pending = nil
+            switch route {
+            case .settings: nav.selection = .settings
+            case .help: nav.selection = .help
+            case .invite(let token): nav.selection = .invite(token)
+            case .shareInvite(let token): nav.selection = .shareInvite(token)
+            }
+            nav.closeDocument()
+        }
         .sheet(isPresented: $nav.showHistory) {
             if let id = nav.openDocumentId { VersionHistorySheet(documentId: id).environment(app) }
         }
@@ -180,6 +193,10 @@ struct MainWindowView: View {
             case .tasks: TasksView(openDocument: open, openCalendar: { nav.selection = .calendar })
             case .calendar: CalendarView(openDocument: open, openTasks: { nav.selection = .tasks })
             case .shared: SharedWithMeView(openDocument: open)
+            case .settings: SettingsRoot()
+            case .help: HelpPage()
+            case .invite(let token): InviteView(token: token, nav: nav)
+            case .shareInvite(let token): ShareInviteView(token: token, nav: nav, openDocument: { nav.open($0) })
             default: BrowserView(nav: nav, openDocument: open)
             }
         }

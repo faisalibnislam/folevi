@@ -65,7 +65,7 @@ struct Profile: Codable, Sendable, Hashable {
     var deletionScheduledFor: Double?
     /// Folevi staff: the workspace menu offers the Admin console.
     var platformRole: String?
-    /// Their profile picture (Personal's mark in the workspace menu).
+    /// The profile picture (a signed URL), or nil for the initial; Personal's mark in the workspace menu.
     var avatarUrl: String?
 
     /// AI is available: their plan includes it and they haven't turned it off (the server enforces it).

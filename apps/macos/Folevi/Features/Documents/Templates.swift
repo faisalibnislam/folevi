@@ -5,6 +5,9 @@ import SwiftUI
 struct TemplateTile: View {
     var name: String
     var size: CGFloat = 36
+    /// The glyph's size (default: 46% of the tile) and the tile's corner radius.
+    var iconSize: CGFloat? = nil
+    var cornerRadius: CGFloat = 9
 
     /// Lucide name → SF Symbol, in the web's order (the order sets the tint).
     private static let icons: [(String, String)] = [
@@ -22,10 +25,10 @@ struct TemplateTile: View {
         let index = Self.icons.firstIndex { $0.0 == name }
         let hue = Color(hex: Self.tints[((index ?? 0) * 3) % Self.tints.count]) ?? .gray
         Image(systemName: index.map { Self.icons[$0].1 } ?? "doc.text")
-            .font(.system(size: size * 0.46, weight: .medium))
+            .font(.system(size: iconSize ?? size * 0.46, weight: .medium))
             .foregroundStyle(hue.mix(with: FoleviColor.heading, by: 0.22))
             .frame(width: size, height: size)
-            .background(hue.opacity(0.17), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .background(hue.opacity(0.17), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .accessibilityHidden(true)
     }
 }

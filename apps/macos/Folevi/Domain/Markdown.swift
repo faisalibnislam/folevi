@@ -199,7 +199,7 @@ public enum MarkdownCodec {
                     lines.append("\(indent)_\(escapeMd(string(caption)))_")
                 }
                 lines.append("")
-            case "file":
+            case "file", "audio":
                 let src = opts.resolveFile?(string(p["fileId"]))
                 let name = p["name"].flatMap { $0.isNull ? nil : $0 }.map { string($0) } ?? "file"
                 lines.append("\(indent)[\(escapeMd(name))](\(src.map { $0.isEmpty ? "" : encodeURI($0) } ?? ""))")

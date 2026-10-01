@@ -53,6 +53,7 @@ struct EditorView: View {
             if model.sheetPalette != palette { model.sheetPalette = palette }
         }
         .onChange(of: app.editorScale, initial: true) { _, s in model.drag.indentStep = BlockMetrics.indent(CGFloat(s)) }
+        .sheet(item: $model.recordingTarget) { _ in AudioRecorderSheet(model: model).environment(app) }
         .sheet(isPresented: $model.showLinkPrompt) {
             LinkPromptView(initial: model.linkDraft) { model.applyLink($0) } onCancel: { model.showLinkPrompt = false }
         }

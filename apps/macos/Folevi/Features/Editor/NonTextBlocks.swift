@@ -145,6 +145,7 @@ final class AttachmentLoader {
         switch block.content {
         case .image(let p): fileId = p.fileId
         case .file(let p): fileId = p.fileId.isEmpty ? nil : p.fileId
+        case .unknown(AudioProps.type, let props): fileId = AudioProps(props).flatMap { $0.fileId.isEmpty ? nil : $0.fileId }
         default: break
         }
         if let fileId {

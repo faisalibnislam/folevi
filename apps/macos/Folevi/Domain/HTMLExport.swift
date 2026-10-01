@@ -153,6 +153,12 @@ hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{b
             case "file":
                 let src = opts.resolveFile?(str(p["fileId"]))
                 parts.append("<p><a href=\"\(escape(src ?? "#"))\" download>\(escape(str(p["name"])))</a></p>")
+            case "audio":
+                if let src = opts.resolveFile?(str(p["fileId"])), !src.isEmpty {
+                    parts.append("<figure class=\"audio\"><audio controls preload=\"metadata\" src=\"\(escape(src))\"></audio><figcaption><a href=\"\(escape(src))\" download>\(escape(str(p["name"])))</a></figcaption></figure>")
+                } else {
+                    parts.append("<p>\(escape(str(p["name"])))</p>")
+                }
             case "table":
                 let rows: [[[InlineNode]]] = (try? (p["rows"] ?? .array([])).decode([[[InlineNode]]].self)) ?? []
                 let headerRow = p["headerRow"]?.isTruthy ?? false

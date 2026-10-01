@@ -87,3 +87,18 @@ final class ScopeTests: XCTestCase {
         XCTAssertEqual(back["inApp"]?["comments"], .bool(false))
     }
 }
+
+final class AudioPropsTests: XCTestCase {
+    func testRoundTripAndHelpers() {
+        let p = AudioProps(fileId: "f1", name: "Recording 2026-10-01 14.03.m4a", size: 2048, mimeType: "audio/mp4", duration: 65.27)
+        let back = AudioProps(p.json)
+        XCTAssertEqual(back?.fileId, "f1")
+        XCTAssertEqual(back?.duration, 65.3)
+        XCTAssertEqual(AudioProps.format(65.3), "1:05")
+        XCTAssertEqual(AudioProps.format(3729), "1:02:09")
+        XCTAssertTrue(AudioProps.fileName(at: Date(timeIntervalSince1970: 0)).hasPrefix("Recording 19"))
+        XCTAssertTrue(AudioProps.fileName().hasSuffix(".m4a"))
+        let block = WireBlock(id: ULID.make(), type: "audio", parentId: nil, rank: "V", props: p.json)
+        XCTAssertEqual(SearchText.blockText(block), "Recording 2026-10-01 14.03.m4a")
+    }
+}

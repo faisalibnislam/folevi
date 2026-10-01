@@ -95,7 +95,7 @@ public enum SearchText {
         switch block.type {
         case "code": parts.append(s("code"))
         case "image": parts += [s("alt"), s("caption")]
-        case "file": parts.append(s("name"))
+        case "file", "audio": parts.append(s("name"))
         case "table":
             if let rows = try? (p["rows"] ?? .array([])).decode([[[InlineNode]]].self) {
                 for row in rows { for cell in row { parts.append(RichText.plainText(cell)) } }

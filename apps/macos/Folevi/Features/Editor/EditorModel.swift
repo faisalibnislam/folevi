@@ -49,6 +49,7 @@ struct SlashItem: Identifiable, Equatable {
         case "table": return String(localized: "Table")
         case "image": return String(localized: "Image")
         case "file": return String(localized: "File")
+        case "record": return String(localized: "Audio Recording")
         case "page": return String(localized: "New Page")
         case "pagelink": return String(localized: "Link to Page")
         case "bookmark": return String(localized: "Bookmark")
@@ -72,11 +73,18 @@ struct SlashItem: Identifiable, Equatable {
         SlashItem(id: "table", title: "Table", searchText: "table grid rows columns", systemImage: "tablecells", shortcut: nil),
         SlashItem(id: "image", title: "Image", searchText: "image picture photo", systemImage: "photo", shortcut: nil),
         SlashItem(id: "file", title: "File", searchText: "file attachment pdf", systemImage: "paperclip", shortcut: nil),
+        SlashItem(id: "record", title: "Audio Recording", searchText: "audio record recording voice memo microphone mic sound dictate", systemImage: "mic", shortcut: nil),
         SlashItem(id: "page", title: "New Page", searchText: "page subpage nested document", systemImage: "doc.badge.plus", shortcut: nil),
         SlashItem(id: "pagelink", title: "Link to Page", searchText: "link page mention [[", systemImage: "link", shortcut: "[["),
         SlashItem(id: "bookmark", title: "Bookmark", searchText: "bookmark url web link embed", systemImage: "bookmark", shortcut: nil),
         SlashItem(id: "date", title: "Today's Date", searchText: "date today", systemImage: "calendar", shortcut: nil),
     ] }
+}
+
+struct RecordingTarget: Identifiable, Equatable {
+    let id = UUID()
+    var blockId: String
+    var replace: Bool
 }
 
 struct PopupState: Equatable {
@@ -121,6 +129,8 @@ final class EditorModel {
     var findIndex = 0
     var titleDraft = ""
     var pendingBookmarkBlock: String?
+    /// Where a recording goes while the recorder sheet is open ("/record").
+    var recordingTarget: RecordingTarget?
     var showLinkPrompt = false
     var linkDraft = ""
     var containerFocusToken = UUID()
@@ -978,7 +988,7 @@ final class EditorModel {
     func insertBlock(type: String, at placement: BlockDrop.Placement) -> String? {
         guard !isReadOnly else { return nil }
         switch type {
-        case "image", "file", "page", "pagelink", "bookmark", "date":
+        case "image", "file", "record", "page", "pagelink", "bookmark", "date":
             // These need a picker or a text caret: anchor on the block before the drop line.
             let anchor = placement.afterId ?? placement.parentId ?? rows.first?.id
             if let anchor { performSlashOrInsert(type, anchor: anchor) } else { insertBlock(type: type) }
@@ -1277,6 +1287,8 @@ final class EditorModel {
         switch id {
         case "image", "file":
             chooseFiles(kind: id, after: blockId, replace: isEmpty && block.typeName == "paragraph")
+        case "record":
+            recordingTarget = RecordingTarget(blockId: blockId, replace: isEmpty && block.typeName == "paragraph")
         case "page":
             Task {
                 guard let newId = await app.createDocument(title: "", parentDocumentId: documentId) else { return }
@@ -1353,7 +1365,7 @@ final class EditorModel {
 
     private func performSlashOrInsert(_ type: String, anchor: String) {
         switch type {
-        case "image", "file", "page", "pagelink", "bookmark", "date":
+        case "image", "file", "record", "page", "pagelink", "bookmark", "date":
             performSlash(type, blockId: anchor, at: 0)
         default:
             let content = BlockContent.defaultContent(for: type)
@@ -1543,6 +1555,38 @@ final class EditorModel {
                 } catch {
                     self.app.showToast(String(localized: "That file couldn't be added."))
                 }
+            }
+        }
+    }
+
+    /// A finished recording becomes an audio block; the upload waits in the queue (works offline).
+    func insertAudio(_ url: URL, duration: Double, after afterId: String, replacing: Bool) {
+        guard let session = app.session, !isReadOnly else { return }
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let name = AudioProps.fileName()
+        let props = AudioProps(fileId: "", name: name, size: Double(size), mimeType: "audio/mp4", duration: duration)
+        var block = Block(id: ULID.make(), parentId: blocks[afterId]?.parentId, rank: "V", content: .unknown(type: AudioProps.type, props: props.json))
+        if replacing, let old = blocks[afterId] {
+            block.parentId = old.parentId
+            block.rank = old.rank
+            blocks[afterId] = nil
+            commit(deletes: [afterId], undoable: false)
+        } else {
+            block.rank = rank(parentId: block.parentId, after: afterId)
+        }
+        blocks[block.id] = block
+        rebuildRows()
+        let named = url.deletingLastPathComponent().appendingPathComponent(name)
+        try? FileManager.default.removeItem(at: named)
+        let source = (try? FileManager.default.moveItem(at: url, to: named)) != nil ? named : url
+        let wire = block.wire
+        let docId = documentId
+        Task {
+            do {
+                try await session.engine.queueUpload(fileURL: source, documentId: docId, block: wire, kind: "audio")
+                try? FileManager.default.removeItem(at: source)
+            } catch {
+                self.app.showToast(String(localized: "That recording couldn't be added."))
             }
         }
     }

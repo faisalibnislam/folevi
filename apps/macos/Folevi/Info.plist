@@ -59,6 +59,8 @@
 			<array><string>public.data</string></array>
 		</dict>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Folevi records audio into your notes when you choose Audio Recording.</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Folevi can remind you when a task is due.</string>
 	<key>FoleviConvexURL</key>

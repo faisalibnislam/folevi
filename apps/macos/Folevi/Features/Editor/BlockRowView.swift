@@ -429,6 +429,12 @@ struct BlockRowView: View {
             BookmarkBlockView(block: block, props: p, model: model)
         case .collection(let p):
             CollectionBlockView(props: p, openDocument: openDocument)
+        case .unknown(AudioProps.type, let props):
+            if let p = AudioProps(props) {
+                AudioBlockView(block: block, props: p, model: model)
+            } else {
+                UnknownBlockView(type: AudioProps.type).onTapGesture { model.select(block.id, extend: false) }
+            }
         case .unknown(let type, _):
             UnknownBlockView(type: type)
                 .onTapGesture { model.select(block.id, extend: false) }

@@ -107,6 +107,7 @@ struct InsertTile: View {
         case "numbered": return String(localized: "Numbers")
         case "pagelink": return String(localized: "Page Link")
         case "date": return String(localized: "Date")
+        case "record": return String(localized: "Audio")
         default: return item.plainTitle
         }
     }
@@ -133,7 +134,7 @@ struct InsertTile: View {
         case "todo", "bulleted", "numbered", "toggle": return (FoleviColor.mossSoft, FoleviColor.mossInk)
         case "quote", "callout": return (FoleviColor.plumSoft, FoleviColor.plumInk)
         case "code", "table": return (FoleviColor.marigoldSoft, FoleviColor.marigoldInk)
-        case "image", "file", "bookmark", "date": return (FoleviColor.accentSoft, FoleviColor.accentSoftInk)
+        case "image", "file", "record", "bookmark", "date": return (FoleviColor.accentSoft, FoleviColor.accentSoftInk)
         default: return (FoleviColor.coralSoft, FoleviColor.coralInk)
         }
     }
@@ -150,7 +151,7 @@ struct InsertInspector: View {
         ("Basics", ["paragraph", "heading1", "heading2", "heading3"]),
         ("Lists", ["todo", "bulleted", "numbered", "toggle"]),
         ("Blocks", ["quote", "callout", "code", "table"]),
-        ("Media", ["image", "file", "bookmark", "date"]),
+        ("Media", ["image", "file", "record", "bookmark", "date"]),
         ("Structure", ["divider", "page", "pagelink"]),
     ]
 

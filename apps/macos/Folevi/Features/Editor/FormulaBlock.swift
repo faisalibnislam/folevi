@@ -43,7 +43,7 @@ struct FormulaBlockView: View {
         Group {
             if editing { editor } else { display }
         }
-        .richAtomOutline(isSelected && !editing, accent: Color.folevi(accent: model.style.accent))
+        .richAtomOutline(isSelected && !editing, accent: model.documentAccent)
         // `.fb-formula-box`: 0.4em above and below.
         .padding(.vertical, bodySize * 0.4)
         .onAppear {

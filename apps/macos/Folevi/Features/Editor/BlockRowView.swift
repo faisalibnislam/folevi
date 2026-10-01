@@ -42,7 +42,7 @@ enum BlockStyles {
         let tracking: CGFloat = style.font == .serif ? 0 : FoleviTracking.normal
         return TextRenderStyle(font: font, color: palette.map { NSColor($0.ink) } ?? .foleviInk, lineSpacing: spacing(for: font, lineHeight: bodyLineHeight(style.font)),
                               placeholder: paragraphPlaceholder(lone: false, ai: false),
-                              kern: tracking * font.pointSize)
+                              kern: tracking * font.pointSize, notePalette: palette?.notePalette)
     }
 
     /// Page title, as on the web: 40pt semibold Spectral (the document's own family when it's mono or
@@ -183,7 +183,7 @@ struct BlockRowView: View {
     private var isSelected: Bool { model.selectedBlockIds.contains(block.id) }
     private var isDragged: Bool { model.drag.draggedIds.contains(block.id) }
     private var indent: CGFloat { CGFloat(row.depth) * BlockMetrics.indent(scale) }
-    private var docAccent: Color { Color.folevi(accent: model.style.accent) }
+    private var docAccent: Color { model.documentAccent }
     /// 1em of the page's body text at this zoom (the web sizes markers in em).
     private var em: CGFloat { BlockStyles.bodySize(model.style.font) * scale }
     /// The height of one line of glyphs (markers centre on it, as on the web).
@@ -424,7 +424,7 @@ struct BlockRowView: View {
                 .frame(width: 1.6 * em, height: line, alignment: .leading)
                 .accessibilityHidden(true)
         case .todo(let p):
-            TodoCheck(checked: p.checked, scale: scale) { model.toggleTodo(block.id) }
+            TodoCheck(checked: p.checked, scale: scale, palette: model.sheetPalette?.notePalette) { model.toggleTodo(block.id) }
                 .offset(x: -4 * scale)
                 .frame(width: 1.6 * em, height: line, alignment: .leading)
                 .disabled(model.isReadOnly)
@@ -465,7 +465,7 @@ struct BlockRowView: View {
                     .fixedSize()
             }
         case .callout(let p):
-            let tone = CalloutLook(tone: p.tone)
+            let tone = CalloutLook(tone: p.tone, palette: model.sheetPalette?.notePalette)
             HStack(alignment: .top, spacing: 0.6 * em) {
                 // The tone's mark (a text symbol, never an emoji), bold, 1.4em wide.
                 Text(verbatim: CalloutLook.symbol(p.tone))
@@ -590,12 +590,17 @@ struct BlockRowView: View {
     }
 }
 
-/// A callout's tone (editor.css `.fb-tone-*`): the background and the colour of its mark.
+/// A callout's tone (editor.css `.fb-tone-*`): the background and the colour of its mark. On a note style
+/// palette, note and info callouts take the style's colours.
 struct CalloutLook {
     var bg: Color
     var ink: Color
 
-    init(tone: CalloutTone) {
+    init(tone: CalloutTone, palette: NotePaletteLook? = nil) {
+        if let look = palette?.callout(tone) {
+            (bg, ink) = (Color(look.background), Color(look.icon))
+            return
+        }
         switch tone {
         case .note: (bg, ink) = (FoleviColor.emberSoft, FoleviColor.emberInk)
         case .info: (bg, ink) = (FoleviColor.accentSoft, FoleviColor.accentSoftInk)
@@ -674,10 +679,12 @@ struct GripDots: View {
 }
 
 /// The to-do checkbox (editor.css `.fb-check`): an 18pt box with 4pt corners in a 24pt target. Unchecked:
-/// a raised fill and a strong hairline (moss on hover). Checked: a moss gradient and a white check.
+/// a raised fill and a strong hairline (moss on hover). Checked: a moss gradient and a white check. On a note
+/// style palette the style's accent takes moss's place.
 struct TodoCheck: View {
     var checked: Bool
     var scale: CGFloat
+    var palette: NotePaletteLook? = nil
     var action: () -> Void
     @State private var hovering = false
     @State private var pressed = false
@@ -687,15 +694,17 @@ struct TodoCheck: View {
             ZStack {
                 let box = RoundedRectangle(cornerRadius: 4 * scale, style: .continuous)
                 if checked {
-                    box.fill(LinearGradient(colors: [FoleviColor.moss.mix(with: .white, by: 0.18), FoleviColor.moss], startPoint: .top, endPoint: .bottom))
+                    let top = palette.map { Color($0.checkTop) } ?? FoleviColor.moss.mix(with: .white, by: 0.18)
+                    let fill = palette.map { Color($0.accent) } ?? FoleviColor.moss
+                    box.fill(LinearGradient(colors: [top, fill], startPoint: .top, endPoint: .bottom))
                         .overlay(box.strokeBorder(LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center), lineWidth: 1))
-                        .shadow(color: FoleviColor.moss.opacity(0.45), radius: 1, y: 1)
+                        .shadow(color: palette.map { Color($0.checkShadow) } ?? FoleviColor.moss.opacity(0.45), radius: 1, y: 1)
                     CheckMark()
                         .stroke(.white, style: StrokeStyle(lineWidth: 2 * scale, lineCap: .square, lineJoin: .miter))
                         .frame(width: 18 * scale, height: 18 * scale)
                 } else {
                     box.fill(LinearGradient(colors: [FoleviColor.surfaceRaised, FoleviColor.surfaceRaised.mix(with: FoleviColor.surfaceSunken, by: 0.08)], startPoint: .top, endPoint: .bottom))
-                        .overlay(box.strokeBorder(hovering ? FoleviColor.moss : FoleviColor.lineStrong, lineWidth: 1.5))
+                        .overlay(box.strokeBorder(hovering ? (palette.map { Color($0.accent) } ?? FoleviColor.moss) : FoleviColor.lineStrong, lineWidth: 1.5))
                         .shadow(color: FoleviColor.heading.opacity(0.08), radius: 0.5, y: 1)
                 }
             }

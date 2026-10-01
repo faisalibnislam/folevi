@@ -62,7 +62,7 @@ struct MermaidBlockView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(selected ? Color.folevi(accent: model.style.accent) : hovering || editing ? FoleviColor.lineStrong : line,
+                .strokeBorder(selected ? model.documentAccent : hovering || editing ? FoleviColor.lineStrong : line,
                               lineWidth: selected ? 2 : 1)
         }
         .overlay(alignment: .topTrailing) {

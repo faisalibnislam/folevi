@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// A note's page colours, as the web derives them (lib/cover.ts `sheetProps` + editor.css `.fb-sheet`):
@@ -7,6 +8,9 @@ import SwiftUI
 /// - A note with a built-in style and no document colour gets the artwork's colours: a very light page
 ///   with dark text in the same hue (a deep page with light text in dark appearance).
 /// - A text colour picked in Style overrides the ink.
+/// - While the page colour is on Auto, the style's palette also colours the accents (bullets, checkboxes,
+///   quote bars, links, underlines, callouts, code) and the text colour and highlight marks (`notePalette`;
+///   editor.css "Note style palette").
 ///
 /// `nil` means the app's own surface and ink.
 struct SheetPalette: Equatable {
@@ -18,6 +22,8 @@ struct SheetPalette: Equatable {
     var line: Color
     /// Whether the page is dark (for controls drawn on it).
     var isDark: Bool
+    /// The note style's palette on this page (`data-palette`), or nil for the fixed colours.
+    var notePalette: NotePaletteLook? = nil
 
     @MainActor
     static func resolve(style: DocumentStyle, cover: DocumentCover, dark: Bool) -> SheetPalette? {
@@ -31,6 +37,10 @@ struct SheetPalette: Equatable {
                 ? SheetPalette(surface: surface, ink: Color(hex: "#ececef")!, heading: .white, muted: Color(hex: "#a9a9b1")!, faint: Color(hex: "#93939b")!,
                                line: .white.opacity(0.12), isDark: true)
                 : base(surface: surface)
+            if NoteStylePalette.applies(sheet: style.sheet), let notes = art.notePalette,
+               let paper = PaletteColor(hex: (dark ? art.paperDark : art.paper) ?? "#161618") {
+                palette.notePalette = notes.look(dark: dark, surface: paper)
+            }
         } else {
             return nil
         }
@@ -80,5 +90,17 @@ struct SheetPalette: Equatable {
         case .brown: return (Color(hex: "#5b3b23")!, Color(hex: "#4a2e19")!)
         case .white: return (Color(hex: "#f2f2f4")!, .white)
         }
+    }
+}
+
+extension Color {
+    init(_ color: PaletteColor) {
+        self.init(.sRGB, red: color.red, green: color.green, blue: color.blue, opacity: color.alpha)
+    }
+}
+
+extension NSColor {
+    convenience init(_ color: PaletteColor) {
+        self.init(srgbRed: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
     }
 }

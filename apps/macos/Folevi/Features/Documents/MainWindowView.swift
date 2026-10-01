@@ -7,7 +7,9 @@ struct MainWindowView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var nav = NavigationModel()
     @State private var editor: EditorModel?
-    @State private var aiOpen = false
+    /// Ask AI's chat (kept while closed, so the conversation survives closing and reopening).
+    @State private var askChat = AskAiChat()
+    /// The note's AI panel (dock → AI).
     @State private var noteAiOpen = false
 
     var body: some View {
@@ -28,21 +30,22 @@ struct MainWindowView: View {
                         .overlay(alignment: .bottom) {
                             if let editor = editorIfOpen {
                                 VStack(spacing: 12) {
-                                    if let composer = editor.ai.composer {
-                                        InlineAiComposer(model: composer)
-                                            .id(composer.id)
-                                            .transition(.scale(scale: 0.97, anchor: .bottom).combined(with: .opacity))
-                                    }
-                                    if noteAiOpen {
-                                        AskAiPanel(openDocument: { id in noteAiOpen = false; nav.open(id) }, close: { noteAiOpen = false },
-                                                   documentId: editor.documentId)
+                                    // The note's AI panel (the web's AiPanel in the dock's floating panel).
+                                    if noteAiOpen && app.aiAvailable {
+                                        NoteAiPanel(editor: editor, close: { noteAiOpen = false },
+                                                    openAsk: { askChat.open(question: $0) }, openDocument: { nav.open($0) })
                                             .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
                                     }
                                     NoteDock(nav: nav, aiOpen: $noteAiOpen, aiAvailable: app.aiAvailable, editor: editor)
                                 }
+                                .padding(.top, 28)
                                 .padding(.bottom, 18)
                                 .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: noteAiOpen)
                             }
+                        }
+                        // The inline AI composer and the title's AI, floating at the text they're about.
+                        .overlay {
+                            if let editor = editorIfOpen { EditorAiOverlay(editor: editor) }
                         }
                     if nav.showInspector {
                         InspectorCard {
@@ -68,27 +71,37 @@ struct MainWindowView: View {
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .overlay { BlockDragOverlay(controller: editorIfOpen?.drag) }
         .overlay(alignment: .bottomTrailing) {
-            // The AI Assistant: a floating launcher and chat, everywhere but on a note (as on the web).
-            if app.aiAvailable, editorIfOpen == nil, app.phase == .ready {
-                VStack(alignment: .trailing, spacing: 12) {
-                    if aiOpen {
-                        AskAiPanel(openDocument: { id in aiOpen = false; nav.open(id) }, close: { aiOpen = false })
+            // The AI Assistant: a chat from a floating launcher in the bottom-right corner. Notes have their own
+            // AI in the dock, so the launcher stays out of the way there (⌘J and the note's AI still open the chat).
+            if app.aiAvailable, app.phase == .ready {
+                VStack(alignment: .trailing, spacing: 20) {
+                    if askChat.isOpen {
+                        AskAiPanel(chat: askChat, openDocument: { id in askChat.isOpen = false; nav.open(id) }, close: { askChat.isOpen = false })
                             .transition(.scale(scale: 0.96, anchor: .bottomTrailing).combined(with: .opacity))
                     }
-                    AiLauncher(isOpen: $aiOpen)
+                    if editorIfOpen == nil {
+                        AiLauncher(isOpen: Binding(get: { askChat.isOpen }, set: { $0 ? askChat.open() : (askChat.isOpen = false) }))
+                    }
                 }
+                .padding(.top, 32)
                 .padding(.trailing, 36)
                 .padding(.bottom, 36)
-                .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: aiOpen)
+                .animation(.timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: askChat.isOpen)
             }
         }
         .navigationTitle(windowTitle)
         .focusedSceneValue(\.navigation, nav)
         .focusedSceneValue(\.editor, editor)
         .onReceive(NotificationCenter.default.publisher(for: .foleviToggleAskAi)) { _ in
-            // ⌘J outside a note opens Ask AI (in a note, ⌘J writes there).
+            // ⌘J opens Ask AI (in a note's text, ⌘J writes there instead).
             guard NSApp.keyWindow?.isMainWindow == true || editor == nil, app.aiAvailable else { return }
-            if editorIfOpen != nil { noteAiOpen.toggle() } else { aiOpen.toggle() }
+            askChat.open()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .foleviOpenAskAi)) { note in
+            guard NSApp.keyWindow?.isMainWindow == true || editor == nil, app.aiAvailable else { return }
+            let info = note.userInfo ?? [:]
+            let folder = (info["folderId"] as? String).map { AskFolder(id: $0, name: info["folderName"] as? String ?? "") }
+            askChat.open(question: info["question"] as? String, folder: folder)
         }
         .onChange(of: nav.openDocumentId) { _, id in
             noteAiOpen = false
@@ -259,13 +272,9 @@ struct DocumentWindowView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .overlay(alignment: .bottom) {
-                    if let composer = editor?.ai.composer {
-                        InlineAiComposer(model: composer)
-                            .id(composer.id)
-                            .padding(.bottom, 24)
-                            .transition(.scale(scale: 0.97, anchor: .bottom).combined(with: .opacity))
-                    }
+                // The inline AI composer and the title's AI, floating at the text they're about.
+                .overlay {
+                    if let editor { EditorAiOverlay(editor: editor) }
                 }
                 if nav.showInspector, let editor {
                     InspectorCard {

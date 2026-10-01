@@ -1,25 +1,24 @@
 import AppKit
+import Observation
 import SwiftUI
 
-/// "Ask AI" (the web's AskAiChat): a chat with your notes. Each answer cites the notes it used; follow-ups
-/// keep the conversation; answers stream in as they're written. On a note (`documentId`), it can answer
-/// from this note only or from all your notes, starting with this one. When credits run low it says so, and
-/// a refused request (out of credits, or AI not included) says what helps.
-struct AskAiPanel: View {
-    var openDocument: (String) -> Void
-    var close: () -> Void
-    /// Ask about this note (the note's AI); nil asks across all notes.
-    var documentId: String?
-    @Environment(AppModel.self) private var app
-    @State private var turns: [Turn] = []
-    @State private var question = ""
-    @State private var busy = false
-    @State private var range: Range = .all
-    @State private var stream = AiStreamRunner()
-    @FocusState private var focused: Bool
+extension Notification.Name {
+    /// Opens Ask AI, optionally with a question typed in (`question`) or on one folder's notes
+    /// (`folderId`, `folderName`): the command palette's "Ask AI", a folder's "Ask AI about this folder…".
+    static let foleviOpenAskAi = Notification.Name("FoleviOpenAskAi")
+}
 
-    enum Range: Hashable { case note, all }
+/// A folder Ask AI answers from (only its notes).
+struct AskFolder: Equatable, Sendable {
+    var id: String
+    var name: String
+}
 
+/// Ask AI's conversation (the web's AskAiChat): kept while the chat is closed, so it survives closing and
+/// reopening. Each answer cites the notes it used; follow-ups keep the conversation.
+@MainActor
+@Observable
+final class AskAiChat {
     struct Turn: Identifiable {
         let id = UUID()
         var question: String
@@ -28,241 +27,50 @@ struct AskAiPanel: View {
         var problem: AiProblem?
     }
 
-    private static let suggestions = [
-        String(localized: "What am I working on this week?"), String(localized: "Summarize my notes about travel"),
-        String(localized: "Which tasks are still open?"), String(localized: "What ideas have I written down recently?"),
-    ]
-    private static let noteSuggestions = [
-        String(localized: "Summarize this note"), String(localized: "What are the open questions here?"),
-        String(localized: "What decisions have been made?"), String(localized: "What should I do next?"),
-    ]
+    var isOpen = false
+    var turns: [Turn] = []
+    var draft = ""
+    private(set) var busy = false
+    /// Only this folder's notes; nil searches all notes.
+    var scope: AskFolder?
+    /// Moves the keyboard to the question field.
+    private(set) var focusToken = 0
+    let stream = AiStreamRunner()
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                AiIcon(size: 20)
-                Text("Ask AI").font(.ui(14.5, .semibold)).foregroundStyle(FoleviColor.heading)
-                Spacer()
-                IconButton(systemImage: "xmark", label: "Close chat", size: 28, action: close)
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 52)
-            divider
-            if !app.aiIncludedHere {
-                notIncluded
-            } else {
-                conversation
-                divider
-                composer
-            }
-        }
-        .frame(width: 420, height: 560)
-        .foleviPop(radius: 18)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .claimsFocus($focused)
-        .onExitCommand(perform: close)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Ask AI"))
-        .accessibilityIdentifier("ai.askPanel")
+    /// Opens the chat: with a question typed in, or on a folder (a new conversation).
+    func open(question: String? = nil, folder: AskFolder? = nil) {
+        if let question, !question.isEmpty { draft = question }
+        scope = folder
+        if folder != nil { turns = [] }
+        isOpen = true
+        focusToken += 1
     }
 
-    private var divider: some View { FoleviColor.line.opacity(0.7).frame(height: 1) }
-
-    /// AI isn't part of the plan here (Core).
-    private var notIncluded: some View {
-        VStack(spacing: 12) {
-            AiIcon(size: 28)
-            Text("AI isn't included here").font(FoleviType.display(20)).foregroundStyle(FoleviColor.heading)
-            Text("Core doesn't include AI, so nothing in your notes is sent to an AI model. Pro and Pro AI come with AI credits every month.")
-                .multilineTextAlignment(.center).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
-            if app.workspace == nil {
-                Button("Upgrade") { openBilling(app) }
-                    .buttonStyle(.folevi(.primary))
-            }
-        }
-        .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    func toggle() {
+        if isOpen { isOpen = false } else { open() }
     }
 
-    // MARK: Conversation
-
-    private var intro: String {
-        guard documentId != nil else { return String(localized: "Answers come from your notes, with links to the notes used.") }
-        return range == .note ? String(localized: "Answers come from this note only.")
-            : String(localized: "Answers come from this note and your other notes, with links to the notes used.")
-    }
-
-    private var conversation: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if turns.isEmpty {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(intro).font(.ui(13.5)).foregroundStyle(FoleviColor.inkMuted)
-                            HStack(spacing: 8) {
-                                AiIcon(size: 13)
-                                Text("Try asking").font(.ui(12.5, .medium)).foregroundStyle(FoleviColor.inkMuted)
-                            }
-                            .padding(.top, 20)
-                            .padding(.bottom, 10)
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(documentId == nil ? Self.suggestions : Self.noteSuggestions, id: \.self) { s in
-                                    Button { send(s) } label: {
-                                        Text(s)
-                                            .font(.ui(13))
-                                            .foregroundStyle(FoleviColor.ink)
-                                            .multilineTextAlignment(.leading)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 6)
-                                            .background(FoleviGlass.hover, in: Capsule())
-                                            .overlay(Capsule().strokeBorder(FoleviGlass.border))
-                                            .contentShape(Capsule())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
-                    ForEach(turns) { turn in
-                        turnView(turn).id(turn.id)
-                    }
-                    Color.clear.frame(height: 1).id("end")
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .onChange(of: turns.count) { _, _ in withAnimation { proxy.scrollTo("end", anchor: .bottom) } }
-            .onChange(of: stream.text) { _, _ in proxy.scrollTo("end", anchor: .bottom) }
-        }
-    }
-
-    @ViewBuilder private func turnView(_ turn: Turn) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(turn.question)
-                .font(.ui(14))
-                .foregroundStyle(FoleviColor.canvas)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(FoleviColor.heading, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 4, topTrailingRadius: 14, style: .continuous))
-                .textSelection(.enabled)
-                .frame(maxWidth: 340, alignment: .trailing)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            if let answer = turn.answer {
-                VStack(alignment: .leading, spacing: 10) {
-                    AiMarkdownView(markdown: answer)
-                    if !turn.sources.isEmpty {
-                        divider
-                        SourceList(sources: turn.sources, openDocument: openDocument)
-                    }
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(AiCatalog.markdownToPlain(answer), forType: .string)
-                    } label: {
-                        Label("Copy", systemImage: "doc.on.doc").font(.ui(12))
-                    }
-                    .buttonStyle(.folevi(.quiet, .small))
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(FoleviGlass.active, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14, style: .continuous))
-            } else if let problem = turn.problem {
-                AiProblemNotice(problem: problem)
-            } else if !stream.text.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    AiMarkdownView(markdown: stream.text)
-                    AiStopButton { stream.stop() }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(FoleviGlass.active, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14, style: .continuous))
-            } else {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Reading your notes…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
-                }
-                .padding(.horizontal, 4)
-            }
-        }
-    }
-
-    // MARK: Composer
-
-    private var composer: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            AiCreditsNote(documentId: documentId != nil && range == .note ? documentId : nil)
-            if documentId != nil {
-                FoleviSegmented(selection: $range, items: [
-                    .init(value: .note, title: "This note"),
-                    .init(value: .all, title: "All notes"),
-                ], accessibilityLabel: "What to ask about")
-                .frame(width: 220)
-                .disabled(busy)
-            }
-            HStack(alignment: .bottom, spacing: 8) {
-                TextField(turns.isEmpty ? "Ask anything about your notes…" : "Ask a follow-up…", text: $question, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(.ui(14))
-                    .lineLimit(2...6)
-                    .focused($focused)
-                    .onSubmit { send(question) }
-                    .accessibilityLabel(Text("Ask a question about your notes"))
-                Button { send(question) } label: {
-                    Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold)).foregroundStyle(FoleviColor.canvas)
-                        .frame(width: 30, height: 30)
-                        .background(FoleviColor.heading, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .opacity(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy ? 0.3 : 1)
-                .disabled(busy || question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityLabel(Text("Ask"))
-            }
-            .padding(.leading, 14)
-            .padding(.trailing, 8)
-            .padding(.vertical, 8)
-            .background(FoleviGlass.hover, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(FoleviGlass.border))
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("AI can make mistakes. Questions and the notes they need go to Google Gemini.")
-                    .font(.ui(11))
-                    .foregroundStyle(FoleviColor.inkFaint)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                if !turns.isEmpty {
-                    Button { turns = [] } label: { Label("New chat", systemImage: "arrow.counterclockwise").font(.ui(12)) }
-                        .buttonStyle(.folevi(.quiet, .small))
-                        .disabled(busy)
-                }
-            }
-            .padding(.horizontal, 4)
-        }
-        .padding(12)
-    }
-
-    private func send(_ text: String) {
-        let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    func send(_ question: String, app: AppModel) {
+        let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty, !busy, let session = app.session else { return }
         let history: [JSONValue] = turns.flatMap { t -> [JSONValue] in
             guard let a = t.answer else { return [] }
             return [.object(["role": "user", "text": .string(t.question)]), .object(["role": "assistant", "text": .string(a)])]
         }
         turns.append(Turn(question: q))
-        question = ""
+        draft = ""
         busy = true
-        let documentId = self.documentId
-        let range = self.range
+        let folderId = scope?.id
         Task {
             defer {
                 stream.end()
                 busy = false
-                focused = true
+                focusToken += 1
             }
             let streamId = await stream.begin(session)
             do {
                 var args: [String: JSONValue] = ["scope": session.scope.arg, "question": .string(q), "history": .array(history)]
-                if let documentId {
-                    args["documentId"] = .string(documentId)
-                    args["range"] = .string(range == .note ? "note" : "all")
-                }
+                if let folderId { args["folderId"] = .string(folderId) }
                 if let streamId { args["streamId"] = .string(streamId) }
                 let answer: AiAnswer = try await session.convex.action("ai:ask", args, timeout: 120)
                 await stream.finish(answer.answer)
@@ -279,7 +87,258 @@ struct AskAiPanel: View {
     }
 }
 
-/// The notes an answer used, as chips that open them.
+/// "Ask AI" (the web's AskAiChat): a chat with your notes that pops out from the floating button in the
+/// bottom-right corner (on a note, from ⌘J and the note's AI panel). It isn't modal: you can keep reading
+/// and writing while it's open. Each answer cites the notes it used; follow-ups keep the conversation.
+/// When credits run low it says so, and a refused request (out of credits) says what helps.
+struct AskAiPanel: View {
+    @Bindable var chat: AskAiChat
+    var openDocument: (String) -> Void
+    var close: () -> Void
+    @Environment(AppModel.self) private var app
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                AiIcon(size: 20)
+                Text("Ask AI").font(.ui(14.5, .semibold)).foregroundStyle(FoleviColor.heading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                IconButton(systemImage: "xmark", label: "Close chat", size: 32, action: close)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            divider
+            conversation
+            divider
+            composer
+        }
+        .frame(width: 420)
+        .frame(minHeight: 200, idealHeight: 640, maxHeight: 640)
+        .foleviPop(radius: 18)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .claimsFocus($focused)
+        .onChange(of: chat.focusToken) { _, _ in focused = true }
+        .onExitCommand(perform: close)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Ask AI"))
+        .accessibilityIdentifier("ai.askPanel")
+    }
+
+    private var divider: some View { FoleviColor.line.opacity(0.7).frame(height: 1) }
+
+    // MARK: Conversation
+
+    private var conversation: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if chat.turns.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(chat.scope.map { String(localized: "Answers come from the notes in “\($0.name)”, with links to the notes used.") }
+                                 ?? String(localized: "Answers come from your notes, with links to the notes used."))
+                                .font(.ui(13.5)).foregroundStyle(FoleviColor.inkMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                            HStack(spacing: 8) {
+                                AiIcon(size: 13)
+                                Text("Try asking").font(.ui(12.5, .medium)).foregroundStyle(FoleviColor.inkMuted)
+                            }
+                            .padding(.top, 20)
+                            .padding(.bottom, 10)
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(chat.scope == nil ? AskAiCatalog.suggestions : AskAiCatalog.folderSuggestions, id: \.self) { s in
+                                    AiChipButton(title: s, fontSize: 13, horizontal: 12, height: 30) { chat.send(s, app: app) }
+                                }
+                            }
+                        }
+                    }
+                    ForEach(chat.turns) { turn in
+                        turnView(turn).id(turn.id)
+                    }
+                    Color.clear.frame(height: 1).id("end")
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .onAppear { proxy.scrollTo("end", anchor: .bottom) }
+            .onChange(of: chat.turns.count) { _, _ in withAnimation { proxy.scrollTo("end", anchor: .bottom) } }
+            .onChange(of: chat.stream.text) { _, _ in proxy.scrollTo("end", anchor: .bottom) }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private static let answerShape = UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14,
+                                                            topTrailingRadius: 14, style: .continuous)
+
+    @ViewBuilder private func turnView(_ turn: AskAiChat.Turn) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(turn.question)
+                .font(.ui(14))
+                .foregroundStyle(FoleviColor.canvas)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(FoleviColor.heading, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 4, topTrailingRadius: 14, style: .continuous))
+                .textSelection(.enabled)
+                .frame(maxWidth: 330, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            if let answer = turn.answer {
+                VStack(alignment: .leading, spacing: 0) {
+                    AiMarkdownView(markdown: answer)
+                    if !turn.sources.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            divider
+                            SourceList(sources: turn.sources, openDocument: openDocument).padding(.top, 10)
+                        }
+                        .padding(.top, 12)
+                    }
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(AiCatalog.markdownToPlain(answer), forType: .string)
+                    } label: {
+                        Label("Copy", systemImage: "doc.on.doc").font(.ui(12))
+                    }
+                    .buttonStyle(AiQuietButtonStyle())
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(FoleviGlass.active, in: Self.answerShape)
+                .overlay(Self.answerShape.strokeBorder(FoleviGlass.border))
+            } else if let problem = turn.problem {
+                AiProblemNotice(problem: problem)
+            } else if !chat.stream.text.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    AiMarkdownView(markdown: chat.stream.text, streaming: true)
+                    AiStopButton { chat.stream.stop() }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(FoleviGlass.active, in: Self.answerShape)
+                .overlay(Self.answerShape.strokeBorder(FoleviGlass.border))
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Reading your notes…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
+                }
+                .padding(.horizontal, 4)
+            }
+        }
+    }
+
+    // MARK: Composer
+
+    private var canSend: Bool { !chat.busy && !chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    private var composer: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            AiCreditsNote()
+            if let folder = chat.scope {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder").font(.system(size: 12)).accessibilityHidden(true)
+                    (Text("In folder ") + Text(folder.name).fontWeight(.semibold).foregroundColor(FoleviColor.heading))
+                        .lineLimit(1)
+                    Button("Search all notes instead") { chat.scope = nil }
+                        .buttonStyle(AiQuietButtonStyle())
+                }
+                .font(.ui(12.5))
+                .foregroundStyle(FoleviColor.inkMuted)
+                .padding(.horizontal, 4)
+            }
+            ZStack(alignment: .bottomTrailing) {
+                TextField(chat.turns.isEmpty ? "Ask anything about your notes…" : "Ask a follow-up…", text: $chat.draft, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.ui(14))
+                    .foregroundStyle(FoleviColor.ink)
+                    .lineLimit(2, reservesSpace: true)
+                    .focused($focused)
+                    .onSubmit { chat.send(chat.draft, app: app) }
+                    .padding(.leading, 14)
+                    .padding(.trailing, 48)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+                    .accessibilityLabel(Text("Ask a question about your notes"))
+                Button { chat.send(chat.draft, app: app) } label: {
+                    Image(systemName: "arrow.up").font(.system(size: 14, weight: .bold)).foregroundStyle(FoleviColor.canvas)
+                        .frame(width: 32, height: 32)
+                        .background(FoleviColor.heading, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .opacity(canSend ? 1 : 0.3)
+                .disabled(!canSend)
+                .padding(10)
+                .accessibilityLabel(Text("Ask"))
+            }
+            .background(FoleviGlass.hover, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(focused ? FoleviColor.heading.opacity(0.22) : FoleviGlass.border, lineWidth: focused ? 1.5 : 1))
+            HStack(alignment: .center, spacing: 8) {
+                Text("AI can make mistakes. Questions and the notes they need go to Google Gemini.")
+                    .font(.ui(11))
+                    .foregroundStyle(FoleviColor.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !chat.turns.isEmpty {
+                    Button { chat.turns = [] } label: { Label("New chat", systemImage: "arrow.counterclockwise").font(.ui(11)) }
+                        .buttonStyle(AiQuietButtonStyle())
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+    }
+}
+
+/// The small quiet text buttons in the AI panels (Copy, Stop, New chat): muted, a soft fill on hover.
+struct AiQuietButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        AiQuietButtonBody(configuration: configuration)
+    }
+}
+
+private struct AiQuietButtonBody: View {
+    let configuration: ButtonStyle.Configuration
+    @State private var hovering = false
+
+    var body: some View {
+        configuration.label
+            .foregroundStyle(hovering ? FoleviColor.heading : FoleviColor.inkMuted)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(hovering || configuration.isPressed ? FoleviGlass.hover : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .contentShape(Rectangle())
+            .onHover { hovering = $0 }
+    }
+}
+
+/// A rounded suggestion or quick-change chip ("Try asking", "Shorter", "More formal").
+struct AiChipButton: View {
+    var title: String
+    var fontSize: CGFloat = 12
+    var horizontal: CGFloat = 10
+    var height: CGFloat = 26
+    var action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.ui(fontSize))
+                .foregroundStyle(hovering ? FoleviColor.heading : FoleviColor.ink)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, horizontal)
+                .frame(minHeight: height)
+                .background(hovering ? FoleviGlass.active : FoleviGlass.hover, in: Capsule())
+                .overlay(Capsule().strokeBorder(FoleviGlass.border))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+    }
+}
+
 struct SourceList: View {
     var sources: [AiAnswer.Source]
     var openDocument: (String) -> Void
@@ -372,12 +431,12 @@ struct CatchUpView: View {
                 Text("Your week").font(FoleviType.display(18)).foregroundStyle(FoleviColor.heading)
                 Spacer()
                 if data != nil && !busy {
-                    IconButton(systemImage: "arrow.counterclockwise", label: "Refresh brief", size: 30, action: run)
-                    IconButton(systemImage: "xmark", label: "Close brief", size: 30, action: clear)
+                    IconButton(systemImage: "arrow.counterclockwise", label: "Refresh brief", size: 32, action: run)
+                    IconButton(systemImage: "xmark", label: "Close brief", size: 32, action: clear)
                 }
             }
             if busy && !stream.text.isEmpty {
-                AiMarkdownView(markdown: stream.text)
+                AiMarkdownView(markdown: stream.text, streaming: true)
             } else if busy {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Reading this week’s notes…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)

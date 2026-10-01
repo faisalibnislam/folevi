@@ -218,9 +218,9 @@ struct CommentThreadCard: View {
                              focusToken: focusToken, onSubmit: send, onEscape: embedded ? nil : onClose)
                     .padding(.vertical, 4)
                 Button(action: send) {
-                    Image(systemName: "arrow.up").font(.system(size: 12, weight: .bold))
+                    Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold))
                         .foregroundStyle(FoleviColor.accentInk)
-                        .frame(width: 26, height: 26)
+                        .frame(width: 28, height: 28)
                         .background(Circle().fill(FoleviColor.accent))
                 }
                 .buttonStyle(.plain)
@@ -338,14 +338,21 @@ struct CommentRowView: View {
 struct BlockThreadPopover: View {
     var comments: NoteComments
     var blockId: String
+    /// Closing puts the keyboard back in the block's text.
+    var onClose: (() -> Void)?
 
     var body: some View {
         let data = comments.data ?? .empty
         let thread = data.threadToShow(onBlock: blockId, chosen: comments.openThreadId)
         CommentThreadCard(comments: comments, thread: thread, blockId: blockId,
-                          siblings: data.siblings(onBlock: blockId, showing: thread), onClose: { comments.closeThread() })
+                          siblings: data.siblings(onBlock: blockId, showing: thread), onClose: {
+                              comments.closeThread()
+                              onClose?()
+                          })
             .id(thread?.id ?? "new")
             .frame(width: 360)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .foleviPop(radius: 14)
             .onAppear {
                 // Stay on the thread being shown (so resolving it shows it resolved rather than switching away).
                 if comments.openThreadId == nil, let thread, !thread.isPending { comments.selectThread(thread.id) }
@@ -353,31 +360,43 @@ struct BlockThreadPopover: View {
     }
 }
 
-/// The "2 comments · 8:18 AM" line under a commented block, and its thread card in a popover.
+/// The "2 comments · 8:18 AM" line under a commented block, and its thread card floating just under the
+/// block (and its comment line), scrolling with the text, as on the web. Clicking elsewhere in the note
+/// closes it.
 struct BlockCommentsModifier: ViewModifier {
     var model: EditorModel
     var row: EditorRow
     @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         let comments = model.comments
         let summary = comments.data?.summary(for: row.id)
         let open = comments.openBlockId == row.id
+        let blockLeft = BlockMetrics.gutter + CGFloat(row.depth) * BlockMetrics.indent(CGFloat(app.editorScale))
         VStack(alignment: .leading, spacing: 0) {
             content
             if let summary {
                 BlockCommentLine(summary: summary, isOpen: open, accent: Color.folevi(accent: model.style.accent),
                                  accentSoft: Color.folevi(accentSoft: model.style.accent)) {
-                    if open { comments.closeThread() } else { comments.openBlock(row.id) }
+                    if open || comments.justDismissed(row.id) { comments.closeThread() } else { comments.openBlock(row.id) }
                 }
-                .padding(.leading, BlockMetrics.gutter + CGFloat(row.depth) * BlockMetrics.indent(CGFloat(app.editorScale)) + listPad)
+                .padding(.leading, blockLeft + listPad)
                 .padding(.bottom, 4)
             }
         }
-        .foleviPopover(isPresented: Binding(get: { comments.openBlockId == row.id },
-                                      set: { if !$0 && comments.openBlockId == row.id { comments.closeThread() } }),
-                 arrowEdge: .bottom) {
-            BlockThreadPopover(comments: comments, blockId: row.id).environment(app)
+        .overlay(alignment: .bottomLeading) {
+            if open {
+                BlockThreadPopover(comments: comments, blockId: row.id) {
+                    if model.blocks[row.id]?.content.carriesText == true {
+                        model.focus = FocusRequest(blockId: row.id, caret: .end)
+                    }
+                }
+                .background(OutsideClickWatcher(reveals: true) { comments.dismissFromOutside() })
+                .padding(.leading, max(12, blockLeft - 4))
+                .alignmentGuide(.bottom) { d in d[.top] - 6 }
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 4)))
+            }
         }
     }
 
@@ -508,7 +527,9 @@ struct CommentsPanel: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .foleviWell(shape: .rounded(10))
+            // The web's `ui-input`: the surface with a fine line around it.
+            .foleviSurface(.color(FoleviColor.surface), shape: .rounded(10),
+                           shadow: [FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: FoleviColor.line, inset: false)])
             .task { await comments.loadPeople() }
         } else {
             Text("You can read comments on this note but not add them.").font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)

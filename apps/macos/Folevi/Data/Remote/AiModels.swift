@@ -511,3 +511,154 @@ struct CreditAccountsResponse: Decodable, Sendable {
     }
     var accounts: [Account]
 }
+
+// MARK: - The note's AI panel (AiPanel.tsx)
+
+/// The note's AI panel: its one-click writing help and the label a result carries.
+enum AiPanelCatalog {
+    /// "For this note" (NOTE_ACTIONS): task, label and SF Symbol.
+    static let noteActions: [(task: String, label: String, systemImage: String)] = [
+        ("summarize", String(localized: "Summarize"), "doc.text"),
+        ("continue", String(localized: "Continue writing"), "pencil.line"),
+        ("actions", String(localized: "Action items"), "checklist"),
+        ("outline", String(localized: "Outline"), "list.bullet.indent"),
+        ("brainstorm", String(localized: "Brainstorm ideas"), "lightbulb"),
+        ("title", String(localized: "Suggest a title"), "textformat"),
+    ]
+
+    /// The editor's selection rewrites (SELECTION_ACTIONS in useAi.ts).
+    static let selectionActions: [(task: String, label: String)] = [
+        ("improve", String(localized: "Improve writing")), ("fix", String(localized: "Fix spelling & grammar")),
+        ("shorter", String(localized: "Make shorter")), ("longer", String(localized: "Make longer")),
+        ("simplify", String(localized: "Simplify language")), ("professional", String(localized: "Sound professional")),
+        ("casual", String(localized: "Sound casual")), ("translate", String(localized: "Translate…")),
+        ("explain", String(localized: "Explain")), ("summarizeText", String(localized: "Summarize")),
+    ]
+
+    /// What a result is called: "Revised" for a refinement, the action's label, "Written for you" for a draft.
+    static func label(task: String) -> String {
+        if task == "refine" { return String(localized: "Revised") }
+        if let s = selectionActions.first(where: { $0.task == task }) { return s.label.replacingOccurrences(of: "…", with: "") }
+        if let n = noteActions.first(where: { $0.task == task }) { return n.label }
+        return task == "draft" ? String(localized: "Written for you") : String(localized: "Answer")
+    }
+
+    /// Quick actions a read-only note still offers (Summarize only: it doesn't change the note).
+    static func availableReadOnly(task: String) -> Bool { task == "summarize" }
+
+    /// Where a quick action's result goes: Continue writing at the end of the note, the rest at the cursor.
+    static func placesAtEnd(task: String) -> Bool { task == "continue" }
+}
+
+/// Ask AI's chat (AskAiChat.tsx): what it suggests asking.
+enum AskAiCatalog {
+    static let suggestions = [
+        String(localized: "What am I working on this week?"), String(localized: "Summarize my notes about travel"),
+        String(localized: "Which tasks are still open?"), String(localized: "What ideas have I written down recently?"),
+    ]
+    static let folderSuggestions = [
+        String(localized: "Summarize this folder"), String(localized: "What are the open questions here?"),
+        String(localized: "What decisions have been made?"), String(localized: "What should I do next?"),
+    ]
+}
+
+// MARK: - Where the inline composer floats (InlineAi.tsx `place`)
+
+enum InlineAiPlacement {
+    struct Frame: Equatable, Sendable {
+        var left: Double
+        var top: Double
+        var width: Double
+        /// Above the text (no room below).
+        var up: Bool
+    }
+
+    /// Under the text it's about (or above when there's no room), as wide as the page's text column
+    /// (320 to 640), kept 8 points inside the viewport. Everything is in the viewport's coordinates
+    /// (origin top left).
+    static func place(caretTop: Double, caretBottom: Double, columnLeft: Double, columnWidth: Double,
+                      viewportWidth: Double, viewportHeight: Double, height: Double) -> Frame {
+        let width = min(640, max(320, columnWidth))
+        let left = min(max(8, columnLeft), viewportWidth - width - 8)
+        let below = viewportHeight - caretBottom - 16
+        let up = below < min(height, 320) && caretTop > below
+        let top = up ? max(8, caretTop - 10 - height) : caretBottom + 10
+        return Frame(left: left, top: top, width: width, up: up)
+    }
+
+    /// The title's AI (TitleAi.tsx `useBelow`): 8 points under the title, at its left, kept 16 points
+    /// inside the viewport for a 360-point menu.
+    static func belowTitle(titleLeft: Double, titleBottom: Double, viewportWidth: Double) -> (left: Double, top: Double) {
+        (left: max(16, min(titleLeft, viewportWidth - 376)).rounded(), top: (titleBottom + 8).rounded())
+    }
+}
+
+// MARK: - AI answers as note blocks (AiMarkdown.tsx)
+
+/// One line of an AI answer, drawn with the note's typography: the Markdown read as note blocks.
+struct AiMarkdownItem: Equatable, Sendable {
+    enum Kind: Equatable, Sendable {
+        case heading(Int)
+        case paragraph
+        case bullet
+        case numbered(Int)
+        case todo(checked: Bool)
+        case quote
+        case callout
+        case code(String)
+        case divider
+    }
+    var kind: Kind
+    var text: [InlineNode]
+    /// Nesting (a list item inside another).
+    var depth: Int
+}
+
+enum AiMarkdownLayout {
+    /// The answer's blocks in reading order, with their nesting and list numbers.
+    static func items(_ markdown: String) -> [AiMarkdownItem] {
+        var n = 0
+        let wires = MarkdownCodec.markdownToBlocks(markdown, newId: {
+            n += 1
+            return "ai\(n)"
+        }, titleFromHeading: false).blocks
+        let blocks = wires.map(Block.init(wire:))
+        var parent: [String: String] = [:]
+        for b in blocks { if let p = b.parentId { parent[b.id] = p } }
+        func depth(_ id: String) -> Int {
+            var d = 0
+            var at = parent[id]
+            while let p = at, d < 12 {
+                d += 1
+                at = parent[p]
+            }
+            return d
+        }
+        var out: [AiMarkdownItem] = []
+        // List numbers count up per parent while numbered items follow each other.
+        var counters: [String: Int] = [:]
+        var lastWasNumbered: [String: Bool] = [:]
+        for b in blocks {
+            let key = b.parentId ?? ""
+            let kind: AiMarkdownItem.Kind
+            switch b.content {
+            case .heading(let p): kind = .heading(p.level.rawValue)
+            case .bulleted: kind = .bullet
+            case .numbered:
+                let next = (lastWasNumbered[key] == true ? counters[key] ?? 0 : 0) + 1
+                counters[key] = next
+                kind = .numbered(next)
+            case .todo(let p): kind = .todo(checked: p.checked)
+            case .quote: kind = .quote
+            case .callout: kind = .callout
+            case .code(let p): kind = .code(p.code)
+            case .divider: kind = .divider
+            default: kind = .paragraph
+            }
+            if case .numbered = kind { lastWasNumbered[key] = true } else { lastWasNumbered[key] = false }
+            if case .paragraph = kind, b.text.isEmpty { continue }
+            out.append(AiMarkdownItem(kind: kind, text: b.text, depth: depth(b.id)))
+        }
+        return out
+    }
+}

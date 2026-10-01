@@ -138,6 +138,22 @@ final class NoteComments {
         openThreadId = nil
     }
 
+    /// A click elsewhere in the note closed the open thread. Its block's comment line was maybe the click, so
+    /// that line doesn't reopen it right away (pressing an open line closes it, as on the web).
+    func dismissFromOutside() {
+        guard let id = openBlockId else { return }
+        lastDismissed = (id, Date())
+        closeThread()
+    }
+
+    /// The thread on `blockId` was just closed by the click that's now pressing its comment line.
+    func justDismissed(_ blockId: String) -> Bool {
+        guard let d = lastDismissed, d.blockId == blockId else { return false }
+        return Date().timeIntervalSince(d.at) < 0.8
+    }
+
+    @ObservationIgnored private var lastDismissed: (blockId: String, at: Date)?
+
     func showInPanel(_ threadId: String?) {
         closeThread()
         panelThreadId = threadId

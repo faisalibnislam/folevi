@@ -399,9 +399,11 @@ extension EditorModel {
 
 // MARK: - The composer
 
-/// The inline AI composer, floating over the note above its tools.
+/// The inline AI composer, floating right under the text it's about (EditorAiOverlay places it).
 struct InlineAiComposer: View {
     @Bindable var model: InlineAiModel
+    /// As wide as the page's text column (320 to 640).
+    var width: CGFloat = 560
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -432,23 +434,23 @@ struct InlineAiComposer: View {
                     .padding(.bottom, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxHeight: 300)
+                .frame(maxHeight: 380)
                 .fixedSize(horizontal: false, vertical: true)
                 divider
             case .busy(let label):
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 7) {
-                        AiIcon(size: 12)
+                        AiIcon(size: 12).modifier(AiPulse())
                         Text("\(label)…").font(.ui(11.5, .semibold)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
                     }
                     if model.stream.text.isEmpty {
                         AiShimmer()
                     } else {
                         ScrollView {
-                            AiMarkdownView(markdown: model.stream.text).frame(maxWidth: .infinity, alignment: .leading)
+                            AiMarkdownView(markdown: model.stream.text, streaming: true).frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .defaultScrollAnchor(.bottom)
-                        .frame(maxHeight: 300)
+                        .frame(maxHeight: 340)
                         .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -491,7 +493,7 @@ struct InlineAiComposer: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
         }
-        .frame(width: 560)
+        .frame(width: width)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .foleviPop(radius: 14)
         .claimsFocus($inputFocused)
@@ -579,17 +581,7 @@ struct InlineAiComposer: View {
             }
             FlowLayout(spacing: 6) {
                 ForEach(AiCatalog.refines, id: \.self) { r in
-                    Button { model.refine(r) } label: {
-                        Text(r)
-                            .font(.ui(12))
-                            .foregroundStyle(FoleviColor.ink)
-                            .padding(.horizontal, 10)
-                            .frame(height: 24)
-                            .background(FoleviGlass.hover, in: Capsule())
-                            .overlay(Capsule().strokeBorder(FoleviGlass.border))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
+                    AiChipButton(title: r) { model.refine(r) }
                 }
             }
             .accessibilityElement(children: .contain)
@@ -620,7 +612,7 @@ struct InlineAiComposer: View {
                     }
                     .padding(6)
                 }
-                .frame(maxHeight: 300)
+                .frame(maxHeight: 320)
                 .fixedSize(horizontal: false, vertical: true)
                 .onChange(of: model.active) { _, a in
                     if options.indices.contains(a) { proxy.scrollTo(options[a].id) }

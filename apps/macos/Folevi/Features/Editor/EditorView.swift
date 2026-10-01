@@ -126,7 +126,8 @@ struct EditorView: View {
                     BlockRowView(row: row, model: model, openDocument: openDocument)
                         .blockComments(model: model, row: row)
                         .id(row.id)
-                        .zIndex(model.popup?.blockId == row.id || model.datePick?.blockId == row.id ? 10 : 0)
+                        .zIndex(model.popup?.blockId == row.id || model.datePick?.blockId == row.id
+                                || model.comments.openBlockId == row.id ? 10 : 0)
                 }
                 // Clicking below the last block continues writing.
                 Color.clear
@@ -277,8 +278,7 @@ struct DocumentHeaderView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("documentTitle")
-            // The title's AI ("Edit with AI" on selected words, ⌘J).
-            .overlay(alignment: .bottom) { TitleAiAttachment(model: model) }
+            // The title's AI ("Edit with AI" on selected words, ⌘J) floats under it (Features/AI/EditorAiOverlay.swift).
     }
 
     var body: some View {

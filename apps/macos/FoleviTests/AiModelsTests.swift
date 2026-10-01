@@ -251,3 +251,67 @@ final class PlanCatalogTests: XCTestCase {
         XCTAssertEqual(PlanCatalog.formatBytes(2048), "2 KB")
     }
 }
+
+final class AiPanelTests: XCTestCase {
+    func testResultLabels() {
+        XCTAssertEqual(AiPanelCatalog.label(task: "refine"), "Revised")
+        XCTAssertEqual(AiPanelCatalog.label(task: "translate"), "Translate")
+        XCTAssertEqual(AiPanelCatalog.label(task: "summarizeText"), "Summarize")
+        XCTAssertEqual(AiPanelCatalog.label(task: "actions"), "Action items")
+        XCTAssertEqual(AiPanelCatalog.label(task: "draft"), "Written for you")
+        XCTAssertEqual(AiPanelCatalog.label(task: "anything"), "Answer")
+    }
+
+    func testQuickActions() {
+        XCTAssertEqual(AiPanelCatalog.noteActions.map(\.task), ["summarize", "continue", "actions", "outline", "brainstorm", "title"])
+        XCTAssertTrue(AiPanelCatalog.availableReadOnly(task: "summarize"))
+        XCTAssertFalse(AiPanelCatalog.availableReadOnly(task: "continue"))
+        XCTAssertTrue(AiPanelCatalog.placesAtEnd(task: "continue"))
+        XCTAssertFalse(AiPanelCatalog.placesAtEnd(task: "outline"))
+    }
+
+    func testComposerSitsUnderTheText() {
+        let f = InlineAiPlacement.place(caretTop: 100, caretBottom: 120, columnLeft: 200, columnWidth: 700,
+                                        viewportWidth: 1200, viewportHeight: 800, height: 260)
+        XCTAssertEqual(f, InlineAiPlacement.Frame(left: 200, top: 130, width: 640, up: false))
+    }
+
+    func testComposerGoesAboveWithoutRoomBelow() {
+        let f = InlineAiPlacement.place(caretTop: 700, caretBottom: 720, columnLeft: 4, columnWidth: 200,
+                                        viewportWidth: 1000, viewportHeight: 800, height: 260)
+        XCTAssertTrue(f.up)
+        XCTAssertEqual(f.top, 430)
+        XCTAssertEqual(f.width, 320)
+        XCTAssertEqual(f.left, 8)
+    }
+
+    func testComposerStaysInsideNarrowViewports() {
+        let f = InlineAiPlacement.place(caretTop: 50, caretBottom: 70, columnLeft: 400, columnWidth: 600,
+                                        viewportWidth: 900, viewportHeight: 800, height: 200)
+        XCTAssertEqual(f.left, 900 - 600 - 8)
+    }
+
+    func testTitleMenuPosition() {
+        let at = InlineAiPlacement.belowTitle(titleLeft: 120, titleBottom: 200.4, viewportWidth: 1000)
+        XCTAssertEqual(at.left, 120)
+        XCTAssertEqual(at.top, 208)
+        XCTAssertEqual(InlineAiPlacement.belowTitle(titleLeft: 900, titleBottom: 0, viewportWidth: 1000).left, 624)
+        XCTAssertEqual(InlineAiPlacement.belowTitle(titleLeft: 2, titleBottom: 0, viewportWidth: 1000).left, 16)
+    }
+
+    func testAnswerBlocks() {
+        let items = AiMarkdownLayout.items("""
+        ## Plan
+
+        Some **bold** text.
+
+        1. First
+        2. Second
+        - [x] Done
+        - [ ] Open
+        - Bullet
+        """)
+        XCTAssertEqual(items.map(\.kind), [.heading(2), .paragraph, .numbered(1), .numbered(2), .todo(checked: true), .todo(checked: false), .bullet])
+        XCTAssertEqual(items[1].text, [.text(text: "Some ", marks: nil), .text(text: "bold", marks: [.bold]), .text(text: " text.", marks: nil)])
+    }
+}

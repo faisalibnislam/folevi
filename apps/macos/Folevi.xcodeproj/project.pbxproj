@@ -70,6 +70,7 @@
 		536DF3AA60DBF7CFFFD384F8 /* Whiteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6C732DCB9D61B5DA45E40B /* Whiteboard.swift */; };
 		550DC0E1F11D91328AAB15AE /* FoleviCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3489657AE3324D753E15ED23 /* FoleviCommands.swift */; };
 		5583A6228B501AABAEC8F450 /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B04685CFB27EF71E2FE9D3 /* ShareView.swift */; };
+		5731E64352DF8CD78DDD5A35 /* NoteAiPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC0FD1B3833F9C507A18CEF /* NoteAiPanel.swift */; };
 		5A8824C059C02CFB37416F9B /* FlowchartExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5711B449350DC58169BEE580 /* FlowchartExport.swift */; };
 		5F2232FDD4BF7B113532480D /* AuthProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36792CB853DBCAC3A0E5E49B /* AuthProviders.swift */; };
 		6134F109FFCD21F789D4D1A0 /* FindReplace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E84728138DB1DFCCCF25F10 /* FindReplace.swift */; };
@@ -194,6 +195,7 @@
 		F9D533A2F1721D4D315E57FE /* Templates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */; };
 		FA781DF278A5E6867B99EDF3 /* AccountDataSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D62EBE784F6DFD6B599D155 /* AccountDataSettings.swift */; };
 		FB5BE7282CEE08C44E840E50 /* MathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE03FC7B01B8A704E952C92 /* MathView.swift */; };
+		FE3A62DB985F12FE21EC8519 /* EditorAiOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78DAB399C0D2CA012817961 /* EditorAiOverlay.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -321,6 +323,7 @@
 		C53BEC90BCEC2EAEF11C3600 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
 		C56CB70FC209619CF7304013 /* FoleviFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviFont.swift; sourceTree = "<group>"; };
 		C6BF1B7B39DD24E84C6B8C6B /* Folevi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Folevi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C78DAB399C0D2CA012817961 /* EditorAiOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorAiOverlay.swift; sourceTree = "<group>"; };
 		C79F8DBDD8CC37789B62517B /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		C80332F06DEAE151D69AAAD0 /* CommentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentViews.swift; sourceTree = "<group>"; };
 		C9108AB8DDCF98E30FF1B218 /* ScopeMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScopeMenu.swift; sourceTree = "<group>"; };
@@ -329,6 +332,7 @@
 		CACD826A2F5AD954969F8FF4 /* FoleviTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoleviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB2DF75F64A2B74B00D061E3 /* Organize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Organize.swift; sourceTree = "<group>"; };
 		CCCF5D0AE8D7E30F62411E76 /* AiStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiStream.swift; sourceTree = "<group>"; };
+		CDC0FD1B3833F9C507A18CEF /* NoteAiPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAiPanel.swift; sourceTree = "<group>"; };
 		D0DAD3CE4BB5D4BA70AED903 /* Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Templates.swift; sourceTree = "<group>"; };
 		D238757AED22C48CBE710112 /* WhiteboardBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhiteboardBlock.swift; sourceTree = "<group>"; };
 		D335EAB25B0870CEEF6B3FA9 /* CollabComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollabComponents.swift; sourceTree = "<group>"; };
@@ -510,7 +514,9 @@
 				CCCF5D0AE8D7E30F62411E76 /* AiStream.swift */,
 				254FC1B4800C33B010EDCF13 /* AiViews.swift */,
 				CA8C581080BD13BBF00721C1 /* AskAiPanel.swift */,
+				C78DAB399C0D2CA012817961 /* EditorAiOverlay.swift */,
 				13A7F267CE68AF80108A5C62 /* InlineAiComposer.swift */,
+				CDC0FD1B3833F9C507A18CEF /* NoteAiPanel.swift */,
 				A08E7AE46829B8971B16FEAE /* TitleAi.swift */,
 			);
 			path = AI;
@@ -1006,6 +1012,7 @@
 				0F5B30E5BA62E83F181AF4B2 /* DatePickPopover.swift in Sources */,
 				78DB680BE342F9C556049547 /* Dialog.swift in Sources */,
 				DDACF93CC9ABE9C9CF856351 /* DocumentModels.swift in Sources */,
+				FE3A62DB985F12FE21EC8519 /* EditorAiOverlay.swift in Sources */,
 				9C7ABFF9F42AB672563F45FE /* EditorInserts.swift in Sources */,
 				A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */,
 				453D038092E66A995B4F3544 /* EditorView.swift in Sources */,
@@ -1047,6 +1054,7 @@
 				B05279DA8F377F31CAAFDBC6 /* NavigationModel.swift in Sources */,
 				74DA55791FDC4668604AA950 /* NonTextBlocks.swift in Sources */,
 				CF94111F582775B4CD446188 /* NoteActions.swift in Sources */,
+				5731E64352DF8CD78DDD5A35 /* NoteAiPanel.swift in Sources */,
 				A47AB0C4407A00AA9DF82A3B /* NoteComments.swift in Sources */,
 				6A3CE3155F5163DDA607BBBC /* NoteDock.swift in Sources */,
 				911AA177002D786A63743643 /* NoteMenu.swift in Sources */,

@@ -264,10 +264,18 @@ struct MentionTextView: NSViewRepresentable {
             if parent.caret != at { parent.caret = at }
         }
 
+        /// Comments are at most 5,000 characters (the web field's maxLength).
+        func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString: String?) -> Bool {
+            guard let replacementString else { return true }
+            let length = (textView.string as NSString).length - range.length + (replacementString as NSString).length
+            return length <= 5000 || (replacementString as NSString).length <= range.length
+        }
+
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             switch selector {
             case #selector(NSResponder.insertNewline(_:)):
-                if NSApp.currentEvent?.modifierFlags.contains(.shift) == true { return false }
+                let flags = NSApp.currentEvent?.modifierFlags ?? []
+                if flags.contains(.shift) && !flags.contains(.command) { return false }
                 _ = parent.onCommand(.enter)
                 return true
             case #selector(NSResponder.moveUp(_:)): return parent.onCommand(.up)
@@ -316,27 +324,37 @@ struct MentionField: View {
             if listOpen {
                 VStack(alignment: .leading, spacing: 1) {
                     ForEach(Array(matches.enumerated()), id: \.element.id) { i, p in
+                        let current = i == min(active, matches.count - 1)
                         Button { choose(p) } label: {
                             HStack(spacing: 8) {
-                                CollabAvatar(name: p.displayName, size: 20)
-                                Text(p.displayName).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
-                                if p.isYou == true { Text("(you)").font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted) }
-                                if p.guest == true { Text("Guest").font(.ui(11, .medium)).foregroundStyle(FoleviColor.inkMuted) }
-                                Spacer(minLength: 0)
+                                Text(String(p.displayName.prefix(1)).uppercased())
+                                    .font(.ui(11, .semibold))
+                                    .foregroundStyle(FoleviColor.heading)
+                                    .frame(width: 24, height: 24)
+                                    .background(Circle().fill(FoleviColor.surfaceSunken))
+                                    .accessibilityHidden(true)
+                                Text(p.displayName).font(.ui(14)).foregroundStyle(current ? FoleviColor.heading : FoleviColor.ink).lineLimit(1)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                if p.isYou == true {
+                                    Text("you").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
+                                } else if p.guest == true {
+                                    Text("guest").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
+                                }
                             }
-                            .padding(.horizontal, 6)
-                            .frame(height: 28)
-                            .background(i == min(active, matches.count - 1) ? FoleviGlass.hover : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(current ? FoleviColor.accentSoft : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityAddTraits(i == active ? .isSelected : [])
+                        .onHover { if $0 { active = i } }
+                        .accessibilityAddTraits(current ? .isSelected : [])
                     }
                 }
-                .padding(4)
-                .foleviPop(radius: 10)
+                .padding(6)
+                .foleviPop(radius: 14)
                 .accessibilityElement(children: .contain)
-                .accessibilityLabel(Text("People who can see this page"))
+                .accessibilityLabel(Text("People to mention"))
             }
         }
         .onChange(of: query?.query) { _, _ in active = 0 }

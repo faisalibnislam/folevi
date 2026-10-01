@@ -85,10 +85,11 @@ struct FoleviCommands: Commands {
                 .keyboardShortcut("g", modifiers: [.command, .shift])
                 .disabled(editor == nil)
             Divider()
-            // ⌘J: in a note, the AI composer (the title's AI in the title); elsewhere, Ask AI.
+            // ⌘J: in a note's text, the AI composer (the title's AI in the title); anywhere else, Ask AI.
             Button("Ask AI…") {
-                if let editor, editor.aiWritable {
-                    editor.aiShortcut(from: NSApp.keyWindow?.firstResponder as? BlockTextView)
+                let textView = NSApp.keyWindow?.firstResponder as? BlockTextView
+                if let editor, editor.aiWritable, textView != nil || !editor.selectedBlockIds.isEmpty {
+                    editor.aiShortcut(from: textView)
                 } else {
                     NotificationCenter.default.post(name: .foleviToggleAskAi, object: nil)
                 }

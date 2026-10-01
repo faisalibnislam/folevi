@@ -649,7 +649,7 @@ private struct FlowchartAiPanel: View {
     @State private var update: Bool
     @State private var text = ""
     @State private var busy = false
-    @State private var error: String?
+    @State private var error: AiProblem?
     @FocusState private var focused: Bool
 
     private static let createIdeaText = ["Customer refund process", "Hiring pipeline from application to offer", "How a pull request gets merged"]
@@ -702,28 +702,30 @@ private struct FlowchartAiPanel: View {
             }
             .padding(10)
             if busy {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text(update ? "Updating the flowchart…" : "Drawing your flowchart…")
-                }
-                .font(.ui(13))
-                .foregroundStyle(FoleviColor.inkMuted)
-                .padding(.horizontal, 14)
-                .padding(.bottom, 10)
-                .accessibilityElement(children: .combine)
-            } else if let error {
-                Text(error)
+                Text(update ? "Updating the flowchart…" : "Drawing your flowchart…")
                     .font(.ui(13))
-                    .foregroundStyle(FoleviColor.destructive)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(FoleviColor.inkMuted)
                     .padding(.horizontal, 14)
+                    .padding(.top, 4)
                     .padding(.bottom, 10)
+                    .accessibilityAddTraits(.updatesFrequently)
+            } else if let error {
+                if error.kind == .other {
+                    Text(error.message)
+                        .font(.ui(13))
+                        .foregroundStyle(FoleviColor.destructive)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 4)
+                        .padding(.bottom, 10)
+                } else {
+                    AiProblemNotice(problem: error).padding(.horizontal, 12).padding(.bottom, 8)
+                }
             } else {
+                AiCreditsNote().padding(.horizontal, 12).padding(.bottom, 8)
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(update ? Self.updateIdeaText : Self.createIdeaText, id: \.self) { idea in
-                        FlowMenuRow(isChecked: false) { text = idea } label: {
-                            Text(LocalizedStringKey(idea)).foregroundStyle(FoleviColor.inkMuted)
-                        }
+                        FlowAiIdeaRow(title: LocalizedStringKey(idea)) { text = idea }
                     }
                 }
                 .padding(.horizontal, 6)
@@ -767,7 +769,7 @@ private struct FlowchartAiPanel: View {
         let trimmed = String(instruction.trimmingCharacters(in: .whitespacesAndNewlines).prefix(2000))
         guard !busy, !trimmed.isEmpty else { return }
         guard let session = app.session else {
-            error = FoleviError.offline.localizedDescription
+            error = .other(FoleviError.offline.localizedDescription)
             return
         }
         busy = true
@@ -782,8 +784,31 @@ private struct FlowchartAiPanel: View {
                 controller.applyDraft(draft, update: isUpdate)
                 text = ""
             } catch {
-                self.error = ConvexService.mapError(error).localizedDescription
+                self.error = AiProblem.from(error)
             }
         }
+    }
+}
+
+/// One idea under the flowchart AI's field: muted, darker with a soft fill on hover.
+private struct FlowAiIdeaRow: View {
+    var title: LocalizedStringKey
+    var action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.ui(13))
+                .foregroundStyle(hovering ? FoleviColor.heading : FoleviColor.inkMuted)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hovering ? FoleviGlass.hover : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }

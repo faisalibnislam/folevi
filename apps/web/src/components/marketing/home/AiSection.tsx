@@ -25,6 +25,8 @@ import "@/components/editor/flowchart/flowchart.css";
 import { AI_LANGUAGES } from "@/components/ai/languages";
 import { artById, artThumb, artVars } from "../product/Replica";
 import { Icon } from "../icons";
+import { AskDemo } from "../demos/AskDemo";
+import { WriteDemo } from "../demos/WriteDemo";
 import { Kbd, SectionHeading, box, container, cx } from "../ui";
 
 /*
@@ -55,12 +57,12 @@ export function AiSection() {
           </p>
         </div>
 
-        <div className="mt-14 space-y-16 sm:space-y-20">
+        <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
             eyebrow="Ask AI"
             title="Answers from your notes, with sources."
             art="art-49"
-            picture={<AskPanel />}
+            picture={<AskDemo />}
             points={[
               <>
                 Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <b>Ask AI about your notes</b>{" "}
@@ -80,6 +82,7 @@ export function AiSection() {
 
           <Feature
             reverse
+            tint
             eyebrow="Edit with ⌘J"
             title="Select text and tell it what to change."
             art="art-16"
@@ -107,7 +110,7 @@ export function AiSection() {
             eyebrow="Write with AI"
             title="Turn a messy page into next steps."
             art="art-03"
-            picture={<WritePicture />}
+            picture={<WriteDemo />}
             points={[
               <>
                 <b>Continue writing</b> picks up where you stopped. <b>Summarize this note</b> and{" "}
@@ -133,6 +136,7 @@ export function AiSection() {
 
           <Feature
             stacked
+            tint
             eyebrow="Flowcharts with AI"
             title="Describe a process. Get a flowchart."
             art="art-42"
@@ -172,16 +176,6 @@ export function AiSection() {
           />
         </div>
 
-        <ul className="mt-14 grid gap-8 sm:grid-cols-3 sm:gap-10">
-          <li>
-            <h3 className="mk-h3 text-[15.5px]">Off when you want it off</h3>
-            <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">
-              Turn the AI Assistant off in Settings and every AI button disappears. Core has no AI
-              at all.
-            </p>
-          </li>
-        </ul>
-
         <p className="mt-8 flex flex-wrap gap-x-8 gap-y-1 text-[15px]">
           <Link
             href="/features/ai-notes"
@@ -209,6 +203,9 @@ export function AiSection() {
 
 /* Layout ------------------------------------------------------------------------------------------- */
 
+/** Some features sit in a panel tinted by the page's note style, so tinted and plain rows alternate. */
+const TINTED = "mk-panel p-4 sm:p-8 lg:p-10";
+
 function Feature({
   eyebrow,
   title,
@@ -218,6 +215,7 @@ function Feature({
   children,
   reverse = false,
   stacked = false,
+  tint = false,
 }: {
   eyebrow: string;
   title: string;
@@ -229,7 +227,9 @@ function Feature({
   reverse?: boolean;
   /** Text on top in two columns, and the picture below at full width. */
   stacked?: boolean;
+  tint?: boolean;
 }) {
+  const tinted = tint ? TINTED : undefined;
   const stage = (
     <div
       className={cx("mk-stage px-3 py-8 sm:px-8 sm:py-10", reverse && "lg:order-1")}
@@ -240,7 +240,7 @@ function Feature({
   );
   if (stacked) {
     return (
-      <div>
+      <div className={tinted}>
         <div className="grid gap-6 lg:grid-cols-2 lg:gap-14">
           <div>
             <p className="mk-caps">{eyebrow}</p>
@@ -260,6 +260,7 @@ function Feature({
   return (
     <div
       className={cx(
+        tinted,
         "grid items-center gap-8 lg:gap-14",
         reverse
           ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]"
@@ -339,14 +340,6 @@ function AiFoot({
   );
 }
 
-function Chip({ children }: { children: ReactNode }) {
-  return (
-    <span className="rounded-full bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]">
-      {children}
-    </span>
-  );
-}
-
 function SourceChip({ n, title }: { n: number; title: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
@@ -354,61 +347,6 @@ function SourceChip({ n, title }: { n: number; title: string }) {
       <FileText size={12} className="text-muted" />
       {title}
     </span>
-  );
-}
-
-/* Ask AI ------------------------------------------------------------------------------------------- */
-
-/** A replica of the app's Ask AI chat, with one question and its answer. */
-export function AskPanel() {
-  return (
-    <div
-      role="img"
-      aria-label="The Ask AI panel. Question: When is swap day, and what is left to do? The answer names the date and the two open tasks, and lists the two notes it used as sources."
-      className="mk-app-pop mx-auto flex max-w-[420px] flex-col overflow-hidden rounded-[18px] text-[13.5px]"
-    >
-      <div aria-hidden="true">
-        <div className="flex items-center gap-2.5 border-b border-(--color-line) px-4 py-3">
-          <AiIcon size={20} />
-          <p className="flex-1 text-[14.5px] font-semibold text-(--color-heading)">Ask AI</p>
-          <span className="text-[12px] text-muted">New chat</span>
-          <X size={16} className="text-muted" />
-        </div>
-        <div className="space-y-2 px-4 py-4">
-          <p className="ml-auto w-fit max-w-[85%] rounded-[14px] rounded-br-[4px] bg-(--color-heading) px-3.5 py-2 text-(--color-canvas)">
-            When is swap day, and what’s left to do?
-          </p>
-          <div className="rounded-[14px] rounded-bl-[4px] bg-(--glass-active) px-4 py-3 leading-relaxed text-ink shadow-(--glass-edge)">
-            <p>
-              Swap day is the{" "}
-              <strong className="font-semibold text-(--color-heading)">
-                first Saturday in April
-              </strong>{" "}
-              [1]. Two tasks are still open: print the seed labels by Friday, and order glassine
-              envelopes by Monday [2].
-            </p>
-            <div className="mt-3 border-t border-(--color-line) pt-2.5">
-              <p className="mk-caps mb-1.5 text-[10.5px]">Sources</p>
-              <div className="flex flex-wrap gap-1.5">
-                <SourceChip n={1} title="Seed library" />
-                <SourceChip n={2} title="Thursday notes" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-(--color-line) px-3 pb-3 pt-2.5">
-          <div className="relative rounded-[14px] bg-(--glass-hover) px-3.5 pb-8 pt-3 text-faint shadow-[inset_0_0_0_1px_var(--glass-border)]">
-            Ask a follow-up…
-            <span className="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full bg-(--color-heading) text-(--color-canvas) opacity-30">
-              <ArrowUp size={15} />
-            </span>
-          </div>
-          <p className="mt-2 px-1 text-[11px] text-faint">
-            AI can make mistakes. Questions and the notes they need go to Google Gemini.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -480,65 +418,6 @@ function EditPicture() {
           </ul>
           <AiFoot />
         </div>
-      </div>
-    </div>
-  );
-}
-
-/* Write with AI ------------------------------------------------------------------------------------ */
-
-const ACTION_ITEMS = [
-  "Book the library hall for the 5th",
-  "Print seed labels by Friday",
-  "Order glassine envelopes",
-  "Post the new time in the group chat",
-];
-
-function WritePicture() {
-  return (
-    <div
-      role="img"
-      aria-label="The AI composer after Find action items. It lists four new tasks as checkboxes, with the buttons Insert, Try again and Discard, and quick changes: Shorter, Longer, Simpler, More formal and More casual."
-      className="mk-app-pop mx-auto max-w-[460px] overflow-hidden rounded-[14px] text-[13.5px]"
-    >
-      <div aria-hidden="true">
-        <div className="border-b border-(--color-line) px-4 pb-3 pt-3">
-          <p className="mb-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
-            <AiIcon size={12} className={AI_VIOLET} /> Find action items
-          </p>
-          <ul className="space-y-2 text-[14px] text-ink">
-            {ACTION_ITEMS.map((item) => (
-              <li key={item} className="flex items-center gap-2.5">
-                <span className="mk-check" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <AiIcon size={16} className={cx("flex-none", AI_VIOLET)} />
-          <span className="min-w-0 flex-1 truncate text-[14px] text-faint">
-            Tell AI what to change… (⏎ to accept)
-          </span>
-          <X size={15} className="flex-none text-muted" />
-        </div>
-        <div className="space-y-2 border-t border-(--color-line) px-3 py-2.5">
-          <div className="flex flex-wrap items-center gap-1.5 text-[12.5px]">
-            <span className="mk-btn mk-btn-primary h-8 gap-1.5 px-3">
-              <CornerDownLeft size={14} /> Insert
-            </span>
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-ink">
-              <RotateCcw size={13} /> Try again
-            </span>
-            <span className="ml-auto inline-flex h-8 items-center px-2.5 text-muted">Discard</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {["Shorter", "Longer", "Simpler", "More formal", "More casual"].map((r) => (
-              <Chip key={r}>{r}</Chip>
-            ))}
-          </div>
-        </div>
-        <AiFoot />
       </div>
     </div>
   );

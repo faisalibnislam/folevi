@@ -43,7 +43,7 @@ import { mermaidToFlowchart, serializeFlowchart, WHITEBOARD_COLORS } from "@fole
 import { GALLERY_TEMPLATES } from "../content/templates";
 import type { FeatureVisual as VisualKey } from "../content/features";
 import { ConnectDemo } from "../demos/ConnectDemo";
-import { AskPanel } from "../home/AiSection";
+import { AskDemo } from "../demos/AskDemo";
 import { SECURITY_CONTROLS } from "../home/Closing";
 import { Icon } from "../icons";
 import { DateChip, StatusPill, type SyncStatus } from "../mini";
@@ -82,7 +82,7 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
     case "ai":
       return (
         <div className="grid items-start gap-6 lg:grid-cols-2">
-          <AskPanel />
+          <AskDemo />
           <AiMenu />
         </div>
       );

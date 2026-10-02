@@ -99,8 +99,8 @@ private struct TwoStepCard: View {
             }
         }
         .task(id: app.sync.isOnline) { await refresh() }
-        .sheet(item: $gate) { g in passwordGate(g) }
-        .sheet(isPresented: Binding(get: { codes != nil }, set: { if !$0 { codes = nil } })) {
+        .foleviDialog(item: $gate) { g in passwordGate(g) }
+        .foleviDialog(isPresented: Binding(get: { codes != nil }, set: { if !$0 { codes = nil } })) {
             WebDialog(title: String(localized: "Save your new backup codes"), description: String(localized: "Each code works once. You'll only see these now."),
                       onClose: { codes = nil }) {
                 BackupCodesView(codes: codes ?? [], doneLabel: String(localized: "Done")) {
@@ -109,7 +109,7 @@ private struct TwoStepCard: View {
                 }
             }
         }
-        .sheet(isPresented: Binding(get: { totpURI != nil }, set: { if !$0 { totpURI = nil } })) {
+        .foleviDialog(isPresented: Binding(get: { totpURI != nil }, set: { if !$0 { totpURI = nil } })) {
             WebDialog(title: String(localized: "Add Folevi to your new authenticator"), description: String(localized: "Scan the code or enter the key, then check that the codes match."),
                       onClose: { totpURI = nil }) {
                 VStack(alignment: .trailing, spacing: 16) {
@@ -120,7 +120,7 @@ private struct TwoStepCard: View {
                 }
             }
         }
-        .sheet(isPresented: $settingUp, onDismiss: { Task { await refresh() } }) {
+        .foleviDialog(isPresented: $settingUp, onDismiss: { Task { await refresh() } }) {
             TwoFactorSetupSheet { settingUp = false }
                 .environment(app)
         }
@@ -627,7 +627,7 @@ struct DeleteAccountCard: View {
             }
         }
         .task(id: pending) { await load() }
-        .sheet(isPresented: $confirming) {
+        .foleviDialog(isPresented: $confirming) {
             WebConfirmDialog(title: String(localized: "Delete your account?"),
                              description: String(localized: "You can cancel within 7 days by signing in. After that, deletion is permanent and cannot be undone. We'll email you a confirmation."),
                              cancelTitle: String(localized: "Keep my account"),

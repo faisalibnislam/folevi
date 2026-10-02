@@ -25,7 +25,7 @@ private struct UnsplashSearchResult: Decodable, Sendable {
 struct UnsplashSheet: View {
     @Bindable var model: EditorModel
     var anchor: String
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var query = ""
     @State private var state: Phase = .idle
     @State private var seq = 0

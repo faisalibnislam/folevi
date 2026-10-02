@@ -30,7 +30,7 @@ struct WorkspaceBillingSettings: View {
             }
         }
         .task(id: "\(app.workspace?.id ?? "")-\(app.sync.isOnline)") { await watch() }
-        .sheet(item: $buyFor) { purchase in BuyCreditsSheet(purchase: purchase).environment(app) }
+        .foleviDialog(item: $buyFor) { purchase in BuyCreditsSheet(purchase: purchase).environment(app) }
     }
 
     // MARK: Workspace plan

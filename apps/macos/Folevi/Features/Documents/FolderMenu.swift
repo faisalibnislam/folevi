@@ -100,7 +100,7 @@ private struct FolderDialogsModifier: ViewModifier {
     @Environment(AppModel.self) private var app
 
     func body(content: Content) -> some View {
-        content.sheet(item: $dialog) { d in
+        content.foleviDialog(item: $dialog) { d in
             Group {
                 switch d {
                 case .rename(let f):
@@ -108,7 +108,7 @@ private struct FolderDialogsModifier: ViewModifier {
                         FolderActions.run(app, String(localized: "Renamed")) { try await $0.organization.renameFolder(f.id, name: name) }
                     }
                 case .color(let f):
-                    FolderColorSheet(folder: f)
+                    FolderColorDialog(folder: MenuFolder(f))
                 case .delete(let f):
                     FoleviDialog(title: String(localized: "Delete “\(f.name)”?"),
                                  message: String(localized: "The folder is removed. Its documents are kept and move to Drafts."),
@@ -117,7 +117,7 @@ private struct FolderDialogsModifier: ViewModifier {
                         FolderActions.run(app, String(localized: "Folder deleted")) { try await $0.organization.deleteFolder(f.id) }
                     }
                 case .invite:
-                    InvitePeopleSheet()
+                    if let w = app.workspace { InviteDialog(workspace: w) }
                 }
             }
             .environment(app)
@@ -125,83 +125,3 @@ private struct FolderDialogsModifier: ViewModifier {
     }
 }
 
-/// Pick a folder colour (the web's FolderColorDialog): the note styles' light page colours, by name.
-struct FolderColorSheet: View {
-    let folder: FolderInfo
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        let current = folder.color ?? "blue-haze"
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Color for “\(folder.name)”")
-                .font(FoleviType.display(20))
-                .tracking(FoleviType.displayTracking(20))
-                .foregroundStyle(FoleviColor.heading)
-                .accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 5), spacing: 10) {
-                ForEach(FolderColors.all) { c in
-                    let on = current == c.id
-                    Button {
-                        dismiss()
-                        FolderActions.run(app, nil) { try await $0.organization.setFolderColor(folder.id, color: c.id) }
-                    } label: {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color(hex: c.hex) ?? .gray)
-                            .aspectRatio(1, contentMode: .fit)
-                            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.black.opacity(0.08)))
-                            .overlay {
-                                if on { Image(systemName: "checkmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Color(red: 0.09, green: 0.09, blue: 0.1)) }
-                            }
-                            .padding(on ? 0 : 0)
-                            .overlay {
-                                if on { RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(FoleviColor.heading, lineWidth: 2).padding(-4) }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .help(Text(c.name))
-                    .accessibilityLabel(Text(c.name))
-                    .accessibilityAddTraits(on ? [.isSelected] : [])
-                }
-            }
-            .padding(4)
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }.buttonStyle(.folevi(.quiet, .medium)).keyboardShortcut(.cancelAction)
-            }
-        }
-        .padding(24)
-        .frame(width: 420)
-        .background(FoleviColor.surface)
-    }
-}
-
-/// "Invite people to …" (the web's InviteDialog), from a folder's menu in a team workspace.
-struct InvitePeopleSheet: View {
-    @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Invite people to \(app.workspace?.name ?? "")")
-                .font(FoleviType.display(20))
-                .tracking(FoleviType.displayTracking(20))
-                .foregroundStyle(FoleviColor.heading)
-                .accessibilityAddTraits(.isHeader)
-            Text("Members work on the notes and folders in this workspace. To share just one page, use Share on that page instead: guests are never billed. Invitations are tied to the email address you enter and expire after 7 days.")
-                .font(.ui(13))
-                .foregroundStyle(FoleviColor.inkMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            if let w = app.workspace {
-                InviteForm(workspaceId: w.id, isOwner: w.role == "owner", seats: nil)
-            }
-            HStack {
-                Spacer()
-                Button("Done") { dismiss() }.buttonStyle(.folevi(.quiet, .medium)).keyboardShortcut(.cancelAction)
-            }
-        }
-        .padding(24)
-        .frame(width: 520)
-        .background(FoleviColor.surface)
-    }
-}

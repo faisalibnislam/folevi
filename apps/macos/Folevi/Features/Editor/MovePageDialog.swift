@@ -5,7 +5,7 @@ import SwiftUI
 struct MovePageDialog: View {
     var editor: EditorModel
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var query = ""
     @State private var results: [PageTarget]?
     @State private var busy = false

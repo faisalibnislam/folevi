@@ -399,7 +399,7 @@ struct CreditPurchase: Identifiable {
 struct BuyCreditsSheet: View {
     var purchase: CreditPurchase
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var status: CreditAccountsResponse?
     @State private var busy: String?
 

@@ -291,7 +291,7 @@ struct BlockRowView: View {
                     AudioRecorderSheet(model: model).environment(app)
                 }
         }
-        .sheet(isPresented: Binding(get: { model.bookmarkPrompt == block.id }, set: { if !$0, model.bookmarkPrompt == block.id { model.bookmarkPrompt = nil } })) {
+        .foleviDialog(isPresented: Binding(get: { model.bookmarkPrompt == block.id }, set: { if !$0, model.bookmarkPrompt == block.id { model.bookmarkPrompt = nil } })) {
             BookmarkPrompt { url in
                 model.bookmarkPrompt = nil
                 model.insertAfterCurrent(.bookmark(BookmarkProps(url: url, title: URL(string: url)?.host())), anchor: block.id)

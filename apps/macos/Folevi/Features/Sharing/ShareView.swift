@@ -401,7 +401,7 @@ struct SharePanel: View {
 
     private func linkDetail(_ l: ShareInfo.Link) -> String {
         var s = l.expired ? String(localized: "Expired")
-            : l.expiresAt.map { String(localized: "Expires \(Date(timeIntervalSince1970: $0 / 1000).formatted(date: .abbreviated, time: .shortened))") }
+            : l.expiresAt.map { String(localized: "Expires \(WebFormat.dateTime($0))") }
             ?? String(localized: "No expiry")
         if l.hasPassword { s += " · " + String(localized: "Password protected") }
         s += " · " + (l.viewCount == 1 ? String(localized: "1 view") : String(localized: "\(l.viewCount) views"))

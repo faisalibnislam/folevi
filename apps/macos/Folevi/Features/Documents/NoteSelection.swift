@@ -182,7 +182,7 @@ struct MoveToFolderSheet: View {
     var currentFolderId: String??
     var onPick: (FolderTarget) -> Void
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var query = ""
     @State private var active = 0
     @FocusState private var fieldFocused: Bool
@@ -215,50 +215,48 @@ struct MoveToFolderSheet: View {
     var body: some View {
         let list = options
         let current = min(active, max(0, list.count - 1))
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Move to folder").font(FoleviType.display(20)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
-            Text(count == 1 ? String(localized: "Choose where “\((noteTitle ?? "").isEmpty ? String(localized: "Untitled") : noteTitle ?? "")” should live.")
-                            : String(localized: "Choose where \(count.formatted()) notes should live."))
-                .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
-                TextField("Search folders", text: $query)
-                    .textFieldStyle(.plain)
-                    .font(.ui(13.5))
-                    .focused($fieldFocused)
-                    .onSubmit { pick(list.indices.contains(current) ? list[current] : nil) }
-                    .onChange(of: query) { _, _ in active = 0 }
-                    .onKeyPress(.downArrow) { active = list.isEmpty ? 0 : (current + 1) % list.count; return .handled }
-                    .onKeyPress(.upArrow) { active = list.isEmpty ? 0 : (current - 1 + list.count) % list.count; return .handled }
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 38)
-            .foleviWell()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 1) {
-                        ForEach(Array(list.enumerated()), id: \.element.key) { i, o in
-                            row(o, highlighted: i == current)
-                                .id(o.key)
-                                .onHover { if $0 { active = i } }
-                        }
-                        if list.isEmpty {
-                            Text("No folders match “\(query.trimmingCharacters(in: .whitespaces))”.")
-                                .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(8)
+        // The web's MoveToFolderDialog: the small dialog with a description, a search field and the folders
+        // as a list (no Cancel: Escape or the × closes it).
+        FoleviDialogShell(title: String(localized: "Move to folder"),
+                          description: count == 1 ? String(localized: "Choose where “\((noteTitle ?? "").isEmpty ? String(localized: "Untitled") : noteTitle ?? "")” should live.")
+                                                  : String(localized: "Choose where \(count.formatted()) notes should live."),
+                          size: .sm, onClose: { dismiss() }) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
+                    TextField("Search folders", text: $query)
+                        .textFieldStyle(.plain)
+                        .font(.ui(13))
+                        .focused($fieldFocused)
+                        .onSubmit { pick(list.indices.contains(current) ? list[current] : nil) }
+                        .onChange(of: query) { _, _ in active = 0 }
+                        .onKeyPress(.downArrow) { active = list.isEmpty ? 0 : (current + 1) % list.count; return .handled }
+                        .onKeyPress(.upArrow) { active = list.isEmpty ? 0 : (current - 1 + list.count) % list.count; return .handled }
+                }
+                .padding(.leading, 12)
+                .padding(.trailing, 12)
+                .frame(height: 40)
+                .foleviInputSurface(focused: fieldFocused)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(Array(list.enumerated()), id: \.element.key) { i, o in
+                                row(o, highlighted: i == current)
+                                    .id(o.key)
+                                    .onHover { if $0 { active = i } }
+                            }
+                            if list.isEmpty {
+                                Text("No folders match “\(query.trimmingCharacters(in: .whitespaces))”.")
+                                    .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 8).padding(.vertical, 12)
+                            }
                         }
                     }
+                    // As tall as the folders, up to 360pt (max-h-[min(360px,50dvh)]).
+                    .frame(height: list.isEmpty ? 44 : min(360, CGFloat(list.count) * 34 - 2))
+                    .onChange(of: current) { _, c in if list.indices.contains(c) { proxy.scrollTo(list[c].key) } }
                 }
-                .frame(height: 260)
-                .onChange(of: current) { _, c in if list.indices.contains(c) { proxy.scrollTo(list[c].key) } }
-            }
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }.buttonStyle(.folevi(.quiet, .medium)).keyboardShortcut(.cancelAction)
             }
         }
-        .padding(24)
-        .frame(width: 420)
-        .background(FoleviColor.surface)
         .claimsFocus($fieldFocused)
     }
 
@@ -284,9 +282,9 @@ struct MoveToFolderSheet: View {
                     .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
                 }
             }
-            .padding(.leading, o.nested && query.isEmpty ? 30 : 8)
-            .padding(.trailing, 8)
-            .frame(height: 34)
+            .padding(.leading, o.nested && query.isEmpty ? 32 : 10)
+            .padding(.trailing, 10)
+            .frame(height: 32)
             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(highlighted && !here ? FoleviGlass.hover : .clear))
             .opacity(here ? 0.6 : 1)
             .contentShape(Rectangle())
@@ -310,7 +308,7 @@ struct PermanentDeleteSheet: View {
     var documentId: String
     var title: String
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var typed = ""
     @State private var busy = false
 

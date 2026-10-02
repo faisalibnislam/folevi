@@ -135,7 +135,7 @@ private struct NoteDialogsModifier: ViewModifier {
     @Environment(AppModel.self) private var app
 
     func body(content: Content) -> some View {
-        content.sheet(item: $dialog) { d in
+        content.foleviDialog(item: $dialog) { d in
             Group {
                 switch d {
                 case .move(let ids, let title, let current):
@@ -161,7 +161,7 @@ private struct DeleteSelectionSheet: View {
     var ids: [String]
     var onDone: () -> Void
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
 
     var body: some View {
         FoleviDialog(title: ids.count == 1 ? String(localized: "Delete 1 note permanently?") : String(localized: "Delete \(ids.count.formatted()) notes permanently?"),
@@ -178,7 +178,7 @@ private struct DeleteSelectionSheet: View {
 private struct EmptyTrashSheet: View {
     var onDone: () -> Void
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var summary: TrashSummary?
     @State private var failed = false
 

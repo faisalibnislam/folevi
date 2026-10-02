@@ -339,21 +339,54 @@ private struct RightClickCatcher: NSViewRepresentable {
     }
 }
 
+extension EnvironmentValues {
+    /// Closes the dialog this view is in when it's shown in the window's layer (see `DialogDismiss`).
+    @Entry var foleviDialogClose: (() -> Void)? = nil
+}
+
+/// `dismiss()` for a dialog's content: closes it in the window's layer, or as the system sheet it falls back to.
+@propertyWrapper
+struct DialogDismiss: DynamicProperty {
+    @Environment(\.dismiss) private var system
+    @Environment(\.foleviDialogClose) private var layer
+
+    init() {}
+
+    var wrappedValue: () -> Void {
+        let layer = layer, system = system
+        return { if let layer { layer() } else { system() } }
+    }
+}
+
 extension View {
     /// A dialog as the web's: a panel centred in the window (radius 14, the glass pop), the page behind left
     /// as it is, and resizing with its content. An outside click or Escape closes it. A system sheet where
     /// the window has no popover layer.
-    func foleviDialog<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
-        modifier(FoleviDialogModifier(isPresented: isPresented, dialog: content))
+    func foleviDialog<Content: View>(isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil,
+                                     @ViewBuilder content: @escaping () -> Content) -> some View {
+        modifier(FoleviDialogModifier(isPresented: isPresented, onDismiss: onDismiss, dialog: content))
+    }
+
+    /// `foleviDialog` for an optional item, as `.sheet(item:)`.
+    func foleviDialog<Item: Identifiable, Content: View>(item: Binding<Item?>, onDismiss: (() -> Void)? = nil,
+                                                       @ViewBuilder content: @escaping (Item) -> Content) -> some View {
+        let shown = Binding(get: { item.wrappedValue != nil }, set: { if !$0 { item.wrappedValue = nil } })
+        return modifier(FoleviDialogModifier(isPresented: shown, onDismiss: onDismiss, key: item.wrappedValue.map { AnyHashable($0.id) }) {
+            Group { if let value = item.wrappedValue { content(value) } }
+        })
     }
 }
 
 private struct FoleviDialogModifier<Dialog: View>: ViewModifier {
     @Binding var isPresented: Bool
+    var onDismiss: (() -> Void)?
+    /// The item shown (item dialogs): a different item replaces the dialog's content.
+    var key: AnyHashable? = nil
     let dialog: () -> Dialog
     @Environment(\.foleviPopovers) private var coordinator
     @State private var id = UUID()
     @State private var window: NSWindow?
+    @State private var shown = false
 
     private var inLayer: Bool { coordinator?.isHost(of: window) == true }
 
@@ -361,20 +394,27 @@ private struct FoleviDialogModifier<Dialog: View>: ViewModifier {
         content
             .background(WindowReader { window = $0 })
             .onChange(of: isPresented, initial: true) { _, on in update(on) }
+            .onChange(of: key) { _, _ in if isPresented { update(true) } }
             .onChange(of: inLayer) { _, _ in update(isPresented) }
             .onDisappear { coordinator?.remove(id) }
             .sheet(isPresented: Binding(get: { isPresented && !inLayer && window != nil }, set: { if !$0 { isPresented = false } }),
-                   content: dialog)
+                   onDismiss: onDismiss, content: dialog)
     }
 
     private func update(_ on: Bool) {
         guard let coordinator, inLayer else { return }
         if on {
             let binding = $isPresented
+            let close = { binding.wrappedValue = false }
             coordinator.present(.init(id: id, anchor: .zero, above: false, centered: true, align: .start, gap: 0, radius: 14,
-                                      content: AnyView(dialog()), dismiss: { binding.wrappedValue = false }))
+                                      content: AnyView(dialog().environment(\.foleviDialogClose, close)), dismiss: close))
+            shown = true
         } else {
             coordinator.remove(id)
+            if shown {
+                shown = false
+                onDismiss?()
+            }
         }
     }
 }

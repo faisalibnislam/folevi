@@ -128,7 +128,7 @@ public enum PageFormat {
 
     /// Medium date, short time.
     public static func dateTime(_ ms: Double) -> String {
-        Date(timeIntervalSince1970: ms / 1000).formatted(date: .abbreviated, time: .shortened)
+        WebFormat.dateTime(ms) // "Oct 1, 2026, 3:04 PM", as the web's formatDateTime
     }
 }
 

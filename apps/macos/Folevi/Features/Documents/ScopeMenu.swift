@@ -103,8 +103,8 @@ struct ScopeMenuButton: View {
             FoleviMenuList(entries: entries(), width: 256) { open = false }
                 .task { await app.refreshWorkspaces() }
         }
-        .sheet(isPresented: $creating) { NewWorkspaceDialog().environment(app) }
-        .sheet(isPresented: $inviting) {
+        .foleviDialog(isPresented: $creating) { NewWorkspaceDialog().environment(app) }
+        .foleviDialog(isPresented: $inviting) {
             if let w = app.workspace { InviteDialog(workspace: w).environment(app) }
         }
     }

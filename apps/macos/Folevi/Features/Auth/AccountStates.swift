@@ -152,7 +152,7 @@ struct SafeSignOutButton: View {
         }
         .buttonStyle(.folevi(.secondary, .medium))
         .disabled(busy)
-        .sheet(item: Binding(get: { pending.map(PendingCount.init) }, set: { pending = $0?.count })) { p in
+        .foleviDialog(item: Binding(get: { pending.map(PendingCount.init) }, set: { pending = $0?.count })) { p in
             WebDialog(title: String(localized: "Some changes haven't synced yet"),
                       description: p.count == 1
                         ? String(localized: "One change on this device hasn't reached Folevi yet. If you sign out now it will be deleted from this device.")

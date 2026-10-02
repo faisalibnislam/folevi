@@ -8,7 +8,7 @@ struct QuickAddTaskDialog: View {
     var documentId: String?
     /// Opens the page a task went to (the toast's "Open").
     var openDocument: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
 
     var body: some View {
         FoleviDialogShell(title: String(localized: "Quick add task"),
@@ -23,7 +23,6 @@ struct QuickAddTaskDialog: View {
 struct QuickAddView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismissWindow) private var dismissWindow
-    @State private var contentHeight: CGFloat = 0
 
     var body: some View {
         Group {
@@ -42,11 +41,13 @@ struct QuickAddView: View {
                 }
             }
         }
-        .background(FoleviColor.surface)
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
-        .background(QuickAddWindowChrome(height: contentHeight))
-        // The dialog starts at the window's top edge, and the window is exactly its height.
+        // The web's dialog card (radius 14) at the top of a see-through window: the window keeps a title bar's
+        // worth of extra height that macOS won't give up, and it stays invisible below the card.
+        .background(FoleviColor.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(QuickAddWindowChrome())
         .ignoresSafeArea()
+        .containerBackground(.clear, for: .window)
     }
 }
 
@@ -369,22 +370,10 @@ enum QuickAdd {
 }
 
 /// The Quick Add window without traffic lights (its dialog has a Close button), movable by its background, and
-/// exactly as tall as the dialog (the hidden title bar's strip would otherwise stay empty).
+/// see-through around its card (the shadow follows the card).
 private struct QuickAddWindowChrome: NSViewRepresentable {
-    var height: CGFloat
-
     func makeNSView(context: Context) -> NSView { ChromeView() }
-
-    func updateNSView(_ view: NSView, context: Context) {
-        let height = height
-        DispatchQueue.main.async {
-            guard let window = view.window, height > 0, abs(window.contentLayoutRect.height - height) > 0.5 else { return }
-            let size = NSSize(width: window.frame.width, height: height)
-            window.contentMinSize = size
-            window.contentMaxSize = size
-            window.setContentSize(size)
-        }
-    }
+    func updateNSView(_ view: NSView, context: Context) {}
 
     private final class ChromeView: NSView {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -393,6 +382,10 @@ private struct QuickAddWindowChrome: NSViewRepresentable {
             guard let window else { return }
             for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { window.standardWindowButton(kind)?.isHidden = true }
             window.isMovableByWindowBackground = true
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.hasShadow = true
+            DispatchQueue.main.async { window.invalidateShadow() }
         }
     }
 }

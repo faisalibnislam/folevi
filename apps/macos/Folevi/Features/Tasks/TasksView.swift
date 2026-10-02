@@ -247,7 +247,7 @@ struct TasksView: View {
         .onChange(of: app.documentsRevision) { _, _ in Task { await reload() } }
         // The top bar's "Add Task" (and the menu command) open Quick add, as on the web.
         .onReceive(NotificationCenter.default.publisher(for: .foleviFocusQuickTask)) { _ in openWindow(id: "quickAdd") }
-        .sheet(item: $editing) { t in TaskEditSheet(task: t, openDocument: openDocument).environment(app) }
+        .foleviDialog(item: $editing) { t in TaskEditSheet(task: t, openDocument: openDocument).environment(app) }
     }
 
     /// The views as a segmented row; open counts in small badges (Completed has none).
@@ -498,7 +498,7 @@ struct TaskEditSheet: View {
     let task: LocalTask
     var openDocument: (String, Bool) -> Void
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var status: TaskLogic.Status = .open
     @State private var dueDate = ""
     @State private var dueTime = ""
@@ -507,58 +507,66 @@ struct TaskEditSheet: View {
     private var people: TaskPeople { .shared }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Edit task")
-                    .font(FoleviType.display(20))
-                    .tracking(FoleviType.displayTracking(20))
-                    .foregroundStyle(FoleviColor.heading)
-                    .accessibilityAddTraits(.isHeader)
-                Text(task.title.isEmpty ? String(localized: "Untitled task") : task.title).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Status").font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
-                FoleviSegmented(selection: $status, items: [
-                    .init(value: .open, title: "Open"), .init(value: .done, title: "Done"), .init(value: .canceled, title: "Canceled"),
-                ], height: 32, fontSize: 13, accessibilityLabel: "Status")
-                .fixedSize()
-            }
-            HStack(alignment: .bottom, spacing: 12) {
-                FieldLabel(title: String(localized: "Due date")) { DateField(date: $dueDate, accessibilityLabel: String(localized: "Due date")) }
-                if !dueDate.isEmpty {
-                    FieldLabel(title: String(localized: "Time (optional)")) { TimeField(time: $dueTime, accessibilityLabel: String(localized: "Time (optional)")) }
-                    Button("Clear date") {
-                        dueDate = ""
-                        dueTime = ""
+        // The web's TaskEditDialog: the small dialog, the task's title under its heading, then the fields 16pt
+        // apart.
+        FoleviDialogShell(title: String(localized: "Edit task"), size: .sm, onClose: { dismiss() }) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(task.title.isEmpty ? String(localized: "Untitled task") : task.title)
+                    .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
+                    .uiLineHeight(13 * 1.4286, size: 13)
+                    .padding(.top, -8) // -mt-2
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Status").font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
+                    FoleviSegmented(selection: $status, items: [
+                        .init(value: .open, title: "Open"), .init(value: .done, title: "Done"), .init(value: .canceled, title: "Canceled"),
+                    ], height: 32, fontSize: 13, accessibilityLabel: "Status")
+                    .fixedSize()
+                }
+                // Date and time side by side; Clear date wraps under them, as the web's flex-wrap row does here.
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .bottom, spacing: 12) {
+                        FieldLabel(title: String(localized: "Due date")) {
+                            DateField(date: $dueDate, accessibilityLabel: String(localized: "Due date")).frame(width: 134)
+                        }
+                        if !dueDate.isEmpty {
+                            FieldLabel(title: String(localized: "Time (optional)")) {
+                                TimeField(time: $dueTime, accessibilityLabel: String(localized: "Time (optional)")).frame(width: 104)
+                            }
+                        }
                     }
-                    .buttonStyle(.folevi(.quiet, .small))
+                    if !dueDate.isEmpty {
+                        Button("Clear date") {
+                            dueDate = ""
+                            dueTime = ""
+                        }
+                        .buttonStyle(.folevi(.quiet, .small))
+                    }
+                }
+                HStack(alignment: .bottom, spacing: 12) {
+                    FieldLabel(title: String(localized: "Priority")) {
+                        FoleviSelect(selection: $priority, options: PriorityChoice.options, accessibilityLabel: String(localized: "Priority"), height: 36)
+                    }
+                    FieldLabel(title: String(localized: "Assignee")) {
+                        FoleviSelect(selection: $assigneeId, options: assigneeOptions, accessibilityLabel: String(localized: "Assignee"),
+                                     fillsWidth: true, height: 36)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                HStack(spacing: 8) {
+                    Button {
+                        dismiss()
+                        openDocument(task.documentId, false)
+                    } label: {
+                        Text("Open in \(task.documentTitle.isEmpty ? String(localized: "Untitled") : task.documentTitle)")
+                            .font(.ui(13)).underline().foregroundStyle(FoleviColor.accent).lineLimit(1)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer(minLength: 8)
+                    Button("Cancel") { dismiss() }.buttonStyle(.folevi(.secondary, .medium)).keyboardShortcut(.cancelAction)
+                    Button("Save") { save() }.buttonStyle(.folevi(.primary, .medium)).keyboardShortcut(.defaultAction)
                 }
             }
-            HStack(alignment: .bottom, spacing: 12) {
-                FieldLabel(title: String(localized: "Priority")) {
-                    FoleviSelect(selection: $priority, options: PriorityChoice.options, accessibilityLabel: String(localized: "Priority"), height: 36)
-                }
-                FieldLabel(title: String(localized: "Assignee")) {
-                    FoleviSelect(selection: $assigneeId, options: assigneeOptions, accessibilityLabel: String(localized: "Assignee"), height: 36)
-                }
-            }
-            HStack(spacing: 8) {
-                Button {
-                    dismiss()
-                    openDocument(task.documentId, false)
-                } label: {
-                    Text("Open in \(task.documentTitle.isEmpty ? String(localized: "Untitled") : task.documentTitle)")
-                        .font(.ui(13)).underline().foregroundStyle(FoleviColor.accent).lineLimit(1)
-                }
-                .buttonStyle(.plain)
-                Spacer(minLength: 8)
-                Button("Cancel") { dismiss() }.buttonStyle(.folevi(.quiet, .medium)).keyboardShortcut(.cancelAction)
-                Button("Save") { save() }.buttonStyle(.folevi(.primary, .medium)).keyboardShortcut(.defaultAction)
-            }
-            .padding(.top, 4)
         }
-        .padding(24)
-        .frame(width: 460)
         .background(FoleviColor.surface)
         .onAppear {
             status = task.status

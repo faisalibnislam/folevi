@@ -181,7 +181,7 @@ struct SettingsRoot: View {
         }
         .scrollContentBackground(.hidden)
         .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { _, y in scrollY = y }
-        .sheet(isPresented: $newWorkspace, onDismiss: {
+        .foleviDialog(isPresented: $newWorkspace, onDismiss: {
             // Created: its settings open next, as on the web.
             if app.workspace != nil { router.stayInSettings(.workspace) }
         }) { NewWorkspaceSheet().environment(app) }
@@ -326,7 +326,7 @@ private struct NoWorkspaceCard: View {
             Button { open = true } label: { Label("Create a workspace", systemImage: "plus") }
                 .buttonStyle(.folevi(.primary, .medium))
         }
-        .sheet(isPresented: $open, onDismiss: {
+        .foleviDialog(isPresented: $open, onDismiss: {
             if app.workspace != nil { SettingsRouter.shared.stayInSettings(.workspace) }
         }) { NewWorkspaceSheet().environment(app) }
     }

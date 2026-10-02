@@ -189,7 +189,7 @@ struct SyncSettings: View {
                 .padding(.top, 16)
             }
         }
-        .sheet(isPresented: $confirmReset) {
+        .foleviDialog(isPresented: $confirmReset) {
             WebConfirmDialog(title: String(localized: "Clear local data?"),
                              description: unsent > 0
                                 ? (unsent == 1
@@ -258,7 +258,7 @@ struct DevicesSection: View {
             }
         }
         .task(id: app.sync.isOnline) { await watch() }
-        .sheet(isPresented: $confirmAll) {
+        .foleviDialog(isPresented: $confirmAll) {
             WebConfirmDialog(title: String(localized: "Sign out everywhere else?"),
                              description: String(localized: "\(others) other \(Self.plural(others)) will be signed out right away. This device stays signed in."),
                              confirmTitle: String(localized: "Sign out others"), confirmKind: .primary,

@@ -126,11 +126,11 @@ private struct WorkspaceGeneralPage: View {
             }
         }
         .onAppear { name = w.name }
-        .sheet(isPresented: $confirmLeave) {
+        .foleviDialog(isPresented: $confirmLeave) {
             WebConfirmDialog(title: String(localized: "Leave \(w.name)?"), description: String(localized: "To come back, an owner or admin has to invite you again."),
                              confirmTitle: String(localized: "Leave workspace"), busy: busy, onCancel: { confirmLeave = false }, onConfirm: leave)
         }
-        .sheet(isPresented: $confirmDelete) {
+        .foleviDialog(isPresented: $confirmDelete) {
             WebConfirmDialog(title: String(localized: "Delete \(w.name)?"),
                              description: String(localized: "Members and guests lose access right away and are told. You can cancel within 7 days; after that it’s gone for good. A paid plan ends with its current period."),
                              cancelTitle: String(localized: "Keep workspace"), confirmTitle: String(localized: "Schedule deletion"),
@@ -323,7 +323,7 @@ private struct MembersPage: View {
             .environment(\.openURL, settingsLinkHandler)
         }
         .task(id: w.id) { await watch() }
-        .sheet(item: $confirm) { c in confirmSheet(c) }
+        .foleviDialog(item: $confirm) { c in confirmSheet(c) }
     }
 
     /// Billable seats, then "Guests: N · Not billed" linking to Guests (owners and admins).
@@ -608,7 +608,7 @@ private struct GuestsPage: View {
             }
         }
         .task(id: w.id) { await watch() }
-        .sheet(item: $confirm) { c in
+        .foleviDialog(item: $confirm) { c in
             WebConfirmDialog(title: c.member ? String(localized: "Invite \(c.name) to become a member?") : String(localized: "Remove \(c.name) from \(w.name)?"),
                              description: c.member
                                 ? String(localized: "They get an invitation. Once they accept, they're a member of \(w.name) (one billable seat on a paid plan) and keep the pages they already have.")

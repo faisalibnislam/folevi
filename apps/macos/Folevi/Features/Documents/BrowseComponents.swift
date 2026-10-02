@@ -243,38 +243,16 @@ struct PulsePlaceholder: View {
     }
 }
 
-/// A short text prompt (the web's PromptDialog): a title, a labelled field, Cancel and the action.
+/// A short text prompt: the web's PromptDialog (FoleviPromptDialog), the one the sidebar's menus use too.
 struct PromptSheet: View {
     var title: String
     var label: String
     var initial = ""
     var confirmTitle = String(localized: "Save")
     var onSubmit: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var value = ""
-    @FocusState private var focused: Bool
 
     var body: some View {
-        FoleviDialog(title: title, message: nil, confirmTitle: confirmTitle, confirmKind: .primary,
-                     confirmDisabled: value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, onConfirm: submit) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(label).font(.ui(13))
-                TextField("", text: $value)
-                    .textFieldStyle(.folevi)
-                    .focused($focused)
-                    .onSubmit(submit)
-                    .accessibilityLabel(Text(label))
-            }
-        }
-        .claimsFocus($focused)
-        .onAppear { value = initial }
-    }
-
-    private func submit() {
-        let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !v.isEmpty else { return }
-        dismiss()
-        onSubmit(v)
+        FoleviPromptDialog(title: title, label: label, initial: initial, confirmTitle: confirmTitle, onSubmit: onSubmit)
     }
 }
 

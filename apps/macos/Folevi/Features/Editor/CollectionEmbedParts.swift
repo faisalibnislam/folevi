@@ -561,7 +561,7 @@ struct CollectionViewSettings: View {
             }
             .frame(minHeight: 320, idealHeight: 560, maxHeight: 640)
         }
-        .sheet(item: $confirmProperty) { p in
+        .foleviDialog(item: $confirmProperty) { p in
             CollectionConfirm(title: String(localized: "Delete “\(p.name)”?"),
                               message: String(localized: "Its values disappear from every row and view of this collection."),
                               confirmTitle: String(localized: "Delete property"),
@@ -572,7 +572,7 @@ struct CollectionViewSettings: View {
                 }
             }
         }
-        .sheet(isPresented: $confirmView) {
+        .foleviDialog(isPresented: $confirmView) {
             CollectionConfirm(title: String(localized: "Delete the “\(view.name)” view?"),
                               message: String(localized: "Rows and properties stay; only this view’s filters, sorting and layout are removed."),
                               confirmTitle: String(localized: "Delete view"),
@@ -947,7 +947,7 @@ struct RelationEditor: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(label))
-        .sheet(isPresented: $picking) {
+        .foleviDialog(isPresented: $picking) {
             if let scope {
                 CollectionDialogFrame(title: String(localized: "Link a page"), description: label, width: 384, close: { picking = false }) {
                     PagePicker(scope: scope, exclude: value) { id in onChange(value + [id]) }

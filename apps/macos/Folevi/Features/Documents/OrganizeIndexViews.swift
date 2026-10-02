@@ -180,7 +180,7 @@ struct FoldersIndexView: View {
         .task(id: ReloadKey(documents: app.documentsRevision, folders: app.sidebar.folders, online: app.sync.isOnline, revision: store.revision)) {
             await store.load(app: app)
         }
-        .sheet(isPresented: $creating) {
+        .foleviDialog(isPresented: $creating) {
             PromptSheet(title: String(localized: "New folder"), label: String(localized: "Folder name"), confirmTitle: String(localized: "Create folder")) { name in
                 createFolder(name)
             }

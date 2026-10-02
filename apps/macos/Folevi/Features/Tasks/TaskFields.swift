@@ -11,6 +11,7 @@ struct FieldLabel<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
+                .uiLineHeight(13 * 1.4286, size: 13) // text-sm label
             content
         }
     }

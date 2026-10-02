@@ -38,14 +38,14 @@ struct FolderMenu<Trigger: View>: View {
 
     var body: some View {
         FoleviMenuButton(label: String(localized: "Folder options for \(folder.name)"), entries: entries, trigger: trigger)
-            .sheet(isPresented: $renaming) {
+            .foleviDialog(isPresented: $renaming) {
                 FoleviPromptDialog(title: String(localized: "Rename folder"), label: String(localized: "Folder name"), initial: folder.name) { name in
                     let id = folder.id
                     OrganizationActions.run(app, success: String(localized: "Renamed")) { try await $0.renameFolder(id, name: name) }
                 }
             }
-            .sheet(isPresented: $coloring) { FolderColorDialog(folder: folder).environment(app) }
-            .sheet(isPresented: $deleting) {
+            .foleviDialog(isPresented: $coloring) { FolderColorDialog(folder: folder).environment(app) }
+            .foleviDialog(isPresented: $deleting) {
                 FoleviDialog(title: String(localized: "Delete “\(folder.name)”?"),
                              message: String(localized: "The folder is removed. Its documents are kept and move to Drafts."),
                              confirmTitle: String(localized: "Delete folder")) {
@@ -54,7 +54,7 @@ struct FolderMenu<Trigger: View>: View {
                     OrganizationActions.run(app, success: String(localized: "Folder deleted")) { try await $0.deleteFolder(id) }
                 }
             }
-            .sheet(isPresented: $inviting) {
+            .foleviDialog(isPresented: $inviting) {
                 if let w = app.workspace { InviteDialog(workspace: w).environment(app) }
             }
     }
@@ -137,7 +137,7 @@ enum OrganizationActions {
 struct FolderColorDialog: View {
     var folder: MenuFolder
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
 
     var body: some View {
         let current = folder.color ?? "blue-haze"
@@ -197,7 +197,7 @@ struct FolderColorDialog: View {
 struct InviteDialog: View {
     var workspace: WorkspaceInfo
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var members: WorkspaceMembers?
 
     var body: some View {

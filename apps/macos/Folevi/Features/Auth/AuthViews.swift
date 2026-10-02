@@ -24,7 +24,7 @@ struct RootView: View {
                 MainWindowView()
             }
         }
-        .sheet(isPresented: Binding(get: { app.showNewWorkspace }, set: { app.showNewWorkspace = $0 })) { NewWorkspaceSheet().environment(app) }
+        .foleviDialog(isPresented: Binding(get: { app.showNewWorkspace }, set: { app.showNewWorkspace = $0 })) { NewWorkspaceSheet().environment(app) }
         .onOpenURL { url in InviteLink.open(url) }
     }
 }

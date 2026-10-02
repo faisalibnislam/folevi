@@ -117,7 +117,7 @@ struct MainWindowView: View {
             askChat.open(question: request.question, folder: folder)
             app.askAiRequest = nil
         }
-        .sheet(isPresented: Binding(get: { app.showQuickAdd && (NSApp.keyWindow?.isMainWindow ?? true) }, set: { app.showQuickAdd = $0 })) {
+        .foleviDialog(isPresented: Binding(get: { app.showQuickAdd && (NSApp.keyWindow?.isMainWindow ?? true) }, set: { app.showQuickAdd = $0 })) {
             QuickAddTaskDialog(documentId: editorIfOpen?.documentId) { id in nav.open(id) }
                 .environment(app)
         }
@@ -143,7 +143,7 @@ struct MainWindowView: View {
             }
             nav.closeDocument()
         }
-        .sheet(isPresented: $nav.showHistory) {
+        .foleviDialog(isPresented: $nav.showHistory) {
             if let id = nav.openDocumentId { VersionHistorySheet(documentId: id).environment(app) }
         }
         .onChange(of: app.scope, initial: true) { old, new in nav.enterScope(new.key, goHome: old != new) }
@@ -329,7 +329,7 @@ struct DocumentWindowView: View {
         .focusedSceneValue(\.editor, editor)
         .focusedSceneValue(\.navigation, nav)
         .opensCommentsPanel(editor: editor, nav: nav)
-        .sheet(isPresented: $nav.showHistory) { VersionHistorySheet(documentId: documentId).environment(app) }
+        .foleviDialog(isPresented: $nav.showHistory) { VersionHistorySheet(documentId: documentId).environment(app) }
         .overlay(alignment: .bottom) { ToastView() }
         .task(id: app.phase == .ready) {
             guard app.phase == .ready, editor == nil else { return }

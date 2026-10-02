@@ -150,7 +150,7 @@ struct CollectionBlockView: View {
             let message = total == 1 ? String(localized: "\(shown) of 1 row shown") : String(localized: "\(shown) of \(total) rows shown")
             AccessibilityNotification.Announcement(message).post()
         }
-        .sheet(isPresented: $showSettings) {
+        .foleviDialog(isPresented: $showSettings) {
             if let live = payload, let liveView = live.snapshot.view(preferred: viewId, fallback: props.viewId) {
                 CollectionViewSettings(data: live, view: liveView, actions: actions) { showSettings = false }
                     .environment(app)
@@ -318,7 +318,7 @@ private struct CollectionTable: View {
             .frame(width: max(width, natural), alignment: .leading)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .sheet(item: $confirm) { row in
+        .foleviDialog(item: $confirm) { row in
             CollectionConfirm(title: String(localized: "Delete “\(row.title.isEmpty ? String(localized: "Untitled") : row.title)”?"),
                               message: String(localized: "The row’s page moves to Trash with its values. You can restore it from Trash for 30 days."),
                               confirmTitle: String(localized: "Delete row"),

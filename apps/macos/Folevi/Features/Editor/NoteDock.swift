@@ -127,7 +127,7 @@ private struct PageDockExtras: View {
                 }
             }
         }
-        .sheet(isPresented: Bindable(page).movePageOpen) {
+        .foleviDialog(isPresented: Bindable(page).movePageOpen) {
             MovePageDialog(editor: editor).environment(app)
         }
         .noteDialogs(Bindable(page).dialog)

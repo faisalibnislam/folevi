@@ -38,7 +38,7 @@ struct PlanSettings: View {
         }
         .task(id: app.sync.isOnline) { await watchBilling() }
         .task(id: "credits-\(app.sync.isOnline)") { await watchAccounts() }
-        .sheet(item: $buyFor) { purchase in BuyCreditsSheet(purchase: purchase).environment(app) }
+        .foleviDialog(item: $buyFor) { purchase in BuyCreditsSheet(purchase: purchase).environment(app) }
     }
 
     // MARK: Your plan

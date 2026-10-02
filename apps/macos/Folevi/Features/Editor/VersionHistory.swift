@@ -7,7 +7,7 @@ struct PageDialog<Content: View>: View {
     var description: String?
     var width: CGFloat = 512
     @ViewBuilder var content: Content
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -43,7 +43,7 @@ struct PageDialog<Content: View>: View {
 struct VersionHistorySheet: View {
     let documentId: String
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var list: [SnapshotInfo]?
     @State private var selected: String?
     @State private var preview: Preview = .none
@@ -69,7 +69,7 @@ struct VersionHistorySheet: View {
             }
             .frame(minHeight: 420)
         }
-        .frame(height: 600)
+        .frame(height: 591) // the web's dialog height
         .task { await load() }
         .onChange(of: selected) { _, id in
             confirm = false
@@ -213,10 +213,12 @@ private struct VersionRow: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(PageFormat.dateTime(snapshot.createdAt)).font(.ui(13, .medium))
+                    .uiLineHeight(13 * 1.4286, size: 13, weight: .medium)
                 Text("\(VersionHistorySheet.reasons[snapshot.reason] ?? String(localized: "Version")) · \(snapshot.createdBy)")
                     .font(.ui(12)).foregroundStyle(selected ? FoleviColor.accentSoftInk : FoleviColor.inkMuted)
+                    .uiLineHeight(16, size: 12)
             }
             .foregroundStyle(selected ? FoleviColor.accentSoftInk : FoleviColor.ink)
             .padding(.horizontal, 12)

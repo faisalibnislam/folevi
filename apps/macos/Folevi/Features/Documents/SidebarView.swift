@@ -153,7 +153,7 @@ private struct SidebarNavigation: View {
         .task(id: SidebarRefreshKey(scope: app.scope.key, online: app.sync.isOnline)) { await app.refreshSidebar() }
         .onChange(of: app.blockRevision) { _, _ in Task { await refreshTaskCount() } }
         .task(id: StarredKey(scope: app.scope.key, revision: notes.revision, online: app.sync.isOnline)) { await loadStarred() }
-        .sheet(isPresented: $newFolder) {
+        .foleviDialog(isPresented: $newFolder) {
             FoleviPromptDialog(title: String(localized: "New folder"), label: String(localized: "Folder name"),
                                confirmTitle: String(localized: "Create folder")) { name in
                 let scope = app.scope
@@ -524,8 +524,8 @@ private struct TagMenu: View {
         FoleviMenuButton(label: String(localized: "Tag options for \(tag.name)"), entries: entries) { open in
             FoleviMenuTrigger(systemImage: "ellipsis", size: 32, open: open)
         }
-        .sheet(isPresented: $editing) { TagEditDialog(tag: tag).environment(app) }
-        .sheet(isPresented: $deleting) {
+        .foleviDialog(isPresented: $editing) { TagEditDialog(tag: tag).environment(app) }
+        .foleviDialog(isPresented: $deleting) {
             FoleviDialog(title: String(localized: "Delete #\(tag.name)?"),
                          message: String(localized: "The tag is removed from every document. The documents themselves are not affected."),
                          confirmTitle: String(localized: "Delete tag")) {
@@ -556,7 +556,7 @@ private struct TagMenu: View {
 private struct TagEditDialog: View {
     var tag: TagInfo
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var name = ""
     @State private var color = ""
     @State private var error: String?

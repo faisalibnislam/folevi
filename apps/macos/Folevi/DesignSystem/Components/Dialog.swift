@@ -86,7 +86,7 @@ struct FoleviDialog<Content: View>: View {
     var onCancel: (() -> Void)?
     var onConfirm: () -> Void
     @ViewBuilder var content: Content
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
 
     var body: some View {
         FoleviDialogShell(title: title, description: message, size: .sm, onClose: cancel) {
@@ -125,7 +125,7 @@ struct FoleviPromptDialog: View {
     var confirmTitle: String = String(localized: "Save")
     var maxLength = 80
     var onSubmit: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
     @State private var value = ""
     @FocusState private var focused: Bool
 

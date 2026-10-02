@@ -23,9 +23,8 @@ enum WebFormat {
 
     /// `formatDateTime`: medium date and short time, "Oct 1, 2026, 3:04 PM".
     static func dateTime(_ ms: Double) -> String {
-        let d = DateFormatter()
-        d.setLocalizedDateFormatFromTemplate("yMMMdjmm")
-        return d.string(from: Date(timeIntervalSince1970: ms / 1000))
+        // The browser's medium date and short time joined by a comma (a date template gives "… at …").
+        BillingCopy.dateTime(ms)
     }
 
     /// `formatBytes` (lib/format.ts): "512 B", "12 KB", "1.5 MB", "2.00 GB".

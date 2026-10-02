@@ -67,10 +67,10 @@ struct EditorView: View {
             if model.sheetPalette != palette { model.sheetPalette = palette }
         }
         .onChange(of: app.editorScale, initial: true) { _, s in model.drag.indentStep = BlockMetrics.indent(CGFloat(s)) }
-        .sheet(isPresented: Binding(get: { model.unsplashAnchor != nil }, set: { if !$0 { model.unsplashAnchor = nil } })) {
+        .foleviDialog(isPresented: Binding(get: { model.unsplashAnchor != nil }, set: { if !$0 { model.unsplashAnchor = nil } })) {
             if let anchor = model.unsplashAnchor { UnsplashSheet(model: model, anchor: anchor).environment(app) }
         }
-        .sheet(isPresented: $model.showLinkPrompt) {
+        .foleviDialog(isPresented: $model.showLinkPrompt) {
             LinkPromptView(initial: model.linkDraft) { model.applyLink($0) } onCancel: { model.showLinkPrompt = false }
         }
     }

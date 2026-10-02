@@ -167,7 +167,7 @@ struct AudioRecorderSheet: View {
     @Bindable var model: EditorModel
     @State private var recorder = AudioRecorderModel()
     @State private var saved = false
-    @Environment(\.dismiss) private var dismiss
+    @DialogDismiss private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

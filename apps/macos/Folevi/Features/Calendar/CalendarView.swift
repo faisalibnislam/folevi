@@ -76,7 +76,7 @@ struct CalendarView: View {
         .task(id: app.scope.key) { await TaskPeople.shared.load(app: app) }
         .onChange(of: app.blockRevision) { _, _ in Task { await reload() } }
         .onChange(of: app.documentsRevision) { _, _ in Task { await reload() } }
-        .sheet(item: $editing) { t in TaskEditSheet(task: t, openDocument: openDocument).environment(app) }
+        .foleviDialog(item: $editing) { t in TaskEditSheet(task: t, openDocument: openDocument).environment(app) }
     }
 
     /// Month / Agenda.

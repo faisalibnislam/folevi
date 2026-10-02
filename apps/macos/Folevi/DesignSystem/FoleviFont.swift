@@ -26,7 +26,9 @@ enum FoleviFont {
 
     /// Discrete faces we bundle. Anything in between maps to the nearest one.
     enum Face: Int, Comparable, Sendable {
-        case regular = 400, medium = 500, semibold = 600, bold = 700
+        /// `w550` is the web's `font-weight: 550` (buttons, chips, segmented controls, keycaps): the variable
+        /// Instrument Sans draws it exactly; the other families use their semibold.
+        case regular = 400, medium = 500, w550 = 550, semibold = 600, bold = 700
         static func < (a: Face, b: Face) -> Bool { a.rawValue < b.rawValue }
 
         init(_ weight: Font.Weight) {
@@ -69,7 +71,7 @@ enum FoleviFont {
             let weight = switch face {
             case .regular: ""
             case .medium: "Medium"
-            case .semibold: "SemiBold"
+            case .w550, .semibold: "SemiBold"
             case .bold: "Bold"
             }
             if italic { return "Spectral-\(weight)Italic" }
@@ -146,7 +148,7 @@ enum FoleviFont {
         let nsWeight: NSFont.Weight = switch weight {
         case .regular: .regular
         case .medium: .medium
-        case .semibold: .semibold
+        case .w550, .semibold: .semibold
         case .bold: .bold
         }
         let system = NSFont.systemFont(ofSize: size, weight: nsWeight)
@@ -168,7 +170,12 @@ enum FoleviFont {
 }
 
 extension Font {
-    /// Instrument Sans — every piece of product UI.
+    /// Instrument Sans at the web's 550 weight (`.ui-btn`, `.ui-chip`, segmented controls, `kbd`).
+    static func ui550(_ size: CGFloat) -> Font {
+        Font(FoleviFont.nsFont(.sans, size: size, weight: .w550) as CTFont)
+    }
+
+    /// Instrument Sans: every piece of product UI.
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         FoleviFont.font(.sans, size: size, weight: weight)
     }

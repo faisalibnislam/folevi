@@ -70,11 +70,11 @@ struct AmbientBackground: View {
 // MARK: - Buttons
 
 enum FoleviButtonKind { case primary, secondary, ghost, quiet, danger }
-/// The web's Button sizes: sm 32pt / 13pt, md 36pt / 14pt (large is for full-width calls to action).
+/// The web's Button sizes: sm 32pt / 13pt, md 36pt / 13pt (text-sm here); large is for full-width calls to action.
 enum FoleviButtonSize {
     case small, medium, large
     var height: CGFloat { switch self { case .small: return 32; case .medium: return 36; case .large: return 40 } }
-    var font: CGFloat { switch self { case .small: return 13; case .medium: return 14; case .large: return 14 } }
+    var font: CGFloat { switch self { case .small: return 13; case .medium: return 13; case .large: return 14 } }
     var padding: CGFloat { switch self { case .small: return 14; case .medium: return 16; case .large: return 20 } }
 }
 
@@ -108,7 +108,7 @@ private struct FoleviButtonBody: View {
     var body: some View {
         let pressed = configuration.isPressed && isEnabled
         configuration.label
-            .font(.ui(size.font, .semibold))
+            .font(.ui550(size.font)) // .ui-btn's 550
             .tracking(-0.005 * size.font)
             .lineLimit(1)
             .foregroundStyle(foreground)
@@ -257,7 +257,7 @@ struct FoleviSegmented<Value: Hashable>: View {
                             Text(item.title).lineLimit(1).minimumScaleFactor(0.8)
                         }
                     }
-                    .font(.ui(fontSize, active ? .semibold : .medium))
+                    .font(.ui550(fontSize)) // .ui-seg: 550 whether chosen or not
                     .foregroundStyle(active ? FoleviColor.heading : FoleviColor.inkMuted)
                     .padding(.horizontal, stacked ? 2 : showTitles ? 9 : 6)
                     .frame(maxWidth: .infinity, minHeight: height)
@@ -351,7 +351,7 @@ struct Keycap: View {
     var text: String
     var body: some View {
         Text(text)
-            .font(.ui(10.5, .semibold))
+            .font(.ui550(10.5)) // .ui-kbd
             .foregroundStyle(FoleviColor.inkMuted)
             .padding(.horizontal, 5)
             .frame(minWidth: 22, minHeight: 20)

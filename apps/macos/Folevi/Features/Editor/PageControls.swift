@@ -149,7 +149,7 @@ struct PageSegmented<Value: Hashable>: View {
                 } label: {
                     HStack(spacing: 5.6) {
                         if let icon = item.systemImage { Image(systemName: icon).font(.system(size: 13, weight: .medium)) }
-                        Text(item.title).font(item.font ?? .ui(12.5, .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(item.title).font(item.font ?? .ui550(12.5)).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .foregroundStyle(on ? FoleviColor.heading : FoleviColor.inkMuted)
                     .padding(.horizontal, 9.6)

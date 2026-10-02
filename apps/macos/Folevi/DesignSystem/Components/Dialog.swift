@@ -29,12 +29,14 @@ struct FoleviDialogShell<Content: View, Footer: View>: View {
                     Text(title)
                         .font(FoleviType.display(21))
                         .tracking(FoleviType.displayTracking(21))
+                        .cssLineHeight(28, family: .serif, size: 21, weight: .semibold) // the web's 28px title line
                         .foregroundStyle(FoleviColor.heading)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                     if let description {
                         Text(description)
                             .font(.ui(13))
+                            .uiLineHeight(13 * 1.4286, size: 13)
                             .foregroundStyle(FoleviColor.inkMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -90,7 +92,8 @@ struct FoleviDialog<Content: View>: View {
 
     var body: some View {
         FoleviDialogShell(title: title, description: message, size: .sm, onClose: cancel) {
-            if Content.self != EmptyView.self { content }
+            // The web always renders the dialog body, so an empty one still adds its 32pt of padding.
+            if Content.self != EmptyView.self { content } else { Color.clear.frame(height: 0) }
         } footer: {
             Button(cancelTitle, action: cancel)
                 .buttonStyle(.folevi(.secondary, .medium))
@@ -133,6 +136,7 @@ struct FoleviPromptDialog: View {
         FoleviDialogShell(title: title, size: .sm, onClose: { dismiss() }) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(label).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
+                    .uiLineHeight(13 * 1.4286, size: 13, weight: .medium)
                 TextField("", text: $value)
                     .textFieldStyle(.plain)
                     .font(.ui(16))

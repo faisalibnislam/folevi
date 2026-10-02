@@ -1016,32 +1016,29 @@ struct BookmarkPrompt: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Add a bookmark").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading).padding(.bottom, 16)
-            Text("Web address").font(.ui(13, .medium))
-            TextField("", text: $value)
-                .textFieldStyle(.plain)
-                .font(.ui(16))
-                .padding(.horizontal, 16)
-                .frame(height: 40)
-                .foleviInput()
-                .padding(.top, 8)
-                .focused($focused)
-                .onSubmit(submit)
-                .onChange(of: value) { _, _ in error = nil }
-                .accessibilityLabel(Text("Web address"))
-            if let error {
-                Text(error).font(.ui(12)).foregroundStyle(FoleviColor.destructive).padding(.top, 4)
+        // The web's BookmarkPrompt: the small dialog with Cancel and Add bookmark on its footer band.
+        FoleviDialogShell(title: String(localized: "Add a bookmark"), size: .sm, onClose: onCancel) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Web address").font(.ui(13, .medium)).uiLineHeight(13 * 1.4286, size: 13, weight: .medium)
+                TextField("", text: $value)
+                    .textFieldStyle(.plain)
+                    .font(.ui(16))
+                    .padding(.horizontal, 16)
+                    .frame(height: 40)
+                    .foleviInput()
+                    .padding(.top, 8)
+                    .focused($focused)
+                    .onSubmit(submit)
+                    .onChange(of: value) { _, _ in error = nil }
+                    .accessibilityLabel(Text("Web address"))
+                if let error {
+                    Text(error).font(.ui(12)).foregroundStyle(FoleviColor.destructive).padding(.top, 4)
+                }
             }
-            HStack {
-                Spacer()
-                Button("Cancel", action: onCancel).buttonStyle(.folevi(.quiet)).keyboardShortcut(.cancelAction)
-                Button("Add bookmark", action: submit).buttonStyle(.folevi(.primary)).keyboardShortcut(.defaultAction)
-            }
-            .padding(.top, 20)
+        } footer: {
+            Button("Cancel", action: onCancel).buttonStyle(.folevi(.quiet, .medium)).keyboardShortcut(.cancelAction)
+            Button("Add bookmark", action: submit).buttonStyle(.folevi(.primary, .medium)).keyboardShortcut(.defaultAction)
         }
-        .padding(24)
-        .frame(width: 420)
         .onAppear { focused = true }
     }
 

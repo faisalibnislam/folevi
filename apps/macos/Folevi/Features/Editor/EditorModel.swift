@@ -195,7 +195,6 @@ final class EditorModel {
     var taskDetailsFor: String?
     /// Where a recording goes while the recorder sheet is open ("/record").
     var recordingTarget: RecordingTarget?
-    var showLinkPrompt = false
     var linkDraft = ""
     var containerFocusToken = UUID()
     /// True once the editor holds the document's real content. No edit (and no diff) is ever sent

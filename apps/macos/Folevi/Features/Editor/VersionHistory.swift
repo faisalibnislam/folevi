@@ -15,11 +15,13 @@ struct PageDialog<Content: View>: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(FoleviType.display(21))
+                        .cssLineHeight(28, family: .serif, size: 21, weight: .semibold)
                         .tracking(FoleviType.displayTracking(21))
                         .foregroundStyle(FoleviColor.heading)
                         .accessibilityAddTraits(.isHeader)
                     if let description {
-                        Text(description).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
+                        Text(description).font(.ui(13)).uiLineHeight(13 * 1.4286, size: 13)
+                            .foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

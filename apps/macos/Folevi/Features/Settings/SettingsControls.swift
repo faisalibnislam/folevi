@@ -256,57 +256,9 @@ struct WebDialog<Content: View, Footer: View>: View {
     @ViewBuilder var footer: Footer
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(FoleviType.display(21))
-                        .tracking(FoleviType.displayTracking(21))
-                        .foregroundStyle(FoleviColor.heading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    if let description {
-                        Text(description)
-                            .font(.ui(13))
-                            .foregroundStyle(FoleviColor.inkMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                Spacer(minLength: 0)
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(WebIconButtonStyle())
-                .keyboardShortcut(.cancelAction)
-                .accessibilityLabel(Text("Close"))
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            .padding(.bottom, 8)
-            ScrollView {
-                content
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
-            }
-            .scrollBounceBehavior(.basedOnSize)
-            .fixedSize(horizontal: false, vertical: true)
-            if !(Footer.self == EmptyView.self) {
-                HStack(spacing: 8) {
-                    Spacer(minLength: 0)
-                    footer
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 14)
-                .background(FoleviColor.surfaceSunken.opacity(0.6))
-                .overlay(alignment: .top) { FoleviColor.line.frame(height: 1) }
-            }
-        }
-        .frame(width: size.width)
-        .background(FoleviColor.surface)
+        // The same shell as every other dialog (FoleviDialogShell), so Settings' dialogs can't drift from it.
+        FoleviDialogShell(title: title, description: description, size: size == .sm ? .sm : size == .md ? .md : .lg,
+                          onClose: onClose) { content } footer: { footer }
     }
 }
 

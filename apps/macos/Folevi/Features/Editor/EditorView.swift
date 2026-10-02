@@ -70,9 +70,6 @@ struct EditorView: View {
         .foleviDialog(isPresented: Binding(get: { model.unsplashAnchor != nil }, set: { if !$0 { model.unsplashAnchor = nil } })) {
             if let anchor = model.unsplashAnchor { UnsplashSheet(model: model, anchor: anchor).environment(app) }
         }
-        .foleviDialog(isPresented: $model.showLinkPrompt) {
-            LinkPromptView(initial: model.linkDraft) { model.applyLink($0) } onCancel: { model.showLinkPrompt = false }
-        }
     }
 
     // MARK: Page panel
@@ -546,29 +543,6 @@ struct CoverGlow: View {
             .clipped()
         }
         .accessibilityHidden(true)
-    }
-}
-
-struct LinkPromptView: View {
-    @State var initial: String
-    var onSubmit: (String) -> Void
-    var onCancel: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Link").font(.ui(14, .semibold))
-            TextField("https://", text: $initial)
-                .textFieldStyle(.folevi)
-                .frame(width: 320)
-                .onSubmit { onSubmit(initial) }
-            HStack {
-                Button("Remove link") { onSubmit("") }
-                Spacer()
-                Button("Cancel", role: .cancel, action: onCancel).keyboardShortcut(.cancelAction)
-                Button("Apply") { onSubmit(initial) }.keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(20)
     }
 }
 

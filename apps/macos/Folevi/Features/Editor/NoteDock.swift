@@ -113,7 +113,7 @@ private struct PageDockExtras: View {
                     Image(systemName: "square.and.arrow.up").font(.system(size: 14, weight: .medium))
                 } action: { page.shareOpen.toggle() }
                 // The web's Share dialog (a sheet over the window).
-                .sheet(isPresented: Bindable(page).shareOpen) {
+                .foleviDialog(isPresented: Bindable(page).shareOpen) {
                     SharePanel(documentId: editor.documentId, title: editor.document?.displayTitle ?? String(localized: "Untitled"),
                                personal: (editor.document?.workspaceId ?? "").isEmpty) { page.shareOpen = false }
                         .environment(app)

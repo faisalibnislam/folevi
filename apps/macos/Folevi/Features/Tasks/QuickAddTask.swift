@@ -23,6 +23,7 @@ struct QuickAddTaskDialog: View {
 struct QuickAddView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismissWindow) private var dismissWindow
+    @State private var contentHeight: CGFloat = 0
 
     var body: some View {
         Group {
@@ -42,6 +43,10 @@ struct QuickAddView: View {
             }
         }
         .background(FoleviColor.surface)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        .background(QuickAddWindowChrome(height: contentHeight))
+        // The dialog starts at the window's top edge, and the window is exactly its height.
+        .ignoresSafeArea()
     }
 }
 
@@ -84,7 +89,7 @@ private struct QuickAddForm: View {
                 .accessibilityLabel(Text("Task"))
             HStack(alignment: .bottom, spacing: 12) {
                 field(String(localized: "Due date")) {
-                    OptionalDateField(value: $due, components: .date, placeholder: String(localized: "No date"), label: String(localized: "Due date"))
+                    OptionalDateField(value: $due, components: .date, placeholder: String(localized: "mm/dd/yyyy"), label: String(localized: "Due date"))
                 }
                 if due != nil {
                     field(String(localized: "Time (optional)")) {
@@ -95,7 +100,7 @@ private struct QuickAddForm: View {
                     FoleviSelect(selection: $priority, options: [
                         .init(value: .none, title: String(localized: "None")), .init(value: .low, title: String(localized: "Low")),
                         .init(value: .medium, title: String(localized: "Medium")), .init(value: .high, title: String(localized: "High")),
-                    ], accessibilityLabel: String(localized: "Priority"), height: 36, fontSize: 14)
+                    ], accessibilityLabel: String(localized: "Priority"), height: 36, fontSize: 13)
                 }
             }
             .padding(.top, 12)
@@ -182,9 +187,14 @@ private struct OptionalDateField: View {
                 Button {
                     value = components == .date ? Date() : Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())
                 } label: {
-                    Text(placeholder).font(.ui(13)).foregroundStyle(FoleviColor.inkFaint)
-                        .frame(minWidth: 80, alignment: .leading)
-                        .contentShape(Rectangle())
+                    // The web's empty date input: its format hint and a calendar icon, 134pt wide with padding.
+                    HStack(spacing: 6) {
+                        Text(placeholder).font(.ui(13)).foregroundStyle(FoleviColor.inkFaint)
+                        Spacer(minLength: 0)
+                        Image(systemName: components == .date ? "calendar" : "clock").font(.system(size: 12)).foregroundStyle(FoleviColor.ink)
+                    }
+                    .frame(width: components == .date ? 118 : 84)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(label))
@@ -355,5 +365,34 @@ enum QuickAdd {
                               props: (try? JSONValue(encoding: props)) ?? .emptyObject)
         await engine.applyLocal(documentId: docId, upserts: [(block, [.content, .position])])
         return docId
+    }
+}
+
+/// The Quick Add window without traffic lights (its dialog has a Close button), movable by its background, and
+/// exactly as tall as the dialog (the hidden title bar's strip would otherwise stay empty).
+private struct QuickAddWindowChrome: NSViewRepresentable {
+    var height: CGFloat
+
+    func makeNSView(context: Context) -> NSView { ChromeView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        let height = height
+        DispatchQueue.main.async {
+            guard let window = view.window, height > 0, abs(window.contentLayoutRect.height - height) > 0.5 else { return }
+            let size = NSSize(width: window.frame.width, height: height)
+            window.contentMinSize = size
+            window.contentMaxSize = size
+            window.setContentSize(size)
+        }
+    }
+
+    private final class ChromeView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { window.standardWindowButton(kind)?.isHidden = true }
+            window.isMovableByWindowBackground = true
+        }
     }
 }

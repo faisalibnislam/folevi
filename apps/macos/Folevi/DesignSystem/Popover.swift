@@ -15,6 +15,8 @@ final class FoleviPopoverCoordinator {
         let id: UUID
         var anchor: CGRect
         var above: Bool
+        /// A dialog: centred in the window, with a backdrop that takes clicks (the web's modal <dialog>).
+        var centered = false
         var align: FoleviPopoverAlign
         var gap: CGFloat
         var radius: CGFloat
@@ -90,6 +92,10 @@ private struct FoleviPopoverLayer: View {
             let size = geo.size
             ZStack(alignment: .topLeading) {
                 Color.clear
+                // A dialog's transparent backdrop: the page behind can't be clicked (an outside click closes it).
+                if coordinator.entries.contains(where: \.centered) {
+                    Color.black.opacity(0.001).frame(width: size.width, height: size.height)
+                }
                 ForEach(coordinator.entries) { entry in
                     FoleviPopoverPanel(entry: entry, container: size, origin: geo.frame(in: .global).origin, coordinator: coordinator)
                 }
@@ -115,9 +121,9 @@ private struct FoleviPopoverPanel: View {
         let aboveRoom = a.minY - entry.gap - margin
         // The web's flip: its preferred side unless the panel doesn't fit there and the other side has more room.
         let up = entry.above ? !(aboveRoom < size.height && below > aboveRoom) : (below < size.height && aboveRoom > below)
-        let rawX = entry.align == .end ? a.maxX - size.width : a.minX
+        let rawX = entry.centered ? (container.width - size.width) / 2 : entry.align == .end ? a.maxX - size.width : a.minX
         let x = min(max(margin, rawX), max(margin, container.width - size.width - margin))
-        let rawY = up ? a.minY - entry.gap - size.height : a.maxY + entry.gap
+        let rawY = entry.centered ? (container.height - size.height) / 2 : up ? a.minY - entry.gap - size.height : a.maxY + entry.gap
         let y = min(max(margin, rawY), max(margin, container.height - size.height - margin))
         PopoverSizing(maxHeight: max(80, container.height - margin * 2)) { entry.content }
             .clipShape(RoundedRectangle(cornerRadius: entry.radius, style: .continuous))
@@ -329,6 +335,46 @@ private struct RightClickCatcher: NSViewRepresentable {
 
         override func mouseDown(with event: NSEvent) {
             if event.modifierFlags.contains(.control) { onRightClick?(convert(event.locationInWindow, from: nil)) }
+        }
+    }
+}
+
+extension View {
+    /// A dialog as the web's: a panel centred in the window (radius 14, the glass pop), the page behind left
+    /// as it is, and resizing with its content. An outside click or Escape closes it. A system sheet where
+    /// the window has no popover layer.
+    func foleviDialog<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+        modifier(FoleviDialogModifier(isPresented: isPresented, dialog: content))
+    }
+}
+
+private struct FoleviDialogModifier<Dialog: View>: ViewModifier {
+    @Binding var isPresented: Bool
+    let dialog: () -> Dialog
+    @Environment(\.foleviPopovers) private var coordinator
+    @State private var id = UUID()
+    @State private var window: NSWindow?
+
+    private var inLayer: Bool { coordinator?.isHost(of: window) == true }
+
+    func body(content: Content) -> some View {
+        content
+            .background(WindowReader { window = $0 })
+            .onChange(of: isPresented, initial: true) { _, on in update(on) }
+            .onChange(of: inLayer) { _, _ in update(isPresented) }
+            .onDisappear { coordinator?.remove(id) }
+            .sheet(isPresented: Binding(get: { isPresented && !inLayer && window != nil }, set: { if !$0 { isPresented = false } }),
+                   content: dialog)
+    }
+
+    private func update(_ on: Bool) {
+        guard let coordinator, inLayer else { return }
+        if on {
+            let binding = $isPresented
+            coordinator.present(.init(id: id, anchor: .zero, above: false, centered: true, align: .start, gap: 0, radius: 14,
+                                      content: AnyView(dialog()), dismiss: { binding.wrappedValue = false }))
+        } else {
+            coordinator.remove(id)
         }
     }
 }

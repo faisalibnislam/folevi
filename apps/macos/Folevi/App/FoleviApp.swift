@@ -49,6 +49,9 @@ struct FoleviApp: App {
                 .environment(app)
                 .foleviTypography()
         }
+        // The web's Quick add dialog has its own title and Close: no title bar above it. (A plain window
+        // can't take typing.)
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
 
@@ -68,6 +71,8 @@ final class OpenWindowBridge {
     static let shared = OpenWindowBridge()
     var open: ((String) -> Void)?
     var openDocument: ((String) -> Void)?
+    /// Opens a page in a new tab of the main window (set while it's showing).
+    var openInNewTab: ((String) -> Void)?
 }
 
 struct OpenWindowCapture: View {

@@ -33,7 +33,7 @@ struct ShareNoteButton: View {
         }
         .help(Text("Share"))
         .accessibilityLabel(Text("Share"))
-        .sheet(isPresented: $open) {
+        .foleviDialog(isPresented: $open) {
             SharePanel(documentId: editor.documentId, title: editor.document?.displayTitle ?? "",
                        personal: (editor.document?.workspaceId ?? "").isEmpty) { open = false }
                 .environment(app)
@@ -61,6 +61,8 @@ struct SharePanel: View {
     @State private var expires: Date?
     @State private var password = ""
     @State private var contentHeight: CGFloat = 200
+    /// The title row above the scrolling body.
+    private let headerHeight: CGFloat = 72
 
     private var repo: CollaborationRepository? { app.session.map { CollaborationRepository(convex: $0.convex) } }
 
@@ -99,15 +101,15 @@ struct SharePanel: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
-            .frame(height: min(contentHeight, maxHeight - 72))
+            .frame(height: min(contentHeight, maxHeight - headerHeight))
         }
         .frame(width: 512)
         .frame(maxHeight: maxHeight)
         .background(FoleviColor.surfaceRaised)
         .presentationBackground(FoleviColor.surfaceRaised)
-        // The sheet grows with its content once sharing has loaded (it kept the "Loading…" height and cut
-        // off Public link).
-        .presentationSizing(.fitted)
+        // The sheet grows with its content once sharing has loaded (a sheet keeps its first size, so it kept
+        // the "Loading…" height and cut off Public link).
+        .background(SheetHeight(height: headerHeight + min(contentHeight, maxHeight - headerHeight)))
         .onExitCommand(perform: dismiss)
         .task { await watch() }
     }
@@ -421,8 +423,13 @@ struct SharePanel: View {
                         IconButton(systemImage: "xmark", label: "No expiry", size: 22) { self.expires = nil }
                     } else {
                         Button { expires = Date().addingTimeInterval(7 * 86_400) } label: {
-                            Text("No expiry").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            // The web's empty date-and-time input: its format hint and a calendar icon.
+                            HStack(spacing: 6) {
+                                Text("mm/dd/yyyy, --:-- --").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint).lineLimit(1)
+                                Spacer(minLength: 0)
+                                Image(systemName: "calendar").font(.system(size: 12)).foregroundStyle(FoleviColor.ink)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -437,7 +444,8 @@ struct SharePanel: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Password (optional, 8+ characters)").font(.ui(12)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                Text("Password (optional, 8+ characters)").font(.ui(12)).foregroundStyle(FoleviColor.ink)
+                    .fixedSize(horizontal: false, vertical: true) // wraps like the web's label
                 SecureField("", text: $password)
                     .textFieldStyle(FoleviFieldStyle(height: 36))
                     .textContentType(.newPassword)
@@ -489,5 +497,28 @@ private struct RemovePersonButton: View {
         .onHover { hovering = $0 }
         .help(Text("Remove \(name)"))
         .accessibilityLabel(Text("Remove \(name)"))
+    }
+}
+
+/// Sets the sheet window's content height (sheets don't follow their content's size after they open).
+struct SheetHeight: NSViewRepresentable {
+    var height: CGFloat
+
+    func makeNSView(context: Context) -> NSView { PassThroughView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        let height = height
+        DispatchQueue.main.async {
+            guard let window = view.window, window.sheetParent != nil, abs(window.contentLayoutRect.height - height) > 0.5 else { return }
+            let size = NSSize(width: window.contentLayoutRect.width, height: height)
+            // SwiftUI pins a sheet's min and max to the size it opened at; move both with it.
+            window.contentMinSize = NSSize(width: size.width, height: min(window.contentMinSize.height, height))
+            window.contentMaxSize = NSSize(width: size.width, height: max(window.contentMaxSize.height, height))
+            window.setContentSize(size)
+        }
+    }
+
+    private final class PassThroughView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }

@@ -38,9 +38,11 @@ struct DataSettings: View {
                 }
                 .buttonStyle(.folevi(.secondary, .medium))
                 .disabled(busy)
+                // An empty status line takes no height (only its 8pt margin), as on the web.
                 Text(progress)
                     .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
-                    .frame(minHeight: 16, alignment: .leading)
+                    .frame(height: progress.isEmpty ? 0 : nil, alignment: .leading)
+                    .clipped()
                     .padding(.top, 8)
                     .accessibilityAddTraits(.updatesFrequently)
                 if !results.isEmpty {

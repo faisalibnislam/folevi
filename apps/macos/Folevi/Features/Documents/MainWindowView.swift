@@ -147,6 +147,7 @@ struct MainWindowView: View {
             if let id = nav.openDocumentId { VersionHistorySheet(documentId: id).environment(app) }
         }
         .onChange(of: app.scope, initial: true) { old, new in nav.enterScope(new.key, goHome: old != new) }
+        .onAppear { OpenWindowBridge.shared.openInNewTab = { [nav] id in nav.open(id, newTab: true) } }
         .onReceive(NotificationCenter.default.publisher(for: .foleviOpenDocument)) { note in
             guard let id = note.userInfo?["documentId"] as? String, NSApp.keyWindow?.isMainWindow == true || editor == nil else { return }
             nav.open(id)

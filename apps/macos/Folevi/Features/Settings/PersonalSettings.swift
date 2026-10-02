@@ -90,7 +90,9 @@ struct NotificationSettings: View {
                         HStack(spacing: 8) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(topic.label).font(.ui(13)).foregroundStyle(FoleviColor.ink)
+                                    .uiLineHeight(13 * 1.4286, size: 13)
                                 Text(topic.hint).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
+                                    .uiLineHeight(16, size: 12)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             SettingsSwitch(label: String(localized: "\(topic.label) in the app"), hint: topic.hint,
@@ -210,6 +212,7 @@ struct SyncSettings: View {
     private func row<V: View>(_ label: String, @ViewBuilder value: () -> V) -> some View {
         GridRow {
             Text(label).foregroundStyle(FoleviColor.inkMuted).frame(width: 224, alignment: .leading)
+                .uiLineHeight(13 * 1.4286, size: 13) // text-sm rows
             value().frame(maxWidth: 224, alignment: .leading)
         }
     }

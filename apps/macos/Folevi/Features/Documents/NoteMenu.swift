@@ -20,7 +20,7 @@ enum NoteDialog: Identifiable {
 }
 
 /// A note's actions (its right-click menu and its "…" button), as the web's card menu: New page from template,
-/// Open, Open in new window, Star, Duplicate, Move to folder…, Archive, Remove from recent (Home), Select, Move
+/// Open, Open in new tab, Star, Duplicate, Move to folder…, Archive, Remove from recent (Home), Select, Move
 /// up / Move down (manual order), Move to Trash; in the Trash, Restore, Select and Delete permanently….
 struct DocumentContextMenu: View {
     let document: DocumentSummary
@@ -56,7 +56,10 @@ struct DocumentContextMenu: View {
             Button { openDocument(document.id, false) } label: {
                 Label(document.kind == .template ? "Edit template" : "Open", systemImage: "arrow.up.right.square")
             }
-            Button { openDocument(document.id, true) } label: { Label("Open in new window", systemImage: "arrow.up.right.square") }
+            // As the web's card menu: a new tab (a window where there are no tabs).
+            Button {
+                if let tab = OpenWindowBridge.shared.openInNewTab { tab(document.id) } else { openDocument(document.id, true) }
+            } label: { Label("Open in new tab", systemImage: "arrow.up.right.square") }
             if actions.isStarred(document) {
                 Button { actions.star(ids, false, app: app) } label: { Label("Unstar", systemImage: "star.slash") }
             } else {

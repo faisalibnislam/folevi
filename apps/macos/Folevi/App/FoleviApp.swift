@@ -17,6 +17,7 @@ struct FoleviApp: App {
     var body: some Scene {
         WindowGroup("Folevi", id: "main") {
             RootView()
+                .foleviPopoverHost()
                 .environment(app)
                 .foleviTypography()
                 .frame(minWidth: 820, minHeight: 540)
@@ -35,6 +36,7 @@ struct FoleviApp: App {
         WindowGroup("Document", id: "document", for: String.self) { $documentId in
             if let documentId {
                 DocumentWindowView(documentId: documentId)
+                    .foleviPopoverHost()
                     .environment(app)
                     .foleviTypography()
                     .frame(minWidth: 560, minHeight: 420)

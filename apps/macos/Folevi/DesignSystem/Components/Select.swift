@@ -18,6 +18,8 @@ struct FoleviSelect<Value: Hashable>: View {
     var options: [Option]
     var accessibilityLabel: String
     var width: CGFloat? = nil
+    /// Stretches to the width it's given (the web's `w-full`).
+    var fillsWidth = false
     var height: CGFloat = 30
     var look: FoleviSelectLook = .input
     var fontSize: CGFloat = 13
@@ -44,7 +46,8 @@ struct FoleviSelect<Value: Hashable>: View {
             }
             .padding(.horizontal, look == .well ? 10 : 12)
             .frame(width: width, height: height)
-            .fixedSize(horizontal: width == nil, vertical: false)
+            .frame(maxWidth: fillsWidth ? .infinity : nil)
+            .fixedSize(horizontal: width == nil && !fillsWidth, vertical: false)
             .background { background }
             .contentShape(Rectangle())
             .opacity(isEnabled ? 1 : 0.5)

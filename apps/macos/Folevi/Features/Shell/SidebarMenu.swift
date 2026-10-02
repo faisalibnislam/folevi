@@ -7,7 +7,7 @@ struct SidebarMenu: View {
     @Bindable var nav: NavigationModel
 
     var body: some View {
-        FoleviMenuButton(label: String(localized: "Sidebar"), entries: entries) { open in
+        FoleviMenuButton(label: String(localized: "Sidebar"), align: .start, entries: entries) { open in
             FoleviMenuTrigger(systemImage: "sidebar.left", size: 32, open: open)
         }
         .accessibilityIdentifier("sidebar.menu")

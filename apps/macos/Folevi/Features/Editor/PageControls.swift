@@ -119,7 +119,9 @@ extension View {
 
     /// `.ui-caps`: 11pt semibold, tracked, uppercase, faint.
     func pageCaps() -> some View {
+        // `.ui-caps` at the body's 1.55 line height.
         self.font(.ui(11, .semibold)).tracking(0.06 * 11).textCase(.uppercase).foregroundStyle(FoleviColor.inkFaint)
+            .uiLineHeight(11 * 1.55, size: 11, weight: .semibold)
     }
 }
 

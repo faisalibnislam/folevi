@@ -22,6 +22,8 @@ struct CommandPaletteHost: View {
                         .padding(.horizontal, 16)
                 }
             }
+            // 12vh and 55vh of the whole window, as on the web (the title bar's safe area pushed it 46pt down).
+            .ignoresSafeArea()
             .transition(.opacity)
         }
     }

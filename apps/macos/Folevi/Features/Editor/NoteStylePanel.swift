@@ -174,8 +174,9 @@ struct StyleInspector: View {
                     .padding(.top, 8)
                 }
             }
-            VStack(alignment: .leading, spacing: 4) {
-                legend("Color")
+            // The legend sits 4pt above the rows; the two rows touch, as on the web.
+            VStack(alignment: .leading, spacing: 0) {
+                legend("Color").padding(.bottom, 4)
                 StyleRow(label: "Document color", isOpen: open == "sheet", toggle: { toggle("sheet") }) {
                     ColorDot { sheetColor }
                 } content: {

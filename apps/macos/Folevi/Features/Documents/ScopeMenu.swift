@@ -99,7 +99,7 @@ struct ScopeMenuButton: View {
         .onHover { hover = $0 }
         .accessibilityLabel(Text("\(app.workspace?.name ?? String(localized: "Personal")): Personal, workspaces and account"))
         .accessibilityIdentifier("sidebar.scope")
-        .foleviPopover(isPresented: $open, arrowEdge: .top) {
+        .foleviPopover(isPresented: $open, arrowEdge: .top, gap: 8) {
             FoleviMenuList(entries: entries(), width: 256) { open = false }
                 .task { await app.refreshWorkspaces() }
         }

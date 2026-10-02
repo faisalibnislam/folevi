@@ -36,7 +36,7 @@ struct NotificationsBell: View {
         .help(Text("Notifications"))
         .accessibilityLabel(Text(unread == 0 ? String(localized: "Notifications") : String(localized: "Notifications, \(unread) unread")))
         .accessibilityIdentifier("sidebar.notifications")
-        .foleviPopover(isPresented: $open, arrowEdge: .bottom) {
+        .foleviPopover(isPresented: $open, arrowEdge: .bottom, gap: 8, radius: 12) {
             NotificationsPanel(unread: unread, openNote: openNote, close: { open = false })
                 .environment(app)
         }
@@ -91,7 +91,7 @@ private struct NotificationsPanel: View {
                 } label: {
                     Label("Mark all read", systemImage: "checkmark").font(.ui(12, .medium))
                 }
-                .buttonStyle(.folevi(.quiet, .small))
+                .buttonStyle(.folevi(.quiet, .small, horizontalPadding: 8, height: 28)) // h-7 px-2
                 .disabled(unread == 0)
                 IconButton(systemImage: "gearshape", label: "Notification settings", size: 28) {
                     close()

@@ -188,24 +188,17 @@ struct NoteMenuButton<Items: View>: View {
     @ViewBuilder var items: () -> Items
 
     var body: some View {
-        Menu {
-            items()
-        } label: {
+        FoleviViewMenu(label: String(localized: "Actions for \(title)"), items: items) {
             Image(systemName: "ellipsis")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(FoleviColor.inkMuted)
                 .frame(width: 32, height: 32)
                 .contentShape(Rectangle())
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
         .fixedSize()
         .background {
             if raised { Color.clear.foleviSurface(.color(FoleviColor.surfaceRaised), shape: .rounded(6), shadow: FoleviShadow.control) }
         }
-        .help(Text("Actions for \(title)"))
-        .accessibilityLabel(Text("Actions for \(title)"))
     }
 }
 

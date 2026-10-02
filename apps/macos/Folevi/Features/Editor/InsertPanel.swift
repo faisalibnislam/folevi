@@ -62,6 +62,7 @@ struct InsertInspector: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Drag and drop any item to the document")
                 .font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted)
+                .uiLineHeight(12.5 * 1.55, size: 12.5)
                 .padding(.horizontal, 4).padding(.bottom, 8)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").font(.system(size: 12.5, weight: .medium)).foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
@@ -118,11 +119,13 @@ struct InsertInspector: View {
         VStack(alignment: .leading, spacing: 8) {
             if let title {
                 Text(title).font(.ui(13.5, .semibold)).foregroundStyle(FoleviColor.heading).padding(.horizontal, 4)
+                    .uiLineHeight(13.5 * 1.55, size: 13.5, weight: .semibold)
                     .accessibilityAddTraits(.isHeader)
             }
             content()
         }
-        .padding(.top, title == nil ? 12 : 20)
+        // mt-5 (its `first:mt-3` never applies: the hint and search come first).
+        .padding(.top, 20)
     }
 
     private func list(_ items: [Item]) -> some View {

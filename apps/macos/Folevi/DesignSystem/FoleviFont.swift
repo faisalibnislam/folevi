@@ -221,5 +221,6 @@ extension View {
             .textCase(.uppercase)
             .tracking(FoleviTracking.caps * 11)
             .foregroundStyle(color)
+            .uiLineHeight(11 * 1.55, size: 11, weight: .semibold) // the body's 1.55 line height, as on the web
     }
 }

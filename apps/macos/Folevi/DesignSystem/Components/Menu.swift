@@ -126,7 +126,8 @@ private struct FoleviMenuRow: View {
                     EmptyView()
                 }
                 if let description = item.description {
-                    VStack(alignment: .leading, spacing: 1) {
+                    // leading-tight: both lines fit the 32pt row, as on the web.
+                    VStack(alignment: .leading, spacing: 0) {
                         Text(item.title).lineLimit(1)
                         Text(description).font(.ui(11.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
                     }
@@ -144,7 +145,6 @@ private struct FoleviMenuRow: View {
             .font(.ui(13.5))
             .foregroundStyle(item.danger ? FoleviColor.destructive : highlighted ? FoleviColor.heading : FoleviColor.ink)
             .padding(.horizontal, 10)
-            .padding(.vertical, item.description == nil ? 0 : 5)
             .frame(minHeight: 32)
             .background(highlighted ? FoleviGlass.hover : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .contentShape(Rectangle())
@@ -163,6 +163,8 @@ private struct FoleviMenuRow: View {
 struct FoleviMenuButton<Trigger: View>: View {
     var label: String
     var arrowEdge: Edge = .bottom
+    /// The web's MenuButton lines its menu up with the trigger's right edge unless told otherwise.
+    var align: FoleviPopoverAlign = .end
     var menuWidth: CGFloat?
     var entries: () -> [FoleviMenuEntry]
     @ViewBuilder var trigger: (_ open: Bool) -> Trigger
@@ -173,7 +175,7 @@ struct FoleviMenuButton<Trigger: View>: View {
             .buttonStyle(.chrome)
             .help(Text(label))
             .accessibilityLabel(Text(label))
-            .foleviPopover(isPresented: $open, arrowEdge: arrowEdge) {
+            .foleviPopover(isPresented: $open, arrowEdge: arrowEdge, align: align, gap: 8) {
                 FoleviMenuList(entries: entries(), width: menuWidth) { open = false }
             }
     }
@@ -205,5 +207,68 @@ struct FoleviMenuTrigger: View {
             .background(open || hover ? FoleviColor.accentSoft : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .contentShape(Rectangle())
             .onHover { hover = $0 }
+    }
+}
+
+/// A menu of plain SwiftUI buttons and dividers (the note and folder menus, shared with right-click) drawn as
+/// the web's menu: a trigger that opens them in the window's popover layer as 32pt rows on the glass pop.
+struct FoleviViewMenu<Items: View, Trigger: View>: View {
+    var label: String
+    var align: FoleviPopoverAlign = .end
+    @ViewBuilder var items: () -> Items
+    @ViewBuilder var trigger: () -> Trigger
+    @State private var open = false
+
+    var body: some View {
+        Button { open.toggle() } label: { trigger() }
+            .buttonStyle(.chrome)
+            .help(Text(label))
+            .accessibilityLabel(Text(label))
+            .foleviPopover(isPresented: $open, align: align, gap: 8) {
+                VStack(alignment: .leading, spacing: 0) { items() }
+                    .buttonStyle(FoleviMenuRowStyle())
+                    .labelStyle(FoleviMenuLabelStyle())
+                    .padding(6)
+                    .frame(minWidth: 224, alignment: .leading) // min-w-56
+                    // Any row closes the menu as it runs, as on the web.
+                    .simultaneousGesture(TapGesture().onEnded { open = false })
+            }
+    }
+}
+
+/// A menu row (`.ui-menu-item`): 32pt, 13.5pt text, the glass hover; destructive rows in the danger colour.
+struct FoleviMenuRowStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { Row(configuration: configuration) }
+
+    private struct Row: View {
+        let configuration: ButtonStyle.Configuration
+        @State private var hovering = false
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .font(.ui(13.5))
+                .foregroundStyle(configuration.role == .destructive ? FoleviColor.destructive : hovering ? FoleviColor.heading : FoleviColor.ink)
+                .lineLimit(1)
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                .background(hovering ? FoleviGlass.hover : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(Rectangle())
+                .opacity(isEnabled ? 1 : 0.4)
+                .onHover { hovering = $0 && isEnabled }
+        }
+    }
+}
+
+/// A menu row's icon (muted, 16pt column) then its title.
+struct FoleviMenuLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 10) {
+            configuration.icon
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(FoleviColor.inkMuted)
+                .frame(width: 16)
+            configuration.title
+        }
     }
 }

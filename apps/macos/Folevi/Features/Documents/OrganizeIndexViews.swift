@@ -73,23 +73,18 @@ struct FolderCardItem: View {
             .accessibilityAction(.default, open)
             .overlay {
                 GeometryReader { geo in
-                    Menu {
+                    FoleviViewMenu(label: String(localized: "Folder options for \(folder.name)")) {
                         FolderMenuItems(folder: folder.info, openDocument: openDocument, present: present)
-                    } label: {
+                    } trigger: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Color(red: 0.09, green: 0.09, blue: 0.1).opacity(0.75))
                             .frame(width: 32, height: 32)
                             .contentShape(Rectangle())
                     }
-                    .menuStyle(.button)
-                    .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
                     .fixedSize()
                     .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
-                    .help(Text("Folder options for \(folder.name)"))
-                    .accessibilityLabel(Text("Folder options for \(folder.name)"))
                     .position(x: geo.size.width / 2, y: geo.size.height * 0.7)
                     .opacity(hovering ? 1 : 0)
                     .allowsHitTesting(hovering)

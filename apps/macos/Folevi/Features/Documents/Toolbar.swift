@@ -69,18 +69,14 @@ struct BreadcrumbBar: View {
                     CrumbPill(crumb: c, isCurrent: idx == shown.count - 1)
                         .layoutPriority(idx == shown.count - 1 ? 2 : 0)
                 case .overflow(let hidden):
-                    Menu {
+                    FoleviViewMenu(label: String(localized: "More locations"), align: .start) {
                         ForEach(hidden) { c in
                             Button(c.title) { c.action?() }
                         }
-                    } label: {
+                    } trigger: {
                         Text("…").font(.ui(13.5, .semibold)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 6)
                     }
-                    .menuStyle(.button)
-                    .buttonStyle(.chrome)
-                    .menuIndicator(.hidden)
                     .fixedSize()
-                    .accessibilityLabel(Text("More locations"))
                 }
             }
         }

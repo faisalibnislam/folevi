@@ -14,6 +14,14 @@ extension NSAttributedString.Key {
     /// An underline drawn at a set thickness and offset (`FoleviLayoutManager`), as editor.css's
     /// `text-decoration-thickness` / `text-underline-offset`. A visual attribute, derived like the colours.
     static let foleviUnderlineOffset = NSAttributedString.Key("folevi.underlineOffset")
+    /// Inline code's pill (`FoleviLayoutManager`): its fill, and the faint inner ring around it.
+    static let foleviCodeBox = NSAttributedString.Key("folevi.codeBox")
+    static let foleviCodeRing = NSAttributedString.Key("folevi.codeRing")
+}
+
+enum InlineCode {
+    /// editor.css `.fb-inline-code` padding: 0.4em of the code's own size, about 6pt.
+    static let sidePadding: CGFloat = 6
 }
 
 /// Visual style of a text-bearing block.
@@ -85,7 +93,9 @@ enum InlineAttributedString {
                 // editor.css `.fb-inline-code`: 0.86em mono on the code background, in ember ink (on a note
                 // style palette: the style's accent, on the accent 6% into the page).
                 font = FoleviFont.nsFont(.mono, size: style.font.pointSize * 0.86)
-                visual[.backgroundColor] = pal.map { NSColor($0.codeBackground) } ?? NSColor.foleviCodeBg
+                // A rounded pill with 6pt sides and a faint heading ring (drawn by FoleviLayoutManager).
+                visual[.foleviCodeBox] = pal.map { NSColor($0.codeBackground) } ?? NSColor.foleviCodeBg
+                visual[.foleviCodeRing] = (pal == nil ? NSColor.foleviHeading : style.color).withAlphaComponent(0.08)
                 visual[.foregroundColor] = pal.map { NSColor($0.accent) } ?? NSColor(FoleviColor.emberInk)
             }
             let bold = attrs[.foleviBold] != nil, italic = attrs[.foleviItalic] != nil
@@ -145,10 +155,28 @@ enum InlineAttributedString {
             if visual[.foregroundColor] == nil { visual[.foregroundColor] = color }
             if visual[.font] == nil { visual[.font] = font }
             // Remove stale visual attributes, keep Folevi marks.
-            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .foleviUnderlineOffset, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern] {
+            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .foleviUnderlineOffset, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern, .foleviCodeBox, .foleviCodeRing] {
                 text.removeAttribute(key, range: r)
             }
             text.addAttributes(visual, range: r)
+        }
+        // Inline code's side padding (padding: 0.12em 0.4em in CSS takes room in the line): extra advance on its
+        // last character and on the character before it. Runs are looked up whole, so restyling part of a
+        // run (or the character next to it) keeps the room.
+        let all = NSRange(location: 0, length: text.length)
+        let lo = max(0, range.location - 1), hi = min(text.length, NSMaxRange(range) + 1)
+        var i = lo
+        while i < hi {
+            var run = NSRange()
+            let isCode = text.attribute(.foleviCode, at: i, longestEffectiveRange: &run, in: all) != nil
+            if isCode {
+                text.addAttribute(.kern, value: InlineCode.sidePadding, range: NSRange(location: NSMaxRange(run) - 1, length: 1))
+                let before = run.location - 1
+                if before >= 0, (text.string as NSString).character(at: before) != 10 {
+                    text.addAttribute(.kern, value: style.kern + InlineCode.sidePadding, range: NSRange(location: before, length: 1))
+                }
+            }
+            i = max(i + 1, NSMaxRange(run))
         }
         // The page link's arrow: ember ink at 0.85em.
         text.enumerateAttribute(.foleviInline, in: range, options: []) { v, r, _ in

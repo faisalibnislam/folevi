@@ -7,6 +7,9 @@ struct InspectorView: View {
     @Bindable var nav: NavigationModel
     var openDocument: (String, Bool) -> Void
     @State private var lastTab: InspectorTab = .format
+    /// The tool's own height: the panel fits it, up to its maximum (the web's max-h panel).
+    @State private var contentHeight: CGFloat = 0
+    @Environment(\.inspectorMaxHeight) private var panelMax
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -27,7 +30,10 @@ struct InspectorView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
+            // As tall as the tool, up to the panel's limit less the 46pt header; then it scrolls.
+            .frame(height: max(80, min(contentHeight > 0 ? contentHeight : panelMax, panelMax - 46)))
             .scrollIndicators(.automatic)
         }
         .onChange(of: nav.inspectorTab, initial: true) { _, tab in if tab != .comments { lastTab = tab } }
@@ -95,6 +101,11 @@ private struct BackToTab: View {
     }
 }
 
+extension EnvironmentValues {
+    /// The floating panel's height limit (FloatingInspector), for the tool inside to size against.
+    @Entry var inspectorMaxHeight: CGFloat = 640
+}
+
 /// The floating panel's frame: 400pt wide (less in a narrow window), up to 640pt tall, glass.
 struct FloatingInspector<Content: View>: View {
     var availableHeight: CGFloat
@@ -103,7 +114,8 @@ struct FloatingInspector<Content: View>: View {
     var body: some View {
         content
             .frame(width: 400)
-            .frame(maxHeight: max(200, min(640, availableHeight - 112)))
+            // max-h-[min(640px,calc(100%-112px))]: the panel fits its tool up to this height.
+            .environment(\.inspectorMaxHeight, max(200, min(640, availableHeight - 112)))
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .foleviGlassPop(radius: 14)
     }
@@ -233,10 +245,10 @@ private struct PageInfoView: View {
                 tags(detail)
                 activity
             }
-            .font(.ui(14))
+            .font(.ui(13)) // text-sm
             .task(id: TaskKey(id: model.documentId, revision: app.documentsRevision)) { await load() }
         } else {
-            Text("Details appear once the document has synced.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+            Text("Details appear once the document has synced.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
         }
     }
 
@@ -272,6 +284,7 @@ private struct PageInfoView: View {
             Text(value).foregroundStyle(FoleviColor.ink).lineLimit(1).truncationMode(.tail)
                 .help(help.map { Text($0) } ?? Text(value))
         }
+        .uiLineHeight(13 * 1.4286, size: 13)
         .accessibilityElement(children: .combine)
     }
 
@@ -289,9 +302,9 @@ private struct PageInfoView: View {
     }
 
     private func stat(_ label: LocalizedStringKey, _ value: String?, help: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(label).font(.ui(11)).foregroundStyle(FoleviColor.inkMuted)
-            Text(value ?? "-").font(.ui(15, .semibold)).monospacedDigit().foregroundStyle(FoleviColor.heading).lineLimit(1).minimumScaleFactor(0.7)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(label).font(.ui(11)).foregroundStyle(FoleviColor.inkMuted).uiLineHeight(16, size: 11)
+            Text(value ?? "-").font(.ui(15, .semibold)).uiLineHeight(15 * 1.4286, size: 15, weight: .semibold).monospacedDigit().foregroundStyle(FoleviColor.heading).lineLimit(1).minimumScaleFactor(0.7)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -310,7 +323,7 @@ private struct PageInfoView: View {
             FoleviSelect(selection: Binding(get: { detail.folder?.id ?? "" }, set: { moveToFolder($0.isEmpty ? nil : $0) }),
                          options: [.init(value: "", title: String(localized: "Drafts"))]
                             + folders.map { .init(value: $0.id, title: ($0.parentFolderId != nil ? "- " : "") + $0.name) },
-                         accessibilityLabel: String(localized: "Folder"))
+                         accessibilityLabel: String(localized: "Folder"), fillsWidth: true, height: 36)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .disabled(disabled)
         }
@@ -395,7 +408,7 @@ private struct PageInfoView: View {
                 HStack(spacing: 6) {
                     TextField("Add a tag", text: $newTag)
                         .textFieldStyle(.plain)
-                        .font(.ui(14))
+                        .font(.ui(13))
                         .focused($tagFocused)
                         .onSubmit { addTag(current) }
                         .padding(.horizontal, 12)
@@ -404,6 +417,8 @@ private struct PageInfoView: View {
                         .accessibilityLabel(Text("Add a tag"))
                     Button("Add") { addTag(current) }.buttonStyle(.page(.secondary, .sm))
                 }
+                // The web's empty tag row still takes its 8pt gap before the form.
+                .padding(.top, current.isEmpty ? 8 : 0)
                 if tagFocused, !suggestions.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(suggestions.prefix(6)) { t in

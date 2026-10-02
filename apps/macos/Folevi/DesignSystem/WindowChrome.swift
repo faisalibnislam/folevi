@@ -89,14 +89,12 @@ extension View {
 }
 
 extension View {
-    /// A popover drawn as a solid card. The system popover is see-through glass, and the page behind made
-    /// panels like Notifications, Share and Sync hard to read.
-    func foleviPopover<Content: View>(isPresented: Binding<Bool>, arrowEdge: Edge? = nil,
+    /// A popover as the web draws one (Popover.swift): in the window, edge-aligned to its button, `gap` points
+    /// below it (above for `arrowEdge: .top`), on the glass pop. Where the window has no popover layer it's a
+    /// system popover drawn as a solid card (the system's see-through glass made panels hard to read).
+    func foleviPopover<Content: View>(isPresented: Binding<Bool>, arrowEdge: Edge? = nil, align: FoleviPopoverAlign = .start,
+                                      gap: CGFloat = 6, radius: CGFloat = 10,
                                       @ViewBuilder content: @escaping () -> Content) -> some View {
-        popover(isPresented: isPresented, arrowEdge: arrowEdge) {
-            content()
-                .background(FoleviColor.surface)
-                .presentationBackground(FoleviColor.surface)
-        }
+        modifier(FoleviPopoverModifier(isPresented: isPresented, arrowEdge: arrowEdge, align: align, gap: gap, radius: radius, popover: content))
     }
 }

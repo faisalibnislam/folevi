@@ -86,9 +86,11 @@ struct FoleviButtonStyle: ButtonStyle {
     var fullWidth = false
     /// Overrides the size's side padding (the web's `px-3` links styled as buttons).
     var horizontalPadding: CGFloat?
+    /// Overrides the size's height (the web's `h-7` quiet buttons).
+    var height: CGFloat?
 
     func makeBody(configuration: Configuration) -> some View {
-        FoleviButtonBody(configuration: configuration, kind: kind, size: size, fullWidth: fullWidth, horizontalPadding: horizontalPadding)
+        FoleviButtonBody(configuration: configuration, kind: kind, size: size, fullWidth: fullWidth, horizontalPadding: horizontalPadding, height: height)
     }
 }
 
@@ -98,6 +100,7 @@ private struct FoleviButtonBody: View {
     let size: FoleviButtonSize
     let fullWidth: Bool
     var horizontalPadding: CGFloat?
+    var height: CGFloat?
     @State private var hovering = false
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -110,7 +113,7 @@ private struct FoleviButtonBody: View {
             .lineLimit(1)
             .foregroundStyle(foreground)
             .padding(.horizontal, horizontalPadding ?? size.padding)
-            .frame(minHeight: size.height)
+            .frame(minHeight: height ?? size.height)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background { background(pressed: pressed) }
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -160,8 +163,8 @@ extension ButtonStyle where Self == FoleviButtonStyle {
     static var foleviSecondary: FoleviButtonStyle { FoleviButtonStyle(kind: .secondary) }
     static var foleviGhost: FoleviButtonStyle { FoleviButtonStyle(kind: .ghost) }
     static func folevi(_ kind: FoleviButtonKind, _ size: FoleviButtonSize = .medium, fullWidth: Bool = false,
-                       horizontalPadding: CGFloat? = nil) -> FoleviButtonStyle {
-        FoleviButtonStyle(kind: kind, size: size, fullWidth: fullWidth, horizontalPadding: horizontalPadding)
+                       horizontalPadding: CGFloat? = nil, height: CGFloat? = nil) -> FoleviButtonStyle {
+        FoleviButtonStyle(kind: kind, size: size, fullWidth: fullWidth, horizontalPadding: horizontalPadding, height: height)
     }
 }
 

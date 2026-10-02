@@ -171,6 +171,7 @@
 		A47AB0C4407A00AA9DF82A3B /* NoteComments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9643824A736735CB8DB7B694 /* NoteComments.swift */; };
 		A53F80BB7DD2403B4A1A2885 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B34FF3C22CBF8EC3D287D581 /* EditorModel.swift */; };
 		A6AD85034DBEDB281B29C7D6 /* PageBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE50B893EA237C548FADA9B9 /* PageBackdrop.swift */; };
+		A781B1051A0D6D9D1B4DD803 /* Popover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 284E4B5F855B369382B78719 /* Popover.swift */; };
 		A938381B822B8D6B6FCA07A9 /* FlowchartOps.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61ABAB7147EC5D4FE329905 /* FlowchartOps.swift */; };
 		A9AE07A320F88F27B4BC351C /* SelectionBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4EC94B50C04C277835EFE76 /* SelectionBubble.swift */; };
 		A9FB12148055F3582A363098 /* CollaborationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558B2E6789A4B1C291C50079 /* CollaborationRepository.swift */; };
@@ -309,6 +310,7 @@
 		256B0D161BD7996EE7336DC7 /* ImportBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportBundle.swift; sourceTree = "<group>"; };
 		267FDB9FA33CE6745D1F8769 /* Covers */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Covers; path = Folevi/Resources/Covers; sourceTree = SOURCE_ROOT; };
 		27DDB8CDD86C1D7C0E50769C /* NonTextBlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonTextBlocks.swift; sourceTree = "<group>"; };
+		284E4B5F855B369382B78719 /* Popover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Popover.swift; sourceTree = "<group>"; };
 		2914EA9B58C81DFEA4B4F458 /* AuthCallError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthCallError.swift; sourceTree = "<group>"; };
 		29B1E829D3BC461A2BFA76C2 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		2ACBAB1371653FF027D7F2FD /* MarkdownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTests.swift; sourceTree = "<group>"; };
@@ -643,6 +645,7 @@
 				BCDC3E1DEB42D59731DDD1C3 /* Folders.swift */,
 				C56CB70FC209619CF7304013 /* FoleviFont.swift */,
 				DA763499A687D1E479FDAEC4 /* FoleviMark.swift */,
+				284E4B5F855B369382B78719 /* Popover.swift */,
 				160F2F7A5055D14E027F9A6D /* SheetPalette.swift */,
 				002A90A0994B97E70A8FE249 /* Surfaces.swift */,
 				73B826C727C7B595B97B6567 /* Typography.swift */,
@@ -1323,6 +1326,7 @@
 				00E832A3E5866770FA235780 /* PasteHTML.swift in Sources */,
 				EC3D000229B9CF8586B252CE /* PersonalSettings.swift in Sources */,
 				AC25100753D75355C41ADA69 /* PlanSettings.swift in Sources */,
+				A781B1051A0D6D9D1B4DD803 /* Popover.swift in Sources */,
 				B69A5C655AAE582995E54060 /* QuickAddTask.swift in Sources */,
 				D954C4A00D2B2151A16B1432 /* Rank.swift in Sources */,
 				8E9E7251154AF98B5ECB2103 /* Repositories.swift in Sources */,

@@ -121,7 +121,7 @@ private struct PageDockExtras: View {
                 DockIconButton(label: String(localized: "Document actions"), isOn: page.moreOpen) {
                     Image(systemName: "ellipsis").font(.system(size: 14, weight: .semibold))
                 } action: { page.moreOpen.toggle() }
-                .foleviPopover(isPresented: Bindable(page).moreOpen, arrowEdge: .top) {
+                .foleviPopover(isPresented: Bindable(page).moreOpen, arrowEdge: .top, align: .end, gap: 8) {
                     PageMenuList(entries: PageActions.entries(editor: editor, nav: nav, app: app)) { page.moreOpen = false }
                         .environment(app)
                 }

@@ -106,39 +106,18 @@ struct CollabMenuButton: View {
     }
 }
 
-/// A custom "select": the current choice and a chevron; the choices in a popover with a check.
+/// A choice from a short list: the web uses its Select here, so this is FoleviSelect (`.ui-input`, a 6pt radius,
+/// 13pt label and the 14pt chevron).
 struct CollabChoiceButton<Value: Hashable>: View {
     var options: [(value: Value, title: String)]
     @Binding var selection: Value
-    var accessibilityLabel: LocalizedStringKey
+    var accessibilityLabel: String
     var width: CGFloat? = nil
     var height: CGFloat = 32
-    @State private var open = false
-    @State private var hover = false
 
     var body: some View {
-        Button { open.toggle() } label: {
-            HStack(spacing: 6) {
-                Text(options.first { $0.value == selection }?.title ?? "").font(.ui(12.5, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(FoleviColor.inkFaint)
-            }
-            .padding(.horizontal, 11)
-            .frame(width: width, height: height)
-            .foleviSurface(.color(hover || open ? FoleviColor.surfaceRaised : FoleviColor.surface), shape: .capsule,
-                           shadow: FoleviDepth.well + [FoleviShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: FoleviColor.line, inset: false)])
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .onHover { hover = $0 }
-        .fixedSize(horizontal: width == nil, vertical: false)
-        .accessibilityLabel(Text(accessibilityLabel))
-        .accessibilityValue(Text(options.first { $0.value == selection }?.title ?? ""))
-        .foleviPopover(isPresented: $open, arrowEdge: .bottom) {
-            CollabMenuList(items: options.map { o in
-                CollabMenuItem(title: o.title, checked: o.value == selection) { selection = o.value }
-            }, width: max(180, width ?? 0)) { open = false }
-        }
+        FoleviSelect(selection: $selection, options: options.map { .init(value: $0.value, title: $0.title) },
+                     accessibilityLabel: accessibilityLabel, width: width, height: height)
     }
 }
 

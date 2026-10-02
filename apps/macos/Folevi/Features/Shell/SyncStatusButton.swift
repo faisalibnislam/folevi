@@ -58,7 +58,7 @@ struct SyncStatusButton: View {
         .accessibilityLabel(Text(accessibilityText))
         .accessibilityValue(Text(SyncStatusStyle.label(status)))
         .accessibilityIdentifier("syncStatusPill")
-        .foleviPopover(isPresented: $open, arrowEdge: .bottom) {
+        .foleviPopover(isPresented: $open, arrowEdge: .bottom, gap: 8, radius: 12) {
             SyncDetailsPanel(documentId: documentId) { id in
                 open = false
                 openDocument?(id)

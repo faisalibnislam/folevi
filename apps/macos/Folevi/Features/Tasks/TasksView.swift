@@ -30,8 +30,37 @@ enum TaskStore {
         await loadAll(app: app).filter { !$0.canceled }
     }
 
+    /// Each task's own last change from the server's task index (the web orders tasks by it; local blocks
+    /// carry no time), refreshed at most every 30 seconds online and kept for offline use.
+    private static var taskTimes: [String: Double] = [:]
+    private static var taskTimesScope: String?
+    private static var taskTimesFetched: Date?
+
+    private static func refreshTaskTimes(app: AppModel) async {
+        guard let session = app.session else { return }
+        let scopeKey = session.scope.key
+        let key = "tasks.updatedAt.\(scopeKey)"
+        if taskTimesScope != scopeKey {
+            taskTimes = (try? await session.store.codable([String: Double].self, forKey: key)) ?? [:]
+            taskTimesScope = scopeKey
+            taskTimesFetched = nil
+        }
+        guard app.sync.isOnline, taskTimesFetched.map({ Date().timeIntervalSince($0) > 30 }) ?? true else { return }
+        taskTimesFetched = Date()
+        let today = TaskLogic.localDate()
+        guard let open = try? await session.tasks.list(scope: session.scope, view: "all", today: today),
+              let closed = try? await session.tasks.list(scope: session.scope, view: "completed", today: today) else { return }
+        var times: [String: Double] = [:]
+        // Ties (tasks changed at the same moment) keep the server's own order, as the web's list does: a
+        // thousandth of a millisecond per place, which never reorders different times.
+        for (i, t) in (open + closed).enumerated() { times[t.blockId] = t.updatedAt - Double(i) * 0.001 }
+        taskTimes = times
+        try? await session.store.setCodable(times, forKey: key)
+    }
+
     /// Every task from local blocks, canceled ones too (Tasks' Completed view shows them).
     static func loadAll(app: AppModel) async -> [LocalTask] {
+        await refreshTaskTimes(app: app)
         guard let engine = app.session?.engine else { return [] }
         let docs = Dictionary(app.documents.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         return await engine.todoBlocks().compactMap { entry -> LocalTask? in
@@ -42,7 +71,7 @@ enum TaskStore {
             return LocalTask(blockId: entry.block.id, documentId: entry.documentId, documentTitle: doc.title, documentIcon: doc.icon,
                              title: String(RichText.plainText(entry.block.inlineText).prefix(500)), checked: p.checked, canceled: p.canceled == true,
                              dueDate: p.dueDate, dueTime: p.dueTime, priority: p.priority ?? .none, assigneeId: p.assigneeId,
-                             completedAt: p.completedAt, updatedAt: doc.updatedAt, wire: entry.block)
+                             completedAt: p.completedAt, updatedAt: taskTimes[entry.block.id] ?? doc.updatedAt, wire: entry.block)
         }
     }
 

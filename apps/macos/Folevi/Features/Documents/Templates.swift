@@ -47,10 +47,16 @@ struct BuiltInTemplatesSection: View {
                 Text("Built-in templates").font(.ui(12, .semibold)).textCase(.uppercase).tracking(0.06 * 12)
                     .uiLineHeight(12 * 1.55, size: 12, weight: .semibold)
                     .foregroundStyle(FoleviColor.inkFaint).accessibilityAddTraits(.isHeader)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: columns), spacing: 12) {
-                    ForEach(templates) { t in
-                        BuiltInTemplateCard(template: t) {
-                            Templates.use(t.key, title: t.name, app: app, open: { openDocument($0, false) })
+                // A CSS grid: every card in a row is as tall as the row's tallest.
+                Grid(horizontalSpacing: 12, verticalSpacing: 12) {
+                    ForEach(Array(stride(from: 0, to: templates.count, by: columns)), id: \.self) { start in
+                        GridRow(alignment: .top) {
+                            ForEach(templates[start..<min(start + columns, templates.count)]) { t in
+                                BuiltInTemplateCard(template: t) {
+                                    Templates.use(t.key, title: t.name, app: app, open: { openDocument($0, false) })
+                                }
+                                .frame(maxHeight: .infinity, alignment: .top)
+                            }
                         }
                     }
                 }
@@ -98,7 +104,7 @@ private struct BuiltInTemplateCard: View {
                 Spacer(minLength: 0)
             }
             .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.clear.foleviSurface(.color(FoleviColor.surface), shape: .rounded(8), shadow: hovering ? FoleviShadow.pop : FoleviShadow.card))
             .offset(y: hovering && !reduceMotion ? -1 : 0)
             .animation(reduceMotion ? nil : .timingCurve(0.2, 0.7, 0.2, 1, duration: FoleviMotion.base), value: hovering)

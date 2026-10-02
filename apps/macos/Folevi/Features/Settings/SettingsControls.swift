@@ -73,12 +73,14 @@ struct LabeledField<Field: View>: View {
         VStack(alignment: .leading, spacing: large ? 6 : 4) {
             Text(label)
                 .font(.ui(13, .medium))
+                .uiLineHeight(13 * 1.4286, size: 13, weight: .medium) // text-sm label
                 .foregroundStyle(large ? FoleviColor.ink : FoleviColor.ink)
                 .accessibilityHidden(true)
             field
             if let hint {
                 Text(hint)
                     .font(.ui(12))
+                    .uiLineHeight(16, size: 12) // text-xs
                     .foregroundStyle(FoleviColor.inkMuted)
                     .padding(.horizontal, large ? 4 : 0)
                     .fixedSize(horizontal: false, vertical: true)

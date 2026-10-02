@@ -208,7 +208,7 @@ struct AudioRecorderSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .font(.ui(14))
+        .font(.ui(13))
         .padding(16)
         .frame(width: 320)
         .background(FoleviColor.surface)
@@ -237,7 +237,7 @@ struct AudioRecorderSheet: View {
                 .background(Circle().fill(recorder.phase == .recording ? recordingRed.opacity(0.16) : FoleviColor.surfaceSunken))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
-                Text(title).font(.ui(14, .medium)).foregroundStyle(FoleviColor.heading)
+                Text(title).font(.ui(13, .medium)).foregroundStyle(FoleviColor.heading)
                 if recorder.isLive || recorder.phase == .saving {
                     (Text(formatDuration(recorder.elapsed))
                         + Text(" / \(formatDuration(AudioProps.maxSeconds))").foregroundColor(FoleviColor.inkFaint))
@@ -335,7 +335,7 @@ struct AudioBlockView: View {
             playButton
             VStack(alignment: .leading, spacing: 0) {
                 Text(props.name.isEmpty ? String(localized: "Audio recording") : props.name)
-                    .font(.ui(14, .medium))
+                    .font(.ui(13, .medium))
                     .foregroundStyle(FoleviColor.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)

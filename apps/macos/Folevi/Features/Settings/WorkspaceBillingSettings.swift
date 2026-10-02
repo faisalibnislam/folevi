@@ -25,7 +25,7 @@ struct WorkspaceBillingSettings: View {
                 } else if !app.sync.isOnline {
                     OfflineNote(text: String(localized: "The workspace plan is shown when you're online."))
                 } else {
-                    Text("Loading the workspace plan…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                    Text("Loading the workspace plan…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                 }
             }
         }
@@ -121,7 +121,7 @@ struct WorkspaceBillingSettings: View {
 
                 if b.overLimit {
                     Text("\(Text("Over the storage limit.").fontWeight(.semibold)) \(Text("Everything already stored stays available, but new uploads are paused until space is freed or the plan is upgraded."))")
-                        .font(.ui(14))
+                        .font(.ui(13))
                         .foregroundStyle(FoleviColor.destructive)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -168,7 +168,7 @@ struct WorkspaceBillingSettings: View {
     }
 
     private func muted(_ text: String) -> some View {
-        Text(text).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: Actions

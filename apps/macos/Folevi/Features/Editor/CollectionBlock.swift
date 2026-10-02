@@ -25,7 +25,7 @@ struct CollectionBlockView: View {
                 content(payload, view)
             } else if unavailable || payload != nil {
                 Text(app.sync.isOnline ? "This collection is unavailable." : "Connect to the internet to load this collection.")
-                    .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                    .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(FoleviColor.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
@@ -172,7 +172,7 @@ struct CollectionBlockView: View {
     private func header(_ data: CollectionSnapshot, _ view: CollectionSnapshot.View) -> some View {
         HStack(spacing: 4) {
             if canEdit {
-                InlineTextField(value: data.name, placeholder: "", font: .ui(14, .semibold), maxLength: 80, color: FoleviColor.heading) { name in
+                InlineTextField(value: data.name, placeholder: "", font: .ui(13, .semibold), maxLength: 80, color: FoleviColor.heading) { name in
                     let next = name.isEmpty ? String(localized: "Collection") : name
                     optimistic { $0.name = next }
                     editor.run("collections:rename", ["name": .string(next)])
@@ -181,7 +181,7 @@ struct CollectionBlockView: View {
                 .padding(.trailing, 8)
                 .accessibilityLabel(Text("Collection name"))
             } else {
-                Text(data.name).font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).padding(.trailing, 8)
+                Text(data.name).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading).padding(.trailing, 8)
                     .accessibilityAddTraits(.isHeader)
             }
             FlowLayout(spacing: 4) {
@@ -307,7 +307,7 @@ private struct CollectionTable: View {
                 if rows.isEmpty {
                     GridRow {
                         Text(data.snapshot.rows.isEmpty ? "No rows yet." : "No rows match this view.")
-                            .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                            .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .frame(maxWidth: .infinity)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 24)
@@ -352,7 +352,7 @@ private struct CollectionTable: View {
             HStack(spacing: 6) {
                 Image(systemName: "doc.text").font(.system(size: 12.5)).foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
                 if canEdit {
-                    InlineTextField(value: row.title, placeholder: String(localized: "Untitled"), font: .ui(14, .medium), maxLength: 300) {
+                    InlineTextField(value: row.title, placeholder: String(localized: "Untitled"), font: .ui(13, .medium), maxLength: 300) {
                         actions.renameRow(row.id, $0)
                     }
                     .frame(maxWidth: .infinity)
@@ -361,7 +361,7 @@ private struct CollectionTable: View {
                         openDocument(row.documentId, NSEvent.modifierFlags.contains(.option))
                     }
                 } else {
-                    UnderlineOnHoverButton(title: title, font: .ui(14, .medium), color: FoleviColor.ink) {
+                    UnderlineOnHoverButton(title: title, font: .ui(13, .medium), color: FoleviColor.ink) {
                         openDocument(row.documentId, NSEvent.modifierFlags.contains(.option))
                     }
                     Spacer(minLength: 0)
@@ -471,7 +471,7 @@ private struct CollectionBoard: View {
             }
         } else {
             Text("Choose a single-select property to group this board by (View settings).")
-                .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(16)
+                .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(16)
         }
     }
 
@@ -549,7 +549,7 @@ private struct BoardCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            UnderlineOnHoverButton(title: row.title.isEmpty ? String(localized: "Untitled") : row.title, font: .ui(14, .medium), color: FoleviColor.ink) {
+            UnderlineOnHoverButton(title: row.title.isEmpty ? String(localized: "Untitled") : row.title, font: .ui(13, .medium), color: FoleviColor.ink) {
                 openDocument(row.documentId, NSEvent.modifierFlags.contains(.option))
             }
             if !visible.isEmpty {
@@ -574,7 +574,7 @@ private struct BoardCard: View {
                 .padding(.top, 6)
             }
         }
-        .font(.ui(14))
+        .font(.ui(13))
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(FoleviColor.surfaceRaised))
@@ -791,13 +791,13 @@ private struct CollectionCellEditor: View {
 
     var body: some View {
         if !canEdit {
-            CollectionCellDisplay(prop: prop, value: value, people: data.snapshot.people).font(.ui(14))
+            CollectionCellDisplay(prop: prop, value: value, people: data.snapshot.people).font(.ui(13))
         } else {
             switch prop.type {
             case "checkbox":
                 CollectionCheckbox(checked: value?.boolValue == true, label: label) { save(.bool(!(value?.boolValue == true))) }
             case "number":
-                InlineTextField(value: value?.doubleValue.map(JSONValue.formatNumber) ?? "", placeholder: "", font: .ui(14), maxLength: 40, chrome: .none) { text in
+                InlineTextField(value: value?.doubleValue.map(JSONValue.formatNumber) ?? "", placeholder: "", font: .ui(13), maxLength: 40, chrome: .none) { text in
                     if text.isEmpty {
                         if value?.doubleValue != nil { save(nil) }
                     } else if let n = Double(text), n.isFinite, n != value?.doubleValue {
@@ -808,7 +808,7 @@ private struct CollectionCellEditor: View {
             case "date":
                 Button { showDate = true } label: {
                     CollectionCellDisplay(prop: prop, value: value, people: data.snapshot.people)
-                        .font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                 }
@@ -852,7 +852,7 @@ private struct CollectionCellEditor: View {
                 RelationEditor(label: label, scope: data.linkScope, value: value?.arrayValue?.compactMap(\.stringValue) ?? [],
                                openDocument: openDocument) { ids in save(.array(ids.map(JSONValue.string))) }
             default:
-                InlineTextField(value: value?.stringValue ?? "", placeholder: prop.type == "url" ? "https://" : "", font: .ui(14), maxLength: 2000, chrome: .none) { text in
+                InlineTextField(value: value?.stringValue ?? "", placeholder: prop.type == "url" ? "https://" : "", font: .ui(13), maxLength: 2000, chrome: .none) { text in
                     save(text.isEmpty ? nil : .string(text))
                 }
                 .accessibilityLabel(Text(label))

@@ -89,9 +89,9 @@ struct SharePanel: View {
                     if let data {
                         content(data)
                     } else if let failed {
-                        Text(failed).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text(failed).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     } else {
-                        Text("Loading…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("Loading…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     }
                 }
                 .padding(.horizontal, 24)
@@ -105,6 +105,9 @@ struct SharePanel: View {
         .frame(maxHeight: maxHeight)
         .background(FoleviColor.surfaceRaised)
         .presentationBackground(FoleviColor.surfaceRaised)
+        // The sheet grows with its content once sharing has loaded (it kept the "Loading…" height and cut
+        // off Public link).
+        .presentationSizing(.fitted)
         .onExitCommand(perform: dismiss)
         .task { await watch() }
     }
@@ -149,7 +152,7 @@ struct SharePanel: View {
             people(d)
             if d.canManage { publicLinks(d) }
         }
-        .font(.ui(14))
+        .font(.ui(13))
     }
 
     // MARK: Who has access
@@ -162,7 +165,7 @@ struct SharePanel: View {
                     Image(systemName: "lock").font(.system(size: 14)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 2)
                         .accessibilityHidden(true)
                     Text("This page is in a Personal space: only its owner and the people added below can open it.")
-                        .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -192,7 +195,7 @@ struct SharePanel: View {
                     .frame(width: 16)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink)
+                    Text(title).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
                     Text(detail).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
@@ -222,7 +225,7 @@ struct SharePanel: View {
             VStack(spacing: 0) {
                 if d.people.isEmpty {
                     Text(d.youAreGuest ? "It was shared with you through a page above it." : "No one has been added directly.")
-                        .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12).padding(.vertical, 10)
                 }
@@ -239,7 +242,7 @@ struct SharePanel: View {
                     ForEach(Array(d.pendingInvites.enumerated()), id: \.element.id) { i, invite in
                         if i > 0 { FoleviColor.line.frame(height: 1) }
                         HStack(spacing: 12) {
-                            Text(invite.email).font(.ui(14)).foregroundStyle(FoleviColor.ink).lineLimit(1).truncationMode(.tail)
+                            Text(invite.email).font(.ui(13)).foregroundStyle(FoleviColor.ink).lineLimit(1).truncationMode(.tail)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             Text("\(ShareRole.label(invite.role)) · \(invite.expired ? String(localized: "expired") : String(localized: "waiting to accept"))")
                                 .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
@@ -308,7 +311,7 @@ struct SharePanel: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
-                    Text(p.displayName).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                    Text(p.displayName).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
                     if p.isYou { Text("(you)").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted) }
                     if p.guest {
                         Text("Guest").font(.ui(11, .medium)).foregroundStyle(FoleviColor.inkMuted)
@@ -418,7 +421,7 @@ struct SharePanel: View {
                         IconButton(systemImage: "xmark", label: "No expiry", size: 22) { self.expires = nil }
                     } else {
                         Button { expires = Date().addingTimeInterval(7 * 86_400) } label: {
-                            Text("No expiry").font(.ui(14)).foregroundStyle(FoleviColor.inkFaint)
+                            Text("No expiry").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
@@ -465,7 +468,7 @@ struct SharePanel: View {
     }
 
     private func heading(_ text: LocalizedStringKey) -> some View {
-        Text(text).font(.ui(14, .semibold)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+        Text(text).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
     }
 }
 

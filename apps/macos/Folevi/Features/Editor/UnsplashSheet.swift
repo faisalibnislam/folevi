@@ -71,7 +71,7 @@ struct UnsplashSheet: View {
                     .foregroundStyle(FoleviColor.heading)
                     .accessibilityAddTraits(.isHeader)
                 Text("Free photos from Unsplash, credited to the photographer.")
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .foregroundStyle(FoleviColor.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -93,10 +93,10 @@ struct UnsplashSheet: View {
         if state == .unconfigured {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Unsplash isn’t set up for this Folevi server yet")
-                    .font(.ui(14, .medium))
+                    .font(.ui(13, .medium))
                     .foregroundStyle(FoleviColor.heading)
                 Text("An administrator can turn it on by adding an Unsplash access key (UNSPLASH_ACCESS_KEY) to the server’s settings.")
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .foregroundStyle(FoleviColor.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -126,7 +126,7 @@ struct UnsplashSheet: View {
                     .accessibilityHidden(true)
                 TextField("", text: $query, prompt: Text("Search photos").foregroundColor(FoleviColor.inkFaint))
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .foregroundStyle(FoleviColor.ink)
                     .focused($searchFocused)
                     .onSubmit { run(query.trimmingCharacters(in: .whitespacesAndNewlines)) }
@@ -187,7 +187,7 @@ struct UnsplashSheet: View {
 
     private func message(_ text: Text, color: Color) -> some View {
         text
-            .font(.ui(14))
+            .font(.ui(13))
             .foregroundStyle(color)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)

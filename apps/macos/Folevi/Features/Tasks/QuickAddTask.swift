@@ -102,7 +102,7 @@ private struct QuickAddForm: View {
             DocumentPicker(value: effective) { target = .some($0) }
                 .padding(.top, 12)
             if let error {
-                Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
+                Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
                     .accessibilityAddTraits(.updatesFrequently)
             }
             HStack(spacing: 8) {
@@ -119,7 +119,7 @@ private struct QuickAddForm: View {
 
     private func field<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+            Text(label).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             content()
         }
     }
@@ -171,7 +171,7 @@ private struct OptionalDateField: View {
                 DatePicker(label, selection: Binding(get: { v }, set: { value = $0 }), displayedComponents: components)
                     .labelsHidden()
                     .datePickerStyle(.field)
-                    .font(.ui(14))
+                    .font(.ui(13))
                 Button { value = nil } label: {
                     Image(systemName: "xmark").font(.system(size: 9.5, weight: .bold)).foregroundStyle(FoleviColor.inkFaint)
                         .frame(width: 18, height: 18).contentShape(Rectangle())
@@ -182,7 +182,7 @@ private struct OptionalDateField: View {
                 Button {
                     value = components == .date ? Date() : Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())
                 } label: {
-                    Text(placeholder).font(.ui(14)).foregroundStyle(FoleviColor.inkFaint)
+                    Text(placeholder).font(.ui(13)).foregroundStyle(FoleviColor.inkFaint)
                         .frame(minWidth: 80, alignment: .leading)
                         .contentShape(Rectangle())
                 }
@@ -223,7 +223,7 @@ private struct DocumentPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Add to").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+            Text("Add to").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             HStack(spacing: 8) {
                 if let value, !open {
                     HStack(spacing: 4) {
@@ -242,7 +242,7 @@ private struct DocumentPicker: View {
                 }
                 TextField(value != nil ? String(localized: "Search another page…") : String(localized: "Inbox, or search a page…"), text: $query)
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .focused($focused)
                     .padding(.horizontal, 12)
                     .frame(height: 36)

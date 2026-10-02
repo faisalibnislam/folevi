@@ -175,6 +175,7 @@ struct NoteSidebarContent: View {
     private func panelTitle(_ text: LocalizedStringKey, aside: String? = nil) -> some View {
         HStack {
             Text(text).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading).accessibilityAddTraits(.isHeader)
+                .uiLineHeight(13 * 1.55, size: 13, weight: .semibold) // the sidebar's 1.55 line height
             Spacer()
             if let aside { Text(aside).font(.ui(11.5)).monospacedDigit().foregroundStyle(FoleviColor.inkMuted) }
         }
@@ -195,6 +196,7 @@ struct NoteSidebarContent: View {
             model.page.scrollTopToken = UUID()
         } label: {
             Text(title).font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading).lineLimit(1)
+                .uiLineHeight(13 * 1.55, size: 13, weight: .semibold)
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(FoleviGlass.hover, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -215,7 +217,7 @@ struct NoteSidebarContent: View {
         }
         if entries.isEmpty {
             Text("Add headings or nested pages and they’ll appear here.")
-                .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
+                .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(.horizontal, 4).padding(.vertical, 24)
         } else {
             let current = currentHeading(entries.filter { $0.pageId == nil }.map(\.id))
@@ -376,6 +378,7 @@ private struct OutlineRow: View {
             .font(.ui(13))
             .lineLimit(1)
             .truncationMode(.tail)
+            .uiLineHeight(13 * 1.55, size: 13)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 6)
             .background(hovering ? FoleviColor.accentSoft : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -535,13 +538,14 @@ private struct FindInPage: View {
         let matches = self.matches
         let current = matches.isEmpty ? -1 : min(index, matches.count - 1)
         VStack(alignment: .leading, spacing: 0) {
-            Text("Find").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading).padding(.horizontal, 4).padding(.bottom, 8)
+            Text("Find").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.heading)
+                .uiLineHeight(13 * 1.55, size: 13, weight: .semibold).padding(.horizontal, 4).padding(.bottom, 8)
                 .accessibilityAddTraits(.isHeader)
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
                 TextField("Text in document", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .focused($focused)
                     .onChange(of: query) { _, _ in index = 0 }
                     .onSubmit { reveal(current + (NSEvent.modifierFlags.contains(.shift) ? -1 : 1), matches) }

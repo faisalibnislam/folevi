@@ -10,7 +10,7 @@ struct FieldLabel<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+            Text(title).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             content
         }
     }
@@ -26,7 +26,7 @@ struct DateField: View {
         Button { open.toggle() } label: {
             HStack(spacing: 8) {
                 Text(date.isEmpty ? String(localized: "No date") : BrowseFormat.calendarDate(date, .weekdayMonthDay))
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .foregroundStyle(date.isEmpty ? FoleviColor.inkFaint : FoleviColor.ink)
                     .lineLimit(1)
                 Image(systemName: "calendar").font(.system(size: 12)).foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
@@ -69,7 +69,7 @@ struct TimeField: View {
     var body: some View {
         TextField("--:--", text: $text)
             .textFieldStyle(.plain)
-            .font(.ui(14))
+            .font(.ui(13))
             .monospacedDigit()
             .focused($focused)
             .onSubmit(commit)

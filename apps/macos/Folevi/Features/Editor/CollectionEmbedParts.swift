@@ -200,7 +200,7 @@ struct CollectionSelect<Value: Hashable>: View {
     var options: [(value: Value, title: String)]
     var label: String
     var look: Look = .input
-    var font: Font = .ui(14)
+    var font: Font = .ui(13)
     var color: Color = FoleviColor.ink
     var width: CGFloat?
     var height: CGFloat = 32
@@ -309,7 +309,7 @@ struct CollectionField: View {
     var body: some View {
         TextField(placeholder, text: $text)
             .textFieldStyle(.plain)
-            .font(.ui(14))
+            .font(.ui(13))
             .foregroundStyle(FoleviColor.ink)
             .focused($focused)
             .onSubmit { onSubmit() }
@@ -489,7 +489,7 @@ struct CollectionDialogFrame<Content: View>: View {
                         .accessibilityAddTraits(.isHeader)
                     if let description {
                         Text(description)
-                            .font(.ui(14))
+                            .font(.ui(13))
                             .foregroundStyle(FoleviColor.inkMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -596,8 +596,8 @@ struct CollectionViewSettings: View {
     private var left: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("View name").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.ink)
-                InlineTextField(value: view.name, placeholder: "", font: .ui(14), maxLength: 40, chrome: .input, height: 32) { name in
+                Text("View name").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.ink)
+                InlineTextField(value: view.name, placeholder: "", font: .ui(13), maxLength: 40, chrome: .input, height: 32) { name in
                     actions.updateView(view.id, nil, name.isEmpty ? view.name : name)
                 }
                 .accessibilityLabel(Text("View name"))
@@ -644,7 +644,7 @@ struct CollectionViewSettings: View {
 
             if view.type == "board" {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Group by").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.ink)
+                    Text("Group by").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.ink)
                     CollectionSelect(selection: config.groupBy ?? "",
                                      options: snapshot.properties.filter { $0.type == "select" }.map { ($0.id, $0.name) },
                                      label: String(localized: "Group by")) { id in
@@ -656,13 +656,13 @@ struct CollectionViewSettings: View {
             if view.type == "gallery" {
                 HStack(alignment: .top, spacing: 16) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Card preview").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.ink)
+                        Text("Card preview").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.ink)
                         CollectionSelect(selection: config.cardPreview,
                                          options: [("none", String(localized: "None")), ("cover", String(localized: "Cover")), ("content", String(localized: "Page content"))],
                                          label: String(localized: "Card preview")) { v in save { $0.cardPreview = v } }
                     }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Card size").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.ink)
+                        Text("Card size").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.ink)
                         CollectionSelect(selection: config.cardSize,
                                          options: [("small", String(localized: "Small")), ("medium", String(localized: "Medium")), ("large", String(localized: "Large"))],
                                          label: String(localized: "Card size")) { v in save { $0.cardSize = v } }
@@ -678,7 +678,7 @@ struct CollectionViewSettings: View {
             if let systemImage { Image(systemName: systemImage).font(.system(size: 12, weight: .medium)).accessibilityHidden(true) }
             Text(title)
         }
-        .font(.ui(14, .semibold))
+        .font(.ui(13, .semibold))
         .foregroundStyle(FoleviColor.ink)
         .padding(.bottom, 8)
         .accessibilityAddTraits(.isHeader)
@@ -731,7 +731,7 @@ struct CollectionViewSettings: View {
                                 c.visibleProperties = on ? rest : rest + [p.id]
                             }
                         }
-                        InlineTextField(value: p.name, placeholder: "", font: .ui(14), maxLength: 60, height: 28) { name in
+                        InlineTextField(value: p.name, placeholder: "", font: .ui(13), maxLength: 60, height: 28) { name in
                             guard !name.isEmpty else { return }
                             editor.run("collections:updateProperty", ["propertyId": .string(p.id), "name": .string(name)])
                         }
@@ -840,7 +840,7 @@ private struct FilterValueEditor: View {
         case "date":
             Button { showDate = true } label: {
                 Text(value?.stringValue.map(CollectionCellDisplay.formatDate) ?? String(localized: "Choose…"))
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .foregroundStyle(value == nil ? FoleviColor.inkMuted : FoleviColor.ink)
                     .lineLimit(1)
                     .padding(.horizontal, 8)
@@ -1018,7 +1018,7 @@ private struct PagePicker: View {
                 Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
                 TextField(String(localized: "Search pages…"), text: $query)
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .focused($focused)
                     .onSubmit { if options.indices.contains(active) { pick(options[active].id) } }
                     .onKeyPress(.downArrow) { active = min(active + 1, max(options.count - 1, 0)); return .handled }
@@ -1055,7 +1055,7 @@ private struct PagePicker: View {
                     }
                     if loaded != nil && options.isEmpty {
                         Text(debounced.isEmpty ? "No recent pages" : "No matching pages")
-                            .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                            .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .padding(.horizontal, 8).padding(.vertical, 8)
                     }
                 }

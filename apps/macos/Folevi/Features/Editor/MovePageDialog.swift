@@ -28,14 +28,14 @@ struct MovePageDialog: View {
             VStack(alignment: .leading, spacing: 0) {
                 TextField("Search pages", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .focused($focused)
                     .padding(.horizontal, 16)
                     .frame(height: 40)
                     .pageInput(focused: focused)
                     .accessibilityLabel(Text("Search pages"))
                 if let error {
-                    Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive).padding(.top, 8)
+                    Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive).padding(.top, 8)
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
@@ -53,10 +53,10 @@ struct MovePageDialog: View {
                             } action: { move(to: d.id, parentTitle: d.title) }
                         }
                         if results == nil {
-                            Text("Loading…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 8).padding(.vertical, 12)
+                            Text("Loading…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 8).padding(.vertical, 12)
                         } else if list.isEmpty {
                             Text(trimmed.isEmpty ? String(localized: "Search for the page to move this one into.") : String(localized: "No pages match “\(trimmed)”."))
-                                .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 8).padding(.vertical, 12)
+                                .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 8).padding(.vertical, 12)
                         }
                     }
                     .padding(.top, 12)

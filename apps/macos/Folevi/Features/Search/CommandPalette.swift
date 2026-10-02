@@ -157,10 +157,10 @@ struct CommandPalette: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if !debounced.isEmpty && results == nil {
-                        Text("Searching…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 12).padding(.vertical, 8)
+                        Text("Searching…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(.horizontal, 12).padding(.vertical, 8)
                     }
                     if !debounced.isEmpty, let results, results.isEmpty {
-                        Text("No documents match “\(debounced)”.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("No documents match “\(debounced)”.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .padding(.horizontal, 12).padding(.vertical, 8)
                     }
                     Text(debounced.isEmpty ? String(localized: "Recent") : String(localized: "Documents"))
@@ -357,7 +357,7 @@ private struct PaletteRow: View {
                     .frame(width: 20).padding(.top, 2).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(highlight(item.title.isEmpty ? String(localized: "Untitled") : item.title))
-                        .font(.ui(14, .medium)).lineLimit(1)
+                        .font(.ui(13, .medium)).lineLimit(1)
                     if let snippet = item.snippet, !snippet.isEmpty {
                         Text(highlight(snippet)).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(2)
                     } else if let updated = item.updatedAt {
@@ -375,7 +375,7 @@ private struct PaletteRow: View {
                 .foregroundStyle(FoleviColor.inkMuted)
                 .frame(width: 20)
                 .accessibilityHidden(true)
-                Text(item.title).font(.ui(14)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                Text(item.title).font(.ui(13)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
                 if let hint = item.hint { Text(hint).font(.ui(12)).foregroundStyle(FoleviColor.inkFaint) }
             }
         }

@@ -72,7 +72,7 @@ private struct TwoStepCard: View {
                 SettingsCard(title: String(localized: "Two-step verification"),
                              description: String(localized: "Optional. When it's on, signing in on a new device needs a code from your authenticator app as well as your password, so a stolen password isn't enough.")) {
                     Label("Off", systemImage: "shield.slash")
-                        .font(.ui(14, .medium))
+                        .font(.ui(13, .medium))
                         .foregroundStyle(FoleviColor.inkMuted)
                     Button("Turn on two-step verification") { settingUp = true }
                         .buttonStyle(.folevi(.primary, .medium))
@@ -82,7 +82,7 @@ private struct TwoStepCard: View {
                 SettingsCard(title: String(localized: "Two-step verification"),
                              description: String(localized: "Folevi asks for a code from your authenticator app every time you sign in on a new device.")) {
                     Label("On (authenticator app)", systemImage: "checkmark.shield")
-                        .font(.ui(14, .medium))
+                        .font(.ui(13, .medium))
                         .foregroundStyle(FoleviColor.success)
                     Text("When you tick “Trust this device for 30 days” while signing in, that browser skips the code for 30 days. Signing out, revoking the session below, or changing your password ends it.")
                         .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
@@ -251,7 +251,7 @@ private struct TwoFactorSetupSheet: View {
                     .keyboardShortcut(.cancelAction)
             }
             if let email = app.profile?.email {
-                Text("Signed in as \(email).").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 12)
+                Text("Signed in as \(email).").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 12)
             }
         }
         .padding(32)
@@ -413,7 +413,7 @@ struct TotpEnrollmentView: View {
             .foleviShadow(FoleviShadow.card, radius: 6)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Scan with an authenticator app (1Password, Google Authenticator, Authy, Microsoft Authenticator…), or enter this key:")
-                    .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                    .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "key").font(.system(size: 12)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 2).accessibilityHidden(true)
@@ -511,7 +511,7 @@ struct BackupCodesView: View {
             }
             WebCheckbox(isOn: $saved, accessibilityLabel: String(localized: "I saved these codes somewhere safe")) {
                 Text("I saved these codes somewhere safe. Each one works once, and they're the only way in if I lose my authenticator app.")
-                    .font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                    .font(.ui(13)).foregroundStyle(FoleviColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Button(doneLabel, action: onDone)
@@ -599,7 +599,7 @@ struct DeleteAccountCard: View {
             if pending {
                 HStack(spacing: 12) {
                     Text(app.profile?.deletionScheduledFor.map { String(localized: "Scheduled for \(WebFormat.dateTime($0)).") } ?? String(localized: "Scheduled for soon."))
-                        .font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.ink)
                     Button("Cancel deletion") { cancel() }.buttonStyle(.folevi(.secondary, .medium))
                 }
             } else if let blockers, !blockers.workspaces.isEmpty {
@@ -607,12 +607,12 @@ struct DeleteAccountCard: View {
                     Text(blockers.workspaces.count == 1
                          ? String(localized: "You own a workspace other people use. Your account can’t be deleted until you make another member the owner (Members → Make owner) or delete it (General → Delete workspace):")
                          : String(localized: "You own workspaces other people use. Your account can’t be deleted until you make another member the owner (Members → Make owner) or delete them (General → Delete workspace):"))
-                        .font(.ui(14)).foregroundStyle(FoleviColor.ink).fixedSize(horizontal: false, vertical: true)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.ink).fixedSize(horizontal: false, vertical: true)
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(blockers.workspaces) { w in
                             let n = Int(w.otherMembers)
                             Text("•  \(w.name) · \(n) other \(n == 1 ? String(localized: "member") : String(localized: "members"))")
-                                .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                                .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                         }
                     }
                     .padding(.leading, 8)

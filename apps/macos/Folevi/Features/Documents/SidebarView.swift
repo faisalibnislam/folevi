@@ -43,6 +43,10 @@ struct SidebarView: View {
             } else {
                 SidebarNavigation(nav: nav, openDocument: openDocument)
             }
+            // Under both sidebars, as on the web: your plan pill and the workspace menu.
+            WorkspaceFooter()
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
         }
         .frame(width: CGFloat(width))
         .padding(.leading, 8)
@@ -143,10 +147,6 @@ private struct SidebarNavigation: View {
             .focusEffectDisabled()
             .onKeyPress(.upArrow) { step(-1) }
             .onKeyPress(.downArrow) { step(1) }
-
-            WorkspaceFooter()
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
         }
         .task(id: app.documentsRevision) { await refreshTaskCount() }
         // Every folder and tag, fresh from the server when the sidebar shows and whenever the connection returns.
@@ -566,10 +566,10 @@ private struct TagEditDialog: View {
     var body: some View {
         FoleviDialogShell(title: String(localized: "Edit tag"), size: .sm, onClose: { dismiss() }) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Name").font(.ui(14, .medium))
+                Text("Name").font(.ui(13, .medium))
                 TextField("", text: $name)
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(16))
                     .focused($focused)
                     .padding(.horizontal, 16)
                     .frame(height: 40)
@@ -581,13 +581,13 @@ private struct TagEditDialog: View {
                     }
                     .onSubmit(save)
                     .accessibilityLabel(Text("Name"))
-                Text("Color").font(.ui(14, .medium)).padding(.top, 16)
+                Text("Color").font(.ui(13, .medium)).padding(.top, 16)
                 FlowRow(spacing: 8) {
                     ForEach(TagMenu.colors, id: \.id) { c in
                         Button { color = c.id } label: {
                             HStack(spacing: 6) {
                                 Circle().fill(Color.folevi(tag: c.id)).frame(width: 12, height: 12)
-                                Text(c.label).font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                                Text(c.label).font(.ui(13)).foregroundStyle(FoleviColor.ink)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -600,7 +600,7 @@ private struct TagEditDialog: View {
                 }
                 .padding(.top, 8)
                 if let error {
-                    Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
+                    Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
                 }
                 HStack(spacing: 8) {
                     Spacer()

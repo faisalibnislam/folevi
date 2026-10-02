@@ -145,8 +145,8 @@ struct FormatInspector: View {
                     styleButton("Title", on: type == "heading" && level == 1, font: .ui(15, .bold)) { model.formatTurnInto("heading1") }
                     styleButton("Subtitle", on: type == "heading" && level == 2, font: .ui(14, .semibold)) { model.formatTurnInto("heading2") }
                     styleButton("Heading", on: type == "heading" && level == 3, font: .ui(13.5, .semibold)) { model.formatTurnInto("heading3") }
-                    styleButton("Strong", on: textStyle == "strong", font: .ui(14, .semibold)) { setParagraph(.strong) }
-                    styleButton("Body", on: textStyle == "body", font: .ui(14)) { setParagraph(nil) }
+                    styleButton("Strong", on: textStyle == "strong", font: .ui(16, .semibold)) { setParagraph(.strong) }
+                    styleButton("Body", on: textStyle == "body", font: .ui(16)) { setParagraph(nil) }
                     styleButton("Caption", on: textStyle == "caption", font: .ui(12), muted: true) { setParagraph(.caption) }
                 }
                 .disabled(d || inCode)
@@ -264,7 +264,7 @@ struct FormatInspector: View {
                             DefaultChip(on: !marks.contains { $0.hasPrefix("color.") }) { model.setColor(nil) }.disabled(marksOff)
                             ForEach(TextColor.allCases, id: \.self) { c in
                                 SwatchButton(label: String(localized: "Text color: \(Self.colorName(c.rawValue))"), on: marks.contains("color.\(c.rawValue)")) {
-                                    Text("A").font(.ui(14, .semibold)).foregroundStyle(Self.textColor(c))
+                                    Text("A").font(.ui(13, .semibold)).foregroundStyle(Self.textColor(c))
                                 } action: { model.setColor(c) }
                                 .disabled(marksOff)
                             }
@@ -313,7 +313,7 @@ struct FormatInspector: View {
                 HStack(spacing: 6) {
                     TextField(!marks.contains("selection") && !linkActive ? "Address to insert as a link" : "Paste or type a link", text: $href)
                         .textFieldStyle(.plain)
-                        .font(.ui(14))
+                        .font(.ui(13))
                         .focused($linkFocused)
                         .onSubmit { submitLink() }
                         .onChange(of: href) { _, _ in linkError = nil }

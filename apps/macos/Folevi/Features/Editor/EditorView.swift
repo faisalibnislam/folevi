@@ -586,11 +586,11 @@ struct ConflictBanner: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(conflicts.count == 1 ? String(localized: "This block was changed in two places")
                      : String(localized: "\(conflicts.count) blocks were changed in two places"))
-                    .font(.ui(14, .semibold))
+                    .font(.ui(13, .semibold))
                     .foregroundStyle(FoleviColor.plumInk)
                     .accessibilityAddTraits(.isHeader)
                 Text("Both versions are kept. Nothing is lost until you choose.")
-                    .font(.ui(14)).foregroundStyle(FoleviColor.ink).padding(.top, 4)
+                    .font(.ui(13)).foregroundStyle(FoleviColor.ink).padding(.top, 4)
                 HStack(alignment: .top, spacing: 12) {
                     version(c.reason == .deleted ? String(localized: "Deleted elsewhere") : String(localized: "Version from elsewhere"),
                             c.reason == .deleted ? String(localized: "Someone deleted this block.") : Self.text(c.server), mine: false)
@@ -624,7 +624,7 @@ struct ConflictBanner: View {
     private func version(_ label: String, _ text: String, mine: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).pageCaps()
-            Text(text).font(.ui(14)).foregroundStyle(FoleviColor.ink).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            Text(text).font(.ui(13)).foregroundStyle(FoleviColor.ink).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .topLeading)

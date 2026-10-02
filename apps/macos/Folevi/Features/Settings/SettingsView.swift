@@ -16,7 +16,7 @@ struct AccountSettings: View {
             if let profile = app.profile {
                 SettingsCard(title: String(localized: "Profile")) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Profile picture").font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink).padding(.bottom, 8)
+                        Text("Profile picture").font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).padding(.bottom, 8)
                         IdentityImageField(label: String(localized: "Profile picture"), shape: .circle, url: profile.avatarUrl, initial: profile.displayName,
                                            onUpload: { data, filename, mime in
                                                // The server keeps it in your Personal, whichever context is open.
@@ -113,13 +113,13 @@ private struct AiSettingCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 (Text("Not included in Core.").fontWeight(.medium).foregroundStyle(FoleviColor.heading)
                  + Text(" Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include the AI Assistant.").foregroundStyle(FoleviColor.inkMuted))
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .fixedSize(horizontal: false, vertical: true)
                 TextLinkButton(title: String(localized: "See plans"), size: 14) { SettingsRouter.shared.section = .billing }
             }
         } else {
             Text("Ask AI, writing help and note summaries, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and all AI buttons are hidden.")
-                .font(.ui(14))
+                .font(.ui(13))
                 .foregroundStyle(FoleviColor.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }

@@ -33,7 +33,7 @@ struct PlanSettings: View {
             } else if !app.sync.isOnline {
                 OfflineNote(text: String(localized: "Your plan is shown when you're online."))
             } else {
-                Text("Loading your plan…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                Text("Loading your plan…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             }
         }
         .task(id: app.sync.isOnline) { await watchBilling() }
@@ -50,7 +50,7 @@ struct PlanSettings: View {
                     VStack(alignment: .leading, spacing: 4) {
                         PlanHeading(name: p.planLabel, interval: p.intervalPill, status: p.status, pastDue: p.status == String(localized: "Past due"))
                         Text(p.description)
-                            .font(.ui(14))
+                            .font(.ui(13))
                             .foregroundStyle(FoleviColor.inkMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -163,7 +163,7 @@ struct PlanSettings: View {
                 } else if !app.sync.isOnline {
                     OfflineNote(text: String(localized: "Your AI credits are shown when you're online."))
                 } else {
-                    Text("Loading your AI credits…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                    Text("Loading your AI credits…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                 }
                 BillingFootnote(text: String(localized: "In free workspaces, and on pages shared with you as a guest, AI uses your Personal credits."), top: 16)
             }
@@ -176,7 +176,7 @@ struct PlanSettings: View {
                 Text("\(Text(a.name).fontWeight(.semibold).foregroundStyle(FoleviColor.heading)) \(Text("· \(a.plan)").foregroundStyle(FoleviColor.inkMuted))")
                     .font(.ui(14))
                 Text(BillingCopy.accountLine(a))
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .foregroundStyle(FoleviColor.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }

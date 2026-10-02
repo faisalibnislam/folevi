@@ -448,10 +448,10 @@ struct ImageBlockView: View {
                 .overlay {
                     if failed || (props.fileId == nil && !isUploading) {
                         Label("Image unavailable", systemImage: "photo.badge.exclamationmark")
-                            .font(.ui(14))
+                            .font(.ui(13))
                             .foregroundStyle(FoleviColor.inkMuted)
                     } else {
-                        Text("Loading image…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("Loading image…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     }
                 }
         }
@@ -469,11 +469,11 @@ struct ImageBlockView: View {
             }))
             .textFieldStyle(.plain)
             .multilineTextAlignment(.center)
-            .font(.ui(14))
+            .font(.ui(13))
             .foregroundStyle(FoleviColor.inkMuted)
             .accessibilityLabel(Text("Image caption"))
         } else if !props.caption.isEmpty {
-            Text(props.caption).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).frame(maxWidth: .infinity)
+            Text(props.caption).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
         }
     }
@@ -569,7 +569,7 @@ struct FileBlockView: View {
             Image(systemName: "doc.text").font(.system(size: 18)).foregroundStyle(FoleviColor.inkMuted).frame(width: 20)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
-                Text(props.name.isEmpty ? String(localized: "Attachment") : props.name).font(.ui(14, .medium)).lineLimit(1).truncationMode(.middle)
+                Text(props.name.isEmpty ? String(localized: "Attachment") : props.name).font(.ui(13, .medium)).lineLimit(1).truncationMode(.middle)
                 Text(verbatim: meta).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -797,7 +797,7 @@ struct TableCellField: View {
                 Text(text).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .font(.ui(14, isHeader ? .semibold : .regular))
+        .font(.ui(13, isHeader ? .semibold : .regular))
         .foregroundStyle(FoleviColor.ink)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -884,7 +884,7 @@ struct PageBlockView: View {
                         Text(title).font(.ui(16, .semibold)).foregroundStyle(FoleviColor.ink).lineLimit(1)
                         Text(missing ? String(localized: "This page is unavailable or you no longer have access.")
                              : (doc?.excerpt).flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "Nested page"))
-                            .font(.ui(14))
+                            .font(.ui(13))
                             .foregroundStyle(FoleviColor.inkMuted)
                             .lineLimit(2)
                     }
@@ -951,7 +951,7 @@ struct BookmarkBlockView: View {
                             Text((props.title?.isEmpty == false ? props.title : nil) ?? host)
                                 .font(.ui(16, .semibold)).foregroundStyle(FoleviColor.ink).lineLimit(1)
                             if let d = props.description, !d.isEmpty {
-                                Text(d).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).lineLimit(2)
+                                Text(d).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).lineLimit(2)
                             }
                             Text(verbatim: (props.siteName.map { "\($0) · " } ?? "") + host)
                                 .font(.ui(12)).foregroundStyle(FoleviColor.inkFaint).lineLimit(1)
@@ -984,7 +984,7 @@ struct BookmarkBlockView: View {
             Text(title).font(.ui(12)).foregroundStyle(FoleviColor.ink)
             TextField("", text: Binding(get: { props[keyPath: field] ?? "" }, set: { v in set { $0[keyPath: field] = v.isEmpty ? nil : v } }))
                 .textFieldStyle(.plain)
-                .font(.ui(14))
+                .font(.ui(13))
                 .padding(.horizontal, 8)
                 .frame(height: 32)
                 .foleviInput()
@@ -1018,10 +1018,10 @@ struct BookmarkPrompt: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Add a bookmark").font(FoleviType.sectionTitle).foregroundStyle(FoleviColor.heading).padding(.bottom, 16)
-            Text("Web address").font(.ui(14, .medium))
+            Text("Web address").font(.ui(13, .medium))
             TextField("", text: $value)
                 .textFieldStyle(.plain)
-                .font(.ui(14))
+                .font(.ui(16))
                 .padding(.horizontal, 16)
                 .frame(height: 40)
                 .foleviInput()
@@ -1102,7 +1102,7 @@ struct UnknownBlockView: View {
     var body: some View {
         HStack(spacing: 12) {
             Text("This “\(type)” block was created by a newer version of Folevi. It’s kept safely and will appear once you update.")
-                .font(.ui(14))
+                .font(.ui(13))
                 .foregroundStyle(FoleviColor.inkMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let onRemove {

@@ -263,7 +263,7 @@ struct BrowserView: View {
                     .onTapGesture { tap(doc, in: docs) }
                     .modifier(DocDrag(doc: doc, ids: dragIds(doc, in: docs), enabled: selection != .trash))
                     .modifier(ArrangeDrop(enabled: canArrange, id: doc.id, target: $dropTarget) { place($0, doc.id, in: docs) })
-                    .contextMenu { menu(doc, in: docs) }
+                    .foleviContextMenu { menu(doc, in: docs) }
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("browse")) } action: { frames[doc.id] = $0 }
                     .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("doc.\(doc.displayTitle)")
@@ -281,7 +281,7 @@ struct BrowserView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { tap(doc, in: docs) }
                     .modifier(ArrangeDrop(enabled: canArrange, id: doc.id, target: $dropTarget) { place($0, doc.id, in: docs) })
-                    .contextMenu { menu(doc, in: docs) }
+                    .foleviContextMenu { menu(doc, in: docs) }
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("browse")) } action: { frames[doc.id] = $0 }
                     .accessibilityIdentifier("doc.\(doc.displayTitle)")
                 if idx < docs.count - 1 { FoleviColor.line.frame(height: 1) }

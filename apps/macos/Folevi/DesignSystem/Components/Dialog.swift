@@ -34,7 +34,7 @@ struct FoleviDialogShell<Content: View, Footer: View>: View {
                         .accessibilityAddTraits(.isHeader)
                     if let description {
                         Text(description)
-                            .font(.ui(14))
+                            .font(.ui(13))
                             .foregroundStyle(FoleviColor.inkMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -132,10 +132,10 @@ struct FoleviPromptDialog: View {
     var body: some View {
         FoleviDialogShell(title: title, size: .sm, onClose: { dismiss() }) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(label).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink)
+                Text(label).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
                 TextField("", text: $value)
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(16))
                     .focused($focused)
                     .padding(.horizontal, 16)
                     .frame(height: 40)

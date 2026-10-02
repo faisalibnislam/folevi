@@ -242,7 +242,7 @@ struct OnboardingView: View {
             controls.padding(.top, 28)
             if let error {
                 Text(error)
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .foregroundStyle(FoleviColor.destructive)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 20)

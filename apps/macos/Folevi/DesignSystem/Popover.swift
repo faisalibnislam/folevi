@@ -259,3 +259,76 @@ private struct PopoverSizing: Layout {
         subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(bounds.size))
     }
 }
+
+extension View {
+    /// A right-click menu as the web's ContextMenu: the same rows as a FoleviViewMenu, opened at the pointer
+    /// in the window's popover layer. Falls back to the system context menu where there's no layer.
+    func foleviContextMenu<Items: View>(@ViewBuilder items: @escaping () -> Items) -> some View {
+        modifier(FoleviContextMenuModifier(items: items))
+    }
+}
+
+private struct FoleviContextMenuModifier<Items: View>: ViewModifier {
+    let items: () -> Items
+    @Environment(\.foleviPopovers) private var coordinator
+    @State private var id = UUID()
+    @State private var frame: CGRect = .zero
+
+    func body(content: Content) -> some View {
+        if let coordinator {
+            content
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+                .overlay { RightClickCatcher { point in present(at: point, in: coordinator) } }
+                .onDisappear { coordinator.remove(id) }
+        } else {
+            content.contextMenu { items() }
+        }
+    }
+
+    private func present(at point: CGPoint, in coordinator: FoleviPopoverCoordinator) {
+        let id = self.id
+        let at = CGRect(x: frame.minX + point.x, y: frame.minY + point.y, width: 0, height: 0)
+        let close = { [weak coordinator] in coordinator?.remove(id) }
+        let menu = VStack(alignment: .leading, spacing: 0) { items() }
+            .buttonStyle(FoleviMenuRowStyle())
+            .labelStyle(FoleviMenuLabelStyle())
+            .padding(6)
+            .frame(minWidth: 224, alignment: .leading)
+            .simultaneousGesture(TapGesture().onEnded { close() })
+        // A zero-size anchor: the web places a context menu 2pt from the pointer.
+        coordinator.present(.init(id: id, anchor: at, above: false, align: .start, gap: 2, radius: 10,
+                                  content: AnyView(menu), dismiss: {}))
+    }
+}
+
+/// Takes right clicks (and Control-clicks) only; every other event passes through to the views below.
+private struct RightClickCatcher: NSViewRepresentable {
+    var onRightClick: (CGPoint) -> Void
+
+    func makeNSView(context: Context) -> CatcherView {
+        let view = CatcherView()
+        view.onRightClick = onRightClick
+        return view
+    }
+
+    func updateNSView(_ view: CatcherView, context: Context) { view.onRightClick = onRightClick }
+
+    final class CatcherView: NSView {
+        var onRightClick: ((CGPoint) -> Void)?
+        override var isFlipped: Bool { true }
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard let event = NSApp.currentEvent else { return nil }
+            let secondary = event.type == .rightMouseDown || (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+            return secondary ? super.hitTest(point) : nil
+        }
+
+        override func rightMouseDown(with event: NSEvent) {
+            onRightClick?(convert(event.locationInWindow, from: nil))
+        }
+
+        override func mouseDown(with event: NSEvent) {
+            if event.modifierFlags.contains(.control) { onRightClick?(convert(event.locationInWindow, from: nil)) }
+        }
+    }
+}

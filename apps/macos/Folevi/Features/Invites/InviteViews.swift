@@ -72,7 +72,7 @@ private struct WarningBox: View {
     var text: String
     var body: some View {
         Text(text)
-            .font(.ui(14))
+            .font(.ui(13))
             .foregroundStyle(FoleviColor.ink)
             .fixedSize(horizontal: false, vertical: true)
             .padding(12)
@@ -114,7 +114,7 @@ struct InviteView: View {
                             .padding(.top, 24)
                     }
                     if let error {
-                        Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
+                        Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
                     }
                 }
             } else {
@@ -193,7 +193,7 @@ struct ShareInviteView: View {
                         .disabled(busy)
                         .padding(.top, 24)
                     if let error {
-                        Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
+                        Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
                     }
                 }
             } else {

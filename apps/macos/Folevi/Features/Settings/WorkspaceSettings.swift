@@ -65,9 +65,9 @@ private struct WorkspaceGeneralPage: View {
                     } else {
                         (Text("Name:").foregroundStyle(FoleviColor.inkMuted) + Text(" \(w.name) ").foregroundStyle(FoleviColor.ink)
                          + Text("(owners and admins can rename it)").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint))
-                            .font(.ui(14))
+                            .font(.ui(13))
                     }
-                    Text("Logo").font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink).padding(.top, 20).padding(.bottom, 8)
+                    Text("Logo").font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).padding(.top, 20).padding(.bottom, 8)
                     if canAdmin {
                         IdentityImageField(label: String(localized: "Workspace logo"), shape: .square, url: w.logoUrl, initial: w.name,
                                            onUpload: { data, filename, mime in
@@ -81,12 +81,12 @@ private struct WorkspaceGeneralPage: View {
                                                await app.refreshWorkspaces()
                                            })
                     } else {
-                        Text("Owners and admins can change the logo.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("Owners and admins can change the logo.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     }
                     // A workspace has its own plan and storage, separate from anyone's Personal plan.
                     planLine.padding(.top, 16)
                     Text("\(storageLabel): \(WebFormat.bytes(w.storageUsedBytes)) of \(WebFormat.bytes(w.storageQuotaBytes)) used")
-                        .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                         .padding(.top, 4)
                     StorageBar(fraction: w.storageQuotaBytes > 0 ? w.storageUsedBytes / w.storageQuotaBytes : 0)
                         .frame(maxWidth: 448)
@@ -95,7 +95,7 @@ private struct WorkspaceGeneralPage: View {
                         Text(w.canManageBilling == true
                              ? String(localized: "Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed or the plan is upgraded.")
                              : String(localized: "Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed."))
-                            .font(.ui(14)).foregroundStyle(FoleviColor.destructive)
+                            .font(.ui(13)).foregroundStyle(FoleviColor.destructive)
                             .frame(maxWidth: 448, alignment: .leading)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 8)
@@ -163,7 +163,7 @@ private struct WorkspaceGeneralPage: View {
                 TextLinkButton(title: String(localized: "Plan & billing"), size: 14) { SettingsRouter.shared.section = .workspaceBilling }
             }
         }
-        .font(.ui(14))
+        .font(.ui(13))
     }
 
     /// Your view of storage here: the owner's free pool, or your own quota on a paid plan.
@@ -309,13 +309,13 @@ private struct MembersPage: View {
                         }
                         .frame(minHeight: data == nil ? 2 : nil)
                         if let data, !data.invites.isEmpty {
-                            Text("Pending invitations").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.ink).padding(.top, 20).padding(.bottom, 8)
+                            Text("Pending invitations").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.ink).padding(.top, 20).padding(.bottom, 8)
                             SettingsList {
                                 ForEach(data.invites) { i in inviteRow(i) }
                             }
                         }
                         if data != nil && !canAdmin {
-                            Text("Only owners and admins can invite people or change roles.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 12)
+                            Text("Only owners and admins can invite people or change roles.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).padding(.top, 12)
                         }
                     }
                 }
@@ -355,7 +355,7 @@ private struct MembersPage: View {
         WrapHStack(spacing: 12, lineSpacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 4) {
-                    Text(m.displayName).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                    Text(m.displayName).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
                     if m.isYou { Text("(you)").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted) }
                 }
                 Text(m.email).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1).truncationMode(.middle)
@@ -386,7 +386,7 @@ private struct MembersPage: View {
                     .foregroundStyle(FoleviColor.destructive)
             } else {
                 HStack(spacing: 6) {
-                    Text(workspaceRoleLabel(m.role)).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                    Text(workspaceRoleLabel(m.role)).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     if m.role == "member", m.memberAccess != .edit {
                         SettingsChip(text: m.memberAccess == .comment ? String(localized: "Can comment") : String(localized: "View only"))
                     }
@@ -402,7 +402,7 @@ private struct MembersPage: View {
             ? " · " + (i.memberAccess == .comment ? String(localized: "can comment") : String(localized: "view only")) : ""
         let when = i.expired ? String(localized: "expired") : String(localized: "expires \(WebFormat.relative(i.expiresAt))")
         return HStack(spacing: 12) {
-            Text(i.email).font(.ui(14)).foregroundStyle(FoleviColor.ink).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+            Text(i.email).font(.ui(13)).foregroundStyle(FoleviColor.ink).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
             Text("\(workspaceRoleLabel(i.role))\(access) · \(when)").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
             Button("Revoke") {
                 let id = i.id
@@ -514,7 +514,7 @@ struct InviteForm: View {
                 Button(sending ? String(localized: "Sending…") : String(localized: "Invite"), action: send)
                     .buttonStyle(.folevi(.primary, .medium))
             }
-            if let error { Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive) }
+            if let error { Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive) }
             // On a paid plan, what one more member costs (the server bills it once they accept).
             if let s = seats, s.paid, let interval = s.interval, let cents = s.seatPriceCents {
                 Text("Adds a seat when they accept: +\(PlanPrice.format(cents: cents))/\(interval == "year" ? String(localized: "year") : String(localized: "month")) on \(s.planName).")
@@ -586,14 +586,14 @@ private struct GuestsPage: View {
                         OfflineNote(text: failure)
                     } else if let data {
                         if data.guests.isEmpty {
-                            Text("No guests. Share a page with someone from its Share button to add one.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                            Text("No guests. Share a page with someone from its Share button to add one.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                         } else {
                             SettingsList {
                                 ForEach(data.guests) { g in guestRow(g) }
                             }
                         }
                         if !data.pendingInvites.isEmpty {
-                            Text("Waiting to accept").font(.ui(14, .semibold)).foregroundStyle(FoleviColor.ink).padding(.top, 20).padding(.bottom, 8)
+                            Text("Waiting to accept").font(.ui(13, .semibold)).foregroundStyle(FoleviColor.ink).padding(.top, 20).padding(.bottom, 8)
                             Text("Pages shared with addresses that don’t have a Folevi account yet. Nothing is shared until they sign up and accept.")
                                 .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).padding(.bottom, 8)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -602,7 +602,7 @@ private struct GuestsPage: View {
                             }
                         }
                     } else {
-                        Text("Loading…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("Loading…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     }
                 }
             }
@@ -622,7 +622,7 @@ private struct GuestsPage: View {
         VStack(alignment: .leading, spacing: 8) {
             WrapHStack(spacing: 12, lineSpacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(g.displayName).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                    Text(g.displayName).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
                     Text(g.email).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
                 }
                 Button("Convert to member") { confirm = Confirm(member: true, profileId: g.profileId, name: g.displayName) }
@@ -653,7 +653,7 @@ private struct GuestsPage: View {
         let when = i.expired ? String(localized: "expired") : String(localized: "expires \(WebFormat.relative(i.expiresAt))")
         return HStack(spacing: 12) {
             (Text(i.email).foregroundStyle(FoleviColor.ink) + Text(" · \(i.title)").foregroundStyle(FoleviColor.inkMuted))
-                .font(.ui(14)).lineLimit(1).truncationMode(.tail)
+                .font(.ui(13)).lineLimit(1).truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text("\(ShareRole.label(i.role)) · \(when)").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
             Button("Revoke") {
@@ -714,7 +714,7 @@ private struct GuestPageLink: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Text(title).font(.ui(14)).foregroundStyle(FoleviColor.ink).underline(hovering).lineLimit(1)
+                Text(title).font(.ui(13)).foregroundStyle(FoleviColor.ink).underline(hovering).lineLimit(1)
                 if inTrash { Text("(in Trash)").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint) }
             }
         }

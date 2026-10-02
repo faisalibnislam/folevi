@@ -89,7 +89,7 @@ struct SortField<Value: Hashable>: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text("Sort").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
+            Text("Sort").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
             FoleviSelect(selection: $selection, options: options, accessibilityLabel: String(localized: "Sort"), height: height)
         }
     }
@@ -162,7 +162,7 @@ struct BrowseSearchField: View {
             Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(FoleviColor.inkFaint).accessibilityHidden(true)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .font(.ui(14))
+                .font(.ui(13))
                 .accessibilityLabel(Text(placeholder))
             if !text.isEmpty {
                 Button { text = "" } label: {

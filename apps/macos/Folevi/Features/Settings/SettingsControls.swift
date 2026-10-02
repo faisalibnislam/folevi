@@ -72,7 +72,7 @@ struct LabeledField<Field: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: large ? 6 : 4) {
             Text(label)
-                .font(.ui(14, .medium))
+                .font(.ui(13, .medium))
                 .foregroundStyle(large ? FoleviColor.ink : FoleviColor.ink)
                 .accessibilityHidden(true)
             field
@@ -162,7 +162,7 @@ struct WebAlert: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         Text(text)
-            .font(.ui(14))
+            .font(.ui(13))
             .foregroundStyle(FoleviColor.ink)
             .lineSpacing(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -267,7 +267,7 @@ struct WebDialog<Content: View, Footer: View>: View {
                         .accessibilityAddTraits(.isHeader)
                     if let description {
                         Text(description)
-                            .font(.ui(14))
+                            .font(.ui(13))
                             .foregroundStyle(FoleviColor.inkMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -359,7 +359,7 @@ struct ConfirmByTyping: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Type \(Text(expected).bold()) to confirm").font(.ui(14))
+            Text("Type \(Text(expected).bold()) to confirm").font(.ui(13))
             TextField("", text: $text)
                 .textFieldStyle(WebFieldStyle(height: 40))
                 .autocorrectionDisabled()

@@ -358,7 +358,7 @@ struct StatusBanners: View {
     var body: some View {
         if let message = app.bannerMessage {
             Text(app.readOnlyMode ? message + String(localized: " Folevi is read-only right now; your edits are kept on this device.") : message)
-                .font(.ui(14))
+                .font(.ui(13))
                 .foregroundStyle(FoleviColor.ink)
                 .multilineTextAlignment(.center)
                 // No fixedSize here: the window's minimum size is measured at zero width.
@@ -421,14 +421,14 @@ private struct ToastRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(toast.message).font(.ui(14, .medium)).fixedSize(horizontal: false, vertical: true)
+            Text(toast.message).font(.ui(13, .medium)).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let action = toast.action {
                 Button {
                     action.run()
                     dismiss()
                 } label: {
-                    Text(action.title).font(.ui(14, .semibold))
+                    Text(action.title).font(.ui(13, .semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
                         .background(ink.opacity(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -474,7 +474,7 @@ struct SharedWithMeView: View {
                                 .tracking(FoleviType.displayTracking(24))
                                 .foregroundStyle(FoleviColor.inkMuted)
                             Text("Pages people share with you directly, from their Personal or from any workspace, show up here.")
-                                .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                                .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                         }
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
@@ -521,7 +521,7 @@ private struct SharedRow: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(doc.title.isEmpty ? String(localized: "Untitled") : doc.title).font(.ui(16, .medium)).foregroundStyle(FoleviColor.ink)
                     if !doc.excerpt.isEmpty {
-                        Text(doc.excerpt).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
+                        Text(doc.excerpt).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
                     }
                     Text(meta).font(.ui(12)).foregroundStyle(FoleviColor.inkFaint)
                 }

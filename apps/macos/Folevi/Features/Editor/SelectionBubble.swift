@@ -97,7 +97,7 @@ struct SelectionBubble: View {
         HStack(spacing: 4) {
             TextField("Paste or type a link", text: $href)
                 .textFieldStyle(.plain)
-                .font(.ui(14))
+                .font(.ui(13))
                 .padding(.horizontal, 12)
                 .frame(width: 240, height: 32)
                 .foleviInput()
@@ -147,7 +147,7 @@ struct SelectionBubble: View {
             ForEach(TextColor.allCases, id: \.self) { c in
                 Button { model.setColor(c) } label: {
                     Text(verbatim: "A")
-                        .font(.ui(14, .semibold))
+                        .font(.ui(13, .semibold))
                         .foregroundStyle(Color(nsColor: c == .accent ? NSColor(FoleviColor.emberInk) : NSColor.folevi(text: c)))
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())

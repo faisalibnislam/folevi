@@ -94,7 +94,7 @@ struct BillingIcon: View {
 struct TileText: View {
     var text: String
     var body: some View {
-        Text(text).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+        Text(text).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
     }
 }
 
@@ -242,7 +242,7 @@ struct PlanCardView: View {
                     .font(.ui(30, .semibold))
                     .tracking(-0.75)
                     .foregroundStyle(FoleviColor.heading)
-                Text(" / \(BillingCopy.per(yearly: yearly))").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                Text(" / \(BillingCopy.per(yearly: yearly))").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             }
             .padding(.top, 8)
             Text(priceNote)
@@ -350,7 +350,7 @@ struct BillingHistoryTable: View {
 
     var body: some View {
         if rows.isEmpty {
-            Text("No payments yet.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+            Text("No payments yet.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
         } else {
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 0) {
                 GridRow {
@@ -370,7 +370,7 @@ struct BillingHistoryTable: View {
                         Text(r.amount).monospacedDigit().foregroundStyle(FoleviColor.ink)
                         Text(r.status).foregroundStyle(r.failed ? FoleviColor.destructive : FoleviColor.inkMuted)
                     }
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .padding(.vertical, 8)
                     .accessibilityElement(children: .combine)
                 }
@@ -416,7 +416,7 @@ struct BuyCreditsSheet: View {
                         .foregroundStyle(FoleviColor.heading)
                         .accessibilityAddTraits(.isHeader)
                     Text("For \(purchase.name). Bought credits last \(PlanCatalog.packValidMonths) months and are used after your monthly credits run out.")
-                        .font(.ui(14))
+                        .font(.ui(13))
                         .foregroundStyle(FoleviColor.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }

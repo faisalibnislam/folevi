@@ -192,7 +192,7 @@ struct TasksView: View {
                     tabs
                     TextField("Filter by task or page", text: $filter)
                         .textFieldStyle(.plain)
-                        .font(.ui(14))
+                        .font(.ui(13))
                         .padding(.horizontal, 12)
                         .frame(height: 36)
                         .foleviWell(shape: .rounded(6))
@@ -514,10 +514,10 @@ struct TaskEditSheet: View {
                     .tracking(FoleviType.displayTracking(20))
                     .foregroundStyle(FoleviColor.heading)
                     .accessibilityAddTraits(.isHeader)
-                Text(task.title.isEmpty ? String(localized: "Untitled task") : task.title).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                Text(task.title.isEmpty ? String(localized: "Untitled task") : task.title).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text("Status").font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink)
+                Text("Status").font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
                 FoleviSegmented(selection: $status, items: [
                     .init(value: .open, title: "Open"), .init(value: .done, title: "Done"), .init(value: .canceled, title: "Canceled"),
                 ], height: 32, fontSize: 13, accessibilityLabel: "Status")
@@ -548,7 +548,7 @@ struct TaskEditSheet: View {
                     openDocument(task.documentId, false)
                 } label: {
                     Text("Open in \(task.documentTitle.isEmpty ? String(localized: "Untitled") : task.documentTitle)")
-                        .font(.ui(14)).underline().foregroundStyle(FoleviColor.accent).lineLimit(1)
+                        .font(.ui(13)).underline().foregroundStyle(FoleviColor.accent).lineLimit(1)
                 }
                 .buttonStyle(.plain)
                 Spacer(minLength: 8)
@@ -632,7 +632,7 @@ private struct QuickAddPagePicker: View {
     var body: some View {
         let list = options
         VStack(alignment: .leading, spacing: 4) {
-            Text("Add to").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+            Text("Add to").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             HStack(spacing: 8) {
                 if let target, !open {
                     HStack(spacing: 4) {
@@ -652,7 +652,7 @@ private struct QuickAddPagePicker: View {
                 }
                 TextField(target == nil ? "Inbox, or search a page…" : "Search another page…", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.ui(14))
+                    .font(.ui(13))
                     .focused($focused)
                     .padding(.horizontal, 12)
                     .frame(height: 36)

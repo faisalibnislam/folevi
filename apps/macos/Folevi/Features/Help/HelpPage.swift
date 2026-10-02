@@ -90,7 +90,7 @@ struct HelpPage: View {
                         .foregroundStyle(FoleviColor.heading)
                         .accessibilityAddTraits(.isHeader)
                     Text("A person on the Folevi team reads every request and replies by email. Replies show here too.")
-                        .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
@@ -112,7 +112,7 @@ struct HelpPage: View {
                 ForEach(Array(Self.shortcuts.enumerated()), id: \.offset) { i, item in
                     if i > 0 { FoleviColor.line.frame(height: 1) }
                     HStack {
-                        Text(item.0).font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                        Text(item.0).font(.ui(13)).foregroundStyle(FoleviColor.ink)
                         Spacer(minLength: 12)
                         WebKbd(text: item.1)
                     }
@@ -140,7 +140,7 @@ struct HelpPage: View {
                 ForEach(Self.statuses, id: \.0) { k, v in
                     VStack(alignment: .leading, spacing: 0) {
                         Text(k).font(.ui(16, .medium)).foregroundStyle(FoleviColor.ink)
-                        Text(v).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
+                        Text(v).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -201,7 +201,7 @@ struct SupportRequestsList: View {
                     HStack(spacing: 12) {
                         Image(systemName: "lifepreserver").font(.system(size: 16)).foregroundStyle(FoleviColor.inkMuted).accessibilityHidden(true)
                         Text("No support requests yet. Requests you send from here, and our replies, will show up in this list.")
-                            .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                            .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .fixedSize(horizontal: false, vertical: true)
                         Button("Contact support") { ContactSupport.open(app) }
@@ -218,7 +218,7 @@ struct SupportRequestsList: View {
                     .accessibilityLabel(Text("Your support requests"))
                 }
             } else if !app.sync.isOnline {
-                Text("Your requests are shown when you're online.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                Text("Your requests are shown when you're online.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             } else {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(FoleviColor.surfaceSunken)
@@ -242,7 +242,7 @@ struct SupportRequestsList: View {
                              + Text(" · \(WebFormat.relative(m.createdAt))").foregroundStyle(FoleviColor.inkMuted))
                                 .font(.ui(12))
                                 .help(Text(WebFormat.dateTime(m.createdAt)))
-                            Text(m.body).font(.ui(14)).foregroundStyle(FoleviColor.ink).textSelection(.enabled)
+                            Text(m.body).font(.ui(13)).foregroundStyle(FoleviColor.ink).textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .padding(.horizontal, 12)
@@ -288,7 +288,7 @@ private struct SupportRequestHeader: View {
         Button(action: toggle) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("#\(r.id) · \(r.subject)").font(.ui(14, .medium)).foregroundStyle(FoleviColor.heading).lineLimit(1)
+                    Text("#\(r.id) · \(r.subject)").font(.ui(13, .medium)).foregroundStyle(FoleviColor.heading).lineLimit(1)
                     Text("\(r.topicLabel) · \(replies == 0 ? String(localized: "No reply yet") : replies == 1 ? String(localized: "1 reply") : String(localized: "\(replies) replies")) · \(WebFormat.relative(r.lastMessageAt))")
                         .font(.ui(12.5)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
                 }
@@ -338,7 +338,7 @@ private struct SupportReplyBox: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(closed ? "Reply (this reopens the request)" : "Reply").font(.ui(12.5, .medium)).foregroundStyle(FoleviColor.heading)
             TextEditor(text: $text)
-                .font(.ui(14))
+                .font(.ui(13))
                 .foregroundStyle(FoleviColor.ink)
                 .scrollContentBackground(.hidden)
                 .focused($focused)

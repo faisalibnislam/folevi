@@ -21,12 +21,12 @@ struct AppearanceSettings: View {
             }
             SettingsCard(title: String(localized: "Editor text size")) {
                 HStack(spacing: 12) {
-                    Text("Smaller").font(.ui(14))
+                    Text("Smaller").font(.ui(13))
                     Slider(value: $app.editorScale, in: 0.85...1.35, step: 0.05)
                         .tint(FoleviColor.accent)
                         .accessibilityLabel(Text("Editor text size"))
                         .accessibilityValue(Text("\(Int((app.editorScale * 100).rounded()))%"))
-                    Text("Larger").font(.ui(14))
+                    Text("Larger").font(.ui(13))
                 }
                 .foregroundStyle(FoleviColor.ink)
                 .frame(maxWidth: 448)
@@ -46,7 +46,7 @@ struct AppearanceSettings: View {
         } label: {
             VStack(spacing: 8) {
                 Image(systemName: icon).font(.system(size: 17, weight: .regular))
-                Text(label).font(.ui(14))
+                Text(label).font(.ui(13))
             }
             .foregroundStyle(on ? FoleviColor.accentSoftInk : FoleviColor.ink)
             .frame(maxWidth: .infinity)
@@ -89,7 +89,7 @@ struct NotificationSettings: View {
                         if i > 0 { FoleviColor.line.opacity(0.7).frame(height: 1) }
                         HStack(spacing: 8) {
                             VStack(alignment: .leading, spacing: 0) {
-                                Text(topic.label).font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                                Text(topic.label).font(.ui(13)).foregroundStyle(FoleviColor.ink)
                                 Text(topic.hint).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -111,7 +111,7 @@ struct NotificationSettings: View {
                          description: String(localized: "How comment, reply and mention emails arrive. Shares, invitations and access changes are always sent as they happen.")) {
                 HStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Send comment emails").font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                        Text("Send comment emails").font(.ui(13)).foregroundStyle(FoleviColor.ink)
                         Text("The daily digest lists what you haven’t read yet, by page title only, once a day.").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -174,7 +174,7 @@ struct SyncSettings: View {
                         Text(DeviceIdentity.deviceId).font(.system(size: 12, design: .monospaced)).lineLimit(1).truncationMode(.tail)
                     }
                 }
-                .font(.ui(14))
+                .font(.ui(13))
                 .foregroundStyle(FoleviColor.ink)
                 .frame(maxWidth: 448, alignment: .leading)
                 HStack(spacing: 8) {
@@ -241,7 +241,7 @@ struct DevicesSection: View {
                         }
                     } else {
                         Text(app.sync.isOnline ? String(localized: "Loading…") : String(localized: "Devices are shown when you're online."))
-                            .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                            .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .padding(.horizontal, 16).padding(.vertical, 12)
                     }
                 }
@@ -312,7 +312,7 @@ struct DevicesSection: View {
         HStack(spacing: 12) {
             DeviceGlyph(client: s.client, label: s.label, size: 36)
             VStack(alignment: .leading, spacing: 0) {
-                Text(s.label).font(.ui(14, .medium)).foregroundStyle(FoleviColor.heading).lineLimit(1)
+                Text(s.label).font(.ui(13, .medium)).foregroundStyle(FoleviColor.heading).lineLimit(1)
                 Text("Signed in \(WebFormat.dateTime(s.createdAt)) · active \(WebFormat.relative(s.lastSeenAt))")
                     .font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
             }

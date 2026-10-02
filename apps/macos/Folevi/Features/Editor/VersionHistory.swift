@@ -19,7 +19,7 @@ struct PageDialog<Content: View>: View {
                         .foregroundStyle(FoleviColor.heading)
                         .accessibilityAddTraits(.isHeader)
                     if let description {
-                        Text(description).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
+                        Text(description).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -87,9 +87,9 @@ struct VersionHistorySheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     if list == nil {
-                        Text(app.sync.isOnline ? "Loading…" : "Version history is available when you're online.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text(app.sync.isOnline ? "Loading…" : "Version history is available when you're online.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     } else if list?.isEmpty == true {
-                        Text("No versions yet.").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("No versions yet.").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     }
                     ForEach(list ?? []) { s in
                         VersionRow(snapshot: s, selected: selected == s.id) { selected = s.id }
@@ -139,7 +139,7 @@ struct VersionHistorySheet: View {
     }
 
     private func placeholder(_ text: String) -> some View {
-        Text(text).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
+        Text(text).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).multilineTextAlignment(.center)
             .padding(24).frame(maxWidth: 380).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -214,7 +214,7 @@ private struct VersionRow: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(PageFormat.dateTime(snapshot.createdAt)).font(.ui(14, .medium))
+                Text(PageFormat.dateTime(snapshot.createdAt)).font(.ui(13, .medium))
                 Text("\(VersionHistorySheet.reasons[snapshot.reason] ?? String(localized: "Version")) · \(snapshot.createdBy)")
                     .font(.ui(12)).foregroundStyle(selected ? FoleviColor.accentSoftInk : FoleviColor.inkMuted)
             }

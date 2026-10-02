@@ -150,6 +150,12 @@ enum MentionCommand { case enter, up, down, tab, escape }
 /// A plain multi-line text field (AppKit) that grows with its text, for comments: Enter sends, Shift+Enter
 /// adds a line, and ↑ ↓ Tab Esc go to the @mention list while it's open. Reports the caret (UTF-16).
 struct MentionTextView: NSViewRepresentable {
+    /// Top and bottom inset that make one line `fontSize` × 1.375 tall.
+    static func inset(_ fontSize: CGFloat) -> CGFloat {
+        let natural = NSLayoutManager().defaultLineHeight(for: FoleviFont.nsFont(.sans, size: fontSize))
+        return max(0, (fontSize * 1.375 - natural) / 2)
+    }
+
     @Binding var text: String
     @Binding var caret: Int
     @Binding var height: CGFloat
@@ -178,7 +184,8 @@ struct MentionTextView: NSViewRepresentable {
         tv.font = FoleviFont.nsFont(.sans, size: fontSize)
         tv.textColor = .foleviInk
         tv.insertionPointColor = .foleviInk
-        tv.textContainerInset = NSSize(width: 0, height: 3)
+        // leading-snug (1.375) with no padding, as the web's comment field: half the extra above and below.
+        tv.textContainerInset = NSSize(width: 0, height: MentionTextView.inset(fontSize))
         tv.textContainer?.lineFragmentPadding = 0
         tv.isAutomaticQuoteSubstitutionEnabled = false
         tv.isAutomaticDashSubstitutionEnabled = false
@@ -281,7 +288,7 @@ struct MentionField: View {
     var onEscape: (() -> Void)?
 
     @State private var caret = 0
-    @State private var height: CGFloat = 22
+    @State private var height: CGFloat = 18
     @State private var active = 0
     @State private var closedAt: Int?
 
@@ -297,7 +304,7 @@ struct MentionField: View {
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
                         Text(placeholder).font(.ui(fontSize)).foregroundStyle(FoleviColor.inkFaint)
-                            .padding(.top, 3).allowsHitTesting(false).accessibilityHidden(true)
+                            .padding(.top, MentionTextView.inset(fontSize)).allowsHitTesting(false).accessibilityHidden(true)
                     }
                 }
             if listOpen {

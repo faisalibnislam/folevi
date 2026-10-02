@@ -882,7 +882,7 @@ struct SuggestionMenuView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if items.isEmpty {
-                        Text(emptyLabel).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text(emptyLabel).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .padding(.horizontal, 12).padding(.vertical, 8)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -891,7 +891,7 @@ struct SuggestionMenuView: View {
                         Button { onChoose(idx) } label: {
                             HStack(spacing: 10) {
                                 iconTile(item.icon)
-                                Text(item.label).font(.ui(14)).foregroundStyle(active ? FoleviColor.heading : FoleviColor.ink)
+                                Text(item.label).font(.ui(13)).foregroundStyle(active ? FoleviColor.heading : FoleviColor.ink)
                                     .lineLimit(1).truncationMode(.tail)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 if let hint = item.hint, !hint.isEmpty {
@@ -1090,7 +1090,7 @@ private struct BlockMenuRow: View {
                 } else if let icon {
                     Image(systemName: icon).font(.system(size: 12.5)).foregroundStyle(FoleviColor.inkMuted).frame(width: 16)
                 }
-                Text(label).font(.ui(14)).lineLimit(1)
+                Text(label).font(.ui(13)).lineLimit(1)
                     .foregroundStyle(danger ? FoleviColor.destructive : active ? FoleviColor.heading : FoleviColor.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if !compact, !hint.isEmpty {

@@ -168,6 +168,8 @@ struct SettingsRoot: View {
                         .accessibilityIdentifier("settings.heading")
                     page
                         .id(section.rawValue + (app.workspace?.id ?? ""))
+                        // Wrapped text-sm lines are 18.6pt apart on the web (13pt × 1.43).
+                        .lineSpacing(2.5)
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
@@ -246,7 +248,7 @@ struct SettingsRoot: View {
                 Text(section == .workspaceBilling
                      ? String(localized: "There's nothing here for you. Switch to Personal to see your own plan and billing.")
                      : String(localized: "Only this workspace's owner and admins can open this page."))
-                    .font(.ui(14)).foregroundStyle(FoleviColor.ink)
+                    .font(.ui(13)).foregroundStyle(FoleviColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else {
@@ -361,19 +363,23 @@ struct SettingsCard<Content: View>: View {
                 .accessibilityAddTraits(.isHeader)
             if let description {
                 Text(description)
-                    .font(.ui(14))
+                    .font(.ui(13)) // text-sm
+                    .uiLineHeight(13 * 1.4286, size: 13)
                     .foregroundStyle(FoleviColor.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
             } else if let descriptionText {
                 descriptionText
-                    .font(.ui(14))
+                    .font(.ui(13))
+                    .uiLineHeight(13 * 1.4286, size: 13)
                     .foregroundStyle(FoleviColor.inkMuted)
                     .tint(FoleviColor.heading)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
             }
-            content.padding(.top, 16)
+            // One 16pt gap above the whole body (mt-4). On the bare content the padding went on every child.
+            VStack(alignment: .leading, spacing: 0) { content }
+                .padding(.top, 16)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -442,7 +448,7 @@ struct SettingsChip: View {
 struct OfflineNote: View {
     var text: String = String(localized: "This is shown when you're online.")
     var body: some View {
-        Text(text).font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+        Text(text).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
     }
 }
 

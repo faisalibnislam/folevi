@@ -71,9 +71,9 @@ struct DataSettings: View {
                 if let id = r.documentId {
                     ImportedLink(title: r.name) { open(id) }
                 } else {
-                    Text(r.name).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink)
+                    Text(r.name).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
                 }
-                if let error = r.error { Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive) }
+                if let error = r.error { Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive) }
             }
             if r.images > 0 {
                 Text(r.images == 1 ? String(localized: "1 image uploaded") : String(localized: "\(r.images) images uploaded"))
@@ -280,7 +280,7 @@ private struct ImportedLink: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink).underline(hovering)
+            Text(title).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).underline(hovering)
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

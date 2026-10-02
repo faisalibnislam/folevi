@@ -340,7 +340,7 @@ private struct HomeNoteCard: View {
         return NoteCard(document: shown, folder: folder, unsynced: unsynced)
             .onTapGesture { openDocument(doc.id, NSEvent.modifierFlags.contains(.option)) }
             .draggable(DocumentDragPayload(documentId: doc.id))
-            .contextMenu { menu }
+            .foleviContextMenu { menu }
             .overlay(alignment: .topTrailing) {
                 GeometryReader { geo in
                     NoteMenuButton(title: doc.displayTitle, raised: true) { menu }

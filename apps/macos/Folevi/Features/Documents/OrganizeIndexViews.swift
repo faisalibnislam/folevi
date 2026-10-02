@@ -91,7 +91,7 @@ struct FolderCardItem: View {
                 }
             }
             .onHover { hovering = $0 }
-            .contextMenu { FolderMenuItems(folder: folder.info, openDocument: openDocument, present: present) }
+            .foleviContextMenu { FolderMenuItems(folder: folder.info, openDocument: openDocument, present: present) }
     }
 }
 
@@ -143,7 +143,7 @@ struct FoldersIndexView: View {
                     if data != nil && list.isEmpty {
                         Text(query.trimmingCharacters(in: .whitespaces).isEmpty ? String(localized: "No folders yet. Create one to group related pages.")
                              : String(localized: "No folders match “\(query.trimmingCharacters(in: .whitespaces))”."))
-                            .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                            .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .frame(maxWidth: .infinity)
                             .padding(.top, 64)
                     } else if layout == "grid" {
@@ -220,7 +220,7 @@ private struct FolderListRow: View {
         HStack(spacing: 12) {
             FolderGlyph(color: folder.color, size: 24)
             HStack(spacing: 8) {
-                Text(folder.name).font(.ui(14, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                Text(folder.name).font(.ui(16, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
                 if let parentName { Text("in \(parentName)").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -245,7 +245,7 @@ private struct FolderListRow: View {
             .opacity(hovering ? 1 : 0)
         }
         .onHover { hovering = $0 }
-        .contextMenu { FolderMenuItems(folder: folder.info, openDocument: openDocument, present: present) }
+        .foleviContextMenu { FolderMenuItems(folder: folder.info, openDocument: openDocument, present: present) }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(.default, open)
@@ -284,7 +284,7 @@ struct TagsIndexView: View {
                 if data != nil && list.isEmpty {
                     Text(query.trimmingCharacters(in: .whitespaces).isEmpty ? String(localized: "No tags yet. Add tags to a page from its Info panel.")
                          : String(localized: "No tags match “\(query.trimmingCharacters(in: .whitespaces))”."))
-                        .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 64)
                 } else {

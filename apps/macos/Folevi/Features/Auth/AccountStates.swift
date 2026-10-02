@@ -161,7 +161,7 @@ struct SafeSignOutButton: View {
                 Text(app.sync.isOnline
                      ? String(localized: "Wait a moment for the status to show “Saved”, then sign out.")
                      : String(localized: "You're offline. Reconnect and wait for the status to show “Saved”, then sign out."))
-                    .font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                    .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             } footer: {
                 Button("Stay signed in") { pending = nil }
@@ -223,7 +223,7 @@ struct DeviceLimitScreen: View {
                 Text("SIGNED IN ON").font(.ui(11, .semibold)).tracking(0.66).foregroundStyle(FoleviColor.inkFaint).padding(.bottom, 8)
                 VStack(alignment: .leading, spacing: 0) {
                     if sessions == nil {
-                        Text("Loading your devices…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                        Text("Loading your devices…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
                             .padding(.horizontal, 12).padding(.vertical, 12)
                     } else {
                         ForEach(Array(others.enumerated()), id: \.element.id) { i, s in
@@ -236,7 +236,7 @@ struct DeviceLimitScreen: View {
                 .foleviCard(radius: 8)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 if let error {
-                    Text(error).font(.ui(14)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
+                    Text(error).font(.ui(13)).foregroundStyle(FoleviColor.destructive).padding(.top, 12)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if canBuy {
@@ -267,7 +267,7 @@ struct DeviceLimitScreen: View {
         HStack(spacing: 12) {
             DeviceGlyph(client: s.client, label: s.label, size: 32)
             VStack(alignment: .leading, spacing: 0) {
-                Text(s.label).font(.ui(14, .medium)).foregroundStyle(FoleviColor.heading).lineLimit(1)
+                Text(s.label).font(.ui(13, .medium)).foregroundStyle(FoleviColor.heading).lineLimit(1)
                 Text("Active \(WebFormat.relative(s.lastSeenAt))").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

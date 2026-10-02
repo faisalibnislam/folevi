@@ -140,7 +140,7 @@ struct NoteAiPanel: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 4)
         }
-        .font(.ui(14))
+        .font(.ui(13))
     }
 
     // MARK: Prompt
@@ -244,7 +244,7 @@ struct NoteAiPanel: View {
         } else if let busy {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("\(busy)…").font(.ui(14)).foregroundStyle(FoleviColor.inkMuted)
+                Text("\(busy)…").font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)

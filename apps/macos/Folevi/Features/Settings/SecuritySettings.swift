@@ -246,7 +246,7 @@ private struct TwoFactorSetupSheet: View {
             default: save
             }
             if step < 2 {
-                TextLinkButton(title: step == 0 ? String(localized: "Not now") : String(localized: "Cancel"), accent: true, size: 14) { onDone() }
+                TextLinkButton(title: step == 0 ? String(localized: "Not now") : String(localized: "Cancel"), accent: true) { onDone() }
                     .padding(.top, 24)
                     .keyboardShortcut(.cancelAction)
             }
@@ -542,7 +542,7 @@ private struct PasswordCard: View {
                     Button("Change password", action: submit)
                         .buttonStyle(.folevi(.primary, .medium))
                         .disabled(busy)
-                    TextLinkButton(title: String(localized: "Forgot your current password?"), accent: true, size: 14) {
+                    TextLinkButton(title: String(localized: "Forgot your current password?"), accent: true) {
                         openWebApp("forgot-password", config: app.config)
                     }
                 }

@@ -115,7 +115,7 @@ private struct AiSettingCard: View {
                  + Text(" Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include the AI Assistant.").foregroundStyle(FoleviColor.inkMuted))
                     .font(.ui(13))
                     .fixedSize(horizontal: false, vertical: true)
-                TextLinkButton(title: String(localized: "See plans"), size: 14) { SettingsRouter.shared.section = .billing }
+                TextLinkButton(title: String(localized: "See plans")) { SettingsRouter.shared.section = .billing }
             }
         } else {
             Text("Ask AI, writing help and note summaries, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and all AI buttons are hidden.")

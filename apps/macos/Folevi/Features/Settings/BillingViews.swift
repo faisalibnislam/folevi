@@ -69,7 +69,7 @@ struct BillingTile<Icon: View, Content: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 icon.frame(width: 15, height: 15)
-                Text(title).font(.ui(13, .semibold))
+                Text(title).font(.ui(13, .semibold)).uiLineHeight(13 * 1.55, size: 13, weight: .semibold)
             }
             .foregroundStyle(FoleviColor.heading)
             .accessibilityElement(children: .combine)
@@ -94,7 +94,8 @@ struct BillingIcon: View {
 struct TileText: View {
     var text: String
     var body: some View {
-        Text(text).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+        Text(text).font(.ui(13)).foregroundStyle(FoleviColor.inkMuted).uiLineHeight(13 * 1.4286, size: 13)
+            .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
     }
 }
 
@@ -103,7 +104,8 @@ struct TileNote: View {
     var text: String
     var top: CGFloat = 8
     var body: some View {
-        Text(text).font(.ui(12.5)).foregroundStyle(FoleviColor.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, top)
+        Text(text).font(.ui(12.5)).foregroundStyle(FoleviColor.inkFaint).uiLineHeight(12.5 * 1.55, size: 12.5)
+            .fixedSize(horizontal: false, vertical: true).padding(.top, top)
     }
 }
 
@@ -332,7 +334,8 @@ struct BillingFootnote: View {
     var text: String
     var top: CGFloat = 12
     var body: some View {
-        Text(text).font(.ui(12.5)).foregroundStyle(FoleviColor.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, top)
+        Text(text).font(.ui(12.5)).foregroundStyle(FoleviColor.inkFaint).uiLineHeight(12.5 * 1.55, size: 12.5)
+            .fixedSize(horizontal: false, vertical: true).padding(.top, top)
     }
 }
 

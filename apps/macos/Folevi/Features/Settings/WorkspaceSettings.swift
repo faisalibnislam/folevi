@@ -67,7 +67,8 @@ private struct WorkspaceGeneralPage: View {
                          + Text("(owners and admins can rename it)").font(.ui(12)).foregroundStyle(FoleviColor.inkFaint))
                             .font(.ui(13))
                     }
-                    Text("Logo").font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).padding(.top, 20).padding(.bottom, 8)
+                    Text("Logo").font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink)
+                        .uiLineHeight(13 * 1.4286, size: 13, weight: .medium).padding(.top, 20).padding(.bottom, 8)
                     if canAdmin {
                         IdentityImageField(label: String(localized: "Workspace logo"), shape: .square, url: w.logoUrl, initial: w.name,
                                            onUpload: { data, filename, mime in
@@ -87,6 +88,7 @@ private struct WorkspaceGeneralPage: View {
                     planLine.padding(.top, 16)
                     Text("\(storageLabel): \(WebFormat.bytes(w.storageUsedBytes)) of \(WebFormat.bytes(w.storageQuotaBytes)) used")
                         .font(.ui(13)).foregroundStyle(FoleviColor.inkMuted)
+                        .uiLineHeight(13 * 1.4286, size: 13)
                         .padding(.top, 4)
                     StorageBar(fraction: w.storageQuotaBytes > 0 ? w.storageUsedBytes / w.storageQuotaBytes : 0)
                         .frame(maxWidth: 448)
@@ -113,7 +115,8 @@ private struct WorkspaceGeneralPage: View {
             } else if scheduled == nil {
                 SettingsCard(title: String(localized: "Leave workspace"),
                              description: String(localized: "You own this workspace, so you can’t leave it. Make another member the owner first (Members → Make owner), or delete the workspace below.")) {
-                    TextLinkButton(title: String(localized: "Go to Members"), size: 14) { SettingsRouter.shared.section = .members }
+                    TextLinkButton(title: String(localized: "Go to Members")) { SettingsRouter.shared.section = .members }
+                        .uiLineHeight(13 * 1.55, size: 13) // the link's line in a plain block
                 }
                 SettingsCard(title: String(localized: "Delete workspace"),
                              description: String(localized: "Deletes this workspace and everything in it (pages, folders, tasks, files and comments) for everyone, after a 7-day grace period. Export it first if you want to keep a copy. Nobody’s Personal is affected.")) {
@@ -160,10 +163,11 @@ private struct WorkspaceGeneralPage: View {
             Text(w.plan?.name ?? PlanTier.name(w.plan?.tier ?? "free")).foregroundStyle(FoleviColor.ink)
             if w.canManageBilling == true {
                 Text(" · ").foregroundStyle(FoleviColor.inkMuted)
-                TextLinkButton(title: String(localized: "Plan & billing"), size: 14) { SettingsRouter.shared.section = .workspaceBilling }
+                TextLinkButton(title: String(localized: "Plan & billing"), size: 13) { SettingsRouter.shared.section = .workspaceBilling }
             }
         }
         .font(.ui(13))
+        .uiLineHeight(13 * 1.4286, size: 13)
     }
 
     /// Your view of storage here: the owner's free pool, or your own quota on a paid plan.
@@ -356,9 +360,11 @@ private struct MembersPage: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 4) {
                     Text(m.displayName).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                        .uiLineHeight(13 * 1.4286, size: 13, weight: .medium)
                     if m.isYou { Text("(you)").font(.ui(12)).foregroundStyle(FoleviColor.inkMuted) }
                 }
                 Text(m.email).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1).truncationMode(.middle)
+                    .uiLineHeight(16, size: 12)
                 // The owner decides which admins may manage the plan and billing.
                 if isOwner && m.role == "admin" {
                     HStack(spacing: 8) {
@@ -623,7 +629,9 @@ private struct GuestsPage: View {
             WrapHStack(spacing: 12, lineSpacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(g.displayName).font(.ui(13, .medium)).foregroundStyle(FoleviColor.ink).lineLimit(1)
+                        .uiLineHeight(13 * 1.4286, size: 13, weight: .medium)
                     Text(g.email).font(.ui(12)).foregroundStyle(FoleviColor.inkMuted).lineLimit(1)
+                        .uiLineHeight(16, size: 12)
                 }
                 Button("Convert to member") { confirm = Confirm(member: true, profileId: g.profileId, name: g.displayName) }
                     .buttonStyle(.folevi(.quiet, .small))

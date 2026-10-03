@@ -76,7 +76,9 @@ enum BlockStyles {
             let size = body * headingFactor(h.level, font: document.font)
             s.font = FoleviType.editorFont(size: size, weight: .semibold, design: document.font, scale: scale)
             s.color = heading
-            s.lineSpacing = spacing(for: s.font, lineHeight: 1.22)
+            // line-height: 1.22, tighter than the font's own (exact, as the web).
+            s.lineSpacing = 0
+            s.lineHeight = s.font.pointSize * 1.22
             let tracking: CGFloat = document.font == .serif ? -0.012 : h.level == .level1 ? -0.022 : h.level == .level2 ? -0.018 : -0.012
             s.kern = tracking * s.font.pointSize
             s.placeholder = String(localized: "Heading \(h.level.rawValue)")
@@ -112,7 +114,7 @@ enum BlockStyles {
     }
 
     static func lineHeight(_ style: TextRenderStyle) -> CGFloat {
-        NSLayoutManager().defaultLineHeight(for: style.font) + style.lineSpacing
+        style.lineHeight ?? NSLayoutManager().defaultLineHeight(for: style.font) + style.lineSpacing
     }
 
     /// Space above and below a block (editor.css: 3px block padding, heading and quote margins, the
@@ -198,6 +200,10 @@ struct BlockRowView: View {
     private var isSelected: Bool { model.selectedBlockIds.contains(block.id) }
     private var isDragged: Bool { model.drag.draggedIds.contains(block.id) }
     private var indent: CGFloat { CGFloat(row.depth) * BlockMetrics.indent(scale) }
+    private var headingMinHeight: CGFloat? {
+        guard case .heading = block.content else { return nil }
+        return textStyle.font.pointSize * 1.6 - 6 * scale
+    }
     private var docAccent: Color { model.documentAccent }
     /// 1em of the page's body text at this zoom (the web sizes markers in em).
     private var em: CGFloat { BlockStyles.bodySize(model.style.font) * scale }
@@ -214,6 +220,9 @@ struct BlockRowView: View {
             marker
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // editor.css `.fb { min-height: 1.6em }` (it holds the block's 3pt padding): a one-line heading
+                // is taller than its 1.22 line.
+                .frame(minHeight: headingMinHeight, alignment: .topLeading)
         }
         .padding(.vertical, look.isPlain ? 0 : lookPadding.vertical)
         .padding(.top, pad.top)

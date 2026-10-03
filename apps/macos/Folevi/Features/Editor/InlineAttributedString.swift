@@ -29,6 +29,9 @@ struct TextRenderStyle: Equatable {
     var font: NSFont
     var color: NSColor
     var lineSpacing: CGFloat = 2
+    /// An exact CSS line height (headings: 1.22em, tighter than the font's own): each line is this tall and
+    /// its glyphs sit where a browser puts them.
+    var lineHeight: CGFloat?
     var paragraphSpacing: CGFloat = 0
     var placeholder: String = ""
     var strikethrough = false
@@ -40,7 +43,7 @@ struct TextRenderStyle: Equatable {
     var notePalette: NotePaletteLook?
 
     static func == (a: TextRenderStyle, b: TextRenderStyle) -> Bool {
-        a.font == b.font && a.color == b.color && a.lineSpacing == b.lineSpacing && a.placeholder == b.placeholder
+        a.font == b.font && a.color == b.color && a.lineSpacing == b.lineSpacing && a.lineHeight == b.lineHeight && a.placeholder == b.placeholder
             && a.strikethrough == b.strikethrough && a.kern == b.kern && a.alignment == b.alignment && a.notePalette == b.notePalette
     }
 }
@@ -82,6 +85,10 @@ enum InlineAttributedString {
         guard range.length > 0, NSMaxRange(range) <= text.length else { return }
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = style.lineSpacing
+        if let lh = style.lineHeight {
+            paragraph.minimumLineHeight = lh
+            paragraph.maximumLineHeight = lh
+        }
         paragraph.paragraphSpacing = style.paragraphSpacing
         paragraph.alignment = style.alignment
         text.beginEditing()
@@ -152,10 +159,15 @@ enum InlineAttributedString {
                 }
                 visual[.font] = font
             }
+            if let lh = style.lineHeight {
+                // TextKit trims a capped line from the top; CSS splits the difference above and below.
+                let f = (visual[.font] as? NSFont) ?? font
+                visual[.baselineOffset] = (lh - NSLayoutManager().defaultLineHeight(for: f)) / 2
+            }
             if visual[.foregroundColor] == nil { visual[.foregroundColor] = color }
             if visual[.font] == nil { visual[.font] = font }
             // Remove stale visual attributes, keep Folevi marks.
-            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .foleviUnderlineOffset, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern, .foleviCodeBox, .foleviCodeRing] {
+            for key in [NSAttributedString.Key.font, .foregroundColor, .backgroundColor, .underlineStyle, .underlineColor, .foleviUnderlineOffset, .strikethroughStyle, .strikethroughColor, .toolTip, .paragraphStyle, .kern, .foleviCodeBox, .foleviCodeRing, .baselineOffset] {
                 text.removeAttribute(key, range: r)
             }
             text.addAttributes(visual, range: r)

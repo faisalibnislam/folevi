@@ -28,7 +28,18 @@ export const mermaidFocusPlugin = new Plugin({
       const here = $pos.depth === 0 ? (dir > 0 ? $pos.index(0) - 1 : $pos.index(0)) : $pos.index(0);
       // The next visible block (blocks hidden in a collapsed toggle are skipped).
       const index = neighbourIndex(state, here, dir);
-      if (index === null) return false;
+      if (index === null) {
+        // A selected diagram at the very end of the note: ↓ opens a new line below it (rather than the
+        // browser jumping the caret back up); at the very start, ↑ stays put.
+        if (sel instanceof NodeSelection && sel.node.type.name === "codeBlock") {
+          if (dir > 0) {
+            const tr = state.tr.insert(sel.to, state.schema.nodes.paragraph!.create({ id: null, depth: sel.node.attrs.depth }));
+            view.dispatch(tr.setSelection(TextSelection.create(tr.doc, sel.to + 1)).scrollIntoView());
+          }
+          return true;
+        }
+        return false;
+      }
       const target = state.doc.maybeChild(index);
       if (!target || target.type.name !== "codeBlock" || target.attrs.language !== "mermaid" || !target.textContent.trim()) return false;
       let at = 0;

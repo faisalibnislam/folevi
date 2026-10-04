@@ -1,12 +1,12 @@
 // Paste normalization: arbitrary HTML (web pages, Google Docs, Word, other editors) → canonical blocks.
 // Only structure and safe inline formatting survive; scripts, styles and unknown markup are dropped.
 import { SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
-import { TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import type { Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 import { blockToNode } from "./convert";
 import { normalizeDepths } from "./commands";
-import { deleteVisibleRange } from "./plugins";
+import { afterSubtree, deleteVisibleRange } from "./plugins";
 import { hiddenIndices } from "./blockSelectionState";
 
 /**
@@ -26,6 +26,15 @@ export function pasteIntoCode(view: EditorView, data: DataTransfer | null): bool
 export function prepareForPaste(view: EditorView, slice: Slice | null): void {
   const visible = deleteVisibleRange(view.state);
   if (visible) view.dispatch(visible);
+  // Pasting while a whole block (an image, a divider, a table…) is selected goes on a new line after it,
+  // like typing does, instead of replacing it.
+  const picked = view.state.selection;
+  if (picked instanceof NodeSelection && picked.node.isBlock && picked.$from.depth === 0) {
+    const at = afterSubtree(view.state, picked.$from.index(0));
+    const tr = view.state.tr.insert(at, view.state.schema.nodes.paragraph!.create({ id: null, depth: picked.node.attrs.depth }));
+    tr.setSelection(TextSelection.create(tr.doc, at + 1));
+    view.dispatch(tr);
+  }
   const { state } = view;
   const { $from, empty } = state.selection;
   if (!slice || !empty || $from.depth < 1 || slice.content.childCount < 2) return;

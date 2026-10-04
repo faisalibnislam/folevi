@@ -78,12 +78,30 @@ describe("the unload journal", () => {
     const client = { mutation: vi.fn(async () => { throw new Error("offline"); }) } as unknown as ConvexReactClient;
     const engine = await SyncEngine.open(client, "acct-journal", PERSONAL, "web-j");
     engine.setOnline(false);
-    window.dispatchEvent(new Event("pagehide"));
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }));
     engine.upsertBlock("doc-1", para("b1", "last words"), ["content", "position"]);
-    expect(localStorage.getItem("folevi:sync-journal:acct-journal")).toContain("last words");
+    const key = Object.keys(localStorage).find((k) => k.startsWith("folevi:sync-journal:acct-journal:"))!;
+    expect(localStorage.getItem(key)).toContain("last words");
+    // A reload: the same tab reads its own journal back (and removes it once IndexedDB has it).
+    engine.dispose();
     const reopened = await SyncEngine.open(client, "acct-journal", PERSONAL, "web-j");
     expect(textOf(reopened.documentBlocks("doc-1")[0])).toBe("last words");
-    expect(localStorage.getItem("folevi:sync-journal:acct-journal")).toBeNull();
+    await reopened.persisted();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(localStorage.getItem(key)).toBeNull();
+  });
+
+  test("a hidden tab's journal is left alone; a closed tab's is taken over", async () => {
+    const client = { mutation: vi.fn(async () => { throw new Error("offline"); }) } as unknown as ConvexReactClient;
+    localStorage.setItem("folevi:sync-journal:acct-tabs:other-hidden", JSON.stringify({ ops: [{ opId: "h", kind: "block.upsert", documentId: "d", block: para("bh", "hidden tab"), baseRevision: null, fields: ["content"] }], closed: false }));
+    localStorage.setItem("folevi:sync-journal:acct-tabs:other-closed", JSON.stringify({ ops: [{ opId: "c", kind: "block.upsert", documentId: "d", block: para("bc", "closed tab"), baseRevision: null, fields: ["content"] }], closed: true }));
+    const engine = await SyncEngine.open(client, "acct-tabs", PERSONAL, "web-t");
+    expect(engine.state.pending.map((p) => p.opId)).toEqual(["c"]);
+    await engine.persisted();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(localStorage.getItem("folevi:sync-journal:acct-tabs:other-closed")).toBeNull();
+    expect(localStorage.getItem("folevi:sync-journal:acct-tabs:other-hidden")).not.toBeNull();
+    engine.dispose();
   });
 });
 
@@ -111,5 +129,28 @@ describe("line breaks", () => {
     const e = new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS], content: { type: "doc", content: [blockToNode(block, 0)] } });
     expect(pmInline(e.state.doc.child(0))).toEqual(block.text);
     e.destroy();
+  });
+});
+
+describe("sync reducer, round four", () => {
+  test("deleting a block drops its unsent edits, so the delete isn't refused as a conflict with ourselves", () => {
+    let state = sync.emptySyncState();
+    state.blocks = { b1: { documentId: "d", block: para("b1", "saved"), serverRevision: 5, deleted: false } };
+    state = sync.localUpsert(state, { opId: "u", documentId: "d", block: para("b1", "edited"), fields: ["content"] });
+    state = sync.localDelete(state, { opId: "x", documentId: "d", blockId: "b1" });
+    expect(state.pending.map((p) => `${p.kind}:${p.opId}`)).toEqual(["block.delete:x"]);
+    expect(state.pending[0]!.kind === "block.delete" && state.pending[0]!.baseRevision).toBe(5);
+  });
+
+  test("a block moved while its conflict is open stays where it was put, whichever version is kept", () => {
+    const base = sync.emptySyncState();
+    base.blocks = { b1: { documentId: "d", block: { ...para("b1", "theirs"), rank: "a" }, serverRevision: 2, deleted: false } };
+    base.conflicts = [{ id: "c", documentId: "d", blockId: "b1", reason: "content", server: { ...para("b1", "theirs"), rank: "a" }, client: { ...para("b1", "mine"), rank: "z" }, moved: true }];
+    const mine = sync.resolveConflict(base, { conflictId: "c", choice: "mine", opId: "m" });
+    const m = mine.pending.find((p) => p.kind === "block.upsert");
+    expect(m && m.kind === "block.upsert" && [m.block.rank, textOf(m.block), m.fields.join()]).toEqual(["z", "mine", "content,position"]);
+    const theirs = sync.resolveConflict(base, { conflictId: "c", choice: "theirs", opId: "t" });
+    const t = theirs.pending.find((p) => p.kind === "block.upsert");
+    expect(t && t.kind === "block.upsert" && [t.block.rank, textOf(t.block), t.fields.join()]).toEqual(["z", "theirs", "position"]);
   });
 });

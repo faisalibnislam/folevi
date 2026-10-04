@@ -240,6 +240,17 @@ export class SyncEngine {
         conflict: { reason: row.deletedAt ? "deleted" : "content", server: toWireBlock(row), client: op.block },
       };
     }
+    // A delete refused because someone changed the block meanwhile: still refused when resent (the person
+    // hasn't chosen yet), so the deleting device keeps its question instead of quietly taking the block back.
+    if (prior.status === "conflict" && op.kind === "block.delete" && row && row.deletedAt === undefined) {
+      return {
+        opId: op.opId,
+        status: "conflict",
+        revision: row.revision,
+        block: toWireBlock(row),
+        conflict: { reason: "content", server: toWireBlock(row), client: null },
+      };
+    }
     return {
       opId: op.opId,
       status: "duplicate",

@@ -262,6 +262,24 @@ describe("sync protocol", () => {
     expect(row.text).toEqual([{ type: "text", text: "edited" }]);
   });
 
+  test("a delete based on an older version than someone's edit asks first, and asks again when resent", async () => {
+    const t = setup();
+    const a = await person(t, "sync-del-edit@example.com");
+    const docId = await newDoc(a);
+    const b = para(ulid(), "original", "V");
+    await upsert(a, docId, b, null);
+    // Someone edits it (revision 2) while this device, still on revision 1, deletes it.
+    await upsert(a, docId, { ...b, text: [{ type: "text", text: "edited elsewhere" }] }, 1, ["content"]);
+    const op = { opId: ulid(), kind: "block.delete" as const, documentId: docId, blockId: b.id, baseRevision: 1 };
+    const [first] = await a.as.mutation(api.sync.push, { scope: a.scope, deviceId: "device-test-1", ops: [op] });
+    expect(first!.status).toBe("conflict");
+    const [again] = await a.as.mutation(api.sync.push, { scope: a.scope, deviceId: "device-test-1", ops: [op] });
+    expect(again!.status).toBe("conflict");
+    expect(again!.conflict?.reason).toBe("content");
+    const row = (await a.as.query(api.blocks.list, { documentId: docId }))!.blocks.find((x) => x.id === b.id);
+    expect(row?.text).toEqual([{ type: "text", text: "edited elsewhere" }]);
+  });
+
   test("deletes are tombstones (with descendants) and restore brings them back", async () => {
     const t = setup();
     const a = await person(t, "sync4@example.com");

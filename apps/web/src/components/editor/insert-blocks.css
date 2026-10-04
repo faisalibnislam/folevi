@@ -133,6 +133,8 @@
 @media print {
   .fb-editor > .fb-page-break { break-after: page; page-break-after: always; height: 0; margin: 0; background: none; }
   .fb-page-break-label { display: none; }
+  /* The on-screen page cuts don't apply to paper (the layout changes when printed). */
+  .fb-sheet { mask-image: none !important; -webkit-mask-image: none !important; }
 }
 
 /* ---------------------------------------------------------------- formula */

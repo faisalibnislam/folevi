@@ -67,7 +67,14 @@ export class SyncEngine {
       // Anything in flight when the page closed may or may not have landed: resend (ops are idempotent).
       engine.state = { ...sync.emptySyncState(), ...saved, pending: [...saved.inflight, ...saved.pending], inflight: [] };
     }
-    engine.state = mergeJournal(engine.state, readJournal(accountKey));
+    // This tab's own journal (a reload), and those left by tabs that have since closed.
+    const journals = readJournals(accountKey);
+    if (journals.length) {
+      for (const j of journals) engine.state = mergeJournal(engine.state, j.ops);
+      engine.commit(engine.state);
+      // Removed only once IndexedDB holds what they added.
+      void engine.persisted().then(() => journals.forEach((j) => removeJournal(j.key)));
+    }
     engine.watchUnload();
     if (teamWorkspaceIds) {
       const adopted = adoptLegacyCreates(engine.state, teamWorkspaceIds);
@@ -110,30 +117,63 @@ export class SyncEngine {
    * or a closed tab is merged back in when the engine opens.
    */
   private journaling = false;
+  private unwatch: (() => void) | null = null;
   private watchUnload() {
     if (typeof window === "undefined") return;
-    const hide = () => {
+    const key = journalKey(this.accountKey, tabId());
+    const hide = (closing: boolean) => {
       this.journaling = true;
-      writeJournal(this.accountKey, this.state);
+      this.journalClosing = closing;
+      writeJournal(key, this.state, closing);
     };
     // Capture, so this runs before the editor's own flush on the same event (which writes the journal again).
-    window.addEventListener("pagehide", hide, { capture: true });
-    document.addEventListener(
-      "visibilitychange",
-      () => {
-        if (document.visibilityState === "hidden") hide();
-        else {
-          this.journaling = false;
-          clearJournal(this.accountKey);
-        }
-      },
-      { capture: true },
-    );
+    // A page kept for back/forward (persisted) isn't closing: its journal stays its own.
+    const onPageHide = (e: PageTransitionEvent) => hide(!e.persisted);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") hide(false);
+      else {
+        this.journaling = false;
+        removeJournal(key);
+      }
+    };
+    const onPageShow = () => {
+      this.journaling = false;
+      removeJournal(key);
+    };
+    // Another tab of this account closed with changes IndexedDB may not have: take them over.
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === key || !e.key.startsWith(journalPrefix(this.accountKey)) || !e.newValue) return;
+      const j = parseJournal(e.key, e.newValue);
+      if (!j?.closed) return;
+      const touched = new Set(j.ops.flatMap((op) => ("documentId" in op ? [op.documentId] : [])));
+      this.commit(mergeJournal(this.state, j.ops));
+      void this.persisted().then(() => removeJournal(e.key!));
+      for (const documentId of touched) this.emit({ type: "remote", documentId });
+      this.scheduleFlush(0);
+    };
+    window.addEventListener("pagehide", onPageHide, { capture: true });
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisibility, { capture: true });
+    this.unwatch = () => {
+      window.removeEventListener("pagehide", onPageHide, { capture: true });
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisibility, { capture: true });
+    };
+  }
+  private journalClosing = false;
+
+  /** Stops listening to the page (an engine that's been replaced, or opened and then not used). */
+  dispose() {
+    this.unwatch?.();
+    this.unwatch = null;
+    this.journaling = false;
   }
 
   private commit(next: SyncState) {
     this.state = next;
-    if (this.journaling) writeJournal(this.accountKey, next);
+    if (this.journaling) writeJournal(journalKey(this.accountKey, tabId()), next, this.journalClosing);
     if (this.batching) {
       this.batchDirty = true;
       return;
@@ -180,7 +220,7 @@ export class SyncEngine {
     if (at >= 0) {
       const conflicts = [...this.state.conflicts];
       const { revision: _revision, ...client } = block;
-      conflicts[at] = { ...conflicts[at]!, client };
+      conflicts[at] = { ...conflicts[at]!, client, ...(fields.includes("position") ? { moved: true } : {}) };
       this.commit({ ...this.state, conflicts });
       return;
     }
@@ -222,6 +262,10 @@ export class SyncEngine {
   }
 
   deleteBlock(documentId: string, blockId: string) {
+    // Deleting it again after "Edited elsewhere" brought it back: that question is answered.
+    if (this.state.conflicts.some((c) => c.blockId === blockId && c.reason === "edited")) {
+      this.commit({ ...this.state, conflicts: this.state.conflicts.filter((c) => !(c.blockId === blockId && c.reason === "edited")) });
+    }
     // Deleting a block with an open conflict settles it: if the other version was a delete too, nothing's left to do.
     const at = this.openConflictIndex(blockId);
     if (at >= 0) {
@@ -476,32 +520,76 @@ export class SyncEngine {
   }
 }
 
-const journalKey = (accountKey: string) => `folevi:sync-journal:${accountKey}`;
+const journalPrefix = (accountKey: string) => `folevi:sync-journal:${accountKey}:`;
+const journalKey = (accountKey: string, tab: string) => `${journalPrefix(accountKey)}${tab}`;
 
-function writeJournal(accountKey: string, state: SyncState) {
+/** This tab's id: kept in sessionStorage, so a reload is the same tab and reads its own journal back. */
+function tabId(): string {
+  try {
+    let id = sessionStorage.getItem("folevi:tab-id");
+    if (!id) {
+      id = ulid();
+      sessionStorage.setItem("folevi:tab-id", id);
+    }
+    return id;
+  } catch {
+    return "tab";
+  }
+}
+
+interface Journal {
+  key: string;
+  ops: SyncOp[];
+  /** Written as the tab closed (not just hidden): another tab may take it over. */
+  closed: boolean;
+}
+
+function parseJournal(key: string, raw: string): Journal | null {
+  try {
+    const parsed = JSON.parse(raw) as { ops?: SyncOp[]; closed?: boolean };
+    return Array.isArray(parsed.ops) ? { key, ops: parsed.ops, closed: Boolean(parsed.closed) } : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeJournal(key: string, state: SyncState, closed: boolean) {
   try {
     const ops = [...state.inflight, ...state.pending];
-    if (!ops.length) localStorage.removeItem(journalKey(accountKey));
-    else localStorage.setItem(journalKey(accountKey), JSON.stringify({ ops, at: Date.now() }));
+    if (!ops.length) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify({ ops, closed, at: Date.now() }));
   } catch {
     // Storage full or blocked: the IndexedDB save is still on its way.
   }
 }
 
-function readJournal(accountKey: string): SyncOp[] {
+/**
+ * The journals this tab should merge as it opens: its own (left by a reload), and any written by tabs
+ * that closed. A tab that's only hidden keeps its journal: it may still change those ops.
+ */
+function readJournals(accountKey: string): Journal[] {
   try {
-    const raw = localStorage.getItem(journalKey(accountKey));
-    localStorage.removeItem(journalKey(accountKey));
-    const parsed = raw ? (JSON.parse(raw) as { ops?: SyncOp[] }) : null;
-    return Array.isArray(parsed?.ops) ? parsed!.ops : [];
+    const own = journalKey(accountKey, tabId());
+    const out: Journal[] = [];
+    // The one shared journal an earlier version wrote.
+    const legacy = `folevi:sync-journal:${accountKey}`;
+    const old = parseJournal(legacy, localStorage.getItem(legacy) ?? "");
+    if (old) out.push(old);
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(journalPrefix(accountKey))) continue;
+      const j = parseJournal(key, localStorage.getItem(key) ?? "");
+      if (j && (key === own || j.closed)) out.push(j);
+    }
+    return out;
   } catch {
     return [];
   }
 }
 
-function clearJournal(accountKey: string) {
+function removeJournal(key: string) {
   try {
-    localStorage.removeItem(journalKey(accountKey));
+    localStorage.removeItem(key);
   } catch {
     /* nothing to clear */
   }

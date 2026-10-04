@@ -303,6 +303,15 @@ function handleLine(el: HTMLElement): { top: number; height: number } {
   return { top: box.top, height: Math.min(box.height, 32) };
 }
 
+/**
+ * A key pressed in a block's own field (a table cell, an image's caption or alt text, a formula's source):
+ * the note's shortcuts aren't for it (the caret in the note is somewhere else).
+ */
+function inBlockField(e: Event): boolean {
+  const t = e.target;
+  return t instanceof Element && Boolean(t.closest("input, textarea, select, [data-draft]"));
+}
+
 /** Top-level block index → its rendered element. */
 function blockDom(editor: Editor, index: number): HTMLElement | null {
   return blockElements(editor.view.dom as HTMLElement)[index] ?? null;
@@ -385,6 +394,7 @@ export function EditorMenus({
     const dom = editor.view.dom as HTMLElement;
     const onOpen = (e: Event) => setInlineAi({ id: Date.now(), ...(e as CustomEvent<InlineAiOpen>).detail });
     const onKey = (e: KeyboardEvent) => {
+      if (inBlockField(e)) return;
       if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
         // In a note, ⌘J writes here (the app-wide ⌘J opens Ask AI).
         e.preventDefault();
@@ -553,6 +563,7 @@ export function EditorMenus({
       }
     };
     const onKey = (e: KeyboardEvent) => {
+      if (inBlockField(e)) return;
       if (e.key !== "Enter") return;
       const sel = editor.state.selection;
       if (!(sel instanceof NodeSelection)) return;
@@ -745,6 +756,7 @@ export function EditorMenus({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      if (inBlockField(e)) return;
       // Keys that confirm or move an input method's composition belong to it, not to the menu.
       if (e.isComposing || e.keyCode === 229) return;
       if (e.key === "ArrowDown") {
@@ -1153,6 +1165,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const onKey = (e: KeyboardEvent) => {
+      if (inBlockField(e)) return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.shiftKey && !e.altKey && e.code === "KeyK") {
         // Not the command palette (⌘K): stop it reaching the window-level shortcut handler.
@@ -1512,6 +1525,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const onKey = (e: KeyboardEvent) => {
+      if (inBlockField(e)) return;
       if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key === ".") {
         e.preventDefault();
         syncDomSelection(editor.view);
@@ -1526,7 +1540,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   // Focus moves into the menu when it opens.
   useEffect(() => {
     if (!menu) return;
-    const id = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+    const id = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus());
     return () => cancelAnimationFrame(id);
   }, [menu]);
 
@@ -1571,7 +1585,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   const anyText = nodes.some((n) => n.isTextblock);
 
   const onMenuKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const items = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    const items = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ?? [])];
     const i = items.indexOf(document.activeElement as HTMLElement);
     const focus = (n: number) => items[(n + items.length) % items.length]?.focus();
     switch (e.key) {
@@ -1743,10 +1757,16 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                     ]
                   : []),
                 { label: "Duplicate", hint: "⌘D", icon: <CopyPlus size={14} />, run: () => act(() => duplicateBlocks(editor)) },
-                { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, run: () => act(() => moveBlock(editor, -1)) },
-                { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, run: () => act(() => moveBlock(editor, 1)) },
+                { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, disabled: menu.from === 0, run: () => act(() => moveBlock(editor, -1)) },
+                { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, disabled: menu.from + count >= editor.state.doc.childCount, run: () => act(() => moveBlock(editor, 1)) },
                 { label: "Indent", hint: "Tab", icon: <IndentIncrease size={14} />, run: () => act(() => changeDepth(editor, 1)) },
-                { label: "Outdent", hint: "⇧Tab", icon: <IndentDecrease size={14} />, run: () => act(() => changeDepth(editor, -1)) },
+                {
+                  label: "Outdent",
+                  hint: "⇧Tab",
+                  icon: <IndentDecrease size={14} />,
+                  disabled: Array.from({ length: count }, (_, i) => editor.state.doc.maybeChild(menu.from + i)).every((n) => !Number(n?.attrs.depth ?? 0)),
+                  run: () => act(() => changeDepth(editor, -1)),
+                },
                 ...(single
                   ? [
                       {
@@ -1778,7 +1798,15 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                   },
                 },
               ].map((item) => (
-                <button key={item.label} type="button" role="menuitem" tabIndex={-1} onClick={item.run} className={`${itemClass} ${"danger" in item && item.danger ? "text-danger" : ""}`}>
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitem"
+                  tabIndex={-1}
+                  disabled={"disabled" in item && Boolean(item.disabled)}
+                  onClick={item.run}
+                  className={`${itemClass} disabled:opacity-40 ${"danger" in item && item.danger ? "text-danger" : ""}`}
+                >
                   <span className="text-muted" aria-hidden>
                     {item.icon}
                   </span>
@@ -1810,6 +1838,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
     };
     dom.addEventListener("folevi:task-details", on);
     const onKey = (e: KeyboardEvent) => {
+      if (inBlockField(e)) return;
       // ⌘⇧D opens task details for the current to-do.
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === "KeyD") {
         const $from = editor.state.selection.$from;

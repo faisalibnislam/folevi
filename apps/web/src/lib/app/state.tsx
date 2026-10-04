@@ -206,11 +206,16 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
+    let opened: SyncEngine | null = null;
     (async () => {
       const id = await loadDeviceId(profile.id);
       // Your workspaces let page creates queued by an older build find their scope (engine.ts adoptLegacyCreates).
       const e = await SyncEngine.open(convex, profile.id, scopeRef.current, id, teamIdsRef.current);
-      if (cancelled) return;
+      opened = e;
+      if (cancelled) {
+        e.dispose();
+        return;
+      }
       setDevice(id);
       setEngine(e);
       const up = new Uploader(convex, profile.id, e, (message) => window.dispatchEvent(new CustomEvent("folevi:error", { detail: message })));
@@ -220,6 +225,8 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
     })();
     return () => {
       cancelled = true;
+      // Replaced (another account) or unmounted: it stops listening to the page.
+      opened?.dispose();
     };
   }, [convex, profile.id, ready]);
 

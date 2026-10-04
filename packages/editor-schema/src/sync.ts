@@ -49,6 +49,8 @@ export interface ConflictRecord {
   reason: "content" | "deleted" | "exists" | "edited";
   server: WireBlock | null;
   client: WireBlock;
+  /** The person moved the block (indent, drag) while the conflict was open: their position wins either way. */
+  moved?: boolean;
 }
 
 export interface UploadRecord {
@@ -161,6 +163,9 @@ export function localDelete(prev: SyncState, input: { opId: string; documentId: 
     return state;
   }
   entity.deleted = true;
+  // Edits to it that haven't been sent yet go with it: sent first, they'd make the server see the delete
+  // as based on an older version than its own edit, and refuse it as a conflict with ourselves.
+  state.pending = state.pending.filter((op) => !(op.kind === "block.upsert" && op.block.id === input.blockId));
   state.pending.push({
     opId: input.opId,
     kind: "block.delete",
@@ -389,7 +394,19 @@ export function resolveConflict(
   if (!record) return prev;
   let state = clone(prev);
   state.conflicts = state.conflicts.filter((c) => c.id !== input.conflictId);
-  if (input.choice === "theirs") return state;
+  if (input.choice === "theirs") {
+    // Their text, but where the person put it meanwhile.
+    const server = state.blocks[record.blockId];
+    if (record.moved && server && !server.deleted) {
+      return localUpsert(state, {
+        opId: input.opId,
+        documentId: record.documentId,
+        block: { ...server.block, parentId: record.client.parentId, rank: record.client.rank },
+        fields: ["position"],
+      });
+    }
+    return state;
+  }
   // Deleted here, edited elsewhere: "mine" deletes it after all; there's nothing to keep twice.
   if (record.reason === "edited") {
     return input.choice === "mine" ? localDelete(state, { opId: input.opId, documentId: record.documentId, blockId: record.blockId }) : state;
@@ -402,8 +419,8 @@ export function resolveConflict(
     return localUpsert(state, {
       opId: input.opId,
       documentId: record.documentId,
-      block: { ...record.client, parentId: current.parentId, rank: current.rank },
-      fields: ["content"],
+      block: record.moved ? record.client : { ...record.client, parentId: current.parentId, rank: current.rank },
+      fields: record.moved ? ["content", "position"] : ["content"],
     });
   }
   if (!input.newBlockId || !input.newRank) throw new Error("keep both requires newBlockId and newRank");

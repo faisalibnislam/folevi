@@ -288,6 +288,13 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const [focusWithin, setFocusWithin] = useState(false);
   // Row/column tools show while the table is selected or being edited.
   const tools = editable && (selected || focusWithin);
+  // An undo that removed the focused cell (a row added with Enter, then ⌘Z) leaves focus nowhere, where the
+  // next ⌘Z would be the browser's undo of some cell's typing: focus goes back to the note.
+  useEffect(() => {
+    if (!focusWithin || !editable) return;
+    const active = document.activeElement;
+    if (!active || active === document.body) editor.view.focus();
+  }, [node.attrs.rows, focusWithin, editable, editor]);
   // The table as it is now (the view re-renders a moment after each change, so `rows` can be a step behind).
   const currentRows = (): InlineNode[][][] => {
     const pos = typeof getPos === "function" ? getPos() : undefined;
@@ -346,6 +353,20 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
       } else focusCell(Math.floor(i / width), i % width);
       return;
     }
+    // In a cell whose text wraps, ↑/↓ move between its lines first; only when the caret can't go further
+    // (it didn't move) does it change rows.
+    const field = e.target as HTMLTextAreaElement;
+    const wraps = field instanceof HTMLTextAreaElement && textLines(field) > 1;
+    if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey && wraps) {
+      const before = field.selectionStart;
+      const down = e.key === "ArrowDown";
+      setTimeout(() => {
+        if (document.activeElement !== field || field.selectionStart !== before) return;
+        if (down && r + 1 < rows.length) focusCell(r + 1, c);
+        else if (!down && r > 0) focusCell(r - 1, c);
+      }, 0);
+      return;
+    }
     if ((e.key === "Enter" && !e.shiftKey) || e.key === "ArrowDown") {
       e.preventDefault();
       if (r + 1 < rows.length) focusCell(r + 1, c);
@@ -370,6 +391,11 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
       <div
         className="my-2 overflow-x-auto"
         contentEditable={false}
+        // The tools never take focus: it stays in the cell (or the note), so ⌘Z next undoes what the tool did
+        // rather than the browser's own undo of a cell's typing.
+        onMouseDown={(e) => {
+          if ((e.target as Element).closest("button")) e.preventDefault();
+        }}
         onFocus={() => setFocusWithin(true)}
         onBlur={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
@@ -434,7 +460,16 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                     <Tag
                       key={c}
                       scope={headerRow && r === 0 ? "col" : undefined}
-                      className="border border-line p-0 align-top"
+                      className="border border-line p-0 align-top focus-within:bg-accent-soft/40"
+                      // A short cell in a tall row: its empty lower part focuses it too.
+                      onMouseDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        const field = e.currentTarget.querySelector<HTMLTextAreaElement>("textarea");
+                        if (!field) return;
+                        e.preventDefault();
+                        field.focus();
+                        field.setSelectionRange(field.value.length, field.value.length);
+                      }}
                     >
                       {editable ? (
                         <DraftCell
@@ -443,7 +478,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                           value={cellText(cell)}
                           onCommit={(v) => setCell(r, c, v)}
                           aria-label={`Row ${r + 1}, column ${c + 1}`}
-                          className={`block w-full min-w-[6rem] resize-none overflow-hidden bg-transparent px-2.5 py-1.5 outline-none focus:bg-accent-soft/40 ${headerRow && r === 0 ? "font-semibold" : ""}`}
+                          className={`block w-full min-w-[6rem] resize-none overflow-hidden bg-transparent px-2.5 py-1.5 outline-none ${headerRow && r === 0 ? "font-semibold" : ""}`}
                         />
                       ) : (
                         <span
@@ -888,6 +923,14 @@ function DraftInput({ value, onCommit, onExit, ...rest }: Omit<React.InputHTMLAt
   );
 }
 
+/** How many lines a text field's text takes up. */
+function textLines(el: HTMLTextAreaElement): number {
+  const cs = getComputedStyle(el);
+  const line = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4 || 20;
+  const inner = el.scrollHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+  return Math.round(inner / line);
+}
+
 /**
  * A table cell's text: wraps, and the cell grows to fit it (one line of text, so Enter and line breaks
  * don't go in; Enter moves down a row).
@@ -945,7 +988,7 @@ export const NODE_VIEW_EXTENSIONS = [
   }),
   TableBlock.extend({
     addNodeView: () =>
-      blockView(TableView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target instanceof Element && Boolean(event.target.closest("button")))),
+      blockView(TableView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target instanceof Element && Boolean(event.target.closest("button, .fb-table tbody td, .fb-table tbody th")))),
   }),
   PageBlock.extend({ addNodeView: () => blockView(PageView) }),
   BookmarkBlock.extend({

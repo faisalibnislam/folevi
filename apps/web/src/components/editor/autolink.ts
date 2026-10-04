@@ -40,7 +40,18 @@ export function linkWordBefore(state: EditorState, pos: number, tr: Transaction)
   if (!found) return false;
   const start = pos - word.length + word.indexOf(found.text);
   const end = start + found.text.length;
-  if (state.doc.rangeHasMark(start, end, linkType) || state.doc.rangeHasMark(start, end, state.schema.marks.code!)) return false;
+  if (state.doc.rangeHasMark(start, end, state.schema.marks.code!)) return false;
+  if (state.doc.rangeHasMark(start, end, linkType)) {
+    // Typed on from an address that was linked automatically ("example.com" then "/path"): the link grows
+    // with it. A link someone set up themselves (other text, another address) is left alone.
+    const existing = linkType.isInSet(state.doc.resolve(start + 1).marks());
+    let linkedText = "";
+    state.doc.nodesBetween(start, end, (n, pos) => {
+      if (n.isText && linkType.isInSet(n.marks)) linkedText += n.text!.slice(Math.max(0, start - pos), Math.max(0, end - pos));
+    });
+    if (!existing || !found.text.startsWith(linkedText) || sanitizeHref(linkedText) !== existing.attrs.href || existing.attrs.href === found.href) return false;
+    tr.removeMark(start, end, linkType);
+  }
   tr.addMark(start, end, linkType.create({ href: found.href }));
   return true;
 }
@@ -89,7 +100,8 @@ export const Autolink = Extension.create({
             return true;
           },
           handleKeyDown: (view, event) => {
-            if (event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return false;
+            // Enter, Shift+Enter (a line break) and Tab end an address too.
+            if ((event.key !== "Enter" && event.key !== "Tab") || event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return false;
             const { selection } = view.state;
             if (!selection.empty) return false;
             const tr = view.state.tr;

@@ -70,9 +70,14 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
       breaks.forEach((b) => {
         const r = b.getBoundingClientRect();
         if (!r.height) return;
-        gaps.push([Math.round((r.top - box.top) * scale), Math.round((r.bottom - box.top) * scale)]);
-        // The label (shown on hover or when the break is selected) stays on its own little piece of sheet.
-        const label = b.querySelector<HTMLElement>(".fb-page-break-label")?.getBoundingClientRect();
+        const gap: [number, number] = [Math.round((r.top - box.top) * scale), Math.round((r.bottom - box.top) * scale)];
+        // Breaks one after another make one gap (not an empty page between them).
+        const prev = gaps[gaps.length - 1];
+        if (prev && b.previousElementSibling?.classList.contains("fb-page-break")) prev[1] = gap[1];
+        else gaps.push(gap);
+        // The label (shown on hover or when the break is selected) stays on its own little piece of sheet,
+        // only while it shows.
+        const label = b.matches(":hover, .ProseMirror-selectednode") ? b.querySelector<HTMLElement>(".fb-page-break-label")?.getBoundingClientRect() : null;
         if (label?.width) keep.push({ x: Math.round((label.left - box.left) * scale), y: Math.round((label.top - box.top) * scale), w: Math.round(label.width * scale), h: Math.round(label.height * scale) });
       });
       const radius = parseFloat(getComputedStyle(sheet).borderTopLeftRadius) || 0;
@@ -100,7 +105,15 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
     const mutations = new MutationObserver(schedule);
     mutations.observe(sheet, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
     sheet.addEventListener("animationend", schedule);
+    // Hovering a break shows its label (no class changes for the observer to see).
+    const onPointer = (e: Event) => {
+      if ((e.target as Element | null)?.classList?.contains("fb-page-break")) schedule();
+    };
+    sheet.addEventListener("pointerover", onPointer);
+    sheet.addEventListener("pointerout", onPointer);
     return () => {
+      sheet.removeEventListener("pointerover", onPointer);
+      sheet.removeEventListener("pointerout", onPointer);
       cancelAnimationFrame(frame);
       resize.disconnect();
       mutations.disconnect();

@@ -2,6 +2,7 @@ import { Extension, InputRule, type Editor } from "@tiptap/core";
 import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Fragment, Slice, type Node as PMNode } from "@tiptap/pm/model";
 import { AddMarkStep, RemoveMarkStep, ReplaceStep } from "@tiptap/pm/transform";
+import { closeHistory, undo } from "@tiptap/pm/history";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, turnInto } from "./commands";
@@ -21,6 +22,19 @@ export const BlockIdentity = Extension.create({
           // ProseMirror's own handling would move focus back into the text under the open menu.
           handleDOMEvents: {
             mousedown: (_view, event) => event.button === 2 || (event.button === 0 && event.ctrlKey && /Mac/.test(navigator.platform)),
+            // Cutting a range removes what Backspace would (a collapsed toggle's hidden lines stay, a code
+            // block isn't merged into a line), while the clipboard gets the whole range as copied.
+            cut: (view, event) => {
+              const visible = deleteVisibleRange(view.state);
+              if (!visible || !event.clipboardData || view.state.selection.empty) return false;
+              const { dom, text } = view.serializeForClipboard(view.state.selection.content());
+              event.preventDefault();
+              event.clipboardData.clearData();
+              event.clipboardData.setData("text/html", dom.innerHTML);
+              event.clipboardData.setData("text/plain", text);
+              view.dispatch(visible.scrollIntoView().setMeta("uiEvent", "cut"));
+              return true;
+            },
             // An input method (Chinese, Japanese…) starting over a range through a collapsed toggle, or over a
             // selected block: make room the same way typing does, before the composition begins.
             compositionstart: (view) => {
@@ -39,6 +53,9 @@ export const BlockIdentity = Extension.create({
               return false;
             },
           },
+          // ⌘-click (Ctrl-click elsewhere) opens links and page links; ProseMirror would also select the whole
+          // line, so the next Backspace deleted it. The caret just goes where the click was.
+          handleClick: (_view, _pos, event) => (isMac ? event.metaKey : event.ctrlKey),
           // Text for other apps: one line per block, Markdown-style.
           clipboardTextSerializer: (slice) => sliceToText(slice),
           // Typing while a whole block (an image, a table, a divider…) is selected writes on a new line after
@@ -344,7 +361,7 @@ function splitAttrs(from: PMNode, toType: string, depth: number): Record<string,
 }
 
 /** Top-level index and position of the block after `index` that isn't nested in it (its subtree's end). */
-function afterSubtree(state: EditorState, index: number): number {
+export function afterSubtree(state: EditorState, index: number): number {
   const base = Number(state.doc.child(index).attrs.depth ?? 0);
   let pos = 0;
   for (let i = 0; i <= index; i++) pos += state.doc.child(i).nodeSize;
@@ -477,7 +494,10 @@ function leaveInlineCode(editor: Editor): boolean {
 function edgeOfNote(editor: Editor, dir: -1 | 1): boolean {
   const { state, view } = editor;
   const doc = state.doc;
-  const index = dir < 0 ? 0 : doc.childCount - 1;
+  // The last line you can see (not one folded away in a collapsed toggle).
+  const hidden = hiddenIndices(state);
+  let index = dir < 0 ? 0 : doc.childCount - 1;
+  while (index > 0 && hidden.has(index)) index--;
   let pos = 0;
   for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
   const node = doc.child(index);
@@ -517,22 +537,30 @@ export const BlockKeymap = Extension.create({
           editor.view.dispatch(tr.scrollIntoView());
           return true;
         }
+        // Enter over a range: the range goes first, in the same transaction (one undo step for both).
+        let base: Transaction | null = null;
         if (!editor.state.selection.empty) {
           if (editor.state.selection instanceof NodeSelection) return false;
-          const visible = deleteVisibleRange(editor.state);
-          if (visible) editor.view.dispatch(visible);
-          else editor.commands.deleteSelection();
+          base = deleteVisibleRange(editor.state) ?? editor.state.tr.deleteSelection();
         }
-        const { state } = editor;
+        const state = base ? editor.state.apply(base) : editor.state;
+        const start = () => base ?? state.tr;
         const cur = currentBlock(state);
-        if (!cur) return false;
+        if (!cur) {
+          if (base) editor.view.dispatch(base);
+          return Boolean(base);
+        }
         const type = cur.node.type.name;
-        if (type === "codeBlock" || !cur.node.isTextblock) return false;
+        if (type === "codeBlock" || !cur.node.isTextblock) {
+          if (base) editor.view.dispatch(base);
+          return false;
+        }
         const depth = Number(cur.node.attrs.depth ?? 0);
         const $from = state.selection.$from;
         const index = $from.index(0);
         const listLike = LIST_TYPES.has(type) || type === "quote" || type === "toggle" || type === "callout";
         if (cur.empty && listLike) {
+          if (base) editor.view.dispatch(base);
           // An empty list item ends the list (or outdents when nested).
           if (depth > 0) return changeDepth(editor, -1);
           return turnInto(editor, "paragraph");
@@ -541,20 +569,30 @@ export const BlockKeymap = Extension.create({
         // task details and styling (so comments and links to it stay attached).
         if (cur.atStart && !cur.empty) {
           const above = LIST_TYPES.has(type) ? cur.node.type : state.schema.nodes.paragraph!;
-          editor.view.dispatch(state.tr.insert(cur.pos, above.create({ id: ulid(), depth })).scrollIntoView());
+          editor.view.dispatch(start().insert(cur.pos, above.create({ id: ulid(), depth })).scrollIntoView());
           return true;
         }
         const atEnd = $from.parentOffset === cur.node.content.size;
+        // "```" (or "```js") then Enter starts a code block, as "``` " does.
+        const fence = type === "paragraph" && atEnd ? /^```([\w+#.-]*)$/.exec(cur.node.textContent) : null;
+        if (fence) {
+          const tr = start().replaceWith(cur.pos, cur.pos + cur.node.nodeSize, state.schema.nodes.codeBlock!.create({ id: cur.node.attrs.id, depth, language: normalizeLanguage(fence[1] || "plaintext") }));
+          tr.setSelection(TextSelection.create(tr.doc, cur.pos + 1));
+          editor.view.dispatch(tr.scrollIntoView());
+          return true;
+        }
         const nextType = LIST_TYPES.has(type) ? type : type === "heading" ? (atEnd ? "paragraph" : "heading") : "paragraph";
-        // Bold and colour continue on the new line; inline code doesn't.
-        const marks = (state.storedMarks ?? ($from.parentOffset ? $from.marks() : null))?.filter((m) => !m.type.spec.code) ?? null;
+        // Bold and colour continue on the new line; inline code and links don't.
+        const marks = (state.storedMarks ?? ($from.parentOffset ? $from.marks() : null))?.filter((m) => !m.type.spec.code && m.type.name !== "link") ?? null;
         // A collapsed toggle: the new line goes after its hidden blocks, taking the text after the caret.
         if (type === "toggle" && cur.node.attrs.collapsed) {
           const rest = cur.node.content.cut($from.parentOffset);
           const at = afterSubtree(state, index);
-          const tr = state.tr.insert(at, state.schema.nodes.paragraph!.create(splitAttrs(cur.node, "paragraph", depth), rest));
+          const tr = start();
+          const steps = tr.steps.length;
+          tr.insert(at, state.schema.nodes.paragraph!.create(splitAttrs(cur.node, "paragraph", depth), rest));
           tr.delete($from.pos, $from.end());
-          const caret = tr.mapping.slice(1).map(at) + 1;
+          const caret = tr.mapping.slice(steps + 1).map(at) + 1;
           tr.setSelection(TextSelection.create(tr.doc, caret));
           if (marks) tr.ensureMarks(marks);
           editor.view.dispatch(tr.scrollIntoView());
@@ -565,7 +603,7 @@ export const BlockKeymap = Extension.create({
         const next = state.doc.maybeChild(index + 1);
         const hasChildren = Boolean(next && Number(next.attrs.depth ?? 0) > depth);
         const newDepth = Math.min(LIMITS.maxDepth, type === "toggle" || hasChildren ? depth + 1 : depth);
-        const tr = state.tr.split($from.pos, 1, [{ type: state.schema.nodes[nextType]!, attrs: splitAttrs(cur.node, nextType, newDepth) }]);
+        const tr = start().split($from.pos, 1, [{ type: state.schema.nodes[nextType]!, attrs: splitAttrs(cur.node, nextType, newDepth) }]);
         if (marks) tr.ensureMarks(marks);
         editor.view.dispatch(tr.scrollIntoView());
         return true;
@@ -602,6 +640,20 @@ export const BlockKeymap = Extension.create({
       "Mod-Shift-7": () => turnInto(editor, "numbered"),
       "Mod-Shift-8": () => turnInto(editor, "bulleted"),
       "Mod-Shift-9": () => turnInto(editor, "todo", { checked: false }),
+      // ⌘Z right after a Markdown shortcut ("- ", "**bold**"): the typed text comes back as it was, marker
+      // and space included (one more ⌘Z takes back the typing).
+      "Mod-z": () => {
+        const st = editor.state;
+        const rules = st.plugins.find((p) => (p.spec as { isInputRules?: boolean }).isInputRules);
+        const undoable = rules?.getState(st) as { from: number; to: number; text?: string } | null | undefined;
+        if (!undoable?.text || !undo(st, editor.view.dispatch)) return false;
+        const after = editor.state;
+        if (undoable.to <= after.doc.content.size) {
+          const tr = after.tr.insertText(undoable.text, undoable.from, undoable.to);
+          editor.view.dispatch(tr.setSelection(TextSelection.create(tr.doc, undoable.from + undoable.text.length)));
+        }
+        return true;
+      },
       "Mod-Enter": () => {
         const cur = currentBlock(editor.state);
         if (!cur) return false;
@@ -691,6 +743,25 @@ export const BlockKeymap = Extension.create({
       if (!cur || state.selection.$from.parentOffset !== cur.node.content.size) return false;
       const index = state.selection.$from.index(0);
       const nextBlock = state.doc.maybeChild(index + 1);
+      // The end of a code block: the line below is never pulled into the code. An empty line goes; an image
+      // or divider is selected; anything else, the caret moves to its start.
+      if (cur.node.type.name === "codeBlock") {
+        const target = neighbourIndex(state, index, 1);
+        if (target === null) return true;
+        let tPos = 0;
+        for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
+        const tNode = state.doc.child(target);
+        const tAfter = state.doc.maybeChild(target + 1);
+        const tHasChildren = Boolean(tAfter && Number(tAfter.attrs.depth ?? 0) > Number(tNode.attrs.depth ?? 0));
+        if (tNode.type.name === "paragraph" && tNode.content.size === 0 && !tHasChildren) {
+          editor.view.dispatch(state.tr.delete(tPos, tPos + tNode.nodeSize).scrollIntoView());
+        } else if (tNode.isTextblock) {
+          editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, tPos + 1)).scrollIntoView());
+        } else {
+          editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, tPos)).scrollIntoView());
+        }
+        return true;
+      }
       // Code below: move into it rather than pulling the code into this line.
       if (nextBlock?.type.name === "codeBlock" && !hiddenIndices(state).has(index + 1) && cur.node.type.name !== "codeBlock") {
         // An empty line simply goes; otherwise the caret moves into the code.
@@ -743,6 +814,8 @@ function blockRule(find: RegExp, type: string, attrs: (m: RegExpMatchArray) => R
   return new InputRule({
     find,
     handler: ({ state, range, match }) => {
+      // Its own undo step, so ⌘Z right after it takes back just the shortcut (see "Mod-z").
+      closeHistory(state.tr);
       const $start = state.doc.resolve(range.from);
       const node = $start.parent;
       if ($start.depth !== 1) return null;
@@ -808,6 +881,7 @@ function markRule(find: RegExp, mark: string) {
   return new InputRule({
     find,
     handler: ({ state, range, match }) => {
+      closeHistory(state.tr);
       const full = match[1]!;
       const inner = match[2]!;
       // range.from is where the whole match (including a leading space) starts in the document; the

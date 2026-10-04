@@ -60,7 +60,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { openInlineAi, useAiEnabled } from "@/components/ai/useAi";
 import { useToast } from "@/components/ui/Toast";
 import { useAppRouter } from "@/lib/app/router";
-import { emptyTableRows, HIGHLIGHT_COLORS, TEXT_COLORS, blocksInSelection, changeDepth, clearFormatting, deleteBlocks, duplicateBlocks, insertBlockAt, moveBlock, removeLink, selectedSpan, setHighlight, setTextColor, turnInto } from "./commands";
+import { emptyTableRows, focusInsideBlock, HIGHLIGHT_COLORS, TEXT_COLORS, blocksInSelection, changeDepth, clearFormatting, deleteBlocks, duplicateBlocks, insertBlockAt, moveBlock, removeLink, selectedSpan, setHighlight, setTextColor, turnInto } from "./commands";
 import { blockSelectionRange, clearBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
 import { blockElements } from "./plugins";
@@ -198,12 +198,18 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       const sel = state.selection;
       const keep =
         (range && target.index >= range.from && target.index <= range.to) ||
-        (!sel.empty && pos >= sel.from && pos <= sel.to) ||
-        (sel instanceof NodeSelection && atomPos === sel.from);
+        // Inside the selected text (its edges count); a selected block only when the click is within it
+        // (its end is the start of the next block).
+        (!sel.empty && !(sel instanceof NodeSelection) && pos >= sel.from && pos <= sel.to) ||
+        (sel instanceof NodeSelection && (atomPos === sel.from || (pos > sel.from && pos < sel.to)));
+      // A folded Mermaid diagram (its picture, not its source): the block is selected and stays folded.
+      const diagram = el?.closest(".fb-mermaid-preview, .fb-mermaid-bar") ? view.state.doc.resolve(pos) : null;
+      const diagramPos = diagram && diagram.depth >= 1 ? diagram.before(1) : null;
       if (!keep) {
         clearBlockSelection(view);
         const tr = view.state.tr;
-        if (atom && atom.isAtom && atomPos !== null) tr.setSelection(NodeSelection.create(tr.doc, atomPos));
+        if (diagramPos !== null) tr.setSelection(NodeSelection.create(tr.doc, diagramPos));
+        else if (atom && atom.isAtom && atomPos !== null) tr.setSelection(NodeSelection.create(tr.doc, atomPos));
         else tr.setSelection(TextSelection.near(tr.doc.resolve(pos)));
         view.dispatch(tr.setMeta("addToHistory", false));
       }
@@ -540,7 +546,13 @@ function buildEntries({
           const span = selectedSpan(editor.state);
           clearBlockSelection(editor.view);
           const depth = Number(editor.state.doc.child(span.first).attrs.depth ?? 0);
-          insertBlockAt(editor, span.last + 1, depth, type, type === "table" ? { ...attrs, rows: emptyTableRows(3, 3) } : attrs);
+          const at = insertBlockAt(editor, span.last + 1, depth, type, type === "table" ? { ...attrs, rows: emptyTableRows(3, 3) } : attrs);
+          // A new table starts with the caret in its first cell.
+          if (type === "table" && at >= 0) {
+            let pos = 0;
+            for (let i = 0; i < at; i++) pos += editor.state.doc.child(i).nodeSize;
+            focusInsideBlock(editor, pos);
+          }
         },
       })),
     });
@@ -726,6 +738,8 @@ function Panel({
     if (!pos || open?.keyboard) return;
     const el = active >= 0 ? ref.current?.querySelector<HTMLElement>(`[data-index="${active}"]`) : root ? ref.current : null;
     el?.focus({ preventScroll: true });
+    // A long menu in a short window scrolls to keep the highlighted row in view.
+    if (active >= 0) el?.scrollIntoView({ block: "nearest" });
   }, [active, pos, open, root]);
 
   useEffect(() => () => {
@@ -758,6 +772,14 @@ function Panel({
     if (!ref.current?.contains(e.target as Node)) return;
     e.stopPropagation();
     const at = actionable.indexOf(active);
+    // A space while typing a name ("move d") is part of the name, not "activate".
+    if (e.key === " " && typed.current && Date.now() - typed.at <= 700) {
+      e.preventDefault();
+      typed.current += " ";
+      typed.at = Date.now();
+      return;
+    }
+    if (e.key.length > 1 && !["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(e.key)) typed.current = "";
     const move = (to: number) => {
       setOpen(null);
       setActive(actionable[(to + actionable.length) % actionable.length] ?? -1);
@@ -888,7 +910,9 @@ function Panel({
       </div>
       {open && sub && isSub(sub) ? (
         <Panel
-          key={open.index}
+          // Opened again from the keyboard (→ on a submenu the pointer opened): a fresh panel with its first row
+          // highlighted and focused.
+          key={`${open.index}-${open.keyboard ? "k" : "p"}`}
           entries={sub.items}
           anchor={open.rect}
           highlightFirst={open.keyboard}

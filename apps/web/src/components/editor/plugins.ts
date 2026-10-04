@@ -3,14 +3,18 @@ import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState, type
 import { Fragment, Slice, type Node as PMNode } from "@tiptap/pm/model";
 import { AddMarkStep, RemoveMarkStep, ReplaceStep } from "@tiptap/pm/transform";
 import { closeHistory, undo } from "@tiptap/pm/history";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, turnInto } from "./commands";
 import { TEXT_NODES } from "./convert";
 import { hiddenIndices, neighbourIndex } from "./blockSelectionState";
+import { setBlockSelection } from "./blockSelection";
 import { sliceToText } from "./clipboardText";
 
 /** Every top-level block has a unique id; depth is always valid. Runs after every transaction. */
+/** The empty line made for a composition that started over a selected block (see compositionend). */
+let freshLine: { view: EditorView; pos: number } | null = null;
+
 export const BlockIdentity = Extension.create({
   name: "blockIdentity",
   addProseMirrorPlugins() {
@@ -49,7 +53,26 @@ export const BlockIdentity = Extension.create({
                 const tr = view.state.tr.insert(at, view.state.schema.nodes.paragraph!.create({ id: null, depth: sel.node.attrs.depth }));
                 tr.setSelection(TextSelection.create(tr.doc, at + 1));
                 view.dispatch(tr);
+                freshLine = { view, pos: at };
               }
+              return false;
+            },
+            // Next to an image or table (views drawn by React) the browser restarts the composition after its
+            // first letter, which then stays in front of what was composed ("kか"). The line was made empty for
+            // this composition, so anything before the composed text is that stray letter.
+            compositionend: (view, event) => {
+              const fresh = freshLine;
+              freshLine = null;
+              if (!fresh || fresh.view !== view || !event.data) return false;
+              const composed = event.data;
+              setTimeout(() => {
+                const node = view.state.doc.nodeAt(fresh.pos);
+                if (!node || node.type.name !== "paragraph") return;
+                const text = node.textContent;
+                const extra = text.slice(0, text.length - composed.length);
+                if (!text.endsWith(composed) || !extra || extra.length > 12 || !/^[\x21-\x7e]+$/.test(extra)) return;
+                view.dispatch(view.state.tr.delete(fresh.pos + 1, fresh.pos + 1 + extra.length).setMeta("addToHistory", false));
+              }, 0);
               return false;
             },
           },
@@ -508,6 +531,28 @@ function edgeOfNote(editor: Editor, dir: -1 | 1): boolean {
   return true;
 }
 
+/**
+ * ⇧⌘↑ / ⇧⌘↓: the selection grows to the start or end of the note. When the note starts or ends with an
+ * image, a table or a divider (no text to end the selection in), it becomes a selection of whole blocks.
+ */
+function extendToEdge(editor: Editor, dir: -1 | 1): boolean {
+  const { state, view } = editor;
+  const { doc, selection } = state;
+  const hidden = hiddenIndices(state);
+  let index = dir < 0 ? 0 : doc.childCount - 1;
+  while (index > 0 && hidden.has(index)) index--;
+  let pos = 0;
+  for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
+  const node = doc.child(index);
+  if (node.isTextblock) {
+    const head = dir < 0 ? pos + 1 : pos + node.nodeSize - 1;
+    view.dispatch(state.tr.setSelection(TextSelection.create(doc, selection.anchor, head)).scrollIntoView());
+    return true;
+  }
+  const anchorIndex = selection instanceof NodeSelection ? selection.$from.index(0) : selection.$anchor.index(0);
+  return setBlockSelection(view, anchorIndex, index);
+}
+
 export const BlockKeymap = Extension.create({
   name: "blockKeymap",
   priority: 1000,
@@ -623,6 +668,8 @@ export const BlockKeymap = Extension.create({
       // ⌘↑ / ⌘↓: the start or end of the note (selecting an image or divider there).
       "Mod-ArrowUp": () => edgeOfNote(editor, -1),
       "Mod-ArrowDown": () => edgeOfNote(editor, 1),
+      "Shift-Mod-ArrowUp": () => extendToEdge(editor, -1),
+      "Shift-Mod-ArrowDown": () => extendToEdge(editor, 1),
       // Tab never leaves the page: it indents (or does nothing when it can't). Code blocks indent their text.
       Tab: () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? false : (changeDepth(editor, 1), true)),
       "Shift-Tab": () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? (outdentCodeLines(editor) || changeDepth(editor, -1), true) : (changeDepth(editor, -1), true)),

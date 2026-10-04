@@ -293,7 +293,10 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   useEffect(() => {
     if (!focusWithin || !editable) return;
     const active = document.activeElement;
-    if (!active || active === document.body) editor.view.focus();
+    if (!active || active === document.body) {
+      setFocusWithin(false);
+      editor.view.focus();
+    }
   }, [node.attrs.rows, focusWithin, editable, editor]);
   // The table as it is now (the view re-renders a moment after each change, so `rows` can be a step behind).
   const currentRows = (): InlineNode[][][] => {

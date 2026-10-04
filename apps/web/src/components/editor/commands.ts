@@ -259,9 +259,22 @@ export function moveBlock(editor: Editor, dir: -1 | 1): boolean {
   if (state.selection instanceof NodeSelection && tr.doc.nodeAt($a.pos)) tr.setSelection(NodeSelection.create(tr.doc, $a.pos));
   else tr.setSelection(relFrom === relTo ? TextSelection.near($a) : TextSelection.between($a, $b));
   normalizeDepths(tr);
+  openAncestors(tr, tr.doc.resolve(Math.min(max, newStart)).index(0));
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
   endHistoryGroup(editor);
   return true;
+}
+
+/** Opens any collapsed toggle the block at `index` now sits under, so a moved block never lands out of sight. */
+function openAncestors(tr: Transaction, index: number) {
+  let depth = Number(tr.doc.maybeChild(index)?.attrs.depth ?? 0);
+  for (let i = index - 1; i >= 0 && depth > 0; i--) {
+    const node = tr.doc.child(i);
+    const d = Number(node.attrs.depth ?? 0);
+    if (d >= depth) continue;
+    if (node.type.name === "toggle" && node.attrs.collapsed) tr.setNodeMarkup(posOfIndex(tr.doc, i), undefined, { ...node.attrs, collapsed: false });
+    depth = d;
+  }
 }
 
 /** Ensures depth never exceeds previous depth + 1 and the first block is at depth 0. */
@@ -281,7 +294,11 @@ export function insertBlockAfterCurrent(editor: Editor, type: string, attrs: Rec
   const { state } = editor;
   const [current] = blocksInSelection(state);
   const depth = current ? Number(current.node.attrs.depth ?? 0) : 0;
-  const empty = current && TEXT_NODES.has(current.node.type.name) && current.node.content.size === 0 && current.node.type.name === "paragraph";
+  // An empty line (a paragraph, or an empty list item, to-do, heading…) is replaced by what's inserted,
+  // unless blocks are nested under it.
+  const next = current ? state.doc.maybeChild(current.index + 1) : null;
+  const hasChildren = Boolean(current && next && Number(next.attrs.depth ?? 0) > depth);
+  const empty = current && TEXT_NODES.has(current.node.type.name) && current.node.type.name !== "codeBlock" && current.node.content.size === 0 && !hasChildren;
   const schemaType = state.schema.nodes[type === "code" ? "codeBlock" : type]!;
   const node = schemaType.create({ id: ulid(), depth, ...attrs }, text ? state.schema.text(text) : null);
   const tr = state.tr;
@@ -360,9 +377,11 @@ function posOfIndex(doc: EditorState["doc"], index: number): number {
  * `toIndex` (childCount = the end), re-indented to `depth`. Children keep their depth relative to it.
  * Returns the new index of the moved block, or null when the move is a no-op or impossible.
  */
-export function moveSubtreeTo(state: EditorState, fromIndex: number, toIndex: number, depth: number): { tr: Transaction; index: number } | null {
-  if (fromIndex < 0 || fromIndex >= state.doc.childCount) return null;
-  const range = subtreeRange(state, fromIndex);
+export function moveSubtreeTo(state: EditorState, fromIndex: number, toIndex: number, depth: number, lastIndex = fromIndex): { tr: Transaction; index: number } | null {
+  if (fromIndex < 0 || fromIndex >= state.doc.childCount || lastIndex < fromIndex || lastIndex >= state.doc.childCount) return null;
+  // The block with what's nested under it, or several selected blocks (through the last one's nested blocks).
+  const tail = subtreeRange(state, lastIndex);
+  const range = { start: blockAt(state, fromIndex)!.pos, end: tail.end, count: lastIndex - fromIndex + tail.count };
   if (toIndex > fromIndex && toIndex < fromIndex + range.count) return null; // into itself
   const baseDepth = Number(state.doc.child(fromIndex).attrs.depth ?? 0);
   const newIndex = toIndex > fromIndex ? toIndex - range.count : toIndex;

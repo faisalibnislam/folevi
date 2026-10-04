@@ -29,6 +29,7 @@ export const BlockIdentity = Extension.create({
             // Cutting a range removes what Backspace would (a collapsed toggle's hidden lines stay, a code
             // block isn't merged into a line), while the clipboard gets the whole range as copied.
             cut: (view, event) => {
+              if (!view.editable) return false;
               const visible = deleteVisibleRange(view.state);
               if (!visible || !event.clipboardData || view.state.selection.empty) return false;
               const { dom, text } = view.serializeForClipboard(view.state.selection.content());
@@ -42,6 +43,7 @@ export const BlockIdentity = Extension.create({
             // An input method (Chinese, Japanese…) starting over a range through a collapsed toggle, or over a
             // selected block: make room the same way typing does, before the composition begins.
             compositionstart: (view) => {
+              if (!view.editable) return false;
               const visible = deleteVisibleRange(view.state);
               if (visible) {
                 view.dispatch(visible);
@@ -544,7 +546,7 @@ function extendToEdge(editor: Editor, dir: -1 | 1): boolean {
   let pos = 0;
   for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
   const node = doc.child(index);
-  if (node.isTextblock) {
+  if (node.isTextblock && selection.$anchor.parent.isTextblock) {
     const head = dir < 0 ? pos + 1 : pos + node.nodeSize - 1;
     view.dispatch(state.tr.setSelection(TextSelection.create(doc, selection.anchor, head)).scrollIntoView());
     return true;
@@ -688,14 +690,16 @@ export const BlockKeymap = Extension.create({
       "Mod-Shift-8": () => turnInto(editor, "bulleted"),
       "Mod-Shift-9": () => turnInto(editor, "todo", { checked: false }),
       // ⌘Z right after a Markdown shortcut ("- ", "**bold**"): the typed text comes back as it was, marker
-      // and space included (one more ⌘Z takes back the typing).
+      // and space included (the next ⌘Z takes back the marker, then the typing before it).
       "Mod-z": () => {
         const st = editor.state;
         const rules = st.plugins.find((p) => (p.spec as { isInputRules?: boolean }).isInputRules);
-        const undoable = rules?.getState(st) as { from: number; to: number; text?: string } | null | undefined;
+        const undoable = rules?.getState(st) as { from: number; to: number; text?: string; transform?: Transaction } | null | undefined;
         if (!undoable?.text || !undo(st, editor.view.dispatch)) return false;
         const after = editor.state;
-        if (undoable.to <= after.doc.content.size) {
+        // Only when the undo took back exactly the shortcut (a rule that didn't start its own undo step takes
+        // the typing before it too, and the positions no longer fit).
+        if (undoable.transform && after.doc.eq(undoable.transform.before)) {
           const tr = after.tr.insertText(undoable.text, undoable.from, undoable.to);
           editor.view.dispatch(tr.setSelection(TextSelection.create(tr.doc, undoable.from + undoable.text.length)));
         }
@@ -862,7 +866,7 @@ function blockRule(find: RegExp, type: string, attrs: (m: RegExpMatchArray) => R
     find,
     handler: ({ state, range, match }) => {
       // Its own undo step, so ⌘Z right after it takes back just the shortcut (see "Mod-z").
-      closeHistory(state.tr);
+      ruleStep(state.tr);
       const $start = state.doc.resolve(range.from);
       const node = $start.parent;
       if ($start.depth !== 1) return null;
@@ -886,9 +890,28 @@ function blockRule(find: RegExp, type: string, attrs: (m: RegExpMatchArray) => R
   });
 }
 
+/**
+ * A Markdown shortcut is its own undo step: apart from the typing before it (so ⌘Z gives the typed marker
+ * back, see "Mod-z") and from the typing after it (so ⌘Z after more typing takes back only that typing).
+ */
+const RULE_META = "foleviMarkdownRule";
+function ruleStep(tr: Transaction) {
+  closeHistory(tr);
+  tr.setMeta(RULE_META, true);
+}
+
 /** Markdown-style shortcuts at the start of a block. */
 export const MarkdownShortcuts = Extension.create({
   name: "markdownShortcuts",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("markdownRuleHistory"),
+        // An empty transaction that closes the undo group right after the shortcut.
+        appendTransaction: (trs, _old, state) => (trs.some((t) => t.getMeta(RULE_META)) ? closeHistory(state.tr) : null),
+      }),
+    ];
+  },
   addInputRules() {
     return [
       blockRule(/^(#{1,3})\s$/, "heading", (m) => ({ level: m[1]!.length })),
@@ -901,6 +924,7 @@ export const MarkdownShortcuts = Extension.create({
       new InputRule({
         find: /^(---|\*\*\*)$/,
         handler: ({ state, range }) => {
+          ruleStep(state.tr);
           const $start = state.doc.resolve(range.from);
           if ($start.depth !== 1 || $start.parent.type.name !== "paragraph") return null;
           const pos = $start.before(1);
@@ -928,7 +952,7 @@ function markRule(find: RegExp, mark: string) {
   return new InputRule({
     find,
     handler: ({ state, range, match }) => {
-      closeHistory(state.tr);
+      ruleStep(state.tr);
       const full = match[1]!;
       const inner = match[2]!;
       // range.from is where the whole match (including a leading space) starts in the document; the
@@ -973,7 +997,8 @@ export const Triggers = Extension.create<{ onChange: (t: TriggerState | null) =>
               const text = sel.$from.parent.textBetween(0, sel.$from.parentOffset, "\n", "￼");
               const start = sel.from - sel.$from.parentOffset;
               // "/" and "@" also in their full-width forms (Japanese and Chinese keyboards); queries in any script.
-              let m = /(?:^|\s)[/／]([\p{L}\p{N}_-]{0,24})$/u.exec(text);
+              // A query can have a few words ("/page break", "/heading 1").
+              let m = /(?:^|\s)[/／]((?:[\p{L}\p{N}_-]{1,24} ?){0,4})$/u.exec(text);
               if (m) found = { kind: "slash", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
               m = /\[\[([^\]\n]{0,60})$/.exec(text);
               if (m) found = { kind: "page", query: m[1]!, from: start + text.length - m[1]!.length - 2, to: sel.from };

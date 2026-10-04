@@ -68,9 +68,9 @@ export class SyncEngine {
       engine.state = { ...sync.emptySyncState(), ...saved, pending: [...saved.inflight, ...saved.pending], inflight: [] };
     }
     // This tab's own journal (a reload), and those left by tabs that have since closed.
-    const journals = readJournals(accountKey);
+    const journals = await readJournals(accountKey);
     if (journals.length) {
-      for (const j of journals) engine.state = mergeJournal(engine.state, j.ops);
+      for (const j of journals) engine.state = mergeJournal(engine.state, j.ops, j.uploads);
       engine.commit(engine.state);
       // Removed only once IndexedDB holds what they added.
       void engine.persisted().then(() => journals.forEach((j) => removeJournal(j.key)));
@@ -120,11 +120,12 @@ export class SyncEngine {
   private unwatch: (() => void) | null = null;
   private watchUnload() {
     if (typeof window === "undefined") return;
-    const key = journalKey(this.accountKey, tabId());
+    const key = journalKey(this.accountKey, ownTab());
     const hide = (closing: boolean) => {
       this.journaling = true;
-      this.journalClosing = closing;
-      writeJournal(key, this.state, closing);
+      // Closing fires pagehide and then visibilitychange: once closing, it stays closing.
+      this.journalClosing = this.journalClosing || closing;
+      writeJournal(key, this.state, this.journalClosing);
     };
     // Capture, so this runs before the editor's own flush on the same event (which writes the journal again).
     // A page kept for back/forward (persisted) isn't closing: its journal stays its own.
@@ -133,23 +134,34 @@ export class SyncEngine {
       if (document.visibilityState === "hidden") hide(false);
       else {
         this.journaling = false;
+        this.journalClosing = false;
         removeJournal(key);
       }
     };
     const onPageShow = () => {
       this.journaling = false;
+      this.journalClosing = false;
       removeJournal(key);
     };
     // Another tab of this account closed with changes IndexedDB may not have: take them over.
+    // A reload writes a closing journal too, then reads it back: wait a moment, and leave it if that tab is
+    // back (it holds its tab lock again).
     const onStorage = (e: StorageEvent) => {
-      if (!e.key || e.key === key || !e.key.startsWith(journalPrefix(this.accountKey)) || !e.newValue) return;
-      const j = parseJournal(e.key, e.newValue);
-      if (!j?.closed) return;
-      const touched = new Set(j.ops.flatMap((op) => ("documentId" in op ? [op.documentId] : [])));
-      this.commit(mergeJournal(this.state, j.ops));
-      void this.persisted().then(() => removeJournal(e.key!));
-      for (const documentId of touched) this.emit({ type: "remote", documentId });
-      this.scheduleFlush(0);
+      const other = e.key;
+      if (!other || other === key || !other.startsWith(journalPrefix(this.accountKey)) || !e.newValue) return;
+      if (!parseJournal(other, e.newValue)?.closed) return;
+      setTimeout(async () => {
+        if (!this.unwatch) return;
+        const live = await liveTabs();
+        if (live?.has(tabLock(other.slice(journalPrefix(this.accountKey).length)))) return;
+        const j = parseJournal(other, readStorage(other) ?? "");
+        if (!j) return;
+        const touched = new Set(j.ops.flatMap((op) => ("documentId" in op ? [op.documentId] : [])));
+        this.commit(mergeJournal(this.state, j.ops, j.uploads));
+        void this.persisted().then(() => removeJournal(other));
+        for (const documentId of touched) this.emit({ type: "remote", documentId });
+        this.scheduleFlush(0);
+      }, TAKEOVER_DELAY);
     };
     window.addEventListener("pagehide", onPageHide, { capture: true });
     window.addEventListener("pageshow", onPageShow);
@@ -173,7 +185,7 @@ export class SyncEngine {
 
   private commit(next: SyncState) {
     this.state = next;
-    if (this.journaling) writeJournal(journalKey(this.accountKey, tabId()), next, this.journalClosing);
+    if (this.journaling) writeJournal(journalKey(this.accountKey, ownTab()), next, this.journalClosing);
     if (this.batching) {
       this.batchDirty = true;
       return;
@@ -537,17 +549,80 @@ function tabId(): string {
   }
 }
 
+const tabLock = (id: string) => `folevi:tab:${id}`;
+const TAKEOVER_DELAY = 3000;
+let claimedTab: Promise<string> | null = null;
+let currentTab: string | null = null;
+const ownTab = () => currentTab ?? tabId();
+
+/**
+ * Claims this tab's id with a Web Lock held for the page's life. A duplicated tab inherits the original's
+ * sessionStorage (and so its id): the lock is taken, so the copy gets an id of its own. A tab that's gone
+ * (closed, discarded, killed in the background) releases its lock, which marks its journal as abandoned.
+ */
+function claimTab(): Promise<string> {
+  claimedTab ??= (async () => {
+    let id = tabId();
+    const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+    if (locks) {
+      const hold = (name: string) =>
+        new Promise<boolean>((resolve) => {
+          locks
+            .request(name, { ifAvailable: true }, (lock) => {
+              resolve(Boolean(lock));
+              return lock ? new Promise<void>(() => undefined) : undefined;
+            })
+            .catch(() => resolve(true));
+        });
+      if (!(await hold(tabLock(id)))) {
+        id = ulid();
+        try {
+          sessionStorage.setItem("folevi:tab-id", id);
+        } catch {
+          /* this page keeps the id anyway */
+        }
+        await hold(tabLock(id));
+      }
+    }
+    currentTab = id;
+    return id;
+  })();
+  return claimedTab;
+}
+
+/** The tab ids whose page is still open (their locks are held), or null where Web Locks aren't available. */
+async function liveTabs(): Promise<Set<string> | null> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks) return null;
+  try {
+    const q = await locks.query();
+    return new Set((q.held ?? []).map((l) => l.name ?? ""));
+  } catch {
+    return null;
+  }
+}
+
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 interface Journal {
   key: string;
   ops: SyncOp[];
+  /** Attachments those ops wait for (a block whose image was still uploading). */
+  uploads: SyncState["uploads"];
   /** Written as the tab closed (not just hidden): another tab may take it over. */
   closed: boolean;
 }
 
 function parseJournal(key: string, raw: string): Journal | null {
   try {
-    const parsed = JSON.parse(raw) as { ops?: SyncOp[]; closed?: boolean };
-    return Array.isArray(parsed.ops) ? { key, ops: parsed.ops, closed: Boolean(parsed.closed) } : null;
+    const parsed = JSON.parse(raw) as { ops?: SyncOp[]; uploads?: SyncState["uploads"]; closed?: boolean };
+    return Array.isArray(parsed.ops) ? { key, ops: parsed.ops, uploads: Array.isArray(parsed.uploads) ? parsed.uploads : [], closed: Boolean(parsed.closed) } : null;
   } catch {
     return null;
   }
@@ -557,19 +632,22 @@ function writeJournal(key: string, state: SyncState, closed: boolean) {
   try {
     const ops = [...state.inflight, ...state.pending];
     if (!ops.length) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify({ ops, closed, at: Date.now() }));
+    else localStorage.setItem(key, JSON.stringify({ ops, uploads: state.uploads, closed, at: Date.now() }));
   } catch {
     // Storage full or blocked: the IndexedDB save is still on its way.
   }
 }
 
 /**
- * The journals this tab should merge as it opens: its own (left by a reload), and any written by tabs
- * that closed. A tab that's only hidden keeps its journal: it may still change those ops.
+ * The journals this tab should merge as it opens: its own (left by a reload), any written by tabs that
+ * closed, and any whose tab is gone without saying so (discarded). A tab that's only hidden keeps its
+ * journal: it may still change those ops.
  */
-function readJournals(accountKey: string): Journal[] {
+async function readJournals(accountKey: string): Promise<Journal[]> {
   try {
-    const own = journalKey(accountKey, tabId());
+    const own = journalKey(accountKey, await claimTab());
+    const live = await liveTabs();
+    const prefix = journalPrefix(accountKey);
     const out: Journal[] = [];
     // The one shared journal an earlier version wrote.
     const legacy = `folevi:sync-journal:${accountKey}`;
@@ -577,9 +655,11 @@ function readJournals(accountKey: string): Journal[] {
     if (old) out.push(old);
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (!key?.startsWith(journalPrefix(accountKey))) continue;
+      if (!key?.startsWith(prefix)) continue;
       const j = parseJournal(key, localStorage.getItem(key) ?? "");
-      if (j && (key === own || j.closed)) out.push(j);
+      if (!j) continue;
+      const abandoned = live !== null && !live.has(tabLock(key.slice(prefix.length)));
+      if (key === own || j.closed || abandoned) out.push(j);
     }
     return out;
   } catch {
@@ -598,12 +678,15 @@ function removeJournal(key: string) {
 /**
  * Ops written to the journal as the page was closing: newer than (or the same as) what IndexedDB holds.
  * An op already queued is replaced by its journal copy (the same op, with later coalesced content);
- * others are added, and the blocks they carry become the local version.
+ * others are added, and the blocks they carry become the local version. The uploads they wait for come
+ * along; an op still waiting for an upload nobody has any more is sent as it is.
  */
-export function mergeJournal(state: SyncState, ops: SyncOp[]): SyncState {
+export function mergeJournal(state: SyncState, ops: SyncOp[], uploads: SyncState["uploads"] = []): SyncState {
   if (!ops.length) return state;
-  const pending = [...state.pending];
+  let pending = [...state.pending];
   const blocks = { ...state.blocks };
+  const known = new Map(state.uploads.map((u) => [u.uploadId, u]));
+  for (const u of uploads) if (!known.has(u.uploadId)) known.set(u.uploadId, u);
   for (const op of ops) {
     const at = pending.findIndex((p) => p.opId === op.opId);
     if (at >= 0) pending[at] = op;
@@ -615,7 +698,12 @@ export function mergeJournal(state: SyncState, ops: SyncOp[]): SyncState {
       blocks[op.blockId] = { ...blocks[op.blockId]!, deleted: true };
     }
   }
-  return { ...state, pending, blocks };
+  pending = pending.map((p) => {
+    if (p.kind !== "block.upsert" || !p.blockedBy || known.has(p.blockedBy)) return p;
+    const { blockedBy: _gone, ...rest } = p;
+    return rest;
+  });
+  return { ...state, pending, blocks, uploads: [...known.values()] };
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

@@ -216,6 +216,15 @@ export const BlockSelectionExtension = Extension.create({
                   moveBlock(editor, dir);
                   return true;
                 }
+                // ⇧⌘↑/↓: to the first or last visible block.
+                if (event.shiftKey && mod) {
+                  event.preventDefault();
+                  const hidden = hiddenIndices(state);
+                  let edge = dir > 0 ? state.doc.childCount - 1 : 0;
+                  while (edge > 0 && hidden.has(edge)) edge--;
+                  setBlockSelection(view, anchorIndex, edge);
+                  return true;
+                }
                 if (event.shiftKey) {
                   event.preventDefault();
                   const next = neighbourIndex(state, headIndex, dir);
@@ -247,6 +256,33 @@ export const BlockSelectionExtension = Extension.create({
             if (mod && event.key.toLowerCase() === "a") {
               event.preventDefault();
               return setBlockSelection(view, 0, state.doc.childCount - 1);
+            }
+            // Text formatting (⌘B, ⌘I, ⌘U, ⌘⇧X, ⌘E, ⌘⇧H) applies to all the selected blocks' text.
+            if (mod && !event.altKey) {
+              const key = event.key.toLowerCase();
+              const mark = !event.shiftKey ? ({ b: "bold", i: "italic", u: "underline", e: "code" } as Record<string, string>)[key] : ({ x: "strike", h: "highlight" } as Record<string, string>)[key];
+              if (mark) {
+                event.preventDefault();
+                // From the first line of text to the last (an image or a divider at either end has none).
+                let first: ReturnType<typeof blockAt> = null;
+                let last: ReturnType<typeof blockAt> = null;
+                for (let i = range.from; i <= range.to; i++) {
+                  const ref = blockAt(state, i);
+                  if (!ref?.node.isTextblock) continue;
+                  first ??= ref;
+                  last = ref;
+                }
+                if (!first || !last) return true;
+                const from = first.pos + 1;
+                const to = last.pos + last.node.nodeSize - 1;
+                if (to <= from) return true;
+                const sel = blockSelectionKey.getState(state)!;
+                view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, from, to)).setMeta("addToHistory", false));
+                editor.commands.toggleMark(mark, mark === "highlight" ? { value: "yellow" } : undefined);
+                // The blocks stay selected.
+                view.dispatch(view.state.tr.setMeta(blockSelectionKey, { set: sel } satisfies BlockSelectionMeta).setMeta("addToHistory", false));
+                return true;
+              }
             }
             // Copy/cut are handled by the clipboard events; ⌘. by the block menu; other shortcuts pass through.
             if (mod) return false;

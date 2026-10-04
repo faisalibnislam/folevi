@@ -17,6 +17,7 @@ import { moveSubtreeTo, subtreeRange } from "@/components/editor/commands";
 import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "@/components/editor/paste";
 import type { Slice } from "@tiptap/pm/model";
 import { pasteAddress } from "@/components/editor/autolink";
+import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import type { TriggerState } from "@/components/editor/plugins";
 import { FormatPanel } from "@/components/doc/FormatPanel";
@@ -172,6 +173,19 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
           insertPastedBlocks(view, blocks);
           return true;
         },
+        // Text or a web page dragged in from another app: the same clean-up as pasting it (files aren't
+        // taken here: the demo saves nothing).
+        handleDrop: (view: EditorView, event: DragEvent, _slice: Slice, moved: boolean) => {
+          if (moved || view.dragging || event.dataTransfer?.files.length) return false;
+          const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (!at) return false;
+          view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(at.pos))));
+          const blocks = clipboardBlocks(view, event.dataTransfer);
+          if (!blocks) return false;
+          event.preventDefault();
+          insertPastedBlocks(view, blocks);
+          return true;
+        },
       },
       onCreate: () => setReady(true),
     }),
@@ -184,10 +198,10 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
 
   // Block drag and drop (the grip in the menus runs the pointer drag; this applies the move), as in the app.
   const onDropBlock = useCallback(
-    (fromIndex: number, toIndex: number, depth: number) => {
+    (fromIndex: number, toIndex: number, depth: number, lastIndex = fromIndex) => {
       if (!editor) return null;
-      const count = subtreeRange(editor.state, fromIndex).count;
-      const moved = moveSubtreeTo(editor.state, fromIndex, toIndex, depth);
+      const count = lastIndex - fromIndex + subtreeRange(editor.state, lastIndex).count;
+      const moved = moveSubtreeTo(editor.state, fromIndex, toIndex, depth, lastIndex);
       if (!moved) return null;
       editor.view.dispatch(closeHistory(moved.tr).scrollIntoView());
       return { index: moved.index, count };

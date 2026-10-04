@@ -154,3 +154,47 @@ describe("sync reducer, round four", () => {
     expect(t && t.kind === "block.upsert" && [t.block.rank, textOf(t.block), t.fields.join()]).toEqual(["z", "theirs", "position"]);
   });
 });
+
+describe("unload journal, round five", () => {
+  test("a closing tab's journal stays marked closed when the page then turns hidden", async () => {
+    const client = { mutation: vi.fn(async () => { throw new Error("offline"); }) } as unknown as ConvexReactClient;
+    const engine = await SyncEngine.open(client, "acct-close", PERSONAL, "web-cl");
+    engine.setOnline(false);
+    engine.upsertBlock("doc-1", para("b1", "typed"), ["content", "position"]);
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }));
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+    engine.upsertBlock("doc-1", para("b1", "typed more"), ["content"]);
+    const key = Object.keys(localStorage).find((k) => k.startsWith("folevi:sync-journal:acct-close:"))!;
+    expect(JSON.parse(localStorage.getItem(key)!).closed).toBe(true);
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    engine.dispose();
+  });
+
+  test("ops taken over from another tab bring the uploads they wait for; unknown ones stop blocking", () => {
+    const state = sync.emptySyncState();
+    const upload = { uploadId: "u1", documentId: "d", blockId: "img", attempts: 0, state: "queued" as const };
+    const merged = mergeJournal(
+      state,
+      [
+        { opId: "a", kind: "block.upsert", documentId: "d", block: para("img", ""), baseRevision: null, fields: ["content"], blockedBy: "u1" },
+        { opId: "b", kind: "block.upsert", documentId: "d", block: para("img2", ""), baseRevision: null, fields: ["content"], blockedBy: "gone" },
+      ],
+      [upload],
+    );
+    expect(merged.uploads.map((u) => u.uploadId)).toEqual(["u1"]);
+    const [a, b] = merged.pending as Extract<(typeof merged.pending)[number], { kind: "block.upsert" }>[];
+    expect(a!.blockedBy).toBe("u1");
+    expect(b!.blockedBy).toBeUndefined();
+  });
+});
+
+describe("find", () => {
+  test("case-insensitive matches land on the right characters when lower-casing changes the length", async () => {
+    const { findMatches } = await import("@/components/editor/findReplace");
+    const e = new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS], content: blocksToDoc([para("A", "İstanbul foo bar")]) });
+    const [m] = findMatches(e.state.doc, "foo", false);
+    expect(e.state.doc.textBetween(m!.from, m!.to)).toBe("foo");
+    e.destroy();
+  });
+});

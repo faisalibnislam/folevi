@@ -367,11 +367,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   );
 
   // Block drag & drop (the grip in EditorMenus runs the pointer drag; this applies the move).
-  const onDropBlock = useCallback((fromIndex: number, toIndex: number, depth: number) => {
+  const onDropBlock = useCallback((fromIndex: number, toIndex: number, depth: number, lastIndex = fromIndex) => {
     const ed = editorRef.current;
     if (!ed) return null;
-    const count = subtreeRange(ed.state, fromIndex).count;
-    const moved = moveSubtreeTo(ed.state, fromIndex, toIndex, depth);
+    const count = lastIndex - fromIndex + subtreeRange(ed.state, lastIndex).count;
+    const moved = moveSubtreeTo(ed.state, fromIndex, toIndex, depth, lastIndex);
     if (!moved) return null;
     ed.view.dispatch(closeHistory(moved.tr).scrollIntoView());
     return { index: moved.index, count };

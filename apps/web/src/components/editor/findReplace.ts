@@ -2,6 +2,7 @@ import { Extension, type Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { hiddenIndices } from "./blockSelectionState";
 
 /** Inline atoms (mentions, dates, page links) read as one object character, so offsets map to positions. */
 const OBJECT = "￼";
@@ -24,6 +25,22 @@ export const findKey = new PluginKey<FindState>("foleviFind");
 
 const EMPTY: FindState = { query: "", caseSensitive: false, index: 0, matches: [] };
 
+/** Lower-cased text, with where each of its characters came from in the original (one past the end at the end). */
+function foldCase(raw: string): { text: string; rawAt: number[] } {
+  let text = "";
+  const rawAt: number[] = [];
+  for (let i = 0; i < raw.length; ) {
+    const cp = raw.codePointAt(i)!;
+    const ch = String.fromCodePoint(cp);
+    const lower = ch.toLocaleLowerCase();
+    for (let k = 0; k < lower.length; k++) rawAt.push(i);
+    text += lower;
+    i += ch.length;
+  }
+  rawAt.push(raw.length);
+  return { text, rawAt };
+}
+
 /** Every occurrence of `query` in the note's text, in document order (at most MAX_MATCHES). */
 export function findMatches(doc: PMNode, query: string, caseSensitive: boolean): FindMatch[] {
   if (!query) return [];
@@ -33,10 +50,13 @@ export function findMatches(doc: PMNode, query: string, caseSensitive: boolean):
     if (out.length >= MAX_MATCHES) return false;
     if (!node.isTextblock) return true;
     const raw = node.textBetween(0, node.content.size, undefined, OBJECT);
-    const text = caseSensitive ? raw : raw.toLocaleLowerCase();
+    const { text, rawAt } = caseSensitive ? { text: raw, rawAt: null } : foldCase(raw);
     let at = text.indexOf(needle);
     while (at !== -1 && out.length < MAX_MATCHES) {
-      out.push({ from: pos + 1 + at, to: pos + 1 + at + needle.length });
+      // Positions in the original text (lower-casing can change a string's length, as with "İ").
+      const start = rawAt ? rawAt[at]! : at;
+      const end = rawAt ? rawAt[at + needle.length]! : at + needle.length;
+      out.push({ from: pos + 1 + start, to: pos + 1 + end });
       at = text.indexOf(needle, at + needle.length);
     }
     return false;
@@ -101,6 +121,23 @@ export function revealCurrent(editor: Editor) {
   const s = findState(editor);
   const m = s.matches[s.index];
   if (!m) return;
+  // A match folded away in a collapsed toggle: open the toggles around it, so it can be seen (and replaced).
+  const { state } = editor;
+  const index = state.doc.resolve(m.from).index(0);
+  if (hiddenIndices(state).has(index)) {
+    const tr = state.tr;
+    let depth = Number(state.doc.child(index).attrs.depth ?? 0);
+    const starts: number[] = [];
+    state.doc.forEach((_n, offset) => starts.push(offset));
+    for (let i = index - 1; i >= 0 && depth > 0; i--) {
+      const node = state.doc.child(i);
+      const d = Number(node.attrs.depth ?? 0);
+      if (d >= depth) continue;
+      if (node.type.name === "toggle" && node.attrs.collapsed) tr.setNodeMarkup(starts[i]!, undefined, { ...node.attrs, collapsed: false });
+      depth = d;
+    }
+    if (tr.docChanged) editor.view.dispatch(tr);
+  }
   requestAnimationFrame(() => {
     if (editor.isDestroyed) return;
     try {

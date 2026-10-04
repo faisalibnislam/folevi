@@ -335,7 +335,7 @@ export function EditorMenus({
   editable: boolean;
   onInsertFiles: (files: File[]) => Promise<void>;
   onInsertAudio: (file: File, durationSeconds: number) => Promise<void>;
-  onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null;
+  onDropBlock: (from: number, to: number, depth: number, last?: number) => { index: number; count: number } | null;
   onCommentBlock?: (blockId: string) => void;
 }) {
   const { scope, today } = useAppState();
@@ -665,12 +665,16 @@ export function EditorMenus({
     [editor, special, aiOn],
   );
 
-  const q = open?.query.toLowerCase() ?? "";
+  const q = open?.query.toLowerCase().trim() ?? "";
   // Label matches first (those starting with the query before the rest), then keyword-only matches, so
   // "/flowchart" picks Flowchart rather than a block that merely lists it as a keyword.
+  // An exact name first ("/page" is Page, not Page break), then a whole first word ("/tex" is TeX formula
+  // before Text).
   const slashRank = (i: { label: string }) => {
     const label = i.label.toLowerCase();
-    return label.startsWith(q) ? 0 : label.includes(q) ? 1 : 2;
+    if (label === q) return 0;
+    if (label.split(/\s+/)[0] === q) return 1;
+    return label.startsWith(q) ? 2 : label.includes(q) ? 3 : 4;
   };
   const filteredSlash =
     open?.kind === "slash"
@@ -1459,7 +1463,7 @@ const TURN_INTO = [
  * ⌘. (Ctrl+.): focus moves into it, ↑/↓ move between items, Escape returns to the text. With several
  * blocks selected (Shift-click grips, Shift+↑/↓, Escape) its actions apply to all of them.
  */
-function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number, depth: number) => { index: number; count: number } | null; onCommentBlock?: (blockId: string) => void }) {
+function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number, depth: number, last?: number) => { index: number; count: number } | null; onCommentBlock?: (blockId: string) => void }) {
   const aiOn = useAiEnabled();
   const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number } | null>(null);
   const [menu, setMenu] = useState<{ from: number; to: number; left: number; top: number; bottom: number } | null>(null);
@@ -1568,13 +1572,24 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   const act = (fn: () => void) => {
     if (!menu) return;
     editor.view.focus();
+    // Where the caret was (by block id, as the action may replace the block, e.g. Turn into Code).
+    const $caret = editor.state.selection.$head;
+    const caretId = $caret.depth >= 1 ? ($caret.node(1).attrs.id as string | null) : null;
+    const caretOffset = $caret.depth >= 1 ? $caret.parentOffset : 0;
     selectTargets(menu.from, menu.to);
     fn();
-    // The block's text was selected only so the action applied to it: leave a caret at its end, so the
-    // next key typed doesn't replace the text.
+    // The block's text was selected only so the action applied to it: the caret goes back where it was
+    // (or to the end of the text), so the next key typed doesn't replace the text or land elsewhere.
     const { selection } = editor.state;
-    if (!blockSelectionRange(editor.state) && !selection.empty && !(selection instanceof NodeSelection)) {
-      editor.view.dispatch(editor.state.tr.setSelection(TextSelection.near(selection.$head)).setMeta("addToHistory", false));
+    if (!blockSelectionRange(editor.state) && !(selection instanceof NodeSelection) && (!selection.empty || caretId)) {
+      let back: number | null = null;
+      if (caretId) {
+        editor.state.doc.forEach((n, offset) => {
+          if (back === null && n.attrs.id === caretId && n.isTextblock) back = offset + 1 + Math.min(caretOffset, n.content.size);
+        });
+      }
+      const tr = editor.state.tr.setSelection(back !== null ? TextSelection.create(editor.state.doc, back) : TextSelection.near(selection.$head));
+      editor.view.dispatch(tr.setMeta("addToHistory", false));
     }
     closeMenu();
   };
@@ -1626,12 +1641,14 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       {hover && !menu && !dragging ? (
         <div
           className="ui-raised fixed z-30 flex items-center gap-px rounded-[8px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
-          // Kept on screen when the note runs to the window's edge (narrow windows, phones).
-          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: Math.max(4, hover.left - 58) }}
+          // Where there's no room beside the line (narrow windows, phones) only the grip shows, so the handle
+          // never covers the start of the text (the grip's menu has Insert below).
+          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 >= 4 ? hover.left - 58 : Math.max(2, hover.left - 28) }}
           onMouseDown={(e) => e.preventDefault()}
         >
           <button
             type="button"
+            hidden={hover.left - 58 < 4}
             aria-label="Insert block below"
             className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {
@@ -1652,7 +1669,11 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
             onPointerDown={(e) => {
               if (e.button !== 0 || e.shiftKey) return;
               e.preventDefault();
-              const index = hover.index;
+              // Dragging one of several selected blocks moves them all.
+              const selected = blockSelectionRange(editor.state);
+              const inSelection = selected && hover.index >= selected.from && hover.index <= selected.to;
+              const index = inSelection ? selected.from : hover.index;
+              const last = inSelection ? selected.to : hover.index;
               beginPointerDrag({
                 editor,
                 payload: { kind: "block", index },
@@ -1663,7 +1684,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                   setDragging(true);
                   setHover(null);
                 },
-                onDrop: (t) => onDropBlock(index, t.index, t.depth),
+                onDrop: (t) => onDropBlock(index, t.index, t.depth, last),
                 onEnd: () => {
                   setDragging(false);
                   window.setTimeout(() => (justDragged.current = false), 0);

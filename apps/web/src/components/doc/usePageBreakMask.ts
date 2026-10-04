@@ -67,14 +67,16 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
       const scale = box.height ? h / box.height : 1;
       const gaps: [number, number][] = [];
       const keep: Box[] = [];
+      let lastBreak: Element | null = null;
       breaks.forEach((b) => {
         const r = b.getBoundingClientRect();
         if (!r.height) return;
         const gap: [number, number] = [Math.round((r.top - box.top) * scale), Math.round((r.bottom - box.top) * scale)];
         // Breaks one after another make one gap (not an empty page between them).
         const prev = gaps[gaps.length - 1];
-        if (prev && b.previousElementSibling?.classList.contains("fb-page-break")) prev[1] = gap[1];
+        if (prev && lastBreak && b.previousElementSibling === lastBreak) prev[1] = gap[1];
         else gaps.push(gap);
+        lastBreak = b;
         // The label (shown on hover or when the break is selected) stays on its own little piece of sheet,
         // only while it shows.
         const label = b.matches(":hover, .ProseMirror-selectednode") ? b.querySelector<HTMLElement>(".fb-page-break-label")?.getBoundingClientRect() : null;
@@ -107,7 +109,7 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
     sheet.addEventListener("animationend", schedule);
     // Hovering a break shows its label (no class changes for the observer to see).
     const onPointer = (e: Event) => {
-      if ((e.target as Element | null)?.classList?.contains("fb-page-break")) schedule();
+      if ((e.target as Element | null)?.closest?.(".fb-page-break")) schedule();
     };
     sheet.addEventListener("pointerover", onPointer);
     sheet.addEventListener("pointerout", onPointer);

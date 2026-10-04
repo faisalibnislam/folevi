@@ -1,7 +1,8 @@
 // Folevi editor schema for Tiptap/ProseMirror. One node per canonical block type, all top-level and
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
-import { Extension, Mark, Node, mergeAttributes, type Attributes } from "@tiptap/core";
-import { sanitizeHref } from "@folevi/editor-schema";
+import { Extension, Mark, Node, mergeAttributes, type Attributes, type Editor } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
+import { normalizeLanguage, sanitizeHref } from "@folevi/editor-schema";
 import { codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
 
 const blockAttrs = (extra: Attributes = {}): Attributes => ({
@@ -31,6 +32,15 @@ function applyBlockFormat(dom: HTMLElement, attrs: Record<string, unknown>) {
 
 const plain = (name: string) => ({ default: null, parseHTML: (el: HTMLElement) => el.getAttribute(`data-${name}`), renderHTML: (a: Record<string, unknown>) => (a[name] !== null && a[name] !== undefined ? { [`data-${name}`]: String(a[name]) } : {}) });
 const hidden = { default: null, rendered: false };
+/** For attributes whose data-* name differs from the attribute name (renderHTML reads the attribute). */
+const camel = (attr: string, dataName: string, kind: "string" | "number" = "string") => ({
+  renderHTML: (a: Record<string, unknown>) => (a[attr] === null || a[attr] === undefined ? {} : { [`data-${dataName}`]: String(a[attr]) }),
+  parseHTML: (el: HTMLElement) => {
+    const v = el.getAttribute(`data-${dataName}`);
+    if (v === null) return null;
+    return kind === "number" ? (Number.isFinite(Number(v)) ? Number(v) : null) : v;
+  },
+});
 
 export const Doc = Node.create({ name: "doc", topNode: true, content: "block+" });
 export const Text = Node.create({ name: "text", group: "inline" });
@@ -43,7 +53,16 @@ export const HardBreak = Node.create({
   parseHTML: () => [{ tag: "br" }],
   renderHTML: () => ["br"],
   addKeyboardShortcuts() {
-    return { "Shift-Enter": () => this.editor.commands.insertContent({ type: "hardBreak" }) };
+    return {
+      // In code a soft line break is just a newline (code holds plain text only).
+      "Shift-Enter": () =>
+        this.editor.state.selection.$from.parent.type.name === "codeBlock"
+          ? this.editor.commands.command(({ tr }) => {
+              tr.insertText("\n");
+              return true;
+            })
+          : this.editor.commands.insertContent({ type: "hardBreak" }),
+    };
   },
 });
 
@@ -82,13 +101,13 @@ export const Todo = Node.create({
   addAttributes: () =>
     blockAttrs({
       checked: { default: false, keepOnSplit: false, parseHTML: (el) => el.getAttribute("data-checked") === "true", renderHTML: (a) => ({ "data-checked": a.checked ? "true" : "false" }) },
-      canceled: { ...hidden, keepOnSplit: false },
-      dueDate: { default: null, keepOnSplit: false, rendered: false },
-      dueTime: { default: null, keepOnSplit: false, rendered: false },
-      priority: { default: null, keepOnSplit: false, rendered: false },
-      assigneeId: { default: null, keepOnSplit: false, rendered: false },
-      reminderAt: { default: null, keepOnSplit: false, rendered: false },
-      completedAt: { default: null, keepOnSplit: false, rendered: false },
+      canceled: { ...r("canceled", "boolean"), keepOnSplit: false },
+      dueDate: { ...r("due-date"), keepOnSplit: false, ...camel("dueDate", "due-date") },
+      dueTime: { ...r("due-time"), keepOnSplit: false, ...camel("dueTime", "due-time") },
+      priority: { ...r("priority"), keepOnSplit: false },
+      assigneeId: { ...r("assignee"), keepOnSplit: false, ...camel("assigneeId", "assignee") },
+      reminderAt: { ...r("reminder", "number"), keepOnSplit: false, ...camel("reminderAt", "reminder", "number") },
+      completedAt: { ...r("completed-at", "number"), keepOnSplit: false, ...camel("completedAt", "completed-at", "number") },
     }),
   parseHTML: () => [{ tag: 'div[data-block="todo"]' }, { tag: "li[data-list=todo]" }],
   renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes(HTMLAttributes, { "data-block": "todo", class: "fb fb-todo" }), 0],
@@ -267,7 +286,7 @@ export const Code = Node.create({
   marks: "",
   code: true,
   defining: true,
-  addAttributes: () => blockAttrs({ language: { default: "plaintext", parseHTML: (el) => el.getAttribute("data-language") ?? el.querySelector("code")?.className.replace(/^language-/, "") ?? "plaintext", renderHTML: (a) => ({ "data-language": a.language }) } }),
+  addAttributes: () => blockAttrs({ language: { default: "plaintext", parseHTML: (el) => normalizeLanguage(el.getAttribute("data-language") ?? el.querySelector("code")?.className.replace(/^language-/, "") ?? "plaintext"), renderHTML: (a) => ({ "data-language": a.language }) } }),
   parseHTML: () => [{ tag: "pre", preserveWhitespace: "full" }],
   renderHTML: ({ HTMLAttributes }) => ["pre", mergeAttributes(HTMLAttributes, { "data-block": "code", class: "fb fb-code" }), ["code", {}, 0]],
   // Same DOM as renderHTML; Mermaid blocks become a diagram card with foldable source (codeView.ts).
@@ -276,6 +295,25 @@ export const Code = Node.create({
   addKeyboardShortcuts() {
     return {
       Tab: () => (this.editor.isActive("codeBlock") ? this.editor.commands.insertContent("  ") : false),
+      // Leaving code: ↓ or → at the very end of the last block, or Enter on a second empty last line,
+      // continues with a text line below.
+      ArrowDown: () => exitCode(this.editor, "down"),
+      ArrowRight: () => exitCode(this.editor, "right"),
+      Enter: () => {
+        const { $from, empty } = this.editor.state.selection;
+        if (!empty || $from.parent.type.name !== "codeBlock" || $from.parentOffset !== $from.parent.content.size || !$from.parent.textContent.endsWith("\n\n")) return false;
+        const after = $from.after();
+        return this.editor
+          .chain()
+          .command(({ tr }) => {
+            tr.delete($from.pos - 2, $from.pos);
+            tr.insert(after - 2, this.editor.schema.nodes.paragraph!.create({ id: null, depth: $from.parent.attrs.depth }));
+            tr.setSelection(TextSelection.create(tr.doc, after - 1));
+            return true;
+          })
+          .scrollIntoView()
+          .run();
+      },
       "Mod-Enter": () => {
         if (!this.editor.isActive("codeBlock")) return false;
         const { $from } = this.editor.state.selection;
@@ -285,6 +323,19 @@ export const Code = Node.create({
     };
   },
 });
+
+function exitCode(editor: Editor, dir: "down" | "right"): boolean {
+  const { state, view } = editor;
+  const { $from, empty } = state.selection;
+  if (!empty || $from.parent.type.name !== "codeBlock" || $from.parentOffset !== $from.parent.content.size) return false;
+  if (dir === "down" && !view.endOfTextblock("down")) return false;
+  const after = $from.after();
+  if (after < state.doc.content.size) return false;
+  const tr = state.tr.insert(after, state.schema.nodes.paragraph!.create({ id: null, depth: $from.parent.attrs.depth }));
+  tr.setSelection(TextSelection.create(tr.doc, after + 1));
+  view.dispatch(tr.scrollIntoView());
+  return true;
+}
 
 function atom(name: string, attrs: Attributes) {
   return Node.create({
@@ -299,7 +350,32 @@ function atom(name: string, attrs: Attributes) {
   });
 }
 
-const r = (name: string) => ({ default: null, rendered: false, parseHTML: (el: HTMLElement) => el.getAttribute(`data-${name}`) });
+/**
+ * A block attribute kept as `data-<name>` in the HTML the editor copies, so pasting (in this note or another)
+ * brings the block back whole. Numbers, booleans and JSON values are written as text and read back typed.
+ */
+const r = (name: string, kind: "string" | "number" | "boolean" | "json" = "string", fallback: unknown = null) => ({
+  default: fallback,
+  parseHTML: (el: HTMLElement) => {
+    const v = el.getAttribute(`data-${name}`);
+    if (v === null) return fallback;
+    if (kind === "number") return Number.isFinite(Number(v)) ? Number(v) : fallback;
+    if (kind === "boolean") return v === "true";
+    if (kind === "json") {
+      try {
+        return JSON.parse(v);
+      } catch {
+        return fallback;
+      }
+    }
+    return v;
+  },
+  renderHTML: (a: Record<string, unknown>) => {
+    const v = a[name];
+    if (v === null || v === undefined) return {};
+    return { [`data-${name}`]: kind === "json" ? JSON.stringify(v) : String(v) };
+  },
+});
 
 /** Divider line; `style` (extralight · light · regular · strong) overrides the page's separator style. */
 export const Divider = Node.create({
@@ -333,11 +409,11 @@ export const PageBreak = Node.create({
     ["span", { class: "fb-page-break-label", "aria-hidden": "true" }, "Page break"],
   ],
 });
-export const ImageBlock = atom("image", { fileId: r("fileId"), url: r("url"), alt: { ...r("alt"), default: "" }, caption: { ...r("caption"), default: "" }, width: r("width"), naturalWidth: r("naturalWidth"), naturalHeight: r("naturalHeight"), uploadId: hidden });
-export const FileBlock = atom("file", { fileId: r("fileId"), name: r("name"), size: r("size"), mimeType: r("mimeType"), uploadId: hidden });
-export const AudioBlock = atom("audio", { fileId: r("fileId"), name: r("name"), size: r("size"), mimeType: r("mimeType"), duration: r("duration"), uploadId: hidden });
-export const TableBlock = atom("table", { rows: { default: [[[], []], [[], []]], rendered: false }, headerRow: { default: true, rendered: false } });
-export const PageBlock = atom("page", { documentId: r("documentId"), display: { ...r("display"), default: "card" }, titleCache: r("titleCache"), iconCache: r("iconCache") });
+export const ImageBlock = atom("image", { fileId: r("fileId"), url: r("url"), alt: r("alt", "string", ""), caption: r("caption", "string", ""), width: r("width", "number"), naturalWidth: r("naturalWidth", "number"), naturalHeight: r("naturalHeight", "number"), uploadId: hidden });
+export const FileBlock = atom("file", { fileId: r("fileId"), name: r("name"), size: r("size", "number"), mimeType: r("mimeType"), uploadId: hidden });
+export const AudioBlock = atom("audio", { fileId: r("fileId"), name: r("name"), size: r("size", "number"), mimeType: r("mimeType"), duration: r("duration", "number"), uploadId: hidden });
+export const TableBlock = atom("table", { rows: r("rows", "json", [[[], []], [[], []]]), headerRow: r("headerRow", "boolean", true) });
+export const PageBlock = atom("page", { documentId: r("documentId"), display: r("display", "string", "card"), titleCache: r("titleCache"), iconCache: r("iconCache") });
 export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName") });
 export const CollectionBlock = atom("collection", { collectionId: r("collectionId"), viewId: r("viewId") });
 // Formula, whiteboard and flowchart content is written to data-* attributes so copy & paste inside Folevi keeps it.

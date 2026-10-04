@@ -43,6 +43,14 @@ async function withSignedClientIp(request: Request): Promise<Request> {
     headers.set(CLIENT_IP_HEADER, ip);
     headers.set(CLIENT_IP_SIGNATURE_HEADER, `${ts}.${await sign(secret, ip, ts)}`);
   }
+  // Development only: a second local dev server (another port, while 3000 is busy) presents the origin the
+  // development backend trusts, so signing in works there too. Unset everywhere else.
+  const devOrigin = process.env.NODE_ENV === "development" ? process.env.FOLEVI_DEV_AUTH_ORIGIN : undefined;
+  if (devOrigin) {
+    if (headers.has("origin")) headers.set("origin", devOrigin);
+    const referer = headers.get("referer");
+    if (referer) headers.set("referer", devOrigin + new URL(referer).pathname);
+  }
   const init: RequestInit = { method: request.method, headers };
   if (request.method !== "GET" && request.method !== "HEAD") init.body = await request.arrayBuffer();
   return new Request(request.url, init);

@@ -113,7 +113,8 @@ export const BlockSelectionExtension = Extension.create({
               const range = blockSelectionRange(view.state)!;
               const indices: number[] = [];
               for (let i = range.from; i <= range.to; i++) indices.push(i);
-              deleteBlocks(editor, indices);
+              // Only what was copied (the selected blocks) is removed.
+              deleteBlocks(editor, indices, false);
               return true;
             },
             mousedown: (view, event) => {
@@ -140,9 +141,9 @@ export const BlockSelectionExtension = Extension.create({
               if (event.defaultPrevented || event.isComposing) return false;
               // Escape selects the block the caret is in (the keyboard way into block selection).
               if (event.key === "Escape" && !mod && !event.shiftKey && !event.altKey && !document.querySelector(".fb-drag-ghost")) {
-                const $from = state.selection.$from;
-                const $to = state.selection.$to;
-                return setBlockSelection(view, $from.index(0), Math.min($to.index(0), state.doc.childCount - 1));
+                const { from, to } = state.selection;
+                const last = state.doc.resolve(Math.max(from, to - 1)).index(0);
+                return setBlockSelection(view, state.doc.resolve(from).index(0), Math.min(last, state.doc.childCount - 1));
               }
               // Shift+↑/↓ at the edge of a block grows the selection to whole blocks.
               if (event.shiftKey && !mod && !event.altKey && (event.key === "ArrowDown" || event.key === "ArrowUp")) {

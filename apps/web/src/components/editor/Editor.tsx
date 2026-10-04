@@ -1,9 +1,10 @@
 "use client";
 
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
-import { TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { Slice } from "@tiptap/pm/model";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { LIMITS, markdownToBlocks, plainTextToBlocks, ulid, type WireBlock } from "@folevi/editor-schema";
+import { LIMITS, ulid } from "@folevi/editor-schema";
 import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
@@ -12,9 +13,9 @@ import { decorationsKey, type DecorationInputs, type TriggerState } from "./plug
 import { editorExtensions } from "./editorExtensions";
 import { blockToNode, blocksToDoc, contentKey, diffBlocks, docToBlocks } from "./convert";
 import { flattenTree } from "@folevi/editor-schema";
-import { htmlToBlocks } from "./paste";
+import { clipboardBlocks, insertPastedBlocks } from "./paste";
 import { EditorMenus } from "./EditorMenus";
-import { insertBlockAfterCurrent, subtreeRange, normalizeDepths, moveSubtreeTo } from "./commands";
+import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands";
 import { closeHistory } from "@tiptap/pm/history";
 import { useAiEnabled } from "@/components/ai/useAi";
 
@@ -37,16 +38,20 @@ interface Props {
   onCommentBlock?: (blockId: string) => void;
   onEditorReady?: (editor: TiptapEditor) => void;
   placeholder?: string;
+  /** ↑ on the first line: leave the body (to the title). Returns whether it did. */
+  onExitTop?: () => boolean;
 }
 
 const FLUSH_DELAY = 250;
 
 export const Editor = forwardRef<EditorHandle, Props>(function Editor(
-  { documentId, engine, accountKey, editable, decorations, onFocusBlock, onCommentBlock, onEditorReady, placeholder },
+  { documentId, engine, accountKey, editable, decorations, onFocusBlock, onCommentBlock, onEditorReady, placeholder, onExitTop },
   ref,
 ) {
   const [trigger, setTrigger] = useState<TriggerState | null>(null);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onExitTopRef = useRef(onExitTop);
+  onExitTopRef.current = onExitTop;
   const dirty = useRef(false);
   // The empty-line hint mentions ⌘J while the AI assistant is on (read by the placeholder at render time).
   const aiHint = useRef(false);
@@ -91,11 +96,18 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       const previous = engineBlocksMap();
       const next = docToBlocks(editor.state.doc, previous);
       const diff = diffBlocks(previous, next);
-      for (const d of diff.deletes) engine.deleteBlock(documentId, d);
-      for (const u of diff.upserts) {
-        engine.upsertBlock(documentId, u.block, u.fields);
-        if (u.fields.includes("position") && u.block.rank.length > LIMITS.maxRankLength / 2) rebalanceParents.current.add(u.block.parentId);
-      }
+      // One save for the whole flush.
+      engine.batch(() => {
+        // Upserts first: a deleted parent takes its subtree with it on the server, so children re-parented
+        // by this same edit (a merge, an outdent) must be moved out before the delete arrives.
+        for (const u of diff.upserts) {
+          // A block that comes back after being deleted (undo, cut then paste) is restored, not re-created.
+          if (engine.isBlockDeleted(documentId, u.block.id)) engine.restoreBlock(documentId, u.block.id);
+          engine.upsertBlock(documentId, u.block, u.fields);
+          if (u.fields.includes("position") && u.block.rank.length > LIMITS.maxRankLength / 2) rebalanceParents.current.add(u.block.parentId);
+        }
+        for (const d of diff.deletes) engine.deleteBlock(documentId, d);
+      });
     },
     [engine, documentId, engineBlocksMap],
   );
@@ -120,18 +132,18 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           void insertFiles(files);
           return true;
         }
-        const html = event.clipboardData?.getData("text/html");
-        const text = event.clipboardData?.getData("text/plain") ?? "";
-        // Inside code blocks paste raw text.
-        if (view.state.selection.$from.parent.type.name === "codeBlock") return false;
-        let blocks: WireBlock[] | null = null;
-        if (html && !html.includes("data-pm-slice")) blocks = htmlToBlocks(html);
-        else if (!html && text && (/\n/.test(text) || /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m.test(text))) {
-          blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false }).blocks : plainTextToBlocks(text);
-        }
-        if (!blocks || !blocks.length) return false;
+        const blocks = clipboardBlocks(view, event.clipboardData);
+        if (!blocks) return false;
         event.preventDefault();
-        insertBlocks(view.state.selection.$from.index(0), blocks);
+        insertPastedBlocks(view, blocks);
+        return true;
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key !== "ArrowUp" || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false;
+        const { selection } = view.state;
+        if (!selection.empty || selection.$from.index(0) !== 0 || !view.endOfTextblock("up")) return false;
+        if (!onExitTopRef.current?.()) return false;
+        event.preventDefault();
         return true;
       },
       handleDrop: (view, event, _slice, moved) => {
@@ -184,6 +196,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   const applyFromEngine = useCallback(() => {
     const ed = editorRef.current;
     if (!ed || ed.isDestroyed) return;
+    // Never while an input method is composing text (it would break the composition): apply when it ends.
+    if (ed.view.composing) {
+      ed.view.dom.addEventListener("compositionend", () => setTimeout(() => applyFromEngineRef.current(), 0), { once: true });
+      return;
+    }
     flushLocal(ed);
     const blocks = engine.documentBlocks(documentId);
     const desired = flattenTree(blocks);
@@ -194,13 +211,29 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     const sameOrder = desired.length === current.length && desired.every((d, i) => d.block.id === current[i]!.id && d.depth === current[i]!.depth);
     const tr = ed.state.tr;
     if (sameOrder) {
+      // Same blocks in the same order: change only what differs inside each block (its attributes, then the
+      // smallest stretch of text), so a caret in an unchanged part of the block stays where it is.
       let pos = 0;
       ed.state.doc.forEach((node, _offset, i) => {
         const want = desired[i]!;
         const have = currentById.get(want.block.id);
         if (!have || contentKey(have) !== contentKey(want.block)) {
           const replacement = ed.schema.nodeFromJSON(blockToNode(want.block, want.depth));
-          tr.replaceWith(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize), replacement);
+          if (replacement.type !== node.type || !node.isTextblock) {
+            tr.replaceWith(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize), replacement);
+          } else {
+            if (!node.hasMarkup(replacement.type, replacement.attrs)) tr.setNodeMarkup(tr.mapping.map(pos), undefined, replacement.attrs);
+            const start = node.content.findDiffStart(replacement.content);
+            if (start !== null) {
+              let { a: endA, b: endB } = node.content.findDiffEnd(replacement.content)!;
+              const overlap = start - Math.min(endA, endB);
+              if (overlap > 0) {
+                endA += overlap;
+                endB += overlap;
+              }
+              tr.replace(tr.mapping.map(pos + 1 + start), tr.mapping.map(pos + 1 + endA), new Slice(replacement.content.cut(start, endB), 0, 0));
+            }
+          }
         }
         pos += node.nodeSize;
       });
@@ -223,10 +256,17 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     tr.setMeta("remote", true).setMeta("addToHistory", false);
     ed.view.dispatch(tr);
   }, [engine, documentId, flushLocal]);
+  const applyFromEngineRef = useRef(applyFromEngine);
+  applyFromEngineRef.current = applyFromEngine;
 
-  // Engine events: attachment uploads finishing update the node attrs.
+  // Engine events: attachment uploads finishing update the node attrs; a change the engine made to this
+  // document (a conflict's resolution, a rejected edit, rows from the server) is shown.
   useEffect(() => {
     return engine.subscribe((e) => {
+      if (e.type === "remote" && e.documentId === documentId) {
+        applyFromEngineRef.current();
+        return;
+      }
       if (e.type === "upload-complete" && e.documentId === documentId) {
         const ed = editorRef.current;
         if (!ed) return;
@@ -236,7 +276,12 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         });
         if (target === null) return;
         const node = ed.state.doc.nodeAt(target)!;
-        ed.view.dispatch(ed.state.tr.setNodeMarkup(target, undefined, { ...node.attrs, fileId: e.fileId, uploadId: null }).setMeta("remote", true).setMeta("addToHistory", false));
+        ed.view.dispatch(
+          ed.state.tr
+            .setNodeMarkup(target, undefined, { ...node.attrs, fileId: e.fileId, uploadId: null })
+            .setMeta("remote", true)
+            .setMeta("addToHistory", false),
+        );
       }
     });
   }, [engine, documentId]);
@@ -254,47 +299,45 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     };
   }, [flushLocal, engine, documentId]);
 
-  const insertBlocks = useCallback(
-    (afterIndex: number, blocks: WireBlock[]) => {
-      const ed = editorRef.current;
-      if (!ed) return;
-      const flat = flattenTree(blocks);
-      const $from = ed.state.selection.$from;
-      const baseDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
-      const nodes = flat.map(({ block, depth }) => ed.schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
-      let at = 0;
-      for (let i = 0; i <= Math.min(afterIndex, ed.state.doc.childCount - 1); i++) at += ed.state.doc.child(i).nodeSize;
-      const currentNode = ed.state.doc.child(Math.min(afterIndex, ed.state.doc.childCount - 1));
-      const tr = ed.state.tr;
-      if (currentNode.isTextblock && currentNode.content.size === 0) {
-        tr.replaceWith(at - currentNode.nodeSize, at, nodes);
-      } else {
-        tr.insert(at, nodes);
-      }
-      normalizeDepths(tr);
-      ed.view.dispatch(tr.scrollIntoView());
-    },
-    [],
-  );
-
   const insertFiles = useCallback(
     async (files: File[]) => {
       const ed = editorRef.current;
       if (!ed) return;
+      // Files go in order after the caret's block (and anything nested under it); an empty line is replaced.
+      const $from = ed.state.selection.$from;
+      const startIndex = Math.min($from.index(0), ed.state.doc.childCount - 1);
+      const startNode = ed.state.doc.child(startIndex);
+      const depth = Number(startNode.attrs.depth ?? 0);
+      let afterId = (startNode.attrs.id as string | null) ?? null;
+      let replaceId = startNode.type.name === "paragraph" && startNode.content.size === 0 ? afterId : null;
       for (const file of files.slice(0, 10)) {
         const isImage = /^image\/(png|jpe?g|gif|webp)$/i.test(file.type);
         const blockId = ulid();
-        const $from = ed.state.selection.$from;
-        const depth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
         const node = isImage
           ? ed.schema.nodes.image!.create({ id: blockId, depth, alt: file.name.replace(/\.[^.]+$/, ""), caption: "" })
           : ed.schema.nodes.file!.create({ id: blockId, depth, name: file.name, size: file.size, mimeType: file.type || "application/octet-stream" });
         // Register the upload before the block exists so its sync op is held until the upload finishes.
         await enqueueUpload(accountKey, engine, { documentId, blockId, file, kind: isImage ? "image" : "file" });
-        const index = ed.state.selection.$from.index(0);
-        let at = 0;
-        for (let i = 0; i <= Math.min(index, ed.state.doc.childCount - 1); i++) at += ed.state.doc.child(i).nodeSize;
-        ed.view.dispatch(ed.state.tr.insert(at, node).scrollIntoView());
+        if (ed.isDestroyed) return;
+        const { state } = ed;
+        let index = -1;
+        state.doc.forEach((n, _o, i) => {
+          if (index < 0 && afterId && n.attrs.id === afterId) index = i;
+        });
+        const tr = state.tr;
+        let at: number;
+        if (index >= 0 && replaceId === afterId) {
+          at = 0;
+          for (let i = 0; i < index; i++) at += state.doc.child(i).nodeSize;
+          tr.replaceWith(at, at + state.doc.child(index).nodeSize, node);
+        } else {
+          at = index >= 0 ? subtreeRange(state, index).end : state.doc.content.size;
+          tr.insert(at, node);
+        }
+        replaceId = null;
+        afterId = blockId;
+        tr.setSelection(NodeSelection.create(tr.doc, at));
+        ed.view.dispatch(tr.scrollIntoView());
       }
       window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
     },
@@ -310,7 +353,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       // Register the upload before the block exists so its sync op is held until the upload finishes.
       await enqueueUpload(accountKey, engine, { documentId, blockId, file, kind: "audio" });
       // Takes the place of the empty line the "/" was typed on.
-      insertBlockAfterCurrent(ed, "audio", { id: blockId, name: file.name, size: file.size, mimeType: file.type, duration: Math.round(duration * 10) / 10 });
+      insertBlockAfterCurrent(ed, "audio", {
+        id: blockId,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type,
+        duration: Math.round(duration * 10) / 10,
+      });
       window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
     },
     [accountKey, engine, documentId],
@@ -327,7 +376,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         if (!ed) return;
         ed.state.doc.forEach((n, offset) => {
           if (n.attrs.id === blockId) {
-            ed.chain().focus().setTextSelection(offset + 1).scrollIntoView().run();
+            ed.chain()
+              .focus()
+              .setTextSelection(offset + 1)
+              .scrollIntoView()
+              .run();
           }
         });
       },
@@ -365,7 +418,3 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     </div>
   );
 });
-
-function looksLikeMarkdown(text: string): boolean {
-  return /^(#{1,6} |[-*+] |\d+[.)] |> |```|\[[ x]\] |\|.*\|)/m.test(text) || /\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)/.test(text);
-}

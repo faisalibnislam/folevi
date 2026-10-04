@@ -1,9 +1,11 @@
 import { Extension, InputRule, type Editor } from "@tiptap/core";
-import { Plugin, PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
+import { Fragment, Slice, type Node as PMNode } from "@tiptap/pm/model";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { LIMITS, ulid } from "@folevi/editor-schema";
+import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, turnInto } from "./commands";
 import { TEXT_NODES } from "./convert";
+import { hiddenIndices, neighbourIndex } from "./blockSelectionState";
 
 /** Every top-level block has a unique id; depth is always valid. Runs after every transaction. */
 export const BlockIdentity = Extension.create({
@@ -12,6 +14,40 @@ export const BlockIdentity = Extension.create({
     return [
       new Plugin({
         key: new PluginKey("blockIdentity"),
+        props: {
+          // Typing while a whole block (an image, a table, a divider…) is selected writes on a new line after
+          // it instead of replacing it.
+          handleTextInput: (view, _from, _to, text) => {
+            const sel = view.state.selection;
+            if (!(sel instanceof NodeSelection) || !sel.node.isBlock || sel.$from.depth !== 0) return false;
+            const { state } = view;
+            const next = state.doc.nodeAt(sel.to);
+            const tr = state.tr;
+            if (next && next.type.name === "paragraph" && next.content.size === 0) {
+              tr.insertText(text, sel.to + 1);
+              tr.setSelection(TextSelection.create(tr.doc, sel.to + 1 + text.length));
+            } else {
+              tr.insert(sel.to, state.schema.nodes.paragraph!.create({ id: null, depth: sel.node.attrs.depth }, state.schema.text(text)));
+              tr.setSelection(TextSelection.create(tr.doc, sel.to + 1 + text.length));
+            }
+            view.dispatch(tr.scrollIntoView());
+            return true;
+          },
+          // Pasted (or dropped-in) blocks are copies: they get new ids, so the original keeps its comments,
+          // links and sync identity. A block dragged within the note is a move and keeps its id.
+          transformPasted: (slice, view) => {
+            if ((view as unknown as { dragging?: { move?: boolean } | null }).dragging?.move) return slice;
+            let changed = false;
+            const content: PMNode[] = [];
+            slice.content.forEach((node) => {
+              if (node.attrs.id) {
+                changed = true;
+                content.push(node.type.create({ ...node.attrs, id: null }, node.content, node.marks));
+              } else content.push(node);
+            });
+            return changed ? new Slice(Fragment.from(content), slice.openStart, slice.openEnd) : slice;
+          },
+        },
         appendTransaction: (transactions, _old, state) => {
           if (!transactions.some((t) => t.docChanged)) return null;
           const tr = state.tr;
@@ -198,6 +234,34 @@ function currentBlock(state: EditorState) {
 
 const LIST_TYPES = new Set(["bulleted", "numbered", "todo"]);
 
+/** Block styling that follows the text onto a new line (see BlockFormat in extensions.ts). */
+const CARRIED_FORMAT = ["decoration", "color", "align", "font", "group"] as const;
+const FORMATTABLE_TYPES = new Set(["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"]);
+
+/** Attributes for the new block a split creates: a fresh id, its depth, and the styling that carries over. */
+function splitAttrs(from: PMNode, toType: string, depth: number): Record<string, unknown> {
+  const attrs: Record<string, unknown> = { id: ulid(), depth };
+  if (FORMATTABLE_TYPES.has(from.type.name) && FORMATTABLE_TYPES.has(toType)) {
+    for (const k of CARRIED_FORMAT) if (from.attrs[k] != null) attrs[k] = from.attrs[k];
+  }
+  if (toType === "heading") attrs.level = from.attrs.level;
+  if (toType === "paragraph" && from.type.name === "paragraph" && from.attrs.textStyle != null) attrs.textStyle = from.attrs.textStyle;
+  return attrs;
+}
+
+/** Top-level index and position of the block after `index` that isn't nested in it (its subtree's end). */
+function afterSubtree(state: EditorState, index: number): number {
+  const base = Number(state.doc.child(index).attrs.depth ?? 0);
+  let pos = 0;
+  for (let i = 0; i <= index; i++) pos += state.doc.child(i).nodeSize;
+  for (let i = index + 1; i < state.doc.childCount; i++) {
+    const n = state.doc.child(i);
+    if (Number(n.attrs.depth ?? 0) <= base) break;
+    pos += n.nodeSize;
+  }
+  return pos;
+}
+
 export const BlockKeymap = Extension.create({
   name: "blockKeymap",
   priority: 1000,
@@ -205,42 +269,55 @@ export const BlockKeymap = Extension.create({
     const editor = this.editor as Editor;
     return {
       Enter: () => {
-        const cur = currentBlock(editor.state);
+        if (!editor.state.selection.empty) {
+          if (editor.state.selection instanceof NodeSelection) return false;
+          editor.commands.deleteSelection();
+        }
+        const { state } = editor;
+        const cur = currentBlock(state);
         if (!cur) return false;
         const type = cur.node.type.name;
-        if (type === "codeBlock") return false;
-        if (LIST_TYPES.has(type) || type === "quote" || type === "toggle" || type === "callout") {
-          if (cur.empty) {
-            // An empty list item ends the list (or outdents when nested).
-            if (Number(cur.node.attrs.depth ?? 0) > 0) return changeDepth(editor, -1);
-            return turnInto(editor, "paragraph");
-          }
-          const nextType = type === "toggle" || type === "callout" || type === "quote" ? "paragraph" : type;
-          const depth = Number(cur.node.attrs.depth ?? 0) + (type === "toggle" && !cur.node.attrs.collapsed ? 1 : 0);
-          return editor
-            .chain()
-            .splitBlock()
-            .command(({ tr, state }) => {
-              const $pos = state.selection.$from;
-              const pos = $pos.before(1);
-              const nodeType = state.schema.nodes[nextType]!;
-              tr.setNodeMarkup(pos, nodeType, { id: ulid(), depth, checked: false });
-              return true;
-            })
-            .run();
+        if (type === "codeBlock" || !cur.node.isTextblock) return false;
+        const depth = Number(cur.node.attrs.depth ?? 0);
+        const $from = state.selection.$from;
+        const index = $from.index(0);
+        const listLike = LIST_TYPES.has(type) || type === "quote" || type === "toggle" || type === "callout";
+        if (cur.empty && listLike) {
+          // An empty list item ends the list (or outdents when nested).
+          if (depth > 0) return changeDepth(editor, -1);
+          return turnInto(editor, "paragraph");
         }
-        if (type === "heading" && cur.node.content.size && editor.state.selection.$from.parentOffset === cur.node.content.size) {
-          return editor
-            .chain()
-            .splitBlock()
-            .command(({ tr, state }) => {
-              const pos = state.selection.$from.before(1);
-              tr.setNodeMarkup(pos, state.schema.nodes.paragraph!, { id: ulid(), depth: cur.node.attrs.depth });
-              return true;
-            })
-            .run();
+        // At the start of a line with text: a new empty line above. The block itself keeps its id, type,
+        // task details and styling (so comments and links to it stay attached).
+        if (cur.atStart && !cur.empty) {
+          const above = LIST_TYPES.has(type) ? cur.node.type : state.schema.nodes.paragraph!;
+          editor.view.dispatch(state.tr.insert(cur.pos, above.create({ id: ulid(), depth })).scrollIntoView());
+          return true;
         }
-        return false;
+        const atEnd = $from.parentOffset === cur.node.content.size;
+        const nextType = LIST_TYPES.has(type) ? type : type === "heading" ? (atEnd ? "paragraph" : "heading") : "paragraph";
+        const marks = state.storedMarks ?? ($from.parentOffset ? $from.marks() : null);
+        // A collapsed toggle: the new line goes after its hidden blocks, taking the text after the caret.
+        if (type === "toggle" && cur.node.attrs.collapsed) {
+          const rest = cur.node.content.cut($from.parentOffset);
+          const at = afterSubtree(state, index);
+          const tr = state.tr.insert(at, state.schema.nodes.paragraph!.create(splitAttrs(cur.node, "paragraph", depth), rest));
+          tr.delete($from.pos, $from.end());
+          const caret = tr.mapping.slice(1).map(at) + 1;
+          tr.setSelection(TextSelection.create(tr.doc, caret));
+          if (marks) tr.ensureMarks(marks);
+          editor.view.dispatch(tr.scrollIntoView());
+          return true;
+        }
+        // An open toggle's new line is its first nested line; so is a split of a block with nested blocks
+        // (they stay under the line they belonged to instead of moving to the new one).
+        const next = state.doc.maybeChild(index + 1);
+        const hasChildren = Boolean(next && Number(next.attrs.depth ?? 0) > depth);
+        const newDepth = Math.min(LIMITS.maxDepth, type === "toggle" || hasChildren ? depth + 1 : depth);
+        const tr = state.tr.split($from.pos, 1, [{ type: state.schema.nodes[nextType]!, attrs: splitAttrs(cur.node, nextType, newDepth) }]);
+        if (marks) tr.ensureMarks(marks);
+        editor.view.dispatch(tr.scrollIntoView());
+        return true;
       },
       Backspace: () => {
         const { state } = editor;
@@ -248,21 +325,67 @@ export const BlockKeymap = Extension.create({
         if (!cur || !state.selection.empty || !cur.atStart) return false;
         const type = cur.node.type.name;
         if (type !== "paragraph" && TEXT_NODES.has(type)) return turnInto(editor, "paragraph");
-        if (type === "codeBlock" && cur.empty) return turnInto(editor, "paragraph");
+        // Code at the start: an empty block becomes text; one with code stays put (merging would flatten it).
+        if (type === "codeBlock") return cur.empty ? turnInto(editor, "paragraph") : true;
         if (Number(cur.node.attrs.depth ?? 0) > 0) return changeDepth(editor, -1);
-        // Deleting into an atom block above selects it instead of merging.
         const index = state.selection.$from.index(0);
-        if (index > 0) {
-          const prev = state.doc.child(index - 1);
-          if (prev.isAtom) {
-            if (cur.empty) return deleteBlocks(editor, [index]);
-            return false;
-          }
+        if (index === 0) return false;
+        const prev = state.doc.child(index - 1);
+        // Deleting into an atom block above (an image, a divider…) selects it first instead of removing it.
+        if (prev.isAtom) {
+          if (cur.empty) return deleteBlocks(editor, [index], false);
+          editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos - prev.nodeSize)).scrollIntoView());
+          return true;
+        }
+        // The block above is hidden inside a collapsed toggle: join with the toggle's own line instead.
+        if (hiddenIndices(state).has(index - 1)) {
+          const target = neighbourIndex(state, index, -1);
+          if (target === null) return false;
+          let tPos = 0;
+          for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
+          const tNode = state.doc.child(target);
+          if (!tNode.isTextblock) return false;
+          const end = tPos + tNode.nodeSize - 1;
+          const tr = state.tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
+          if (cur.node.content.size && tNode.type.name !== "codeBlock") tr.insert(end, cur.node.content);
+          tr.setSelection(TextSelection.create(tr.doc, end));
+          normalizeDepths(tr);
+          editor.view.dispatch(tr.scrollIntoView());
+          return true;
         }
         return false;
       },
-      Tab: () => (editor.isActive("code") ? false : changeDepth(editor, 1)),
-      "Shift-Tab": () => changeDepth(editor, -1),
+      Delete: () => {
+        const { state } = editor;
+        const cur = currentBlock(state);
+        if (!cur || !state.selection.empty || state.selection.$from.parentOffset !== cur.node.content.size) return false;
+        const index = state.selection.$from.index(0);
+        // Deleting into an atom below (an image, a divider…) selects it first instead of removing it.
+        const below = state.doc.maybeChild(index + 1);
+        if (below?.isAtom && !hiddenIndices(state).has(index + 1)) {
+          if (cur.empty && cur.node.type.name === "paragraph") return deleteBlocks(editor, [index], false);
+          editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos + cur.node.nodeSize)).scrollIntoView());
+          return true;
+        }
+        // At the end of a collapsed toggle the next block in the document is hidden: join the next visible
+        // line (when it has nothing nested under it) instead of pulling hidden text into the toggle.
+        if (cur.node.type.name !== "toggle" || !cur.node.attrs.collapsed) return false;
+        const target = neighbourIndex(state, index, 1);
+        if (target === null) return true;
+        let tPos = 0;
+        for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
+        const tNode = state.doc.child(target);
+        const after = state.doc.maybeChild(target + 1);
+        if (!tNode.isTextblock || tNode.type.name === "codeBlock" || (after && Number(after.attrs.depth ?? 0) > Number(tNode.attrs.depth ?? 0))) return true;
+        const end = state.selection.from;
+        const tr = state.tr.delete(tPos, tPos + tNode.nodeSize).insert(end, tNode.content);
+        tr.setSelection(TextSelection.create(tr.doc, end));
+        editor.view.dispatch(tr.scrollIntoView());
+        return true;
+      },
+      // Tab never leaves the page: it indents (or does nothing when it can't). Code blocks indent their text.
+      Tab: () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? false : (changeDepth(editor, 1), true)),
+      "Shift-Tab": () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? true : (changeDepth(editor, -1), true)),
       "Alt-Shift-ArrowUp": () => moveBlock(editor, -1),
       "Alt-Shift-ArrowDown": () => moveBlock(editor, 1),
       "Mod-Alt-0": () => turnInto(editor, "paragraph"),
@@ -304,7 +427,9 @@ function blockRule(find: RegExp, type: string, attrs: (m: RegExpMatchArray) => R
       const schemaType = state.schema.nodes[type]!;
       const tr = state.tr.delete(range.from, range.to);
       if (type === "codeBlock") {
-        tr.replaceWith(pos, pos + tr.doc.nodeAt(pos)!.nodeSize, schemaType.create({ id: node.attrs.id, depth: node.attrs.depth, ...attrs(match) }));
+        // Any text after the shortcut becomes the code.
+        const rest = tr.doc.nodeAt(pos)!.textContent;
+        tr.replaceWith(pos, pos + tr.doc.nodeAt(pos)!.nodeSize, schemaType.create({ id: node.attrs.id, depth: node.attrs.depth, ...attrs(match) }, rest ? state.schema.text(rest) : null));
         tr.setSelection(TextSelection.near(tr.doc.resolve(pos + 1)));
       } else {
         tr.setNodeMarkup(pos, schemaType, { id: node.attrs.id, depth: node.attrs.depth, ...attrs(match) });
@@ -324,7 +449,7 @@ export const MarkdownShortcuts = Extension.create({
       blockRule(/^\[( |x)?\]\s$/, "todo", (m) => ({ checked: m[1] === "x" })),
       blockRule(/^>\s$/, "quote"),
       blockRule(/^!!\s$/, "callout", () => ({ tone: "note" })),
-      blockRule(/^```([a-z]*)\s$/, "codeBlock", (m) => ({ language: m[1] || "plaintext" })),
+      blockRule(/^```([\w+#.-]*)\s$/, "codeBlock", (m) => ({ language: normalizeLanguage(m[1] || "plaintext") })),
       new InputRule({
         find: /^(---|\*\*\*)$/,
         handler: ({ state, range }) => {
@@ -334,7 +459,9 @@ export const MarkdownShortcuts = Extension.create({
           const node = $start.parent;
           const tr = state.tr;
           const divider = state.schema.nodes.divider!.create({ id: node.attrs.id, depth: node.attrs.depth });
-          const para = state.schema.nodes.paragraph!.create({ id: ulid(), depth: node.attrs.depth });
+          // Text after the caret moves to the line below the divider.
+          const rest = node.content.cut(range.to - $start.start());
+          const para = state.schema.nodes.paragraph!.create({ id: ulid(), depth: node.attrs.depth }, rest);
           tr.replaceWith(pos, pos + node.nodeSize, [divider, para]);
           tr.setSelection(TextSelection.near(tr.doc.resolve(pos + divider.nodeSize + 1)));
         },

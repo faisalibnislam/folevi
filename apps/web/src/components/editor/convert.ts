@@ -9,6 +9,7 @@ import {
   canonicalJson,
   flattenTree,
   normalizeInline,
+  normalizeLanguage,
   type ChangedField,
   type InlineNode,
   type Mark,
@@ -158,7 +159,7 @@ export function nodeToFlat(node: PMNode): FlatBlock | null {
   }
   if (type === "code") {
     props.code = node.textContent;
-    if (!props.language) props.language = "plaintext";
+    props.language = normalizeLanguage(String(props.language ?? "plaintext"));
     return { id, depth, type, schemaVersion: SCHEMA_VERSION, text: [], props };
   }
   if (type === "todo") props.checked = Boolean(props.checked);

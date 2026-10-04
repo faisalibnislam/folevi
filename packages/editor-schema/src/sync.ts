@@ -77,6 +77,21 @@ export function emptySyncState(): SyncState {
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
+/**
+ * A copy for the local edits (one per keystroke pause): new top-level collections, with entities shared
+ * with `prev` until one is changed (copy it first). A deep clone of a large account cost tens of
+ * milliseconds per block.
+ */
+const shallow = (prev: SyncState): SyncState => ({
+  ...prev,
+  blocks: { ...prev.blocks },
+  pending: [...prev.pending],
+  inflight: [...prev.inflight],
+  conflicts: [...prev.conflicts],
+  errors: [...prev.errors],
+  uploads: [...prev.uploads],
+});
+
 function opBlockId(op: SyncOp): string | null {
   switch (op.kind) {
     case "block.upsert":
@@ -97,7 +112,7 @@ export function localUpsert(
   prev: SyncState,
   input: { opId: string; documentId: string; block: WireBlock; fields: ChangedField[]; blockedBy?: string },
 ): SyncState {
-  const state = clone(prev);
+  const state = shallow(prev);
   const block = clone(input.block);
   delete block.revision;
   const entity = state.blocks[block.id];
@@ -133,9 +148,9 @@ export function localUpsert(
 }
 
 export function localDelete(prev: SyncState, input: { opId: string; documentId: string; blockId: string }): SyncState {
-  const state = clone(prev);
-  const entity = state.blocks[input.blockId];
-  if (!entity) return state;
+  const state = shallow(prev);
+  if (!state.blocks[input.blockId]) return state;
+  const entity = (state.blocks[input.blockId] = { ...state.blocks[input.blockId]! });
   const inflightTouches = state.inflight.some((op) => opBlockId(op) === input.blockId);
   if (entity.serverRevision === null && !inflightTouches) {
     // Never reached the server: forget it entirely.
@@ -156,9 +171,9 @@ export function localDelete(prev: SyncState, input: { opId: string; documentId: 
 }
 
 export function localRestore(prev: SyncState, input: { opId: string; documentId: string; blockId: string }): SyncState {
-  const state = clone(prev);
-  const entity = state.blocks[input.blockId];
-  if (!entity || !entity.deleted) return state;
+  const state = shallow(prev);
+  if (!state.blocks[input.blockId]?.deleted) return state;
+  const entity = (state.blocks[input.blockId] = { ...state.blocks[input.blockId]! });
   entity.deleted = false;
   const lastIdx = state.pending.length - 1;
   const last = state.pending[lastIdx];

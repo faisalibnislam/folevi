@@ -60,6 +60,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // A second local dev server (another port) needs its own build folder.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite },
   reactStrictMode: true,
   poweredByHeader: false,

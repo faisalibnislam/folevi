@@ -2,12 +2,13 @@
 
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import { useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  Check,
   Download,
   ExternalLink,
   FileText,
@@ -38,6 +39,7 @@ import {
   WhiteboardBlock,
 } from "./extensions";
 import { FormulaView } from "./FormulaView";
+import { useDraft } from "./useDraft";
 import { AudioPlayer } from "./AudioPlayer";
 import { WhiteboardView } from "./WhiteboardView";
 import { FlowchartView } from "./flowchart/FlowchartView";
@@ -137,9 +139,9 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
         ) : null}
         <figcaption className="mt-1.5">
           {editable ? (
-            <input
+            <DraftInput
               value={a.caption ?? ""}
-              onChange={(e) => updateAttributes({ caption: e.target.value })}
+              onCommit={(v) => updateAttributes({ caption: v })}
               placeholder="Add a caption"
               aria-label="Image caption"
               className="w-full bg-transparent text-center text-sm text-muted outline-none placeholder:text-faint"
@@ -156,9 +158,9 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
         >
           <label className="flex items-center gap-1">
             Alt text
-            <input
+            <DraftInput
               value={a.alt ?? ""}
-              onChange={(e) => updateAttributes({ alt: e.target.value })}
+              onCommit={(v) => updateAttributes({ alt: v })}
               placeholder="Describe the image"
               className="h-7 w-56 ui-input rounded-[6px] px-2 text-ink"
             />
@@ -271,7 +273,7 @@ function move<T>(list: T[], from: number, to: number): T[] {
   return next;
 }
 
-function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewProps) {
+function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const rows = (node.attrs.rows as InlineNode[][][]) ?? [[[]]];
   const headerRow = Boolean(node.attrs.headerRow);
   const editable = editor.isEditable;
@@ -297,6 +299,32 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
   const moveRow = (i: number, dir: -1 | 1) => updateAttributes({ rows: move(rows, i, i + dir) });
   const moveCol = (i: number, dir: -1 | 1) =>
     updateAttributes({ rows: rows.map((r) => move(r, i, i + dir)) });
+  const tableRef = useRef<HTMLTableElement>(null);
+  const focusCell = (r: number, c: number) =>
+    requestAnimationFrame(() => tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${r}:${c}"]`)?.focus());
+  // Enter / ↓ go down a row (Enter adds one at the end), ↑ goes up, Escape returns to the note with the
+  // table selected. Tab moves between cells as usual.
+  const onCellKey = (e: React.KeyboardEvent<HTMLTableElement>) => {
+    const at = (e.target as HTMLElement).dataset.cell;
+    if (!at || e.metaKey || e.ctrlKey || e.altKey) return;
+    const [r, c] = at.split(":").map(Number) as [number, number];
+    if ((e.key === "Enter" && !e.shiftKey) || e.key === "ArrowDown") {
+      e.preventDefault();
+      if (r + 1 < rows.length) focusCell(r + 1, c);
+      else if (e.key === "Enter") {
+        addRow();
+        focusCell(r + 1, c);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (r > 0) focusCell(r - 1, c);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      const pos = typeof getPos === "function" ? getPos() : undefined;
+      if (typeof pos === "number") editor.chain().setNodeSelection(pos).run();
+      editor.view.focus();
+    }
+  };
   const tool =
     "grid h-6 w-6 place-items-center rounded-[6px] text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
   return (
@@ -309,9 +337,11 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
         }}
       >
-        <table className="fb-table w-full border-collapse text-sm">
-          {tools ? (
-            <thead>
+        <table ref={tableRef} className="fb-table w-full border-collapse text-sm" onKeyDown={onCellKey}>
+          {/* The row and column tools are always laid out (only shown while editing), so the table
+              doesn't jump when they appear. */}
+          {editable ? (
+            <thead className={tools ? undefined : "invisible"} aria-hidden={tools ? undefined : true}>
               <tr>
                 {rows[0]!.map((_, c) => (
                   <td key={c} className="border-0 px-1 pb-1">
@@ -369,9 +399,10 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
                       className="border border-line p-0 align-top"
                     >
                       {editable ? (
-                        <input
+                        <DraftInput
+                          data-cell={`${r}:${c}`}
                           value={cellText(cell)}
-                          onChange={(e) => setCell(r, c, e.target.value)}
+                          onCommit={(v) => setCell(r, c, v)}
                           aria-label={`Row ${r + 1}, column ${c + 1}`}
                           className={`w-full min-w-[6rem] bg-transparent px-2.5 py-1.5 outline-none focus:bg-accent-soft/40 ${headerRow && r === 0 ? "font-semibold" : ""}`}
                         />
@@ -385,8 +416,8 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
                     </Tag>
                   );
                 })}
-                {tools ? (
-                  <td className="w-[5.5rem] border-0 pl-1">
+                {editable ? (
+                  <td className={`w-[5.5rem] border-0 pl-1 ${tools ? "" : "invisible"}`} aria-hidden={tools ? undefined : true}>
                     <span
                       className="flex items-center gap-0.5"
                       role="group"
@@ -446,16 +477,14 @@ function TableView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
             >
               <Plus size={12} aria-hidden /> Column
             </button>
-            {tools ? (
-              <label className="inline-flex items-center gap-1 px-2 py-1">
-                <input
-                  type="checkbox"
-                  checked={headerRow}
-                  onChange={(e) => updateAttributes({ headerRow: e.target.checked })}
-                />{" "}
-                Header row
-              </label>
-            ) : null}
+            <button
+              type="button"
+              aria-pressed={headerRow}
+              onClick={() => updateAttributes({ headerRow: !headerRow })}
+              className={`inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-accent-soft hover:text-heading ${tools ? "" : "invisible"} ${headerRow ? "text-heading" : ""}`}
+            >
+              {headerRow ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />} Header row
+            </button>
           </div>
         ) : null}
       </div>
@@ -556,17 +585,17 @@ function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeVie
           <div className="mt-3 grid gap-2 text-xs">
             <label className="grid gap-1">
               Title
-              <input
+              <DraftInput
                 value={a.title ?? ""}
-                onChange={(e) => updateAttributes({ title: e.target.value || null })}
+                onCommit={(v) => updateAttributes({ title: v || null })}
                 className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink"
               />
             </label>
             <label className="grid gap-1">
               Description
-              <input
+              <DraftInput
                 value={a.description ?? ""}
-                onChange={(e) => updateAttributes({ description: e.target.value || null })}
+                onCommit={(v) => updateAttributes({ description: v || null })}
                 className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink"
               />
             </label>
@@ -619,57 +648,63 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
   );
 }
 
+/** Undo and redo inside a block's own fields (captions, cells, formulas) go to the note's history. */
+function isHistoryKey(event: Event): boolean {
+  if (!(event instanceof KeyboardEvent) || event.type !== "keydown" || !(event.metaKey || event.ctrlKey) || event.altKey) return false;
+  const key = event.key.toLowerCase();
+  return key === "z" || (key === "y" && !event.shiftKey);
+}
+
+type StopEvent = (props: { event: Event }) => boolean;
+
+/**
+ * A React block view whose outer element carries the block's id and depth like every other block, so it
+ * indents, hides inside a collapsed toggle and lines up with the block handle.
+ */
+function blockView(component: React.ComponentType<ReactNodeViewProps>, stopEvent?: StopEvent) {
+  return ReactNodeViewRenderer(component, {
+    attrs: ({ node }) => ({ "data-block-id": String(node.attrs.id ?? ""), "data-depth": String(node.attrs.depth ?? 0), style: `--depth:${Number(node.attrs.depth ?? 0)}` }),
+    ...(stopEvent ? { stopEvent: (props: { event: Event }) => !isHistoryKey(props.event) && stopEvent(props) } : {}),
+  });
+}
+
+/** A text field bound to a block attribute through a draft (see useDraft). */
+function DraftInput({ value, onCommit, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & { value: string; onCommit: (v: string) => void }) {
+  const [draft, change] = useDraft(value, onCommit);
+  return <input {...rest} value={draft} onChange={(e) => change(e.target.value)} />;
+}
+
 export const NODE_VIEW_EXTENSIONS = [
   ImageBlock.extend({
-    addNodeView: () =>
-      ReactNodeViewRenderer(ImageView, {
-        stopEvent: ({ event }) =>
-          event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement,
-      }),
+    addNodeView: () => blockView(ImageView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement),
   }),
-  FileBlock.extend({ addNodeView: () => ReactNodeViewRenderer(FileView) }),
+  FileBlock.extend({ addNodeView: () => blockView(FileView) }),
   // The player's buttons, slider and link handle their own input.
   AudioBlock.extend({
-    addNodeView: () =>
-      ReactNodeViewRenderer(AudioView, {
-        stopEvent: ({ event }) =>
-          event.target instanceof Element &&
-          Boolean(event.target.closest("button, a, [role=slider]")),
-      }),
+    addNodeView: () => blockView(AudioView, ({ event }) => event.target instanceof Element && Boolean(event.target.closest("button, a, [role=slider]"))),
   }),
   TableBlock.extend({
     addNodeView: () =>
-      ReactNodeViewRenderer(TableView, {
-        stopEvent: ({ event }) =>
-          event.target instanceof HTMLInputElement ||
-          (event.target instanceof Element && Boolean(event.target.closest("button"))),
-      }),
+      blockView(TableView, ({ event }) => event.target instanceof HTMLInputElement || (event.target instanceof Element && Boolean(event.target.closest("button")))),
   }),
-  PageBlock.extend({ addNodeView: () => ReactNodeViewRenderer(PageView) }),
+  PageBlock.extend({ addNodeView: () => blockView(PageView) }),
   BookmarkBlock.extend({
-    addNodeView: () =>
-      ReactNodeViewRenderer(BookmarkView, {
-        stopEvent: ({ event }) => event.target instanceof HTMLInputElement,
-      }),
+    addNodeView: () => blockView(BookmarkView, ({ event }) => event.target instanceof HTMLInputElement),
   }),
   CollectionBlock.extend({
-    addNodeView: () => ReactNodeViewRenderer(CollectionView, { stopEvent: () => true }),
+    addNodeView: () => blockView(CollectionView, () => true),
   }),
-  UnknownBlock.extend({ addNodeView: () => ReactNodeViewRenderer(UnknownView) }),
+  UnknownBlock.extend({ addNodeView: () => blockView(UnknownView) }),
   FormulaBlock.extend({
     addNodeView: () =>
-      ReactNodeViewRenderer(FormulaView, {
-        stopEvent: ({ event }) =>
-          event.target instanceof HTMLTextAreaElement ||
-          (event.target instanceof Element && Boolean(event.target.closest("button"))),
-      }),
+      blockView(FormulaView, ({ event }) => event.target instanceof HTMLTextAreaElement || (event.target instanceof Element && Boolean(event.target.closest("button")))),
   }),
   // Drawing needs every pointer event; the toolbar needs its clicks.
   WhiteboardBlock.extend({
-    addNodeView: () => ReactNodeViewRenderer(WhiteboardView, { stopEvent: () => true }),
+    addNodeView: () => blockView(WhiteboardView, () => true),
   }),
   // The canvas handles its own pointer, wheel and keyboard input (and its own undo while focused).
   FlowchartBlock.extend({
-    addNodeView: () => ReactNodeViewRenderer(FlowchartView, { stopEvent: () => true }),
+    addNodeView: () => blockView(FlowchartView, () => true),
   }),
 ];

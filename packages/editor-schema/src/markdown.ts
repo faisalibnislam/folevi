@@ -351,7 +351,8 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   "": "plaintext",
 };
 
-function normalizeLanguage(lang: string): string {
+/** A code block language the schema accepts: aliases like "js" or "sh" map to their names, anything else is plain text. */
+export function normalizeLanguage(lang: string): string {
   const l = lang.trim().toLowerCase();
   const mapped = LANGUAGE_ALIASES[l] ?? l;
   return (CODE_LANGUAGES as readonly string[]).includes(mapped) ? mapped : "plaintext";

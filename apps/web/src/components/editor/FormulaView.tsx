@@ -2,9 +2,10 @@
 
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { LIMITS, ulid } from "@folevi/editor-schema";
 import { FormulaRender } from "./RichBlocks";
+import { useDraft } from "./useDraft";
 
 /** Formula blocks inserted by this person open straight into editing. */
 const OPEN_ON_MOUNT = new Set<string>();
@@ -22,6 +23,8 @@ export function newFormulaAttrs(): { id: string; latex: string } {
  */
 export function FormulaView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const latex = String(node.attrs.latex ?? "");
+  const commitLatex = useCallback((v: string) => updateAttributes({ latex: v }), [updateAttributes]);
+  const [draftLatex, setDraftLatex] = useDraft(latex, commitLatex);
   const id = String(node.attrs.id ?? "");
   const editable = editor.isEditable;
   const [editing, setEditing] = useState(() => editable && OPEN_ON_MOUNT.has(id));
@@ -73,13 +76,13 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
             <textarea
               id={`${hintId}-field`}
               ref={field}
-              value={latex}
+              value={draftLatex}
               maxLength={LIMITS.maxFormulaLength}
               spellCheck={false}
-              rows={Math.min(8, Math.max(2, latex.split("\n").length))}
+              rows={Math.min(8, Math.max(2, draftLatex.split("\n").length))}
               placeholder="e.g. E = mc^2"
               aria-describedby={hintId}
-              onChange={(e) => updateAttributes({ latex: e.target.value })}
+              onChange={(e) => setDraftLatex(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) {
                   e.preventDefault();
@@ -92,7 +95,7 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
             <p id={hintId} className="fb-formula-hint">
               LaTeX · Esc or ⌘↩ to finish
             </p>
-            {latex.trim() ? <FormulaRender latex={latex} className="fb-formula-preview" /> : null}
+            {draftLatex.trim() ? <FormulaRender latex={draftLatex} className="fb-formula-preview" /> : null}
           </div>
         ) : (
           <div

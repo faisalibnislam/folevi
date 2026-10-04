@@ -84,8 +84,30 @@ export class SyncEngine {
     for (const l of this.listeners) l(e);
   }
 
+  /** Inside `batch`: changes collect in memory and are saved and announced once at the end. */
+  private batching = 0;
+  private batchDirty = false;
+
+  /** Runs several local changes (one editor flush) as a single save and a single update to listeners. */
+  batch(fn: () => void) {
+    this.batching++;
+    try {
+      fn();
+    } finally {
+      this.batching--;
+      if (!this.batching && this.batchDirty) {
+        this.batchDirty = false;
+        this.commit(this.state);
+      }
+    }
+  }
+
   private commit(next: SyncState) {
     this.state = next;
+    if (this.batching) {
+      this.batchDirty = true;
+      return;
+    }
     const snapshot = next;
     this.persistChain = this.persistChain
       .then(async () => {
@@ -156,6 +178,12 @@ export class SyncEngine {
     this.scheduleFlush();
   }
 
+  /** Whether this document's block was deleted on this device (it can come back with `restoreBlock`). */
+  isBlockDeleted(documentId: string, blockId: string): boolean {
+    const entity = this.state.blocks[blockId];
+    return Boolean(entity?.deleted && entity.documentId === documentId);
+  }
+
   restoreBlock(documentId: string, blockId: string) {
     this.commit(sync.localRestore(this.state, { opId: ulid(), documentId, blockId }));
     this.scheduleFlush();
@@ -190,6 +218,7 @@ export class SyncEngine {
   }
 
   resolveConflict(conflictId: string, choice: "theirs" | "mine" | "both", newRank?: string) {
+    const documentId = this.state.conflicts.find((c) => c.id === conflictId)?.documentId;
     this.commit(
       sync.resolveConflict(this.state, {
         conflictId,
@@ -199,6 +228,8 @@ export class SyncEngine {
         newRank,
       }),
     );
+    // The open editor shows the chosen version.
+    if (documentId) this.emit({ type: "remote", documentId });
     this.scheduleFlush();
   }
 
@@ -342,6 +373,16 @@ export class SyncEngine {
           this.emit({ type: "document-result", opId: r.opId, result: r });
         }
         this.commit(next);
+        // A block change the server didn't take as sent (a conflict, a rejection, a normalised value) leaves the
+        // engine holding a different version than the editor shows: tell the open editor to re-read it.
+        const touched = new Set<string>();
+        for (const r of results) {
+          if (r.status === "applied" && !r.normalized) continue;
+          if (r.status === "duplicate") continue;
+          const op = batched.inflight.find((o) => o.opId === r.opId);
+          if (op && (op.kind === "block.upsert" || op.kind === "block.delete" || op.kind === "block.restore")) touched.add(op.documentId);
+        }
+        for (const documentId of touched) this.emit({ type: "remote", documentId });
       }
     } finally {
       this.flushing = false;

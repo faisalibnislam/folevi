@@ -87,6 +87,8 @@ export function sanitizeHref(raw: string): string | null {
   if (href.startsWith("/") || href.startsWith("#")) return href.startsWith("//") ? null : href;
   // Strip control characters and whitespace that browsers ignore inside schemes ("java\tscript:").
   const compact = href.replace(/[\u0000-\u001F\u007F\s]+/g, "");
+  // "example.com:8080/path" is a host and port, not a scheme.
+  if (/^[a-z0-9.-]+:\d+(?:[/?#]|$)/i.test(compact)) return `https://${compact}`;
   const match = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(compact);
   if (!match) return `https://${compact}`;
   const protocol = `${match[1]!.toLowerCase()}:`;

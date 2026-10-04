@@ -21,11 +21,12 @@ export function blocksInSelection(state: EditorState): BlockRef[] {
     for (let i = range.from; i <= range.to; i++) refs.push(blockAt(state, i)!);
     return refs;
   }
-  const { from, to } = state.selection;
+  const { from, to, empty } = state.selection;
   const out: BlockRef[] = [];
   state.doc.forEach((node, offset, index) => {
     const end = offset + node.nodeSize;
-    if (end > from && offset <= to) out.push({ node, pos: offset, index });
+    // A range ending exactly where the next block starts (a selected image or divider) doesn't include it.
+    if (end > from && (offset < to || (empty && offset <= to))) out.push({ node, pos: offset, index });
   });
   if (!out.length) {
     const $from = state.selection.$from;
@@ -94,6 +95,7 @@ export function setBlockFormat(editor: Editor, attrs: Partial<Record<(typeof FOR
   }
   if (!tr.docChanged) return false;
   editor.view.dispatch(closeHistory(tr));
+  endHistoryGroup(editor);
   return true;
 }
 
@@ -113,6 +115,12 @@ export function turnInto(editor: Editor, type: string, attrs: Record<string, unk
   const schemaType = state.schema.nodes[type === "code" ? "codeBlock" : type];
   if (!schemaType) return false;
   const tr = state.tr;
+  // Where the caret was, as (block, offset), so it stays in the converted block when the node is replaced.
+  const $head = state.selection.$head;
+  const caretBlock = $head.depth >= 1 ? $head.index(0) : -1;
+  const caretOffset = $head.depth >= 1 ? $head.parentOffset : 0;
+  const keepCaret = state.selection.empty;
+  let caretPos: number | null = null;
   for (const b of blocksInSelection(state)) {
     const isText = TEXT_NODES.has(b.node.type.name) || b.node.type.name === "codeBlock";
     if (!isText) continue;
@@ -123,19 +131,44 @@ export function turnInto(editor: Editor, type: string, attrs: Record<string, unk
       if (type === "paragraph" && b.node.type.name === "paragraph" && b.node.attrs.textStyle != null && !("textStyle" in attrs)) kept.textStyle = b.node.attrs.textStyle;
     }
     const baseAttrs = { id: b.node.attrs.id, depth: b.node.attrs.depth, ...kept, ...attrs };
-    if (type === "code") {
+    const from = tr.mapping.map(b.pos);
+    const to = tr.mapping.map(b.pos + b.node.nodeSize);
+    if (schemaType.name === "codeBlock" && b.node.type.name !== "codeBlock") {
       const code = schemaType.create(baseAttrs, b.node.textContent ? state.schema.text(b.node.textContent) : null);
-      tr.replaceWith(tr.mapping.map(b.pos), tr.mapping.map(b.pos + b.node.nodeSize), code);
-    } else if (b.node.type.name === "codeBlock") {
-      const node = schemaType.create(baseAttrs, b.node.textContent ? state.schema.text(b.node.textContent) : null);
-      tr.replaceWith(tr.mapping.map(b.pos), tr.mapping.map(b.pos + b.node.nodeSize), node);
+      tr.replaceWith(from, to, code);
+      if (b.index === caretBlock) caretPos = from + 1 + Math.min(caretOffset, code.content.size);
+    } else if (b.node.type.name === "codeBlock" && schemaType.name !== "codeBlock") {
+      // Each line of code becomes its own block (the first keeps the id).
+      const lines = b.node.textContent.split("\n");
+      const nodes = lines.map((line, i) => schemaType.create(i === 0 ? baseAttrs : { ...baseAttrs, id: ulid() }, line ? state.schema.text(line) : null));
+      tr.replaceWith(from, to, nodes);
+      if (b.index === caretBlock) {
+        // Find the line the caret was on.
+        let rest = caretOffset;
+        let at = from;
+        for (const n of nodes) {
+          if (rest <= n.content.size) {
+            caretPos = at + 1 + rest;
+            break;
+          }
+          rest -= n.content.size + 1;
+          at += n.nodeSize;
+        }
+      }
     } else {
-      tr.setNodeMarkup(tr.mapping.map(b.pos), schemaType, baseAttrs);
+      tr.setNodeMarkup(from, schemaType, baseAttrs);
     }
   }
   if (!tr.docChanged) return false;
+  if (keepCaret && caretPos !== null) tr.setSelection(TextSelection.create(tr.doc, Math.min(caretPos, tr.doc.content.size)));
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
+  endHistoryGroup(editor);
   return true;
+}
+
+/** Starts a new undo step after a block command, so text typed right after it undoes separately. */
+export function endHistoryGroup(editor: Editor): void {
+  editor.view.dispatch(closeHistory(editor.state.tr).setMeta("addToHistory", false));
 }
 
 /** Indent/outdent the selected blocks; nested blocks move with their parent. */
@@ -155,6 +188,18 @@ export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
     const range = subtreeRange(state, b.index);
     const applied = next - depth;
     if (applied === 0) continue;
+    // Nesting under a collapsed toggle opens it, so the block doesn't vanish.
+    if (applied > 0) {
+      for (let i = b.index - 1; i >= 0; i--) {
+        const p = state.doc.child(i);
+        const pd = Number(p.attrs.depth ?? 0);
+        if (pd === next - 1) {
+          if (p.type.name === "toggle" && p.attrs.collapsed) tr.setNodeMarkup(blockAt(state, i)!.pos, undefined, { ...p.attrs, collapsed: false });
+          break;
+        }
+        if (pd < next - 1) break;
+      }
+    }
     for (let i = b.index; i < b.index + range.count; i++) {
       handled.add(i);
       const ref = blockAt(state, i)!;
@@ -165,6 +210,7 @@ export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
   }
   if (!changed) return false;
   editor.view.dispatch(closeHistory(tr));
+  endHistoryGroup(editor);
   return true;
 }
 
@@ -207,6 +253,7 @@ export function moveBlock(editor: Editor, dir: -1 | 1): boolean {
   else tr.setSelection(relFrom === relTo ? TextSelection.near($a) : TextSelection.between($a, $b));
   normalizeDepths(tr);
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
+  endHistoryGroup(editor);
   return true;
 }
 
@@ -236,7 +283,8 @@ export function insertBlockAfterCurrent(editor: Editor, type: string, attrs: Rec
     at = current.pos;
     tr.replaceWith(current.pos, current.pos + current.node.nodeSize, node);
   } else {
-    at = current ? current.pos + current.node.nodeSize : state.doc.content.size;
+    // After the block's nested blocks, so they stay with it.
+    at = current ? subtreeRange(state, current.index).end : state.doc.content.size;
     tr.insert(at, node);
   }
   // Keep a text block after an atom so writing can continue.
@@ -263,20 +311,33 @@ export function duplicateBlocks(editor: Editor): boolean {
     nodes.push(node.type.create({ ...node.attrs, id: ulid() }, node.content, node.marks));
   }
   editor.view.dispatch(closeHistory(state.tr.insert(span.end, nodes)).scrollIntoView());
+  endHistoryGroup(editor);
   return true;
 }
 
-export function deleteBlocks(editor: Editor, indices?: number[]): boolean {
+/**
+ * Deletes the selected blocks (or the blocks at `indices`). Blocks nested under a deleted block go with it,
+ * as they do when moving or duplicating, unless `withChildren` is false.
+ */
+export function deleteBlocks(editor: Editor, indices?: number[], withChildren = true): boolean {
   const { state } = editor;
-  const refs = indices ? indices.map((i) => blockAt(state, i)).filter((x): x is BlockRef => Boolean(x)) : blocksInSelection(state);
+  const base = indices ?? blocksInSelection(state).map((r) => r.index);
+  const all = new Set<number>();
+  for (const i of base) {
+    if (i < 0 || i >= state.doc.childCount) continue;
+    const count = withChildren ? subtreeRange(state, i).count : 1;
+    for (let k = i; k < i + count; k++) all.add(k);
+  }
+  const refs = [...all].map((i) => blockAt(state, i)!).filter(Boolean);
   if (!refs.length) return false;
   const tr = state.tr;
-  for (const ref of [...refs].sort((a, b) => b.pos - a.pos)) {
+  for (const ref of refs.sort((a, b) => b.pos - a.pos)) {
     tr.delete(ref.pos, ref.pos + ref.node.nodeSize);
   }
   if (tr.doc.childCount === 0) tr.insert(0, state.schema.nodes.paragraph!.create({ id: ulid(), depth: 0 }));
   normalizeDepths(tr);
-  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.dispatch(closeHistory(tr).scrollIntoView());
+  endHistoryGroup(editor);
   return true;
 }
 
@@ -310,6 +371,16 @@ export function moveSubtreeTo(state: EditorState, fromIndex: number, toIndex: nu
   tr.delete(range.start, range.end);
   tr.insert(posOfIndex(tr.doc, newIndex), nodes);
   normalizeDepths(tr);
+  // Dropped inside a collapsed toggle: open it, so the block doesn't vanish.
+  const landed = Number(tr.doc.child(newIndex).attrs.depth ?? 0);
+  for (let i = newIndex - 1; i >= 0 && landed > 0; i--) {
+    const p = tr.doc.child(i);
+    const pd = Number(p.attrs.depth ?? 0);
+    if (pd < landed) {
+      if (pd === landed - 1 && p.type.name === "toggle" && p.attrs.collapsed) tr.setNodeMarkup(posOfIndex(tr.doc, i), undefined, { ...p.attrs, collapsed: false });
+      break;
+    }
+  }
   return { tr, index: newIndex };
 }
 
@@ -374,6 +445,10 @@ export function dropTarget(
  */
 export function applyLink(editor: Editor, raw: string): boolean {
   const text = raw.trim();
+  // Typed without a scheme, it has to look like an address: no spaces, and a dot in the host (or localhost).
+  if (!/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(text) && !text.startsWith("/") && !text.startsWith("#")) {
+    if (/\s/.test(text) || (!/^[^/?#]*\.[^/?#.]/.test(text) && !/^localhost(?:[:/?#]|$)/i.test(text))) return false;
+  }
   const href = sanitizeHref(text);
   if (!href) return false;
   const { empty } = editor.state.selection;

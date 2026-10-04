@@ -4,7 +4,7 @@ import nextPlugin from "@next/eslint-plugin-next";
 
 export default [
   ...shared,
-  { ignores: [".next/**", "next-env.d.ts", "public/sw.js", "playwright-report/**", "test-results/**"] },
+  { ignores: [".next/**", ".next-*/**", "next-env.d.ts", "public/sw.js", "playwright-report/**", "test-results/**"] },
   {
     plugins: { "react-hooks": reactHooks, "@next/next": nextPlugin },
     rules: {

@@ -16,6 +16,8 @@ const NOTICES: Record<string, string> = {
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ returnTo?: string; notice?: string }> }) {
   const params = await searchParams;
   const returnTo = safeReturnTo(params.returnTo);
-  if (await hasSessionCookie()) redirect(returnTo);
+  // A session cookie usually means "already signed in", except when the app just found that session gone
+  // (expired or revoked): then the cookie is stale, and bouncing back would loop between the two pages.
+  if (params.notice !== "session_ended" && (await hasSessionCookie())) redirect(returnTo);
   return <SignInForm returnTo={returnTo} notice={params.notice ? NOTICES[params.notice] : undefined} />;
 }

@@ -594,6 +594,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
                   onFocusBlock={setFocusedBlock}
                   onCommentBlock={(id) => openComments(id)}
                   onEditorReady={setEditor}
+                  onExitTop={() => {
+                    // ↑ from the first line goes to the end of the title.
+                    const title = document.getElementById(`title-${documentId}`) as HTMLTextAreaElement | null;
+                    if (!title || title.readOnly) return false;
+                    title.focus();
+                    title.setSelectionRange(title.value.length, title.value.length);
+                    return true;
+                  }}
                 />
               ) : (
                 <div className="space-y-3 py-6" aria-busy aria-label="Loading document">
@@ -815,7 +823,8 @@ function DocumentHeader({
     return { start: el?.selectionStart ?? 0, end: el?.selectionEnd ?? 0 };
   };
   const save = (next: string) => {
-    pendingTitle.current = next;
+    // What the server will store (it replaces control characters and keeps 300 characters), so its echo matches.
+    pendingTitle.current = next.replace(/[\u0000-\u001F\u007F]/g, " ").slice(0, 300);
     if (timer.current) clearTimeout(timer.current);
     const key = `title:${documentId}`;
     const commit = () => {
@@ -883,6 +892,8 @@ function DocumentHeader({
               setTitleAi(readSel());
               return;
             }
+            // Enter that confirms an input method's composition (Chinese, Japanese…) stays in the title.
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             if (e.key === "Enter" || (e.key === "ArrowDown" && titleRef.current?.selectionStart === value.length)) {
               e.preventDefault();
               onEnter();

@@ -15,6 +15,23 @@ const PREVIEW_DELAY = 350;
 export const mermaidFocusPlugin = new Plugin({
   key: new PluginKey("mermaidFocus"),
   props: {
+    // Its source is folded away, so the caret can't move through a Mermaid block line by line: ↑/↓ from the
+    // block next to it select the whole block instead.
+    handleKeyDown(view, event) {
+      if ((event.key !== "ArrowUp" && event.key !== "ArrowDown") || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false;
+      const { state } = view;
+      const dir = event.key === "ArrowDown" ? 1 : -1;
+      const sel = state.selection;
+      if (!(sel instanceof NodeSelection) && !view.endOfTextblock(dir > 0 ? "down" : "up")) return false;
+      const $pos = dir > 0 ? state.doc.resolve(sel.to) : state.doc.resolve(sel.from);
+      const index = $pos.depth === 0 ? (dir > 0 ? $pos.index(0) : $pos.index(0) - 1) : $pos.index(0) + dir;
+      const target = state.doc.maybeChild(index);
+      if (!target || target.type.name !== "codeBlock" || target.attrs.language !== "mermaid" || !target.textContent.trim()) return false;
+      let at = 0;
+      for (let i = 0; i < index; i++) at += state.doc.child(i).nodeSize;
+      view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, at)).scrollIntoView());
+      return true;
+    },
     decorations(state) {
       const { $from, $to } = state.selection;
       const parent = $from.parent;
@@ -160,6 +177,16 @@ export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, deco
     preview.setAttribute("aria-label", "Diagram preview");
     preview.setAttribute("role", "group");
     preview.addEventListener("dblclick", edit);
+    // A click on the diagram selects the block (Enter then edits it, Backspace removes it).
+    preview.addEventListener("mousedown", (e) => {
+      if (e.button !== 0 || (e.target instanceof Element && e.target.closest("button, a"))) return;
+      const p = pos();
+      if (p === undefined) return;
+      e.preventDefault();
+      const v = view();
+      v.dispatch(v.state.tr.setSelection(NodeSelection.create(v.state.doc, p)));
+      v.focus();
+    });
     dom.prepend(bar);
     dom.append(preview);
     renderedSource = null;

@@ -1,6 +1,7 @@
 "use client";
 
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Eraser, Highlighter, PenLine, Trash2, Undo2 } from "lucide-react";
 import {
@@ -31,7 +32,7 @@ const HEIGHT_STEP = 40;
  * page. Changes are saved (debounced) through the node's attributes, which the editor syncs like any
  * other block edit.
  */
-export function WhiteboardView({ node, selected, updateAttributes, editor }: ReactNodeViewProps) {
+export function WhiteboardView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const data = String(node.attrs.data ?? "");
   const savedHeight = clampHeight(node.attrs.height);
   const editable = editor.isEditable;
@@ -180,11 +181,39 @@ export function WhiteboardView({ node, selected, updateAttributes, editor }: Rea
   const activeColor = tool === "highlighter" ? markColor : penColor;
   const btn = "fb-wb-btn";
 
+  // The whole block can be selected (to move, copy or delete it): click the toolbar's empty space, or press
+  // Escape while drawing tools have focus.
+  const selectBlock = () => {
+    const pos = typeof getPos === "function" ? getPos() : undefined;
+    if (typeof pos !== "number") return;
+    editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)));
+    editor.view.focus();
+  };
+
   return (
     <NodeViewWrapper className={`fb-atom fb-whiteboard ${selected ? "fb-atom-selected" : ""}`} aria-label="Whiteboard">
-      <div contentEditable={false} className="fb-whiteboard-box">
+      <div
+        contentEditable={false}
+        className="fb-whiteboard-box"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            selectBlock();
+          }
+        }}
+      >
         {editable ? (
-          <div className="fb-wb-toolbar" role="toolbar" aria-label="Whiteboard tools">
+          <div
+            className="fb-wb-toolbar"
+            role="toolbar"
+            aria-label="Whiteboard tools"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget || (e.target instanceof Element && e.target.classList.contains("fb-wb-spacer"))) {
+                e.preventDefault();
+                selectBlock();
+              }
+            }}
+          >
             <button type="button" className={btn} aria-pressed={tool === "pen"} aria-label="Pen" title="Pen" onClick={() => setTool("pen")}>
               <PenLine size={15} aria-hidden />
             </button>

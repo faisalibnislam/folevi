@@ -1,7 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { NodeSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { beginPointerDrag, isDragging } from "./blockDrag";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +11,7 @@ import {
   Bold,
   CalendarDays,
   CheckSquare,
+  ChevronLeft,
   ChevronRight,
   Code2,
   Copy,
@@ -78,6 +79,7 @@ import {
   insertBlockAfterCurrent,
   moveBlock,
   removeLink,
+  subtreeRange,
   setHighlight,
   setTextColor,
   turnInto,
@@ -93,6 +95,7 @@ import { InlineAi, type InlineAiRequest } from "@/components/ai/InlineAi";
 import { newFormulaAttrs } from "./FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
 import { Select } from "@/components/ui/Select";
+import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
 
 interface MenuItem {
   id: string;
@@ -122,6 +125,7 @@ function Popover({
   scroll = true,
   onKeyDown,
   popRef,
+  tall = false,
 }: {
   anchor: Anchor | null;
   children: React.ReactNode;
@@ -131,6 +135,8 @@ function Popover({
   scroll?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   popRef?: React.RefObject<HTMLDivElement | null>;
+  /** A taller limit (the block menu). */
+  tall?: boolean;
 }) {
   const ownRef = useRef<HTMLDivElement>(null);
   const ref = popRef ?? ownRef;
@@ -139,16 +145,22 @@ function Popover({
   useShowInTopLayer(Boolean(anchor), ref);
   // A field marked data-autofocus takes focus once the popover is showing (React's autoFocus fires earlier,
   // while it's still hidden, and is lost).
-  useLayoutEffect(() => {
-    if (!anchor) return;
+  const placed = pos !== null;
+  useEffect(() => {
+    // Once it's visible (focusing a hidden field does nothing).
+    if (!anchor || !placed) return;
     const field = ref.current?.querySelector<HTMLElement>("[data-autofocus]");
     if (field && !ref.current?.contains(document.activeElement)) field.focus();
-  }, [anchor, ref]);
+  }, [anchor, placed, ref]);
+  // Which side of the anchor it opened on: kept while it's open, so it doesn't jump as its list shrinks.
+  const side = useRef<"below" | "above" | null>(null);
   useLayoutEffect(() => {
+    if (!anchor) side.current = null;
     if (!anchor || !ref.current) return;
     const h = ref.current.offsetHeight;
     const below = anchor.bottom + 6;
-    const top = below + h > window.innerHeight - 8 ? Math.max(8, anchor.top - h - 6) : below;
+    if (side.current === null) side.current = below + h > window.innerHeight - 8 && anchor.top - h - 6 >= 8 ? "above" : "below";
+    const top = side.current === "above" ? Math.max(8, anchor.top - h - 6) : Math.min(below, Math.max(8, window.innerHeight - h - 8));
     setPos({ left: Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8)), top });
   }, [anchor, width, children, ref]);
   if (!anchor) return null;
@@ -159,7 +171,7 @@ function Popover({
       aria-label={role === "dialog" ? label : undefined}
       popover="manual"
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, visibility: pos ? "visible" : "hidden" }}
-      className={`z-[100] border-0 text-ink ${scroll ? "max-h-[min(420px,70vh)] overflow-y-auto" : ""} ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
+      className={`z-[100] border-0 text-ink ${scroll ? `${tall ? "max-h-[min(600px,85vh)]" : "max-h-[min(420px,70vh)]"} overflow-y-auto` : ""} ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
       onMouseDown={(e) => {
         // Keep focus in the editor, except for real form controls inside the popover.
         if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement)) e.preventDefault();
@@ -172,6 +184,8 @@ function Popover({
 }
 
 function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }: { items: MenuItem[]; active: number; setActive: (i: number) => void; onRun: (i: MenuItem) => void; emptyLabel: string; listId: string; label: string }) {
+  // The pointer only takes over when it actually moves (not when the list scrolls under a resting mouse).
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
     document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
   }, [active, listId]);
@@ -186,7 +200,12 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
           id={`${listId}-${i}`}
           role="option"
           aria-selected={i === active}
-          onMouseEnter={() => setActive(i)}
+          onMouseMove={(e) => {
+            const last = lastPointer.current;
+            lastPointer.current = { x: e.clientX, y: e.clientY };
+            if (last && last.x === e.clientX && last.y === e.clientY) return;
+            if (i !== active) setActive(i);
+          }}
           onClick={() => onRun(item)}
           className={`flex cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 text-sm transition-colors ${i === active ? "bg-accent-soft text-heading" : ""}`}
         >
@@ -208,6 +227,16 @@ function useDebounced<T>(value: T, ms: number): T {
     return () => clearTimeout(t);
   }, [value, ms]);
   return v;
+}
+
+/**
+ * Where a block's indented content starts on screen (the handle sits just left of it): the block's own
+ * left edge plus its nesting indent (1.6em per level in the block's font size), ignoring any margin.
+ */
+function blockIndentLeft(el: HTMLElement): number {
+  const cs = getComputedStyle(el);
+  const depth = Number(el.dataset.depth ?? 0);
+  return el.getBoundingClientRect().left - (parseFloat(cs.marginLeft) || 0) + depth * 1.6 * (parseFloat(cs.fontSize) || 16);
 }
 
 /** Top-level block index → its rendered element. */
@@ -253,8 +282,36 @@ export function EditorMenus({
   const [recorderAnchor, setRecorderAnchor] = useState<Anchor | null>(null);
 
   const triggerKey = trigger ? `${trigger.kind}:${trigger.from}` : null;
-  const open = trigger && editable && dismissed !== triggerKey ? trigger : null;
+  // Escape closes a menu for that "/", "@" or "[[" only: once the trigger is gone, the next one opens again.
+  useEffect(() => {
+    if (!trigger) setDismissed(null);
+  }, [trigger]);
+  // Suggestions belong to the text being typed: hidden while the note isn't focused.
+  const [focused, setFocused] = useState(() => editor.isFocused);
+  useEffect(() => {
+    const onFocus = () => setFocused(true);
+    const onBlur = () => setFocused(false);
+    editor.on("focus", onFocus);
+    editor.on("blur", onBlur);
+    return () => {
+      editor.off("focus", onFocus);
+      editor.off("blur", onBlur);
+    };
+  }, [editor]);
+  const open = trigger && editable && focused && dismissed !== triggerKey ? trigger : null;
   useEffect(() => setActive(0), [trigger?.query, trigger?.kind]);
+  // The menu stays next to its "/" while the page scrolls.
+  const [scrollTick, setScrollTick] = useState(0);
+  useEffect(() => {
+    if (!trigger) return;
+    const on = () => setScrollTick((n) => n + 1);
+    window.addEventListener("scroll", on, true);
+    window.addEventListener("resize", on);
+    return () => {
+      window.removeEventListener("scroll", on, true);
+      window.removeEventListener("resize", on);
+    };
+  }, [trigger]);
   const aiOn = useAiEnabled();
 
   // The inline AI composer: opened by ⌘J, the "/" AI commands, the toolbar's Ask AI and the block menu.
@@ -289,11 +346,14 @@ export function EditorMenus({
     } catch {
       return null;
     }
-  }, [open, editor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- scrollTick re-measures on scroll
+  }, [open, editor, scrollTick]);
 
   const clearTrigger = useCallback(() => {
     if (!trigger) return;
-    editor.chain().focus().deleteRange({ from: trigger.from, to: trigger.to }).run();
+    // Focus now, not a frame later (a popover the item opens takes focus meanwhile).
+    editor.view.focus();
+    editor.view.dispatch(editor.state.tr.delete(trigger.from, trigger.to));
   }, [editor, trigger]);
 
   const createNestedPage = useCallback(
@@ -396,6 +456,14 @@ export function EditorMenus({
       if (link && dom.contains(link)) {
         e.preventDefault();
         openLink(link, e.altKey || e.metaKey || e.ctrlKey || e.shiftKey);
+        return;
+      }
+      // Web links: ⌘/Ctrl-click opens them (a plain click places the caret to edit); read-only notes open on click.
+      const web = target?.closest<HTMLAnchorElement>("a.fb-link");
+      if (web && dom.contains(web)) {
+        e.preventDefault();
+        const href = sanitizeHref(web.getAttribute("href") ?? "");
+        if (href && (e.metaKey || e.ctrlKey || !editable)) window.open(href, "_blank", "noopener,noreferrer");
         return;
       }
       const time = target?.closest<HTMLElement>("time[data-date]");
@@ -565,7 +633,7 @@ export function EditorMenus({
       .map((d) => ({
         id: `date-${d.date}-${d.label}`,
         label: d.label,
-        hint: formatDate(d.date),
+        hint: d.label === formatDate(d.date) ? undefined : formatDate(d.date),
         keywords: "",
         icon: <CalendarDays size={15} />,
         run: () => void editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: d.date } }).insertContent(" ").run(),
@@ -605,7 +673,7 @@ export function EditorMenus({
       if (e.key === "ArrowDown") {
         e.preventDefault();
         e.stopImmediatePropagation();
-        setActive((a) => Math.min(items.length - 1, a + 1));
+        setActive((a) => Math.max(0, Math.min(items.length - 1, a + 1)));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -737,6 +805,7 @@ export function EditorMenus({
         />
       ) : null}
       {editable && aiOn && inlineAi ? <InlineAi key={inlineAi.id} editor={editor} documentId={documentId} request={inlineAi} onClose={() => setInlineAi(null)} /> : null}
+      <EditorContextMenu editor={editor} editable={editable} onCommentBlock={onCommentBlock} />
       {editable ? <SelectionBubble editor={editor} onComment={onCommentBlock} /> : null}
       {editable ? <BlockHandle editor={editor} onDropBlock={onDropBlock} onCommentBlock={onCommentBlock} /> : null}
       {editable ? <TaskDetails editor={editor} /> : null}
@@ -888,8 +957,11 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   // The note style's text colours and highlights (its own names), when it has them.
   const palette = useNotePalette();
   const aiOn = useAiEnabled();
-  const [state, setState] = useState<{ left: number; top: number } | null>(null);
+  // The selection's box: centre x, top and bottom. The toolbar sits above it (below near the top of the window).
+  const [state, setState] = useState<{ left: number; top: number; bottom: number } | null>(null);
+  const [placed, setPlaced] = useState<{ left: number; top: number } | null>(null);
   const [mode, setMode] = useState<"marks" | "link" | "colors">("marks");
+  const [, rerender] = useState(0);
   const [href, setHref] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const forced = useRef(false);
@@ -898,17 +970,17 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   useShowInTopLayer(Boolean(state), ref);
   // The link field takes focus once the toolbar is showing (autoFocus would fire while it's still hidden).
   useLayoutEffect(() => {
-    if (mode !== "link" || !state) return;
+    if (mode !== "link" || !state || !placed) return;
     const input = ref.current?.querySelector<HTMLInputElement>('input[aria-label="Link address"]');
     if (input && document.activeElement !== input) input.focus();
-  }, [mode, state]);
+  }, [mode, state, placed]);
 
   const position = useCallback(() => {
     const { selection } = editor.state;
     try {
       const start = editor.view.coordsAtPos(selection.from);
       const end = editor.view.coordsAtPos(selection.to);
-      return { left: (start.left + end.left) / 2, top: Math.min(start.top, end.top) };
+      return { left: (start.left + end.left) / 2, top: Math.min(start.top, end.top), bottom: Math.max(start.bottom, end.bottom) };
     } catch {
       return null;
     }
@@ -933,6 +1005,37 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
     if (!forced.current) setMode((m) => (m === "link" && !textSelection ? "marks" : m));
     setState(position());
   }, [editor, position, close]);
+
+  // Measured once it renders: kept inside the window, flipped below the text when there's no room above.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!state || !el) {
+      setPlaced(null);
+      return;
+    }
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const left = Math.min(Math.max(8, state.left - w / 2), window.innerWidth - w - 8);
+    const top = state.top - h - 8 >= 8 ? state.top - h - 8 : state.bottom + 8;
+    setPlaced({ left, top });
+  }, [state, mode]);
+
+  // Pressed states follow every change (⌘B, undo…); the toolbar follows the text when the page scrolls.
+  useEffect(() => {
+    if (!state) return;
+    const onTr = () => rerender((n) => n + 1);
+    const onScroll = (e: Event) => {
+      if (ref.current?.contains(e.target as Node)) return;
+      const p = position();
+      if (p) setState(p);
+    };
+    editor.on("transaction", onTr);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      editor.off("transaction", onTr);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [editor, state !== null, position]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let blurTimer: ReturnType<typeof setTimeout> | null = null;
@@ -987,16 +1090,27 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
         setState(position());
       }
     };
+    // "Edit link…" / "Link…" in the right-click menu.
+    const onEditLink = () => {
+      if (editor.state.selection.$from.parent.type.name === "codeBlock") return;
+      forced.current = true;
+      setState(position());
+      openLink();
+    };
     dom.addEventListener("keydown", onKey);
-    return () => dom.removeEventListener("keydown", onKey);
+    dom.addEventListener(EDIT_LINK_EVENT, onEditLink);
+    return () => {
+      dom.removeEventListener("keydown", onKey);
+      dom.removeEventListener(EDIT_LINK_EVENT, onEditLink);
+    };
   }, [editor, position, openLink]);
 
   useEffect(() => {
-    if (focusFirst.current && state && ref.current) {
+    if (focusFirst.current && state && placed && ref.current) {
       focusFirst.current = false;
       ref.current.querySelector<HTMLElement>("button, input")?.focus();
     }
-  }, [state, mode]);
+  }, [state, mode, placed]);
 
   if (!state) return null;
 
@@ -1057,8 +1171,8 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
       aria-label="Text formatting"
       aria-orientation="horizontal"
       popover="manual"
-      className="z-[100] -translate-x-1/2 -translate-y-[calc(100%+8px)] ui-pop rounded-[8px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
-      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: state.left, top: state.top }}
+      className="z-[100] ui-pop max-w-[calc(100vw-16px)] rounded-[8px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
+      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: placed?.left ?? 0, top: placed?.top ?? 0, visibility: placed ? "visible" : "hidden" }}
       onMouseDown={(e) => {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
       }}
@@ -1116,6 +1230,18 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
         </form>
       ) : mode === "colors" ? (
         <div className="flex items-center gap-1 p-0.5" {...palette?.attrs}>
+          <button
+            type="button"
+            aria-label="Back to formatting"
+            title="Back"
+            onClick={() => {
+              if (ref.current?.contains(document.activeElement)) focusFirst.current = true;
+              setMode("marks");
+            }}
+            className="grid h-7 w-7 place-items-center rounded-[6px] text-muted hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
+          >
+            <ChevronLeft size={15} aria-hidden />
+          </button>
           {TEXT_COLORS.map((c) => (
             <button
               key={c}
@@ -1254,8 +1380,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       });
       if (idx < 0) return;
       const r = children[idx]!.getBoundingClientRect();
-      const depth = Number(children[idx]!.dataset.depth ?? 0);
-      setHover({ index: idx, top: r.top, left: r.left + depth * 24, height: Math.min(r.height, 32) });
+      setHover({ index: idx, top: r.top, left: blockIndentLeft(children[idx]!), height: Math.min(r.height, 32) });
     };
     const parent = dom.parentElement?.parentElement ?? dom;
     parent.addEventListener("mousemove", onMove);
@@ -1265,8 +1390,14 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   useEffect(() => {
     const onScroll = () => setHover(null);
     window.addEventListener("scroll", onScroll, true);
-    return () => window.removeEventListener("scroll", onScroll, true);
-  }, []);
+    // Any change to the note can move or remove the hovered block: the handle reappears on the next move.
+    const onUpdate = () => setHover(null);
+    editor.on("update", onUpdate);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      editor.off("update", onUpdate);
+    };
+  }, [editor]);
 
   // Announce block selections to screen readers.
   useEffect(() => {
@@ -1284,9 +1415,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     (from: number, to: number, left?: number) => {
       const el = blockDom(editor, from);
       const r = el?.getBoundingClientRect();
-      if (!r) return;
-      const depth = Number(el?.dataset.depth ?? 0);
-      setMenu({ from, to, left: left ?? r.left + depth * 24, top: r.top, bottom: r.top + 24 });
+      if (!el || !r) return;
+      setMenu({ from, to, left: left ?? blockIndentLeft(el), top: r.top, bottom: r.top + 24 });
     },
     [editor],
   );
@@ -1339,6 +1469,12 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     editor.view.focus();
     selectTargets(menu.from, menu.to);
     fn();
+    // The block's text was selected only so the action applied to it: leave a caret at its end, so the
+    // next key typed doesn't replace the text.
+    const { selection } = editor.state;
+    if (!blockSelectionRange(editor.state) && !selection.empty && !(selection instanceof NodeSelection)) {
+      editor.view.dispatch(editor.state.tr.setSelection(TextSelection.near(selection.$head)).setMeta("addToHistory", false));
+    }
     closeMenu();
   };
 
@@ -1397,12 +1533,10 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
             aria-label="Insert block below"
             className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {
+              if (hover.index >= editor.state.doc.childCount) return;
               clearBlockSelection(editor.view);
-              const at = (() => {
-                let p = 0;
-                for (let i = 0; i <= hover.index; i++) p += editor.state.doc.child(i).nodeSize;
-                return p;
-              })();
+              // Below the block and anything nested under it.
+              const at = subtreeRange(editor.state, hover.index).end;
               const depth = editor.state.doc.child(hover.index).attrs.depth;
               editor.chain().insertContentAt(at, { type: "paragraph", attrs: { id: ulid(), depth } }).focus(at + 1).insertContent("/").run();
             }}
@@ -1434,8 +1568,17 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                 },
               });
             }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              const range = blockSelectionRange(editor.state);
+              if (range && hover.index >= range.from && hover.index <= range.to) openMenuFor(range.from, range.to, hover.left - 40);
+              else {
+                clearBlockSelection(editor.view);
+                openMenuFor(hover.index, hover.index, hover.left - 40);
+              }
+            }}
             onClick={(e) => {
-              if (justDragged.current) return;
+              if (justDragged.current || hover.index >= editor.state.doc.childCount) return;
               if (e.shiftKey) {
                 editor.view.focus();
                 extendBlockSelectionTo(editor.view, hover.index);
@@ -1456,7 +1599,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       {menu ? (
         <>
           <div className="fixed inset-0 z-40" onMouseDown={() => closeMenu(false)} aria-hidden />
-          <Popover anchor={menu} label="Block options" width={240} popRef={menuRef}>
+          <Popover anchor={menu} label="Block options" width={240} popRef={menuRef} tall>
             <div className="p-1 text-sm" role="menu" aria-label={count > 1 ? `Options for ${count} blocks` : "Block options"} onKeyDown={onMenuKey}>
               {count > 1 ? <p className="px-2 pb-1 pt-0.5 text-xs text-muted">{count} blocks selected</p> : null}
               {anyText ? (

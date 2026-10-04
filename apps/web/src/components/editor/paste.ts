@@ -1,6 +1,10 @@
 // Paste normalization: arbitrary HTML (web pages, Google Docs, Word, other editors) → canonical blocks.
 // Only structure and safe inline formatting survive; scripts, styles and unknown markup are dropped.
-import { SCHEMA_VERSION, normalizeInline, rankSequence, sanitizeHref, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
+import { SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, plainTextToBlocks, rankSequence, sanitizeHref, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
+import { TextSelection } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
+import { blockToNode } from "./convert";
+import { normalizeDepths } from "./commands";
 
 interface Draft {
   type: string;
@@ -108,7 +112,7 @@ function walk(el: Element, depth: number, out: Draft[], listType: "bulleted" | "
       case "PRE": {
         const code = e.textContent ?? "";
         const cls = e.querySelector("code")?.className ?? "";
-        const lang = /language-(\w+)/.exec(cls)?.[1] ?? "plaintext";
+        const lang = normalizeLanguage(/language-([\w+#-]+)/.exec(cls)?.[1] ?? "plaintext");
         out.push({ type: "code", depth: 0, text: [], props: { language: lang, code: code.replace(/\n$/, "") } });
         return;
       }
@@ -163,4 +167,73 @@ export function htmlToBlocks(html: string): WireBlock[] {
     blocks.push({ id: a.id, type: a.draft.type, parentId: a.parentId, rank, schemaVersion: SCHEMA_VERSION, text: a.draft.text, props: a.draft.props });
   }
   return blocks;
+}
+
+function looksLikeMarkdown(text: string): boolean {
+  return /^(#{1,6} |[-*+] |\d+[.)] |> |```|\[[ x]\] |\|.*\|)/m.test(text) || /\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)/.test(text);
+}
+
+/**
+ * The blocks a paste should become when it carries structure the editor handles itself (another app's
+ * HTML, Markdown, several lines of text), or null to let ProseMirror paste it (Folevi's own copies, one
+ * line of text, anything inside a code block).
+ */
+export function clipboardBlocks(view: EditorView, data: DataTransfer | null): WireBlock[] | null {
+  if (!data || view.state.selection.$from.parent.type.name === "codeBlock") return null;
+  const html = data.getData("text/html");
+  const text = data.getData("text/plain");
+  let blocks: WireBlock[] | null = null;
+  if (html && !html.includes("data-pm-slice")) blocks = htmlToBlocks(html);
+  else if (!html && text && (/\n/.test(text) || /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m.test(text))) {
+    blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false }).blocks : plainTextToBlocks(text);
+  }
+  return blocks?.length ? blocks : null;
+}
+
+/**
+ * Inserts pasted blocks where the caret is: replacing the selection, filling an empty line, or splitting
+ * the line at the caret so the pasted blocks land between its two halves. A single pasted paragraph goes
+ * into the line itself. Pasted blocks get fresh ids and nest under the caret's block depth.
+ */
+export function insertPastedBlocks(view: EditorView, blocks: WireBlock[]): void {
+  const { schema } = view.state;
+  const tr = view.state.tr;
+  if (!tr.selection.empty) tr.deleteSelection();
+  const $from = tr.selection.$from;
+  const flat = flattenTree(blocks);
+  const baseDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
+  const nodes = flat.map(({ block, depth }) => schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
+  const inText = $from.depth >= 1 && $from.parent.isTextblock;
+  if (inText && nodes.length === 1 && nodes[0]!.type.name === "paragraph" && $from.parent.type.name !== "codeBlock") {
+    // One plain paragraph: its text (with its formatting) goes into the current line.
+    tr.insert($from.pos, nodes[0]!.content);
+    view.dispatch(tr.scrollIntoView());
+    return;
+  }
+  let at: number;
+  let replaceEmpty = false;
+  if (!inText) {
+    at = $from.depth >= 1 ? $from.after(1) : $from.pos;
+  } else if ($from.parent.content.size === 0) {
+    at = $from.before(1);
+    replaceEmpty = true;
+  } else if ($from.parentOffset === 0) {
+    at = $from.before(1);
+  } else if ($from.parentOffset === $from.parent.content.size) {
+    at = $from.after(1);
+  } else {
+    // Split the line at the caret; the second half keeps the block's type on a new line.
+    tr.split($from.pos);
+    // Between the two halves: just after the first one closes.
+    at = tr.mapping.map($from.pos, -1) + 1;
+  }
+  if (replaceEmpty) tr.replaceWith(at, at + $from.parent.nodeSize, nodes);
+  else tr.insert(at, nodes);
+  const end = at + nodes.reduce((n, node) => n + node.nodeSize, 0);
+  // Caret at the end of the last pasted block (or just after it, for a block without text).
+  const last = nodes[nodes.length - 1]!;
+  const caret = last.isTextblock ? end - 1 : Math.min(end + 1, tr.doc.content.size);
+  tr.setSelection(TextSelection.near(tr.doc.resolve(caret), -1));
+  normalizeDepths(tr);
+  view.dispatch(tr.scrollIntoView());
 }

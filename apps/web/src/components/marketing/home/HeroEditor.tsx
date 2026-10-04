@@ -14,6 +14,8 @@ import { editorExtensions } from "@/components/editor/editorExtensions";
 import { EditorEnvironmentProvider } from "@/components/editor/environment";
 import { NotePaletteProvider } from "@/components/editor/notePalette";
 import { moveSubtreeTo, subtreeRange } from "@/components/editor/commands";
+import { clipboardBlocks, insertPastedBlocks } from "@/components/editor/paste";
+import type { EditorView } from "@tiptap/pm/view";
 import type { TriggerState } from "@/components/editor/plugins";
 import { FormatPanel } from "@/components/doc/FormatPanel";
 import { InsertPanel } from "@/components/doc/InsertPanel";
@@ -150,6 +152,14 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
           "aria-label": "Try the editor",
           "aria-describedby": describedBy,
           spellcheck: "true",
+        },
+        // Pasting works as in the app: Markdown, web pages and several lines become blocks.
+        handlePaste: (view: EditorView, event: ClipboardEvent) => {
+          const blocks = clipboardBlocks(view, event.clipboardData);
+          if (!blocks) return false;
+          event.preventDefault();
+          insertPastedBlocks(view, blocks);
+          return true;
         },
       },
       onCreate: () => setReady(true),

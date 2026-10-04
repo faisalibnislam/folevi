@@ -52,7 +52,11 @@ export function AccountGate() {
   // The server says there is no session (signed out elsewhere, revoked, expired): go sign in. Work
   // written offline stays on this device and syncs after signing back in to the same account.
   useEffect(() => {
-    if (phase === "signed_out") window.location.replace(`/signin?notice=session_ended&returnTo=${encodeURIComponent(currentPath())}`);
+    if (phase !== "signed_out") return;
+    const go = () => window.location.replace(`/signin?notice=session_ended&returnTo=${encodeURIComponent(currentPath())}`);
+    // The browser still holds the dead session's cookie: drop it (keeping this device's notes), or the
+    // sign-in and sign-up pages would take it for a live session and send the browser straight back here.
+    void authClient.signOut().catch(() => undefined).finally(go);
   }, [phase]);
 
   // The token's session is gone. Changing the password (or finishing a re-authentication) replaces the

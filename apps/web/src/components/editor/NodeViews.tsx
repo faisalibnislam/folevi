@@ -18,6 +18,7 @@ import {
   ImageOff,
   Link2,
   Minus,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -576,6 +577,9 @@ function PageView({ node, selected }: ReactNodeViewProps) {
   );
 }
 
+/** Asks a bookmark to open its editing fields (the right-click menu's "Edit bookmark…"). */
+export const EDIT_BOOKMARK_EVENT = "folevi:edit-bookmark";
+
 function BookmarkView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const a = node.attrs as {
     url: string;
@@ -584,54 +588,139 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     siteName: string | null;
   };
   const href = sanitizeHref(a.url ?? "") ?? "#";
-  let host: string;
-  try {
-    host = new URL(href).host;
-  } catch {
-    host = a.url;
-  }
+  const hostOf = (url: string) => {
+    try {
+      return new URL(url).host;
+    } catch {
+      return url;
+    }
+  };
+  const host = hostOf(href);
+  const editable = editor.isEditable;
+  const [editing, setEditing] = useState(false);
+  const [address, setAddress] = useState(a.url ?? "");
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const firstField = useRef<HTMLInputElement>(null);
+
+  const startEditing = () => {
+    setAddress(a.url ?? "");
+    setAddressError(null);
+    setEditing(true);
+  };
+  useEffect(() => {
+    if (editing) firstField.current?.focus();
+  }, [editing]);
+  useEffect(() => {
+    const el = card.current;
+    if (!el) return;
+    const on = () => editable && startEditing();
+    el.addEventListener(EDIT_BOOKMARK_EVENT, on);
+    return () => el.removeEventListener(EDIT_BOOKMARK_EVENT, on);
+  });
+
+  // A changed address is saved once it's a web address; a title that was just the old address follows it.
+  const saveAddress = (): boolean => {
+    const next = sanitizeHref(address.trim());
+    if (!next || !/^https?:\/\//i.test(next)) {
+      setAddressError("Enter a web address starting with http:// or https://");
+      return false;
+    }
+    if (next !== a.url) updateAttributes({ url: next, ...(!a.title || a.title === host ? { title: hostOf(next) } : {}) });
+    return true;
+  };
+  const finish = () => {
+    if (!saveAddress()) return;
+    setEditing(false);
+    selectBlock(editor, getPos);
+  };
+
   return (
     <Frame selected={selected} label={`Bookmark ${a.title ?? host}`}>
-      <div className="my-2 ui-card rounded-[8px] p-4" contentEditable={false}>
+      <div ref={card} className="group/bookmark relative my-2 ui-card rounded-[8px] p-4" contentEditable={false} data-bookmark="">
+        {/* A click opens the page in a new tab (the pen edits it). */}
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="flex items-start gap-3 no-underline"
+          onClick={(e) => {
+            e.preventDefault();
+            if (href !== "#") window.open(href, "_blank", "noopener,noreferrer");
+          }}
+          className="flex items-start gap-3 pr-8 no-underline"
         >
           <Link2 size={18} className="mt-0.5 text-muted" aria-hidden />
           <span className="min-w-0">
             <span className="block truncate font-semibold text-ink">{a.title || host}</span>
-            {a.description ? (
-              <span className="line-clamp-2 block text-sm text-muted">{a.description}</span>
-            ) : null}
+            {a.description ? <span className="line-clamp-2 block text-sm text-muted">{a.description}</span> : null}
             <span className="block truncate text-xs text-faint">
               {a.siteName ? `${a.siteName} · ` : ""}
               {host}
             </span>
           </span>
         </a>
-        {selected && editor.isEditable ? (
-          <div className="mt-3 grid gap-2 text-xs">
+        {editable && !editing ? (
+          <button
+            type="button"
+            aria-label="Edit bookmark"
+            title="Edit bookmark"
+            onClick={startEditing}
+            className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-[6px] text-muted transition-opacity hover:bg-accent-soft hover:text-heading focus-visible:opacity-100 focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none group-hover/bookmark:opacity-100 pointer-coarse:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
+          >
+            <Pencil size={14} aria-hidden />
+          </button>
+        ) : null}
+        {editing ? (
+          <form
+            className="mt-3 grid gap-2 text-xs"
+            onSubmit={(e) => {
+              e.preventDefault();
+              finish();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setEditing(false);
+                selectBlock(editor, getPos);
+              }
+            }}
+          >
+            <label className="grid gap-1">
+              Web address
+              <input
+                ref={firstField}
+                data-draft=""
+                value={address}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  setAddressError(null);
+                }}
+                onBlur={() => {
+                  if (address.trim() !== (a.url ?? "")) saveAddress();
+                }}
+                aria-invalid={Boolean(addressError)}
+                className={`h-8 ui-input rounded-[6px] px-2 text-sm text-ink ${addressError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+              />
+              {addressError ? (
+                <span role="alert" className="text-danger">
+                  {addressError}
+                </span>
+              ) : null}
+            </label>
             <label className="grid gap-1">
               Title
-              <DraftInput
-                value={a.title ?? ""}
-                onCommit={(v) => updateAttributes({ title: v || null })}
-                onExit={() => selectBlock(editor, getPos)}
-                className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink"
-              />
+              <DraftInput value={a.title ?? ""} onCommit={(v) => updateAttributes({ title: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
             </label>
             <label className="grid gap-1">
               Description
-              <DraftInput
-                value={a.description ?? ""}
-                onCommit={(v) => updateAttributes({ description: v || null })}
-                onExit={() => selectBlock(editor, getPos)}
-                className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink"
-              />
+              <DraftInput value={a.description ?? ""} onCommit={(v) => updateAttributes({ description: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
             </label>
-          </div>
+            <div className="flex justify-end">
+              <button type="submit" className="ui-btn ui-btn-primary h-8 px-3.5 text-xs">
+                Done
+              </button>
+            </div>
+          </form>
         ) : null}
       </div>
     </Frame>
@@ -746,7 +835,8 @@ export const NODE_VIEW_EXTENSIONS = [
   }),
   PageBlock.extend({ addNodeView: () => blockView(PageView) }),
   BookmarkBlock.extend({
-    addNodeView: () => blockView(BookmarkView, ({ event }) => event.target instanceof HTMLInputElement),
+    // The link, the pen and the editing fields handle their own clicks and keys.
+    addNodeView: () => blockView(BookmarkView, ({ event }) => event.target instanceof Element && Boolean(event.target.closest("a, button, input, form"))),
   }),
   CollectionBlock.extend({
     addNodeView: () => blockView(CollectionView, () => true),

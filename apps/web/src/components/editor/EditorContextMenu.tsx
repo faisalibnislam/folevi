@@ -64,6 +64,7 @@ import { blockSelectionRange, clearBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
 import { blockElements } from "./plugins";
 import { colorName, useNotePalette } from "./notePalette";
+import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -358,6 +359,13 @@ function buildEntries({
         { label: "Open link", icon: <ExternalLink size={14} />, run: () => window.open(url, "_blank", "noopener,noreferrer") },
         { label: "Copy link address", icon: <Link2 size={14} />, run: () => void copyText(url, "Link copied") },
       );
+      if (editable) {
+        context.push({
+          label: "Edit bookmark…",
+          icon: <Pencil size={14} />,
+          run: () => blockElements(editor.view.dom as HTMLElement)[target.index]?.querySelector("[data-bookmark]")?.dispatchEvent(new CustomEvent(EDIT_BOOKMARK_EVENT)),
+        });
+      }
     } else if (name === "codeBlock") {
       context.push({ label: "Copy code", icon: <Copy size={14} />, run: () => void copyText(block.textContent, "Code copied") });
       if (editable) {

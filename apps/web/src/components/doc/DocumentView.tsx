@@ -1059,6 +1059,10 @@ function ConflictBanner({ documentId }: { documentId: string }) {
   const [openId, setOpenId] = useState<string | null>(conflicts[0]?.id ?? null);
   if (!conflicts.length || !engine) return null;
   const c = conflicts.find((x) => x.id === openId) ?? conflicts[0]!;
+  // The other version as it is now (it may have been edited again since the conflict began): what
+  // "Keep theirs" keeps, and what "Keep mine" replaces.
+  const live = state.blocks[c.blockId];
+  const theirs = live && !live.deleted ? live.block : c.server;
   const text = (b: WireBlock | null) =>
     b ? (b.text.length ? b.text.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : n.type === "date" ? n.date : n.label)).join("") : `(${b.type} block)`) : "(deleted)";
   const keepBoth = () => {
@@ -1076,7 +1080,7 @@ function ConflictBanner({ documentId }: { documentId: string }) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="ui-card rounded-[8px] p-3">
           <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : c.reason === "edited" ? "Edited elsewhere" : "Version from elsewhere"}</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(c.server)}</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(theirs)}</p>
         </div>
         <div className="ui-card rounded-[8px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
           <p className="ui-caps">{c.reason === "edited" ? "You deleted it" : "Your version"}</p>

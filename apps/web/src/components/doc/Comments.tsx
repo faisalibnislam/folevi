@@ -18,6 +18,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { MentionInput, textToCommentBody, type MentionInputHandle, type MentionPerson } from "./MentionInput";
 import { addressIn } from "@/components/editor/autolink";
+import { useLocalStorage } from "@/lib/hooks/useEngine";
 
 export type CommentsData = FunctionReturnType<typeof api.comments.threads>;
 export type CommentThread = CommentsData["threads"][number];
@@ -721,7 +722,8 @@ function anchorLabel(t: CommentThread): ReactNode {
 export function CommentsOverview({ documentId, onOpenThread, focusThreadId = null }: { documentId: string; onOpenThread: (thread: CommentThread) => void; focusThreadId?: string | null }) {
   const data = useQuery(api.comments.threads, { documentId });
   const people = useQuery(api.comments.mentionable, { documentId });
-  const [filter, setFilter] = useState<"open" | "resolved">("open");
+  // Remembered, so the tab opens on the list last looked at.
+  const [filter, setFilter] = useLocalStorage<"open" | "resolved">("folevi:comments-filter", "open");
   const [query, setQuery] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(focusThreadId);
@@ -737,7 +739,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
     focused.current = t.id;
     setExpanded(t.id);
     setFilter(t.status);
-  }, [focusThreadId, data]);
+  }, [focusThreadId, data, setFilter]);
   if (!data) return <p className="text-sm text-muted">Loading comments…</p>;
   const everyone: MentionPerson[] = people ?? [];
   const open = data.threads.filter((t) => t.status === "open");

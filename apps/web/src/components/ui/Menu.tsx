@@ -74,7 +74,8 @@ export function MenuButton({
   };
 
   return (
-    <div ref={wrapRef} className={`relative ${className ?? ""}`}>
+    // Positioned by the caller (absolute, fixed…) or relative, as the menu's anchor.
+    <div ref={wrapRef} className={/\b(absolute|fixed|sticky)\b/.test(className ?? "") ? className : `relative ${className ?? ""}`}>
       <button
         ref={buttonRef}
         type="button"

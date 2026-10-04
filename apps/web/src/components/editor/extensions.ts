@@ -464,7 +464,7 @@ const tableRows = {
 };
 export const TableBlock = atom("table", { rows: tableRows, headerRow: r("headerRow", "boolean", true) });
 export const PageBlock = atom("page", { documentId: r("documentId"), display: r("display", "string", "card"), titleCache: r("titleCache"), iconCache: r("iconCache") });
-export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName") });
+export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName"), image: r("image"), icon: r("icon") });
 export const CollectionBlock = atom("collection", { collectionId: r("collectionId"), viewId: r("viewId") });
 // Formula, whiteboard and flowchart content is written to data-* attributes so copy & paste inside Folevi keeps it.
 const kept = (name: string, fallback: string | number) => ({

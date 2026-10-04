@@ -4,8 +4,8 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from 
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup } from "./commands";
-import { useQuery } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useAction, useQuery } from "convex/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowLeft,
@@ -43,6 +43,7 @@ import {
   WhiteboardBlock,
 } from "./extensions";
 import { FormulaView } from "./FormulaView";
+import { useEditorEnvironment } from "./environment";
 import { useDraft } from "./useDraft";
 import { AudioPlayer } from "./AudioPlayer";
 import { WhiteboardView } from "./WhiteboardView";
@@ -580,12 +581,17 @@ function PageView({ node, selected }: ReactNodeViewProps) {
 /** Asks a bookmark to open its editing fields (the right-click menu's "Edit bookmark…"). */
 export const EDIT_BOOKMARK_EVENT = "folevi:edit-bookmark";
 
+/** Bookmarks whose preview this session already asked for (each address once). */
+const previewed = new Set<string>();
+
 function BookmarkView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const a = node.attrs as {
     url: string;
     title: string | null;
     description: string | null;
     siteName: string | null;
+    image: string | null;
+    icon: string | null;
   };
   const href = sanitizeHref(a.url ?? "") ?? "#";
   const hostOf = (url: string) => {
@@ -597,11 +603,48 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   };
   const host = hostOf(href);
   const editable = editor.isEditable;
+  const env = useEditorEnvironment();
+  const fetchPreview = useAction(api.bookmarks.preview);
   const [editing, setEditing] = useState(false);
   const [address, setAddress] = useState(a.url ?? "");
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [iconFailed, setIconFailed] = useState(false);
   const card = useRef<HTMLDivElement>(null);
   const firstField = useRef<HTMLInputElement>(null);
+
+  // The page's own title, description, image and icon, read once per address (on the server). Fields the
+  // person wrote themselves are kept; a title that is just the address is replaced.
+  const loadPreview = useCallback(
+    async (url: string, replaceAll: boolean) => {
+      if (env.demo || !/^https?:\/\//i.test(url)) return;
+      previewed.add(url);
+      try {
+        const p = await fetchPreview({ url });
+        const pos = typeof getPos === "function" ? getPos() : undefined;
+        const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
+        if (!live || live.type.name !== "bookmark" || live.attrs.url !== url) return;
+        const now = live.attrs as typeof a;
+        const plainTitle = !now.title || now.title === hostOf(url) || now.title === url;
+        const patch: Record<string, unknown> = {};
+        if (p.title && (replaceAll || plainTitle)) patch.title = p.title;
+        if (p.description && (replaceAll || !now.description)) patch.description = p.description;
+        if (p.siteName && (replaceAll || !now.siteName)) patch.siteName = p.siteName;
+        if (replaceAll || !now.image) patch.image = p.image;
+        if (replaceAll || !now.icon) patch.icon = p.icon;
+        if (Object.keys(patch).length) updateAttributes(patch);
+      } catch {
+        // No preview (offline, the site didn't answer): the bookmark keeps what it has.
+      }
+    },
+    [env.demo, fetchPreview, getPos, editor, updateAttributes],
+  );
+  useEffect(() => {
+    if (!editable || !a.url || previewed.has(a.url)) return;
+    // A new bookmark, or one saved before previews existed.
+    if (a.image || a.description || (a.title && a.title !== host && a.title !== a.url)) return;
+    void loadPreview(a.url, false);
+  }, [editable, a.url, a.image, a.description, a.title, host, loadPreview]);
 
   const startEditing = () => {
     setAddress(a.url ?? "");
@@ -619,14 +662,19 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     return () => el.removeEventListener(EDIT_BOOKMARK_EVENT, on);
   });
 
-  // A changed address is saved once it's a web address; a title that was just the old address follows it.
+  // A changed address is saved once it's a web address, and its page's preview is read again.
   const saveAddress = (): boolean => {
     const next = sanitizeHref(address.trim());
     if (!next || !/^https?:\/\//i.test(next)) {
       setAddressError("Enter a web address starting with http:// or https://");
       return false;
     }
-    if (next !== a.url) updateAttributes({ url: next, ...(!a.title || a.title === host ? { title: hostOf(next) } : {}) });
+    if (next !== a.url) {
+      updateAttributes({ url: next, title: hostOf(next), description: null, siteName: null, image: null, icon: null });
+      setImageFailed(false);
+      setIconFailed(false);
+      void loadPreview(next, true);
+    }
     return true;
   };
   const finish = () => {
@@ -635,9 +683,10 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     selectBlock(editor, getPos);
   };
 
+  const showImage = Boolean(a.image) && !imageFailed;
   return (
     <Frame selected={selected} label={`Bookmark ${a.title ?? host}`}>
-      <div ref={card} className="group/bookmark relative my-2 ui-card rounded-[8px] p-4" contentEditable={false} data-bookmark="">
+      <div ref={card} className="group/bookmark relative my-2 overflow-hidden ui-card rounded-[8px]" contentEditable={false} data-bookmark="">
         {/* A click opens the page in a new tab (the pen edits it). */}
         <a
           href={href}
@@ -647,17 +696,28 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             e.preventDefault();
             if (href !== "#") window.open(href, "_blank", "noopener,noreferrer");
           }}
-          className="flex items-start gap-3 pr-8 no-underline"
+          className="flex min-h-[7.5rem] items-stretch no-underline"
         >
-          <Link2 size={18} className="mt-0.5 text-muted" aria-hidden />
-          <span className="min-w-0">
+          <span className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-4 pr-10">
+            {a.icon && !iconFailed ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={a.icon} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setIconFailed(true)} className="mb-1 h-6 w-6 flex-none rounded-[5px] object-contain" />
+            ) : (
+              <Link2 size={18} className="mb-1 text-muted" aria-hidden />
+            )}
             <span className="block truncate font-semibold text-ink">{a.title || host}</span>
-            {a.description ? <span className="line-clamp-2 block text-sm text-muted">{a.description}</span> : null}
+            {a.description ? <span className="line-clamp-2 block text-sm leading-snug text-muted">{a.description}</span> : null}
             <span className="block truncate text-xs text-faint">
               {a.siteName ? `${a.siteName} · ` : ""}
               {host}
             </span>
           </span>
+          {showImage ? (
+            <span className="relative hidden w-[34%] max-w-[260px] flex-none border-l border-line bg-sunken sm:block" aria-hidden>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={a.image!} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setImageFailed(true)} className="absolute inset-0 h-full w-full object-cover" />
+            </span>
+          ) : null}
         </a>
         {editable && !editing ? (
           <button
@@ -665,14 +725,14 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             aria-label="Edit bookmark"
             title="Edit bookmark"
             onClick={startEditing}
-            className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-[6px] text-muted transition-opacity hover:bg-accent-soft hover:text-heading focus-visible:opacity-100 focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none group-hover/bookmark:opacity-100 pointer-coarse:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
+            className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-[6px] text-muted ui-raised transition-opacity hover:text-heading focus-visible:opacity-100 focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none group-hover/bookmark:opacity-100 pointer-coarse:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
           >
             <Pencil size={14} aria-hidden />
           </button>
         ) : null}
         {editing ? (
           <form
-            className="mt-3 grid gap-2 text-xs"
+            className="grid gap-2 border-t border-line p-4 text-xs"
             onSubmit={(e) => {
               e.preventDefault();
               finish();
@@ -715,7 +775,16 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
               Description
               <DraftInput value={a.description ?? ""} onCommit={(v) => updateAttributes({ description: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
             </label>
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                className="ui-btn ui-btn-quiet h-8 px-3 text-xs"
+                onClick={() => {
+                  if (a.url) void loadPreview(a.url, true);
+                }}
+              >
+                Refresh preview
+              </button>
               <button type="submit" className="ui-btn ui-btn-primary h-8 px-3.5 text-xs">
                 Done
               </button>

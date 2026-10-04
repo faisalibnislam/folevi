@@ -219,7 +219,9 @@
         "url": "string",
         "title": "string?",
         "description": "string?",
-        "siteName": "string?"
+        "siteName": "string?",
+        "image": "string?",
+        "icon": "string?"
       }
     },
     "collection": {

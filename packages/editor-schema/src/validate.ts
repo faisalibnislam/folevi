@@ -267,6 +267,12 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
     case "bookmark":
       if (!/^https?:\/\//i.test(p.url as string))
         issues.push({ path: "props.url", code: "format", message: "http(s) url required" });
+      // The page's preview image and icon (from its metadata) are web addresses too.
+      for (const key of ["image", "icon"] as const) {
+        const value = p[key];
+        if (value !== undefined && (typeof value !== "string" || value.length > 2048 || !/^https?:\/\//i.test(value)))
+          issues.push({ path: `props.${key}`, code: "format", message: "http(s) url required" });
+      }
       break;
     case "formula":
       if ((p.latex as string).length > LIMITS.maxFormulaLength)

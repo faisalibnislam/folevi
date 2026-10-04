@@ -1188,6 +1188,12 @@
         },
         "siteName": {
           "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
         }
       },
       "required": [

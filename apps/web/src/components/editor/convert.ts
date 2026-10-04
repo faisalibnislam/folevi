@@ -43,7 +43,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   audio: ["fileId", "name", "size", "mimeType", "duration"],
   table: ["rows", "headerRow"],
   page: ["documentId", "display", "titleCache", "iconCache"],
-  bookmark: ["url", "title", "description", "siteName"],
+  bookmark: ["url", "title", "description", "siteName", "image", "icon"],
   collection: ["collectionId", "viewId"],
   formula: ["latex"],
   whiteboard: ["data", "height"],

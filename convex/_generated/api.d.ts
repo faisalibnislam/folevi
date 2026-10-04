@@ -17,6 +17,7 @@ import type * as authEmails from "../authEmails.js";
 import type * as billing from "../billing.js";
 import type * as billingSetup from "../billingSetup.js";
 import type * as blocks from "../blocks.js";
+import type * as bookmarks from "../bookmarks.js";
 import type * as collections from "../collections.js";
 import type * as comments from "../comments.js";
 import type * as crons from "../crons.js";
@@ -101,6 +102,7 @@ declare const fullApi: ApiFromModules<{
   billing: typeof billing;
   billingSetup: typeof billingSetup;
   blocks: typeof blocks;
+  bookmarks: typeof bookmarks;
   collections: typeof collections;
   comments: typeof comments;
   crons: typeof crons;

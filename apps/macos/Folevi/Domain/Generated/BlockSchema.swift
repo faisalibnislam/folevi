@@ -879,15 +879,19 @@ public struct BookmarkProps: Codable, Sendable, Hashable {
     public var title: String?
     public var description: String?
     public var siteName: String?
+    public var image: String?
+    public var icon: String?
 
-    public init(url: String, title: String? = nil, description: String? = nil, siteName: String? = nil) {
+    public init(url: String, title: String? = nil, description: String? = nil, siteName: String? = nil, image: String? = nil, icon: String? = nil) {
         self.url = url
         self.title = title
         self.description = description
         self.siteName = siteName
+        self.image = image
+        self.icon = icon
     }
 
-    enum CodingKeys: String, CodingKey { case url, title, description, siteName }
+    enum CodingKeys: String, CodingKey { case url, title, description, siteName, image, icon }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -895,6 +899,8 @@ public struct BookmarkProps: Codable, Sendable, Hashable {
         self.title = try c.decodeIfPresent(String.self, forKey: .title)
         self.description = try c.decodeIfPresent(String.self, forKey: .description)
         self.siteName = try c.decodeIfPresent(String.self, forKey: .siteName)
+        self.image = try c.decodeIfPresent(String.self, forKey: .image)
+        self.icon = try c.decodeIfPresent(String.self, forKey: .icon)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -903,6 +909,8 @@ public struct BookmarkProps: Codable, Sendable, Hashable {
         try c.encodeIfPresent(title, forKey: .title)
         try c.encodeIfPresent(description, forKey: .description)
         try c.encodeIfPresent(siteName, forKey: .siteName)
+        try c.encodeIfPresent(image, forKey: .image)
+        try c.encodeIfPresent(icon, forKey: .icon)
     }
 }
 

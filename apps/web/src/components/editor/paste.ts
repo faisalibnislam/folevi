@@ -2,9 +2,33 @@
 // Only structure and safe inline formatting survive; scripts, styles and unknown markup are dropped.
 import { SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
 import { TextSelection } from "@tiptap/pm/state";
+import type { Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 import { blockToNode } from "./convert";
 import { normalizeDepths } from "./commands";
+import { deleteVisibleRange } from "./plugins";
+import { hiddenIndices } from "./blockSelectionState";
+
+/**
+ * Before any paste: a range through a collapsed toggle loses only its visible part (the hidden blocks stay),
+ * and several whole blocks pasted at the end of a collapsed toggle go after its hidden blocks.
+ */
+export function prepareForPaste(view: EditorView, slice: Slice | null): void {
+  const visible = deleteVisibleRange(view.state);
+  if (visible) view.dispatch(visible);
+  const { state } = view;
+  const { $from, empty } = state.selection;
+  if (!slice || !empty || $from.depth < 1 || slice.content.childCount < 2) return;
+  const parent = $from.parent;
+  if (parent.type.name !== "toggle" || !parent.attrs.collapsed || $from.parentOffset !== parent.content.size) return;
+  const index = $from.index(0);
+  if (!hiddenIndices(state).has(index + 1)) return;
+  let at = $from.after(1);
+  for (let i = index + 1; i < state.doc.childCount && hiddenIndices(state).has(i); i++) at += state.doc.child(i).nodeSize;
+  const tr = state.tr.insert(at, state.schema.nodes.paragraph!.create({ id: null, depth: parent.attrs.depth }));
+  tr.setSelection(TextSelection.create(tr.doc, at + 1));
+  view.dispatch(tr);
+}
 
 interface Draft {
   type: string;
@@ -49,7 +73,8 @@ function inlineOfNodes(nodes: Iterable<ChildNode>, marks: Mark[] = [], flatten =
     }
     if (child.nodeType !== Node.ELEMENT_NODE) continue;
     const e = child as HTMLElement;
-    if (SKIP.has(e.tagName) || e.tagName === "IMG") continue;
+    // Word's own list markers ("·", "1.") are drawn text, marked mso-list:Ignore.
+    if (SKIP.has(e.tagName) || e.tagName === "IMG" || /mso-list:\s*Ignore/i.test(e.getAttribute("style") ?? "")) continue;
     if (BLOCK_TAGS.has(e.tagName)) {
       if (!flatten) continue;
       if (out.length) out.push({ type: "text", text: " " });
@@ -143,6 +168,14 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       return;
     }
     case "P": {
+      // Word writes list items as paragraphs: "mso-list:l0 level2 lfo1" with the marker in an ignored span.
+      const wordList = /mso-list:\s*l\d+\s+level(\d+)/i.exec(e.getAttribute("style") ?? "");
+      if (wordList) {
+        const marker = [...e.querySelectorAll<HTMLElement>("[style*='mso-list']")].find((m) => /Ignore/i.test(m.getAttribute("style") ?? ""))?.textContent?.trim() ?? "";
+        const text = clean(inlineOf(e, marks));
+        if (text.length) out.push({ type: /^[\dA-Za-z]{1,3}[.)]$/.test(marker) ? "numbered" : "bulleted", depth: depth + Number(wordList[1]) - 1, text, props: {} });
+        return;
+      }
       const text = clean(inlineOf(e, marks));
       if (text.length) out.push({ type: "paragraph", depth, text, props: {} });
       imagesIn(e.childNodes, depth, out);
@@ -162,11 +195,14 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
         inline = clean(inlineOf(kids[0]!, marks, true));
         rest = kids.slice(1);
       }
-      const type = checkbox || e.getAttribute("data-checked") !== null || /task-list-item|checklist/.test(e.className) ? "todo" : (listType ?? "bulleted");
+      const type = checkbox || e.getAttribute("data-checked") !== null || /task-list-item|checklist|to-do/.test(e.className) ? "todo" : (listType ?? "bulleted");
       const props = type === "todo" ? { checked: Boolean(checkbox?.checked) || e.getAttribute("data-checked") === "true" } : {};
-      out.push({ type, depth, text: inline, props });
-      for (const k of rest) block(k as HTMLElement, depth + 1, out, null, marks);
-      for (const n of [...e.children]) if (n.tagName === "UL" || n.tagName === "OL") walk(n, depth + 1, out, n.tagName === "OL" ? "numbered" : "bulleted", marks);
+      // Google Docs keeps nested items in one flat list, with their level in aria-level.
+      const level = Number(e.getAttribute("aria-level"));
+      const itemDepth = level > 1 && !e.parentElement?.closest("li") ? depth + level - 1 : depth;
+      out.push({ type, depth: itemDepth, text: inline, props });
+      for (const k of rest) block(k as HTMLElement, itemDepth + 1, out, null, marks);
+      for (const n of [...e.children]) if (n.tagName === "UL" || n.tagName === "OL") walk(n, itemDepth + 1, out, n.tagName === "OL" ? "numbered" : "bulleted", marks);
       return;
     }
     case "BLOCKQUOTE": {
@@ -191,6 +227,13 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
     case "HR":
       out.push({ type: "divider", depth: 0, text: [], props: {} });
       return;
+    case "DETAILS": {
+      // A disclosure (<details><summary>) is a toggle with the rest nested inside it.
+      const summary = e.querySelector(":scope > summary");
+      out.push({ type: "toggle", depth, text: summary ? clean(inlineOf(summary, marks)) : [], props: { collapsed: !(e as HTMLDetailsElement).open } });
+      walkNodes([...e.childNodes].filter((n) => n !== summary), depth + 1, out, null, marks);
+      return;
+    }
     case "IMG":
       imagesIn([e], depth, out);
       return;
@@ -270,7 +313,9 @@ export function clipboardBlocks(view: EditorView, data: DataTransfer | null): Wi
  */
 export function insertPastedBlocks(view: EditorView, blocks: WireBlock[]): void {
   const { schema } = view.state;
-  const tr = view.state.tr;
+  // Over a range through a collapsed toggle, only what's visible is replaced.
+  const visible = deleteVisibleRange(view.state);
+  const tr = visible ?? view.state.tr;
   if (!tr.selection.empty) tr.deleteSelection();
   const $from = tr.selection.$from;
   const flat = flattenTree(blocks);

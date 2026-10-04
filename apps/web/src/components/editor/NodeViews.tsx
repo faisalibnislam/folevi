@@ -295,7 +295,13 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     return live?.type.name === "table" ? (live.attrs.rows as InlineNode[][][]) : rows;
   };
   const setCell = (r: number, c: number, value: string) => {
-    const next = currentRows().map((row, ri) => row.map((cell, ci) => (ri === r && ci === c ? (value ? [{ type: "text" as const, text: value }] : []) : cell)));
+    const now = currentRows();
+    // Cells edit as plain text; formatting the whole cell shares (all bold, one link) is kept.
+    const old = (now[r]?.[c] ?? []) as InlineNode[];
+    const markSets = old.filter((n) => n.type === "text").map((n) => JSON.stringify((n as { marks?: unknown[] }).marks ?? []));
+    const shared = markSets.length && markSets.every((m) => m === markSets[0]) ? ((old.find((n) => n.type === "text") as { marks?: unknown[] }).marks ?? []) : [];
+    const text = (value ? [shared.length ? { type: "text" as const, text: value, marks: shared } : { type: "text" as const, text: value }] : []) as InlineNode[];
+    const next = now.map((row, ri) => row.map((cell, ci) => (ri === r && ci === c ? text : cell)));
     updateAttributes({ rows: next });
   };
   // Row and column tools are each their own undo step (typing in cells groups as usual).
@@ -327,7 +333,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   // Escape returns to the note with the table selected.
   const onCellKey = (e: React.KeyboardEvent<HTMLTableElement>) => {
     const at = (e.target as HTMLElement).dataset.cell;
-    if (!at || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!at || e.metaKey || e.ctrlKey || e.altKey || e.nativeEvent.isComposing || e.keyCode === 229) return;
     const [r, c] = at.split(":").map(Number) as [number, number];
     if (e.key === "Tab") {
       // Cell to cell, row by row; Tab in the last cell adds a row.
@@ -872,7 +878,7 @@ function DraftInput({ value, onCommit, onExit, ...rest }: Omit<React.InputHTMLAt
       onKeyDown={(e) => {
         rest.onKeyDown?.(e);
         // Escape or Enter: back to the note with the block selected.
-        if (onExit && !e.defaultPrevented && (e.key === "Escape" || e.key === "Enter")) {
+        if (onExit && !e.defaultPrevented && !e.nativeEvent.isComposing && e.keyCode !== 229 && (e.key === "Escape" || e.key === "Enter")) {
           e.preventDefault();
           onExit();
         }

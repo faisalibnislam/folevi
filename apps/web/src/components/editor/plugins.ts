@@ -1,11 +1,13 @@
 import { Extension, InputRule, type Editor } from "@tiptap/core";
 import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Fragment, Slice, type Node as PMNode } from "@tiptap/pm/model";
+import { AddMarkStep, RemoveMarkStep, ReplaceStep } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, turnInto } from "./commands";
 import { TEXT_NODES } from "./convert";
 import { hiddenIndices, neighbourIndex } from "./blockSelectionState";
+import { sliceToText } from "./clipboardText";
 
 /** Every top-level block has a unique id; depth is always valid. Runs after every transaction. */
 export const BlockIdentity = Extension.create({
@@ -19,7 +21,26 @@ export const BlockIdentity = Extension.create({
           // ProseMirror's own handling would move focus back into the text under the open menu.
           handleDOMEvents: {
             mousedown: (_view, event) => event.button === 2 || (event.button === 0 && event.ctrlKey && /Mac/.test(navigator.platform)),
+            // An input method (Chinese, Japanese…) starting over a range through a collapsed toggle, or over a
+            // selected block: make room the same way typing does, before the composition begins.
+            compositionstart: (view) => {
+              const visible = deleteVisibleRange(view.state);
+              if (visible) {
+                view.dispatch(visible);
+                return false;
+              }
+              const sel = view.state.selection;
+              if (sel instanceof NodeSelection && sel.node.isBlock && sel.$from.depth === 0) {
+                const at = afterSubtree(view.state, sel.$from.index(0));
+                const tr = view.state.tr.insert(at, view.state.schema.nodes.paragraph!.create({ id: null, depth: sel.node.attrs.depth }));
+                tr.setSelection(TextSelection.create(tr.doc, at + 1));
+                view.dispatch(tr);
+              }
+              return false;
+            },
           },
+          // Text for other apps: one line per block, Markdown-style.
+          clipboardTextSerializer: (slice) => sliceToText(slice),
           // Typing while a whole block (an image, a table, a divider…) is selected writes on a new line after
           // it instead of replacing it.
           handleTextInput: (view, _from, _to, text) => {
@@ -199,6 +220,72 @@ function commentLine(blockId: string, depth: number, list: boolean, s: CommentSu
 
 export const decorationsKey = new PluginKey<DecorationInputs>("foleviDecorations");
 
+/** Numbering, hidden blocks, selection, conflicts, presence and comment lines for the whole note. */
+function buildDecorations(doc: PMNode, inputs: DecorationInputs): DecorationSet {
+  const decos: Decoration[] = [];
+  const counters: number[] = [];
+  let hideBelow: number | null = null;
+  let pos = 0;
+  doc.forEach((node) => {
+    const depth = Number(node.attrs.depth ?? 0);
+    const id = node.attrs.id as string | null;
+    const end = pos + node.nodeSize;
+    if (hideBelow !== null && depth <= hideBelow) hideBelow = null;
+    const attrs: Record<string, string> = {};
+    const classes: string[] = [];
+    if (hideBelow !== null) classes.push("fb-hidden");
+    if (node.type.name === "numbered") {
+      counters.length = depth + 1;
+      counters[depth] = (counters[depth] ?? 0) + 1;
+      attrs["data-index"] = String(counters[depth]);
+    } else {
+      counters.length = depth;
+    }
+    if (node.type.name === "toggle" && node.attrs.collapsed && hideBelow === null) hideBelow = depth;
+    if (id && inputs.selectedBlocks.has(id)) classes.push("fb-selected");
+    if (id && inputs.conflictBlocks.has(id)) classes.push("fb-conflict");
+    if (id && inputs.commentBlocks.has(id)) attrs["data-has-comments"] = "true";
+    const who = id ? inputs.presence.find((p) => p.blockId === id) : undefined;
+    if (who) {
+      classes.push("fb-presence");
+      attrs.style = `--presence:var(--color-${who.color === "accent" ? "accent" : who.color})`;
+      attrs["data-presence"] = who.name;
+    }
+    if (classes.length || Object.keys(attrs).length) decos.push(Decoration.node(pos, end, { ...attrs, class: classes.join(" ") }));
+    const summary = id ? inputs.commentSummaries?.get(id) : undefined;
+    if (summary && id && !classes.includes("fb-hidden")) {
+      const key = `comments:${id}:${depth}:${summary.count}:${summary.lastActivityAt}:${summary.unread}:${summary.authors.map((a) => a.name + (a.avatarUrl ?? "")).join("|")}`;
+      const list = LIST_BLOCKS.has(node.type.name);
+      decos.push(Decoration.widget(end, () => commentLine(id, depth, list, summary, inputs.onOpenComments), { side: -1, key, ignoreSelection: true, stopEvent: () => true }));
+    }
+    pos = end;
+  });
+  return DecorationSet.create(doc, decos);
+}
+
+/**
+ * Whether a transaction changes only text inside lines (typing, marks): then the decorations just move
+ * with it. Anything that adds, removes, reorders or retypes blocks rebuilds them (numbering, hiding).
+ */
+function onlyEditsText(tr: Transaction): boolean {
+  return tr.steps.every((step, i) => {
+    if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) return true;
+    if (!(step instanceof ReplaceStep)) return false;
+    const doc = tr.docs[i]!;
+    const { from, to } = step as unknown as { from: number; to: number };
+    const $from = doc.resolve(from);
+    const $to = doc.resolve(to);
+    if ($from.depth < 1 || !$from.sameParent($to) || !$from.parent.isTextblock) return false;
+    let blocks = false;
+    step.slice.content.forEach((n) => {
+      if (n.isBlock) blocks = true;
+    });
+    return !blocks;
+  });
+}
+
+const decoCacheKey = new PluginKey<DecorationSet>("foleviDecorationCache");
+
 /** Numbering, collapsed toggles, presence, comment markers, block selection and conflict markers. */
 export const BlockDecorations = Extension.create({
   name: "blockDecorations",
@@ -210,49 +297,21 @@ export const BlockDecorations = Extension.create({
           init: () => ({ presence: [], commentBlocks: new Set(), selectedBlocks: new Set(), conflictBlocks: new Set() }),
           apply: (tr, value) => (tr.getMeta(decorationsKey) as DecorationInputs | undefined) ?? value,
         },
-        props: {
-          decorations: (state) => {
-            const inputs = decorationsKey.getState(state)!;
-            const decos: Decoration[] = [];
-            const counters: number[] = [];
-            let hideBelow: number | null = null;
-            let pos = 0;
-            state.doc.forEach((node) => {
-              const depth = Number(node.attrs.depth ?? 0);
-              const id = node.attrs.id as string | null;
-              const end = pos + node.nodeSize;
-              if (hideBelow !== null && depth <= hideBelow) hideBelow = null;
-              const attrs: Record<string, string> = {};
-              const classes: string[] = [];
-              if (hideBelow !== null) classes.push("fb-hidden");
-              if (node.type.name === "numbered") {
-                counters.length = depth + 1;
-                counters[depth] = (counters[depth] ?? 0) + 1;
-                attrs["data-index"] = String(counters[depth]);
-              } else {
-                counters.length = depth;
-              }
-              if (node.type.name === "toggle" && node.attrs.collapsed && hideBelow === null) hideBelow = depth;
-              if (id && inputs.selectedBlocks.has(id)) classes.push("fb-selected");
-              if (id && inputs.conflictBlocks.has(id)) classes.push("fb-conflict");
-              if (id && inputs.commentBlocks.has(id)) attrs["data-has-comments"] = "true";
-              const who = id ? inputs.presence.find((p) => p.blockId === id) : undefined;
-              if (who) {
-                classes.push("fb-presence");
-                attrs.style = `--presence:var(--color-${who.color === "accent" ? "accent" : who.color})`;
-                attrs["data-presence"] = who.name;
-              }
-              if (classes.length || Object.keys(attrs).length) decos.push(Decoration.node(pos, end, { ...attrs, class: classes.join(" ") }));
-              const summary = id ? inputs.commentSummaries?.get(id) : undefined;
-              if (summary && id && !classes.includes("fb-hidden")) {
-                const key = `comments:${id}:${depth}:${summary.count}:${summary.lastActivityAt}:${summary.unread}:${summary.authors.map((a) => a.name + (a.avatarUrl ?? "")).join("|")}`;
-                const list = LIST_BLOCKS.has(node.type.name);
-                decos.push(Decoration.widget(end, () => commentLine(id, depth, list, summary, inputs.onOpenComments), { side: -1, key, ignoreSelection: true, stopEvent: () => true }));
-              }
-              pos = end;
-            });
-            return DecorationSet.create(state.doc, decos);
+      }),
+      // The decorations themselves, kept between updates: a long note doesn't rebuild them on every key.
+      new Plugin<DecorationSet>({
+        key: decoCacheKey,
+        state: {
+          init: (_config, state) => buildDecorations(state.doc, decorationsKey.getState(state)!),
+          apply: (tr, set, _old, state) => {
+            if (tr.getMeta(decorationsKey)) return buildDecorations(state.doc, decorationsKey.getState(state)!);
+            if (!tr.docChanged) return set;
+            if (onlyEditsText(tr)) return set.map(tr.mapping, tr.doc);
+            return buildDecorations(state.doc, decorationsKey.getState(state)!);
           },
+        },
+        props: {
+          decorations: (state) => decoCacheKey.getState(state),
         },
       }),
     ];
@@ -312,7 +371,24 @@ export function deleteVisibleRange(state: EditorState): Transaction | null {
   const hidden = hiddenIndices(state);
   let crosses = false;
   for (let i = a + 1; i < b; i++) if (hidden.has(i)) crosses = true;
-  if (!crosses || $from.parent.type.name === "codeBlock" || $to.parent.type.name === "codeBlock") return null;
+  const codeEnd = $from.parent.type.name === "codeBlock" || $to.parent.type.name === "codeBlock";
+  if (codeEnd) {
+    // A range from text into code (or out of it): each end keeps its own block, so code never turns into text
+    // or text into code. Visible blocks in between go; hidden ones stay with their toggle.
+    const tr = state.tr;
+    const starts: number[] = [];
+    state.doc.forEach((_n, offset) => starts.push(offset));
+    tr.delete($to.start(), $to.pos);
+    for (let i = b - 1; i > a; i--) {
+      if (hidden.has(i)) continue;
+      tr.delete(starts[i]!, starts[i]! + state.doc.child(i).nodeSize);
+    }
+    tr.delete($from.pos, $from.end());
+    tr.setSelection(TextSelection.create(tr.doc, $from.pos));
+    normalizeDepths(tr);
+    return tr;
+  }
+  if (!crosses) return null;
   const tr = state.tr;
   const bPos = $to.before(1);
   const rest = $to.parent.content.cut($to.parentOffset);
@@ -379,6 +455,35 @@ function outdentCodeLines(editor: Editor): boolean {
   if (!edits.length) return false;
   for (const [at, n] of edits.reverse()) tr.delete(start + at, start + at + n);
   editor.view.dispatch(tr);
+  return true;
+}
+
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+
+/** → at the end of a line ending in inline code: what's typed next is plain text (the caret can't move further). */
+function leaveInlineCode(editor: Editor): boolean {
+  const { state, view } = editor;
+  const { $from, empty } = state.selection;
+  if (!empty || $from.depth < 1 || $from.parentOffset !== $from.parent.content.size) return false;
+  const code = state.schema.marks.code;
+  const marks = state.storedMarks ?? $from.marks();
+  if (!code || !code.isInSet(marks)) return false;
+  view.dispatch(state.tr.setStoredMarks(code.removeFromSet(marks)));
+  return true;
+}
+
+/** ⌘↑ / ⌘↓: the caret to the start or end of the note, or the image or divider there selected. */
+function edgeOfNote(editor: Editor, dir: -1 | 1): boolean {
+  const { state, view } = editor;
+  const doc = state.doc;
+  const index = dir < 0 ? 0 : doc.childCount - 1;
+  let pos = 0;
+  for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
+  const node = doc.child(index);
+  const tr = state.tr;
+  if (node.isTextblock) tr.setSelection(TextSelection.create(doc, dir < 0 ? pos + 1 : pos + node.nodeSize - 1));
+  else tr.setSelection(NodeSelection.create(doc, pos));
+  view.dispatch(tr.scrollIntoView());
   return true;
 }
 
@@ -458,104 +563,27 @@ export const BlockKeymap = Extension.create({
         editor.view.dispatch(tr.scrollIntoView());
         return true;
       },
-      Backspace: () => {
-        const { state } = editor;
-        if (!state.selection.empty) {
-          const visible = deleteVisibleRange(state);
-          if (!visible) return false;
-          editor.view.dispatch(visible.scrollIntoView());
-          return true;
-        }
-        const cur = currentBlock(state);
-        if (!cur || !cur.atStart) return false;
-        const type = cur.node.type.name;
-        if (type !== "paragraph" && TEXT_NODES.has(type)) return turnInto(editor, "paragraph");
-        // Code at the start: an empty block becomes text; one with code stays put (merging would flatten it).
-        if (type === "codeBlock") return cur.empty ? turnInto(editor, "paragraph") : true;
-        if (Number(cur.node.attrs.depth ?? 0) > 0) return changeDepth(editor, -1);
-        const index = state.selection.$from.index(0);
-        if (index === 0) return false;
-        const prev = state.doc.child(index - 1);
-        const hiddenAbove = hiddenIndices(state).has(index - 1);
-        // Code above: move into it (merging would put this text inside the code, unformatted).
-        if (!hiddenAbove && prev.type.name === "codeBlock") {
-          editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos - 1)).scrollIntoView());
-          return true;
-        }
-        // Deleting into an atom block above (an image, a divider…) selects it first instead of removing it.
-        if (prev.isAtom && !hiddenAbove) {
-          if (cur.empty) return deleteBlocks(editor, [index], false);
-          editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos - prev.nodeSize)).scrollIntoView());
-          return true;
-        }
-        // The block above is hidden inside a collapsed toggle: join with the toggle's own line instead.
-        if (hiddenAbove) {
-          const target = neighbourIndex(state, index, -1);
-          if (target === null) return true;
-          let tPos = 0;
-          for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
-          const tNode = state.doc.child(target);
-          if (!tNode.isTextblock) return true;
-          const end = tPos + tNode.nodeSize - 1;
-          const tr = state.tr;
-          // This line's own nested blocks would end up hidden in the toggle: open it.
-          const next = state.doc.maybeChild(index + 1);
-          if (tNode.type.name === "toggle" && next && Number(next.attrs.depth ?? 0) > Number(cur.node.attrs.depth ?? 0)) tr.setNodeMarkup(tPos, undefined, { ...tNode.attrs, collapsed: false });
-          tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
-          if (cur.node.content.size && tNode.type.name !== "codeBlock") tr.insert(end, cur.node.content);
-          tr.setSelection(TextSelection.create(tr.doc, end));
-          normalizeDepths(tr);
-          editor.view.dispatch(tr.scrollIntoView());
-          return true;
-        }
-        return false;
-      },
-      Delete: () => {
-        const { state } = editor;
-        if (!state.selection.empty) {
-          const visible = deleteVisibleRange(state);
-          if (!visible) return false;
-          editor.view.dispatch(visible.scrollIntoView());
-          return true;
-        }
-        const cur = currentBlock(state);
-        if (!cur || state.selection.$from.parentOffset !== cur.node.content.size) return false;
-        const index = state.selection.$from.index(0);
-        const nextBlock = state.doc.maybeChild(index + 1);
-        // Code below: move into it rather than pulling the code into this line.
-        if (nextBlock?.type.name === "codeBlock" && !hiddenIndices(state).has(index + 1) && cur.node.type.name !== "codeBlock") {
-          editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos + cur.node.nodeSize + 1)).scrollIntoView());
-          return true;
-        }
-        // Deleting into an atom below (an image, a divider…) selects it first instead of removing it.
-        const below = state.doc.maybeChild(index + 1);
-        if (below?.isAtom && !hiddenIndices(state).has(index + 1)) {
-          if (cur.empty && cur.node.type.name === "paragraph") return deleteBlocks(editor, [index], false);
-          editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos + cur.node.nodeSize)).scrollIntoView());
-          return true;
-        }
-        // At the end of a collapsed toggle the next block in the document is hidden: join the next visible
-        // line (when it has nothing nested under it) instead of pulling hidden text into the toggle.
-        if (cur.node.type.name !== "toggle" || !cur.node.attrs.collapsed) return false;
-        const target = neighbourIndex(state, index, 1);
-        if (target === null) return true;
-        let tPos = 0;
-        for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
-        const tNode = state.doc.child(target);
-        const after = state.doc.maybeChild(target + 1);
-        if (!tNode.isTextblock || tNode.type.name === "codeBlock" || (after && Number(after.attrs.depth ?? 0) > Number(tNode.attrs.depth ?? 0))) return true;
-        const end = state.selection.from;
-        const tr = state.tr.delete(tPos, tPos + tNode.nodeSize).insert(end, tNode.content);
-        tr.setSelection(TextSelection.create(tr.doc, end));
-        editor.view.dispatch(tr.scrollIntoView());
-        return true;
-      },
+      Backspace: () => backspace(),
+      "Shift-Backspace": () => backspace(),
+      // Word and line deletes only need the block rules at the start of a line or over a range; mid-line
+      // they keep their usual meaning (backspace() lets them through then).
+      "Mod-Backspace": () => backspace(),
+      "Alt-Backspace": () => backspace(),
+      Delete: () => del(),
+      "Shift-Delete": () => del(),
+      "Mod-Delete": () => del(),
+      "Alt-Delete": () => del(),
+      // The Mac's Control keys for the same (Ctrl+H, Ctrl+D) and Ctrl+K, delete to the end of the line.
+      ...(isMac ? { "Ctrl-h": () => backspace(), "Ctrl-d": () => del(), "Ctrl-k": () => killToLineEnd() } : {}),
+      // ⌘↑ / ⌘↓: the start or end of the note (selecting an image or divider there).
+      "Mod-ArrowUp": () => edgeOfNote(editor, -1),
+      "Mod-ArrowDown": () => edgeOfNote(editor, 1),
       // Tab never leaves the page: it indents (or does nothing when it can't). Code blocks indent their text.
       Tab: () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? false : (changeDepth(editor, 1), true)),
       "Shift-Tab": () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? (outdentCodeLines(editor) || changeDepth(editor, -1), true) : (changeDepth(editor, -1), true)),
       // Past hidden blocks (inside a collapsed toggle), the arrows go to the next visible one.
       ArrowDown: () => skipHidden(editor, 1, "down"),
-      ArrowRight: () => skipHidden(editor, 1, "right"),
+      ArrowRight: () => leaveInlineCode(editor) || skipHidden(editor, 1, "right"),
       ArrowUp: () => skipHidden(editor, -1, "up"),
       ArrowLeft: () => skipHidden(editor, -1, "left"),
       "Alt-Shift-ArrowUp": () => moveBlock(editor, -1),
@@ -584,6 +612,113 @@ export const BlockKeymap = Extension.create({
       "Mod-d": () => duplicateBlocks(editor),
       "Mod-Shift-Backspace": () => deleteBlocks(editor),
     };
+
+    /** Backspace (and its word/line variants): the block rules at the start of a line or over a range. */
+    function backspace(): boolean {
+      const { state } = editor;
+      if (!state.selection.empty) {
+        const visible = deleteVisibleRange(state);
+        if (!visible) return false;
+        editor.view.dispatch(visible.scrollIntoView());
+        return true;
+      }
+      const cur = currentBlock(state);
+      if (!cur || !cur.atStart) return false;
+      const type = cur.node.type.name;
+      if (type !== "paragraph" && TEXT_NODES.has(type)) return turnInto(editor, "paragraph");
+      // Code at the start: an empty block becomes text; one with code stays put (merging would flatten it).
+      if (type === "codeBlock") return cur.empty ? turnInto(editor, "paragraph") : true;
+      if (Number(cur.node.attrs.depth ?? 0) > 0) return changeDepth(editor, -1);
+      const index = state.selection.$from.index(0);
+      if (index === 0) return false;
+      const prev = state.doc.child(index - 1);
+      const hiddenAbove = hiddenIndices(state).has(index - 1);
+      // Code above: move into it (merging would put this text inside the code, unformatted).
+      if (!hiddenAbove && prev.type.name === "codeBlock") {
+        editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos - 1)).scrollIntoView());
+        return true;
+      }
+      // Deleting into an atom block above (an image, a divider…) selects it first instead of removing it.
+      if (prev.isAtom && !hiddenAbove) {
+        if (cur.empty) return deleteBlocks(editor, [index], false);
+        editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos - prev.nodeSize)).scrollIntoView());
+        return true;
+      }
+      // The block above is hidden inside a collapsed toggle: join with the toggle's own line instead.
+      if (hiddenAbove) {
+        const target = neighbourIndex(state, index, -1);
+        if (target === null) return true;
+        let tPos = 0;
+        for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
+        const tNode = state.doc.child(target);
+        if (!tNode.isTextblock) return true;
+        const end = tPos + tNode.nodeSize - 1;
+        const tr = state.tr;
+        // This line's own nested blocks would end up hidden in the toggle: open it.
+        const next = state.doc.maybeChild(index + 1);
+        if (tNode.type.name === "toggle" && next && Number(next.attrs.depth ?? 0) > Number(cur.node.attrs.depth ?? 0)) tr.setNodeMarkup(tPos, undefined, { ...tNode.attrs, collapsed: false });
+        tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
+        if (cur.node.content.size && tNode.type.name !== "codeBlock") tr.insert(end, cur.node.content);
+        tr.setSelection(TextSelection.create(tr.doc, end));
+        normalizeDepths(tr);
+        editor.view.dispatch(tr.scrollIntoView());
+        return true;
+      }
+      return false;
+    }
+
+    /** Delete (and its word/line variants): the block rules at the end of a line or over a range. */
+    function del(): boolean {
+      const { state } = editor;
+      if (!state.selection.empty) {
+        const visible = deleteVisibleRange(state);
+        if (!visible) return false;
+        editor.view.dispatch(visible.scrollIntoView());
+        return true;
+      }
+      const cur = currentBlock(state);
+      if (!cur || state.selection.$from.parentOffset !== cur.node.content.size) return false;
+      const index = state.selection.$from.index(0);
+      const nextBlock = state.doc.maybeChild(index + 1);
+      // Code below: move into it rather than pulling the code into this line.
+      if (nextBlock?.type.name === "codeBlock" && !hiddenIndices(state).has(index + 1) && cur.node.type.name !== "codeBlock") {
+        editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos + cur.node.nodeSize + 1)).scrollIntoView());
+        return true;
+      }
+      // Deleting into an atom below (an image, a divider…) selects it first instead of removing it.
+      if (nextBlock?.isAtom && !hiddenIndices(state).has(index + 1)) {
+        if (cur.empty && cur.node.type.name === "paragraph") return deleteBlocks(editor, [index], false);
+        editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos + cur.node.nodeSize)).scrollIntoView());
+        return true;
+      }
+      // At the end of a collapsed toggle the next block in the document is hidden: join the next visible
+      // line (when it has nothing nested under it) instead of pulling hidden text into the toggle.
+      if (cur.node.type.name !== "toggle" || !cur.node.attrs.collapsed) return false;
+      const target = neighbourIndex(state, index, 1);
+      if (target === null) return true;
+      let tPos = 0;
+      for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
+      const tNode = state.doc.child(target);
+      const after = state.doc.maybeChild(target + 1);
+      if (!tNode.isTextblock || tNode.type.name === "codeBlock" || (after && Number(after.attrs.depth ?? 0) > Number(tNode.attrs.depth ?? 0))) return true;
+      const end = state.selection.from;
+      const tr = state.tr.delete(tPos, tPos + tNode.nodeSize).insert(end, tNode.content);
+      tr.setSelection(TextSelection.create(tr.doc, end));
+      editor.view.dispatch(tr.scrollIntoView());
+      return true;
+    }
+
+    /** Ctrl+K (Mac): delete to the end of the line; at the end, join the next line like Delete does. */
+    function killToLineEnd(): boolean {
+      const { state } = editor;
+      const { $from, empty } = state.selection;
+      if (!empty || $from.depth < 1 || !$from.parent.isTextblock) return false;
+      if ($from.parentOffset < $from.parent.content.size) {
+        editor.view.dispatch(state.tr.delete($from.pos, $from.end()).scrollIntoView());
+        return true;
+      }
+      return del() || editor.commands.joinForward();
+    }
   },
 });
 
@@ -663,7 +798,9 @@ function markRule(find: RegExp, mark: string) {
       const start = range.from + (match[0].length - full.length);
       const markType = state.schema.marks[mark]!;
       const tr = state.tr;
-      tr.replaceWith(start, range.to, state.schema.text(inner, [markType.create()]));
+      // The text keeps the formatting it already had (italic, a colour, a link) and gains this one.
+      const existing = state.doc.resolve(Math.min(start + 1, range.to)).marks();
+      tr.replaceWith(start, range.to, state.schema.text(inner, markType.create().addToSet(existing)));
       tr.removeStoredMark(markType);
     },
   });
@@ -697,12 +834,13 @@ export const Triggers = Extension.create<{ onChange: (t: TriggerState | null) =>
             if (sel.empty && sel.$from.parent.isTextblock && sel.$from.parent.type.name !== "codeBlock") {
               const text = sel.$from.parent.textBetween(0, sel.$from.parentOffset, "\n", "￼");
               const start = sel.from - sel.$from.parentOffset;
-              let m = /(?:^|\s)\/([\w-]{0,24})$/.exec(text);
-              if (m) found = { kind: "slash", query: m[1]!, from: start + text.length - m[1]!.length - 1, to: sel.from };
+              // "/" and "@" also in their full-width forms (Japanese and Chinese keyboards); queries in any script.
+              let m = /(?:^|\s)[/／]([\p{L}\p{N}_-]{0,24})$/u.exec(text);
+              if (m) found = { kind: "slash", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
               m = /\[\[([^\]\n]{0,60})$/.exec(text);
               if (m) found = { kind: "page", query: m[1]!, from: start + text.length - m[1]!.length - 2, to: sel.from };
-              m = /(?:^|\s)@([\w .-]{0,30})$/.exec(text);
-              if (m && !found) found = { kind: "mention", query: m[1]!, from: start + text.length - m[1]!.length - 1, to: sel.from };
+              m = /(?:^|\s)[@＠]([\p{L}\p{M}\p{N}' .-]{0,30})$/u.exec(text);
+              if (m && !found) found = { kind: "mention", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
             }
             const key = found ? `${found.kind}:${found.from}:${found.query}` : null;
             if (key !== last) {

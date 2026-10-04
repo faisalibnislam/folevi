@@ -54,9 +54,21 @@ export function AccountGate() {
   useEffect(() => {
     if (phase !== "signed_out") return;
     const go = () => window.location.replace(`/signin?notice=session_ended&returnTo=${encodeURIComponent(currentPath())}`);
-    // The browser still holds the dead session's cookie: drop it (keeping this device's notes), or the
-    // sign-in and sign-up pages would take it for a live session and send the browser straight back here.
-    void authClient.signOut().catch(() => undefined).finally(go);
+    const withTimeout = <T,>(p: Promise<T>) => Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), 3000))]);
+    void (async () => {
+      // Check once more before acting: a server hiccup (5xx, rate limit) also ends up here, and must never
+      // sign anyone out. Only a definite "no session" drops the dead cookie (keeping this device's notes),
+      // so the sign-in and sign-up pages don't take it for a live session and bounce back here.
+      const check = await withTimeout(authClient.getSession({ query: { disableCookieCache: true } }).catch(() => null));
+      if (check?.data?.session) {
+        window.location.reload();
+        return;
+      }
+      const status = (check?.error as { status?: number } | null | undefined)?.status;
+      const definite = check !== null && (!check.error || status === 401 || status === 403);
+      if (definite) await withTimeout(authClient.signOut().catch(() => undefined));
+      go();
+    })();
   }, [phase]);
 
   // The token's session is gone. Changing the password (or finishing a re-authentication) replaces the

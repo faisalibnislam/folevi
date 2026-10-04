@@ -266,7 +266,8 @@ export const Callout = Node.create({
   content: "inline*",
   defining: true,
   addAttributes: () => blockAttrs({ tone: { ...plain("tone"), default: "note" }, icon: plain("icon") }),
-  parseHTML: () => [{ tag: 'div[data-block="callout"]' }, { tag: 'aside[data-block="callout"]' }, { tag: "aside" }],
+  // Folevi's own callouts: the text is in .fb-content (the icon beside it isn't part of it).
+  parseHTML: () => [{ tag: 'div[data-block="callout"]', contentElement: ".fb-content" }, { tag: 'aside[data-block="callout"]', contentElement: ".fb-content" }, { tag: "aside" }],
   // A note, not a complementary landmark (an <aside> per callout would clutter landmark navigation).
   renderHTML: ({ node, HTMLAttributes }) => [
     "div",
@@ -488,7 +489,10 @@ export const Mention = Node.create({
   inline: true,
   atom: true,
   selectable: true,
-  addAttributes: () => ({ userId: { default: null }, label: { default: "" } }),
+  addAttributes: () => ({
+    userId: { default: null, parseHTML: (el) => el.getAttribute("data-mention") },
+    label: { default: "", parseHTML: (el) => (el.textContent ?? "").replace(/^@/, "") },
+  }),
   parseHTML: () => [{ tag: "span[data-mention]" }],
   renderHTML: ({ node }) => ["span", { "data-mention": node.attrs.userId, class: "fb-mention" }, `@${node.attrs.label}`],
   renderText: ({ node }) => `@${node.attrs.label}`,
@@ -517,7 +521,8 @@ export const PageLink = Node.create({
   atom: true,
   selectable: true,
   addAttributes: () => ({ documentId: { default: null }, label: { default: "Untitled" } }),
-  parseHTML: () => [{ tag: "a[data-page-link]", getAttrs: (el) => ({ documentId: (el as HTMLElement).getAttribute("data-page-link"), label: (el as HTMLElement).textContent }) }],
+  // Ahead of the link mark's rule for <a href>, so a copied page link pastes as a page link.
+  parseHTML: () => [{ tag: "a[data-page-link]", priority: 60, getAttrs: (el) => ({ documentId: (el as HTMLElement).getAttribute("data-page-link"), label: (el as HTMLElement).textContent }) }],
   renderHTML: ({ node }) => ["a", { "data-page-link": node.attrs.documentId, href: `/d/${node.attrs.documentId}`, class: "fb-page-link" }, node.attrs.label || "Untitled"],
   renderText: ({ node }) => `[[${node.attrs.label}]]`,
 });

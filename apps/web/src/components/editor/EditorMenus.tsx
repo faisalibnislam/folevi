@@ -721,6 +721,8 @@ export function EditorMenus({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      // Keys that confirm or move an input method's composition belong to it, not to the menu.
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
         e.stopImmediatePropagation();

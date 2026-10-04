@@ -11,7 +11,7 @@ import { enqueueUpload } from "@/lib/sync/uploads";
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
 import { blocksToDoc, diffBlocks, docToBlocks } from "./convert";
-import { clipboardBlocks, insertPastedBlocks } from "./paste";
+import { clipboardBlocks, insertPastedBlocks, prepareForPaste } from "./paste";
 import { remoteTransaction } from "./remoteApply";
 import { pasteAddress } from "./autolink";
 import { EditorMenus } from "./EditorMenus";
@@ -125,7 +125,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         "aria-label": "Document body",
         spellcheck: "true",
       },
-      handlePaste: (view, event) => {
+      handlePaste: (view, event, slice) => {
+        prepareForPaste(view, slice);
         const files = [...(event.clipboardData?.files ?? [])];
         if (files.length && editable) {
           event.preventDefault();

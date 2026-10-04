@@ -46,6 +46,20 @@ export interface Account {
   backupCodes: string[];
 }
 
+/** Picks `date` (YYYY-MM-DD) in a Folevi calendar shown inside `scope`, moving month by month to it. */
+export async function pickDate(scope: Locator, date: string) {
+  for (let i = 0; i < 48; i++) {
+    const cell = scope.locator(`[data-date="${date}"]`);
+    if (await cell.count()) {
+      await cell.first().click();
+      return;
+    }
+    const middle = (await scope.locator("[data-date]").nth(15).getAttribute("data-date")) ?? "";
+    await scope.getByRole("button", { name: date < middle ? "Previous month" : "Next month" }).click();
+  }
+  throw new Error(`no ${date} in the calendar`);
+}
+
 /** Latest identity email of a kind for an address, from the development mailbox (non-production only). */
 export async function mailboxLink(request: APIRequestContext, email: string, key: "auth_verify_email" | "auth_password_reset"): Promise<string> {
   for (let i = 0; i < 40; i++) {

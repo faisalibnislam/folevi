@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createWorkspace, newPerson, showFolders, switchTo } from "./helpers";
+import { createWorkspace, newPerson, pickDate, showFolders, switchTo } from "./helpers";
 
 test("quick add a task with a due date, see it in Today and the calendar, complete it", async ({ browser }) => {
   const { page } = await newPerson(browser, "Task Tester");
@@ -12,7 +12,8 @@ test("quick add a task with a due date, see it in Today and the calendar, comple
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
-  await dialog.getByLabel("Due date").fill(today);
+  await dialog.getByRole("button", { name: /^Due date/ }).click();
+  await pickDate(page.getByRole("dialog", { name: "Choose due date" }), today);
   await dialog.getByRole("button", { name: "Add task" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Task added" })).toBeVisible();
   const row = page.getByRole("listitem").filter({ hasText: "Water the tomatoes" });
@@ -42,7 +43,8 @@ test("tasks follow the current context: a workspace's tasks aren't listed in Per
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
-  await dialog.getByLabel("Due date").fill(today);
+  await dialog.getByRole("button", { name: /^Due date/ }).click();
+  await pickDate(page.getByRole("dialog", { name: "Choose due date" }), today);
   await dialog.getByRole("button", { name: "Add task" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Task added" })).toBeVisible();
   const row = page.getByRole("listitem").filter({ hasText: "Order studio chairs" });

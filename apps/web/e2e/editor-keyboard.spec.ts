@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, waitForSaved } from "./helpers";
+import { newPerson, pickDate, waitForSaved } from "./helpers";
 
 const mod = process.platform === "darwin" ? "Meta" : "Control";
 const lineEnd = process.platform === "darwin" ? "Meta+ArrowRight" : "End";
@@ -198,14 +198,12 @@ test.describe("editor keyboard", () => {
     await page.keyboard.type("Due @pick");
     await page.getByRole("option", { name: "Pick a date…" }).click();
     const picker = page.getByRole("dialog", { name: "Insert a date" });
-    await picker.getByLabel("Date").fill("2026-03-14");
-    await picker.getByRole("button", { name: "Insert" }).click();
+    await pickDate(picker, "2026-03-14");
     const body = page.getByRole("textbox", { name: "Document body" });
     await expect(body.locator("time[data-date]")).toHaveAttribute("datetime", "2026-03-14");
     await body.locator("time[data-date]").click();
     const change = page.getByRole("dialog", { name: "Change date" });
-    await change.getByLabel("Date").fill("2026-04-01");
-    await change.getByRole("button", { name: "Done" }).click();
+    await pickDate(change, "2026-04-01");
     await expect(body.locator("time[data-date]")).toHaveAttribute("datetime", "2026-04-01");
 
     await page.keyboard.press(lineEnd);

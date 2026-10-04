@@ -1094,7 +1094,9 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   useEffect(() => {
     if (focusFirst.current && state && placed && ref.current) {
       focusFirst.current = false;
-      ref.current.querySelector<HTMLElement>("button, input")?.focus();
+      // In the colours row the first colour, not the Back button.
+      const first = mode === "colors" ? ref.current.querySelector<HTMLElement>('button[aria-label^="Text color"]') : null;
+      (first ?? ref.current.querySelector<HTMLElement>("button, input"))?.focus();
     }
   }, [state, mode, placed]);
 

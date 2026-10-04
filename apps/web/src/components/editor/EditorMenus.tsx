@@ -478,6 +478,9 @@ export function EditorMenus({
     return () => dom.removeEventListener("folevi:insert", on);
   }, [editor, special, editable]);
 
+  // Where the last press happened (a press and release in different places is a drag that selects text).
+  const pressedAt = useRef<{ x: number; y: number } | null>(null);
+
   // ---------------------------------------------------------------- inline page links & dates
   // Plain click opens a [[page link]] in the app; Alt/⌘/Ctrl/Shift-click or middle-click opens a new tab.
   // Clicking a date (or Enter on a selected one) opens the date picker to change it.
@@ -498,12 +501,15 @@ export function EditorMenus({
         openLink(link, e.altKey || e.metaKey || e.ctrlKey || e.shiftKey);
         return;
       }
-      // Web links: ⌘/Ctrl-click opens them (a plain click places the caret to edit); read-only notes open on click.
+      // Web links open in a new tab on click (right-click › Edit link… changes them). Shift-click extends the
+      // selection, and dragging across a link selects text, as usual.
       const web = target?.closest<HTMLAnchorElement>("a.fb-link");
       if (web && dom.contains(web)) {
         e.preventDefault();
         const href = sanitizeHref(web.getAttribute("href") ?? "");
-        if (href && (e.metaKey || e.ctrlKey || !editable)) window.open(href, "_blank", "noopener,noreferrer");
+        const down = pressedAt.current;
+        const dragged = down !== null && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4;
+        if (href && !e.shiftKey && !e.altKey && !dragged) window.open(href, "_blank", "noopener,noreferrer");
         return;
       }
       const time = target?.closest<HTMLElement>("time[data-date]");
@@ -540,10 +546,15 @@ export function EditorMenus({
         setDatePicker({ mode: "edit", pos: sel.from });
       }
     };
+    const onDown = (e: MouseEvent) => {
+      pressedAt.current = { x: e.clientX, y: e.clientY };
+    };
+    dom.addEventListener("mousedown", onDown, true);
     dom.addEventListener("click", onClick);
     dom.addEventListener("auxclick", onAux);
     dom.addEventListener("keydown", onKey, true);
     return () => {
+      dom.removeEventListener("mousedown", onDown, true);
       dom.removeEventListener("click", onClick);
       dom.removeEventListener("auxclick", onAux);
       dom.removeEventListener("keydown", onKey, true);

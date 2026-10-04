@@ -13,6 +13,7 @@ import { editorExtensions } from "./editorExtensions";
 import { blocksToDoc, diffBlocks, docToBlocks } from "./convert";
 import { clipboardBlocks, insertPastedBlocks } from "./paste";
 import { remoteTransaction } from "./remoteApply";
+import { pasteAddress } from "./autolink";
 import { EditorMenus } from "./EditorMenus";
 import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands";
 import { closeHistory } from "@tiptap/pm/history";
@@ -129,6 +130,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         if (files.length && editable) {
           event.preventDefault();
           void insertFiles(files);
+          return true;
+        }
+        // A plain web address: a link (over the selected text, if any).
+        if (pasteAddress(view, event.clipboardData)) {
+          event.preventDefault();
           return true;
         }
         const blocks = clipboardBlocks(view, event.clipboardData);

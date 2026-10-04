@@ -1,5 +1,6 @@
 "use client";
 
+import { DateField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDownUp, ArrowUpRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, Table2, Trash2, FileText } from "lucide-react";
@@ -316,7 +317,7 @@ function PropertyEditor({
         />
       );
     case "date":
-      return <input type="date" aria-label={label} value={typeof value === "string" ? value : ""} onChange={(e) => void save(e.target.value || null)} className="bg-transparent outline-none" />;
+      return <DateField bare aria-label={label} value={typeof value === "string" ? value : ""} onChange={(v) => void save(v || null)} />;
     case "select":
       return (
         <Select aria-label={label} value={typeof value === "string" ? value : ""} onChange={(e) => void save(e.target.value || null)} className="w-full bg-transparent outline-none">
@@ -758,7 +759,7 @@ function FilterValueEditor({ target, filter, people, onChange }: { target: Filte
         </Select>
       );
     case "date":
-      return <input type="date" aria-label="Value" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value || undefined)} className={cls} />;
+      return <DateField aria-label="Value" value={typeof value === "string" ? value : ""} onChange={(v) => onChange(v || undefined)} />;
     case "number":
       return (
         <input

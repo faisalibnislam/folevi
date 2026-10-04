@@ -95,6 +95,7 @@ import { InlineAi, type InlineAiRequest } from "@/components/ai/InlineAi";
 import { newFormulaAttrs } from "./FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
 import { Select } from "@/components/ui/Select";
+import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
 
 interface MenuItem {
@@ -877,9 +878,8 @@ function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: (
 /** Picks a date to insert, or changes/removes an existing date mention. */
 function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor; anchor: Anchor; mode: { mode: "insert" } | { mode: "edit"; pos: number }; today: string; onClose: () => void }) {
   const current = mode.mode === "edit" ? editor.state.doc.nodeAt(mode.pos) : null;
-  const initial = current?.type.name === "dateMention" ? String(current.attrs.date) : today;
-  const [value, setValue] = useState(initial);
-  const apply = () => {
+  const initial = current?.type.name === "dateMention" ? String(current.attrs.date) : null;
+  const apply = (value: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
     if (mode.mode === "insert") {
       editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: value } }).insertContent(" ").run();
@@ -900,13 +900,9 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
   return (
     <>
       <div className="fixed inset-0 z-40" onMouseDown={onClose} aria-hidden />
-      <Popover anchor={anchor} label={mode.mode === "insert" ? "Insert a date" : "Change date"} width={260} scroll={false}>
-        <form
-          className="grid gap-3 p-2 text-sm"
-          onSubmit={(e) => {
-            e.preventDefault();
-            apply();
-          }}
+      <Popover anchor={anchor} label={mode.mode === "insert" ? "Insert a date" : "Change date"} width={266} scroll={false}>
+        <div
+          className="grid gap-2.5 p-1 text-sm"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.preventDefault();
@@ -915,34 +911,24 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
             }
           }}
         >
-          <label className="grid gap-1">
-            <span className="text-xs text-muted">Date</span>
-            <input type="date" data-autofocus="" required value={value} onChange={(e) => setValue(e.target.value)} className="h-9 ui-input rounded-[6px] px-3" />
-          </label>
-          <div className="flex flex-wrap gap-1.5">
+          <Calendar value={initial} today={today} onPick={apply} autoFocus />
+          <div className="flex flex-wrap items-center gap-1.5">
             {[
               ["Today", today],
               ["Tomorrow", addDays(today, 1)],
               ["Next week", addDays(today, 7)],
             ].map(([label, date]) => (
-              <button key={label} type="button" className="ui-chip ui-raised text-ink" onClick={() => setValue(date!)} aria-pressed={value === date}>
+              <button key={label} type="button" className="ui-chip ui-raised text-ink" onClick={() => apply(date!)} aria-pressed={initial === date}>
                 {label}
               </button>
             ))}
-          </div>
-          <div className="flex items-center justify-between gap-2">
             {mode.mode === "edit" ? (
-              <button type="button" className="ui-btn ui-btn-quiet h-8 px-3 text-xs text-danger" onClick={remove}>
-                Remove date
+              <button type="button" className="ui-btn ui-btn-quiet ml-auto h-7 px-2.5 text-xs text-danger" onClick={remove}>
+                Remove
               </button>
-            ) : (
-              <span />
-            )}
-            <button type="submit" className="ui-btn ui-btn-primary h-8 px-3.5 text-xs">
-              {mode.mode === "insert" ? "Insert" : "Done"}
-            </button>
+            ) : null}
           </div>
-        </form>
+        </div>
       </Popover>
     </>
   );
@@ -1769,8 +1755,6 @@ function TaskDetails({ editor }: { editor: Editor }) {
     setTarget(null);
     editor.commands.focus();
   };
-  const reminder = node.attrs.reminderAt ? new Date(node.attrs.reminderAt as number) : null;
-  const reminderValue = reminder ? new Date(reminder.getTime() - reminder.getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
   return (
     <>
       <div className="fixed inset-0 z-40" onMouseDown={() => setTarget(null)} aria-hidden />
@@ -1788,14 +1772,18 @@ function TaskDetails({ editor }: { editor: Editor }) {
             }
           }}
         >
-          <label className="grid gap-1">
-            <span className="text-xs text-muted">Due date</span>
-            <input type="date" data-autofocus="" value={(node.attrs.dueDate as string) ?? ""} onChange={(e) => set(e.target.value ? { dueDate: e.target.value } : { dueDate: null, dueTime: null })} className="h-8 ui-input rounded-[6px] px-3" />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-xs text-muted">Time (leave empty for all day)</span>
-            <input type="time" disabled={!node.attrs.dueDate} value={(node.attrs.dueTime as string) ?? ""} onChange={(e) => set({ dueTime: e.target.value || null })} className="h-8 ui-input rounded-[6px] px-3 disabled:opacity-50" />
-          </label>
+          <div className="grid gap-1">
+            <span className="text-xs text-muted">Due</span>
+            <span className="grid grid-cols-[1fr_auto] gap-1.5">
+              <DateField
+                autoFocus
+                value={(node.attrs.dueDate as string) ?? ""}
+                onChange={(v) => set(v ? { dueDate: v } : { dueDate: null, dueTime: null })}
+                aria-label="Due date"
+              />
+              <TimeField value={(node.attrs.dueTime as string) ?? ""} onChange={(v) => set({ dueTime: v || null })} disabled={!node.attrs.dueDate} emptyLabel="All day" aria-label="Due time" />
+            </span>
+          </div>
           <label className="grid gap-1">
             <span className="text-xs text-muted">Priority</span>
             <Select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-[6px] px-3">
@@ -1819,10 +1807,10 @@ function TaskDetails({ editor }: { editor: Editor }) {
               </Select>
             </label>
           ) : null}
-          <label className="grid gap-1">
+          <div className="grid gap-1">
             <span className="text-xs text-muted">Reminder</span>
-            <input type="datetime-local" value={reminderValue} onChange={(e) => set({ reminderAt: e.target.value ? new Date(e.target.value).getTime() : null })} className="h-8 ui-input rounded-[6px] px-3" />
-          </label>
+            <DateTimeField value={(node.attrs.reminderAt as number | null) ?? null} onChange={(ts) => set({ reminderAt: ts })} aria-label="Reminder" />
+          </div>
           <div className="flex justify-between">
             <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null })}>
               Clear all

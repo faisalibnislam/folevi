@@ -1,5 +1,6 @@
 "use client";
 
+import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText } from "lucide-react";
@@ -94,15 +95,15 @@ function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc
         className="h-11 w-full ui-input rounded-[6px] px-3 text-[15px] outline-none"
       />
       <div className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="text-sm">
+        <div className="text-sm">
           <span className="block text-muted">Due date</span>
-          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="mt-1 h-9 ui-input rounded-[6px] px-2" />
-        </label>
+          <DateField value={due} onChange={setDue} aria-label="Due date" className="mt-1 w-44" />
+        </div>
         {due ? (
-          <label className="text-sm">
+          <div className="text-sm">
             <span className="block text-muted">Time (optional)</span>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="mt-1 h-9 ui-input rounded-[6px] px-2" />
-          </label>
+            <TimeField value={time} onChange={setTime} emptyLabel="All day" aria-label="Due time" className="mt-1 w-32" />
+          </div>
         ) : null}
         <label className="text-sm">
           <span className="block text-muted">Priority</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useState, type ReactNode } from "react";
 import { CalendarDays, Plus, SlidersHorizontal } from "lucide-react";
@@ -182,15 +183,15 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
           </div>
         </fieldset>
         <div className="flex flex-wrap gap-3">
-          <label className="text-sm">
+          <div className="text-sm">
             <span className="block text-muted">Due date</span>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1 h-9 ui-input rounded-[6px] px-2" />
-          </label>
+            <DateField value={dueDate} onChange={setDueDate} clearable={false} aria-label="Due date" className="mt-1 w-44" />
+          </div>
           {dueDate ? (
-            <label className="text-sm">
+            <div className="text-sm">
               <span className="block text-muted">Time (optional)</span>
-              <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className="mt-1 h-9 ui-input rounded-[6px] px-2" />
-            </label>
+              <TimeField value={dueTime} onChange={setDueTime} emptyLabel="All day" aria-label="Due time" className="mt-1 w-32" />
+            </div>
           ) : null}
           {dueDate ? (
             <Button size="sm" variant="quiet" className="self-end" onClick={() => { setDueDate(""); setDueTime(""); }}>

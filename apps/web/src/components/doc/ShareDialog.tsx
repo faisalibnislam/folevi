@@ -1,5 +1,6 @@
 "use client";
 
+import { DateTimeField, localDateTimeValue } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { Copy, Globe, Lock, Trash2, Users } from "lucide-react";
@@ -214,10 +215,16 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     }
                   }}
                 >
-                  <label className="text-xs">
+                  <div className="text-xs">
                     Expires (optional)
-                    <input type="datetime-local" value={linkForm.expires} onChange={(e) => setLinkForm({ ...linkForm, expires: e.target.value })} className="mt-1 block h-9 w-full ui-input rounded-[6px] px-2" />
-                  </label>
+                    <span className="mt-1 block">
+                      <DateTimeField
+                        value={linkForm.expires ? new Date(linkForm.expires).getTime() : null}
+                        onChange={(ts) => setLinkForm({ ...linkForm, expires: ts ? localDateTimeValue(ts) : "" })}
+                        aria-label="Expiry"
+                      />
+                    </span>
+                  </div>
                   <label className="text-xs">
                     Password (optional, 8+ characters)
                     <input type="password" autoComplete="new-password" minLength={8} value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="mt-1 block h-9 w-full ui-input rounded-[6px] px-2" />

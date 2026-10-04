@@ -2,7 +2,6 @@
 
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
-import { Slice } from "@tiptap/pm/model";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { LIMITS, ulid } from "@folevi/editor-schema";
 import { useMutation } from "convex/react";
@@ -11,9 +10,9 @@ import type { SyncEngine } from "@/lib/sync/engine";
 import { enqueueUpload } from "@/lib/sync/uploads";
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
-import { blockToNode, blocksToDoc, contentKey, diffBlocks, docToBlocks } from "./convert";
-import { flattenTree } from "@folevi/editor-schema";
+import { blocksToDoc, diffBlocks, docToBlocks } from "./convert";
 import { clipboardBlocks, insertPastedBlocks } from "./paste";
+import { remoteTransaction } from "./remoteApply";
 import { EditorMenus } from "./EditorMenus";
 import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands";
 import { closeHistory } from "@tiptap/pm/history";
@@ -202,57 +201,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       return;
     }
     flushLocal(ed);
-    const blocks = engine.documentBlocks(documentId);
-    const desired = flattenTree(blocks);
-    const current: { id: string | null; key: string; depth: number }[] = [];
-    ed.state.doc.forEach((n) => current.push({ id: n.attrs.id as string | null, key: "", depth: Number(n.attrs.depth ?? 0) }));
-    const currentBlocks = docToBlocks(ed.state.doc, new Map(blocks.map((b) => [b.id, b])));
-    const currentById = new Map(currentBlocks.map((b) => [b.id, b]));
-    const sameOrder = desired.length === current.length && desired.every((d, i) => d.block.id === current[i]!.id && d.depth === current[i]!.depth);
-    const tr = ed.state.tr;
-    if (sameOrder) {
-      // Same blocks in the same order: change only what differs inside each block (its attributes, then the
-      // smallest stretch of text), so a caret in an unchanged part of the block stays where it is.
-      let pos = 0;
-      ed.state.doc.forEach((node, _offset, i) => {
-        const want = desired[i]!;
-        const have = currentById.get(want.block.id);
-        if (!have || contentKey(have) !== contentKey(want.block)) {
-          const replacement = ed.schema.nodeFromJSON(blockToNode(want.block, want.depth));
-          if (replacement.type !== node.type || !node.isTextblock) {
-            tr.replaceWith(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize), replacement);
-          } else {
-            if (!node.hasMarkup(replacement.type, replacement.attrs)) tr.setNodeMarkup(tr.mapping.map(pos), undefined, replacement.attrs);
-            const start = node.content.findDiffStart(replacement.content);
-            if (start !== null) {
-              let { a: endA, b: endB } = node.content.findDiffEnd(replacement.content)!;
-              const overlap = start - Math.min(endA, endB);
-              if (overlap > 0) {
-                endA += overlap;
-                endB += overlap;
-              }
-              tr.replace(tr.mapping.map(pos + 1 + start), tr.mapping.map(pos + 1 + endA), new Slice(replacement.content.cut(start, endB), 0, 0));
-            }
-          }
-        }
-        pos += node.nodeSize;
-      });
-    } else {
-      // Structural change: rebuild and restore the cursor by block id + offset.
-      const $from = ed.state.selection.$from;
-      const anchorId = $from.depth >= 1 ? ($from.node(1).attrs.id as string) : null;
-      const anchorOffset = $from.parentOffset;
-      const doc = ed.schema.nodeFromJSON(blocksToDoc(blocks));
-      tr.replaceWith(0, ed.state.doc.content.size, doc.content);
-      if (anchorId) {
-        let target: number | null = null;
-        tr.doc.forEach((n, offset) => {
-          if (n.attrs.id === anchorId) target = offset + 1 + Math.min(anchorOffset, n.content.size);
-        });
-        if (target !== null) tr.setSelection(TextSelection.near(tr.doc.resolve(target)));
-      }
-    }
-    if (!tr.docChanged) return;
+    const tr = remoteTransaction(ed.state, engine.documentBlocks(documentId));
+    if (!tr) return;
     tr.setMeta("remote", true).setMeta("addToHistory", false);
     ed.view.dispatch(tr);
   }, [engine, documentId, flushLocal]);

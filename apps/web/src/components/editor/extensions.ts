@@ -188,7 +188,10 @@ function formatChip(date: string | null, time: string | null, priority: string |
   if (date) {
     const [y, m, d] = date.split("-").map(Number) as [number, number, number];
     s = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-    if (time) s += ` · ${time}`;
+    if (time) {
+      const [h, min] = time.split(":").map(Number) as [number, number];
+      s += ` · ${new Date(Date.UTC(2000, 0, 1, h, min)).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: "UTC" })}`;
+    }
   }
   if (priority && priority !== "none") s += `${s ? " · " : ""}${priority === "high" ? "!!!" : priority === "medium" ? "!!" : "!"}`;
   return s;

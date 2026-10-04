@@ -84,7 +84,8 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
               aria-describedby={hintId}
               onChange={(e) => setDraftLatex(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) {
+                // Tab finishes too (and returns to the note) rather than jumping to the page around it.
+                if (e.key === "Escape" || e.key === "Tab" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) {
                   e.preventDefault();
                   finish();
                 }

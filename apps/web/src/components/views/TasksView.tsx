@@ -185,12 +185,12 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
         <div className="flex flex-wrap gap-3">
           <div className="text-sm">
             <span className="block text-muted">Due date</span>
-            <DateField value={dueDate} onChange={setDueDate} clearable={false} aria-label="Due date" className="mt-1 w-44" />
+            <DateField value={dueDate} onChange={setDueDate} clearable={false} aria-label="Due date" size="lg" className="mt-1 w-44" />
           </div>
           {dueDate ? (
             <div className="text-sm">
               <span className="block text-muted">Time (optional)</span>
-              <TimeField value={dueTime} onChange={setDueTime} emptyLabel="All day" aria-label="Due time" className="mt-1 w-32" />
+              <TimeField value={dueTime} onChange={setDueTime} emptyLabel="All day" aria-label="Due time" size="lg" className="mt-1 w-32" />
             </div>
           ) : null}
           {dueDate ? (

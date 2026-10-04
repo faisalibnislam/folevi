@@ -1,6 +1,6 @@
 // Paste normalization: arbitrary HTML (web pages, Google Docs, Word, other editors) → canonical blocks.
 // Only structure and safe inline formatting survive; scripts, styles and unknown markup are dropped.
-import { SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, plainTextToBlocks, rankSequence, sanitizeHref, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
+import { SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { blockToNode } from "./convert";
@@ -16,37 +16,56 @@ interface Draft {
 const BLOCK_TAGS = new Set(["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "BLOCKQUOTE", "PRE", "HR", "UL", "OL", "TABLE", "IMG", "FIGURE", "SECTION", "ARTICLE", "HEADER", "FOOTER", "ASIDE", "DETAILS"]);
 const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "IFRAME", "OBJECT", "EMBED", "SVG", "CANVAS", "BUTTON", "INPUT", "SELECT", "TEXTAREA", "META", "LINK", "HEAD", "TITLE"]);
 
-function inlineOf(el: Node, marks: Mark[] = []): InlineNode[] {
+/** The marks an inline element adds (bold, italic, a link…), on top of `marks`. */
+function marksFor(e: HTMLElement, marks: Mark[]): Mark[] {
+  const next = [...marks];
+  const style = e.getAttribute("style") ?? "";
+  if (e.tagName === "STRONG" || e.tagName === "B" || /font-weight:\s*(bold|[6-9]00)/.test(style)) next.push({ type: "bold" });
+  if (e.tagName === "EM" || e.tagName === "I" || /font-style:\s*italic/.test(style)) next.push({ type: "italic" });
+  if (e.tagName === "U" || /text-decoration[^;]*underline/.test(style)) next.push({ type: "underline" });
+  if (e.tagName === "S" || e.tagName === "DEL" || e.tagName === "STRIKE" || /line-through/.test(style)) next.push({ type: "strike" });
+  if (e.tagName === "CODE" || e.tagName === "KBD" || e.tagName === "SAMP") next.push({ type: "code" });
+  if (e.tagName === "MARK") next.push({ type: "highlight", value: "yellow" });
+  if (e.tagName === "A") {
+    const href = sanitizeHref(e.getAttribute("href") ?? "");
+    if (href && !href.startsWith("#")) next.push({ type: "link", href });
+  }
+  // Google Docs wraps a whole paste in <b style="font-weight:normal">: that isn't bold.
+  if (e.tagName === "B" && /font-weight:\s*(normal|[1-4]00)/.test(style)) next.splice(next.findIndex((m) => m.type === "bold"), 1);
+  return next;
+}
+
+/**
+ * The text of some nodes with their formatting. Block elements inside are skipped, or with `flatten`
+ * (a table cell) read too, separated by spaces.
+ */
+function inlineOfNodes(nodes: Iterable<ChildNode>, marks: Mark[] = [], flatten = false): InlineNode[] {
   const out: InlineNode[] = [];
-  el.childNodes.forEach((child) => {
+  for (const child of nodes) {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = (child.textContent ?? "").replace(/\s+/g, " ");
       if (text) out.push(marks.length ? { type: "text", text, marks: [...marks] } : { type: "text", text });
-      return;
+      continue;
     }
-    if (child.nodeType !== Node.ELEMENT_NODE) return;
+    if (child.nodeType !== Node.ELEMENT_NODE) continue;
     const e = child as HTMLElement;
-    if (SKIP.has(e.tagName) || BLOCK_TAGS.has(e.tagName)) return;
+    if (SKIP.has(e.tagName) || e.tagName === "IMG") continue;
+    if (BLOCK_TAGS.has(e.tagName)) {
+      if (!flatten) continue;
+      if (out.length) out.push({ type: "text", text: " " });
+      out.push(...inlineOfNodes(e.childNodes, marks, true));
+      continue;
+    }
     if (e.tagName === "BR") {
       out.push({ type: "text", text: "\n" });
-      return;
+      continue;
     }
-    const next = [...marks];
-    const style = e.getAttribute("style") ?? "";
-    if (e.tagName === "STRONG" || e.tagName === "B" || /font-weight:\s*(bold|[6-9]00)/.test(style)) next.push({ type: "bold" });
-    if (e.tagName === "EM" || e.tagName === "I" || /font-style:\s*italic/.test(style)) next.push({ type: "italic" });
-    if (e.tagName === "U" || /text-decoration[^;]*underline/.test(style)) next.push({ type: "underline" });
-    if (e.tagName === "S" || e.tagName === "DEL" || e.tagName === "STRIKE" || /line-through/.test(style)) next.push({ type: "strike" });
-    if (e.tagName === "CODE" || e.tagName === "KBD" || e.tagName === "SAMP") next.push({ type: "code" });
-    if (e.tagName === "MARK") next.push({ type: "highlight", value: "yellow" });
-    if (e.tagName === "A") {
-      const href = sanitizeHref(e.getAttribute("href") ?? "");
-      if (href && !href.startsWith("#")) next.push({ type: "link", href });
-    }
-    out.push(...inlineOf(e, next));
-  });
+    out.push(...inlineOfNodes(e.childNodes, marksFor(e, marks), flatten));
+  }
   return out;
 }
+
+const inlineOf = (el: Node, marks: Mark[] = [], flatten = false) => inlineOfNodes(el.childNodes, marks, flatten);
 
 function clean(nodes: InlineNode[]): InlineNode[] {
   const normalized = normalizeInline(nodes);
@@ -58,88 +77,132 @@ function clean(nodes: InlineNode[]): InlineNode[] {
   return normalizeInline(normalized);
 }
 
-function walk(el: Element, depth: number, out: Draft[], listType: "bulleted" | "numbered" | null = null): void {
-  el.childNodes.forEach((child) => {
+const BLOCK_SELECTOR = [...BLOCK_TAGS].filter((t) => t !== "IMG").join(",");
+
+/** Images inside inline content (a linked picture, a picture in a paragraph) become image blocks. */
+function imagesIn(nodes: Iterable<ChildNode>, depth: number, out: Draft[]) {
+  for (const n of nodes) {
+    if (n.nodeType !== Node.ELEMENT_NODE) continue;
+    const e = n as HTMLElement;
+    const imgs = e.tagName === "IMG" ? [e] : [...e.querySelectorAll("img")];
+    for (const img of imgs) {
+      const src = img.getAttribute("src") ?? "";
+      if (/^https:\/\//i.test(src)) out.push({ type: "image", depth, text: [], props: { url: src, alt: img.getAttribute("alt") ?? "", caption: "" } });
+    }
+  }
+}
+
+function walk(el: Element, depth: number, out: Draft[], listType: "bulleted" | "numbered" | null = null, marks: Mark[] = []): void {
+  walkNodes([...el.childNodes], depth, out, listType, marks);
+}
+
+/** Consecutive text and inline elements form one paragraph; block elements become blocks. */
+function walkNodes(nodes: ChildNode[], depth: number, out: Draft[], listType: "bulleted" | "numbered" | null, marks: Mark[]): void {
+  let run: ChildNode[] = [];
+  const flush = () => {
+    if (!run.length) return;
+    const text = clean(inlineOfNodes(run, marks));
+    if (text.length) out.push({ type: "paragraph", depth, text, props: {} });
+    imagesIn(run, depth, out);
+    run = [];
+  };
+  for (const child of nodes) {
     if (child.nodeType === Node.TEXT_NODE) {
-      const text = (child.textContent ?? "").trim();
-      if (text) out.push({ type: "paragraph", depth, text: [{ type: "text", text }], props: {} });
+      run.push(child);
+      continue;
+    }
+    if (child.nodeType !== Node.ELEMENT_NODE) continue;
+    const e = child as HTMLElement;
+    if (SKIP.has(e.tagName)) continue;
+    const isBlock = BLOCK_TAGS.has(e.tagName) && e.tagName !== "IMG";
+    if (!isBlock && e.tagName !== "IMG" && !e.querySelector(BLOCK_SELECTOR)) {
+      run.push(child);
+      continue;
+    }
+    flush();
+    if (!isBlock && e.tagName !== "IMG") {
+      // An inline element wrapping blocks (a link around a card, <b> around paragraphs): its marks apply inside.
+      walk(e, depth, out, listType, marksFor(e, marks));
+      continue;
+    }
+    block(e, depth, out, listType, marks);
+  }
+  flush();
+}
+
+function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted" | "numbered" | null, marks: Mark[]): void {
+  switch (e.tagName) {
+    case "H1":
+    case "H2":
+    case "H3":
+    case "H4":
+    case "H5":
+    case "H6": {
+      const text = clean(inlineOf(e, marks));
+      if (text.length) out.push({ type: "heading", depth: 0, text, props: { level: Math.min(3, Number(e.tagName[1])) } });
       return;
     }
-    if (child.nodeType !== Node.ELEMENT_NODE) return;
-    const e = child as HTMLElement;
-    if (SKIP.has(e.tagName)) return;
-    switch (e.tagName) {
-      case "H1":
-      case "H2":
-      case "H3":
-      case "H4":
-      case "H5":
-      case "H6": {
-        const text = clean(inlineOf(e));
-        if (text.length) out.push({ type: "heading", depth: 0, text, props: { level: Math.min(3, Number(e.tagName[1])) } });
-        return;
-      }
-      case "P": {
-        const text = clean(inlineOf(e));
-        if (text.length) out.push({ type: "paragraph", depth, text, props: {} });
-        return;
-      }
-      case "UL":
-      case "OL":
-        walk(e, listType ? depth + 1 : depth, out, e.tagName === "OL" ? "numbered" : "bulleted");
-        return;
-      case "LI": {
-        const checkbox = e.querySelector(":scope > input[type=checkbox], :scope > p > input[type=checkbox]") as HTMLInputElement | null;
-        const text = clean(inlineOf(e));
-        const nested = [...e.children].filter((c) => c.tagName === "UL" || c.tagName === "OL" || c.tagName === "P");
-        let inline = text;
-        if (!inline.length) {
-          const p = nested.find((n) => n.tagName === "P");
-          if (p) inline = clean(inlineOf(p));
-        }
-        const type = checkbox || e.getAttribute("data-checked") !== null || /task-list-item|checklist/.test(e.className) ? "todo" : (listType ?? "bulleted");
-        const props = type === "todo" ? { checked: Boolean(checkbox?.checked) || e.getAttribute("data-checked") === "true" } : {};
-        out.push({ type, depth, text: inline, props });
-        for (const n of nested) if (n.tagName !== "P") walk(n, depth + 1, out, n.tagName === "OL" ? "numbered" : "bulleted");
-        return;
-      }
-      case "BLOCKQUOTE": {
-        const text = clean(inlineOf(e));
-        if (text.length) out.push({ type: "quote", depth, text, props: {} });
-        else walk(e, depth, out);
-        return;
-      }
-      case "PRE": {
-        const code = e.textContent ?? "";
-        const cls = e.querySelector("code")?.className ?? "";
-        const lang = normalizeLanguage(/language-([\w+#-]+)/.exec(cls)?.[1] ?? "plaintext");
-        out.push({ type: "code", depth: 0, text: [], props: { language: lang, code: code.replace(/\n$/, "") } });
-        return;
-      }
-      case "HR":
-        out.push({ type: "divider", depth: 0, text: [], props: {} });
-        return;
-      case "IMG": {
-        const src = e.getAttribute("src") ?? "";
-        if (/^https:\/\//i.test(src)) out.push({ type: "image", depth, text: [], props: { url: src, alt: e.getAttribute("alt") ?? "", caption: "" } });
-        return;
-      }
-      case "TABLE": {
-        const rows = [...e.querySelectorAll("tr")].slice(0, 200).map((tr) => [...tr.querySelectorAll("th,td")].slice(0, 20).map((c) => clean(inlineOf(c))));
-        const width = Math.max(1, ...rows.map((r) => r.length));
-        if (rows.length) out.push({ type: "table", depth: 0, text: [], props: { headerRow: Boolean(e.querySelector("th")), rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]) } });
-        return;
-      }
-      default: {
-        if ([...e.children].some((c) => BLOCK_TAGS.has(c.tagName))) {
-          walk(e, depth, out, listType);
-          return;
-        }
-        const text = clean(inlineOf(e));
-        if (text.length) out.push({ type: "paragraph", depth, text, props: {} });
-      }
+    case "P": {
+      const text = clean(inlineOf(e, marks));
+      if (text.length) out.push({ type: "paragraph", depth, text, props: {} });
+      imagesIn(e.childNodes, depth, out);
+      return;
     }
-  });
+    case "UL":
+    case "OL":
+      walk(e, listType ? depth + 1 : depth, out, e.tagName === "OL" ? "numbered" : "bulleted", marks);
+      return;
+    case "LI": {
+      const checkbox = e.querySelector(":scope > input[type=checkbox], :scope > p > input[type=checkbox], :scope > label > input[type=checkbox]") as HTMLInputElement | null;
+      let inline = clean(inlineOf(e, marks));
+      // Block children: the first one is the item's text when it has none of its own; the rest nest under it.
+      const kids = [...e.children].filter((c) => BLOCK_TAGS.has(c.tagName) && c.tagName !== "UL" && c.tagName !== "OL");
+      let rest = kids;
+      if (!inline.length && kids.length) {
+        inline = clean(inlineOf(kids[0]!, marks, true));
+        rest = kids.slice(1);
+      }
+      const type = checkbox || e.getAttribute("data-checked") !== null || /task-list-item|checklist/.test(e.className) ? "todo" : (listType ?? "bulleted");
+      const props = type === "todo" ? { checked: Boolean(checkbox?.checked) || e.getAttribute("data-checked") === "true" } : {};
+      out.push({ type, depth, text: inline, props });
+      for (const k of rest) block(k as HTMLElement, depth + 1, out, null, marks);
+      for (const n of [...e.children]) if (n.tagName === "UL" || n.tagName === "OL") walk(n, depth + 1, out, n.tagName === "OL" ? "numbered" : "bulleted", marks);
+      return;
+    }
+    case "BLOCKQUOTE": {
+      if (!e.querySelector(BLOCK_SELECTOR)) {
+        const text = clean(inlineOf(e, marks));
+        if (text.length) out.push({ type: "quote", depth, text, props: {} });
+        return;
+      }
+      // A quote of several paragraphs: each paragraph is a quote line.
+      const inner: Draft[] = [];
+      walk(e, depth, inner, null, marks);
+      for (const d of inner) out.push(d.type === "paragraph" ? { ...d, type: "quote" } : d);
+      return;
+    }
+    case "PRE": {
+      const code = e.textContent ?? "";
+      const cls = e.querySelector("code")?.className ?? "";
+      const lang = normalizeLanguage(/language-([\w+#-]+)/.exec(cls)?.[1] ?? "plaintext");
+      out.push({ type: "code", depth: 0, text: [], props: { language: lang, code: code.replace(/\n$/, "") } });
+      return;
+    }
+    case "HR":
+      out.push({ type: "divider", depth: 0, text: [], props: {} });
+      return;
+    case "IMG":
+      imagesIn([e], depth, out);
+      return;
+    case "TABLE": {
+      const rows = [...e.querySelectorAll("tr")].slice(0, 200).map((tr) => [...tr.querySelectorAll("th,td")].slice(0, 20).map((c) => clean(inlineOf(c, marks, true))));
+      const width = Math.max(1, ...rows.map((r) => r.length));
+      if (rows.length) out.push({ type: "table", depth: 0, text: [], props: { headerRow: Boolean(e.querySelector("th")), rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]) } });
+      return;
+    }
+    default:
+      walk(e, depth, out, listType, marks);
+  }
 }
 
 export function htmlToBlocks(html: string): WireBlock[] {
@@ -169,6 +232,13 @@ export function htmlToBlocks(html: string): WireBlock[] {
   return blocks;
 }
 
+/** Plain text: one line per paragraph (blank lines kept, trailing ones dropped). */
+function linesToBlocks(text: string): WireBlock[] {
+  const lines = text.replace(/\r\n?/g, "\n").replace(/\n+$/, "").split("\n");
+  const ranks = rankSequence(lines.length);
+  return lines.map((line, i) => ({ id: ulid(), type: "paragraph", parentId: null, rank: ranks[i]!, schemaVersion: SCHEMA_VERSION, text: line ? [{ type: "text", text: line }] : [], props: {} }));
+}
+
 function looksLikeMarkdown(text: string): boolean {
   return /^(#{1,6} |[-*+] |\d+[.)] |> |```|\[[ x]\] |\|.*\|)/m.test(text) || /\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)/.test(text);
 }
@@ -183,9 +253,12 @@ export function clipboardBlocks(view: EditorView, data: DataTransfer | null): Wi
   const html = data.getData("text/html");
   const text = data.getData("text/plain");
   let blocks: WireBlock[] | null = null;
-  if (html && !html.includes("data-pm-slice")) blocks = htmlToBlocks(html);
+  // Folevi's own copies (ProseMirror HTML with Folevi blocks) paste as they are; any other HTML, including
+  // other ProseMirror editors', is normalised.
+  const ours = html.includes("data-pm-slice") && /data-block="/.test(html);
+  if (html && !ours) blocks = htmlToBlocks(html);
   else if (!html && text && (/\n/.test(text) || /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m.test(text))) {
-    blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false }).blocks : plainTextToBlocks(text);
+    blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false }).blocks : linesToBlocks(text);
   }
   return blocks?.length ? blocks : null;
 }
@@ -201,9 +274,23 @@ export function insertPastedBlocks(view: EditorView, blocks: WireBlock[]): void 
   if (!tr.selection.empty) tr.deleteSelection();
   const $from = tr.selection.$from;
   const flat = flattenTree(blocks);
-  const baseDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
-  const nodes = flat.map(({ block, depth }) => schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
+  let baseDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
   const inText = $from.depth >= 1 && $from.parent.isTextblock;
+  // At the end of a line with nested blocks: like Enter, the pasted blocks become its first nested lines,
+  // or (a collapsed toggle) go after its hidden blocks.
+  let afterHidden: number | null = null;
+  if (inText && $from.parentOffset === $from.parent.content.size && $from.parent.content.size > 0) {
+    const index = $from.index(0);
+    const next = tr.doc.maybeChild(index + 1);
+    if (next && Number(next.attrs.depth ?? 0) > baseDepth) {
+      if ($from.parent.type.name === "toggle" && $from.parent.attrs.collapsed) {
+        let end = $from.after(1);
+        for (let i = index + 1; i < tr.doc.childCount && Number(tr.doc.child(i).attrs.depth ?? 0) > baseDepth; i++) end += tr.doc.child(i).nodeSize;
+        afterHidden = end;
+      } else baseDepth += 1;
+    }
+  }
+  const nodes = flat.map(({ block, depth }) => schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
   if (inText && nodes.length === 1 && nodes[0]!.type.name === "paragraph" && $from.parent.type.name !== "codeBlock") {
     // One plain paragraph: its text (with its formatting) goes into the current line.
     tr.insert($from.pos, nodes[0]!.content);
@@ -220,7 +307,7 @@ export function insertPastedBlocks(view: EditorView, blocks: WireBlock[]): void 
   } else if ($from.parentOffset === 0) {
     at = $from.before(1);
   } else if ($from.parentOffset === $from.parent.content.size) {
-    at = $from.after(1);
+    at = afterHidden ?? $from.after(1);
   } else {
     // Split the line at the caret; the second half keeps the block's type on a new line.
     tr.split($from.pos);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPerson, waitForSaved, pick } from "./helpers";
+import { newPerson, waitForSaved, pick, pickDate } from "./helpers";
 
 test("collections: inline names, typed filters (option and date pickers), persistent view, confirmed deletes", async ({ browser }) => {
   const { page } = await newPerson(browser, "Collector");
@@ -32,7 +32,8 @@ test("collections: inline names, typed filters (option and date pickers), persis
   await expect(coll.getByRole("combobox", { name: "Status for Dune" })).toBeVisible();
 
   await pick(coll.getByRole("combobox", { name: "Status for Middlemarch" }), "In progress");
-  await coll.getByLabel("Date for Dune").fill("2026-10-05");
+  await coll.getByRole("button", { name: /^Date for Dune/ }).click();
+  await pickDate(page.getByRole("dialog", { name: "Choose date for dune" }), "2026-10-05");
 
   // Filter by a select option (picked from the options, not typed).
   await coll.getByRole("button", { name: /View settings/ }).click();
@@ -50,7 +51,8 @@ test("collections: inline names, typed filters (option and date pickers), persis
   await coll.getByRole("button", { name: /View settings/ }).click();
   await pick(filter.getByLabel("Property"), "Date");
   await pick(filter.getByLabel("Condition"), "is after");
-  await filter.getByLabel("Value").fill("2026-10-01");
+  await filter.getByRole("button", { name: /^Value/ }).click();
+  await pickDate(page.getByRole("dialog", { name: "Choose value" }), "2026-10-01");
   await settings.getByRole("button", { name: "Close" }).click();
   await expect(coll.getByRole("textbox", { name: "Row name" })).toHaveCount(1);
   await expect(coll.getByRole("textbox", { name: "Row name" })).toHaveValue("Dune");

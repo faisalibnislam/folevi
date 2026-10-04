@@ -127,6 +127,7 @@ function Popover({
   onKeyDown,
   popRef,
   tall = false,
+  follow,
 }: {
   anchor: Anchor | null;
   children: React.ReactNode;
@@ -138,9 +139,30 @@ function Popover({
   popRef?: React.RefObject<HTMLDivElement | null>;
   /** A taller limit (the block menu). */
   tall?: boolean;
+  /** Where the anchor is now: the popover follows it when the page scrolls. */
+  follow?: () => Anchor | null;
 }) {
   const ownRef = useRef<HTMLDivElement>(null);
   const ref = popRef ?? ownRef;
+  const followRef = useRef(follow);
+  followRef.current = follow;
+  const [moved, setMoved] = useState<Anchor | null>(null);
+  useEffect(() => setMoved(null), [anchor]);
+  useEffect(() => {
+    if (!anchor || !followRef.current) return;
+    const on = (e: Event) => {
+      if (ref.current?.contains(e.target as Node)) return;
+      const next = followRef.current?.();
+      if (next) setMoved(next);
+    };
+    window.addEventListener("scroll", on, true);
+    window.addEventListener("resize", on);
+    return () => {
+      window.removeEventListener("scroll", on, true);
+      window.removeEventListener("resize", on);
+    };
+  }, [anchor, ref]);
+  const at = moved ?? anchor;
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   // In the top layer, so no panel or stacking order can clip or cover it (it stays in the editor's DOM).
   useShowInTopLayer(Boolean(anchor), ref);
@@ -156,14 +178,14 @@ function Popover({
   // Which side of the anchor it opened on: kept while it's open, so it doesn't jump as its list shrinks.
   const side = useRef<"below" | "above" | null>(null);
   useLayoutEffect(() => {
-    if (!anchor) side.current = null;
-    if (!anchor || !ref.current) return;
+    if (!at) side.current = null;
+    if (!at || !ref.current) return;
     const h = ref.current.offsetHeight;
-    const below = anchor.bottom + 6;
-    if (side.current === null) side.current = below + h > window.innerHeight - 8 && anchor.top - h - 6 >= 8 ? "above" : "below";
-    const top = side.current === "above" ? Math.max(8, anchor.top - h - 6) : Math.min(below, Math.max(8, window.innerHeight - h - 8));
-    setPos({ left: Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8)), top });
-  }, [anchor, width, children, ref]);
+    const below = at.bottom + 6;
+    if (side.current === null) side.current = below + h > window.innerHeight - 8 && at.top - h - 6 >= 8 ? "above" : "below";
+    const top = side.current === "above" ? Math.max(8, at.top - h - 6) : Math.min(below, Math.max(8, window.innerHeight - h - 8));
+    setPos({ left: Math.max(8, Math.min(at.left, window.innerWidth - width - 8)), top });
+  }, [at, width, children, ref]);
   if (!anchor) return null;
   return (
     <div
@@ -174,10 +196,27 @@ function Popover({
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, visibility: pos ? "visible" : "hidden" }}
       className={`z-[100] border-0 text-ink ${scroll ? `${tall ? "max-h-[min(600px,85vh)]" : "max-h-[min(420px,70vh)]"} overflow-y-auto` : ""} ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
       onMouseDown={(e) => {
-        // Keep focus in the editor, except for real form controls inside the popover.
-        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement)) e.preventDefault();
+        // Keep focus in the editor, except for form controls inside the popover (fields, and Folevi's own
+        // dropdowns and date fields, which are buttons that open a list).
+        const t = e.target as HTMLElement;
+        if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement || t.closest?.('[role="combobox"], [aria-haspopup]')) return;
+        e.preventDefault();
       }}
-      onKeyDown={onKeyDown}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        // A dialog keeps Tab inside it (it floats outside the page's own order).
+        if (role !== "dialog" || e.key !== "Tab" || e.defaultPrevented || !ref.current) return;
+        const items = [...ref.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea, select, [tabindex="0"]')].filter((el) => el.offsetParent !== null);
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement as HTMLElement);
+        if (e.shiftKey && i <= 0) {
+          e.preventDefault();
+          items[items.length - 1]!.focus();
+        } else if (!e.shiftKey && i === items.length - 1) {
+          e.preventDefault();
+          items[0]!.focus();
+        }
+      }}
     >
       {children}
     </div>
@@ -900,7 +939,20 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
   return (
     <>
       <div className="fixed inset-0 z-40" onMouseDown={onClose} aria-hidden />
-      <Popover anchor={anchor} label={mode.mode === "insert" ? "Insert a date" : "Change date"} width={266} scroll={false}>
+      <Popover
+        anchor={anchor}
+        label={mode.mode === "insert" ? "Insert a date" : "Change date"}
+        width={266}
+        scroll={false}
+        follow={() => {
+          try {
+            const c = editor.view.coordsAtPos(mode.mode === "edit" ? mode.pos : editor.state.selection.from);
+            return { left: c.left, top: c.top, bottom: c.bottom };
+          } catch {
+            return null;
+          }
+        }}
+      >
         <div
           className="grid gap-2.5 p-1 text-sm"
           onKeyDown={(e) => {
@@ -1760,7 +1812,18 @@ function TaskDetails({ editor }: { editor: Editor }) {
   return (
     <>
       <div className="fixed inset-0 z-40" onMouseDown={() => setTarget(null)} aria-hidden />
-      <Popover anchor={target} label="Task details" width={300}>
+      <Popover
+        anchor={target}
+        label="Task details"
+        width={300}
+        follow={() => {
+          const at = find();
+          if (!at) return null;
+          const el = editor.view.nodeDOM(at.pos);
+          const r = (el instanceof HTMLElement ? (el.querySelector(".fb-due-chip") ?? el.querySelector(".fb-content") ?? el) : null)?.getBoundingClientRect();
+          return r ? { left: Math.min(target.left, r.right), top: r.top, bottom: r.bottom } : null;
+        }}
+      >
         <form
           className="grid gap-3 p-2 text-sm"
           onSubmit={(e) => {

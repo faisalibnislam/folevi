@@ -23,7 +23,7 @@ export function todayLocal(): string {
 /** The locale's first day of the week (0 = Sunday … 6 = Saturday). */
 function firstDayOfWeek(): number {
   try {
-    const info = (new Intl.Locale(navigator.language) as Intl.Locale & { weekInfo?: { firstDay: number }; getWeekInfo?: () => { firstDay: number } });
+    const info = new Intl.Locale(navigator.language) as Intl.Locale & { weekInfo?: { firstDay: number }; getWeekInfo?: () => { firstDay: number } };
     const first = info.getWeekInfo?.().firstDay ?? info.weekInfo?.firstDay;
     return first ? first % 7 : 0;
   } catch {
@@ -35,14 +35,30 @@ function firstDayOfWeek(): number {
 export function dateLabel(date: string): string {
   const [y, m, d] = parse(date);
   const thisYear = new Date().getFullYear() === y;
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...(thisYear ? {} : { year: "numeric" }), timeZone: "UTC" });
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(thisYear ? {} : { year: "numeric" }),
+    timeZone: "UTC",
+  });
 }
 
 /**
  * A month calendar following the WAI-ARIA date-picker grid: arrows move by day and week, Page Up/Down by
  * month (with Shift, by year), Home/End to the week's start and end, Enter or Space picks.
  */
-export function Calendar({ value, onPick, today = todayLocal(), autoFocus = false }: { value: string | null; onPick: (date: string) => void; today?: string; autoFocus?: boolean }) {
+export function Calendar({
+  value,
+  onPick,
+  today = todayLocal(),
+  autoFocus = false,
+}: {
+  value: string | null;
+  onPick: (date: string) => void;
+  today?: string;
+  autoFocus?: boolean;
+}) {
   const start = isDate(value) ? value : today;
   const [focus, setFocus] = useState(start);
   const [fy, fm] = parse(focus);
@@ -102,7 +118,8 @@ export function Calendar({ value, onPick, today = todayLocal(), autoFocus = fals
     go(next);
   };
 
-  const nav = "grid h-7 w-7 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none";
+  const nav =
+    "grid h-7 w-7 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none";
   return (
     <div className="w-[244px] select-none">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
@@ -119,35 +136,47 @@ export function Calendar({ value, onPick, today = todayLocal(), autoFocus = fals
         </span>
       </div>
       <div ref={grid} role="grid" aria-labelledby={labelId} onKeyDown={onKey} className="grid grid-cols-7 gap-0.5">
-        {weekdays.map((w, i) => (
-          <span key={`w${i}`} role="columnheader" className="grid h-7 place-items-center text-[11px] font-semibold text-faint">
-            {w}
-          </span>
+        <div role="row" className="contents">
+          {weekdays.map((w, i) => (
+            <span key={`w${i}`} role="columnheader" className="grid h-7 place-items-center text-[11px] font-semibold text-faint">
+              {w}
+            </span>
+          ))}
+        </div>
+        {Array.from({ length: 6 }, (_, week) => (
+          <div key={week} role="row" className="contents">
+            {days.slice(week * 7, week * 7 + 7).map((day) => {
+              const [, m, d] = parse(day);
+              const outside = m !== fm;
+              const selected = day === value;
+              const isToday = day === today;
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  role="gridcell"
+                  data-date={day}
+                  tabIndex={day === focus ? 0 : -1}
+                  aria-selected={selected}
+                  aria-current={isToday ? "date" : undefined}
+                  aria-label={dateLabel(day)}
+                  onClick={() => onPick(day)}
+                  className={`grid h-8 place-items-center rounded-[6px] text-[13px] tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
+                    selected
+                      ? "bg-[var(--color-heading)] font-semibold text-[var(--color-surface)]"
+                      : isToday
+                        ? "font-semibold text-accent hover:bg-accent-soft"
+                        : outside
+                          ? "text-faint hover:bg-accent-soft"
+                          : "text-ink hover:bg-accent-soft hover:text-heading"
+                  }`}
+                >
+                  {d}
+                </button>
+              );
+            })}
+          </div>
         ))}
-        {days.map((day) => {
-          const [, m, d] = parse(day);
-          const outside = m !== fm;
-          const selected = day === value;
-          const isToday = day === today;
-          return (
-            <button
-              key={day}
-              type="button"
-              role="gridcell"
-              data-date={day}
-              tabIndex={day === focus ? 0 : -1}
-              aria-selected={selected}
-              aria-current={isToday ? "date" : undefined}
-              aria-label={dateLabel(day)}
-              onClick={() => onPick(day)}
-              className={`grid h-8 place-items-center rounded-[6px] text-[13px] tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
-                selected ? "bg-[var(--color-heading)] font-semibold text-[var(--color-surface)]" : isToday ? "font-semibold text-accent hover:bg-accent-soft" : outside ? "text-faint hover:bg-accent-soft" : "text-ink hover:bg-accent-soft hover:text-heading"
-              }`}
-            >
-              {d}
-            </button>
-          );
-        })}
       </div>
     </div>
   );
@@ -164,7 +193,10 @@ export function DateField({
   "aria-label": ariaLabel,
   autoFocus,
   bare = false,
+  size = "md",
 }: {
+  /** "lg" matches the 36px fields of forms (Quick Add, task editing). */
+  size?: "md" | "lg";
   value: string;
   onChange: (date: string) => void;
   /** Without the field frame and icon (inside a table cell). */
@@ -223,7 +255,11 @@ export function DateField({
             setOpen(true);
           }
         }}
-        className={bare ? "flex w-full min-w-0 items-center bg-transparent text-left outline-none disabled:opacity-50" : "ui-input flex h-8 w-full min-w-0 items-center gap-2 rounded-[6px] pl-2.5 pr-8 text-left text-[13px] disabled:opacity-50"}
+        className={
+          bare
+            ? "flex w-full min-w-0 items-center bg-transparent text-left outline-none disabled:opacity-50"
+            : `ui-input flex ${size === "lg" ? "h-9" : "h-8"} w-full min-w-0 items-center gap-2 rounded-[6px] pl-2.5 pr-8 text-left text-[13px] disabled:opacity-50`
+        }
       >
         {bare ? null : <CalendarDays size={14} aria-hidden className="flex-none text-muted" />}
         <span className={`truncate ${isDate(value) ? "text-ink" : "text-faint"}`}>{isDate(value) ? dateLabel(value) : placeholder}</span>
@@ -252,10 +288,16 @@ export function DateField({
               style={style}
               className="ui-pop z-[110] border-0 p-2.5 text-ink animate-[folio-rise_120ms_var(--ease-folio)] motion-reduce:animate-none"
               onKeyDown={(e) => {
-                if (e.key === "Escape" || e.key === "Tab") {
+                if (e.key === "Escape") {
                   e.preventDefault();
                   e.stopPropagation();
                   close();
+                } else if (e.key === "Tab" && (e.target as HTMLElement).dataset.date) {
+                  // From the days, Tab moves on to the field after this one (the calendar floats outside the form).
+                  e.preventDefault();
+                  e.stopPropagation();
+                  close(false);
+                  focusBeside(button.current, e.shiftKey ? -1 : 1);
                 }
               }}
             >
@@ -267,12 +309,36 @@ export function DateField({
                   close();
                 }}
               />
+              {clearable && isDate(value) ? (
+                <div className="mt-1.5 flex justify-end border-t border-line pt-1.5">
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs"
+                    onClick={() => {
+                      onChange("");
+                      close();
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : null}
             </div>,
             host,
           )
         : null}
     </span>
   );
+}
+
+/** Focus the next (or previous) focusable control after `from` in the page. */
+function focusBeside(from: HTMLElement | null, dir: 1 | -1) {
+  if (!from) return;
+  const all = [...document.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]')].filter(
+    (el) => el.offsetParent !== null || el === from,
+  );
+  const i = all.indexOf(from);
+  (all[i + dir] ?? from).focus();
 }
 
 const TIMES = Array.from({ length: 96 }, (_, i) => `${pad(Math.floor(i / 4))}:${pad((i % 4) * 15)}`);
@@ -291,7 +357,12 @@ export function TimeField({
   disabled,
   className = "",
   "aria-label": ariaLabel,
+  allowEmpty = true,
+  size = "md",
 }: {
+  /** Whether "no time" is a choice. */
+  allowEmpty?: boolean;
+  size?: "md" | "lg";
   value: string;
   onChange: (time: string) => void;
   emptyLabel?: string;
@@ -301,8 +372,14 @@ export function TimeField({
 }) {
   const times = value && !TIMES.includes(value) ? [...TIMES, value].sort() : TIMES;
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} aria-label={ariaLabel} className={`h-8 ui-input rounded-[6px] px-2.5 text-[13px] ${className}`}>
-      <option value="">{emptyLabel}</option>
+    <Select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={`${size === "lg" ? "h-9" : "h-8"} ui-input rounded-[6px] px-2.5 text-[13px] ${className}`}
+    >
+      {allowEmpty || !value ? <option value="">{emptyLabel}</option> : null}
       {times.map((t) => (
         <option key={t} value={t}>
           {timeLabel(t)}
@@ -332,7 +409,7 @@ export function DateTimeField({ value, onChange, "aria-label": ariaLabel = "Date
   return (
     <span className="grid grid-cols-[1fr_auto] gap-1.5">
       <DateField value={date} onChange={(v) => make(v, time)} aria-label={ariaLabel} />
-      <TimeField value={time} onChange={(v) => make(date, v || "09:00")} disabled={!date} aria-label={`${ariaLabel} time`} emptyLabel="9:00 AM" />
+      <TimeField value={time} onChange={(v) => make(date, v || "09:00")} disabled={!date} allowEmpty={!date} aria-label={`${ariaLabel} time`} emptyLabel="Time" />
     </span>
   );
 }

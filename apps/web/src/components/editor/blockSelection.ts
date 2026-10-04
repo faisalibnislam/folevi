@@ -5,10 +5,10 @@
 // indent, Backspace/Delete delete, ⌘C/⌘X copy/cut, ⌘. opens the block menu for all selected blocks,
 // Escape/↑/↓/click/typing return to normal text editing. The text caret stays collapsed meanwhile.
 import { Extension, type Editor } from "@tiptap/core";
-import { Plugin, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock } from "./commands";
-import { blockSelectionKey, blockSelectionRange, indexOfBlock, neighbourIndex, syncDomSelection, type BlockSelection, type BlockSelectionMeta } from "./blockSelectionState";
+import { blockSelectionKey, blockSelectionRange, hiddenIndices, indexOfBlock, neighbourIndex, syncDomSelection, type BlockSelection, type BlockSelectionMeta } from "./blockSelectionState";
 
 export { blockSelectionKey, blockSelectionRange };
 
@@ -49,8 +49,18 @@ function placeCaret(state: EditorState, index: number, atEnd: boolean, tr: Trans
   tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(pos, tr.doc.content.size)), atEnd ? -1 : 1));
 }
 
+/** The selected blocks plus anything hidden inside a collapsed toggle at the end of the selection. */
+function copiedRange(state: EditorState): { from: number; to: number } | null {
+  const range = blockSelectionRange(state);
+  if (!range) return null;
+  const hidden = hiddenIndices(state);
+  let to = range.to;
+  while (hidden.has(to + 1)) to++;
+  return { from: range.from, to };
+}
+
 function copySelection(view: EditorView, event: ClipboardEvent): boolean {
-  const range = blockSelectionRange(view.state);
+  const range = copiedRange(view.state);
   if (!range || !event.clipboardData) return false;
   const start = blockAt(view.state, range.from)!.pos;
   const last = blockAt(view.state, range.to)!;
@@ -110,16 +120,35 @@ export const BlockSelectionExtension = Extension.create({
             copy: (view, event) => copySelection(view, event),
             cut: (view, event) => {
               if (!copySelection(view, event)) return false;
-              const range = blockSelectionRange(view.state)!;
+              const range = copiedRange(view.state)!;
               const indices: number[] = [];
               for (let i = range.from; i <= range.to; i++) indices.push(i);
               // Only what was copied (the selected blocks) is removed.
               deleteBlocks(editor, indices, false);
               return true;
             },
+            // Pasting while blocks are selected replaces them.
+            paste: (view) => {
+              const range = blockSelectionRange(view.state);
+              if (!range) return false;
+              const { state } = view;
+              const start = blockAt(state, range.from)!;
+              const depth = Number(start.node.attrs.depth ?? 0);
+              const indices: number[] = [];
+              for (let i = range.from; i <= range.to; i++) indices.push(i);
+              deleteBlocks(editor, indices);
+              const after = view.state;
+              const pos = Math.min(start.pos, after.doc.content.size);
+              const tr = after.tr.insert(pos, after.schema.nodes.paragraph!.create({ id: null, depth }));
+              tr.setSelection(TextSelection.create(tr.doc, pos + 1)).setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta);
+              view.dispatch(tr);
+              return false;
+            },
             mousedown: (view, event) => {
               const range = blockSelectionRange(view.state);
               if (!range) return false;
+              // A right-click (or Control-click) opens the menu for the selected blocks: keep them selected.
+              if (event.button !== 0 || (event.ctrlKey && /Mac/.test(navigator.platform))) return false;
               if (event.shiftKey) {
                 const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
                 if (pos) {
@@ -141,6 +170,12 @@ export const BlockSelectionExtension = Extension.create({
               if (event.defaultPrevented || event.isComposing) return false;
               // Escape selects the block the caret is in (the keyboard way into block selection).
               if (event.key === "Escape" && !mod && !event.shiftKey && !event.altKey && !document.querySelector(".fb-drag-ghost")) {
+                // In a Mermaid diagram's source, Escape folds it and selects the diagram.
+                const parent = state.selection.$from.parent;
+                if (parent.type.name === "codeBlock" && parent.attrs.language === "mermaid" && state.selection.$from.depth === 1) {
+                  view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, state.selection.$from.before(1))));
+                  return true;
+                }
                 const { from, to } = state.selection;
                 const last = state.doc.resolve(Math.max(from, to - 1)).index(0);
                 return setBlockSelection(view, state.doc.resolve(from).index(0), Math.min(last, state.doc.childCount - 1));
@@ -158,7 +193,7 @@ export const BlockSelectionExtension = Extension.create({
               }
               return false;
             }
-            if (MODIFIER_KEYS.has(event.key)) return false;
+            if (MODIFIER_KEYS.has(event.key) || event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) return false;
             const sel = blockSelectionKey.getState(state)!;
             const headIndex = indexOfBlock(state, sel.head);
             const anchorIndex = indexOfBlock(state, sel.anchor);

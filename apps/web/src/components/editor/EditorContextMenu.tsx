@@ -136,7 +136,9 @@ const INSERT_BELOW: [string, string, Record<string, unknown>, ReactNode][] = [
 ];
 
 export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor: Editor; editable: boolean; onCommentBlock?: (blockId: string) => void }) {
-  const [menu, setMenu] = useState<{ x: number; y: number; target: Target; keyboard: boolean } | null>(null);
+  // `y` is where the menu opens downward from; `top` (the caret line's top, from the keyboard) is where it
+  // ends when it opens upward, so it never covers the line.
+  const [menu, setMenu] = useState<{ x: number; y: number; top: number; target: Target; keyboard: boolean } | null>(null);
   const aiOn = useAiEnabled();
   const toast = useToast();
   const palette = useNotePalette();
@@ -150,7 +152,7 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       const linkMark = $pos.marks().find((m) => m.type.name === "link") ?? $pos.nodeAfter?.marks.find((m) => m.type.name === "link");
       const pageEl = el?.closest<HTMLElement>("a[data-page-link]");
       const dateEl = el?.closest<HTMLElement>("time[data-date]");
-      const img = el?.closest<HTMLElement>("[data-block]")?.querySelector("img");
+      const img = (el?.closest<HTMLElement>("[data-block-id]") ?? blockElements(editor.view.dom as HTMLElement)[index])?.querySelector("img");
       return {
         index,
         link: linkMark ? { href: String(linkMark.attrs.href ?? "") } : null,
@@ -169,7 +171,6 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       if (e.shiftKey) return;
       const el = e.target as HTMLElement | null;
       if (el?.closest("input, textarea, select, [data-native-menu]")) return;
-      e.preventDefault();
       syncDomSelection(editor.view);
       const { state, view } = editor;
       const hit = view.posAtCoords({ left: e.clientX, top: e.clientY });
@@ -186,6 +187,7 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
         for (let k = 0; k < i; k++) pos += state.doc.child(k).nodeSize;
         pos += 1;
       }
+      e.preventDefault();
       const atomPos = hit && hit.inside >= 0 ? hit.inside : null;
       const atom = atomPos !== null ? state.doc.nodeAt(atomPos) : null;
       const target = targetAt(atom?.isAtom ? atomPos! : pos, el);
@@ -203,23 +205,25 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
         view.dispatch(tr.setMeta("addToHistory", false));
       }
       if (!view.hasFocus()) view.focus();
-      setMenu({ x: e.clientX, y: e.clientY, target, keyboard: false });
+      setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+      // A field inside a block (a caption, a cell) keeps the browser's menu.
+      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select")) return;
       e.preventDefault();
       syncDomSelection(editor.view);
       const { from } = editor.state.selection;
-      let c: { left: number; bottom: number };
+      let c: { left: number; top: number; bottom: number };
       try {
         c = editor.view.coordsAtPos(from);
       } catch {
         const r = dom.getBoundingClientRect();
-        c = { left: r.left, bottom: r.top + 24 };
+        c = { left: r.left, top: r.top, bottom: r.top + 24 };
       }
       const domAt = editor.view.domAtPos(from).node;
       const el = domAt instanceof HTMLElement ? domAt : domAt.parentElement;
-      setMenu({ x: c.left, y: c.bottom, target: targetAt(from, el), keyboard: true });
+      setMenu({ x: c.left, y: c.bottom, top: c.top, target: targetAt(from, el), keyboard: true });
     };
     dom.addEventListener("contextmenu", onContext);
     dom.addEventListener("keydown", onKey);
@@ -241,7 +245,7 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
 
   const entries = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast });
   if (!entries.length) return null;
-  return <MenuLayer entries={entries} at={{ x: menu.x, y: menu.y }} keyboard={menu.keyboard} onClose={close} />;
+  return <MenuLayer entries={entries} at={{ x: menu.x, y: menu.y, top: menu.top }} keyboard={menu.keyboard} onClose={close} />;
 }
 
 // ------------------------------------------------------------------------------------------------ items
@@ -271,6 +275,15 @@ function buildEntries({
   const refs = blocksInSelection(state);
   const count = range ? range.to - range.from + 1 : 1;
   const block = state.doc.maybeChild(target.index);
+  const blockId = (block?.attrs.id as string | null) ?? null;
+  // Actions look the block up again when they run (the note may have changed while the menu was open).
+  const live = (): { pos: number; node: NonNullable<typeof block> } | null => {
+    let found: { pos: number; node: NonNullable<typeof block> } | null = null;
+    editor.state.doc.forEach((n, offset) => {
+      if (!found && blockId && n.attrs.id === blockId) found = { pos: offset, node: n };
+    });
+    return found;
+  };
   const blockPos = (() => {
     let p = 0;
     for (let i = 0; i < target.index; i++) p += state.doc.child(i).nodeSize;
@@ -357,8 +370,8 @@ function buildEntries({
               label: languageName(lang),
               checked: lang === current,
               run: () => {
-                const node = editor.state.doc.nodeAt(blockPos);
-                if (node?.type.name === "codeBlock") editor.view.dispatch(editor.state.tr.setNodeMarkup(blockPos, undefined, { ...node.attrs, language: lang }));
+                const at = live();
+                if (at?.node.type.name === "codeBlock") editor.view.dispatch(editor.state.tr.setNodeMarkup(at.pos, undefined, { ...at.node.attrs, language: lang }));
               },
             }),
           ),
@@ -371,7 +384,12 @@ function buildEntries({
           label: checked ? "Mark as not done" : "Mark as done",
           icon: checked ? <Square size={14} /> : <SquareCheck size={14} />,
           shortcut: "⌘↵",
-          run: () => editor.view.dispatch(editor.state.tr.setNodeMarkup(blockPos, undefined, { ...block.attrs, checked: !checked, completedAt: !checked ? Date.now() : null })),
+          run: () => {
+            const at = live();
+            if (at?.node.type.name !== "todo") return;
+            const next = !at.node.attrs.checked;
+            editor.view.dispatch(editor.state.tr.setNodeMarkup(at.pos, undefined, { ...at.node.attrs, checked: next, completedAt: next ? Date.now() : null }));
+          },
         },
         {
           label: "Task details…",
@@ -390,7 +408,10 @@ function buildEntries({
         label: collapsed ? "Expand" : "Collapse",
         icon: collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />,
         shortcut: "⌘↵",
-        run: () => editor.view.dispatch(editor.state.tr.setNodeMarkup(blockPos, undefined, { ...block.attrs, collapsed: !collapsed }).setMeta("addToHistory", false)),
+        run: () => {
+          const at = live();
+          if (at?.node.type.name === "toggle") editor.view.dispatch(editor.state.tr.setNodeMarkup(at.pos, undefined, { ...at.node.attrs, collapsed: !at.node.attrs.collapsed }).setMeta("addToHistory", false));
+        },
       });
     }
   }
@@ -583,10 +604,16 @@ async function pasteFromClipboard(editor: Editor, plain: boolean, toast: ReturnT
 
 // ------------------------------------------------------------------------------------------------ menu
 
+/** The pointer's last known position on the page (so a menu can tell a resting pointer from a moving one). */
+let pointerAt: { x: number; y: number } | null = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("pointermove", (e) => (pointerAt = { x: e.clientX, y: e.clientY }), { passive: true, capture: true });
+}
+
 /** Every open panel carries this, so clicks inside any of them don't count as "outside". */
 const PANEL_ATTR = "data-fb-context-menu";
 
-function MenuLayer({ entries, at, keyboard, onClose }: { entries: Entry[]; at: { x: number; y: number }; keyboard: boolean; onClose: (refocus: boolean) => void }) {
+function MenuLayer({ entries, at, keyboard, onClose }: { entries: Entry[]; at: { x: number; y: number; top: number }; keyboard: boolean; onClose: (refocus: boolean) => void }) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   useEffect(() => {
@@ -610,7 +637,7 @@ function MenuLayer({ entries, at, keyboard, onClose }: { entries: Entry[]; at: {
       window.removeEventListener("blur", onBlur);
     };
   }, []);
-  const anchor = useMemo(() => ({ left: at.x, right: at.x, top: at.y, bottom: at.y }), [at.x, at.y]);
+  const anchor = useMemo(() => ({ left: at.x, right: at.x, top: at.top, bottom: at.y }), [at.x, at.y, at.top]);
   return <Panel entries={entries} anchor={anchor} root highlightFirst={keyboard} onCloseAll={(refocus) => onClose(refocus)} onBack={() => onClose(true)} label="Note actions" />;
 }
 
@@ -623,8 +650,11 @@ function Panel({
   highlightFirst,
   onCloseAll,
   onBack,
+  onEnter,
   label,
 }: {
+  /** The pointer moved into this submenu (the parent stops switching submenus). */
+  onEnter?: () => void;
   entries: Entry[];
   /** A point (the root menu) or the row a submenu opens from. */
   anchor: Rect;
@@ -641,6 +671,8 @@ function Panel({
   const [open, setOpen] = useState<{ index: number; rect: Rect; keyboard: boolean } | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Where the pointer was when this menu appeared: a pointer that hasn't moved since doesn't pick items.
+  const lastPointer = useRef<{ x: number; y: number } | null>(pointerAt);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -657,7 +689,7 @@ function Panel({
     let top: number;
     if (root) {
       left = anchor.left + w + margin > window.innerWidth ? anchor.left - w : anchor.left;
-      top = anchor.top + h + margin > window.innerHeight ? anchor.top - h : anchor.top;
+      top = anchor.bottom + h + margin > window.innerHeight ? anchor.top - h : anchor.bottom;
     } else {
       // Beside the parent row, its first item level with the row.
       left = anchor.right + w + margin > window.innerWidth ? anchor.left - w + 4 : anchor.right - 4;
@@ -764,6 +796,7 @@ function Panel({
         style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? "visible" : "hidden", maxHeight: "calc(100vh - 16px)" }}
         className="ui-pop z-[100] min-w-56 max-w-72 overflow-y-auto border-0 p-1.5 text-ink outline-none animate-[folio-rise_120ms_var(--ease-folio)] motion-reduce:animate-none"
         onKeyDown={onKeyDown}
+        onMouseEnter={onEnter}
         onContextMenu={(e) => e.preventDefault()}
         onMouseDown={(e) => e.preventDefault()}
       >
@@ -782,11 +815,17 @@ function Panel({
               data-highlighted={active === i || open?.index === i ? "true" : undefined}
               tabIndex={-1}
               disabled={!isSub(entry) && entry.disabled}
-              onMouseEnter={() => {
+              onMouseMove={(e) => {
+                // Only real pointer movement counts (not a menu appearing under a resting mouse).
+                const last = lastPointer.current;
+                lastPointer.current = { x: e.clientX, y: e.clientY };
+                if ((last && last.x === e.clientX && last.y === e.clientY) || active === i) return;
                 setActive(i);
                 if (hoverTimer.current) clearTimeout(hoverTimer.current);
-                if (isSub(entry)) hoverTimer.current = setTimeout(() => openSub(i, false), 80);
-                else if (open) hoverTimer.current = setTimeout(() => setOpen(null), 150);
+                // While a submenu is open, wait a moment: the pointer may be passing through on its way into it.
+                const wait = open && open.index !== i ? 260 : 80;
+                if (isSub(entry)) hoverTimer.current = setTimeout(() => openSub(i, false), wait);
+                else if (open) hoverTimer.current = setTimeout(() => setOpen(null), wait);
               }}
               onClick={() => activate(i, false)}
               className={`ui-menu-item !min-h-[30px] !text-[13px] disabled:opacity-40 pointer-coarse:!min-h-11 ${!isSub(entry) && entry.danger ? "!text-danger" : ""}`}
@@ -809,6 +848,10 @@ function Panel({
           anchor={open.rect}
           highlightFirst={open.keyboard}
           onCloseAll={onCloseAll}
+          onEnter={() => {
+            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+            setActive(open.index);
+          }}
           onBack={() => {
             setOpen(null);
             setActive(open.index);

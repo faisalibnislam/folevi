@@ -116,10 +116,8 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = toPoint(e);
     drawing.current = { pointerId: e.pointerId, points: [p], erased: false };
-    if (saveTimer.current !== null) {
-      window.clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
+    // Save what's waiting (an erase, the last stroke) now, so a quick next touch can't drop it.
+    flushRef.current();
     if (tool === "eraser") eraseAt(p);
     else setDraft({ points: [p], ...currentStyle() });
   };

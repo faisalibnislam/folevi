@@ -49,7 +49,13 @@ async function withSignedClientIp(request: Request): Promise<Request> {
   if (devOrigin) {
     if (headers.has("origin")) headers.set("origin", devOrigin);
     const referer = headers.get("referer");
-    if (referer) headers.set("referer", devOrigin + new URL(referer).pathname);
+    if (referer) {
+      try {
+        headers.set("referer", devOrigin + new URL(referer).pathname);
+      } catch {
+        headers.delete("referer");
+      }
+    }
   }
   const init: RequestInit = { method: request.method, headers };
   if (request.method !== "GET" && request.method !== "HEAD") init.body = await request.arrayBuffer();

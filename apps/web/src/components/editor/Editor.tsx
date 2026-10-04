@@ -95,12 +95,12 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       const previous = engineBlocksMap();
       const next = docToBlocks(editor.state.doc, previous);
       const diff = diffBlocks(previous, next);
-      // One save for the whole flush.
+      // One save for the whole flush. Changes go first, in document order (parents before the blocks nested
+      // under them), then deletes: a block moved out from under a deleted parent must move before the delete,
+      // which takes the parent's subtree with it on the server.
       engine.batch(() => {
-        // Upserts first: a deleted parent takes its subtree with it on the server, so children re-parented
-        // by this same edit (a merge, an outdent) must be moved out before the delete arrives.
         for (const u of diff.upserts) {
-          // A block that comes back after being deleted (undo, cut then paste) is restored, not re-created.
+          // A block that comes back after this device deleted it (undo) is restored, not re-created.
           if (engine.isBlockDeleted(documentId, u.block.id)) engine.restoreBlock(documentId, u.block.id);
           engine.upsertBlock(documentId, u.block, u.fields);
           if (u.fields.includes("position") && u.block.rank.length > LIMITS.maxRankLength / 2) rebalanceParents.current.add(u.block.parentId);
@@ -148,7 +148,18 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       handleDrop: (view, event, _slice, moved) => {
         if (moved || !editable) return false;
         const files = [...(event.dataTransfer?.files ?? [])];
-        if (!files.length) return false;
+        if (!files.length) {
+          // Text or a web page dragged in from another app: the same clean-up as pasting it.
+          if (view.dragging) return false;
+          const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (!at) return false;
+          view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(at.pos))));
+          const blocks = clipboardBlocks(view, event.dataTransfer);
+          if (!blocks) return false;
+          event.preventDefault();
+          insertPastedBlocks(view, blocks);
+          return true;
+        }
         event.preventDefault();
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
         if (pos) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos.pos))));

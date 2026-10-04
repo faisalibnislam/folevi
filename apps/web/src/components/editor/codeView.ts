@@ -8,6 +8,7 @@ import { NodeSelection, Plugin, PluginKey, TextSelection } from "@tiptap/pm/stat
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { LIMITS, flowchartBounds, mermaidToFlowchart, serializeFlowchart, ulid } from "@folevi/editor-schema";
 import { onThemeChange, renderMermaid, svgDataUrl } from "./richRender";
+import { neighbourIndex } from "./blockSelectionState";
 
 const PREVIEW_DELAY = 350;
 
@@ -24,7 +25,10 @@ export const mermaidFocusPlugin = new Plugin({
       const sel = state.selection;
       if (!(sel instanceof NodeSelection) && !view.endOfTextblock(dir > 0 ? "down" : "up")) return false;
       const $pos = dir > 0 ? state.doc.resolve(sel.to) : state.doc.resolve(sel.from);
-      const index = $pos.depth === 0 ? (dir > 0 ? $pos.index(0) : $pos.index(0) - 1) : $pos.index(0) + dir;
+      const here = $pos.depth === 0 ? (dir > 0 ? $pos.index(0) - 1 : $pos.index(0)) : $pos.index(0);
+      // The next visible block (blocks hidden in a collapsed toggle are skipped).
+      const index = neighbourIndex(state, here, dir);
+      if (index === null) return false;
       const target = state.doc.maybeChild(index);
       if (!target || target.type.name !== "codeBlock" || target.attrs.language !== "mermaid" || !target.textContent.trim()) return false;
       let at = 0;

@@ -1,6 +1,9 @@
 "use client";
 
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
+import { closeHistory } from "@tiptap/pm/history";
+import { endHistoryGroup } from "./commands";
 import { useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -86,7 +89,7 @@ function Frame({
   );
 }
 
-function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewProps) {
+function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const { profile } = useAppState();
   const a = node.attrs as {
     id: string;
@@ -142,6 +145,7 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
             <DraftInput
               value={a.caption ?? ""}
               onCommit={(v) => updateAttributes({ caption: v })}
+              onExit={() => selectBlock(editor, getPos)}
               placeholder="Add a caption"
               aria-label="Image caption"
               className="w-full bg-transparent text-center text-sm text-muted outline-none placeholder:text-faint"
@@ -161,6 +165,7 @@ function ImageView({ node, selected, updateAttributes, editor }: ReactNodeViewPr
             <DraftInput
               value={a.alt ?? ""}
               onCommit={(v) => updateAttributes({ alt: v })}
+              onExit={() => selectBlock(editor, getPos)}
               placeholder="Describe the image"
               className="h-7 w-56 ui-input rounded-[6px] px-2 text-ink"
             />
@@ -281,33 +286,58 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const [focusWithin, setFocusWithin] = useState(false);
   // Row/column tools show while the table is selected or being edited.
   const tools = editable && (selected || focusWithin);
+  // The table as it is now (the view re-renders a moment after each change, so `rows` can be a step behind).
+  const currentRows = (): InlineNode[][][] => {
+    const pos = typeof getPos === "function" ? getPos() : undefined;
+    const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
+    return live?.type.name === "table" ? (live.attrs.rows as InlineNode[][][]) : rows;
+  };
   const setCell = (r: number, c: number, value: string) => {
-    const next = rows.map((row, ri) =>
-      row.map((cell, ci) =>
-        ri === r && ci === c ? (value ? [{ type: "text" as const, text: value }] : []) : cell,
-      ),
-    );
+    const next = currentRows().map((row, ri) => row.map((cell, ci) => (ri === r && ci === c ? (value ? [{ type: "text" as const, text: value }] : []) : cell)));
     updateAttributes({ rows: next });
   };
-  const addRow = () =>
-    updateAttributes({ rows: [...rows, Array.from({ length: width }, () => [])] });
-  const addCol = () => width < 20 && updateAttributes({ rows: rows.map((r) => [...r, []]) });
-  const removeRow = (i: number) =>
-    rows.length > 1 && updateAttributes({ rows: rows.filter((_, ri) => ri !== i) });
-  const removeCol = (i: number) =>
-    width > 1 && updateAttributes({ rows: rows.map((r) => r.filter((_, ci) => ci !== i)) });
-  const moveRow = (i: number, dir: -1 | 1) => updateAttributes({ rows: move(rows, i, i + dir) });
-  const moveCol = (i: number, dir: -1 | 1) =>
-    updateAttributes({ rows: rows.map((r) => move(r, i, i + dir)) });
+  // Row and column tools are each their own undo step (typing in cells groups as usual).
+  const tool = (change: (rows: InlineNode[][][]) => InlineNode[][][] | null) => {
+    const pos = typeof getPos === "function" ? getPos() : undefined;
+    const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
+    if (typeof pos !== "number" || live?.type.name !== "table") return;
+    const next = change(live.attrs.rows as InlineNode[][][]);
+    if (!next) return;
+    editor.view.dispatch(closeHistory(editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, rows: next })));
+    endHistoryGroup(editor);
+  };
+  const addRow = () => tool((rs) => [...rs, Array.from({ length: rs[0]?.length ?? 1 }, () => [])]);
+  const addCol = () => tool((rs) => ((rs[0]?.length ?? 1) < 20 ? rs.map((r) => [...r, []]) : null));
+  const removeRow = (i: number) => {
+    tool((rs) => (rs.length > 1 ? rs.filter((_, ri) => ri !== i) : null));
+    focusCell(Math.max(0, Math.min(i, rows.length - 2)), 0);
+  };
+  const removeCol = (i: number) => {
+    tool((rs) => ((rs[0]?.length ?? 1) > 1 ? rs.map((r) => r.filter((_, ci) => ci !== i)) : null));
+    focusCell(0, Math.max(0, Math.min(i, width - 2)));
+  };
+  const moveRow = (i: number, dir: -1 | 1) => tool((rs) => move(rs, i, i + dir));
+  const moveCol = (i: number, dir: -1 | 1) => tool((rs) => rs.map((r) => move(r, i, i + dir)));
   const tableRef = useRef<HTMLTableElement>(null);
   const focusCell = (r: number, c: number) =>
     requestAnimationFrame(() => tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${r}:${c}"]`)?.focus());
-  // Enter / ↓ go down a row (Enter adds one at the end), ↑ goes up, Escape returns to the note with the
-  // table selected. Tab moves between cells as usual.
+  // Tab / Shift+Tab move between cells, Enter / ↓ go down a row (Enter adds one at the end), ↑ goes up,
+  // Escape returns to the note with the table selected.
   const onCellKey = (e: React.KeyboardEvent<HTMLTableElement>) => {
     const at = (e.target as HTMLElement).dataset.cell;
     if (!at || e.metaKey || e.ctrlKey || e.altKey) return;
     const [r, c] = at.split(":").map(Number) as [number, number];
+    if (e.key === "Tab") {
+      // Cell to cell, row by row; Tab in the last cell adds a row.
+      e.preventDefault();
+      const i = r * width + c + (e.shiftKey ? -1 : 1);
+      if (i < 0) return;
+      if (i >= rows.length * width) {
+        addRow();
+        focusCell(rows.length, 0);
+      } else focusCell(Math.floor(i / width), i % width);
+      return;
+    }
     if ((e.key === "Enter" && !e.shiftKey) || e.key === "ArrowDown") {
       e.preventDefault();
       if (r + 1 < rows.length) focusCell(r + 1, c);
@@ -325,7 +355,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
       editor.view.focus();
     }
   };
-  const tool =
+  const toolBtn =
     "grid h-6 w-6 place-items-center rounded-[6px] text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
   return (
     <Frame selected={selected} label="Table">
@@ -352,7 +382,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                     >
                       <button
                         type="button"
-                        className={tool}
+                        className={toolBtn} tabIndex={-1}
                         disabled={c === 0}
                         onClick={() => moveCol(c, -1)}
                         aria-label={`Move column ${c + 1} left`}
@@ -362,7 +392,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                       </button>
                       <button
                         type="button"
-                        className={tool}
+                        className={toolBtn} tabIndex={-1}
                         disabled={c === width - 1}
                         onClick={() => moveCol(c, 1)}
                         aria-label={`Move column ${c + 1} right`}
@@ -372,7 +402,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                       </button>
                       <button
                         type="button"
-                        className={`${tool} hover:!text-danger`}
+                        className={`${toolBtn} hover:!text-danger`} tabIndex={-1}
                         disabled={width <= 1}
                         onClick={() => removeCol(c)}
                         aria-label={`Delete column ${c + 1}`}
@@ -425,7 +455,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                     >
                       <button
                         type="button"
-                        className={tool}
+                        className={toolBtn} tabIndex={-1}
                         disabled={r === 0}
                         onClick={() => moveRow(r, -1)}
                         aria-label={`Move row ${r + 1} up`}
@@ -435,7 +465,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                       </button>
                       <button
                         type="button"
-                        className={tool}
+                        className={toolBtn} tabIndex={-1}
                         disabled={r === rows.length - 1}
                         onClick={() => moveRow(r, 1)}
                         aria-label={`Move row ${r + 1} down`}
@@ -445,7 +475,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                       </button>
                       <button
                         type="button"
-                        className={`${tool} hover:!text-danger`}
+                        className={`${toolBtn} hover:!text-danger`} tabIndex={-1}
                         disabled={rows.length <= 1}
                         onClick={() => removeRow(r)}
                         aria-label={`Delete row ${r + 1}`}
@@ -546,7 +576,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
   );
 }
 
-function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeViewProps) {
+function BookmarkView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const a = node.attrs as {
     url: string;
     title: string | null;
@@ -588,6 +618,7 @@ function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeVie
               <DraftInput
                 value={a.title ?? ""}
                 onCommit={(v) => updateAttributes({ title: v || null })}
+                onExit={() => selectBlock(editor, getPos)}
                 className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink"
               />
             </label>
@@ -596,6 +627,7 @@ function BookmarkView({ node, selected, updateAttributes, editor }: ReactNodeVie
               <DraftInput
                 value={a.description ?? ""}
                 onCommit={(v) => updateAttributes({ description: v || null })}
+                onExit={() => selectBlock(editor, getPos)}
                 className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink"
               />
             </label>
@@ -651,6 +683,8 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
 /** Undo and redo inside a block's own fields (captions, cells, formulas) go to the note's history. */
 function isHistoryKey(event: Event): boolean {
   if (!(event instanceof KeyboardEvent) || event.type !== "keydown" || !(event.metaKey || event.ctrlKey) || event.altKey) return false;
+  // Only fields bound to the block (captions, cells, a formula); a collection's own inputs keep their own undo.
+  if (!(event.target instanceof Element) || !event.target.closest("[data-draft]")) return false;
   const key = event.key.toLowerCase();
   return key === "z" || (key === "y" && !event.shiftKey);
 }
@@ -669,9 +703,32 @@ function blockView(component: React.ComponentType<ReactNodeViewProps>, stopEvent
 }
 
 /** A text field bound to a block attribute through a draft (see useDraft). */
-function DraftInput({ value, onCommit, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & { value: string; onCommit: (v: string) => void }) {
+function DraftInput({ value, onCommit, onExit, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & { value: string; onCommit: (v: string) => void; onExit?: () => void }) {
   const [draft, change] = useDraft(value, onCommit);
-  return <input {...rest} value={draft} onChange={(e) => change(e.target.value)} />;
+  return (
+    <input
+      {...rest}
+      data-draft=""
+      value={draft}
+      onChange={(e) => change(e.target.value)}
+      onKeyDown={(e) => {
+        rest.onKeyDown?.(e);
+        // Escape or Enter: back to the note with the block selected.
+        if (onExit && !e.defaultPrevented && (e.key === "Escape" || e.key === "Enter")) {
+          e.preventDefault();
+          onExit();
+        }
+      }}
+    />
+  );
+}
+
+/** Selects the block at `getPos()` and returns focus to the note. */
+function selectBlock(editor: ReactNodeViewProps["editor"], getPos: ReactNodeViewProps["getPos"]) {
+  const pos = typeof getPos === "function" ? getPos() : undefined;
+  if (typeof pos !== "number") return;
+  editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)));
+  editor.view.focus();
 }
 
 export const NODE_VIEW_EXTENSIONS = [

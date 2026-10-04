@@ -67,9 +67,15 @@ export function inlineToPM(nodes: readonly InlineNode[]): JSONContent[] {
   const out: JSONContent[] = [];
   for (const n of nodes) {
     switch (n.type) {
-      case "text":
-        if (n.text) out.push(n.marks?.length ? { type: "text", text: n.text, marks: n.marks.map(markToPM) } : { type: "text", text: n.text });
+      case "text": {
+        // A "\n" in stored text is a line break inside the block (Shift+Enter).
+        const parts = n.text.split("\n");
+        parts.forEach((part, i) => {
+          if (i > 0) out.push({ type: "hardBreak" });
+          if (part) out.push(n.marks?.length ? { type: "text", text: part, marks: n.marks.map(markToPM) } : { type: "text", text: part });
+        });
         break;
+      }
       case "mention":
         out.push({ type: "mention", attrs: { userId: n.userId, label: n.label } });
         break;
@@ -104,7 +110,9 @@ export function pmInline(node: PMNode): InlineNode[] {
     } else if (child.type.name === "pageLink") {
       out.push({ type: "pageLink", documentId: String(child.attrs.documentId), label: String(child.attrs.label) });
     } else if (child.type.name === "hardBreak") {
-      out.push({ type: "text", text: "\n" });
+      // The break takes the formatting of the text before it, so "bold line, break, bold line" stays one run.
+      const prev = out[out.length - 1];
+      out.push(prev?.type === "text" && prev.marks?.length ? { type: "text", text: "\n", marks: prev.marks } : { type: "text", text: "\n" });
     }
   });
   return normalizeInline(out);

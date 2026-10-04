@@ -53,7 +53,10 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
   }, [selected, editable, editing, editor, node]);
 
   useEffect(() => {
-    if (editing) field.current?.focus();
+    if (!editing || !field.current) return;
+    const el = field.current;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
   }, [editing]);
 
   const finish = () => {
@@ -76,6 +79,7 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
             <textarea
               id={`${hintId}-field`}
               ref={field}
+              data-draft=""
               value={draftLatex}
               maxLength={LIMITS.maxFormulaLength}
               spellCheck={false}

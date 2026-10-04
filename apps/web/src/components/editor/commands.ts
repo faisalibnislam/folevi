@@ -175,6 +175,13 @@ export function endHistoryGroup(editor: Editor): void {
 export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
   const { state } = editor;
   const selected = blocksInSelection(state);
+  // Several blocks move as one: when the first can't go deeper, none do (the rest would end up nested under it).
+  if (delta > 0 && selected.length > 1) {
+    const first = selected[0]!;
+    const prev = first.index > 0 ? state.doc.child(first.index - 1) : null;
+    const max = prev ? Math.min(LIMITS.maxDepth, Number(prev.attrs.depth ?? 0) + 1) : 0;
+    if (Number(first.node.attrs.depth ?? 0) >= max) return false;
+  }
   const tr = state.tr;
   let changed = false;
   const handled = new Set<number>();

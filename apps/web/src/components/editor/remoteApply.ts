@@ -39,8 +39,7 @@ function patchNode(tr: Transaction, pos: number, node: PMNode, want: PMNode): vo
     if (!node.eq(want)) tr.replaceWith(pos, pos + node.nodeSize, want);
     return;
   }
-  // Attributes the server doesn't know about (an upload in progress) stay as they are.
-  const attrs = { ...want.attrs, ...(node.attrs.uploadId !== undefined ? { uploadId: node.attrs.uploadId } : {}) };
+  const attrs = want.attrs;
   if (!node.hasMarkup(want.type, attrs)) tr.setNodeMarkup(pos, undefined, attrs);
   const start = node.content.findDiffStart(want.content);
   if (start === null) return;
@@ -60,6 +59,16 @@ function patchNode(tr: Transaction, pos: number, node: PMNode, want: PMNode): vo
 export function remoteTransaction(state: EditorState, blocks: readonly WireBlock[]): Transaction | null {
   const { schema } = state;
   const desired = flattenTree(blocks);
+  // Attributes only this device knows (an upload still in progress) carry over to the new version.
+  const uploads = new Map<string, unknown>();
+  state.doc.forEach((n) => {
+    if (n.attrs.id && n.attrs.uploadId) uploads.set(n.attrs.id as string, n.attrs.uploadId);
+  });
+  const build = (block: WireBlock, depth: number): PMNode => {
+    const json = blockToNode(block, depth);
+    if (uploads.has(block.id)) json.attrs = { ...json.attrs, uploadId: uploads.get(block.id) };
+    return schema.nodeFromJSON(json);
+  };
   const wantIndex = new Map(desired.map((d, i) => [d.block.id, i]));
   const currentBlocks = new Map(docToBlocks(state.doc, new Map(blocks.map((b) => [b.id, b]))).map((b) => [b.id, b]));
   const tr = state.tr;
@@ -69,9 +78,20 @@ export function remoteTransaction(state: EditorState, blocks: readonly WireBlock
   const caretId = $head.depth >= 1 ? ($head.node(1).attrs.id as string | null) : null;
   const caretOffset = $head.depth >= 1 ? $head.parentOffset : 0;
 
-  // 1. Blocks that are gone (or have no id yet) are deleted.
   const children: { id: string | null; pos: number; size: number }[] = [];
   state.doc.forEach((n, offset) => children.push({ id: n.attrs.id as string | null, pos: offset, size: n.nodeSize }));
+  // Nothing in common: the note is simply replaced (deleting every block first would make the editor add an
+  // empty line of its own in between).
+  if (!children.some((c) => c.id && wantIndex.has(c.id))) {
+    const onlyEmptyLine = state.doc.childCount === 1 && state.doc.firstChild!.isTextblock && state.doc.firstChild!.content.size === 0;
+    if (!desired.length && onlyEmptyLine) return null;
+    const nodes = desired.length ? desired.map(({ block, depth }) => build(block, depth)) : [schema.nodes.paragraph!.create({ id: null, depth: 0 })];
+    tr.replaceWith(0, state.doc.content.size, nodes);
+    tr.setMeta("preventClearDocument", true);
+    return tr;
+  }
+
+  // 1. Blocks that are gone (or have no id yet) are deleted.
   for (let i = children.length - 1; i >= 0; i--) {
     const c = children[i]!;
     if (!c.id || !wantIndex.has(c.id)) tr.delete(c.pos, c.pos + c.size);
@@ -90,7 +110,7 @@ export function remoteTransaction(state: EditorState, blocks: readonly WireBlock
   let pos = 0;
   let index = 0;
   for (const { block, depth } of desired) {
-    const want = schema.nodeFromJSON(blockToNode(block, depth));
+    const want = build(block, depth);
     const here = tr.doc.maybeChild(index);
     if (here && here.attrs.id === block.id) {
       const have = currentBlocks.get(block.id);
@@ -102,9 +122,16 @@ export function remoteTransaction(state: EditorState, blocks: readonly WireBlock
     }
     index++;
   }
+  // Anything left after the wanted blocks (a line the editor added while the note was briefly empty) goes.
+  for (let i = tr.doc.childCount - 1; i >= desired.length; i--) {
+    let at = 0;
+    for (let k = 0; k < i; k++) at += tr.doc.child(k).nodeSize;
+    tr.delete(at, at + tr.doc.child(i).nodeSize);
+  }
   // An empty note still has one line to type in.
   if (tr.doc.childCount === 0) tr.insert(0, schema.nodes.paragraph!.create({ id: null, depth: 0 }));
   if (!tr.docChanged) return null;
+  tr.setMeta("preventClearDocument", true);
 
   // The caret's block was moved: put the caret back where it was inside it.
   if (caretId) {

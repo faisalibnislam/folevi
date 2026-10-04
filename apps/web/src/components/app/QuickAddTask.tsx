@@ -97,12 +97,12 @@ function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <div className="text-sm">
           <span className="block text-muted">Due date</span>
-          <DateField value={due} onChange={setDue} aria-label="Due date" className="mt-1 w-44" />
+          <DateField value={due} onChange={setDue} aria-label="Due date" size="lg" className="mt-1 w-44" />
         </div>
         {due ? (
           <div className="text-sm">
             <span className="block text-muted">Time (optional)</span>
-            <TimeField value={time} onChange={setTime} emptyLabel="All day" aria-label="Due time" className="mt-1 w-32" />
+            <TimeField value={time} onChange={setTime} emptyLabel="All day" aria-label="Due time" size="lg" className="mt-1 w-32" />
           </div>
         ) : null}
         <label className="text-sm">

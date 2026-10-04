@@ -84,7 +84,16 @@ export const Heading = Node.create({
   group: "block",
   content: "inline*",
   defining: true,
-  addAttributes: () => blockAttrs({ level: { default: 1, parseHTML: (el) => Number(el.tagName.slice(1)) || 1, rendered: false } }),
+  // Folevi writes a level-N heading as <h(N+1)> (the page title is the h1), marked data-block="heading";
+  // headings from elsewhere keep their own level. Levels go up to 3.
+  addAttributes: () =>
+    blockAttrs({
+      level: {
+        default: 1,
+        parseHTML: (el) => Math.max(1, Math.min(3, (Number(el.tagName.slice(1)) || 1) - (el.getAttribute("data-block") === "heading" ? 1 : 0))),
+        rendered: false,
+      },
+    }),
   parseHTML: () => [1, 2, 3, 4, 5, 6].map((l) => ({ tag: `h${l}`, attrs: { level: Math.min(3, l) } })),
   renderHTML: ({ node, HTMLAttributes }) => [`h${Math.min(3, Number(node.attrs.level) || 1) + 1}`, mergeAttributes(HTMLAttributes, { "data-block": "heading", class: `fb fb-heading fb-h${node.attrs.level}` }), 0],
 });
@@ -297,7 +306,8 @@ export const Code = Node.create({
   addProseMirrorPlugins: () => [mermaidFocusPlugin],
   addKeyboardShortcuts() {
     return {
-      Tab: () => (this.editor.isActive("codeBlock") ? this.editor.commands.insertContent("  ") : false),
+      // Two spaces at the caret, or at the start of every selected line.
+      Tab: () => (this.editor.isActive("codeBlock") ? indentCode(this.editor) : false),
       // Leaving code: ↓ or → at the very end of the last block, or Enter on a second empty last line,
       // continues with a text line below.
       ArrowDown: () => exitCode(this.editor, "down"),
@@ -326,6 +336,29 @@ export const Code = Node.create({
     };
   },
 });
+
+function indentCode(editor: Editor): boolean {
+  const { state } = editor;
+  const { $from, $to, empty } = state.selection;
+  if (empty || $from.parent !== $to.parent) {
+    editor.view.dispatch(state.tr.insertText("  "));
+    return true;
+  }
+  const start = $from.start();
+  const text = $from.parent.textContent;
+  const lines: number[] = [];
+  let at = text.lastIndexOf("\n", $from.parentOffset - 1) + 1;
+  for (;;) {
+    lines.push(at);
+    const nl = text.indexOf("\n", at);
+    if (nl < 0 || nl >= $to.parentOffset) break;
+    at = nl + 1;
+  }
+  const tr = state.tr;
+  for (const line of lines.reverse()) tr.insertText("  ", start + line);
+  editor.view.dispatch(tr);
+  return true;
+}
 
 function exitCode(editor: Editor, dir: "down" | "right"): boolean {
   const { state, view } = editor;
@@ -415,7 +448,21 @@ export const PageBreak = Node.create({
 export const ImageBlock = atom("image", { fileId: r("fileId"), url: r("url"), alt: r("alt", "string", ""), caption: r("caption", "string", ""), width: r("width", "number"), naturalWidth: r("naturalWidth", "number"), naturalHeight: r("naturalHeight", "number"), uploadId: hidden });
 export const FileBlock = atom("file", { fileId: r("fileId"), name: r("name"), size: r("size", "number"), mimeType: r("mimeType"), uploadId: hidden });
 export const AudioBlock = atom("audio", { fileId: r("fileId"), name: r("name"), size: r("size", "number"), mimeType: r("mimeType"), duration: r("duration", "number"), uploadId: hidden });
-export const TableBlock = atom("table", { rows: r("rows", "json", [[[], []], [[], []]]), headerRow: r("headerRow", "boolean", true) });
+/** Table rows from pasted HTML: only a list of rows of cells (each a list of inline nodes) is accepted. */
+const tableRows = {
+  ...r("rows", "json", [[[], []], [[], []]]),
+  parseHTML: (el: HTMLElement) => {
+    const fallback = [[[], []], [[], []]];
+    try {
+      const v = JSON.parse(el.getAttribute("data-rows") ?? "null") as unknown;
+      const ok = Array.isArray(v) && v.length > 0 && v.every((row) => Array.isArray(row) && row.length > 0 && row.every((cell) => Array.isArray(cell) && cell.every((n) => n && typeof n === "object" && typeof (n as { type?: unknown }).type === "string")));
+      return ok ? v : fallback;
+    } catch {
+      return fallback;
+    }
+  },
+};
+export const TableBlock = atom("table", { rows: tableRows, headerRow: r("headerRow", "boolean", true) });
 export const PageBlock = atom("page", { documentId: r("documentId"), display: r("display", "string", "card"), titleCache: r("titleCache"), iconCache: r("iconCache") });
 export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName") });
 export const CollectionBlock = atom("collection", { collectionId: r("collectionId"), viewId: r("viewId") });

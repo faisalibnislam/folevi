@@ -1,5 +1,5 @@
 import { Extension, InputRule, type Editor } from "@tiptap/core";
-import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Fragment, Slice, type Node as PMNode } from "@tiptap/pm/model";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
@@ -15,20 +15,34 @@ export const BlockIdentity = Extension.create({
       new Plugin({
         key: new PluginKey("blockIdentity"),
         props: {
+          // A right-click (or Control-click) is for the note's menu, which sets the selection itself;
+          // ProseMirror's own handling would move focus back into the text under the open menu.
+          handleDOMEvents: {
+            mousedown: (_view, event) => event.button === 2 || (event.button === 0 && event.ctrlKey && /Mac/.test(navigator.platform)),
+          },
           // Typing while a whole block (an image, a table, a divider…) is selected writes on a new line after
           // it instead of replacing it.
           handleTextInput: (view, _from, _to, text) => {
             const sel = view.state.selection;
+            // Typing over a range that crosses a collapsed toggle replaces only what's visible.
+            const visible = deleteVisibleRange(view.state);
+            if (visible) {
+              visible.insertText(text);
+              view.dispatch(visible.scrollIntoView());
+              return true;
+            }
             if (!(sel instanceof NodeSelection) || !sel.node.isBlock || sel.$from.depth !== 0) return false;
             const { state } = view;
-            const next = state.doc.nodeAt(sel.to);
+            // After the block and anything nested under it.
+            const at = afterSubtree(state, sel.$from.index(0));
+            const next = state.doc.nodeAt(at);
             const tr = state.tr;
-            if (next && next.type.name === "paragraph" && next.content.size === 0) {
-              tr.insertText(text, sel.to + 1);
-              tr.setSelection(TextSelection.create(tr.doc, sel.to + 1 + text.length));
+            if (at === sel.to && next && next.type.name === "paragraph" && next.content.size === 0) {
+              tr.insertText(text, at + 1);
+              tr.setSelection(TextSelection.create(tr.doc, at + 1 + text.length));
             } else {
-              tr.insert(sel.to, state.schema.nodes.paragraph!.create({ id: null, depth: sel.node.attrs.depth }, state.schema.text(text)));
-              tr.setSelection(TextSelection.create(tr.doc, sel.to + 1 + text.length));
+              tr.insert(at, state.schema.nodes.paragraph!.create({ id: null, depth: sel.node.attrs.depth }, state.schema.text(text)));
+              tr.setSelection(TextSelection.create(tr.doc, at + 1 + text.length));
             }
             view.dispatch(tr.scrollIntoView());
             return true;
@@ -37,12 +51,26 @@ export const BlockIdentity = Extension.create({
           // links and sync identity. A block dragged within the note is a move and keeps its id.
           transformPasted: (slice, view) => {
             if ((view as unknown as { dragging?: { move?: boolean } | null }).dragging?.move) return slice;
+            // Part of one line (a word, a sentence): just its text, so it never changes the line it lands in.
+            const only = slice.content.childCount === 1 ? slice.content.firstChild : null;
+            if (only && only.isTextblock && slice.openStart > 0 && slice.openEnd > 0 && view.state.selection.$from.parent.isTextblock) {
+              return new Slice(only.content, 0, 0);
+            }
+            // Whole blocks: new ids (they're copies), nested relative to the line they're pasted on.
+            const $from = view.state.selection.$from;
+            const caretDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
+            let minDepth = Infinity;
+            slice.content.forEach((node) => {
+              if (node.attrs.depth !== undefined) minDepth = Math.min(minDepth, Number(node.attrs.depth ?? 0));
+            });
+            const shift = Number.isFinite(minDepth) && slice.openStart === 0 ? caretDepth - minDepth : 0;
             let changed = false;
             const content: PMNode[] = [];
             slice.content.forEach((node) => {
-              if (node.attrs.id) {
+              if (node.attrs.id || (shift && node.attrs.depth !== undefined)) {
                 changed = true;
-                content.push(node.type.create({ ...node.attrs, id: null }, node.content, node.marks));
+                const depth = node.attrs.depth === undefined ? undefined : Math.max(0, Math.min(LIMITS.maxDepth, Number(node.attrs.depth ?? 0) + shift));
+                content.push(node.type.create({ ...node.attrs, id: null, ...(depth === undefined ? {} : { depth }) }, node.content, node.marks));
               } else content.push(node);
             });
             return changed ? new Slice(Fragment.from(content), slice.openStart, slice.openEnd) : slice;
@@ -54,11 +82,13 @@ export const BlockIdentity = Extension.create({
           const seen = new Set<string>();
           let pos = 0;
           let prevDepth = -1;
+          let depthFixed = false;
           state.doc.forEach((node) => {
             const id = node.attrs.id as string | null;
             let depth = Number(node.attrs.depth ?? 0);
             const max = Math.min(LIMITS.maxDepth, prevDepth + 1);
             const fixDepth = depth > max || depth < 0;
+            if (fixDepth) depthFixed = true;
             if (fixDepth) depth = Math.max(0, max);
             if (!id || seen.has(id) || fixDepth) {
               tr.setNodeMarkup(pos, undefined, { ...node.attrs, id: !id || seen.has(id) ? ulid() : id, depth });
@@ -68,7 +98,10 @@ export const BlockIdentity = Extension.create({
             pos += node.nodeSize;
           });
           if (!tr.docChanged) return null;
-          tr.setMeta("addToHistory", false);
+          // Id fixes stay out of the undo history; a depth fix belongs to the edit that caused it, so undoing
+          // that edit restores the nesting too.
+          const remote = transactions.every((t) => t.getMeta("remote") || t.getMeta("addToHistory") === false);
+          if (!depthFixed || remote) tr.setMeta("addToHistory", false);
           if (transactions.every((t) => t.getMeta("remote"))) tr.setMeta("remote", true);
           return tr;
         },
@@ -262,6 +295,93 @@ function afterSubtree(state: EditorState, index: number): number {
   return pos;
 }
 
+/**
+ * A text range from a collapsed toggle's line into a later block would also delete the toggle's hidden
+ * blocks, which the person can't see. This deletes only the visible part (the selected text, visible
+ * blocks in between) and joins the rest of the last line onto the toggle's line. Null when the range
+ * doesn't cross hidden blocks.
+ */
+export function deleteVisibleRange(state: EditorState): Transaction | null {
+  const sel = state.selection;
+  if (sel.empty || !(sel instanceof TextSelection)) return null;
+  const { $from, $to } = sel;
+  if ($from.depth < 1 || $to.depth < 1) return null;
+  const a = $from.index(0);
+  const b = $to.index(0);
+  if (a === b) return null;
+  const hidden = hiddenIndices(state);
+  let crosses = false;
+  for (let i = a + 1; i < b; i++) if (hidden.has(i)) crosses = true;
+  if (!crosses || $from.parent.type.name === "codeBlock" || $to.parent.type.name === "codeBlock") return null;
+  const tr = state.tr;
+  const bPos = $to.before(1);
+  const rest = $to.parent.content.cut($to.parentOffset);
+  tr.delete(bPos, bPos + $to.parent.nodeSize);
+  const starts: number[] = [];
+  state.doc.forEach((_n, offset) => starts.push(offset));
+  for (let i = b - 1; i > a; i--) {
+    if (hidden.has(i)) continue;
+    const n = state.doc.child(i);
+    tr.delete(starts[i]!, starts[i]! + n.nodeSize);
+  }
+  const pos = $from.pos;
+  tr.delete(pos, $from.end());
+  if (rest.size) tr.insert(pos, rest);
+  tr.setSelection(TextSelection.create(tr.doc, pos));
+  normalizeDepths(tr);
+  return tr;
+}
+
+/** ↑/↓/←/→ at the edge of a block whose neighbour is hidden in a collapsed toggle: go to the next visible block. */
+function skipHidden(editor: Editor, dir: 1 | -1, edge: "up" | "down" | "left" | "right"): boolean {
+  const { state, view } = editor;
+  const sel = state.selection;
+  let index: number;
+  if (sel instanceof NodeSelection && sel.$from.depth === 0) index = sel.$from.index(0);
+  else {
+    if (!sel.empty || sel.$from.depth < 1 || !view.endOfTextblock(edge)) return false;
+    index = sel.$from.index(0);
+  }
+  const next = index + dir;
+  if (next < 0 || next >= state.doc.childCount || !hiddenIndices(state).has(next)) return false;
+  const target = neighbourIndex(state, index, dir);
+  if (target === null) return true;
+  let pos = 0;
+  for (let i = 0; i < target; i++) pos += state.doc.child(i).nodeSize;
+  const node = state.doc.child(target);
+  const folded = node.type.name === "codeBlock" && node.attrs.language === "mermaid" && node.textContent.trim();
+  const tr = state.tr;
+  if (node.isTextblock && !folded) tr.setSelection(TextSelection.create(tr.doc, dir > 0 ? pos + 1 : pos + node.nodeSize - 1));
+  else tr.setSelection(NodeSelection.create(tr.doc, pos));
+  view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+/** Shift+Tab in code: up to two spaces off the start of each selected line. False when there were none. */
+function outdentCodeLines(editor: Editor): boolean {
+  const { state } = editor;
+  const { $from, $to } = state.selection;
+  if ($from.parent !== $to.parent || $from.parent.type.name !== "codeBlock") return false;
+  const start = $from.start();
+  const text = $from.parent.textContent;
+  const fromOff = $from.parentOffset;
+  const toOff = $to.parentOffset;
+  const tr = state.tr;
+  let lineStart = text.lastIndexOf("\n", fromOff - 1) + 1;
+  const edits: [number, number][] = [];
+  while (lineStart <= toOff) {
+    const spaces = /^ {1,2}/.exec(text.slice(lineStart))?.[0].length ?? 0;
+    if (spaces) edits.push([lineStart, spaces]);
+    const nl = text.indexOf("\n", lineStart);
+    if (nl < 0 || nl >= toOff) break;
+    lineStart = nl + 1;
+  }
+  if (!edits.length) return false;
+  for (const [at, n] of edits.reverse()) tr.delete(start + at, start + at + n);
+  editor.view.dispatch(tr);
+  return true;
+}
+
 export const BlockKeymap = Extension.create({
   name: "blockKeymap",
   priority: 1000,
@@ -269,9 +389,27 @@ export const BlockKeymap = Extension.create({
     const editor = this.editor as Editor;
     return {
       Enter: () => {
+        const sel0 = editor.state.selection;
+        if (sel0 instanceof NodeSelection && sel0.$from.depth === 0) {
+          const node = sel0.node;
+          const st = editor.state;
+          // A folded Mermaid diagram: Enter opens its source.
+          if (node.type.name === "codeBlock") {
+            editor.view.dispatch(st.tr.setSelection(TextSelection.create(st.doc, sel0.from + 1 + node.content.size)).scrollIntoView());
+            return true;
+          }
+          // Any other selected block: a new line after it (and after what's nested under it).
+          const at = afterSubtree(st, sel0.$from.index(0));
+          const tr = st.tr.insert(at, st.schema.nodes.paragraph!.create({ id: null, depth: node.attrs.depth }));
+          tr.setSelection(TextSelection.create(tr.doc, at + 1));
+          editor.view.dispatch(tr.scrollIntoView());
+          return true;
+        }
         if (!editor.state.selection.empty) {
           if (editor.state.selection instanceof NodeSelection) return false;
-          editor.commands.deleteSelection();
+          const visible = deleteVisibleRange(editor.state);
+          if (visible) editor.view.dispatch(visible);
+          else editor.commands.deleteSelection();
         }
         const { state } = editor;
         const cur = currentBlock(state);
@@ -296,7 +434,8 @@ export const BlockKeymap = Extension.create({
         }
         const atEnd = $from.parentOffset === cur.node.content.size;
         const nextType = LIST_TYPES.has(type) ? type : type === "heading" ? (atEnd ? "paragraph" : "heading") : "paragraph";
-        const marks = state.storedMarks ?? ($from.parentOffset ? $from.marks() : null);
+        // Bold and colour continue on the new line; inline code doesn't.
+        const marks = (state.storedMarks ?? ($from.parentOffset ? $from.marks() : null))?.filter((m) => !m.type.spec.code) ?? null;
         // A collapsed toggle: the new line goes after its hidden blocks, taking the text after the caret.
         if (type === "toggle" && cur.node.attrs.collapsed) {
           const rest = cur.node.content.cut($from.parentOffset);
@@ -321,8 +460,14 @@ export const BlockKeymap = Extension.create({
       },
       Backspace: () => {
         const { state } = editor;
+        if (!state.selection.empty) {
+          const visible = deleteVisibleRange(state);
+          if (!visible) return false;
+          editor.view.dispatch(visible.scrollIntoView());
+          return true;
+        }
         const cur = currentBlock(state);
-        if (!cur || !state.selection.empty || !cur.atStart) return false;
+        if (!cur || !cur.atStart) return false;
         const type = cur.node.type.name;
         if (type !== "paragraph" && TEXT_NODES.has(type)) return turnInto(editor, "paragraph");
         // Code at the start: an empty block becomes text; one with code stays put (merging would flatten it).
@@ -331,22 +476,32 @@ export const BlockKeymap = Extension.create({
         const index = state.selection.$from.index(0);
         if (index === 0) return false;
         const prev = state.doc.child(index - 1);
+        const hiddenAbove = hiddenIndices(state).has(index - 1);
+        // Code above: move into it (merging would put this text inside the code, unformatted).
+        if (!hiddenAbove && prev.type.name === "codeBlock") {
+          editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos - 1)).scrollIntoView());
+          return true;
+        }
         // Deleting into an atom block above (an image, a divider…) selects it first instead of removing it.
-        if (prev.isAtom) {
+        if (prev.isAtom && !hiddenAbove) {
           if (cur.empty) return deleteBlocks(editor, [index], false);
           editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos - prev.nodeSize)).scrollIntoView());
           return true;
         }
         // The block above is hidden inside a collapsed toggle: join with the toggle's own line instead.
-        if (hiddenIndices(state).has(index - 1)) {
+        if (hiddenAbove) {
           const target = neighbourIndex(state, index, -1);
-          if (target === null) return false;
+          if (target === null) return true;
           let tPos = 0;
           for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
           const tNode = state.doc.child(target);
-          if (!tNode.isTextblock) return false;
+          if (!tNode.isTextblock) return true;
           const end = tPos + tNode.nodeSize - 1;
-          const tr = state.tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
+          const tr = state.tr;
+          // This line's own nested blocks would end up hidden in the toggle: open it.
+          const next = state.doc.maybeChild(index + 1);
+          if (tNode.type.name === "toggle" && next && Number(next.attrs.depth ?? 0) > Number(cur.node.attrs.depth ?? 0)) tr.setNodeMarkup(tPos, undefined, { ...tNode.attrs, collapsed: false });
+          tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
           if (cur.node.content.size && tNode.type.name !== "codeBlock") tr.insert(end, cur.node.content);
           tr.setSelection(TextSelection.create(tr.doc, end));
           normalizeDepths(tr);
@@ -357,9 +512,21 @@ export const BlockKeymap = Extension.create({
       },
       Delete: () => {
         const { state } = editor;
+        if (!state.selection.empty) {
+          const visible = deleteVisibleRange(state);
+          if (!visible) return false;
+          editor.view.dispatch(visible.scrollIntoView());
+          return true;
+        }
         const cur = currentBlock(state);
-        if (!cur || !state.selection.empty || state.selection.$from.parentOffset !== cur.node.content.size) return false;
+        if (!cur || state.selection.$from.parentOffset !== cur.node.content.size) return false;
         const index = state.selection.$from.index(0);
+        const nextBlock = state.doc.maybeChild(index + 1);
+        // Code below: move into it rather than pulling the code into this line.
+        if (nextBlock?.type.name === "codeBlock" && !hiddenIndices(state).has(index + 1) && cur.node.type.name !== "codeBlock") {
+          editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos + cur.node.nodeSize + 1)).scrollIntoView());
+          return true;
+        }
         // Deleting into an atom below (an image, a divider…) selects it first instead of removing it.
         const below = state.doc.maybeChild(index + 1);
         if (below?.isAtom && !hiddenIndices(state).has(index + 1)) {
@@ -385,7 +552,12 @@ export const BlockKeymap = Extension.create({
       },
       // Tab never leaves the page: it indents (or does nothing when it can't). Code blocks indent their text.
       Tab: () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? false : (changeDepth(editor, 1), true)),
-      "Shift-Tab": () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? true : (changeDepth(editor, -1), true)),
+      "Shift-Tab": () => (editor.state.selection.$from.parent.type.name === "codeBlock" ? (outdentCodeLines(editor) || changeDepth(editor, -1), true) : (changeDepth(editor, -1), true)),
+      // Past hidden blocks (inside a collapsed toggle), the arrows go to the next visible one.
+      ArrowDown: () => skipHidden(editor, 1, "down"),
+      ArrowRight: () => skipHidden(editor, 1, "right"),
+      ArrowUp: () => skipHidden(editor, -1, "up"),
+      ArrowLeft: () => skipHidden(editor, -1, "left"),
       "Alt-Shift-ArrowUp": () => moveBlock(editor, -1),
       "Alt-Shift-ArrowDown": () => moveBlock(editor, 1),
       "Mod-Alt-0": () => turnInto(editor, "paragraph"),
@@ -432,7 +604,11 @@ function blockRule(find: RegExp, type: string, attrs: (m: RegExpMatchArray) => R
         tr.replaceWith(pos, pos + tr.doc.nodeAt(pos)!.nodeSize, schemaType.create({ id: node.attrs.id, depth: node.attrs.depth, ...attrs(match) }, rest ? state.schema.text(rest) : null));
         tr.setSelection(TextSelection.near(tr.doc.resolve(pos + 1)));
       } else {
-        tr.setNodeMarkup(pos, schemaType, { id: node.attrs.id, depth: node.attrs.depth, ...attrs(match) });
+        // Like "Turn into": the line keeps its styling (and a to-do its task details).
+        const kept: Record<string, unknown> = {};
+        if (FORMATTABLE_TYPES.has(type) && FORMATTABLE_TYPES.has(node.type.name)) for (const k of CARRIED_FORMAT) if (node.attrs[k] != null) kept[k] = node.attrs[k];
+        if (type === node.type.name) Object.assign(kept, node.attrs);
+        tr.setNodeMarkup(pos, schemaType, { ...kept, id: node.attrs.id, depth: node.attrs.depth, ...attrs(match) });
       }
     },
   });
@@ -458,10 +634,11 @@ export const MarkdownShortcuts = Extension.create({
           const pos = $start.before(1);
           const node = $start.parent;
           const tr = state.tr;
-          const divider = state.schema.nodes.divider!.create({ id: node.attrs.id, depth: node.attrs.depth });
-          // Text after the caret moves to the line below the divider.
+          // Text after the caret moves below the divider and keeps the line's id (and its comments); on an
+          // empty line the divider takes its place.
           const rest = node.content.cut(range.to - $start.start());
-          const para = state.schema.nodes.paragraph!.create({ id: ulid(), depth: node.attrs.depth }, rest);
+          const divider = state.schema.nodes.divider!.create({ id: rest.size ? ulid() : node.attrs.id, depth: node.attrs.depth });
+          const para = state.schema.nodes.paragraph!.create({ ...(rest.size ? node.attrs : {}), id: rest.size ? node.attrs.id : ulid(), depth: node.attrs.depth }, rest);
           tr.replaceWith(pos, pos + node.nodeSize, [divider, para]);
           tr.setSelection(TextSelection.near(tr.doc.resolve(pos + divider.nodeSize + 1)));
         },

@@ -173,15 +173,24 @@ export class SyncEngine {
     this.commit(sync.localDelete(next, { opId: ulid(), documentId: record.documentId, blockId: record.blockId }));
   }
 
+  /** Blocks deleted on this device (in this session): only these come back when the person undoes. */
+  private deletedHere = new Set<string>();
+
   deleteBlock(documentId: string, blockId: string) {
+    this.deletedHere.add(blockId);
     this.commit(sync.localDelete(this.state, { opId: ulid(), documentId, blockId }));
     this.scheduleFlush();
   }
 
-  /** Whether this document's block was deleted on this device (it can come back with `restoreBlock`). */
+  /**
+   * Whether this document's block was deleted by the person on this device, so undoing can bring it back
+   * with `restoreBlock`. A block someone else deleted (or one with an open conflict) never is: it comes back
+   * only through the conflict's "Keep mine".
+   */
   isBlockDeleted(documentId: string, blockId: string): boolean {
     const entity = this.state.blocks[blockId];
-    return Boolean(entity?.deleted && entity.documentId === documentId);
+    if (!entity?.deleted || entity.documentId !== documentId || !this.deletedHere.has(blockId)) return false;
+    return !this.state.conflicts.some((c) => c.blockId === blockId);
   }
 
   restoreBlock(documentId: string, blockId: string) {

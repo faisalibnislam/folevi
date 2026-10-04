@@ -34,7 +34,10 @@ export function editorExtensions({
       placeholder: ({ node, pos, editor }) => {
         if (node.type.name === "heading") return `Heading ${node.attrs.level}`;
         if (node.type.name === "todo") return "To-do";
-        if (["bulleted", "numbered", "quote", "callout", "toggle"].includes(node.type.name)) return "List";
+        if (node.type.name === "bulleted" || node.type.name === "numbered") return "List";
+        if (node.type.name === "quote") return "Quote";
+        if (node.type.name === "toggle") return "Toggle";
+        if (node.type.name === "callout") return "Callout";
         const ai = aiHint.current ? ", ⌘J for AI" : "";
         return pos === 0 && editor.state.doc.childCount === 1 ? (placeholder ?? `Start writing, or type / for blocks${ai}`) : `Type / for blocks${ai}, [[ to link a page`;
       },

@@ -689,7 +689,9 @@ function anchorLabel(t: CommentThread): ReactNode {
 export function CommentsOverview({ documentId, onOpenThread, focusThreadId = null }: { documentId: string; onOpenThread: (thread: CommentThread) => void; focusThreadId?: string | null }) {
   const data = useQuery(api.comments.threads, { documentId });
   const people = useQuery(api.comments.mentionable, { documentId });
-  const [filter, setFilter] = useState<"open" | "resolved">("open");
+  const [filter, setFilter] = useState<"open" | "resolved" | "all">("open");
+  const [query, setQuery] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(focusThreadId);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<MentionInputHandle>(null);
@@ -708,7 +710,36 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
   const everyone: MentionPerson[] = people ?? [];
   const open = data.threads.filter((t) => t.status === "open");
   const resolved = data.threads.filter((t) => t.status === "resolved");
-  const shown = filter === "open" ? open : resolved;
+  // Search: the comments' text, who wrote them, and the line they're on.
+  const q = query.trim().toLowerCase();
+  const textOf = (t: CommentThread) =>
+    [t.blockText ?? "", ...t.comments.map((c) => `${c.authorName} ${c.deleted ? "" : c.body.map((n) => ("text" in n ? n.text : "label" in n ? n.label : "")).join("")}`)].join(" ").toLowerCase();
+  const shown = (filter === "open" ? open : filter === "resolved" ? resolved : data.threads)
+    .filter((t) => !q || textOf(t).includes(q))
+    .sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
+  const threadMenu = (t: CommentThread): MenuItem[] => [
+    ...(t.canResolve
+      ? [
+          t.status === "open"
+            ? { label: "Resolve", icon: <Check size={14} />, onSelect: () => void actions.setResolved({ threadId: t.id, resolved: true }).catch(fail) }
+            : { label: "Reopen", icon: <RotateCcw size={14} />, onSelect: () => void actions.setResolved({ threadId: t.id, resolved: false }).catch(fail) },
+        ]
+      : []),
+    t.unread
+      ? { label: "Mark as read", icon: <Eye size={14} />, onSelect: () => void actions.markThreadRead({ threadId: t.id }).catch(fail) }
+      : { label: "Mark as unread", icon: <EyeOff size={14} />, onSelect: () => void actions.markThreadUnread({ threadId: t.id }).catch(fail) },
+    {
+      label: "Copy link",
+      icon: <Link2 size={14} />,
+      onSelect: () =>
+        void navigator.clipboard.writeText(`${location.origin}${commentLink(documentId, t.id)}`).then(
+          () => toast.show("Link copied"),
+          () => toast.show("Couldn't copy the link.", { tone: "error" }),
+        ),
+    },
+    ...(t.canDelete ? [{ label: "Delete thread…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setConfirmDelete(t.id) }] : []),
+  ];
   const submit = () => {
     const text = draft.trim();
     if (!text) return;
@@ -757,18 +788,31 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
       ) : (
         <p className="text-muted">You can read comments on this note but not add them.</p>
       )}
-      <div className="flex items-center gap-2">
-        <div role="group" aria-label="Show threads" className="ui-seg flex-1 bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+      <div className="space-y-2">
+        <div role="group" aria-label="Show threads" className="ui-seg bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
           <button type="button" aria-pressed={filter === "open"} onClick={() => setFilter("open")}>
             Open{open.length ? ` · ${open.length}` : ""}
           </button>
           <button type="button" aria-pressed={filter === "resolved"} onClick={() => setFilter("resolved")}>
             Resolved{resolved.length ? ` · ${resolved.length}` : ""}
           </button>
+          <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+            All
+          </button>
         </div>
+        {data.threads.length > 2 ? (
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search comments"
+            aria-label="Search comments"
+            className="h-8 w-full ui-input rounded-[6px] px-2.5 text-[13px]"
+          />
+        ) : null}
       </div>
       {shown.length === 0 ? (
-        <p className="px-1 py-4 text-center text-muted">{filter === "open" ? "No open comments." : "No resolved comments."}</p>
+        <p className="px-1 py-4 text-center text-muted">{q ? "No comments match." : filter === "open" ? "No open comments." : filter === "resolved" ? "No resolved comments." : "No comments yet."}</p>
       ) : (
         <ul className="space-y-1.5">
           {shown.map((t) => {
@@ -777,7 +821,35 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
             // Threads that can't float under their block open here (also one whose block is folded away).
             const inline = !t.blockId || t.blockExists === false || focusThreadId === t.id;
             return (
-              <li key={t.id}>
+              <li key={t.id} className="group/thread relative">
+                {!isPending(t.id) ? (
+                  <MenuButton
+                    label="Thread actions"
+                    align="end"
+                    className="absolute right-1.5 top-1.5 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover/thread:opacity-100 pointer-coarse:opacity-100"
+                    triggerClassName="grid h-7 w-7 place-items-center rounded-[6px] text-muted hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    trigger={<MoreHorizontal size={15} aria-hidden />}
+                    items={threadMenu(t)}
+                  />
+                ) : null}
+                {confirmDelete === t.id ? (
+                  <div role="alert" className="mb-1 flex items-center gap-2 rounded-[8px] bg-danger-soft/40 px-2.5 py-2 text-[12.5px]">
+                    <span className="flex-1">Delete this thread and its {t.comments.length === 1 ? "comment" : `${t.comments.length} comments`}?</span>
+                    <Button size="sm" variant="quiet" onClick={() => setConfirmDelete(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => {
+                        setConfirmDelete(null);
+                        actions.deleteThread({ threadId: t.id }).then(() => toast.show("Thread deleted"), fail);
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   aria-expanded={inline ? expanded === t.id : undefined}
@@ -788,7 +860,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                   onClick={() => (inline ? setExpanded(expanded === t.id ? null : t.id) : onOpenThread(t))}
                   className="block w-full rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-progress"
                 >
-                  <span className="flex min-w-0 items-center gap-1 text-[11.5px] text-faint">{anchorLabel(t)}</span>
+                  <span className="flex min-w-0 items-center gap-1 pr-8 text-[11.5px] text-faint">{anchorLabel(t)}</span>
                   <span className="mt-1.5 flex items-center gap-2">
                     <Avatar name={first.authorName} url={first.authorAvatarUrl} size={20} />
                     <span className="min-w-0 flex-1 truncate text-[12.5px]">

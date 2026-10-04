@@ -2,7 +2,10 @@
 
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, CircleCheck, ExternalLink, FileText, House, Image as ImageIcon, List, Mic, PanelLeft, Paperclip, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, CircleCheck, ExternalLink, FileText, House, Image as ImageIcon, List, MessageSquare, Mic, PanelLeft, Paperclip, Search, X } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/lib/convex/api";
+import { CommentsOverview, type CommentThread } from "./Comments";
 import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
@@ -12,10 +15,11 @@ import { Outline } from "./Outline";
 import { WorkspaceMenu } from "@/components/app/WorkspaceMenu";
 import { SidebarTopBar } from "@/components/app/Sidebar";
 
-export type DocSidebarTab = "contents" | "tasks" | "attachments" | "find";
+export type DocSidebarTab = "contents" | "comments" | "tasks" | "attachments" | "find";
 
 const TABS: { id: DocSidebarTab; label: string; icon: React.ReactNode }[] = [
   { id: "contents", label: "Table of contents", icon: <List size={15} /> },
+  { id: "comments", label: "Comments", icon: <MessageSquare size={15} /> },
   { id: "tasks", label: "Tasks in this page", icon: <CircleCheck size={15} /> },
   { id: "attachments", label: "Attachments and links", icon: <Paperclip size={15} /> },
   { id: "find", label: "Find in page", icon: <Search size={15} /> },
@@ -40,7 +44,16 @@ export function DocumentSidebar({
   onJump,
   onHide,
   onNavigate,
+  request,
+  onOpenThread,
+  focusThreadId = null,
 }: {
+  /** Switch to a tab from outside (opening comments from the note): applied whenever `at` changes. */
+  request?: { tab: DocSidebarTab; at: number } | null;
+  /** A thread chosen in the Comments tab: jump to its block and open it there. */
+  onOpenThread?: (thread: CommentThread) => void;
+  /** A thread to open in the Comments tab (one on the whole note or a deleted block). */
+  focusThreadId?: string | null;
   documentId: string;
   title: string;
   /** Workspace › folder(s) › parent pages, outermost first. */
@@ -56,6 +69,13 @@ export function DocumentSidebar({
   const baseId = useId();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const active = TABS.some((t) => t.id === tab) ? tab : "contents";
+  useEffect(() => {
+    if (request) setTab(request.tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new request switches tabs
+  }, [request?.at]);
+  // An unread open thread puts a dot on the Comments tab.
+  const threads = useQuery(api.comments.threads, { documentId });
+  const unread = Boolean(threads?.threads.some((t) => t.unread && t.status === "open"));
   return (
     <div className="flex h-full flex-col">
       {/* On phones the sidebar is a drawer and the tab strip is hidden, so it carries its own controls. */}
@@ -108,7 +128,7 @@ export function DocumentSidebar({
               id={`${baseId}-tab-${t.id}`}
               aria-selected={active === t.id}
               aria-controls={`${baseId}-panel`}
-              aria-label={t.label}
+              aria-label={t.id === "comments" && unread ? "Comments (unread)" : t.label}
               title={t.label}
               tabIndex={active === t.id ? 0 : -1}
               onClick={() => setTab(t.id)}
@@ -122,7 +142,10 @@ export function DocumentSidebar({
               }}
               className="!min-h-8 !px-0"
             >
-              <span aria-hidden>{t.icon}</span>
+              <span aria-hidden className="relative">
+                {t.icon}
+                {t.id === "comments" && unread ? <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-coral" /> : null}
+              </span>
             </button>
           ))}
         </div>
@@ -130,6 +153,12 @@ export function DocumentSidebar({
 
       <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${active}`} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-4">
         {active === "contents" ? <ContentsPanel documentId={documentId} title={title} onJump={onJump} /> : null}
+        {active === "comments" ? (
+          <>
+            <PanelTitle>Comments</PanelTitle>
+            <CommentsOverview documentId={documentId} onOpenThread={(t) => onOpenThread?.(t)} focusThreadId={focusThreadId} />
+          </>
+        ) : null}
         {active === "tasks" ? <TasksPanel documentId={documentId} editor={editor} readOnly={readOnly} onJump={onJump} /> : null}
         {active === "attachments" ? <AttachmentsPanel documentId={documentId} onJump={onJump} onNavigate={onNavigate} /> : null}
         {active === "find" ? <FindPanel editor={editor} /> : null}

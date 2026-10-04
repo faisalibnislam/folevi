@@ -72,12 +72,23 @@
 @media (prefers-reduced-motion: reduce) { .fb-comment-chip { transition: none; } }
 
 .fb-editor p.is-empty::before,
-.fb-editor .is-empty > .fb-content::before,
 .fb-editor h2.is-empty::before, .fb-editor h3.is-empty::before, .fb-editor h4.is-empty::before {
   content: attr(data-placeholder);
   color: var(--color-ink-faint);
   float: left; height: 0; pointer-events: none;
 }
+/* Blocks whose text sits in an inner element (to-do, toggle, callout): the hint goes there. */
+.fb-editor .is-empty > .fb-content::before { color: var(--color-ink-faint); float: left; height: 0; pointer-events: none; }
+.fb-editor .fb-todo.is-empty > .fb-content::before { content: "To-do"; }
+.fb-editor .fb-toggle.is-empty > .fb-content::before { content: "Toggle"; }
+.fb-editor .fb-callout.is-empty > .fb-content::before { content: "Callout"; }
+/* Lists and quotes draw their marker with ::before, so their hint is ::after, where the text starts. */
+.fb-editor .fb-bulleted.is-empty::after, .fb-editor .fb-numbered.is-empty::after, .fb-editor .fb-quote.is-empty::after {
+  content: attr(data-placeholder);
+  position: absolute; top: 3px; left: calc(var(--depth, 0) * 1.6em + 1.6em + var(--pad-extra, 0px));
+  color: var(--color-ink-faint); pointer-events: none;
+}
+.fb-editor .fb-quote.is-empty::after { left: calc(var(--depth, 0) * 1.6em + 1.05em + var(--pad-extra, 0px)); }
 
 /* Headings (the document title is the h1) */
 .fb-editor .fb-heading { font-family: var(--editor-font); font-weight: 600; color: var(--color-heading); letter-spacing: -0.022em; line-height: 1.22; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Paintbrush, Plus, Type } from "lucide-react";
+import { Paintbrush, Plus, Type } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import type { InspectorTab } from "./Inspector";
 
@@ -9,11 +9,10 @@ const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
   { id: "insert", label: "Insert", icon: <Plus size={17} /> },
   { id: "format", label: "Format", icon: <Type size={16} /> },
   { id: "style", label: "Style", icon: <Paintbrush size={16} /> },
-  { id: "info", label: "Info", icon: <Info size={16} /> },
 ];
 
 /**
- * The page tools, docked at the bottom of the note: Insert, Format, Style and Info. Each opens its panel
+ * The page tools, docked at the bottom of the note: AI, Insert, Format and Style (Info is in the "…" menu). Each opens its panel
  * floating just above the dock, centred on it (pressing it again, Escape or × closes it), so the note
  * keeps the full width. ⌘⌥I toggles the last panel.
  */

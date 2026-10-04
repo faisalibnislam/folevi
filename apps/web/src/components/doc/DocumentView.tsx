@@ -16,7 +16,7 @@ import {
   FolderInput,
   History,
   LayoutTemplate,
-  MessageSquare,
+  Info,
   MoreHorizontal,
   Printer,
   Search,
@@ -34,7 +34,7 @@ import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scop
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineState } from "@/lib/hooks/useEngine";
 import { localDb } from "@/lib/sync/db";
-import { Button, IconButton } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome, useShell } from "@/components/app/Shell";
@@ -49,7 +49,7 @@ import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { BlockThread, useNoteNotifyItems } from "./Comments";
 import { AI_OPEN_EVENT, AI_RUN_EVENT, useAi, useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
-import { DocumentSidebar, type Crumb } from "./DocumentSidebar";
+import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
 import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
@@ -79,11 +79,25 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
   const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode } = useShell();
+  const sidebarOpenRef = useRef(sidebarOpen);
+  sidebarOpenRef.current = sidebarOpen;
+  const toggleSidebarRef = useRef(toggleSidebar);
+  toggleSidebarRef.current = toggleSidebar;
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("format");
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
   const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
   // A thread to open inside the Comments panel (on the whole note or a deleted block).
   const [focusThreadId, setFocusThreadId] = useState<string | null>(null);
+  // Opening comments switches the page sidebar to its Comments tab (showing the sidebar first if it's hidden).
+  const [sidebarRequest, setSidebarRequest] = useState<{ tab: DocSidebarTab; at: number } | null>(null);
+  const showCommentsTab = useCallback(
+    (threadId: string | null) => {
+      setFocusThreadId(threadId);
+      if (!sidebarOpenRef.current) toggleSidebarRef.current();
+      setSidebarRequest({ tab: "comments", at: Date.now() });
+    },
+    [],
+  );
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -251,12 +265,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
     if (t.blockId && t.blockExists) {
       // The thread scrolls itself (and its block) into view once the block is on screen.
       setOpenThread({ blockId: t.blockId, threadId: t.id });
-    } else {
-      setFocusThreadId(t.id);
-      setInspectorTab("comments");
-      setInspectorOpen(true);
-    }
-  }, [editor, threads, hashTick, documentId, setInspectorOpen]);
+    } else showCommentsTab(t.id);
+  }, [editor, threads, hashTick, documentId, showCommentsTab]);
 
   // A folder inside another folder shows its parent in the breadcrumb too (folders nest one level).
   // Read from the note's own scope (it may be open from another context than the current one).
@@ -388,11 +398,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
         openBlockThread(blockId);
         return;
       }
-      setFocusThreadId(null);
-      setInspectorTab("comments");
-      setInspectorOpen(true);
+      showCommentsTab(null);
     },
-    [setInspectorOpen, openBlockThread],
+    [showCommentsTab, openBlockThread],
   );
   const closeThread = useCallback(() => setOpenThread(null), []);
 
@@ -424,6 +432,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
     blocks: () => engine?.documentBlocks(documentId) ?? [],
     onHistory: () => setHistoryOpen(true),
     onShare: () => setShareOpen(true),
+    onInfo: () => {
+      setInspectorTab("info");
+      setInspectorOpen(true);
+    },
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
     onFind: editor ? () => openFind(!readOnly) : undefined,
@@ -537,6 +549,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
               }}
               onHide={toggleSidebar}
               onNavigate={drawerMode ? toggleSidebar : undefined}
+              request={sidebarRequest}
+              focusThreadId={focusThreadId}
+              onOpenThread={(t) => {
+                if (!t.blockId) return;
+                if (drawerMode) toggleSidebar();
+                editorRef.current?.focusBlock(t.blockId);
+                setOpenThread({ blockId: t.blockId, threadId: t.id });
+              }}
             />,
             sidebarSlot,
           )
@@ -625,11 +645,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
               onSelect={(threadId) => setOpenThread({ blockId: openThread.blockId, threadId })}
               onClose={closeThread}
               onMissing={() => {
-                // The block isn't on screen (deleted or folded away): show the thread in the Comments panel.
+                // The block isn't on screen (deleted or folded away): show the thread in the Comments tab.
                 closeThread();
-                setFocusThreadId(openThread.threadId);
-                setInspectorTab("comments");
-                setInspectorOpen(true);
+                showCommentsTab(openThread.threadId);
               }}
             />
           ) : null}
@@ -651,17 +669,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
           extra={
             <div role="group" aria-label="Page" className="flex items-center gap-0.5">
               <PresenceAvatars people={presence ?? []} />
-              <IconButton label={`Comments${threads?.threads.some((t) => t.unread) ? " (unread)" : ""}`} onClick={() => openComments()} aria-pressed={inspectorOpen && inspectorTab === "comments"} className="!h-10 !w-10 !text-ink hover:!text-heading">
-                <span className="relative">
-                  <MessageSquare size={16} aria-hidden />
-                  {threads?.threads.some((t) => t.unread && t.status === "open") ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-heading ring-2 ring-canvas" aria-hidden /> : null}
-                </span>
-              </IconButton>
-              {meta ? (
-                <IconButton label="Share" onClick={() => setShareOpen(true)} className="!h-10 !w-10 !text-ink hover:!text-heading">
-                  <Share2 size={16} aria-hidden />
-                </IconButton>
-              ) : null}
               {summary ? (
                 <MenuButton
                   label="Document actions"
@@ -1105,6 +1112,7 @@ function useDocumentActions({
   blocks,
   onHistory,
   onShare,
+  onInfo,
   onDelete,
   onMove,
   onFind,
@@ -1121,6 +1129,8 @@ function useDocumentActions({
   blocks: () => WireBlock[];
   onHistory: () => void;
   onShare: () => void;
+  /** Opens the page's Info panel (words, dates, backlinks…). */
+  onInfo?: () => void;
   onDelete: () => void;
   onMove: () => void;
   /** Opens the find & replace bar (absent until the editor is ready). */
@@ -1161,6 +1171,7 @@ function useDocumentActions({
           ? { label: "Unstar", icon: <StarOff size={14} />, onSelect: () => void act(setStarred({ documentId, starred: false }), "Removed from Starred") }
           : { label: "Star", icon: <Star size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Starred") },
         { label: "Share…", icon: <Share2 size={14} />, onSelect: onShare },
+        ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
         { label: "Version history…", icon: <History size={14} />, onSelect: onHistory },
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),
         ...(onMoveToFolder ? [{ label: "Move to folder…", icon: <Folder size={14} />, onSelect: onMoveToFolder }] : []),

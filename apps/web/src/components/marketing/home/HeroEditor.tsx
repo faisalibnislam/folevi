@@ -6,7 +6,7 @@ import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { closeHistory } from "@tiptap/pm/history";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { MessageSquare, MoreHorizontal, Share2, X } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import { localDate } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { EditorMenus } from "@/components/editor/EditorMenus";
@@ -283,12 +283,6 @@ function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { edi
         }}
         extra={
           <div role="group" aria-label="Page" className="flex items-center gap-0.5">
-            <IconButton ref={(el) => void (extraButtons.current.comments = el)} label="Comments" onClick={() => extra("comments")} className={`${extraClass} max-sm:!hidden`}>
-              <MessageSquare size={16} aria-hidden />
-            </IconButton>
-            <IconButton ref={(el) => void (extraButtons.current.share = el)} label="Share" onClick={() => extra("share")} className={extraClass}>
-              <Share2 size={16} aria-hidden />
-            </IconButton>
             <IconButton ref={(el) => void (extraButtons.current.more = el)} label="Document actions" onClick={() => extra("more")} className={extraClass}>
               <MoreHorizontal size={16} aria-hidden />
             </IconButton>

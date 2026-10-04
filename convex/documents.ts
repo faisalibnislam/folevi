@@ -28,6 +28,7 @@ import { cloneBlocks, createDocument } from "./lib/create";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { SeqAllocator, nextSeq } from "./lib/seq";
+import { copyCollectionsInto } from "./lib/collections";
 import { inScope, insertScoped, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { vDocumentKind } from "./lib/validators";
 
@@ -1013,6 +1014,7 @@ export const duplicate = mutation({
       cover: doc.cover,
       blocks,
     });
+    await copyCollectionsInto(ctx, copy);
     return await new Placement(ctx, profile).summary(new IdResolver(ctx), copy);
   },
 });
@@ -1163,7 +1165,7 @@ export const restoreSnapshot = mutation({
     const { doc: writable } = await requireDocument(ctx, profile, doc.publicId, "write");
     const raw = await snapshotText(ctx, snap);
     if (!raw) fail("not_found", "Version content is unavailable.");
-    const parsed = JSON.parse(raw) as { title: string; icon: string | null; blocks: WireBlock[] };
+    const parsed = JSON.parse(raw) as { title: string; icon: string | null; style?: Doc<"documents">["style"]; blocks: WireBlock[] };
     await snapshot(ctx, writable, profile._id, "before_restore");
     const seq = await nextSeq(ctx, scopeOfRow(writable));
     const now = Date.now();
@@ -1221,6 +1223,8 @@ export const restoreSnapshot = mutation({
     await ctx.db.patch(writable._id, {
       title: parsed.title,
       icon: parsed.icon ?? undefined,
+      // The page's look as it was then too (versions saved before styles were kept leave it as it is).
+      ...(parsed.style !== undefined ? { style: parsed.style } : {}),
       revision,
       titleRev: revision,
       seq,

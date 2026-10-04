@@ -87,6 +87,21 @@ describe("Insert panel blocks on the server", () => {
     expect(k.views[0]!.config.groupBy).toBe(k.properties.find((p) => p.name === "Status")!.id);
     expect(tb.views.map((v) => v.type)).toEqual(["table"]);
   });
+
+  test("a duplicated page gets a collection of its own (same properties and view, none of the rows)", async () => {
+    const t = setup();
+    const a = await person(t, "dupcoll@example.com");
+    const doc = await newDoc(a, "Host");
+    const board = await a.as.mutation(api.collections.create, { documentId: doc, name: "Tracker", view: "board" });
+    expect((await upsert(a, doc, block("collection", { collectionId: board.collectionId, viewId: board.viewId }))).status).toBe("applied");
+    const copy = await a.as.mutation(api.documents.duplicate, { documentId: doc });
+    const blocks = (await a.as.query(api.blocks.list, { documentId: copy.id }))!.blocks;
+    const props = blocks.find((b) => b.type === "collection")!.props as { collectionId: string; viewId: string };
+    expect(props.collectionId).not.toBe(board.collectionId);
+    const mine = await a.as.query(api.collections.get, { collectionId: props.collectionId });
+    expect(mine.views.map((v) => [v.id === props.viewId, v.type])).toEqual([[true, "board"]]);
+    expect(mine.views[0]!.config.groupBy).toBe(mine.properties.find((p) => p.name === "Status")!.id);
+  });
 });
 
 describe("Unsplash search", () => {

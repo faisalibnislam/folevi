@@ -858,11 +858,20 @@ function DocumentHeader({
   }, [engine, documentId]);
   // Focus the title once for a brand-new page (never again, so it can't steal focus later).
   const focusedOnce = useRef(false);
+  const freshTitle = useRef(false);
   useEffect(() => {
     if (focusedOnce.current || search.get("new") !== "1") return;
     focusedOnce.current = true;
+    freshTitle.current = true;
     titleRef.current?.focus();
   }, [search]);
+  // A new page from a template already has a title: it's selected (typing replaces it), also when it arrives
+  // a moment after the page opens. Once the person types or moves the caret, it's theirs.
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!freshTitle.current || !el || document.activeElement !== el || !value) return;
+    el.setSelectionRange(0, el.value.length);
+  }, [value]);
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
@@ -949,6 +958,7 @@ function DocumentHeader({
           readOnly={readOnly}
           placeholder="Untitled"
           onChange={(e) => {
+            freshTitle.current = false;
             const next = e.target.value.replace(/\n/g, "");
             setValue(next);
             save(next);
@@ -957,8 +967,15 @@ function DocumentHeader({
             const r = readSel();
             setTitleSel(r.start !== r.end ? r : null);
           }}
-          onBlur={() => setTitleSel(null)}
+          onBlur={() => {
+            freshTitle.current = false;
+            setTitleSel(null);
+          }}
+          onMouseDown={() => {
+            freshTitle.current = false;
+          }}
           onKeyDown={(e) => {
+            freshTitle.current = false;
             if (!readOnly && aiOn && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
               // In the title, ⌘J edits the title (the app-wide ⌘J opens Ask AI).
               e.preventDefault();

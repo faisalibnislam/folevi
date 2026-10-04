@@ -112,13 +112,26 @@ export function blocksToHtml(
 ): string {
   const flat = flattenTree(blocks);
   const parts: string[] = [];
-  let openList: { tag: string; depth: number }[] = [];
+  // Open lists, innermost last; `li`: its last item is still open (a nested list goes inside it).
+  let openList: { tag: string; depth: number; li: boolean }[] = [];
   const closeLists = (depth: number) => {
     while (openList.length && openList[openList.length - 1]!.depth >= depth) {
-      parts.push(`</${openList.pop()!.tag}>`);
+      const top = openList.pop()!;
+      if (top.li) parts.push("</li>");
+      parts.push(`</${top.tag}>`);
+    }
+  };
+  // Toggles still open (their depths): what's nested under one goes inside its <details>.
+  const openToggles: number[] = [];
+  const closeToggles = (depth: number) => {
+    while (openToggles.length && depth <= openToggles[openToggles.length - 1]!) {
+      closeLists(openToggles[openToggles.length - 1]! + 1);
+      openToggles.pop();
+      parts.push("</details>");
     }
   };
   for (const { block, depth } of flat) {
+    closeToggles(depth);
     const p = block.props as Record<string, unknown>;
     const t = inlineToHtml(block.text, opts);
     const listTag =
@@ -130,20 +143,24 @@ export function blocksToHtml(
             ? 'ul class="todo"'
             : null;
     if (listTag) {
-      const top = openList[openList.length - 1];
-      if (top && top.depth > depth) closeLists(depth + 1);
-      const cur = openList[openList.length - 1];
-      if (!cur || cur.depth < depth || cur.tag !== listTag.split(" ")[0]) {
-        if (cur && cur.depth === depth) closeLists(depth);
+      const tag = listTag.split(" ")[0]!;
+      closeLists(depth + 1);
+      const same = openList[openList.length - 1];
+      if (same && same.depth === depth && same.tag !== tag) closeLists(depth);
+      let cur = openList[openList.length - 1];
+      if (!cur || cur.depth < depth) {
         parts.push(`<${listTag}>`);
-        openList.push({ tag: listTag.split(" ")[0]!, depth });
+        cur = { tag, depth, li: false };
+        openList.push(cur);
       }
+      if (cur.li) parts.push("</li>");
       const cls = block.type === "todo" && p.checked ? ' class="done"' : "";
-      parts.push(`<li${cls}>${t}</li>`);
+      parts.push(`<li${cls}>${t}`);
+      cur.li = true;
       continue;
     }
-    closeLists(0);
-    openList = [];
+    closeLists(openToggles.length ? openToggles[openToggles.length - 1]! + 1 : 0);
+    if (!openToggles.length) openList = [];
     switch (block.type) {
       case "paragraph":
         parts.push(`<p>${t || "<br>"}</p>`);
@@ -154,7 +171,8 @@ export function blocksToHtml(
         break;
       }
       case "toggle":
-        parts.push(`<details><summary>${t}</summary></details>`);
+        parts.push(`<details><summary>${t}</summary>`);
+        openToggles.push(depth);
         break;
       case "quote":
         parts.push(`<blockquote>${t}</blockquote>`);
@@ -249,6 +267,7 @@ export function blocksToHtml(
         break;
     }
   }
+  closeToggles(-1);
   closeLists(0);
   return `<!doctype html>
 <html lang="en">

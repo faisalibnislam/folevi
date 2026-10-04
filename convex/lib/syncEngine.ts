@@ -30,6 +30,7 @@ import { hasValidScope, inScope, insertScoped, personalScope, sameScopeRows, sco
 import { fail } from "./errors";
 import { mentionedIds, notify } from "./notify";
 import { ReaderLabels, titleIsShared } from "./linkLabels";
+import { copyCollectionsInto } from "./collections";
 
 export const MAX_BATCH = 100;
 
@@ -624,6 +625,8 @@ export class SyncEngine {
       accessMode,
       blocks,
     });
+    // A page from one of your templates: its collections are its own, not the template's.
+    if (templateKey && !templateKey.startsWith("builtin:")) await copyCollectionsInto(this.ctx, doc);
     return { opId: op.opId, status: "applied", revision: doc.revision, document: await this.summary(doc) };
   }
 

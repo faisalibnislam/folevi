@@ -580,15 +580,21 @@ function PageView({ node, selected }: ReactNodeViewProps) {
     api.documents.titles,
     a.documentId ? { documentIds: [a.documentId] } : "skip",
   );
+  const { engine } = useAppState();
   const info = titles?.[a.documentId];
   const title = info?.title || a.titleCache || "Untitled";
-  const missing = titles !== undefined && !info && !a.titleCache;
+  // Deleted (or no longer shared): the server doesn't know it. A page made here and not yet sent isn't gone.
+  const creating = Boolean(engine && [...engine.state.pending, ...engine.state.inflight].some((op) => op.kind === "document.create" && op.document.id === a.documentId));
+  const missing = titles !== undefined && !info && !creating;
+  const trashed = Boolean(info?.inTrash);
+  const gone = missing || trashed;
   if (a.display === "link") {
     return (
-      <Frame selected={selected} label={`Page ${title}`}>
+      <Frame selected={selected} label={`Page ${title}${trashed ? " (in Trash)" : missing ? " (unavailable)" : ""}`}>
         <AppLink
           href={`/d/${a.documentId}`}
-          className="my-0.5 inline-flex items-center gap-2 rounded-[6px] px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent"
+          title={trashed ? "This page is in Trash" : missing ? "This page is unavailable or you no longer have access" : undefined}
+          className={`my-0.5 inline-flex items-center gap-2 rounded-[6px] px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent ${gone ? "text-muted line-through" : ""}`}
           contentEditable={false}
         >
           <FileText size={15} aria-hidden className="flex-none text-muted" /> {title}
@@ -606,11 +612,13 @@ function PageView({ node, selected }: ReactNodeViewProps) {
       >
         <FileText size={20} aria-hidden className="mt-0.5 flex-none text-muted" />
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-ink">{title}</span>
+          <span className={`block font-semibold ${gone ? "text-muted line-through" : "text-ink"}`}>{title}</span>
           <span className="line-clamp-2 block text-sm text-muted">
             {missing
               ? "This page is unavailable or you no longer have access."
-              : info?.excerpt || "Nested page"}
+              : trashed
+                ? "This page is in Trash."
+                : info?.excerpt || "Nested page"}
           </span>
         </span>
         <ExternalLink

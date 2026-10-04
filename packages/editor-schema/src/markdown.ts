@@ -62,6 +62,24 @@ export function inlineToMarkdown(nodes: readonly InlineNode[], opts: MarkdownExp
     .join("");
 }
 
+/**
+ * Lines of one paragraph (or quote) joined: a line ending in a backslash or two spaces is a hard line
+ * break (kept as a break), any other line end is a space.
+ */
+function joinLines(lines: string[]): string {
+  let out = "";
+  lines.forEach((line, i) => {
+    if (i === lines.length - 1) {
+      out += line;
+      return;
+    }
+    if (/\\$/.test(line)) out += line.slice(0, -1) + "\n";
+    else if (/ {2,}$/.test(line)) out += line.trimEnd() + "\n";
+    else out += line + " ";
+  });
+  return out;
+}
+
 export function blocksToMarkdown(
   blocks: readonly WireBlock[],
   opts: MarkdownExportOptions & { title?: string; frontMatter?: Record<string, string> } = {},
@@ -76,16 +94,30 @@ export function blocksToMarkdown(
   const flat = flattenTree(blocks);
   const counters: number[] = [];
   let prevWasList = false;
+  // Toggles still open (their depths): what's nested under one goes inside its <details>.
+  const openToggles: number[] = [];
+  const closeToggles = (depth: number) => {
+    while (openToggles.length && depth <= openToggles[openToggles.length - 1]!) {
+      if (prevWasList) lines.push("");
+      prevWasList = false;
+      lines.push(`${"  ".repeat(openToggles.pop()!)}</details>`, "");
+    }
+  };
   for (const { block, depth } of flat) {
+    closeToggles(depth);
     const indent = "  ".repeat(depth);
     const p = block.props as Record<string, unknown>;
     const t = inlineToMarkdown(block.text, opts);
+    // A line break inside a block: a hard break (a backslash at the end of the line), so it stays a break.
+    const broken = (cont: string) => t.split("\n").join(`\\\n${cont}`);
     const isList = block.type === "bulleted" || block.type === "numbered" || block.type === "todo";
     if (!isList && prevWasList) lines.push("");
     counters.length = depth + 1;
+    // Something else between numbered items starts the numbering again.
+    if (block.type !== "numbered") counters[depth] = 0;
     switch (block.type) {
       case "paragraph":
-        lines.push(indent + t, "");
+        lines.push(indent + broken(indent), "");
         break;
       case "heading":
         lines.push(`${"#".repeat(Math.min(3, Number(p.level) || 1) + (opts.title ? 1 : 0))} ${t}`, "");
@@ -101,13 +133,14 @@ export function blocksToMarkdown(
         lines.push(`${indent}- [${p.checked ? "x" : " "}] ${t}${p.dueDate ? ` (due ${p.dueDate}${p.dueTime ? ` ${p.dueTime}` : ""})` : ""}`);
         break;
       case "toggle":
-        lines.push(`${indent}<details><summary>${t}</summary></details>`, "");
+        lines.push(`${indent}<details><summary>${t}</summary>`, "");
+        openToggles.push(depth);
         break;
       case "quote":
-        lines.push(`${indent}> ${t}`, "");
+        lines.push(`${indent}> ${broken(`${indent}> `)}`, "");
         break;
       case "callout":
-        lines.push(`${indent}> [!${String(p.tone ?? "note").toUpperCase()}]`, `${indent}> ${t}`, "");
+        lines.push(`${indent}> [!${String(p.tone ?? "note").toUpperCase()}]`, `${indent}> ${broken(`${indent}> `)}`, "");
         break;
       case "divider":
         lines.push("---", "");
@@ -182,6 +215,7 @@ export function blocksToMarkdown(
     }
     prevWasList = isList;
   }
+  closeToggles(-1);
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
 }
 
@@ -392,11 +426,12 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    drafts.push({ id: newId(), type: "paragraph", depth: 0, text: parseInlineMarkdown(paragraph.join(" ")), props: {} });
+    drafts.push({ id: newId(), type: "paragraph", depth: 0, text: parseInlineMarkdown(joinLines(paragraph)), props: {} });
     paragraph = [];
   };
 
   const listStack: number[] = []; // indentation columns of open list levels
+  const openDetails: number[] = []; // where the blocks inside each open <details> begin
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
@@ -525,7 +560,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
           CAUTION: "warning",
           DANGER: "danger",
         };
-        const rest = [callout[2]!, ...body.slice(1)].filter((s) => s.trim()).join(" ");
+        const rest = joinLines([callout[2]!, ...body.slice(1)].filter((s) => s.trim()));
         drafts.push({
           id: newId(),
           type: "callout",
@@ -534,7 +569,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
           props: { tone: toneMap[callout[1]!.toUpperCase()] ?? "note" },
         });
       } else {
-        drafts.push({ id: newId(), type: "quote", depth: 0, text: parseInlineMarkdown(body.join(" ").replace(/^\s*>\s?/g, "")), props: {} });
+        drafts.push({ id: newId(), type: "quote", depth: 0, text: parseInlineMarkdown(joinLines(body).replace(/^\s*>\s?/g, "")), props: {} });
       }
       continue;
     }
@@ -600,6 +635,14 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     if (details) {
       flushParagraph();
       drafts.push({ id: newId(), type: "toggle", depth: 0, text: parseInlineMarkdown(details[1]!), props: { collapsed: true } });
+      // Not closed on the same line: what follows, up to </details>, goes inside the toggle.
+      if (!details[3]) openDetails.push(drafts.length);
+      continue;
+    }
+    if (/^\s*<\/details>\s*$/.test(line)) {
+      flushParagraph();
+      const from = openDetails.pop();
+      if (from !== undefined) for (let k = from; k < drafts.length; k++) drafts[k]!.depth += 1;
       continue;
     }
     if (/^\[\^[^\]]+\]:/.test(line)) {

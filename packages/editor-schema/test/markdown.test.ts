@@ -165,3 +165,36 @@ describe("markdown export", () => {
     expect(html).toContain("<title>&lt;b&gt;T&lt;/b&gt;</title>");
   });
 });
+
+describe("markdown export, fifth audit", () => {
+  const b = (id: string, type: string, text: string, parentId: string | null, rank: string, props: Record<string, unknown> = {}): WireBlock => ({
+    id,
+    type,
+    parentId,
+    rank,
+    schemaVersion: 1,
+    text: text ? [{ type: "text", text }] : [],
+    props,
+  });
+
+  it("starts numbering again after something else, wraps toggle contents and keeps line breaks", () => {
+    const blocks = [
+      b("n1", "numbered", "one", null, "a"),
+      b("n2", "numbered", "two", null, "b"),
+      b("p", "paragraph", "middle", null, "c"),
+      b("n3", "numbered", "again", null, "d"),
+      b("t", "toggle", "Head", null, "e", { collapsed: false }),
+      b("tc", "paragraph", "inside", "t", "a"),
+      b("q", "quote", "line a\nline b", null, "f"),
+    ];
+    const md = blocksToMarkdown(blocks);
+    expect(md).toContain("1. again");
+    expect(md).toMatch(/<details><summary>Head<\/summary>\n\n {2}inside\n\n<\/details>/);
+    expect(md).toContain("> line a\\\n> line b");
+    // And back: the toggle holds its line, the quote keeps its break.
+    const back = flattenTree(markdownToBlocks(md, { newId }).blocks);
+    const toggle = back.findIndex((x) => x.block.type === "toggle");
+    expect(back[toggle + 1]).toMatchObject({ depth: 1 });
+    expect(back.find((x) => x.block.type === "quote")!.block.text).toEqual([{ type: "text", text: "line a\nline b" }]);
+  });
+});

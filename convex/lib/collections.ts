@@ -2,7 +2,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { rankSequence, ulid } from "@folevi/editor-schema";
 import { fail } from "./errors";
-import { insertScoped, type Scope } from "./scope";
+import { insertScoped, scopeOfRow, type Scope } from "./scope";
+import { nextSeq } from "./seq";
 
 export type PropertyType = Doc<"collectionProperties">["type"];
 
@@ -113,4 +114,77 @@ export async function addView(
     createdAt: Date.now(),
   });
   return publicId;
+}
+
+/**
+ * A copied page (Duplicate, or a page made from a template) gets collections of its own: the same
+ * properties and views, without the rows. Its cloned blocks still name the original's collections, and
+ * sharing them meant a row deleted in the copy was deleted in the original too.
+ */
+export async function copyCollectionsInto(ctx: MutationCtx, doc: Doc<"documents">): Promise<void> {
+  const rows = await ctx.db
+    .query("blocks")
+    .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+    .collect();
+  for (const row of rows) {
+    if (row.type !== "collection" || row.deletedAt !== undefined) continue;
+    const props = (row.props ?? {}) as { collectionId?: string; viewId?: string };
+    if (!props.collectionId) continue;
+    const source = await ctx.db
+      .query("collections")
+      .withIndex("by_public_id", (q) => q.eq("publicId", props.collectionId!))
+      .unique();
+    if (!source || source.documentId === doc._id) continue;
+    const now = Date.now();
+    const publicId = ulid();
+    const collectionId = await insertScoped(ctx, "collections", scopeOfRow(doc), {
+      publicId,
+      documentId: doc._id,
+      name: source.name,
+      createdAt: now,
+      updatedAt: now,
+      seq: await nextSeq(ctx, scopeOfRow(doc)),
+    });
+    const propertyIds = new Map<string, string>();
+    const properties = await ctx.db
+      .query("collectionProperties")
+      .withIndex("by_collection", (q) => q.eq("collectionId", source._id))
+      .collect();
+    for (const p of properties) {
+      if (p.deletedAt !== undefined) continue;
+      const pid = ulid();
+      propertyIds.set(p.publicId, pid);
+      await ctx.db.insert("collectionProperties", { publicId: pid, collectionId, name: p.name, type: p.type, options: p.options, rank: p.rank, createdAt: now });
+    }
+    const mapId = (id: string) => propertyIds.get(id);
+    let viewId: string | undefined;
+    let firstView: string | undefined;
+    const views = await ctx.db
+      .query("collectionViews")
+      .withIndex("by_collection", (q) => q.eq("collectionId", source._id))
+      .collect();
+    for (const vw of views) {
+      const vid = ulid();
+      if (vw.publicId === props.viewId) viewId = vid;
+      firstView ??= vid;
+      const c = vw.config;
+      await ctx.db.insert("collectionViews", {
+        publicId: vid,
+        collectionId,
+        name: vw.name,
+        type: vw.type,
+        rank: vw.rank,
+        createdAt: now,
+        config: {
+          ...c,
+          filters: c.filters.filter((f) => mapId(f.propertyId)).map((f) => ({ ...f, propertyId: mapId(f.propertyId)! })),
+          sorts: c.sorts.filter((x) => mapId(x.propertyId)).map((x) => ({ ...x, propertyId: mapId(x.propertyId)! })),
+          groupBy: c.groupBy ? mapId(c.groupBy) : undefined,
+          visibleProperties: c.visibleProperties.map(mapId).filter((x): x is string => Boolean(x)),
+        },
+      });
+    }
+    viewId ??= firstView;
+    await ctx.db.patch(row._id, { props: { ...props, collectionId: publicId, ...(viewId ? { viewId } : {}) } });
+  }
 }

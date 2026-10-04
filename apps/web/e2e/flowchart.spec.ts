@@ -128,7 +128,7 @@ test.describe("Flowchart", () => {
     const panel = await openTool(page, "Insert");
     await page.locator(".fb-editor > p.fb").last().click();
     await page.keyboard.press("End");
-    await panel.getByRole("button", { name: "Mermaid Diagram" }).click();
+    await panel.getByRole("button", { name: "Mermaid diagram" }).click();
     const card = page.locator(".fb-editor pre.fb-code-mermaid");
     await expect(card.locator("img.fb-mermaid-svg")).toBeVisible({ timeout: 30_000 });
     // Close the Insert panel (it floats above the bottom bar, over the page).

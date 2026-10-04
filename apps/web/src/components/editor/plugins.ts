@@ -504,6 +504,12 @@ export const BlockKeymap = Extension.create({
             editor.view.dispatch(st.tr.setSelection(TextSelection.create(st.doc, sel0.from + 1 + node.content.size)).scrollIntoView());
             return true;
           }
+          // A table or an image: Enter goes into it (the first cell, the alt text).
+          const inside = (editor.view.nodeDOM(sel0.from) as HTMLElement | null)?.querySelector?.<HTMLElement>("[data-enter-focus]");
+          if (inside && editor.isEditable) {
+            inside.focus();
+            return true;
+          }
           // Any other selected block: a new line after it (and after what's nested under it).
           const at = afterSubtree(st, sel0.$from.index(0));
           const tr = st.tr.insert(at, st.schema.nodes.paragraph!.create({ id: null, depth: node.attrs.depth }));

@@ -341,7 +341,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     if (!opened) return;
     const id = requestAnimationFrame(() => {
       const aside = inspectorRef.current;
-      if (aside && !aside.contains(document.activeElement)) aside.querySelector<HTMLElement>('[role="tab"][aria-selected="true"], button, input, select')?.focus();
+      if (aside && !aside.contains(document.activeElement)) (aside.querySelector<HTMLElement>("[data-autofocus]") ?? aside.querySelector<HTMLElement>('[role="tab"][aria-selected="true"], button, input, select'))?.focus();
     });
     return () => cancelAnimationFrame(id);
   }, [inspectorOpen]);

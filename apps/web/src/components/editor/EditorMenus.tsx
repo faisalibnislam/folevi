@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Code2,
-  Copy,
+  CopyPlus,
   Eraser,
   FileText,
   GripVertical,
@@ -76,6 +76,7 @@ import {
   deleteBlocks,
   duplicateBlocks,
   emptyTableRows,
+  focusInsideBlock,
   insertBlockAfterCurrent,
   moveBlock,
   removeLink,
@@ -97,6 +98,8 @@ import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
 import { Select } from "@/components/ui/Select";
 import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
+import { keyLabel, withKeyLabels } from "@/lib/shortcuts";
+import { setRangeHighlight } from "./blockHighlight";
 
 interface MenuItem {
   id: string;
@@ -248,13 +251,13 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
             if (i !== active) setActive(i);
           }}
           onClick={() => onRun(item)}
-          className={`flex cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 text-sm transition-colors ${i === active ? "bg-accent-soft text-heading" : ""}`}
+          className={`flex cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 text-sm transition-colors ${i === active ? "ui-row-active" : ""}`}
         >
           <span className="grid h-7 w-7 flex-none place-items-center rounded-[6px] bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
             {item.icon}
           </span>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
-          {item.hint ? <span className="text-xs text-faint">{item.hint}</span> : null}
+          {item.hint ? <span className="text-xs text-faint">{keyLabel(item.hint)}</span> : null}
         </li>
       ))}
     </ul>
@@ -278,6 +281,26 @@ function blockIndentLeft(el: HTMLElement): number {
   const cs = getComputedStyle(el);
   const depth = Number(el.dataset.depth ?? 0);
   return el.getBoundingClientRect().left - (parseFloat(cs.marginLeft) || 0) + depth * 1.6 * (parseFloat(cs.fontSize) || 16);
+}
+
+/**
+ * Where a block's handle sits: level with its first line of text (a callout's text inside its padding, a
+ * table's first row below its column tools), not the top of its box.
+ */
+function handleLine(el: HTMLElement): { top: number; height: number } {
+  const box = el.getBoundingClientRect();
+  const row = el.querySelector<HTMLElement>(".fb-table tbody tr");
+  if (row) {
+    const r = row.getBoundingClientRect();
+    return { top: r.top, height: Math.min(r.height, 32) };
+  }
+  const content = el.classList.contains("fb-callout") ? el.querySelector<HTMLElement>(".fb-content") : null;
+  if (content) {
+    const r = content.getBoundingClientRect();
+    const line = parseFloat(getComputedStyle(content).lineHeight) || 24;
+    return { top: r.top, height: Math.min(r.height, line, 32) };
+  }
+  return { top: box.top, height: Math.min(box.height, 32) };
 }
 
 /** Top-level block index → its rendered element. */
@@ -608,7 +631,7 @@ export function EditorMenus({
         label: "Table",
         keywords: "table grid spreadsheet",
         icon: <Table2 size={15} />,
-        run: () => void insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(3, 3) }),
+        run: () => focusInsideBlock(editor, insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(3, 3) })),
       },
       { id: "formula", label: "TeX formula", keywords: "formula math latex tex equation katex", icon: <Sigma size={15} />, run: () => void insertBlockAfterCurrent(editor, "formula", newFormulaAttrs()) },
       { id: "mermaid", label: "Mermaid diagram", keywords: "mermaid diagram flowchart chart graph sequence", icon: <Workflow size={15} />, run: () => void insertBlockAfterCurrent(editor, "code", { language: "mermaid" }, MERMAID_SAMPLE) },
@@ -1013,9 +1036,19 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   const [state, setState] = useState<{ left: number; top: number; bottom: number } | null>(null);
   const [placed, setPlaced] = useState<{ left: number; top: number } | null>(null);
   const [mode, setMode] = useState<"marks" | "link" | "colors">("marks");
+  // While the link field has focus the browser stops showing the text selection: keep it looking selected.
+  useEffect(() => {
+    if (mode !== "link" || editor.isDestroyed) return;
+    const { from, to, empty } = editor.state.selection;
+    if (!empty) setRangeHighlight(editor.view, { from, to });
+    return () => {
+      if (!editor.isDestroyed) setRangeHighlight(editor.view, null);
+    };
+  }, [mode, editor]);
   const [, rerender] = useState(0);
   const [href, setHref] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
+  const linkErrorId = useId();
   const forced = useRef(false);
   const ref = useRef<HTMLDivElement>(null);
   const focusFirst = useRef(false);
@@ -1204,8 +1237,8 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   const btn = (label: string, isActive: boolean, onClick: () => void, icon: React.ReactNode, pressable = true) => (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={withKeyLabels(label)}
+      title={withKeyLabels(label)}
       aria-pressed={pressable ? isActive : undefined}
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => {
@@ -1234,7 +1267,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
     >
       {mode === "link" ? (
         <form
-          className="flex items-center gap-1"
+          className="flex max-w-[22rem] flex-wrap items-center gap-1"
           onSubmit={(e) => {
             e.preventDefault();
             if (!href.trim()) {
@@ -1258,7 +1291,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
             placeholder="Paste or type a link"
             aria-label="Link address"
             aria-invalid={Boolean(linkError)}
-            title={linkError ?? undefined}
+            aria-describedby={linkError ? linkErrorId : undefined}
             className={`ui-input h-8 w-60 rounded-[6px] px-3 text-sm ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
           />
           <button type="submit" className="ui-btn ui-btn-primary h-8 px-3 text-xs">
@@ -1277,7 +1310,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
             </button>
           ) : null}
           {linkError ? (
-            <span role="alert" className="sr-only">
+            <span id={linkErrorId} role="alert" className="basis-full px-1 pb-0.5 pt-1 text-xs text-danger">
               {linkError}
             </span>
           ) : null}
@@ -1326,7 +1359,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
               }}
               className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
             >
-              <span className={`fb-hl-${h} h-4 w-4 rounded-[3px]`} aria-hidden />
+              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-[3px]`} aria-hidden />
             </button>
           ))}
           <button
@@ -1433,8 +1466,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
         return e.clientY >= r.top - 2 && e.clientY <= r.bottom + 2 && !c.classList.contains("fb-hidden");
       });
       if (idx < 0) return;
-      const r = children[idx]!.getBoundingClientRect();
-      setHover({ index: idx, top: r.top, left: blockIndentLeft(children[idx]!), height: Math.min(r.height, 32) });
+      const line = handleLine(children[idx]!);
+      setHover({ index: idx, top: line.top, left: blockIndentLeft(children[idx]!), height: line.height });
     };
     const parent = dom.parentElement?.parentElement ?? dom;
     parent.addEventListener("mousemove", onMove);
@@ -1579,7 +1612,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       {hover && !menu && !dragging ? (
         <div
           className="ui-raised fixed z-30 flex items-center gap-px rounded-[8px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
-          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 }}
+          // Kept on screen when the note runs to the window's edge (narrow windows, phones).
+          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: Math.max(4, hover.left - 58) }}
           onMouseDown={(e) => e.preventDefault()}
         >
           <button
@@ -1695,11 +1729,6 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                       },
                     ]
                   : []),
-                { label: "Duplicate", hint: "⌘D", icon: <Copy size={14} />, run: () => act(() => duplicateBlocks(editor)) },
-                { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, run: () => act(() => moveBlock(editor, -1)) },
-                { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, run: () => act(() => moveBlock(editor, 1)) },
-                { label: "Indent", hint: "Tab", icon: <IndentIncrease size={14} />, run: () => act(() => changeDepth(editor, 1)) },
-                { label: "Outdent", hint: "⇧Tab", icon: <IndentDecrease size={14} />, run: () => act(() => changeDepth(editor, -1)) },
                 ...(onCommentBlock && single?.attrs.id
                   ? [
                       {
@@ -1713,6 +1742,11 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                       },
                     ]
                   : []),
+                { label: "Duplicate", hint: "⌘D", icon: <CopyPlus size={14} />, run: () => act(() => duplicateBlocks(editor)) },
+                { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, run: () => act(() => moveBlock(editor, -1)) },
+                { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, run: () => act(() => moveBlock(editor, 1)) },
+                { label: "Indent", hint: "Tab", icon: <IndentIncrease size={14} />, run: () => act(() => changeDepth(editor, 1)) },
+                { label: "Outdent", hint: "⇧Tab", icon: <IndentDecrease size={14} />, run: () => act(() => changeDepth(editor, -1)) },
                 ...(single
                   ? [
                       {
@@ -1731,7 +1765,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                     ]
                   : []),
                 {
-                  label: count > 1 ? `Delete ${count} blocks` : "Delete",
+                  label: count > 1 ? `Delete ${count} blocks` : "Delete block",
                   hint: "⌘⇧⌫",
                   icon: <Trash2 size={14} />,
                   danger: true,
@@ -1749,7 +1783,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                     {item.icon}
                   </span>
                   <span className="flex-1">{item.label}</span>
-                  <span className="text-xs text-faint">{item.hint}</span>
+                  <span className="text-xs text-faint">{keyLabel(item.hint)}</span>
                 </button>
               ))}
             </div>

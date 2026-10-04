@@ -328,6 +328,8 @@
     font-size: 13.5px; text-align: left; color: var(--color-ink);
   }
   .ui-menu-item:hover, .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"] { background: var(--glass-hover); color: var(--color-heading); outline: none; }
+  /* The row the keyboard is on reads clearly (stronger than a hover). */
+  .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"], .ui-row-active { background: color-mix(in oklab, var(--color-ink) 9%, transparent); color: var(--color-heading); }
 }
 
 @media (prefers-contrast: more) {

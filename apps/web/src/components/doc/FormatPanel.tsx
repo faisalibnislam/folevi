@@ -115,9 +115,9 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
   const formattable = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"].includes(type ?? "");
   const blockOff = d || !formattable;
   const textStyle = type === "paragraph" ? (fmt.textStyle ?? "body") : null;
-  const seg = "flex overflow-hidden rounded-[6px] bg-sunken/80 p-0.5";
+  const seg = "flex rounded-[6px] bg-sunken/80 p-0.5";
   const segBtn = (on: boolean) =>
-    `grid h-9 flex-1 place-items-center rounded-[6px] text-[13px] transition-colors disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
+    `grid h-9 flex-1 place-items-center rounded-[6px] text-[13px] transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
   const toggleList = (t: string, attrs: Record<string, unknown> = {}) => (type === t ? turnInto(editor, "paragraph") : turnInto(editor, t, attrs));
   return (
     <div className="space-y-5">
@@ -327,7 +327,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               title={colorName(palette, h)}
               className={`grid h-8 w-8 place-items-center rounded-[6px] ui-raised disabled:opacity-40 ${editor.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
             >
-              <span className={`fb-hl-${h} h-4 w-4 rounded-[4px]`} aria-hidden />
+              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-[4px]`} aria-hidden />
             </button>
           ))}
         </div>

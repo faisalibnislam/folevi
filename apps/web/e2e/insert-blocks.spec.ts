@@ -32,15 +32,15 @@ test.describe("Insert panel", () => {
     const panel = await openInsert(page);
 
     // Craft-style list: rows with a label and a drag grip, grouped into sections.
-    for (const label of ["Text", "Page", "Card", "File Attachment", "Image", "Image from Unsplash", "Code Block", "TeX Formula", "Mermaid Diagram", "Whiteboard"]) {
+    for (const label of ["Text", "Page", "Card", "File attachment", "Image", "Image from Unsplash", "Code block", "TeX formula", "Mermaid diagram", "Whiteboard"]) {
       await expect(panel.getByRole("button", { name: label, exact: true })).toBeVisible();
     }
-    for (const title of ["Collections", "Insert Line", "Insert Page Break", "Insert Table"]) {
+    for (const title of ["Collections", "Insert line", "Insert page break", "Insert table"]) {
       await expect(panel.getByRole("heading", { name: title })).toBeVisible();
     }
     // Search narrows the list.
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("mermaid");
-    await expect(panel.getByRole("button", { name: "Mermaid Diagram" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Mermaid diagram" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Whiteboard" })).toHaveCount(0);
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("");
 
@@ -79,7 +79,7 @@ test.describe("Insert panel", () => {
 
     // TeX formula: opens for editing, renders with KaTeX.
     await caretToEnd(page);
-    await panel.getByRole("button", { name: "TeX Formula" }).click();
+    await panel.getByRole("button", { name: "TeX formula" }).click();
     const latex = page.getByRole("textbox", { name: "LaTeX formula" });
     await expect(latex).toBeFocused();
     await latex.fill("\\frac{a}{b} = c^2");
@@ -89,7 +89,7 @@ test.describe("Insert panel", () => {
 
     // Mermaid: a code block with a sample diagram and a live SVG preview.
     await caretToEnd(page);
-    await panel.getByRole("button", { name: "Mermaid Diagram" }).click();
+    await panel.getByRole("button", { name: "Mermaid diagram" }).click();
     const mermaid = page.locator(".fb-editor pre.fb-code-mermaid");
     await expect(mermaid).toContainText("flowchart TD");
     await expect(mermaid.locator("img.fb-mermaid-svg")).toHaveAttribute("src", /^data:image\/svg\+xml/, { timeout: 30_000 });

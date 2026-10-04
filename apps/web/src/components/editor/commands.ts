@@ -505,3 +505,12 @@ export function clearFormatting(editor: Editor): void {
   editor.chain().unsetAllMarks().run();
   editor.view.focus();
 }
+
+/** Puts the caret inside a block just inserted at `pos` that has its own fields (a table's first cell). */
+export function focusInsideBlock(editor: Editor, pos: number) {
+  requestAnimationFrame(() => {
+    if (editor.isDestroyed) return;
+    const dom = editor.view.nodeDOM(pos) as HTMLElement | null;
+    dom?.querySelector?.<HTMLElement>("[data-enter-focus]")?.focus();
+  });
+}

@@ -66,6 +66,7 @@ import { syncDomSelection } from "./blockSelectionState";
 import { blockElements } from "./plugins";
 import { colorName, useNotePalette } from "./notePalette";
 import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
+import { keyLabel } from "@/lib/shortcuts";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -477,7 +478,7 @@ function buildEntries({
         label: "Highlight color",
         icon: <Highlighter size={14} />,
         items: [
-          ...HIGHLIGHT_COLORS.map((h): Item => ({ label: colorName(palette, h), icon: <span className={`fb-hl-${h} block h-3.5 w-3.5 rounded-[3px]`} />, checked: editor.isActive("highlight", { value: h }), run: () => setHighlight(editor, h) })),
+          ...HIGHLIGHT_COLORS.map((h): Item => ({ label: colorName(palette, h), icon: <span className={`fb-hl-${h} fb-swatch block h-3.5 w-3.5 rounded-[3px]`} />, checked: editor.isActive("highlight", { value: h }), run: () => setHighlight(editor, h) })),
           "separator",
           { label: "None", run: () => setHighlight(editor, null) },
         ],
@@ -751,6 +752,7 @@ function Panel({
     e.run();
   };
 
+  const typed = useRef({ current: "", at: 0 }).current;
   const onKeyDown = (e: React.KeyboardEvent) => {
     // Keys pressed in an open submenu are its own (React bubbles them through portals to this panel).
     if (!ref.current?.contains(e.target as Node)) return;
@@ -799,6 +801,28 @@ function Panel({
         e.preventDefault();
         onCloseAll(true);
         break;
+      default: {
+        // Typing jumps to the next item starting with what's typed ("d" → Duplicate, then Delete block).
+        if (e.key.length !== 1 || e.metaKey || e.ctrlKey || e.altKey) return;
+        e.preventDefault();
+        const now = Date.now();
+        typed.current = now - typed.at > 700 ? e.key : typed.current + e.key;
+        typed.at = now;
+        const text = typed.current.toLowerCase();
+        // One letter pressed again moves on; a longer prefix stays on a row that still matches.
+        const same = [...text].every((c) => c === text[0]);
+        const needle = same ? text[0]! : text;
+        const start = same || at < 0 ? at + 1 : at;
+        for (let k = 0; k < actionable.length; k++) {
+          const i = actionable[(start + k) % actionable.length]!;
+          const entry = entries[i];
+          if (entry && entry !== "separator" && entry.label.toLowerCase().startsWith(needle)) {
+            setOpen(null);
+            setActive(i);
+            break;
+          }
+        }
+      }
     }
   };
 
@@ -855,7 +879,7 @@ function Panel({
                 {entry.icon}
               </span>
               <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-              {!isSub(entry) && entry.shortcut ? <span className="flex-none pl-3 text-xs text-faint">{entry.shortcut}</span> : null}
+              {!isSub(entry) && entry.shortcut ? <span className="flex-none pl-3 text-xs text-faint">{keyLabel(entry.shortcut)}</span> : null}
               {!isSub(entry) && entry.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="flex-none text-heading" /> : null}
               {isSub(entry) ? <ChevronRight size={14} aria-hidden className="flex-none text-faint" /> : null}
             </button>

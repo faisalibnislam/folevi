@@ -104,7 +104,7 @@ export function Inspector({
             <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex-1 text-[18px]">
               {TABS.find((t) => t.id === tab)?.label}
             </h2>
-            <IconButton label="Close inspector" onClick={onClose} className="!h-7 !w-7">
+            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -116,7 +116,7 @@ export function Inspector({
             <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-[13.5px] font-semibold text-heading">
               Comments
             </h2>
-            <IconButton label="Close inspector" onClick={onClose} className="!h-7 !w-7">
+            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -151,7 +151,7 @@ export function Inspector({
             </button>
           ))}
         </div>
-          <IconButton label="Close inspector" onClick={onClose} className="!h-7 !w-7">
+          <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7">
             <X size={15} aria-hidden />
           </IconButton>
         </div>

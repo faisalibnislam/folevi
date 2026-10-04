@@ -36,7 +36,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT } from "@folevi/editor-schema";
-import { emptyTableRows, insertBlockAfterCurrent, insertBlockAt } from "@/components/editor/commands";
+import { emptyTableRows, focusInsideBlock, insertBlockAfterCurrent, insertBlockAt } from "@/components/editor/commands";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
 import { beginPointerDrag } from "@/components/editor/blockDrag";
 import { newFormulaAttrs } from "@/components/editor/FormulaView";
@@ -62,13 +62,13 @@ const MAIN: InsertItem[] = [
   { label: "Text", type: "paragraph", icon: <Text {...i16} />, keywords: "paragraph plain" },
   { label: "Page", special: "page", icon: <FileText {...i16} />, keywords: "nested subpage child link" },
   { label: "Card", special: "card", icon: <SquareStack {...i16} />, keywords: "page nested subpage child" },
-  { label: "File Attachment", special: "file", icon: <Paperclip {...i16} />, keywords: "file attachment upload pdf document" },
+  { label: "File attachment", special: "file", icon: <Paperclip {...i16} />, keywords: "file attachment upload pdf document" },
   { label: "Image", special: "image", icon: <ImageIcon {...i16} />, keywords: "picture photo upload" },
-  { label: "Audio Recording", special: "record", icon: <Mic {...i16} />, keywords: "audio record recording voice memo microphone mic sound" },
+  { label: "Audio recording", special: "record", icon: <Mic {...i16} />, keywords: "audio record recording voice memo microphone mic sound" },
   { label: "Image from Unsplash", special: "unsplash", icon: <ImagePlus {...i16} />, keywords: "picture photo stock unsplash search" },
-  { label: "Code Block", type: "code", attrs: () => ({ language: "plaintext" }), icon: <Code2 {...i16} />, keywords: "code snippet programming" },
-  { label: "TeX Formula", type: "formula", attrs: () => newFormulaAttrs(), icon: <Sigma {...i16} />, keywords: "formula math latex tex equation katex" },
-  { label: "Mermaid Diagram", type: "code", attrs: () => ({ language: "mermaid" }), text: MERMAID_SAMPLE, icon: <Workflow {...i16} />, keywords: "mermaid diagram flowchart chart graph" },
+  { label: "Code block", type: "code", attrs: () => ({ language: "plaintext" }), icon: <Code2 {...i16} />, keywords: "code snippet programming" },
+  { label: "TeX formula", type: "formula", attrs: () => newFormulaAttrs(), icon: <Sigma {...i16} />, keywords: "formula math latex tex equation katex" },
+  { label: "Mermaid diagram", type: "code", attrs: () => ({ language: "mermaid" }), text: MERMAID_SAMPLE, icon: <Workflow {...i16} />, keywords: "mermaid diagram flowchart chart graph" },
   { label: "Flowchart", type: "flowchart", attrs: () => ({ data: "", height: FLOWCHART_DEFAULT_HEIGHT }), icon: <Network {...i16} />, keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro" },
   { label: "Whiteboard", type: "whiteboard", attrs: () => ({ data: "", height: WHITEBOARD_DEFAULT_HEIGHT }), icon: <PenTool {...i16} />, keywords: "drawing sketch draw pen canvas" },
 ];
@@ -84,8 +84,8 @@ const MORE: InsertItem[] = [
   { label: "Heading 2", type: "heading", attrs: () => ({ level: 2 }), icon: <Heading2 {...i16} />, keywords: "subtitle h2" },
   { label: "Heading 3", type: "heading", attrs: () => ({ level: 3 }), icon: <Heading3 {...i16} />, keywords: "h3" },
   { label: "To-do", type: "todo", attrs: () => ({ checked: false }), icon: <CheckSquare {...i16} />, keywords: "task checkbox checklist" },
-  { label: "Bulleted List", type: "bulleted", icon: <List {...i16} />, keywords: "bullets unordered" },
-  { label: "Numbered List", type: "numbered", icon: <ListOrdered {...i16} />, keywords: "numbers ordered" },
+  { label: "Bulleted list", type: "bulleted", icon: <List {...i16} />, keywords: "bullets unordered" },
+  { label: "Numbered list", type: "numbered", icon: <ListOrdered {...i16} />, keywords: "numbers ordered" },
   { label: "Toggle", type: "toggle", attrs: () => ({ collapsed: false }), icon: <ChevronRight {...i16} />, keywords: "collapse disclosure details" },
   { label: "Quote", type: "quote", icon: <Quote {...i16} />, keywords: "blockquote citation" },
   { label: "Callout", type: "callout", attrs: () => ({ tone: "note" }), icon: <StickyNote {...i16} />, keywords: "note tip info warning" },
@@ -191,7 +191,7 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
   const active = hover ?? (focused ? cursor : null);
   const insert = (r: number, c: number) => {
     if (!editor || disabled) return;
-    insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(r, c) });
+    focusInsideBlock(editor, insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(r, c) }));
   };
   const move = (r: number, c: number) => {
     const next = { r: Math.max(1, Math.min(GRID_ROWS, r)), c: Math.max(1, Math.min(GRID_COLS, c)) };
@@ -299,12 +299,12 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
       <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
       <label className="ui-well flex h-9 items-center gap-2 rounded-[6px] px-3 text-[13px] text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
         <Search size={14} aria-hidden />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
+        <input data-autofocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
       </label>
       {main.length ? <Section>{list(main)}</Section> : null}
       {collections.length ? <Section title="Collections">{list(collections)}</Section> : null}
       {showLines ? (
-        <Section title="Insert Line">
+        <Section title="Insert line">
           <div className="grid grid-cols-2 gap-1.5">
             {DIVIDER_STYLES.map((s) => (
               <DividerTile key={s.style} style={s.style} label={s.label} editor={editor} disabled={d} />
@@ -313,16 +313,16 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
         </Section>
       ) : null}
       {showBreak ? (
-        <Section title="Insert Page Break">
+        <Section title="Insert page break">
           <PageBreakTile editor={editor} disabled={d} />
         </Section>
       ) : null}
       {showTable ? (
-        <Section title="Insert Table">
+        <Section title="Insert table">
           <TableSizePicker editor={editor} disabled={d} />
         </Section>
       ) : null}
-      {more.length ? <Section title="Text & Blocks">{list(more)}</Section> : null}
+      {more.length ? <Section title="Text and blocks">{list(more)}</Section> : null}
       {nothing ? <p className="mt-6 text-center text-sm text-muted">No blocks match “{q}”.</p> : null}
     </div>
   );

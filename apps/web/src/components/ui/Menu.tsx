@@ -3,6 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
+import { keyLabel } from "@/lib/shortcuts";
 
 export interface MenuItem {
   label: string;
@@ -283,7 +284,7 @@ function MenuPanel({
               <span className="flex-1">{item.label}</span>
             )}
             {item.detail ? <span className="flex-none text-xs text-muted">{item.detail}</span> : null}
-            {item.shortcut ? <span className="text-xs text-faint">{item.shortcut}</span> : null}
+            {item.shortcut ? <span className="text-xs text-faint">{keyLabel(item.shortcut)}</span> : null}
             {item.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="text-heading" /> : null}
           </button>
         ),

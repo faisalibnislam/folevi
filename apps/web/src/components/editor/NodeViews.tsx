@@ -5,7 +5,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup } from "./commands";
 import { useAction, useQuery } from "convex/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowLeft,
@@ -115,13 +115,42 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     <Frame selected={selected} label="Image">
       <figure className="my-2" style={{ width: `${Math.round(width * 100)}%` }}>
         {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={src}
-            alt={a.alt || ""}
-            className="w-full rounded-[6px] border border-line bg-sunken"
-            draggable={false}
-          />
+          // Never wider than the image itself (a small image isn't stretched); while it's selected its tools
+          // float over it, so nothing below moves.
+          <div className="relative mx-auto w-fit max-w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt={a.alt || ""} className="block h-auto max-w-full rounded-[6px] border border-line bg-sunken" draggable={false} />
+            {selected && editable ? (
+              <div
+                className="ui-pop absolute bottom-2 left-2 z-20 flex w-max max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-xs text-muted"
+                contentEditable={false}
+              >
+                <label className="flex items-center gap-1">
+                  Alt text
+                  <DraftInput
+                    data-enter-focus=""
+                    value={a.alt ?? ""}
+                    onCommit={(v) => updateAttributes({ alt: v })}
+                    onExit={() => selectBlock(editor, getPos)}
+                    placeholder="Describe the image"
+                    className="h-7 w-56 ui-input rounded-[6px] px-2 text-ink"
+                  />
+                </label>
+                <span>Width</span>
+                {[0.5, 0.75, 1].map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => updateAttributes({ width: w === 1 ? null : w })}
+                    aria-pressed={width === w}
+                    className={`h-7 rounded-[6px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}
+                  >
+                    {w * 100}%
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         ) : (
           <div className="grid h-40 place-items-center rounded-[6px] border border-dashed border-line-strong text-sm text-muted">
             {a.fileId ? (
@@ -157,35 +186,6 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           ) : null}
         </figcaption>
       </figure>
-      {selected && editable ? (
-        <div
-          className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted"
-          contentEditable={false}
-        >
-          <label className="flex items-center gap-1">
-            Alt text
-            <DraftInput
-              value={a.alt ?? ""}
-              onCommit={(v) => updateAttributes({ alt: v })}
-              onExit={() => selectBlock(editor, getPos)}
-              placeholder="Describe the image"
-              className="h-7 w-56 ui-input rounded-[6px] px-2 text-ink"
-            />
-          </label>
-          <span>Width</span>
-          {[0.5, 0.75, 1].map((w) => (
-            <button
-              key={w}
-              type="button"
-              onClick={() => updateAttributes({ width: w === 1 ? null : w })}
-              aria-pressed={width === w}
-              className={`h-7 rounded-[6px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}
-            >
-              {w * 100}%
-            </button>
-          ))}
-        </div>
-      ) : null}
     </Frame>
   );
 }
@@ -437,12 +437,13 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                       className="border border-line p-0 align-top"
                     >
                       {editable ? (
-                        <DraftInput
+                        <DraftCell
                           data-cell={`${r}:${c}`}
+                          data-enter-focus={r === 0 && c === 0 ? "" : undefined}
                           value={cellText(cell)}
                           onCommit={(v) => setCell(r, c, v)}
                           aria-label={`Row ${r + 1}, column ${c + 1}`}
-                          className={`w-full min-w-[6rem] bg-transparent px-2.5 py-1.5 outline-none focus:bg-accent-soft/40 ${headerRow && r === 0 ? "font-semibold" : ""}`}
+                          className={`block w-full min-w-[6rem] resize-none overflow-hidden bg-transparent px-2.5 py-1.5 outline-none focus:bg-accent-soft/40 ${headerRow && r === 0 ? "font-semibold" : ""}`}
                         />
                       ) : (
                         <span
@@ -887,6 +888,44 @@ function DraftInput({ value, onCommit, onExit, ...rest }: Omit<React.InputHTMLAt
   );
 }
 
+/**
+ * A table cell's text: wraps, and the cell grows to fit it (one line of text, so Enter and line breaks
+ * don't go in; Enter moves down a row).
+ */
+function DraftCell({ value, onCommit, ...rest }: Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange"> & { value: string; onCommit: (v: string) => void }) {
+  const [draft, change] = useDraft(value, onCommit);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const fit = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+  useLayoutEffect(fit, [draft, fit]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // A narrower column wraps the text onto more lines.
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fit]);
+  return (
+    <textarea
+      {...rest}
+      ref={ref}
+      rows={1}
+      data-draft=""
+      value={draft}
+      onChange={(e) => change(e.target.value.replace(/\r?\n/g, " "))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.preventDefault();
+        rest.onKeyDown?.(e);
+      }}
+    />
+  );
+}
+
 /** Selects the block at `getPos()` and returns focus to the note. */
 function selectBlock(editor: ReactNodeViewProps["editor"], getPos: ReactNodeViewProps["getPos"]) {
   const pos = typeof getPos === "function" ? getPos() : undefined;
@@ -906,7 +945,7 @@ export const NODE_VIEW_EXTENSIONS = [
   }),
   TableBlock.extend({
     addNodeView: () =>
-      blockView(TableView, ({ event }) => event.target instanceof HTMLInputElement || (event.target instanceof Element && Boolean(event.target.closest("button")))),
+      blockView(TableView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target instanceof Element && Boolean(event.target.closest("button")))),
   }),
   PageBlock.extend({ addNodeView: () => blockView(PageView) }),
   BookmarkBlock.extend({

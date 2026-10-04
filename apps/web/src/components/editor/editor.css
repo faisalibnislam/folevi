@@ -52,6 +52,8 @@
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--doc-accent-soft, var(--color-accent-soft)) 85%, transparent);
   transition: background-color 200ms var(--motion-easing), box-shadow 200ms var(--motion-easing);
 }
+/* The text a link is being added to, while focus is in the link field. */
+.fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: 2px; }
 /* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */
 .fb-editor > .fb-comment-line {
   padding: 0 2px 4px calc(var(--depth, 0) * 1.6em + var(--pad-list, 0px) + var(--pad-extra, 0px));
@@ -207,6 +209,8 @@
 /* Atoms */
 .fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: 6px; outline-offset: 3px; }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { outline: 2px solid var(--doc-accent); }
+/* Flowcharts and whiteboards have rounder boxes (14px): the outline follows them. */
+.fb-atom.fb-flowchart, .fb-atom.fb-whiteboard { border-radius: 17px; }
 
 /* Inline */
 .fb-link { color: var(--color-accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--color-accent) 35%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
@@ -236,6 +240,8 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-hl-green { background: var(--color-highlight-green); }
 .fb-hl-blue { background: var(--color-highlight-blue); }
 .fb-hl-pink { background: var(--color-highlight-pink); }
+/* A highlight colour shown as a swatch: a hairline edge, so pale (and, in dark mode, dark) colours still read. */
+.fb-swatch { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent); }
 
 .fb-table th, .fb-table td { min-width: 6rem; }
 .ProseMirror-gapcursor::after { border-top-color: var(--doc-accent); }

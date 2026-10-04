@@ -194,6 +194,7 @@ export class SyncEngine {
   }
 
   restoreBlock(documentId: string, blockId: string) {
+    this.deletedHere.delete(blockId);
     this.commit(sync.localRestore(this.state, { opId: ulid(), documentId, blockId }));
     this.scheduleFlush();
   }
@@ -277,6 +278,8 @@ export class SyncEngine {
       if (!entity.deleted) {
         if (blocks === next.blocks) blocks = { ...next.blocks };
         blocks[id] = { ...entity, deleted: true };
+        // Deleted elsewhere: undo here must not bring it back.
+        this.deletedHere.delete(id);
       }
     }
     if (blocks !== next.blocks) next = { ...next, blocks };

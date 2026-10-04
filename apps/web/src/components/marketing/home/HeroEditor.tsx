@@ -14,7 +14,7 @@ import { editorExtensions } from "@/components/editor/editorExtensions";
 import { EditorEnvironmentProvider } from "@/components/editor/environment";
 import { NotePaletteProvider } from "@/components/editor/notePalette";
 import { moveSubtreeTo, subtreeRange } from "@/components/editor/commands";
-import { clipboardBlocks, insertPastedBlocks, prepareForPaste } from "@/components/editor/paste";
+import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "@/components/editor/paste";
 import type { Slice } from "@tiptap/pm/model";
 import { pasteAddress } from "@/components/editor/autolink";
 import type { EditorView } from "@tiptap/pm/view";
@@ -158,6 +158,10 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
         // Pasting works as in the app: Markdown, web pages and several lines become blocks.
         handlePaste: (view: EditorView, event: ClipboardEvent, slice: Slice) => {
           prepareForPaste(view, slice);
+          if (pasteIntoCode(view, event.clipboardData)) {
+            event.preventDefault();
+            return true;
+          }
           if (pasteAddress(view, event.clipboardData)) {
             event.preventDefault();
             return true;

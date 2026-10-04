@@ -11,7 +11,7 @@ import { enqueueUpload } from "@/lib/sync/uploads";
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
 import { blocksToDoc, diffBlocks, docToBlocks } from "./convert";
-import { clipboardBlocks, insertPastedBlocks, prepareForPaste } from "./paste";
+import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "./paste";
 import { remoteTransaction } from "./remoteApply";
 import { pasteAddress } from "./autolink";
 import { EditorMenus } from "./EditorMenus";
@@ -95,7 +95,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       engine.setEditing(documentId, false);
       const previous = engineBlocksMap();
       const next = docToBlocks(editor.state.doc, previous);
-      const diff = diffBlocks(previous, next);
+      const diff = diffBlocks(previous, next, editor.schema);
       // One save for the whole flush. Changes go first, in document order (parents before the blocks nested
       // under them), then deletes: a block moved out from under a deleted parent must move before the delete,
       // which takes the parent's subtree with it on the server.
@@ -127,6 +127,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       },
       handlePaste: (view, event, slice) => {
         prepareForPaste(view, slice);
+        if (pasteIntoCode(view, event.clipboardData)) {
+          event.preventDefault();
+          return true;
+        }
         const files = [...(event.clipboardData?.files ?? [])];
         if (files.length && editable) {
           event.preventDefault();

@@ -204,8 +204,9 @@ function Popover({
       }}
       onKeyDown={(e) => {
         onKeyDown?.(e);
-        // A dialog keeps Tab inside it (it floats outside the page's own order).
-        if (role !== "dialog" || e.key !== "Tab" || e.defaultPrevented || !ref.current) return;
+        // A dialog keeps Tab inside it (it floats outside the page's own order). Keys from a calendar or list
+        // opened from inside it (in the page's top layer, elsewhere in the document) are theirs.
+        if (role !== "dialog" || e.key !== "Tab" || e.defaultPrevented || !ref.current || !ref.current.contains(document.activeElement)) return;
         const items = [...ref.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea, select, [tabindex="0"]')].filter((el) => el.offsetParent !== null);
         if (!items.length) return;
         const i = items.indexOf(document.activeElement as HTMLElement);

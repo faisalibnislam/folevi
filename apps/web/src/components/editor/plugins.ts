@@ -84,7 +84,9 @@ export const BlockIdentity = Extension.create({
             slice.content.forEach((node) => {
               if (node.attrs.depth !== undefined) minDepth = Math.min(minDepth, Number(node.attrs.depth ?? 0));
             });
-            const shift = Number.isFinite(minDepth) && slice.openStart === 0 ? caretDepth - minDepth : 0;
+            // A slice that starts mid-line joins the caret's line: the rest follows relative to its first line.
+            const firstDepth = slice.content.firstChild?.attrs.depth;
+            const shift = !Number.isFinite(minDepth) ? 0 : slice.openStart === 0 ? caretDepth - minDepth : firstDepth !== undefined ? caretDepth - Number(firstDepth ?? 0) : 0;
             let changed = false;
             const content: PMNode[] = [];
             slice.content.forEach((node) => {
@@ -369,37 +371,34 @@ export function deleteVisibleRange(state: EditorState): Transaction | null {
   const b = $to.index(0);
   if (a === b) return null;
   const hidden = hiddenIndices(state);
-  let crosses = false;
-  for (let i = a + 1; i < b; i++) if (hidden.has(i)) crosses = true;
+  // The blocks to keep: the hidden ones belonging to block `a` itself (a collapsed toggle whose line is only
+  // partly selected). Everything else in between is deleted, hidden or not (a toggle fully inside the
+  // range goes with what's inside it).
+  const keep = new Set<number>();
+  const aNode = state.doc.child(a);
+  if (aNode.type.name === "toggle" && aNode.attrs.collapsed) for (let i = a + 1; i < b && hidden.has(i); i++) keep.add(i);
   const codeEnd = $from.parent.type.name === "codeBlock" || $to.parent.type.name === "codeBlock";
+  if (!keep.size && !codeEnd) return null;
+  const starts: number[] = [];
+  state.doc.forEach((_n, offset) => starts.push(offset));
+  const tr = state.tr;
   if (codeEnd) {
-    // A range from text into code (or out of it): each end keeps its own block, so code never turns into text
-    // or text into code. Visible blocks in between go; hidden ones stay with their toggle.
-    const tr = state.tr;
-    const starts: number[] = [];
-    state.doc.forEach((_n, offset) => starts.push(offset));
+    // A range from text into code (or out of it): each end keeps its own block, so code never turns into
+    // text or text into code.
     tr.delete($to.start(), $to.pos);
-    for (let i = b - 1; i > a; i--) {
-      if (hidden.has(i)) continue;
-      tr.delete(starts[i]!, starts[i]! + state.doc.child(i).nodeSize);
-    }
+    for (let i = b - 1; i > a; i--) if (!keep.has(i)) tr.delete(starts[i]!, starts[i]! + state.doc.child(i).nodeSize);
     tr.delete($from.pos, $from.end());
     tr.setSelection(TextSelection.create(tr.doc, $from.pos));
     normalizeDepths(tr);
     return tr;
   }
-  if (!crosses) return null;
-  const tr = state.tr;
-  const bPos = $to.before(1);
+  // The rest of the last line joins the toggle's line; if that line had nested blocks, the toggle opens so
+  // they don't end up hidden.
+  const after = state.doc.maybeChild(b + 1);
+  if (after && Number(after.attrs.depth ?? 0) > Number(state.doc.child(b).attrs.depth ?? 0)) tr.setNodeMarkup(starts[a]!, undefined, { ...aNode.attrs, collapsed: false });
   const rest = $to.parent.content.cut($to.parentOffset);
-  tr.delete(bPos, bPos + $to.parent.nodeSize);
-  const starts: number[] = [];
-  state.doc.forEach((_n, offset) => starts.push(offset));
-  for (let i = b - 1; i > a; i--) {
-    if (hidden.has(i)) continue;
-    const n = state.doc.child(i);
-    tr.delete(starts[i]!, starts[i]! + n.nodeSize);
-  }
+  tr.delete(starts[b]!, starts[b]! + state.doc.child(b).nodeSize);
+  for (let i = b - 1; i > a; i--) if (!keep.has(i)) tr.delete(starts[i]!, starts[i]! + state.doc.child(i).nodeSize);
   const pos = $from.pos;
   tr.delete(pos, $from.end());
   if (rest.size) tr.insert(pos, rest);
@@ -445,11 +444,13 @@ function outdentCodeLines(editor: Editor): boolean {
   const tr = state.tr;
   let lineStart = text.lastIndexOf("\n", fromOff - 1) + 1;
   const edits: [number, number][] = [];
-  while (lineStart <= toOff) {
+  // A selection ending at the very start of a line doesn't include that line.
+  const lastOff = toOff > fromOff && text[toOff - 1] === "\n" ? toOff - 1 : toOff;
+  while (lineStart <= lastOff) {
     const spaces = /^ {1,2}/.exec(text.slice(lineStart))?.[0].length ?? 0;
     if (spaces) edits.push([lineStart, spaces]);
     const nl = text.indexOf("\n", lineStart);
-    if (nl < 0 || nl >= toOff) break;
+    if (nl < 0 || nl >= lastOff) break;
     lineStart = nl + 1;
   }
   if (!edits.length) return false;
@@ -633,9 +634,13 @@ export const BlockKeymap = Extension.create({
       if (index === 0) return false;
       const prev = state.doc.child(index - 1);
       const hiddenAbove = hiddenIndices(state).has(index - 1);
-      // Code above: move into it (merging would put this text inside the code, unformatted).
+      // Code above: move into it (merging would put this text inside the code, unformatted). An empty line
+      // simply goes.
       if (!hiddenAbove && prev.type.name === "codeBlock") {
-        editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos - 1)).scrollIntoView());
+        const tr = state.tr;
+        const nextNode = state.doc.maybeChild(index + 1);
+        if (cur.empty && !(nextNode && Number(nextNode.attrs.depth ?? 0) > Number(cur.node.attrs.depth ?? 0))) tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
+        editor.view.dispatch(tr.setSelection(TextSelection.create(tr.doc, cur.pos - 1)).scrollIntoView());
         return true;
       }
       // Deleting into an atom block above (an image, a divider…) selects it first instead of removing it.
@@ -682,6 +687,12 @@ export const BlockKeymap = Extension.create({
       const nextBlock = state.doc.maybeChild(index + 1);
       // Code below: move into it rather than pulling the code into this line.
       if (nextBlock?.type.name === "codeBlock" && !hiddenIndices(state).has(index + 1) && cur.node.type.name !== "codeBlock") {
+        // An empty line simply goes; otherwise the caret moves into the code.
+        if (cur.empty && cur.node.type.name === "paragraph") {
+          const tr = state.tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
+          editor.view.dispatch(tr.setSelection(TextSelection.create(tr.doc, cur.pos + 1)).scrollIntoView());
+          return true;
+        }
         editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cur.pos + cur.node.nodeSize + 1)).scrollIntoView());
         return true;
       }

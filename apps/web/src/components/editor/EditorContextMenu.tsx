@@ -827,7 +827,9 @@ function Panel({
                 // Only real pointer movement counts (not a menu appearing under a resting mouse).
                 const last = lastPointer.current;
                 lastPointer.current = { x: e.clientX, y: e.clientY };
-                if ((last && last.x === e.clientX && last.y === e.clientY) || active === i) return;
+                if (last && last.x === e.clientX && last.y === e.clientY) return;
+                // A row already highlighted (from the keyboard) still opens its submenu when pointed at.
+                if (active === i && (!isSub(entry) || open?.index === i)) return;
                 setActive(i);
                 if (hoverTimer.current) clearTimeout(hoverTimer.current);
                 // While a submenu is open, wait a moment: the pointer may be passing through on its way into it.

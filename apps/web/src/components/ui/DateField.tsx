@@ -292,7 +292,7 @@ export function DateField({
                   e.preventDefault();
                   e.stopPropagation();
                   close();
-                } else if (e.key === "Tab" && (e.target as HTMLElement).dataset.date) {
+                } else if (e.key === "Tab") {
                   // From the days, Tab moves on to the field after this one (the calendar floats outside the form).
                   e.preventDefault();
                   e.stopPropagation();

@@ -13,6 +13,16 @@ import { hiddenIndices } from "./blockSelectionState";
  * Before any paste: a range through a collapsed toggle loses only its visible part (the hidden blocks stay),
  * and several whole blocks pasted at the end of a collapsed toggle go after its hidden blocks.
  */
+/** In a code block, any paste is its plain text (formatting and line structure from elsewhere would split it). */
+export function pasteIntoCode(view: EditorView, data: DataTransfer | null): boolean {
+  const { $from, $to } = view.state.selection;
+  if ($from.parent.type.name !== "codeBlock" || !$from.sameParent($to) || !data) return false;
+  const text = data.getData("text/plain").replace(/\r\n?/g, "\n");
+  if (!text) return false;
+  view.dispatch(view.state.tr.insertText(text).scrollIntoView());
+  return true;
+}
+
 export function prepareForPaste(view: EditorView, slice: Slice | null): void {
   const visible = deleteVisibleRange(view.state);
   if (visible) view.dispatch(visible);
@@ -75,7 +85,7 @@ function inlineOfNodes(nodes: Iterable<ChildNode>, marks: Mark[] = [], flatten =
     const e = child as HTMLElement;
     // Word's own list markers ("·", "1.") are drawn text, marked mso-list:Ignore.
     if (SKIP.has(e.tagName) || e.tagName === "IMG" || /mso-list:\s*Ignore/i.test(e.getAttribute("style") ?? "")) continue;
-    if (BLOCK_TAGS.has(e.tagName)) {
+    if (BLOCK_TAGS.has(e.tagName) || e.tagName === "TR" || e.tagName === "TD" || e.tagName === "TH") {
       if (!flatten) continue;
       if (out.length) out.push({ type: "text", text: " " });
       out.push(...inlineOfNodes(e.childNodes, marks, true));
@@ -103,6 +113,26 @@ function clean(nodes: InlineNode[]): InlineNode[] {
 }
 
 const BLOCK_SELECTOR = [...BLOCK_TAGS].filter((t) => t !== "IMG").join(",");
+
+/** Elements with a block inside them, worked out once per paste (asking each element would be very slow on
+ * deeply nested HTML). Null outside a paste: then each element is asked. */
+let withBlocks: WeakSet<Element> | null = null;
+function containsBlock(e: Element): boolean {
+  return withBlocks ? withBlocks.has(e) : Boolean(e.querySelector(BLOCK_SELECTOR));
+}
+function markBlockContainers(root: Element): WeakSet<Element> {
+  const set = new WeakSet<Element>();
+  const all = [...root.querySelectorAll("*")].reverse();
+  for (const el of all) {
+    for (const c of el.children) {
+      if ((BLOCK_TAGS.has(c.tagName) && c.tagName !== "IMG") || set.has(c)) {
+        set.add(el);
+        break;
+      }
+    }
+  }
+  return set;
+}
 
 /** Images inside inline content (a linked picture, a picture in a paragraph) become image blocks. */
 function imagesIn(nodes: Iterable<ChildNode>, depth: number, out: Draft[]) {
@@ -140,7 +170,7 @@ function walkNodes(nodes: ChildNode[], depth: number, out: Draft[], listType: "b
     const e = child as HTMLElement;
     if (SKIP.has(e.tagName)) continue;
     const isBlock = BLOCK_TAGS.has(e.tagName) && e.tagName !== "IMG";
-    if (!isBlock && e.tagName !== "IMG" && !e.querySelector(BLOCK_SELECTOR)) {
+    if (!isBlock && e.tagName !== "IMG" && !containsBlock(e)) {
       run.push(child);
       continue;
     }
@@ -191,8 +221,12 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       // Block children: the first one is the item's text when it has none of its own; the rest nest under it.
       const kids = [...e.children].filter((c) => BLOCK_TAGS.has(c.tagName) && c.tagName !== "UL" && c.tagName !== "OL");
       let rest = kids;
+      let firstKid: Element | null = null;
       if (!inline.length && kids.length) {
-        inline = clean(inlineOf(kids[0]!, marks, true));
+        firstKid = kids[0]!;
+        inline = clean(inlineOf(firstKid, marks));
+        // A wrapper with nothing of its own (just blocks inside): read it whole.
+        if (!inline.length) inline = clean(inlineOf(firstKid, marks, true));
         rest = kids.slice(1);
       }
       const type = checkbox || e.getAttribute("data-checked") !== null || /task-list-item|checklist|to-do/.test(e.className) ? "todo" : (listType ?? "bulleted");
@@ -201,12 +235,19 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       const level = Number(e.getAttribute("aria-level"));
       const itemDepth = level > 1 && !e.parentElement?.closest("li") ? depth + level - 1 : depth;
       out.push({ type, depth: itemDepth, text: inline, props });
+      // Lists and blocks inside the item's first wrapper (<li><div>Two<ul>…</ul></div>) nest under it.
+      if (firstKid && clean(inlineOf(firstKid, marks)).length) {
+        for (const n of [...firstKid.children]) {
+          if (n.tagName === "UL" || n.tagName === "OL") walk(n, itemDepth + 1, out, n.tagName === "OL" ? "numbered" : "bulleted", marks);
+          else if (BLOCK_TAGS.has(n.tagName) && n.tagName !== "IMG") block(n as HTMLElement, itemDepth + 1, out, null, marks);
+        }
+      }
       for (const k of rest) block(k as HTMLElement, itemDepth + 1, out, null, marks);
       for (const n of [...e.children]) if (n.tagName === "UL" || n.tagName === "OL") walk(n, itemDepth + 1, out, n.tagName === "OL" ? "numbered" : "bulleted", marks);
       return;
     }
     case "BLOCKQUOTE": {
-      if (!e.querySelector(BLOCK_SELECTOR)) {
+      if (!containsBlock(e)) {
         const text = clean(inlineOf(e, marks));
         if (text.length) out.push({ type: "quote", depth, text, props: {} });
         return;
@@ -238,9 +279,12 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       imagesIn([e], depth, out);
       return;
     case "TABLE": {
-      const rows = [...e.querySelectorAll("tr")].slice(0, 200).map((tr) => [...tr.querySelectorAll("th,td")].slice(0, 20).map((c) => clean(inlineOf(c, marks, true))));
+      // This table's own rows and cells (a table nested in a cell is read as that cell's text).
+      const table = e as HTMLTableElement;
+      const rows = [...table.rows].slice(0, 200).map((tr) => [...tr.cells].slice(0, 20).map((c) => clean(inlineOf(c, marks, true))));
       const width = Math.max(1, ...rows.map((r) => r.length));
-      if (rows.length) out.push({ type: "table", depth: 0, text: [], props: { headerRow: Boolean(e.querySelector("th")), rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]) } });
+      const header = [...table.rows][0]?.cells[0]?.tagName === "TH";
+      if (rows.length) out.push({ type: "table", depth: 0, text: [], props: { headerRow: header, rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]) } });
       return;
     }
     default:
@@ -251,7 +295,12 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
 export function htmlToBlocks(html: string): WireBlock[] {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const drafts: Draft[] = [];
-  walk(doc.body, 0, drafts);
+  withBlocks = markBlockContainers(doc.body);
+  try {
+    walk(doc.body, 0, drafts);
+  } finally {
+    withBlocks = null;
+  }
   // Convert depth annotations into parents/ranks.
   const blocks: WireBlock[] = [];
   const stack: { id: string; depth: number }[] = [];

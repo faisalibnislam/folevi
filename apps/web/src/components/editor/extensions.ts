@@ -349,10 +349,12 @@ function indentCode(editor: Editor): boolean {
   const text = $from.parent.textContent;
   const lines: number[] = [];
   let at = text.lastIndexOf("\n", $from.parentOffset - 1) + 1;
+  // A selection ending at the very start of a line doesn't include that line.
+  const last = text[$to.parentOffset - 1] === "\n" ? $to.parentOffset - 1 : $to.parentOffset;
   for (;;) {
     lines.push(at);
     const nl = text.indexOf("\n", at);
-    if (nl < 0 || nl >= $to.parentOffset) break;
+    if (nl < 0 || nl >= last) break;
     at = nl + 1;
   }
   const tr = state.tr;

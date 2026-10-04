@@ -7,7 +7,7 @@
 import { Extension, type Editor } from "@tiptap/core";
 import { NodeSelection, Plugin, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
-import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock } from "./commands";
+import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths } from "./commands";
 import { blockSelectionKey, blockSelectionRange, hiddenIndices, indexOfBlock, neighbourIndex, syncDomSelection, type BlockSelection, type BlockSelectionMeta } from "./blockSelectionState";
 
 export { blockSelectionKey, blockSelectionRange };
@@ -128,19 +128,20 @@ export const BlockSelectionExtension = Extension.create({
               return true;
             },
             // Pasting while blocks are selected replaces them.
-            paste: (view) => {
-              const range = blockSelectionRange(view.state);
+            paste: (view, event) => {
+              const range = copiedRange(view.state);
               if (!range) return false;
+              // Nothing usable on the clipboard: leave the blocks alone.
+              const data = event.clipboardData;
+              if (!data || (!data.getData("text/plain") && !data.getData("text/html") && !data.files.length)) return false;
+              // One step (undoes together with the paste): the blocks give way to an empty line the paste fills.
               const { state } = view;
               const start = blockAt(state, range.from)!;
-              const depth = Number(start.node.attrs.depth ?? 0);
-              const indices: number[] = [];
-              for (let i = range.from; i <= range.to; i++) indices.push(i);
-              deleteBlocks(editor, indices);
-              const after = view.state;
-              const pos = Math.min(start.pos, after.doc.content.size);
-              const tr = after.tr.insert(pos, after.schema.nodes.paragraph!.create({ id: null, depth }));
-              tr.setSelection(TextSelection.create(tr.doc, pos + 1)).setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta);
+              const last = blockAt(state, range.to)!;
+              const line = state.schema.nodes.paragraph!.create({ id: null, depth: Number(start.node.attrs.depth ?? 0) });
+              const tr = state.tr.replaceWith(start.pos, last.pos + last.node.nodeSize, line);
+              tr.setSelection(TextSelection.create(tr.doc, start.pos + 1)).setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta);
+              normalizeDepths(tr);
               view.dispatch(tr);
               return false;
             },

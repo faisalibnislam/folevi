@@ -7,6 +7,8 @@ import { BlockDecorations, BlockIdentity, BlockKeymap, MarkdownShortcuts, delete
 import { htmlToBlocks } from "@/components/editor/paste";
 import { sliceToText } from "@/components/editor/clipboardText";
 import { addressIn } from "@/components/editor/autolink";
+import { blocksToDoc, diffBlocks, docToBlocks } from "@/components/editor/convert";
+import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 
 const p = (text: string, depth = 0): JSONContent => ({ type: "paragraph", attrs: { depth }, content: text ? [{ type: "text", text }] : [] });
 const make = (content: JSONContent[]) => new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS, BlockFormat, UndoRedo, BlockIdentity, BlockKeymap, MarkdownShortcuts, BlockDecorations], content: { type: "doc", content } });
@@ -105,5 +107,64 @@ describe("editor round three", () => {
     expect(addressIn("(example.com)")?.text).toBe("example.com");
     expect(addressIn("www.example.org/page.")?.text).toBe("www.example.org/page");
     for (const w of ["notes.txt", "v2.final", "e.g.", "a.b"]) expect(addressIn(w)).toBeNull();
+  });
+
+  test("a range over a whole collapsed toggle deletes it with its hidden lines", () => {
+    const e = make([p("Alpha"), { type: "toggle", attrs: { depth: 0, collapsed: true }, content: [{ type: "text", text: "Toggle" }] }, p("hidden", 1), p("Beta")]);
+    expect(deleteVisibleRange(e.state)).toBeNull();
+    e.destroy();
+  });
+
+  test("joining a toggle's line with a line that has nested blocks opens the toggle", () => {
+    const e = make([{ type: "toggle", attrs: { depth: 0, collapsed: true }, content: [{ type: "text", text: "Toggle" }] }, p("hidden", 1), p("Beta"), p("child", 1)]);
+    let beta = 0;
+    e.state.doc.forEach((n, o, i) => {
+      if (i === 2) beta = o;
+    });
+    e.view.dispatch(e.state.tr.setSelection(TextSelection.create(e.state.doc, 4, beta + 2)));
+    e.view.dispatch(deleteVisibleRange(e.state)!);
+    expect(lines(e)).toEqual(["toggle:Togeta@0", "paragraph:hidden@1", "paragraph:child@1"]);
+    expect(e.state.doc.child(0).attrs.collapsed).toBe(false);
+    e.destroy();
+  });
+
+  test("an empty line after code can be removed with Backspace", () => {
+    const e = make([{ type: "codeBlock", attrs: { depth: 0, language: "plaintext" }, content: [{ type: "text", text: "x = 1" }] }, p("")]);
+    e.commands.setTextSelection(e.state.doc.content.size - 1);
+    e.view.someProp("handleKeyDown", (f) => f(e.view, new KeyboardEvent("keydown", { key: "Backspace" })));
+    expect(lines(e)).toEqual(["codeBlock:x = 1@0"]);
+    e.destroy();
+  });
+
+  test("nested tables and lists inside list-item wrappers paste without duplication or loss", () => {
+    const [t] = htmlToBlocks("<table><tr><td>outer<table><tr><td>inner1</td><td>inner2</td></tr></table></td><td>x</td></tr></table>");
+    const rows = t!.props.rows as { text: string }[][][];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.map((c) => c.map((n) => n.text).join(""))).toEqual(["outer inner1 inner2", "x"]);
+    const list = htmlToBlocks("<ul><li><div>Two<ul><li>sub2</li></ul></div></li></ul>");
+    expect(list.map((b) => [b.type, (b.text[0] as { text: string }).text, b.parentId === null])).toEqual([["bulleted", "Two", true], ["bulleted", "sub2", false]]);
+  });
+
+  test("deeply nested inline HTML pastes quickly", () => {
+    const html = "<span>".repeat(800) + "<p>deep</p>" + "</span>".repeat(800);
+    const t0 = performance.now();
+    expect(htmlToBlocks(html)).toHaveLength(1);
+    expect(performance.now() - t0).toBeLessThan(1500);
+  });
+
+  test("stored line breaks in any shape don't count as an edit", () => {
+    const shapes: WireBlock["text"][] = [
+      [{ type: "text", text: "a", marks: [{ type: "bold" }] }, { type: "text", text: "\n" }, { type: "text", text: "b", marks: [{ type: "bold" }] }],
+      [{ type: "text", text: "a\nb", marks: [{ type: "bold" }] }],
+      [{ type: "text", text: "\na", marks: [{ type: "italic" }] }],
+    ];
+    for (const text of shapes) {
+      const block: WireBlock = { id: "b1", type: "paragraph", parentId: null, rank: "a0", schemaVersion: SCHEMA_VERSION, text, props: {} };
+      const e = make([]);
+      e.commands.setContent(blocksToDoc([block]));
+      const previous = new Map([[block.id, block]]);
+      expect(diffBlocks(previous, docToBlocks(e.state.doc, previous), e.schema).upserts).toEqual([]);
+      e.destroy();
+    }
   });
 });

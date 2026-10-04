@@ -2,7 +2,7 @@
 // The editor is a flat list of block nodes with a `depth` attribute; the canonical model is a tree
 // (parentId + fractional rank). assignTreePositions maps between them while preserving existing ranks.
 import type { JSONContent } from "@tiptap/core";
-import type { Node as PMNode } from "@tiptap/pm/model";
+import type { Node as PMNode, Schema } from "@tiptap/pm/model";
 import {
   SCHEMA_VERSION,
   assignTreePositions,
@@ -110,9 +110,7 @@ export function pmInline(node: PMNode): InlineNode[] {
     } else if (child.type.name === "pageLink") {
       out.push({ type: "pageLink", documentId: String(child.attrs.documentId), label: String(child.attrs.label) });
     } else if (child.type.name === "hardBreak") {
-      // The break takes the formatting of the text before it, so "bold line, break, bold line" stays one run.
-      const prev = out[out.length - 1];
-      out.push(prev?.type === "text" && prev.marks?.length ? { type: "text", text: "\n", marks: prev.marks } : { type: "text", text: "\n" });
+      out.push({ type: "text", text: "\n" });
     }
   });
   return normalizeInline(out);
@@ -215,7 +213,26 @@ export function contentKey(b: Pick<WireBlock, "type" | "text" | "props">): strin
   return canonicalJson({ t: b.type, x: b.text, p: b.props });
 }
 
-export function diffBlocks(previous: ReadonlyMap<string, WireBlock>, next: readonly WireBlock[]): BlockDiff {
+/**
+ * Stored text in the shape the editor would save it (a line break and the formatting around it can be
+ * written more than one way): comparing in this shape, an unchanged block never counts as edited.
+ */
+const loadedShape = new WeakMap<WireBlock, string>();
+export function storedContentKey(b: WireBlock, schema: Schema | null): string {
+  if (!schema || !TEXT_NODES.has(b.type) || !b.text.some((n) => n.type === "text" && n.text.includes("\n"))) return contentKey(b);
+  const cached = loadedShape.get(b);
+  if (cached !== undefined) return cached;
+  let key: string;
+  try {
+    key = contentKey({ ...b, text: pmInline(schema.nodeFromJSON(blockToNode(b, 0))) });
+  } catch {
+    key = contentKey(b);
+  }
+  loadedShape.set(b, key);
+  return key;
+}
+
+export function diffBlocks(previous: ReadonlyMap<string, WireBlock>, next: readonly WireBlock[], schema: Schema | null = null): BlockDiff {
   const upserts: BlockDiff["upserts"] = [];
   const seen = new Set<string>();
   for (const b of next) {
@@ -226,7 +243,7 @@ export function diffBlocks(previous: ReadonlyMap<string, WireBlock>, next: reado
       continue;
     }
     const fields: ChangedField[] = [];
-    if (contentKey(prev) !== contentKey(b)) fields.push("content");
+    if (storedContentKey(prev, schema) !== contentKey(b)) fields.push("content");
     if (prev.parentId !== b.parentId || prev.rank !== b.rank) fields.push("position");
     if (fields.length) upserts.push({ block: b, fields });
   }

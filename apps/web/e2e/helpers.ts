@@ -231,6 +231,12 @@ export async function openTool(page: Page, name: "Insert" | "Format" | "Style" |
   return panel;
 }
 
+/** Opens a page's Share dialog (Share lives in the page's "…" menu in the dock). */
+export async function openShare(page: Page) {
+  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Document actions" }).click();
+  await page.getByRole("menuitem", { name: "Share…" }).click();
+}
+
 /** Chooses an option in one of Folevi's dropdowns (the custom Select: a combobox with a listbox). */
 export async function pick(combobox: Locator, option: string) {
   await combobox.click();

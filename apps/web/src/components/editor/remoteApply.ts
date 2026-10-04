@@ -133,14 +133,25 @@ export function remoteTransaction(state: EditorState, blocks: readonly WireBlock
   if (!tr.docChanged) return null;
   tr.setMeta("preventClearDocument", true);
 
-  // The caret's block was moved: put the caret back where it was inside it.
+  // The caret's block was moved: put the caret back where it was inside it. If it was deleted (elsewhere),
+  // the caret goes to the end of the line before it, not wherever the mapping happened to leave it.
   if (caretId) {
     const $now = tr.selection.$head;
     const nowId = $now.depth >= 1 ? ($now.node(1).attrs.id as string | null) : null;
-    if (nowId !== caretId) {
+    if (wantIndex.has(caretId)) {
+      if (nowId !== caretId) {
+        tr.doc.forEach((n, offset) => {
+          if (n.attrs.id === caretId) tr.setSelection(TextSelection.near(tr.doc.resolve(offset + 1 + Math.min(caretOffset, n.content.size))));
+        });
+      }
+    } else {
+      const at = children.findIndex((c) => c.id === caretId);
+      const before = children.slice(0, Math.max(0, at)).reverse().find((c) => c.id && wantIndex.has(c.id))?.id;
+      let target: number | null = null;
       tr.doc.forEach((n, offset) => {
-        if (n.attrs.id === caretId) tr.setSelection(TextSelection.near(tr.doc.resolve(offset + 1 + Math.min(caretOffset, n.content.size))));
+        if (before && n.attrs.id === before) target = offset + n.nodeSize - 1;
       });
+      tr.setSelection(TextSelection.near(tr.doc.resolve(target ?? 0), target === null ? 1 : -1));
     }
   }
   return tr;

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved, openShare } from "./helpers";
 
 async function newDocument(page: Page) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -71,7 +71,7 @@ test("password-protected links keep only a sealed grant, never the password, in 
   await newDocument(page);
   await page.getByRole("textbox", { name: "Title" }).fill("Protected plans");
   await waitForSaved(page);
-  await page.getByRole("button", { name: "Share" }).click();
+  await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
   await share.getByLabel(/Password \(optional/).fill("correct horse battery");
   await share.getByRole("button", { name: "Create link" }).click();

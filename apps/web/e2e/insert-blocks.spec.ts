@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, waitForSaved, openTool, settle } from "./helpers";
+import { newPerson, waitForSaved, openTool, settle, openShare } from "./helpers";
 
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -126,7 +126,7 @@ test.describe("Insert panel", () => {
     await expect(page.locator(".fb-editor .fb-whiteboard svg.fb-whiteboard-canvas path")).toHaveCount(1);
 
     // The public share page shows the same blocks read-only.
-    await page.getByRole("button", { name: "Share" }).click();
+    await openShare(page);
     const share = page.getByRole("dialog", { name: /Share/ });
     await share.getByRole("button", { name: "Create link" }).click();
     const link = await share.getByLabel("Public link").inputValue();

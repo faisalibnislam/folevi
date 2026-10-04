@@ -5,6 +5,7 @@ import { BlockDecorations, BlockIdentity, BlockKeymap, MarkdownShortcuts, Trigge
 import { BlockSelectionExtension } from "./blockSelection";
 import { FindReplace } from "./findReplace";
 import { Autolink } from "./autolink";
+import { BlockHighlight } from "./blockHighlight";
 
 /**
  * The editor's extensions: every block and mark, their node views, undo, the drop and gap cursors, the
@@ -51,6 +52,7 @@ export function editorExtensions({
     MarkdownShortcuts,
     FindReplace,
     Autolink,
+    BlockHighlight,
     Triggers.configure({ onChange: onTrigger }),
   ];
 }

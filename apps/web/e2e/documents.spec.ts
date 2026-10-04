@@ -38,7 +38,7 @@ test.describe("documents", () => {
     await newPage(page, "Discussed");
     await page.keyboard.type("Something to discuss");
     await waitForSaved(page);
-    await page.getByRole("button", { name: /^Comments/ }).click();
+    await page.getByRole("tab", { name: /^Comments/ }).click();
     const box = page.getByRole("textbox", { name: /Comment on this document/ });
     await box.click();
     await page.keyboard.type("Ping @Mir");
@@ -186,7 +186,7 @@ test.describe("documents", () => {
     const { context, page } = await newPerson(browser, "Dock Tester");
     await newPage(page, "Dock");
     const dock = page.getByRole("toolbar", { name: "Page tools" });
-    for (const name of ["Insert", "Format", "Style", "Info"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
+    for (const name of ["Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
     const noteWidth = (await page.locator("#doc-scroll").boundingBox())!.width;
     // Style opens as a floating card (here from the keyboard); the note keeps its full width.
     await dock.getByRole("button", { name: "Style", exact: true }).focus();
@@ -201,13 +201,18 @@ test.describe("documents", () => {
     await expect(panel).toBeHidden();
     await expect(dock.getByRole("button", { name: "Style", exact: true })).toBeFocused();
     // Pressing another tool switches the panel; pressing it again closes it.
-    await dock.getByRole("button", { name: "Info", exact: true }).click();
-    await expect(panel.getByRole("heading", { name: "Info" })).toBeVisible();
-    await dock.getByRole("button", { name: "Info", exact: true }).click();
+    await dock.getByRole("button", { name: "Format", exact: true }).click();
+    await expect(panel.getByRole("heading", { name: "Format" })).toBeVisible();
+    await dock.getByRole("button", { name: "Format", exact: true }).click();
     await expect(panel).toBeHidden();
-    // Comments, share and page actions float inside the note; the save state sits in the page's sidebar.
+    // Info (like Share) is in the page's "…" menu, and opens in the same floating panel.
     const icons = page.getByRole("group", { name: "Page" });
-    for (const name of [/^Comments/, "Share", "Document actions"]) await expect(icons.getByRole("button", { name })).toBeVisible();
+    await icons.getByRole("button", { name: "Document actions" }).click();
+    await page.getByRole("menuitem", { name: "Info" }).click();
+    await expect(panel.getByRole("heading", { name: "Info" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    // Page actions sit in the dock; the save state sits in the page's sidebar.
     const noteBox = (await page.locator("#doc-scroll").boundingBox())!;
     const iconsBox = (await icons.boundingBox())!;
     expect(iconsBox.y).toBeGreaterThanOrEqual(noteBox.y);

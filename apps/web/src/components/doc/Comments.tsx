@@ -17,6 +17,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { MentionInput, textToCommentBody, type MentionInputHandle, type MentionPerson } from "./MentionInput";
+import { addressIn } from "@/components/editor/autolink";
 
 export type CommentsData = FunctionReturnType<typeof api.comments.threads>;
 export type CommentThread = CommentsData["threads"][number];
@@ -28,7 +29,36 @@ export function commentLink(documentId: string, threadId: string): string {
   return `${window.location.origin}/d/${documentId}#comment-${threadId}`;
 }
 
-export function CommentBody({ body }: { body: BodyNode[] }) {
+/** Text with its web addresses as links that open in a new tab (or kept as text inside a clickable row). */
+function LinkedText({ text, links }: { text: string; links: boolean }) {
+  const parts = text.split(/(\s+)/);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const found = links && part.trim() ? addressIn(part) : null;
+        if (!found) return part;
+        const at = part.indexOf(found.text);
+        return (
+          <span key={i}>
+            {part.slice(0, at)}
+            <a
+              href={found.href}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              onClick={(e) => e.stopPropagation()}
+              className="break-all text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current"
+            >
+              {found.text}
+            </a>
+            {part.slice(at + found.text.length)}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+export function CommentBody({ body, links = true }: { body: BodyNode[]; links?: boolean }) {
   return (
     <>
       {body.map((n, i) =>
@@ -37,7 +67,9 @@ export function CommentBody({ body }: { body: BodyNode[] }) {
             @{n.label}
           </span>
         ) : n.type === "text" ? (
-          <span key={i}>{n.text}</span>
+          <span key={i}>
+            <LinkedText text={n.text ?? ""} links={links} />
+          </span>
         ) : null,
       )}
     </>
@@ -689,7 +721,7 @@ function anchorLabel(t: CommentThread): ReactNode {
 export function CommentsOverview({ documentId, onOpenThread, focusThreadId = null }: { documentId: string; onOpenThread: (thread: CommentThread) => void; focusThreadId?: string | null }) {
   const data = useQuery(api.comments.threads, { documentId });
   const people = useQuery(api.comments.mentionable, { documentId });
-  const [filter, setFilter] = useState<"open" | "resolved" | "all">("open");
+  const [filter, setFilter] = useState<"open" | "resolved">("open");
   const [query, setQuery] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(focusThreadId);
@@ -714,7 +746,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
   const q = query.trim().toLowerCase();
   const textOf = (t: CommentThread) =>
     [t.blockText ?? "", ...t.comments.map((c) => `${c.authorName} ${c.deleted ? "" : c.body.map((n) => ("text" in n ? n.text : "label" in n ? n.label : "")).join("")}`)].join(" ").toLowerCase();
-  const shown = (filter === "open" ? open : filter === "resolved" ? resolved : data.threads)
+  const shown = (filter === "open" ? open : resolved)
     .filter((t) => !q || textOf(t).includes(q))
     .sort((a, b) => b.lastActivityAt - a.lastActivityAt);
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
@@ -733,7 +765,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
       label: "Copy link",
       icon: <Link2 size={14} />,
       onSelect: () =>
-        void navigator.clipboard.writeText(`${location.origin}${commentLink(documentId, t.id)}`).then(
+        void navigator.clipboard.writeText(commentLink(documentId, t.id)).then(
           () => toast.show("Link copied"),
           () => toast.show("Couldn't copy the link.", { tone: "error" }),
         ),
@@ -753,6 +785,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
   };
   return (
     <div className="space-y-3 text-sm">
+      <NoteNotifications documentId={documentId} />
       {data.canComment ? (
         <form
           className="ui-input rounded-[10px] px-3 py-2"
@@ -790,14 +823,11 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
       )}
       <div className="space-y-2">
         <div role="group" aria-label="Show threads" className="ui-seg bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
-          <button type="button" aria-pressed={filter === "open"} onClick={() => setFilter("open")}>
+          <button type="button" aria-pressed={filter === "open"} onClick={() => setFilter("open")} className="whitespace-nowrap">
             Open{open.length ? ` · ${open.length}` : ""}
           </button>
-          <button type="button" aria-pressed={filter === "resolved"} onClick={() => setFilter("resolved")}>
+          <button type="button" aria-pressed={filter === "resolved"} onClick={() => setFilter("resolved")} className="whitespace-nowrap">
             Resolved{resolved.length ? ` · ${resolved.length}` : ""}
-          </button>
-          <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
-            All
           </button>
         </div>
         {data.threads.length > 2 ? (
@@ -812,7 +842,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
         ) : null}
       </div>
       {shown.length === 0 ? (
-        <p className="px-1 py-4 text-center text-muted">{q ? "No comments match." : filter === "open" ? "No open comments." : filter === "resolved" ? "No resolved comments." : "No comments yet."}</p>
+        <p className="px-1 py-4 text-center text-muted">{q ? "No comments match." : filter === "open" ? "No open comments." : "No resolved comments."}</p>
       ) : (
         <ul className="space-y-1.5">
           {shown.map((t) => {
@@ -869,7 +899,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                     {t.unread ? <span className="h-2 w-2 flex-none rounded-full bg-coral" aria-label="Unread" role="img" /> : null}
                   </span>
                   <span className={`mt-1 line-clamp-2 block whitespace-pre-wrap text-[13px] leading-snug ${first.deleted ? "italic text-faint" : "text-ink"}`}>
-                    {first.deleted ? "Comment deleted" : <CommentBody body={first.body} />}
+                    {first.deleted ? "Comment deleted" : <CommentBody body={first.body} links={false} />}
                   </span>
                   {replies > 0 || t.status === "resolved" ? (
                     <span className="mt-1 flex items-center gap-2 text-[11.5px] text-muted">
@@ -892,7 +922,6 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
           })}
         </ul>
       )}
-      <NoteNotifications documentId={documentId} />
     </div>
   );
 }
@@ -933,9 +962,9 @@ export function NoteNotifications({ documentId }: { documentId: string }) {
   // For the note's creator "default" already means every comment.
   const value = sub.isAuthor && sub.mode === "follow" ? "default" : sub.mode;
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-line/70 px-1 pt-3">
+    <div className="flex items-center justify-between gap-3 border-b border-line/70 px-1 pb-3">
       <label htmlFor={`note-notify-${documentId}`} className="text-[12.5px] text-muted">
-        Notify me about
+        Notify
       </label>
       <Select
         id={`note-notify-${documentId}`}

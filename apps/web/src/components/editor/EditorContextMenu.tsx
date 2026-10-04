@@ -19,6 +19,7 @@ import {
   Code2,
   Copy,
   CopyPlus,
+  FoldVertical,
   Eraser,
   ExternalLink,
   Heading1,
@@ -419,6 +420,16 @@ function buildEntries({
         run: () => {
           const at = live();
           if (at?.node.type.name === "toggle") editor.view.dispatch(editor.state.tr.setNodeMarkup(at.pos, undefined, { ...at.node.attrs, collapsed: !at.node.attrs.collapsed }).setMeta("addToHistory", false));
+        },
+      });
+    } else if (name === "pageBreak" && editable) {
+      // The pages either side join up again (the break was the only thing between them).
+      context.push({
+        label: "Unbreak page",
+        icon: <FoldVertical size={14} />,
+        run: () => {
+          const at = live();
+          if (at?.node.type.name === "pageBreak") editor.view.dispatch(editor.state.tr.delete(at.pos, at.pos + at.node.nodeSize).scrollIntoView());
         },
       });
     }

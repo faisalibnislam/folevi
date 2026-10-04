@@ -15,9 +15,13 @@ test("comments tab lists, jumps and manages threads", async ({ browser }) => {
   await page.waitForTimeout(2500);
   await page.keyboard.press("ControlOrMeta+Alt+m");
   const thread = page.getByRole("textbox", { name: /comment|Reply/i }).first();
-  await thread.fill("Is this right?");
+  await thread.fill("Is this right? See example.com/guide.");
   await page.keyboard.press("Enter");
   await expect(page.locator(".fb-comment-chip")).toBeVisible({ timeout: 15_000 });
+  // An address in a comment is a link that opens in a new tab.
+  const link = page.getByRole("link", { name: "example.com/guide" });
+  await expect(link).toHaveAttribute("href", "https://example.com/guide");
+  await expect(link).toHaveAttribute("target", "_blank");
   await page.keyboard.press("Escape");
   // Dock: no Comments, Share or Info; the "…" menu has Share and Info.
   const dock = page.getByRole("toolbar", { name: "Page tools" });

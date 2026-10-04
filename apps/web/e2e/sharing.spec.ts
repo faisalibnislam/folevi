@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPerson, waitForSaved, showFolders, pick } from "./helpers";
+import { newPerson, waitForSaved, showFolders, pick, openShare } from "./helpers";
 
 test("share a page with another person, comment, and publish a revocable public link", async ({ browser }) => {
   const owner = await newPerson(browser, "Owner Person");
@@ -10,7 +10,7 @@ test("share a page with another person, comment, and publish a revocable public 
   // Owner opens the brief and shares it with the guest as a commenter.
   await owner.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Home" }).click();
   await owner.page.getByRole("link", { name: /Project Atlas Brief/ }).first().click();
-  await owner.page.getByRole("button", { name: "Share" }).click();
+  await openShare(owner.page);
   const share = owner.page.getByRole("dialog", { name: /Share/ });
   await share.getByLabel("Email address").fill(guest.email);
   await pick(share.getByLabel("Role"), "Can comment");
@@ -39,7 +39,10 @@ test("share a page with another person, comment, and publish a revocable public 
   await guest.page.getByRole("link", { name: "Shared with Me" }).click();
   await guest.page.getByRole("link", { name: /Project Atlas Brief/ }).click();
   await expect(guest.page.getByText("View only")).toBeVisible();
-  await guest.page.getByRole("button", { name: /^Comments/ }).click();
+  // The guest's sidebar shows folders: the page's "…" menu opens its Comments tab.
+  await guest.page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Document actions" }).click();
+  await guest.page.getByRole("menuitem", { name: "Comments", exact: true }).click();
+  await expect(guest.page.getByRole("tab", { name: /^Comments/ })).toHaveAttribute("aria-selected", "true");
   await guest.page.getByLabel(/Comment on this document/).fill("Can we add a budget section?");
   await guest.page.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(guest.page.getByText("Can we add a budget section?")).toBeVisible();

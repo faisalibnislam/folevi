@@ -7,6 +7,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex/api";
 import { BlurredBackdrop } from "@/components/doc/BlurredBackdrop";
 import { ReadOnlyBlocks } from "@/components/doc/ReadOnlyBlocks";
+import { SheetPageBreaks } from "@/components/doc/SheetPageBreaks";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { coverBackground, pageBackdrop, sheetProps } from "@/lib/cover";
 import { formatDate, localeFromAcceptLanguage, tFor } from "@/i18n";
@@ -170,6 +171,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       data-separator={document.style.separator}
       style={{ ...shareSheet.style, ["--doc-accent" as string]: document.style.accent === "accent" ? "var(--color-accent)" : `var(--color-${document.style.accent})` }}
     >
+      {backdrop ? <SheetPageBreaks /> : null}
       {bg ? <div className="h-36 rounded-t-[6px]" style={{ background: bg }} aria-hidden /> : <div className="h-8" />}
       <div className="px-5 pb-6 pt-4 sm:px-16">
         <h1 className={`mt-2 text-[40px] leading-tight ${document.style.font === "serif" ? "ui-display" : document.style.font === "rounded" ? "font-rounded font-semibold" : "font-semibold tracking-tight"}`}>{document.title || "Untitled"}</h1>

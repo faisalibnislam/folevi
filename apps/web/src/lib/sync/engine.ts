@@ -67,6 +67,8 @@ export class SyncEngine {
       // Anything in flight when the page closed may or may not have landed: resend (ops are idempotent).
       engine.state = { ...sync.emptySyncState(), ...saved, pending: [...saved.inflight, ...saved.pending], inflight: [] };
     }
+    engine.state = mergeJournal(engine.state, readJournal(accountKey));
+    engine.watchUnload();
     if (teamWorkspaceIds) {
       const adopted = adoptLegacyCreates(engine.state, teamWorkspaceIds);
       if (adopted !== engine.state) engine.commit(adopted);
@@ -102,8 +104,36 @@ export class SyncEngine {
     }
   }
 
+  /**
+   * While the page is hidden or closing, every change is also written straight to localStorage (the
+   * IndexedDB save is asynchronous and doesn't finish during unload): what was typed just before a reload
+   * or a closed tab is merged back in when the engine opens.
+   */
+  private journaling = false;
+  private watchUnload() {
+    if (typeof window === "undefined") return;
+    const hide = () => {
+      this.journaling = true;
+      writeJournal(this.accountKey, this.state);
+    };
+    // Capture, so this runs before the editor's own flush on the same event (which writes the journal again).
+    window.addEventListener("pagehide", hide, { capture: true });
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        if (document.visibilityState === "hidden") hide();
+        else {
+          this.journaling = false;
+          clearJournal(this.accountKey);
+        }
+      },
+      { capture: true },
+    );
+  }
+
   private commit(next: SyncState) {
     this.state = next;
+    if (this.journaling) writeJournal(this.accountKey, next);
     if (this.batching) {
       this.batchDirty = true;
       return;
@@ -144,6 +174,16 @@ export class SyncEngine {
   // ------------------------------------------------------------------ local changes
 
   upsertBlock(documentId: string, block: WireBlock, fields: ChangedField[]) {
+    // A block with an open conflict keeps the person's own version in the conflict (that's what the editor
+    // shows, and what "Keep mine" saves) until they choose: queuing it would overwrite the other version unseen.
+    const at = this.openConflictIndex(block.id);
+    if (at >= 0) {
+      const conflicts = [...this.state.conflicts];
+      const { revision: _revision, ...client } = block;
+      conflicts[at] = { ...conflicts[at]!, client };
+      this.commit({ ...this.state, conflicts });
+      return;
+    }
     // Blocks whose attachment is still uploading are held back until the upload finishes.
     const upload = this.state.uploads.find((u) => u.blockId === block.id && u.state !== "done");
     this.commit(sync.localUpsert(this.state, { opId: ulid(), documentId, block, fields, blockedBy: upload?.uploadId }));
@@ -176,7 +216,19 @@ export class SyncEngine {
   /** Blocks deleted on this device (in this session): only these come back when the person undoes. */
   private deletedHere = new Set<string>();
 
+  /** The block's open conflict that keeps a version of the person's own (not "edited": that one was deleted here). */
+  private openConflictIndex(blockId: string): number {
+    return this.state.conflicts.findIndex((c) => c.blockId === blockId && c.reason !== "edited");
+  }
+
   deleteBlock(documentId: string, blockId: string) {
+    // Deleting a block with an open conflict settles it: if the other version was a delete too, nothing's left to do.
+    const at = this.openConflictIndex(blockId);
+    if (at >= 0) {
+      const record = this.state.conflicts[at]!;
+      this.commit({ ...this.state, conflicts: this.state.conflicts.filter((_, i) => i !== at) });
+      if (record.reason === "deleted" || this.state.blocks[blockId]?.deleted) return;
+    }
     this.deletedHere.add(blockId);
     this.commit(sync.localDelete(this.state, { opId: ulid(), documentId, blockId }));
     this.scheduleFlush();
@@ -289,11 +341,23 @@ export class SyncEngine {
     }
   }
 
+  /**
+   * The document's blocks as the person sees them: a block with an open conflict shows their own version
+   * (kept in the conflict, even when the other side deleted it) until they choose.
+   */
   documentBlocks(documentId: string): WireBlock[] {
+    const mine = new Map<string, WireBlock>();
+    for (const c of this.state.conflicts) if (c.documentId === documentId && c.reason !== "edited") mine.set(c.blockId, c.client);
     const out: WireBlock[] = [];
-    for (const entity of Object.values(this.state.blocks)) {
-      if (entity.documentId === documentId && !entity.deleted) out.push(entity.block);
+    for (const [id, entity] of Object.entries(this.state.blocks)) {
+      if (entity.documentId !== documentId) continue;
+      const own = mine.get(id);
+      if (own) {
+        out.push(own);
+        mine.delete(id);
+      } else if (!entity.deleted) out.push(entity.block);
     }
+    out.push(...mine.values());
     return out;
   }
 
@@ -410,6 +474,60 @@ export class SyncEngine {
       this.flushing = false;
     }
   }
+}
+
+const journalKey = (accountKey: string) => `folevi:sync-journal:${accountKey}`;
+
+function writeJournal(accountKey: string, state: SyncState) {
+  try {
+    const ops = [...state.inflight, ...state.pending];
+    if (!ops.length) localStorage.removeItem(journalKey(accountKey));
+    else localStorage.setItem(journalKey(accountKey), JSON.stringify({ ops, at: Date.now() }));
+  } catch {
+    // Storage full or blocked: the IndexedDB save is still on its way.
+  }
+}
+
+function readJournal(accountKey: string): SyncOp[] {
+  try {
+    const raw = localStorage.getItem(journalKey(accountKey));
+    localStorage.removeItem(journalKey(accountKey));
+    const parsed = raw ? (JSON.parse(raw) as { ops?: SyncOp[] }) : null;
+    return Array.isArray(parsed?.ops) ? parsed!.ops : [];
+  } catch {
+    return [];
+  }
+}
+
+function clearJournal(accountKey: string) {
+  try {
+    localStorage.removeItem(journalKey(accountKey));
+  } catch {
+    /* nothing to clear */
+  }
+}
+
+/**
+ * Ops written to the journal as the page was closing: newer than (or the same as) what IndexedDB holds.
+ * An op already queued is replaced by its journal copy (the same op, with later coalesced content);
+ * others are added, and the blocks they carry become the local version.
+ */
+export function mergeJournal(state: SyncState, ops: SyncOp[]): SyncState {
+  if (!ops.length) return state;
+  const pending = [...state.pending];
+  const blocks = { ...state.blocks };
+  for (const op of ops) {
+    const at = pending.findIndex((p) => p.opId === op.opId);
+    if (at >= 0) pending[at] = op;
+    else pending.push(op);
+    if (op.kind === "block.upsert") {
+      const prev = blocks[op.block.id];
+      blocks[op.block.id] = { documentId: op.documentId, block: op.block, serverRevision: prev?.serverRevision ?? op.baseRevision ?? null, deleted: false };
+    } else if (op.kind === "block.delete" && blocks[op.blockId]) {
+      blocks[op.blockId] = { ...blocks[op.blockId]!, deleted: true };
+    }
+  }
+  return { ...state, pending, blocks };
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

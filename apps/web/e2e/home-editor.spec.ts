@@ -55,12 +55,10 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await expect(page.locator(".mk-hero-stage")).toHaveAttribute("data-tone", "light");
   await expect(page.getByText("Note style: Poppy print", { exact: false }).first()).toBeVisible();
 
-  // AI and Share need an account.
+  // AI needs an account.
   await dock.getByRole("button", { name: "AI" }).click();
   await expect(panel.getByRole("heading", { name: "AI Assistant" })).toBeVisible();
   await expect(panel.getByRole("link", { name: "Sign up free" })).toBeVisible();
-  await dock.getByRole("button", { name: "Share" }).click();
-  await expect(panel.getByRole("heading", { name: "Share" })).toBeVisible();
 
   expect(external).toEqual([]);
 

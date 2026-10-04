@@ -447,6 +447,11 @@ export class SyncEngine {
     const row = await this.findBlock(op.blockId);
     if (!row || row.documentId !== doc._id) return { opId: op.opId, status: "applied", block: null, deleted: true };
     if (row.deletedAt !== undefined) return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: true };
+    // Someone changed the block's content after the version this delete was based on (a delete made offline):
+    // keep it and let the deleting device choose. Reported as a content conflict (every client knows that).
+    if (op.baseRevision !== null && op.baseRevision !== undefined && row.contentRev > op.baseRevision) {
+      return { opId: op.opId, status: "conflict", revision: row.revision, block: toWireBlock(row), conflict: { reason: "content", server: toWireBlock(row), client: null } };
+    }
     const seq = await this.seq.for(scopeOfRow(doc));
     const now = Date.now();
     const revision = row.revision + 1;

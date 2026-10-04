@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { APP, completeOnboarding, createAccount, createWorkspace, newPerson, pick, showFolders, switcher, uniqueEmail, waitForSaved } from "./helpers";
+import { APP, completeOnboarding, createAccount, createWorkspace, newPerson, pick, showFolders, switcher, uniqueEmail, waitForSaved, openShare } from "./helpers";
 
 // Members vs guests (docs/ACCOUNT_MODEL_PLAN.md, Phase D): sharing one page with an address that has no
 // account, accepting it as a guest who sees only that page, the Guests list, and making a guest a member.
@@ -27,7 +27,7 @@ test("share a page with a new address → they sign up, accept, and see only tha
 
   // Share with someone who has no Folevi account yet: an invitation by email, nothing granted yet.
   const guestEmail = uniqueEmail("guest");
-  await owner.page.getByRole("button", { name: "Share" }).click();
+  await openShare(owner.page);
   const share = owner.page.getByRole("dialog", { name: /Share/ });
   await share.getByLabel("Email address").fill(guestEmail);
   await pick(share.getByLabel("Role"), "Can edit");
@@ -64,7 +64,7 @@ test("share a page with a new address → they sign up, accept, and see only tha
   await expect(guest.getByRole("listitem").filter({ hasText: "Internal budget" })).toHaveCount(0);
   // The share dialog shows the guest only their own access.
   await guest.goto(sharedUrl);
-  await guest.getByRole("button", { name: "Share" }).click();
+  await openShare(guest);
   const guestShare = guest.getByRole("dialog", { name: /Share/ });
   await expect(guestShare.getByText(/You’re a guest on this page/)).toBeVisible();
   await expect(guestShare.getByLabel("Email address")).toHaveCount(0);

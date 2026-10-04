@@ -45,7 +45,8 @@ export interface ConflictRecord {
   id: string;
   documentId: string;
   blockId: string;
-  reason: "content" | "deleted" | "exists";
+  /** "edited": this device deleted the block, and someone changed it meanwhile (it's kept until you choose). */
+  reason: "content" | "deleted" | "exists" | "edited";
   server: WireBlock | null;
   client: WireBlock;
 }
@@ -271,7 +272,7 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
             id: op.opId,
             documentId: (op as { documentId: string }).documentId,
             blockId,
-            reason: c?.reason ?? "content",
+            reason: op.kind === "block.delete" && c?.reason === "content" ? "edited" : (c?.reason ?? "content"),
             server: c?.server ? stripRevision(c.server) : null,
             client: stripRevision(latestLocal),
           });
@@ -389,6 +390,10 @@ export function resolveConflict(
   let state = clone(prev);
   state.conflicts = state.conflicts.filter((c) => c.id !== input.conflictId);
   if (input.choice === "theirs") return state;
+  // Deleted here, edited elsewhere: "mine" deletes it after all; there's nothing to keep twice.
+  if (record.reason === "edited") {
+    return input.choice === "mine" ? localDelete(state, { opId: input.opId, documentId: record.documentId, blockId: record.blockId }) : state;
+  }
   if (input.choice === "mine") {
     if (record.reason === "deleted") {
       state = localRestore(state, { opId: `${input.opId}-restore`, documentId: record.documentId, blockId: record.blockId });

@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Printer,
   Search,
+  MessageSquare,
   Share2,
   Star,
   StarOff,
@@ -38,6 +39,8 @@ import { Button } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome, useShell } from "@/components/app/Shell";
+import { setBlockHighlight } from "@/components/editor/blockHighlight";
+import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
 import { CollectionRowProperties } from "@/components/editor/CollectionEmbed";
 import type { DecorationInputs } from "@/components/editor/plugins";
@@ -78,11 +81,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
-  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode } = useShell();
+  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode } = useShell();
   const sidebarOpenRef = useRef(sidebarOpen);
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
   toggleSidebarRef.current = toggleSidebar;
+  const sidebarModeRef = useRef({ mode: docSidebarMode, set: setDocSidebarMode });
+  sidebarModeRef.current = { mode: docSidebarMode, set: setDocSidebarMode };
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("format");
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
   const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
@@ -93,7 +98,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const showCommentsTab = useCallback(
     (threadId: string | null) => {
       setFocusThreadId(threadId);
-      if (!sidebarOpenRef.current) toggleSidebarRef.current();
+      // The left sidebar may be showing folders: switch it back to the page's own (which opens it too).
+      if (sidebarModeRef.current.mode === "folders") sidebarModeRef.current.set("document");
+      else if (!sidebarOpenRef.current) toggleSidebarRef.current();
       setSidebarRequest({ tab: "comments", at: Date.now() });
     },
     [],
@@ -403,6 +410,15 @@ export function DocumentView({ documentId }: { documentId: string }) {
     [showCommentsTab, openBlockThread],
   );
   const closeThread = useCallback(() => setOpenThread(null), []);
+  // Page breaks cut the sheet so the note's background shows between pages.
+  const [sheetEl, setSheetEl] = useState<HTMLElement | null>(null);
+  usePageBreakMask(sheetEl);
+  // A resolved thread has no comment line under its block: while it's open, its block is highlighted instead.
+  const highlightId =
+    openThread?.threadId && threads?.threads.some((t) => t.id === openThread.threadId && t.status === "resolved") ? openThread.blockId : null;
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) setBlockHighlight(editor.view, highlightId);
+  }, [editor, highlightId]);
 
   // ⌘⌥M: comment on the block with the caret (or open the Comments panel).
   const canComment = Boolean(threads?.canComment);
@@ -432,6 +448,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     blocks: () => engine?.documentBlocks(documentId) ?? [],
     onHistory: () => setHistoryOpen(true),
     onShare: () => setShareOpen(true),
+    onComments: () => showCommentsTab(null),
     onInfo: () => {
       setInspectorTab("info");
       setInspectorOpen(true);
@@ -583,6 +600,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           }}
         >
           <article
+            ref={setSheetEl}
             className="fb-sheet ui-sheet relative mx-auto animate-[folio-settle_240ms_var(--ease-folio)]"
             data-background={style.background}
             {...sheetAttrs}
@@ -783,6 +801,8 @@ function DocumentHeader({
   const [value, setValue] = useState(title);
   // The title we last saved locally; the server value is ignored until it catches up to it.
   const pendingTitle = useRef<string | null>(null);
+  /** Titles this page sent, by op, so a refused one can be offered back. */
+  const sentTitles = useRef(new Map<string, string>());
   const titleRef = useRef<HTMLTextAreaElement>(null);
   // Every title this field saved. The server's copy can arrive late, and out of order with newer saves: one
   // of these coming back is our own earlier version, never a reason to replace what's being typed.
@@ -805,7 +825,22 @@ function DocumentHeader({
       if (doc?.id === documentId && e.result.status !== "applied" && e.result.status !== "duplicate") {
         pendingTitle.current = null;
         setValue(doc.title);
+        // Someone renamed the page while this edit was on its way (or offline): say so, and offer ours back.
+        const mine = sentTitles.current.get(e.opId);
+        if (e.result.status === "conflict" && mine !== undefined && mine !== doc.title) {
+          const base = e.result.revision ?? null;
+          toastRef.current?.show("Someone else renamed this page, so your title wasn't saved.", {
+            action: {
+              label: "Use my title",
+              onClick: () => {
+                setValue(mine);
+                engine.updateDocument(documentId, { title: mine }, base);
+              },
+            },
+          });
+        }
       }
+      sentTitles.current.delete(e.opId);
     });
   }, [engine, documentId]);
   // Focus the title once for a brand-new page (never again, so it can't steal focus later).
@@ -822,10 +857,13 @@ function DocumentHeader({
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleSince = useRef(0);
   const flushTitle = useRef<(() => void) | null>(null);
   const aiOn = useAiEnabled(note);
   const { write } = useAi();
   const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const [suggesting, setSuggesting] = useState(false);
   // The title's own AI menu (the editor's selection menu doesn't reach this textarea).
   const [titleSel, setTitleSel] = useState<TitleRange | null>(null);
@@ -843,22 +881,32 @@ function DocumentHeader({
     const commit = () => {
       timer.current = null;
       flushTitle.current = null;
-      engine?.updateDocument(documentId, { title: next }, revision);
+      const opId = engine?.updateDocument(documentId, { title: next }, revision);
+      if (opId) sentTitles.current.set(opId, next);
       engine?.setEditing(key, false);
     };
     engine?.setEditing(key, true);
     flushTitle.current = commit;
-    timer.current = setTimeout(commit, 300);
+    // Saved 300ms after the last key, and at least once a second while typing.
+    if (!titleSince.current) titleSince.current = Date.now();
+    timer.current = setTimeout(() => {
+      titleSince.current = 0;
+      commit();
+    }, Math.max(0, Math.min(300, titleSince.current + 1000 - Date.now())));
   };
   // Leaving the page (or the tab) never drops a title still waiting for its debounce.
   useEffect(() => {
     const onHide = () => {
       if (timer.current) clearTimeout(timer.current);
+      titleSince.current = 0;
       flushTitle.current?.();
     };
+    const onVisibility = () => document.visibilityState === "hidden" && onHide();
     window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
       onHide();
     };
   }, [documentId]);
@@ -1027,22 +1075,35 @@ function ConflictBanner({ documentId }: { documentId: string }) {
       <p className="mt-1 text-sm text-ink">Both versions are kept. Nothing is lost until you choose.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="ui-card rounded-[8px] p-3">
-          <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : "Version from elsewhere"}</p>
+          <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : c.reason === "edited" ? "Edited elsewhere" : "Version from elsewhere"}</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(c.server)}</p>
         </div>
         <div className="ui-card rounded-[8px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
-          <p className="ui-caps">Your version</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm">{text(c.client)}</p>
+          <p className="ui-caps">{c.reason === "edited" ? "You deleted it" : "Your version"}</p>
+          <p className={`mt-1 whitespace-pre-wrap text-sm ${c.reason === "edited" ? "text-muted line-through" : ""}`}>{text(c.client)}</p>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" variant="primary" onClick={() => engine.resolveConflict(c.id, "mine")}>
-          Keep mine
-        </Button>
-        <Button size="sm" onClick={() => engine.resolveConflict(c.id, "theirs")}>
-          Keep theirs
-        </Button>
-        {c.reason !== "deleted" ? (
+        {c.reason === "edited" ? (
+          <>
+            <Button size="sm" variant="primary" onClick={() => engine.resolveConflict(c.id, "theirs")}>
+              Keep it
+            </Button>
+            <Button size="sm" onClick={() => engine.resolveConflict(c.id, "mine")}>
+              Delete anyway
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" variant="primary" onClick={() => engine.resolveConflict(c.id, "mine")}>
+              Keep mine
+            </Button>
+            <Button size="sm" onClick={() => engine.resolveConflict(c.id, "theirs")}>
+              Keep theirs
+            </Button>
+          </>
+        )}
+        {c.reason !== "deleted" && c.reason !== "edited" ? (
           <Button size="sm" onClick={keepBoth}>
             Keep both
           </Button>
@@ -1112,6 +1173,7 @@ function useDocumentActions({
   blocks,
   onHistory,
   onShare,
+  onComments,
   onInfo,
   onDelete,
   onMove,
@@ -1129,6 +1191,8 @@ function useDocumentActions({
   blocks: () => WireBlock[];
   onHistory: () => void;
   onShare: () => void;
+  /** Opens the Comments tab in the page's sidebar. */
+  onComments?: () => void;
   /** Opens the page's Info panel (words, dates, backlinks…). */
   onInfo?: () => void;
   onDelete: () => void;
@@ -1171,6 +1235,7 @@ function useDocumentActions({
           ? { label: "Unstar", icon: <StarOff size={14} />, onSelect: () => void act(setStarred({ documentId, starred: false }), "Removed from Starred") }
           : { label: "Star", icon: <Star size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Starred") },
         { label: "Share…", icon: <Share2 size={14} />, onSelect: onShare },
+        ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
         { label: "Version history…", icon: <History size={14} />, onSelect: onHistory },
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),

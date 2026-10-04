@@ -43,6 +43,7 @@ interface Props {
 }
 
 const FLUSH_DELAY = 250;
+const FLUSH_MAX_WAIT = 1000;
 
 export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   { documentId, engine, accountKey, editable, decorations, onFocusBlock, onCommentBlock, onEditorReady, placeholder, onExitTop },
@@ -50,6 +51,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
 ) {
   const [trigger, setTrigger] = useState<TriggerState | null>(null);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirtySince = useRef(0);
   const onExitTopRef = useRef(onExitTop);
   onExitTopRef.current = onExitTop;
   const dirty = useRef(false);
@@ -90,6 +92,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         clearTimeout(flushTimer.current);
         flushTimer.current = null;
       }
+      dirtySince.current = 0;
       if (!editor || !dirty.current || !hydrated.current) return;
       dirty.current = false;
       engine.setEditing(documentId, false);
@@ -187,7 +190,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       dirty.current = true;
       if (hydrated.current) engine.setEditing(documentId, true);
       if (flushTimer.current) clearTimeout(flushTimer.current);
-      flushTimer.current = setTimeout(() => flushLocal(editorRef.current), FLUSH_DELAY);
+      // Steady typing keeps pushing the debounce back: still save at least once a second.
+      if (!dirtySince.current) dirtySince.current = Date.now();
+      const wait = Math.max(0, Math.min(FLUSH_DELAY, dirtySince.current + FLUSH_MAX_WAIT - Date.now()));
+      flushTimer.current = setTimeout(() => flushLocal(editorRef.current), wait);
     },
     onSelectionUpdate: ({ editor: ed }) => {
       const $from = ed.state.selection.$from;

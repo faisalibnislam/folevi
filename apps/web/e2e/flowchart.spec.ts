@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openTool, settle, waitForSaved } from "./helpers";
+import { newPerson, openTool, settle, waitForSaved, openShare } from "./helpers";
 
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -91,7 +91,7 @@ test.describe("Flowchart", () => {
     await expect(page.locator(".fb-flowchart .fc-edge .fc-edge-line")).toHaveCount(1);
 
     // The public share page draws the chart as a static picture.
-    await page.getByRole("button", { name: "Share" }).click();
+    await openShare(page);
     const share = page.getByRole("dialog", { name: /Share/ });
     await share.getByRole("button", { name: "Create link" }).click();
     const link = await share.getByLabel("Public link").inputValue();

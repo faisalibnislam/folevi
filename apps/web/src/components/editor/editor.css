@@ -45,6 +45,13 @@
   color: var(--color-canvas); background: var(--presence);
   padding: 0 5px; border-radius: 4px; pointer-events: none;
 }
+/* The line a resolved comment was made on, while its thread is open from the Comments tab. */
+.fb-editor > .fb-block-highlight {
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--doc-accent-soft, var(--color-accent-soft)) 85%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--doc-accent-soft, var(--color-accent-soft)) 85%, transparent);
+  transition: background-color 200ms var(--motion-easing), box-shadow 200ms var(--motion-easing);
+}
 /* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */
 .fb-editor > .fb-comment-line {
   padding: 0 2px 4px calc(var(--depth, 0) * 1.6em + var(--pad-list, 0px) + var(--pad-extra, 0px));
@@ -189,10 +196,6 @@
   border-radius: 6px;
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
   font: 13.5px/1.65 var(--font-mono); white-space: pre-wrap; overflow-x: auto; tab-size: 2;
-}
-.fb-editor pre.fb-code::after {
-  content: attr(data-language); position: absolute; right: 10px; top: 6px;
-  font: 500 11px var(--font-sans); color: var(--color-ink-faint); text-transform: lowercase;
 }
 .fb-inline-code { font: 0.86em var(--font-mono); background: var(--color-code-bg); color: var(--color-ember-ink); padding: 0.12em 0.4em; border-radius: 6px; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent); }
 

@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createWorkspace, newPerson, waitForSaved, showFolders, pick } from "./helpers";
+import { createWorkspace, newPerson, waitForSaved, showFolders, pick, openShare } from "./helpers";
 
 // docs/SYNC_PROTOCOL.md §Routing: a page from someone's Personal or from a workspace you're not in is
 // edited through your own (account-wide) queue, whatever context you have open.
 
 async function shareWith(page: Page, email: string, name: string) {
-  await page.getByRole("button", { name: "Share" }).click();
+  await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
   await share.getByLabel("Email address").fill(email);
   await pick(share.getByLabel("Role"), "Can edit");

@@ -90,6 +90,9 @@ export function inlineToPM(nodes: readonly InlineNode[]): JSONContent[] {
   return out;
 }
 
+/** Placeholder marks for a line break until its neighbours are known. */
+const BREAK: Mark[] = [];
+
 export function pmInline(node: PMNode): InlineNode[] {
   const out: InlineNode[] = [];
   node.forEach((child) => {
@@ -110,10 +113,27 @@ export function pmInline(node: PMNode): InlineNode[] {
     } else if (child.type.name === "pageLink") {
       out.push({ type: "pageLink", documentId: String(child.attrs.documentId), label: String(child.attrs.label) });
     } else if (child.type.name === "hardBreak") {
-      out.push({ type: "text", text: "\n" });
+      out.push({ type: "text", text: "\n", marks: BREAK });
     }
   });
-  return normalizeInline(out);
+  // A line break carries the marks the text on both sides of it shares (so bold "one⏎two" stays one bold
+  // run), and none otherwise.
+  const resolved = [...out];
+  for (let i = 0; i < out.length; i++) {
+    const n = out[i]!;
+    if (n.type !== "text" || n.marks !== BREAK) continue;
+    // Several breaks in a row look past each other.
+    let a = i - 1;
+    while (a >= 0 && out[a]!.type === "text" && (out[a] as { marks?: Mark[] }).marks === BREAK) a--;
+    let b = i + 1;
+    while (b < out.length && out[b]!.type === "text" && (out[b] as { marks?: Mark[] }).marks === BREAK) b++;
+    const before = out[a];
+    const after = out[b];
+    const marksOf = (x: InlineNode | undefined) => (x?.type === "text" && x.marks !== BREAK ? (x.marks ?? []) : []);
+    const shared = marksOf(before).filter((m) => marksOf(after).some((o) => JSON.stringify(o) === JSON.stringify(m)));
+    resolved[i] = shared.length ? { type: "text", text: "\n", marks: shared } : { type: "text", text: "\n" };
+  }
+  return normalizeInline(resolved);
 }
 
 /** Canonical blocks → editor document JSON. */

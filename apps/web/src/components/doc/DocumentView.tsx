@@ -70,6 +70,9 @@ import { Select } from "@/components/ui/Select";
 
 const IDLE_SNAPSHOT_MS = 2 * 60_000;
 
+/** When the pointer last went down (to tell a panel opened by mouse from one opened by keyboard). */
+let lastPointerDown = 0;
+
 export function DocumentView({ documentId }: { documentId: string }) {
   const { engine, profile, online, scopeKey } = useAppState();
   const convex = useConvex();
@@ -335,10 +338,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const wasOpen = useRef(inspectorOpen);
   const inspectorOpener = useRef<HTMLElement | null>(null);
   useEffect(() => {
+    const onDown = () => {
+      lastPointerDown = Date.now();
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, []);
+  useEffect(() => {
     const opened = inspectorOpen && !wasOpen.current;
     wasOpen.current = inspectorOpen;
     if (opened && document.activeElement instanceof HTMLElement) inspectorOpener.current = document.activeElement;
     if (!opened) return;
+    // Opened with the mouse (the dock keeps the caret in the note): focus stays where the person is
+    // writing, so the panel's buttons act on the text and typing carries on. From the keyboard, it moves in.
+    if (Date.now() - lastPointerDown < 600 && document.activeElement?.closest(".fb-editor")) return;
     const id = requestAnimationFrame(() => {
       const aside = inspectorRef.current;
       if (aside && !aside.contains(document.activeElement)) (aside.querySelector<HTMLElement>("[data-autofocus]") ?? aside.querySelector<HTMLElement>('[role="tab"][aria-selected="true"], button, input, select'))?.focus();

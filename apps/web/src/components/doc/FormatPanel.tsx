@@ -120,7 +120,15 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
     `grid h-9 flex-1 place-items-center rounded-[6px] text-[13px] transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
   const toggleList = (t: string, attrs: Record<string, unknown> = {}) => (type === t ? turnInto(editor, "paragraph") : turnInto(editor, t, attrs));
   return (
-    <div className="space-y-5">
+    // Its buttons don't take focus from the note (dropdowns and fields do): what's typed next goes on where
+    // the caret was, and a Space can't press a button.
+    <div
+      className="space-y-5"
+      onMouseDown={(e) => {
+        const t = e.target as Element;
+        if (t.closest("button") && !t.closest("[aria-haspopup], [role=combobox], input, textarea, select")) e.preventDefault();
+      }}
+    >
       <section>
         <h3 className="ui-caps mb-2 px-1">Text</h3>
         <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Text style">

@@ -83,7 +83,7 @@ const MORE: InsertItem[] = [
   { label: "Heading 1", type: "heading", attrs: () => ({ level: 1 }), icon: <Heading1 {...i16} />, keywords: "title h1" },
   { label: "Heading 2", type: "heading", attrs: () => ({ level: 2 }), icon: <Heading2 {...i16} />, keywords: "subtitle h2" },
   { label: "Heading 3", type: "heading", attrs: () => ({ level: 3 }), icon: <Heading3 {...i16} />, keywords: "h3" },
-  { label: "To-do", type: "todo", attrs: () => ({ checked: false }), icon: <CheckSquare {...i16} />, keywords: "task checkbox checklist" },
+  { label: "To-do", type: "todo", attrs: () => ({ checked: false }), icon: <CheckSquare {...i16} />, keywords: "todo task checkbox checklist" },
   { label: "Bulleted list", type: "bulleted", icon: <List {...i16} />, keywords: "bullets unordered" },
   { label: "Numbered list", type: "numbered", icon: <ListOrdered {...i16} />, keywords: "numbers ordered" },
   { label: "Toggle", type: "toggle", attrs: () => ({ collapsed: false }), icon: <ChevronRight {...i16} />, keywords: "collapse disclosure details" },
@@ -93,7 +93,12 @@ const MORE: InsertItem[] = [
   { label: "Date", special: "pickDate", icon: <CalendarDays {...i16} />, keywords: "day calendar mention today" },
 ];
 
-const matches = (q: string, text: string) => !q || text.toLowerCase().includes(q);
+// Words starting with what's typed ("tab" finds Table, not "database"); a query with spaces matches as a phrase.
+const matches = (q: string, text: string) => {
+  if (!q) return true;
+  const t = text.toLowerCase();
+  return q.includes(" ") ? t.includes(q) : t.split(/[^\p{L}\p{N}]+/u).some((w) => w.startsWith(q));
+};
 
 /** Runs an insert below the current block. */
 function runInsert(editor: Editor, a: InsertAction) {
@@ -121,7 +126,7 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
             // Make room where it was dropped, then let the editor run the insert there.
             const index = insertBlockAt(editor, t.index, t.depth, "paragraph");
             if (index < 0) return null;
-            requestSpecialInsert(editor, action.special);
+            requestSpecialInsert(editor, action.special, String(editor.state.doc.child(index).attrs.id ?? "") || undefined);
             return { index, count: 1 };
           }
           const index = insertBlockAt(editor, t.index, t.depth, action.type!, action.attrs?.() ?? {}, action.text);

@@ -265,13 +265,33 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const { url: imageUrl, palette } = useCoverImage(meta?.document.cover);
+  // Changes not yet back from the server: each one builds on the last (two quick clicks used to start from
+  // the same saved style, so the second undid the first), and the panel shows them straight away.
+  const [mine, setMine] = useState<{ style: DocumentStyle; at: number } | null>(null);
+  const savedKey = JSON.stringify(meta?.document.style ?? null);
+  // Until the server holds what was chosen (or, if it never does, for a few seconds).
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    if (!mine) return;
+    const t = setTimeout(() => setNow(Date.now()), 5000);
+    return () => clearTimeout(t);
+  }, [mine]);
+  const pendingStyle = mine && JSON.stringify(mine.style) !== savedKey && (!now || now - mine.at < 5000) ? mine.style : null;
   if (!meta) return <p className="text-sm text-muted">Style is available once the document has synced.</p>;
-  const style = meta.document.style;
+  const style = pendingStyle ?? meta.document.style;
   const cover = meta.document.cover;
   const rev = meta.document.revision;
-  const set = (patch: Partial<DocumentStyle>) => engine?.updateDocument(documentId, { style: cleanStyle({ ...style, ...patch }) }, rev);
+  const set = (patch: Partial<DocumentStyle>) => {
+    const next = cleanStyle({ ...style, ...patch });
+    setMine({ style: next, at: Date.now() });
+    engine?.updateDocument(documentId, { style: next }, rev);
+  };
   // Choosing a cover also sets the page's backdrop: it goes back to following the cover.
-  const setCover = (next: typeof cover) => engine?.updateDocument(documentId, { cover: next, style: cleanStyle({ ...style, backdrop: undefined }) }, rev);
+  const setCover = (next: typeof cover) => {
+    const nextStyle = cleanStyle({ ...style, backdrop: undefined });
+    setMine({ style: nextStyle, at: Date.now() });
+    engine?.updateDocument(documentId, { cover: next, style: nextStyle }, rev);
+  };
   const toggle = (key: string) => setOpen(open === key ? null : key);
   // The note's style is named after its artwork ("Your image" for an uploaded one, "Plain" when it has none).
   const art = coverArtOf(cover);
@@ -327,7 +347,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         >
           <div role="radiogroup" aria-label="Note style" className="grid grid-cols-4 gap-2">
             <Choice label="Plain" on={cover.kind !== "art" && !ownImage} onPick={() => setCover({ kind: "none" })}>
-              <span className="grid h-full place-items-center text-[11px] text-muted" style={{ background: PLAIN_CSS }}>Plain</span>
+              <span className="grid h-full place-items-center text-[11px] text-[#55555c]" style={{ background: PLAIN_CSS }}>Plain</span>
             </Choice>
             {ownImage ? (
               <Choice label="Note style: Your image" on onPick={() => undefined}>
@@ -388,7 +408,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         <StyleRow label="Document color" swatch={<ColorDot css={sheetColor} />} open={open === "sheet"} onToggle={() => toggle("sheet")} disabled={disabled}>
           <div role="radiogroup" aria-label="Document color" className="grid grid-cols-4 gap-2">
             <Choice label="Auto (from the note style)" on={!style.sheet} onPick={() => set({ sheet: undefined })}>
-              <span className="grid h-full place-items-center text-[11px] text-muted" style={{ background: auto?.paper ?? "var(--color-surface)" }}>Auto</span>
+              <span className="grid h-full place-items-center text-[11px]" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink-muted)" }}>Auto</span>
             </Choice>
             {SHEETS.map((s) => (
               <Choice key={s.id} label={`Document color: ${s.name}`} on={style.sheet === s.id} onPick={() => set({ sheet: s.id, ...(s.id === "night" && (!style.text || style.text === "ink") ? { text: "white" as const } : {}), ...(s.id !== "night" && style.text === "white" ? { text: "ink" as const } : {}) })}>

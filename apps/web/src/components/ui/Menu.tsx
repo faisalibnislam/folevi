@@ -270,7 +270,8 @@ function MenuPanel({
             tabIndex={i === active ? 0 : -1}
             disabled={item.disabled}
             onClick={() => {
-              onClose(false);
+              // Focus goes back to the menu button first, so a dialog the item opens returns it there when it closes.
+              onClose(true);
               item.onSelect();
             }}
             className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.danger ? "!text-danger" : ""}`}

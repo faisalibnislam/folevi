@@ -114,8 +114,9 @@ interface MenuItem {
 export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "page" | "card" | "bookmark" | "collection" | "gallery" | "board" | "date" | "pickDate";
 
 /** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
-export function requestSpecialInsert(editor: Editor, kind: SpecialInsert) {
-  editor.view.dom.dispatchEvent(new CustomEvent("folevi:insert", { detail: { kind } }));
+/** `placeholder`: the id of an empty line made for this insert (a drop), removed if the insert is cancelled. */
+export function requestSpecialInsert(editor: Editor, kind: SpecialInsert, placeholder?: string) {
+  editor.view.dom.dispatchEvent(new CustomEvent("folevi:insert", { detail: { kind, placeholder } }));
 }
 
 type Anchor = { left: number; top: number; bottom: number };
@@ -351,6 +352,7 @@ export function EditorMenus({
   const [bookmarkPrompt, setBookmarkPrompt] = useState(false);
   const [unsplashOpen, setUnsplashOpen] = useState(false);
   const [datePicker, setDatePicker] = useState<{ mode: "insert" } | { mode: "edit"; pos: number } | null>(null);
+  const dropPlaceholder = useRef<string | null>(null);
   const [datePickerAnchor, setDatePickerAnchor] = useState<Anchor | null>(null);
   const [recorderAnchor, setRecorderAnchor] = useState<Anchor | null>(null);
 
@@ -505,8 +507,11 @@ export function EditorMenus({
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const on = (e: Event) => {
-      const kind = (e as CustomEvent<{ kind: SpecialInsert }>).detail?.kind;
-      if (kind && editable && special[kind]) void special[kind]();
+      const detail = (e as CustomEvent<{ kind: SpecialInsert; placeholder?: string }>).detail;
+      const kind = detail?.kind;
+      if (!kind || !editable || !special[kind]) return;
+      dropPlaceholder.current = detail.placeholder ?? null;
+      void special[kind]();
     };
     dom.addEventListener("folevi:insert", on);
     return () => dom.removeEventListener("folevi:insert", on);
@@ -893,6 +898,16 @@ export function EditorMenus({
           today={today}
           onClose={() => {
             setDatePicker(null);
+            // Cancelled after a drop: the empty line made for it goes again.
+            const placeholder = dropPlaceholder.current;
+            dropPlaceholder.current = null;
+            if (placeholder) {
+              editor.state.doc.forEach((n, pos) => {
+                if (n.attrs.id === placeholder && n.type.name === "paragraph" && n.content.size === 0) {
+                  editor.view.dispatch(editor.state.tr.delete(pos, pos + n.nodeSize).setMeta("addToHistory", false));
+                }
+              });
+            }
             editor.view.focus();
           }}
         />
@@ -1665,7 +1680,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
           <button
             type="button"
             aria-label="Drag to move, click for block options, Shift-click to select several blocks"
-            className="grid h-6 w-5 cursor-grab touch-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing"
+            className="grid h-6 w-6 cursor-grab touch-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing"
             onPointerDown={(e) => {
               if (e.button !== 0 || e.shiftKey) return;
               e.preventDefault();

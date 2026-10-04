@@ -379,10 +379,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-editor > .fb[data-align="center"] { text-align: center; }
 .fb-editor > .fb[data-align="right"] { text-align: right; }
 .fb-editor > .fb[data-align="justify"] { text-align: justify; }
-.fb-editor > .fb[data-font="system"] { font-family: var(--font-sans); }
-.fb-editor > .fb[data-font="serif"] { font-family: var(--font-serif); }
-.fb-editor > .fb[data-font="mono"] { font-family: var(--font-mono); font-size: 0.92em; }
-.fb-editor > .fb[data-font="rounded"] { font-family: ui-rounded, "SF Pro Rounded", "Nunito", var(--font-sans); }
+/* Every block uses the note's font (Style); only code blocks have their own (monospace). */
 
 /* Focus: a bar in the block's colour with a soft tint. Block: a filled rounded background. */
 .fb-editor > .fb[data-decoration="focus"] {

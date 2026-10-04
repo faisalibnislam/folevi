@@ -777,11 +777,16 @@ function DocumentHeader({
   // The title we last saved locally; the server value is ignored until it catches up to it.
   const pendingTitle = useRef<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  // Every title this field saved. The server's copy can arrive late, and out of order with newer saves: one
+  // of these coming back is our own earlier version, never a reason to replace what's being typed.
+  const savedTitles = useRef(new Set<string>());
   useEffect(() => {
     if (pendingTitle.current !== null) {
       if (title !== pendingTitle.current) return;
       pendingTitle.current = null;
     }
+    const field = titleRef.current;
+    if (field && document.activeElement === field && savedTitles.current.has(title) && title !== field.value) return;
     setValue(title);
   }, [title]);
   // If the server refuses our title (e.g. conflict), show what the server has.
@@ -825,6 +830,7 @@ function DocumentHeader({
   const save = (next: string) => {
     // What the server will store (it replaces control characters and keeps 300 characters), so its echo matches.
     pendingTitle.current = next.replace(/[\u0000-\u001F\u007F]/g, " ").slice(0, 300);
+    savedTitles.current.add(pendingTitle.current);
     if (timer.current) clearTimeout(timer.current);
     const key = `title:${documentId}`;
     const commit = () => {

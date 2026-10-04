@@ -209,7 +209,16 @@ export class SyncEngine {
     return opId;
   }
 
+  /**
+   * The newest revision of each document this device's own edits produced. A page's revision (from the server
+   * query) can lag a moment behind our last applied edit; basing the next edit on that older revision made the
+   * server see a conflict with ourselves and the title snap back to an earlier version while typing.
+   */
+  private docRevisions = new Map<string, number>();
+
   updateDocument(documentId: string, patch: WireDocumentPatch, baseRevision: number | null): string {
+    const known = this.docRevisions.get(documentId);
+    if (baseRevision !== null && known !== undefined && known > baseRevision) baseRevision = known;
     // Coalesce with a queued (not yet sent) update of the same document.
     const idx = this.state.pending.findIndex((op) => op.kind === "document.update" && op.documentId === documentId);
     if (idx >= 0) {
@@ -374,6 +383,7 @@ export class SyncEngine {
           // Rebase queued title/style edits onto the revision we just produced (never conflict with ourselves).
           if (r.status === "applied" || r.status === "duplicate") {
             const docId = op.kind === "document.create" ? op.document.id : op.documentId;
+            if (typeof r.revision === "number") this.docRevisions.set(docId, Math.max(r.revision, this.docRevisions.get(docId) ?? 0));
             next = {
               ...next,
               pending: next.pending.map((p) => (p.kind === "document.update" && p.documentId === docId ? { ...p, baseRevision: r.revision ?? p.baseRevision } : p)),

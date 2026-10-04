@@ -223,27 +223,6 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
         </div>
       </section>
 
-      <section>
-        <h3 className="ui-caps mb-2 px-1">Font</h3>
-        <div className="ui-seg ui-well" role="group" aria-label="Block font">
-          {(
-            [
-              ["system", "Aa", "System", "var(--font-sans)"],
-              ["serif", "Ss", "Serif", "var(--font-serif)"],
-              ["mono", "00", "Mono", "var(--font-mono)"],
-              ["rounded", "Rr", "Rounded", "var(--font-rounded)"],
-            ] as const
-          ).map(([id, , name, family]) => {
-            const on = fmt.font === id;
-            return (
-              <button key={id} type="button" aria-label={`Font: ${name}`} disabled={blockOff} aria-pressed={on} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { font: on ? null : id })} className="!flex-1 !px-1" style={{ fontFamily: family }}>
-                <span aria-hidden>{name}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
       <details className="group rounded-[6px] bg-sunken/50 px-2.5 py-2">
         <summary className="cursor-pointer list-none text-[13px] font-medium text-ink marker:hidden">
           <span className="inline-flex items-center gap-1.5">

@@ -16,8 +16,15 @@ function lineText(node: PMNode): string {
   return out;
 }
 
+/** A table cell on one line, its "|" escaped so it doesn't end the cell. */
 const cellText = (cell: unknown): string =>
-  Array.isArray(cell) ? cell.map((n: { text?: string; label?: string; date?: string }) => n.text ?? n.label ?? n.date ?? "").join("") : "";
+  Array.isArray(cell)
+    ? cell
+        .map((n: { type?: string; text?: string; label?: string; date?: string }) => (n.type === "mention" ? `@${n.label ?? ""}` : (n.text ?? n.label ?? n.date ?? "")))
+        .join("")
+        .replace(/\s*\n\s*/g, " ")
+        .replace(/\|/g, "\\|")
+    : "";
 
 export function sliceToText(slice: Slice): string {
   const content = slice.content;
@@ -43,7 +50,7 @@ export function sliceToText(slice: Slice): string {
     } else numbers.length = depth;
     switch (type) {
       case "heading":
-        lines.push(`${"#".repeat(Number(node.attrs.level ?? 1))} ${lineText(node)}`);
+        lines.push(`${indent}${"#".repeat(Number(node.attrs.level ?? 1))} ${lineText(node)}`);
         break;
       case "bulleted":
       case "toggle":
@@ -57,11 +64,15 @@ export function sliceToText(slice: Slice): string {
         break;
       case "quote":
       case "callout":
-        lines.push(`> ${lineText(node)}`);
+        // Every line of a quote keeps its "> ", so a line break doesn't end the quote.
+        lines.push(`${indent}> ${lineText(node).split("\n").join(`\n${indent}> `)}`);
         break;
-      case "codeBlock":
-        lines.push("```" + (node.attrs.language && node.attrs.language !== "plaintext" ? node.attrs.language : ""), node.textContent, "```");
+      case "codeBlock": {
+        // Indented with its depth too, so code under a list item pastes back nested under it.
+        const code = node.textContent.split("\n").map((l) => (l ? indent + l : l));
+        lines.push(`${indent}\`\`\`${node.attrs.language && node.attrs.language !== "plaintext" ? node.attrs.language : ""}`, ...code, `${indent}\`\`\``);
         break;
+      }
       case "divider":
         lines.push("---");
         break;
@@ -73,7 +84,11 @@ export function sliceToText(slice: Slice): string {
         break;
       case "table": {
         const rows = (node.attrs.rows as unknown[][] | null) ?? [];
-        for (const row of rows) lines.push(`| ${row.map(cellText).join(" | ")} |`);
+        // The "| --- |" row after the first makes it a Markdown table, so it pastes back as a table.
+        rows.forEach((row, i) => {
+          lines.push(`| ${row.map(cellText).join(" | ")} |`);
+          if (i === 0) lines.push(`|${row.map(() => " --- ").join("|")}|`);
+        });
         break;
       }
       case "formula":

@@ -74,7 +74,12 @@ export function highlightRanges(text: string, query: string): HighlightRange[] {
   const normChars: string[] = [];
   const origIndex: number[] = [];
   for (let i = 0; i < text.length; i++) {
-    const n = text[i]!.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const n = text[i]!
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[‘’]/g, "'")
+      .replace(/[“”]/g, '"');
     for (const ch of n) {
       normChars.push(ch);
       origIndex.push(i);

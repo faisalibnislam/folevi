@@ -1,8 +1,8 @@
 // Paste normalization: arbitrary HTML (web pages, Google Docs, Word, other editors) → canonical blocks.
 // Only structure and safe inline formatting survive; scripts, styles and unknown markup are dropped.
-import { SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
+import { LIMITS, SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, splitInline, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
-import type { Slice } from "@tiptap/pm/model";
+import type { Node as PMNode, Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 import { blockToNode } from "./convert";
 import { normalizeDepths } from "./commands";
@@ -143,6 +143,55 @@ function markBlockContainers(root: Element): WeakSet<Element> {
   return set;
 }
 
+/** The last value an element's style gives a property ("white-space:pre;white-space:pre-wrap" is pre-wrap). */
+function styleValue(e: Element, prop: string): string {
+  let value = "";
+  for (const m of (e.getAttribute("style") ?? "").matchAll(new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]*)`, "gi"))) value = m[1]!.trim().toLowerCase();
+  return value;
+}
+
+/** A font stack of code fonts only ("Menlo, Monaco, 'Courier New', monospace"). */
+function monospaceOnly(fonts: string): boolean {
+  const list = fonts.split(",").map((f) => f.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
+  return list.length > 0 && list.every((f) => /mono|courier|menlo|monaco|consolas|code|lucida console/.test(f));
+}
+
+const NOT_CODE_LINES = [...BLOCK_TAGS].filter((t) => t !== "DIV").join(",");
+
+/**
+ * A code editor's copy (VS Code and the like): a <div> laid out with white-space:pre or in code fonts only,
+ * holding nothing but lines of text (<div>s and <br>s).
+ */
+function isCodeContainer(e: Element): boolean {
+  if (e.tagName !== "DIV" || !e.hasAttribute("style")) return false;
+  if (styleValue(e, "white-space") !== "pre" && !monospaceOnly(styleValue(e, "font-family"))) return false;
+  return !e.querySelector(NOT_CODE_LINES) && Boolean(e.textContent?.trim());
+}
+
+/** Code as written: its text untouched, a line break for each <br> and around each line (<div>, <p>…). */
+function codeText(e: Element): string {
+  let out = "";
+  const visit = (n: Node) => {
+    for (const c of n.childNodes) {
+      if (c.nodeType === Node.TEXT_NODE) out += c.textContent ?? "";
+      if (c.nodeType !== Node.ELEMENT_NODE) continue;
+      const el = c as Element;
+      if (SKIP.has(el.tagName)) continue;
+      if (el.tagName === "BR") {
+        out += "\n";
+        continue;
+      }
+      const line = BLOCK_TAGS.has(el.tagName) || el.tagName === "TR";
+      if (line && out && !out.endsWith("\n")) out += "\n";
+      visit(el);
+      if (line && out && !out.endsWith("\n")) out += "\n";
+    }
+  };
+  visit(e);
+  // Some sites indent code with no-break spaces.
+  return out.replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").replace(/\n$/, "");
+}
+
 /** Images inside inline content (a linked picture, a picture in a paragraph) become image blocks. */
 function imagesIn(nodes: Iterable<ChildNode>, depth: number, out: Draft[]) {
   for (const n of nodes) {
@@ -195,6 +244,12 @@ function walkNodes(nodes: ChildNode[], depth: number, out: Draft[], listType: "b
 }
 
 function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted" | "numbered" | null, marks: Mark[]): void {
+  if (isCodeContainer(e)) {
+    out.push({ type: "code", depth, text: [], props: { language: "plaintext", code: codeText(e) } });
+    return;
+  }
+  // Blocks of every kind keep the depth they're at (a code block or heading inside a list item nests under
+  // it), so what follows them nests where it belongs too.
   switch (e.tagName) {
     case "H1":
     case "H2":
@@ -203,7 +258,7 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
     case "H5":
     case "H6": {
       const text = clean(inlineOf(e, marks));
-      if (text.length) out.push({ type: "heading", depth: 0, text, props: { level: Math.min(3, Number(e.tagName[1])) } });
+      if (text.length) out.push({ type: "heading", depth, text, props: { level: Math.min(3, Number(e.tagName[1])) } });
       return;
     }
     case "P": {
@@ -268,14 +323,13 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       return;
     }
     case "PRE": {
-      const code = e.textContent ?? "";
       const cls = e.querySelector("code")?.className ?? "";
       const lang = normalizeLanguage(/language-([\w+#-]+)/.exec(cls)?.[1] ?? "plaintext");
-      out.push({ type: "code", depth: 0, text: [], props: { language: lang, code: code.replace(/\n$/, "") } });
+      out.push({ type: "code", depth, text: [], props: { language: lang, code: codeText(e) } });
       return;
     }
     case "HR":
-      out.push({ type: "divider", depth: 0, text: [], props: {} });
+      out.push({ type: "divider", depth, text: [], props: {} });
       return;
     case "DETAILS": {
       // A disclosure (<details><summary>) is a toggle with the rest nested inside it.
@@ -293,12 +347,17 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       const rows = [...table.rows].slice(0, 200).map((tr) => [...tr.cells].slice(0, 20).map((c) => clean(inlineOf(c, marks, true))));
       const width = Math.max(1, ...rows.map((r) => r.length));
       const header = [...table.rows][0]?.cells[0]?.tagName === "TH";
-      if (rows.length) out.push({ type: "table", depth: 0, text: [], props: { headerRow: header, rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]) } });
+      if (rows.length) out.push({ type: "table", depth, text: [], props: { headerRow: header, rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]) } });
       return;
     }
     default:
       walk(e, depth, out, listType, marks);
   }
+}
+
+/** Text over the schema's length limit continues in more blocks (a longer one would be rejected on save). */
+function withinTextLimit(d: Draft): Draft[] {
+  return splitInline(d.text, LIMITS.maxTextLength).map((text, i) => (i === 0 ? { ...d, text } : { type: d.type === "quote" ? "quote" : "paragraph", depth: d.depth, text, props: {} }));
 }
 
 export function htmlToBlocks(html: string): WireBlock[] {
@@ -315,7 +374,7 @@ export function htmlToBlocks(html: string): WireBlock[] {
   const stack: { id: string; depth: number }[] = [];
   const siblingsCount = new Map<string | null, number>();
   const assigned: { draft: Draft; id: string; parentId: string | null }[] = [];
-  for (const d of drafts) {
+  for (const d of drafts.flatMap(withinTextLimit)) {
     const depth = Math.min(d.depth, stack.length ? stack[stack.length - 1]!.depth + 1 : 0);
     while (stack.length && stack[stack.length - 1]!.depth >= depth) stack.pop();
     const parentId = depth > 0 && stack.length ? stack[stack.length - 1]!.id : null;
@@ -333,15 +392,29 @@ export function htmlToBlocks(html: string): WireBlock[] {
   return blocks;
 }
 
-/** Plain text: one line per paragraph (blank lines kept, trailing ones dropped). */
+/** Plain text: one line per paragraph (blank lines kept, trailing ones dropped, a very long line cut in several). */
 function linesToBlocks(text: string): WireBlock[] {
-  const lines = text.replace(/\r\n?/g, "\n").replace(/\n+$/, "").split("\n");
+  const lines = text
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n+$/, "")
+    .split("\n")
+    .flatMap((line) => splitInline(line ? [{ type: "text", text: line }] : [], LIMITS.maxTextLength));
   const ranks = rankSequence(lines.length);
-  return lines.map((line, i) => ({ id: ulid(), type: "paragraph", parentId: null, rank: ranks[i]!, schemaVersion: SCHEMA_VERSION, text: line ? [{ type: "text", text: line }] : [], props: {} }));
+  return lines.map((line, i) => ({ id: ulid(), type: "paragraph", parentId: null, rank: ranks[i]!, schemaVersion: SCHEMA_VERSION, text: line, props: {} }));
 }
 
-function looksLikeMarkdown(text: string): boolean {
-  return /^(#{1,6} |[-*+] |\d+[.)] |> |```|\[[ x]\] |\|.*\|)/m.test(text) || /\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)/.test(text);
+/**
+ * Whether plain text reads as Markdown. A "# " line alone isn't enough unless a blank line (or the end)
+ * follows it, as after a real heading: "# comment" lines in pasted code or notes stay text.
+ */
+export function looksLikeMarkdown(text: string): boolean {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (/^#{1,6} \S/.test(line) && !lines[i + 1]?.trim()) return true;
+    if (/^\s*([-*+] \S|\d+[.)] \S|> |```|~~~|\[[ x]\] )|^\s*\|.*\|\s*$/.test(line)) return true;
+  }
+  return /\*\*[^*\s][^*]*\*\*|\[[^\]]+\]\([^)\s]+\)/.test(text);
 }
 
 /**
@@ -359,9 +432,25 @@ export function clipboardBlocks(view: EditorView, data: DataTransfer | null): Wi
   const ours = html.includes("data-pm-slice") && /data-block="/.test(html);
   if (html && !ours) blocks = htmlToBlocks(html);
   else if (!html && text && (/\n/.test(text) || /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m.test(text))) {
-    blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false }).blocks : linesToBlocks(text);
+    // Pasted text keeps its lines: a line break inside a paragraph stays one (a letter's "Dear John," and the next line stay two lines).
+    blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false, lineBreaks: true }).blocks : linesToBlocks(text);
   }
   return blocks?.length ? blocks : null;
+}
+
+/** Block styling that follows the text onto a new line, as with Enter (splitAttrs in plugins.ts). */
+const CARRIED_FORMAT = ["decoration", "color", "align", "font", "group"] as const;
+/** What the second half needs to stay the same kind of block. */
+const KIND_ATTRS = ["level", "textStyle", "tone", "icon", "collapsed"] as const;
+
+/**
+ * The second half of a line a paste splits: a fresh id, the same depth, kind and styling, but none of the
+ * line's task details (done, due date, reminder…), which stay with the first half as they do on Enter.
+ */
+function secondHalfAttrs(from: PMNode): Record<string, unknown> {
+  const attrs: Record<string, unknown> = { id: ulid(), depth: from.attrs.depth };
+  for (const k of [...CARRIED_FORMAT, ...KIND_ATTRS]) if (from.attrs[k] != null) attrs[k] = from.attrs[k];
+  return attrs;
 }
 
 /**
@@ -413,7 +502,7 @@ export function insertPastedBlocks(view: EditorView, blocks: WireBlock[]): void 
     at = afterHidden ?? $from.after(1);
   } else {
     // Split the line at the caret; the second half keeps the block's type on a new line.
-    tr.split($from.pos);
+    tr.split($from.pos, 1, [{ type: $from.parent.type, attrs: secondHalfAttrs($from.parent) }]);
     // Between the two halves: just after the first one closes.
     at = tr.mapping.map($from.pos, -1) + 1;
   }

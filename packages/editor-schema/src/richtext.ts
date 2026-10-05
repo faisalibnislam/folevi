@@ -73,6 +73,53 @@ export function textLength(nodes: readonly InlineNode[]): number {
   return plainText(nodes).length;
 }
 
+/**
+ * Inline content cut into pieces of at most `max` characters (of plain text), each to be its own block, so
+ * text over the schema's length limit is kept instead of rejected. Cuts fall on a line break or a space
+ * when there is one; formatting carries over to both sides of a cut.
+ */
+export function splitInline(nodes: readonly InlineNode[], max: number): InlineNode[][] {
+  if (textLength(nodes) <= max) return [[...nodes]];
+  const parts: InlineNode[][] = [];
+  let cur: InlineNode[] = [];
+  let len = 0;
+  const close = () => {
+    const part = normalizeInline(cur);
+    if (part.length) parts.push(part);
+    cur = [];
+    len = 0;
+  };
+  for (const node of nodes) {
+    if (node.type !== "text") {
+      const l = plainText([node]).length;
+      if (len + l > max) close();
+      cur.push(node);
+      len += l;
+      continue;
+    }
+    let rest = node.text;
+    while (len + rest.length > max) {
+      const room = max - len;
+      // The last line break in the second half of the room, else the last space, else (a run with no
+      // spaces) a hard cut, unless this piece already has text and the run can start the next one.
+      const newline = rest.lastIndexOf("\n", room);
+      const space = newline > room / 2 ? newline : rest.lastIndexOf(" ", room);
+      let cut = space > 0 ? space : len > 0 ? 0 : room;
+      // Never between the two halves of an emoji or other surrogate pair.
+      if (space <= 0 && cut > 0 && /[\uD800-\uDBFF]/.test(rest[cut - 1] ?? "")) cut--;
+      if (cut > 0) cur.push({ ...node, text: rest.slice(0, cut) });
+      close();
+      rest = rest.slice(space > 0 ? cut + 1 : cut);
+    }
+    if (rest) {
+      cur.push({ ...node, text: rest });
+      len += rest.length;
+    }
+  }
+  close();
+  return parts;
+}
+
 export function text(value: string, marks?: Mark[]): InlineNode[] {
   if (!value) return [];
   return marks && marks.length ? [{ type: "text", text: value, marks }] : [{ type: "text", text: value }];
@@ -84,7 +131,10 @@ const SAFE_PROTOCOLS = ["http:", "https:", "mailto:", "folevi:"];
 export function sanitizeHref(raw: string): string | null {
   const href = raw.trim();
   if (!href || href.length > 2048) return null;
-  if (href.startsWith("/") || href.startsWith("#")) return href.startsWith("//") ? null : href;
+  // Two slashes or backslashes in any mix ("//x", "/\\x") are another host to a browser, not a path here.
+  // Browsers drop tabs and line breaks inside URLs, so "/\t/x" counts too.
+  if (/^[/\\]{2}/.test(href.replace(/[\u0000-\u001F\u007F]+/g, ""))) return null;
+  if (href.startsWith("/") || href.startsWith("#")) return href;
   // Strip control characters and whitespace that browsers ignore inside schemes ("java\tscript:").
   const compact = href.replace(/[\u0000-\u001F\u007F\s]+/g, "");
   // "example.com:8080/path" is a host and port, not a scheme.

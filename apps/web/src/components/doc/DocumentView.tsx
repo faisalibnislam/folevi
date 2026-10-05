@@ -959,7 +959,8 @@ function DocumentHeader({
           placeholder="Untitled"
           onChange={(e) => {
             freshTitle.current = false;
-            const next = e.target.value.replace(/\n/g, "");
+            // A pasted line break is a space, so the words on either side don't run together.
+            const next = e.target.value.replace(/\s*\n\s*/g, " ");
             setValue(next);
             save(next);
           }}

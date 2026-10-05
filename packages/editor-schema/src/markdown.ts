@@ -4,7 +4,7 @@ import type { WireBlock } from "./types";
 import { ulid } from "./ids";
 import { rankSequence } from "./rank";
 import { flattenTree } from "./tree";
-import { normalizeInline, plainText, sanitizeHref } from "./richtext";
+import { normalizeInline, plainText, sanitizeHref, splitInline, textLength } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { parseFlowchart } from "./flowchart";
 import { flowchartToMermaid } from "./flowchartMermaid";
@@ -21,12 +21,37 @@ export interface MarkdownExportOptions {
 }
 
 function escapeMd(value: string): string {
-  return value.replace(/([\\`*_[\]#<>|])/g, "\\$1");
+  // "~~" would read as strikethrough (and "~~~" as a code fence), so a tilde before another is escaped.
+  return value.replace(/([\\`*_[\]#<>|])/g, "\\$1").replace(/~(?=~)/g, "\\~");
 }
+
+/**
+ * A paragraph line that would read as a block of its own ("- x", "+ x", "1. x", "---", "$$") gets its
+ * marker escaped, so it imports back as the same paragraph.
+ */
+function escapeLineStart(line: string): string {
+  return line
+    .replace(/^(\s*)([-+])(?=\s)/, "$1\\$2")
+    .replace(/^(\s*)(\d{1,9})([.)])(?=\s|$)/, "$1$2\\$3")
+    .replace(/^(\s*)-(?=(\s*-){2,}\s*$)/, "$1\\-")
+    .replace(/^(\s*)\$\$/, "$1\\$$$$");
+}
+
+/** A link target in Markdown: inside <…> when it has spaces or parentheses, which would end a bare one early. */
+function linkTarget(href: string): string {
+  return /[\s()<>]/.test(href) ? `<${href.replace(/[<>]/g, (c) => encodeURIComponent(c))}>` : href;
+}
+
+/** A file or page path as a link target: encoded, parentheses too (encodeURI leaves them, and they end the target). */
+function pathTarget(path: string): string {
+  return encodeURI(path).replace(/\(/g, "%28").replace(/\)/g, "%29");
+}
+
+const isWordChar = (ch: string | undefined) => Boolean(ch && /[\p{L}\p{N}_]/u.test(ch));
 
 export function inlineToMarkdown(nodes: readonly InlineNode[], opts: MarkdownExportOptions = {}): string {
   return nodes
-    .map((n) => {
+    .map((n, i) => {
       switch (n.type) {
         case "mention":
           return `@${escapeMd(n.label)}`;
@@ -35,13 +60,15 @@ export function inlineToMarkdown(nodes: readonly InlineNode[], opts: MarkdownExp
         case "pageLink": {
           const target = opts.resolveDocument?.(n.documentId);
           const label = opts.resolveDocumentTitle?.(n.documentId) || n.label || "Untitled";
-          return target ? `[${escapeMd(label)}](${encodeURI(target)})` : `[[${label}]]`;
+          return target ? `[${escapeMd(label)}](${pathTarget(target)})` : `[[${label}]]`;
         }
         case "text": {
           const marks = n.marks ?? [];
+          const link = marks.find((m): m is Extract<Mark, { type: "link" }> => m.type === "link");
           if (marks.some((m) => m.type === "code")) {
             const fence = n.text.includes("`") ? "``" : "`";
-            return `${fence}${n.text}${fence}`;
+            // Code that is also a link stays a link: [`code`](href).
+            return link ? `[${fence}${n.text}${fence}](${linkTarget(link.href)})` : `${fence}${n.text}${fence}`;
           }
           let s = escapeMd(n.text);
           // Keep surrounding whitespace outside of emphasis markers.
@@ -50,10 +77,13 @@ export function inlineToMarkdown(nodes: readonly InlineNode[], opts: MarkdownExp
           let core = s.slice(lead.length, s.length - trail.length);
           if (!core) return s;
           if (marks.some((m) => m.type === "strike")) core = `~~${core}~~`;
-          if (marks.some((m) => m.type === "italic")) core = `_${core}_`;
+          if (marks.some((m) => m.type === "italic")) {
+            // Underscores inside a word are literal ("un_believ_able"), so mid-word italic uses asterisks.
+            const midWord = (!lead && isWordChar(plainText(nodes.slice(i - 1, i)).slice(-1))) || (!trail && isWordChar(plainText(nodes.slice(i + 1, i + 2))[0]));
+            core = midWord ? `*${core}*` : `_${core}_`;
+          }
           if (marks.some((m) => m.type === "bold")) core = `**${core}**`;
-          const link = marks.find((m): m is Extract<Mark, { type: "link" }> => m.type === "link");
-          if (link) core = `[${core}](${link.href})`;
+          if (link) core = `[${core}](${linkTarget(link.href)})`;
           s = lead + core + trail;
           return s;
         }
@@ -66,16 +96,16 @@ export function inlineToMarkdown(nodes: readonly InlineNode[], opts: MarkdownExp
  * Lines of one paragraph (or quote) joined: a line ending in a backslash or two spaces is a hard line
  * break (kept as a break), any other line end is a space.
  */
-function joinLines(lines: string[]): string {
+function joinLines(lines: string[], breaks = false): string {
   let out = "";
   lines.forEach((line, i) => {
     if (i === lines.length - 1) {
-      out += line;
+      out += line.trimEnd();
       return;
     }
     if (/\\$/.test(line)) out += line.slice(0, -1) + "\n";
-    else if (/ {2,}$/.test(line)) out += line.trimEnd() + "\n";
-    else out += line + " ";
+    else if (breaks || / {2,}$/.test(line)) out += line.trimEnd() + "\n";
+    else out += line.trimEnd() + " ";
   });
   return out;
 }
@@ -117,7 +147,7 @@ export function blocksToMarkdown(
     if (block.type !== "numbered") counters[depth] = 0;
     switch (block.type) {
       case "paragraph":
-        lines.push(indent + broken(indent), "");
+        lines.push(indent + t.split("\n").map(escapeLineStart).join(`\\\n${indent}`), "");
         break;
       case "heading":
         lines.push(`${"#".repeat(Math.min(3, Number(p.level) || 1) + (opts.title ? 1 : 0))} ${t}`, "");
@@ -174,7 +204,7 @@ export function blocksToMarkdown(
       }
       case "image": {
         const src = p.fileId ? opts.resolveFile?.(String(p.fileId)) : (p.url as string | undefined);
-        lines.push(`${indent}![${escapeMd(String(p.alt ?? ""))}](${src ? encodeURI(src) : ""})`);
+        lines.push(`${indent}![${escapeMd(String(p.alt ?? ""))}](${src ? pathTarget(src) : ""})`);
         if (p.caption) lines.push(`${indent}_${escapeMd(String(p.caption))}_`);
         lines.push("");
         break;
@@ -182,7 +212,7 @@ export function blocksToMarkdown(
       case "file":
       case "audio": {
         const src = opts.resolveFile?.(String(p.fileId));
-        lines.push(`${indent}[${escapeMd(String(p.name ?? "file"))}](${src ? encodeURI(src) : ""})`, "");
+        lines.push(`${indent}[${escapeMd(String(p.name ?? "file"))}](${src ? pathTarget(src) : ""})`, "");
         break;
       }
       case "table": {
@@ -201,11 +231,11 @@ export function blocksToMarkdown(
       case "page": {
         const target = opts.resolveDocument?.(String(p.documentId));
         const label = opts.resolveDocumentTitle?.(String(p.documentId)) || String(p.titleCache || "Untitled");
-        lines.push(`${indent}${target ? `[${escapeMd(label)}](${encodeURI(target)})` : `[[${label}]]`}`, "");
+        lines.push(`${indent}${target ? `[${escapeMd(label)}](${pathTarget(target)})` : `[[${label}]]`}`, "");
         break;
       }
       case "bookmark":
-        lines.push(`${indent}[${escapeMd(String(p.title ?? p.url))}](${String(p.url)})`, "");
+        lines.push(`${indent}[${escapeMd(String(p.title ?? p.url))}](${linkTarget(String(p.url))})`, "");
         break;
       case "collection":
         lines.push(`${indent}<!-- folevi:collection ${String(p.collectionId)} -->`, "");
@@ -243,7 +273,19 @@ export interface MarkdownImportOptions {
   newId?: () => string;
   /** Use the first H1 as the document title (default true). */
   titleFromHeading?: boolean;
+  /**
+   * Keep a single line break inside a paragraph or quote as a line break instead of a space. For pasted
+   * text, whose lines are what the person sees, rather than Markdown files wrapped at a fixed width.
+   */
+  lineBreaks?: boolean;
 }
+
+/** A link or image target: <anything but brackets>, or a bare one (balanced parentheses allowed, "wiki/A_(b)"). */
+const LINK_TARGET = String.raw`\(\s*(?:<([^<>\n]*)>|((?:[^()\s]|\([^()\s]*\))+))(?:\s+"([^"]*)")?\s*\)`;
+/** Link text or image alt: escaped brackets ("\[1\]") are part of it. */
+const LINK_TEXT = String.raw`\[((?:\\.|[^\]\\])*)\]`;
+const LINK = new RegExp(`^${LINK_TEXT}${LINK_TARGET}`);
+const IMAGE_LINE = new RegExp(`^\\s*!${LINK_TEXT}${LINK_TARGET}\\s*$`);
 
 /** Parses inline Markdown (emphasis, strong, code, strike, links, autolinks) into inline nodes. */
 export function parseInlineMarkdown(src: string): InlineNode[] {
@@ -256,7 +298,8 @@ export function parseInlineMarkdown(src: string): InlineNode[] {
     let i = 0;
     while (i < s.length) {
       const ch = s[i]!;
-      if (ch === "\\" && i + 1 < s.length && /[\\`*_[\]#<>|~!()-]/.test(s[i + 1]!)) {
+      // Any ASCII punctuation can be escaped (CommonMark), "1\\." and "\\+" included.
+      if (ch === "\\" && i + 1 < s.length && /[!-/:-@[-`{-~]/.test(s[i + 1]!)) {
         buf += s[i + 1];
         i += 2;
         continue;
@@ -274,7 +317,7 @@ export function parseInlineMarkdown(src: string): InlineNode[] {
           continue;
         }
       }
-      const tryDelim = (delim: string, mark: Mark): boolean => {
+      const tryDelim = (delim: string, mark: Mark | Mark[]): boolean => {
         if (!s.startsWith(delim, i)) return false;
         const after = s[i + delim.length];
         if (after === undefined || /\s/.test(after)) return false;
@@ -285,13 +328,13 @@ export function parseInlineMarkdown(src: string): InlineNode[] {
         if (delim[0] === "_" && /\w/.test(s[i - 1] ?? "")) return false;
         push(buf, marks);
         buf = "";
-        walk(s.slice(i + delim.length, end), [...marks, mark]);
+        walk(s.slice(i + delim.length, end), [...marks, ...(Array.isArray(mark) ? mark : [mark])]);
         i = end + delim.length;
         return true;
       };
       if (ch === "*" || ch === "_" || ch === "~") {
         if (
-          tryDelim("***", { type: "bold" }) ||
+          tryDelim("***", [{ type: "bold" }, { type: "italic" }]) ||
           tryDelim("**", { type: "bold" }) ||
           tryDelim("__", { type: "bold" }) ||
           tryDelim("~~", { type: "strike" }) ||
@@ -302,9 +345,9 @@ export function parseInlineMarkdown(src: string): InlineNode[] {
         }
       }
       if (ch === "[" && s[i + 1] !== "[") {
-        const m = /^\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/.exec(s.slice(i));
+        const m = LINK.exec(s.slice(i));
         if (m) {
-          const href = sanitizeHref(m[2]!);
+          const href = sanitizeHref(m[2] ?? m[3]!);
           push(buf, marks);
           buf = "";
           walk(m[1]!, href ? [...marks, { type: "link", href }] : marks);
@@ -426,12 +469,20 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    drafts.push({ id: newId(), type: "paragraph", depth: 0, text: parseInlineMarkdown(joinLines(paragraph)), props: {} });
+    drafts.push({ id: newId(), type: "paragraph", depth: 0, text: parseInlineMarkdown(joinLines(paragraph, opts.lineBreaks)), props: {} });
     paragraph = [];
   };
 
   const listStack: number[] = []; // indentation columns of open list levels
   const openDetails: number[] = []; // where the blocks inside each open <details> begin
+  // A fence, table or formula indented under a list item belongs to it: it nests under the deepest open
+  // item it is indented past. One at the margin ends the list.
+  const depthUnderList = (line: string): number => {
+    const indent = /^ */.exec(line)![0].length;
+    const depth = listStack.filter((col) => col < indent).length;
+    if (!depth) listStack.length = 0;
+    return depth;
+  };
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
@@ -450,6 +501,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     const math = /^\s*\$\$(.*)$/.exec(line);
     if (math) {
       flushParagraph();
+      const depth = depthUnderList(line);
       const startLine = i;
       const body: string[] = [];
       let rest = math[1]!;
@@ -470,10 +522,10 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       }
       const latex = body.join("\n").trim();
       if (latex.length > LIMITS.maxFormulaLength) {
-        drafts.push({ id: newId(), type: "code", depth: 0, text: [], props: { language: "latex", code: latex } });
+        drafts.push({ id: newId(), type: "code", depth, text: [], props: { language: "latex", code: latex } });
         warnings.push({ line: lineNo(startLine), code: "math", message: "A very long formula was kept as a LaTeX code block" });
       } else if (latex) {
-        drafts.push({ id: newId(), type: "formula", depth: 0, text: [], props: { latex } });
+        drafts.push({ id: newId(), type: "formula", depth, text: [], props: { latex } });
       }
       continue;
     }
@@ -482,17 +534,21 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     if (fence) {
       flushParagraph();
       const marker = fence[1]!;
+      const depth = depthUnderList(line);
+      // The code lines lose the fence's own indentation (a fence inside a list item is indented with it).
+      const indent = /^ */.exec(line)![0].length;
+      const outdent = indent ? new RegExp(`^(?:\\t| {1,${indent}})`) : null;
       const body: string[] = [];
       i++;
       while (i < lines.length && !lines[i]!.trim().startsWith(marker)) {
-        body.push(lines[i]!);
+        body.push(outdent ? lines[i]!.replace(outdent, "") : lines[i]!);
         i++;
       }
       const lang = fence[2] ?? "";
       drafts.push({
         id: newId(),
         type: "code",
-        depth: 0,
+        depth,
         text: [],
         props: { language: normalizeLanguage(lang), code: body.join("\n") },
       });
@@ -523,17 +579,27 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     // Table
     if (line.includes("|") && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[i + 1]!)) {
       flushParagraph();
-      const header = splitTableRow(line);
+      const depth = depthUnderList(line);
+      const startLine = i;
+      // Cut to the schema's size (like a pasted HTML table), so the table is kept instead of rejected.
+      const all = splitTableRow(line);
+      const header = all.slice(0, LIMITS.maxTableColumns);
+      let cut = all.length > header.length;
       const rows: InlineNode[][][] = [header.map(parseInlineMarkdown)];
       i += 2;
       while (i < lines.length && lines[i]!.includes("|") && lines[i]!.trim()) {
-        const cells = splitTableRow(lines[i]!);
-        const row = header.map((_, c) => parseInlineMarkdown(cells[c] ?? ""));
-        rows.push(row);
+        if (rows.length < LIMITS.maxTableRows) {
+          const cells = splitTableRow(lines[i]!);
+          const row = header.map((_, c) => parseInlineMarkdown(cells[c] ?? ""));
+          rows.push(row);
+        } else cut = true;
         i++;
       }
       i--;
-      drafts.push({ id: newId(), type: "table", depth: 0, text: [], props: { rows, headerRow: true } });
+      drafts.push({ id: newId(), type: "table", depth, text: [], props: { rows, headerRow: true } });
+      if (cut) {
+        warnings.push({ line: lineNo(startLine), code: "unsupported", message: `A table was cut to ${LIMITS.maxTableRows} rows and ${LIMITS.maxTableColumns} columns` });
+      }
       continue;
     }
     // Quote / callout
@@ -560,7 +626,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
           CAUTION: "warning",
           DANGER: "danger",
         };
-        const rest = joinLines([callout[2]!, ...body.slice(1)].filter((s) => s.trim()));
+        const rest = joinLines([callout[2]!, ...body.slice(1)].filter((s) => s.trim()), opts.lineBreaks);
         drafts.push({
           id: newId(),
           type: "callout",
@@ -569,7 +635,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
           props: { tone: toneMap[callout[1]!.toUpperCase()] ?? "note" },
         });
       } else {
-        drafts.push({ id: newId(), type: "quote", depth: 0, text: parseInlineMarkdown(joinLines(body).replace(/^\s*>\s?/g, "")), props: {} });
+        drafts.push({ id: newId(), type: "quote", depth: 0, text: parseInlineMarkdown(joinLines(body, opts.lineBreaks).replace(/^\s*>\s?/g, "")), props: {} });
       }
       continue;
     }
@@ -609,18 +675,21 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     }
     listStack.length = 0;
     // Images on their own line
-    const img = /^\s*!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"([^"]*)")?\s*\)\s*$/.exec(line);
+    const img = IMAGE_LINE.exec(line);
     if (img) {
       flushParagraph();
-      const src = img[2]!;
+      const src = img[2] ?? img[3]!;
+      // The alt text as written, escapes undone ("\\_" is "_").
+      const alt = plainText(parseInlineMarkdown(img[1]!));
+      const caption = img[4] ?? "";
       const resolved = opts.resolveImage?.(src) ?? null;
       if (resolved) {
-        drafts.push({ id: newId(), type: "image", depth: 0, text: [], props: { fileId: resolved.fileId, alt: img[1]!, caption: img[3] ?? "" } });
+        drafts.push({ id: newId(), type: "image", depth: 0, text: [], props: { fileId: resolved.fileId, alt, caption } });
       } else if (/^https?:\/\//i.test(src)) {
-        drafts.push({ id: newId(), type: "image", depth: 0, text: [], props: { url: src, alt: img[1]!, caption: img[3] ?? "" } });
+        drafts.push({ id: newId(), type: "image", depth: 0, text: [], props: { url: src, alt, caption } });
       } else {
         warnings.push({ line: lineNo(i), code: "unresolved_image", message: `Image "${src}" was not found and was kept as a link` });
-        drafts.push({ id: newId(), type: "paragraph", depth: 0, text: [{ type: "text", text: img[1] || src, marks: [{ type: "link", href: sanitizeHref(src) ?? "#" }] }], props: {} });
+        drafts.push({ id: newId(), type: "paragraph", depth: 0, text: [{ type: "text", text: alt || src, marks: [{ type: "link", href: sanitizeHref(src) ?? "#" }] }], props: {} });
       }
       continue;
     }
@@ -653,9 +722,21 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     if (/\$\$[^$]+\$\$/.test(line)) {
       warnings.push({ line: lineNo(i), code: "math", message: "Inline math ($$…$$) isn’t rendered yet; it was kept as text" });
     }
-    paragraph.push(line.trim());
+    // Trailing spaces stay until the lines are joined: two of them make a line break.
+    paragraph.push(line.trimStart());
   }
   flushParagraph();
+
+  // Text over the schema's length limit continues in more blocks (a longer block would be rejected).
+  for (let k = 0; k < drafts.length; k++) {
+    const d = drafts[k]!;
+    if (textLength(d.text) <= LIMITS.maxTextLength) continue;
+    const [first, ...more] = splitInline(d.text, LIMITS.maxTextLength);
+    d.text = first ?? [];
+    const type = d.type === "quote" ? "quote" : "paragraph";
+    drafts.splice(k + 1, 0, ...more.map((text) => ({ id: newId(), type, depth: d.depth, text, props: {} })));
+    k += more.length;
+  }
 
   // Front matter: only `title` becomes part of the document; say which fields were left out.
   const dropped = Object.keys(frontMatter).filter((k) => k !== "title");

@@ -332,7 +332,7 @@ export function Shell() {
 }
 
 /** Top bar shared by all views: sidebar toggle, title/breadcrumbs, and actions. */
-export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode }) {
+export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay, tint }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode; /** A colour the view's background takes a faint wash of (a folder's colour). */ tint?: string }) {
   const { sidebarOpen, toggleSidebar, drawerMode } = useShell();
   const { route } = useAppRouter();
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
@@ -374,7 +374,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   // Room for the floating tab strip (desktop); list views scroll underneath it.
   const clear = drawerMode ? "" : "pt-[60px] [scroll-padding-top:64px]";
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
+    <div className={`relative flex min-h-0 flex-1 flex-col ${tint ? "ui-view-tint" : ""}`} style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}>
       {inFlow ? null : <div className={drawerMode ? "" : "pt-[60px]"}>{bar}</div>}
       <main id="main" tabIndex={-1} className={`min-h-0 flex-1 overflow-y-auto outline-none ${inFlow ? clear : ""}`}>
         {inFlow ? bar : null}

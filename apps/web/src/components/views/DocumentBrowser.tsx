@@ -14,6 +14,7 @@ import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
+import { folderHex } from "@/lib/folderColors";
 import { useCreateDocument } from "@/components/app/useCreateDocument";
 import { ageText, formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
@@ -249,6 +250,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     <ViewChrome
       title={<h1 className="truncate text-sm font-semibold">{title}</h1>}
       tabTitle={title}
+      // A folder's page takes a faint wash of its colour.
+      tint={view === "folder" ? folderHex(org?.folders.find((f) => f.id === folderId)?.color) : undefined}
       overlay={
         selection.selectedIds.length ? (
           <SelectionBar count={selection.selectedIds.length} total={docs.length} actions={bulkActions} onSelectAll={selection.selectAll} onClear={selection.clear} />

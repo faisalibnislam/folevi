@@ -289,6 +289,12 @@
     .ui-ambient { display: none; }
   }
 
+  /* A view washed with a colour (a folder's page in its folder's colour): faint over the light panel, a
+     deeper tint over the dark one. */
+  .ui-view-tint { background: color-mix(in oklab, var(--view-tint) var(--view-tint-amount, 10%), transparent); transition: background-color 300ms var(--motion-easing); }
+  :root[data-theme="dark"] .ui-view-tint { --view-tint-amount: 16%; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ui-view-tint { --view-tint-amount: 16%; } }
+
   /* Segmented control (track + raised thumb). The active item carries data-active. */
   .ui-seg { display: flex; gap: 2px; padding: 3px; border-radius: 6px; }
   .ui-seg > * {

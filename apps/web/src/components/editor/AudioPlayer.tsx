@@ -14,6 +14,7 @@ const SPEEDS = [1, 1.5, 2];
  */
 export function AudioPlayer({
   src,
+  sourceId,
   download,
   name,
   size,
@@ -22,6 +23,11 @@ export function AudioPlayer({
   className,
 }: {
   src: string | null;
+  /**
+   * Which recording this is. A new `src` for the same recording (a renewed signed link, or the uploaded file
+   * replacing the copy on this device) keeps the position and carries on playing; any other new `src` starts over.
+   */
+  sourceId?: string | null;
   /** The signed file URL, once uploaded. */
   download?: string | null;
   name: string | null;
@@ -39,6 +45,20 @@ export function AudioPlayer({
   // Recordings from MediaRecorder often report an unknown length, so the one measured while recording wins.
   const [mediaLength, setMediaLength] = useState<number | null>(null);
   const length = duration || mediaLength || 0;
+  // Where to pick up once a new address for the same recording has loaded.
+  const [carry, setCarry] = useState<{ time: number; play: boolean } | null>(null);
+  const [shown, setShown] = useState({ src, sourceId });
+  if (shown.src !== src || shown.sourceId !== sourceId) {
+    const same = sourceId != null && shown.sourceId === sourceId;
+    setShown({ src, sourceId });
+    setCarry(same ? (carry ?? { time, play: playing }) : null);
+    setPlaying(false);
+    setProblem(false);
+    if (!same) {
+      setTime(0);
+      setMediaLength(null);
+    }
+  }
 
   const toggle = () => {
     const el = audio.current;
@@ -169,13 +189,30 @@ export function AudioPlayer({
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}
-          onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-          onLoadedMetadata={(e) => {
-            const d = e.currentTarget.duration;
-            if (Number.isFinite(d)) setMediaLength(d);
-            e.currentTarget.playbackRate = speed;
+          // The element let go of its media (a new address is loading): nothing plays until it's back.
+          onEmptied={() => {
+            setPlaying(false);
+            if (!carry) setTime(0);
           }}
-          onError={() => setProblem(true)}
+          onTimeUpdate={(e) => {
+            // A reloading element reports 0 until the carried position is restored.
+            if (!carry) setTime(e.currentTarget.currentTime);
+          }}
+          onLoadedMetadata={(e) => {
+            const el = e.currentTarget;
+            const d = el.duration;
+            if (Number.isFinite(d)) setMediaLength(d);
+            el.playbackRate = speed;
+            if (carry) {
+              el.currentTime = carry.time;
+              if (carry.play) void el.play().catch(() => setProblem(true));
+              setCarry(null);
+            }
+          }}
+          onError={() => {
+            setProblem(true);
+            setCarry(null);
+          }}
           hidden
         />
       ) : null}

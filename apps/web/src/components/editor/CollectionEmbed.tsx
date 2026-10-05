@@ -638,8 +638,14 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
             onDragOver={(e) => canEdit && e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
-              if (dragging) void move(dragging, col.id, items[items.length - 1]?.id ?? null);
+              const rowId = dragging;
               setDragging(null);
+              if (!rowId) return;
+              // A drop goes to the end of the column. The card itself doesn't count (the server orders it
+              // after the row named), and a card that's already last in its own column stays put.
+              const last = items[items.length - 1];
+              if (last?.id === rowId) return;
+              void move(rowId, col.id, last?.id ?? null);
             }}
           >
             <h4 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold">
@@ -650,7 +656,18 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
             </h4>
             <ul className="space-y-2">
               {items.map((row) => (
-                <li key={row.id} draggable={canEdit} onDragStart={() => setDragging(row.id)} className="rounded-[6px] border border-line bg-raised p-2.5 text-sm shadow-[0_1px_0_var(--color-line)]">
+                <li
+                  key={row.id}
+                  draggable={canEdit}
+                  onDragStart={(e) => {
+                    // Firefox only starts a drag that carries some data. Its own type, so dropping the card on
+                    // the note around it doesn't paste anything there.
+                    e.dataTransfer.setData("application/x-folevi-row", row.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    setDragging(row.id);
+                  }}
+                  onDragEnd={() => setDragging(null)}
+                  className="rounded-[6px] border border-line bg-raised p-2.5 text-sm shadow-[0_1px_0_var(--color-line)]">
                   <AppLink href={`/d/${row.documentId}`} className="font-medium hover:underline">
                     
                     {row.title || "Untitled"}

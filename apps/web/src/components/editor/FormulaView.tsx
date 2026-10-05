@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { LIMITS, ulid } from "@folevi/editor-schema";
 import { FormulaRender } from "./RichBlocks";
 import { useDraft } from "./useDraft";
+import { useEditable } from "./useEditable";
 
 /** Formula blocks inserted by this person open straight into editing. */
 const OPEN_ON_MOUNT = new Set<string>();
@@ -23,11 +24,19 @@ export function newFormulaAttrs(): { id: string; latex: string } {
  */
 export function FormulaView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const latex = String(node.attrs.latex ?? "");
-  const commitLatex = useCallback((v: string) => updateAttributes({ latex: v }), [updateAttributes]);
+  // A draft can commit after the note turned read-only: it isn't written then.
+  const commitLatex = useCallback(
+    (v: string) => {
+      if (editor.isEditable) updateAttributes({ latex: v });
+    },
+    [editor, updateAttributes],
+  );
   const [draftLatex, setDraftLatex] = useDraft(latex, commitLatex);
   const id = String(node.attrs.id ?? "");
-  const editable = editor.isEditable;
-  const [editing, setEditing] = useState(() => editable && OPEN_ON_MOUNT.has(id));
+  const editable = useEditable(editor);
+  const [editingState, setEditing] = useState(() => editable && OPEN_ON_MOUNT.has(id));
+  // The field closes if the note turns read-only while it's open.
+  const editing = editingState && editable;
   const field = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
 

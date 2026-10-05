@@ -49,6 +49,17 @@ export async function localPreviewUrl(accountKey: string, uploadId: string): Pro
   return url;
 }
 
+/**
+ * Lets go of an upload's preview URL (and the file it keeps in memory). Called by a view once the server's
+ * address has replaced it on screen.
+ */
+export function releaseLocalPreview(uploadId: string): void {
+  const url = objectUrls.get(uploadId);
+  if (!url) return;
+  objectUrls.delete(uploadId);
+  URL.revokeObjectURL(url);
+}
+
 /** Stores the file durably, registers the upload with the sync engine and returns its id. */
 export async function enqueueUpload(
   accountKey: string,

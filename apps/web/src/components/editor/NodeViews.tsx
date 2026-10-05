@@ -5,6 +5,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup } from "./commands";
 import { useAction, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -28,7 +29,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 import { useEngineState } from "@/lib/hooks/useEngine";
-import { localPreviewUrl } from "@/lib/sync/uploads";
+import { localPreviewUrl, releaseLocalPreview } from "@/lib/sync/uploads";
 import { formatBytes } from "@/lib/format";
 import {
   AudioBlock,
@@ -46,6 +47,7 @@ import {
 import { FormulaView } from "./FormulaView";
 import { useEditorEnvironment } from "./environment";
 import { useDraft } from "./useDraft";
+import { useEditable } from "./useEditable";
 import { AudioPlayer } from "./AudioPlayer";
 import { WhiteboardView } from "./WhiteboardView";
 import { FlowchartView } from "./flowchart/FlowchartView";
@@ -60,10 +62,49 @@ function useNow(bucketMs: number): number {
   return now;
 }
 
-function useFileUrl(fileId: string | null) {
+type FileInfo = FunctionReturnType<typeof api.files.urls>[string];
+
+/**
+ * A file's signed address, renewed every half hour. `missing` once the server has answered without it
+ * (deleted, or no longer visible to this person).
+ */
+function useFileUrl(fileId: string | null): { file: FileInfo | undefined; missing: boolean } {
   const now = useNow(30 * 60_000);
   const urls = useQuery(api.files.urls, fileId ? { fileIds: [fileId], now } : "skip");
-  return fileId ? urls?.[fileId] : undefined;
+  // Each renewal is a new query that starts out unanswered: until it answers, the last address for this file
+  // stays, so images don't flash back to loading and playing audio doesn't stop.
+  const fresh = fileId && urls ? urls[fileId] : undefined;
+  const [last, setLast] = useState<{ fileId: string; file: FileInfo } | null>(null);
+  if (fileId && fresh && (last?.fileId !== fileId || last.file.url !== fresh.url)) setLast({ fileId, file: fresh });
+  if (!fileId) return { file: undefined, missing: false };
+  if (urls) return { file: fresh, missing: !fresh };
+  return { file: last?.fileId === fileId ? last.file : undefined, missing: false };
+}
+
+/**
+ * The copy saved on this device while an upload waits, shown until the server's address arrives; then its
+ * object URL is let go.
+ */
+function useLocalPreview(fileId: string | null, uploadId: string | undefined, serverUrl: string | undefined): string | null {
+  const { profile } = useAppState();
+  const [preview, setPreview] = useState<{ uploadId: string; url: string } | null>(null);
+  useEffect(() => {
+    if (fileId || !uploadId) return;
+    let live = true;
+    void localPreviewUrl(profile.id, uploadId).then((url) => {
+      if (live && url) setPreview({ uploadId, url });
+    });
+    return () => {
+      live = false;
+    };
+  }, [fileId, uploadId, profile.id]);
+  useEffect(() => {
+    // The view has already switched to the server's address in this render, so nothing shows the copy now.
+    if (!serverUrl || !preview) return;
+    releaseLocalPreview(preview.uploadId);
+    setPreview(null);
+  }, [serverUrl, preview]);
+  return preview?.url ?? null;
 }
 
 function useUploadState(blockId: string | null) {
@@ -93,7 +134,6 @@ function Frame({
 }
 
 function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
-  const { profile } = useAppState();
   const a = node.attrs as {
     id: string;
     fileId: string | null;
@@ -103,15 +143,16 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     width: number | null;
     uploadId: string | null;
   };
-  const file = useFileUrl(a.fileId);
+  const { file, missing } = useFileUrl(a.fileId);
   const upload = useUploadState(a.id);
-  const [preview, setPreview] = useState<string | null>(null);
-  useEffect(() => {
-    if (!a.fileId && upload) void localPreviewUrl(profile.id, upload.uploadId).then(setPreview);
-  }, [a.fileId, upload, profile.id]);
+  const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
   const src = file?.url ?? (a.url ? sanitizeHref(a.url) : null) ?? preview;
   const width = a.width ?? 1;
-  const editable = editor.isEditable;
+  const editable = useEditable(editor);
+  // The note can turn read-only while a field is open: nothing is written then.
+  const update = (attrs: Record<string, unknown>) => {
+    if (editor.isEditable) updateAttributes(attrs);
+  };
   return (
     <Frame selected={selected} label="Image">
       <figure className="my-2" style={{ width: `${Math.round(width * 100)}%` }}>
@@ -131,7 +172,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                   <DraftInput
                     data-enter-focus=""
                     value={a.alt ?? ""}
-                    onCommit={(v) => updateAttributes({ alt: v })}
+                    onCommit={(v) => update({ alt: v })}
                     onExit={() => selectBlock(editor, getPos)}
                     placeholder="Describe the image"
                     className="h-7 w-56 ui-input rounded-[6px] px-2 text-ink"
@@ -142,7 +183,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                   <button
                     key={w}
                     type="button"
-                    onClick={() => updateAttributes({ width: w === 1 ? null : w })}
+                    onClick={() => update({ width: w === 1 ? null : w })}
                     aria-pressed={width === w}
                     className={`h-7 rounded-[6px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}
                   >
@@ -154,7 +195,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           </div>
         ) : (
           <div className="grid h-40 place-items-center rounded-[6px] border border-dashed border-line-strong text-sm text-muted">
-            {a.fileId ? (
+            {a.fileId && !missing ? (
               "Loading image…"
             ) : (
               <span className="flex items-center gap-2">
@@ -176,7 +217,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           {editable ? (
             <DraftInput
               value={a.caption ?? ""}
-              onCommit={(v) => updateAttributes({ caption: v })}
+              onCommit={(v) => update({ caption: v })}
               onExit={() => selectBlock(editor, getPos)}
               placeholder="Add a caption"
               aria-label="Image caption"
@@ -199,7 +240,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
     size: number | null;
     mimeType: string | null;
   };
-  const file = useFileUrl(a.fileId);
+  const { file, missing } = useFileUrl(a.fileId);
   const upload = useUploadState(a.id);
   return (
     <Frame selected={selected} label={`Attachment ${a.name ?? ""}`}>
@@ -213,7 +254,9 @@ function FileView({ node, selected }: ReactNodeViewProps) {
               ? upload.state === "failed"
                 ? " · Upload interrupted, retrying"
                 : " · Uploading…"
-              : ""}
+              : missing
+                ? " · This file was deleted or you no longer have access"
+                : ""}
           </p>
         </div>
         {file ? (
@@ -233,7 +276,6 @@ function FileView({ node, selected }: ReactNodeViewProps) {
 
 /** An audio recording: the uploaded file, or the copy saved on this device while it waits to upload. */
 function AudioView({ node, selected }: ReactNodeViewProps) {
-  const { profile } = useAppState();
   const a = node.attrs as {
     id: string;
     fileId: string | null;
@@ -241,22 +283,25 @@ function AudioView({ node, selected }: ReactNodeViewProps) {
     size: number | null;
     duration: number | null;
   };
-  const file = useFileUrl(a.fileId);
+  const { file, missing } = useFileUrl(a.fileId);
   const upload = useUploadState(a.id);
-  const [preview, setPreview] = useState<string | null>(null);
-  useEffect(() => {
-    if (!a.fileId && upload) void localPreviewUrl(profile.id, upload.uploadId).then(setPreview);
-  }, [a.fileId, upload, profile.id]);
+  const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
   const status = upload
     ? upload.state === "failed"
       ? "Upload interrupted, retrying"
       : navigator.onLine
         ? "Uploading…"
         : "Waiting to upload (offline)"
-    : null;
+    : missing
+      ? "Unavailable: the recording was deleted or you no longer have access"
+      : !a.fileId && !preview
+        ? "Not uploaded yet. It uploads from the device that recorded it"
+        : null;
   return (
     <Frame selected={selected} label={`Audio recording ${a.name ?? ""}`}>
       <AudioPlayer
+        // A renewed address (or the upload finishing) is the same recording: playback carries on.
+        sourceId={a.id}
         src={file?.url ?? preview}
         download={file?.url}
         name={a.name}
@@ -284,7 +329,7 @@ function move<T>(list: T[], from: number, to: number): T[] {
 function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const rows = (node.attrs.rows as InlineNode[][][]) ?? [[[]]];
   const headerRow = Boolean(node.attrs.headerRow);
-  const editable = editor.isEditable;
+  const editable = useEditable(editor);
   const width = rows[0]?.length ?? 1;
   const [focusWithin, setFocusWithin] = useState(false);
   // Row/column tools show while the table is selected or being edited.
@@ -306,6 +351,8 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     return live?.type.name === "table" ? (live.attrs.rows as InlineNode[][][]) : rows;
   };
   const setCell = (r: number, c: number, value: string) => {
+    // A cell's draft can commit after the note turned read-only: it isn't written then.
+    if (!editor.isEditable) return;
     const now = currentRows();
     // Cells edit as plain text; formatting the whole cell shares (all bold, one link) is kept.
     const old = (now[r]?.[c] ?? []) as InlineNode[];
@@ -319,7 +366,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const tool = (change: (rows: InlineNode[][][]) => InlineNode[][][] | null) => {
     const pos = typeof getPos === "function" ? getPos() : undefined;
     const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
-    if (typeof pos !== "number" || live?.type.name !== "table") return;
+    if (!editor.isEditable || typeof pos !== "number" || live?.type.name !== "table") return;
     const next = change(live.attrs.rows as InlineNode[][][]);
     if (!next) return;
     editor.view.dispatch(closeHistory(editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, rows: next })));
@@ -558,7 +605,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             <button
               type="button"
               aria-pressed={headerRow}
-              onClick={() => updateAttributes({ headerRow: !headerRow })}
+              onClick={() => editor.isEditable && updateAttributes({ headerRow: !headerRow })}
               className={`inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-accent-soft hover:text-heading ${tools ? "" : "invisible"} ${headerRow ? "text-heading" : ""}`}
             >
               {headerRow ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />} Header row
@@ -656,7 +703,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     }
   };
   const host = hostOf(href);
-  const editable = editor.isEditable;
+  const editable = useEditable(editor);
   const env = useEditorEnvironment();
   const fetchPreview = useAction(api.bookmarks.preview);
   const [editing, setEditing] = useState(false);
@@ -675,6 +722,8 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
       previewed.add(url);
       try {
         const p = await fetchPreview({ url });
+        // The note may have turned read-only while the page was read.
+        if (!editor.isEditable) return;
         const pos = typeof getPos === "function" ? getPos() : undefined;
         const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
         if (!live || live.type.name !== "bookmark" || live.attrs.url !== url) return;
@@ -720,13 +769,14 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   useEffect(() => {
     const el = card.current;
     if (!el) return;
-    const on = () => editable && startEditing();
+    const on = () => editor.isEditable && startEditing();
     el.addEventListener(EDIT_BOOKMARK_EVENT, on);
     return () => el.removeEventListener(EDIT_BOOKMARK_EVENT, on);
   });
 
   // A changed address is saved once it's a web address, and its page's preview is read again.
   const saveAddress = (): boolean => {
+    if (!editor.isEditable) return true;
     const next = webAddressIn(address);
     if (!next) {
       setAddressError("Enter a web address starting with http:// or https://");
@@ -794,7 +844,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             <Pencil size={14} aria-hidden />
           </button>
         ) : null}
-        {editing ? (
+        {editing && editable ? (
           <form
             className="grid gap-2 border-t border-line p-4 text-xs"
             onSubmit={(e) => {
@@ -833,11 +883,11 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             </label>
             <label className="grid gap-1">
               Title
-              <DraftInput value={a.title ?? ""} onCommit={(v) => updateAttributes({ title: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
+              <DraftInput value={a.title ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ title: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
             </label>
             <label className="grid gap-1">
               Description
-              <DraftInput value={a.description ?? ""} onCommit={(v) => updateAttributes({ description: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
+              <DraftInput value={a.description ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ description: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
             </label>
             <div className="flex items-center justify-between gap-2">
               <button
@@ -862,13 +912,14 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
 
 function CollectionView({ node, selected, editor }: ReactNodeViewProps) {
   const a = node.attrs as { collectionId: string; viewId: string | null };
+  const editable = useEditable(editor);
   return (
     <Frame selected={selected} label="Collection">
       <div contentEditable={false} className="my-3">
         <CollectionEmbed
           collectionId={a.collectionId}
           initialViewId={a.viewId}
-          editable={editor.isEditable}
+          editable={editable}
         />
       </div>
     </Frame>
@@ -877,6 +928,7 @@ function CollectionView({ node, selected, editor }: ReactNodeViewProps) {
 
 function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps) {
   const wire = node.attrs.wire as { type?: string } | null;
+  const editable = useEditable(editor);
   return (
     <Frame selected={selected} label="Unsupported block">
       <div
@@ -887,10 +939,10 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
           This “{wire?.type ?? "unknown"}” block was created by a newer version of Folevi. It’s kept
           safely and will appear once you update.
         </span>
-        {editor.isEditable ? (
+        {editable ? (
           <button
             type="button"
-            onClick={deleteNode}
+            onClick={() => editor.isEditable && deleteNode()}
             aria-label="Remove block"
             className="text-faint hover:text-danger"
           >

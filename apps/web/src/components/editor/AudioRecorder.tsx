@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Pause, Play, Square, X } from "lucide-react";
+import { errorMessage, useToast } from "@/components/ui/Toast";
 
 /*
  * The "/Audio recording" panel: records from the microphone with MediaRecorder and hands the finished
@@ -55,6 +56,8 @@ type Phase =
   | { kind: "recording" }
   | { kind: "paused" }
   | { kind: "saving" }
+  // Recording ended without Save (the microphone went away) or saving failed: the audio waits for Save.
+  | { kind: "stopped"; file: File; seconds: number; message: string }
   | { kind: "error"; message: string };
 
 function micProblem(error: unknown): string {
@@ -92,12 +95,16 @@ export function AudioRecorder({
   const frame = useRef(0);
   // Time is counted only while recording, so pauses don't count towards the length.
   const clock = useRef({ total: 0, since: 0 });
-  const keep = useRef(false);
+  // Cancel throws the audio away; Save (or reaching the length limit) stores it. A recording that ends any
+  // other way (the microphone unplugged, its permission taken back) is kept for the person to save.
+  const discard = useRef(false);
+  const requested = useRef(false);
+  const toast = useToast();
   // The latest callbacks, for when the recorder finishes (after renders this effect never sees).
-  const handlers = useRef({ onSave, onClose });
+  const handlers = useRef({ onSave, onClose, toast });
   useEffect(() => {
-    handlers.current = { onSave, onClose };
-  }, [onSave, onClose]);
+    handlers.current = { onSave, onClose, toast };
+  }, [onSave, onClose, toast]);
 
   const now = () =>
     clock.current.total + (clock.current.since ? performance.now() - clock.current.since : 0);
@@ -108,6 +115,19 @@ export function AudioRecorder({
     stream.current = null;
     void audioCtx.current?.close().catch(() => undefined);
     audioCtx.current = null;
+  }, []);
+
+  // The panel closes only once the recording is in the note; if that fails it stays open to try again.
+  const store = useCallback(async (file: File, seconds: number) => {
+    setPhase({ kind: "saving" });
+    try {
+      await handlers.current.onSave(file, seconds);
+    } catch (error) {
+      handlers.current.toast.show(errorMessage(error), { tone: "error" });
+      setPhase({ kind: "stopped", file, seconds, message: "The recording couldn’t be added to the note. Try saving again." });
+      return;
+    }
+    handlers.current.onClose();
   }, []);
 
   // Ask for the microphone and start at once: the slash command was the "record" click.
@@ -133,15 +153,28 @@ export function AudioRecorder({
           if (e.data.size) chunks.current.push(e.data);
         };
         rec.onstop = () => {
+          clock.current = { total: now(), since: 0 };
           release();
-          if (!keep.current) return;
+          if (discard.current) return;
           const mime = (rec.mimeType || type || "audio/webm").split(";")[0]!;
           const blob = new Blob(chunks.current, { type: mime });
           const file = new File([blob], recordingName(mime), { type: mime });
-          void Promise.resolve(handlers.current.onSave(file, now() / 1000)).finally(() =>
-            handlers.current.onClose(),
-          );
+          const seconds = now() / 1000;
+          setElapsed(now());
+          if (requested.current) void store(file, seconds);
+          else
+            setPhase({
+              kind: "stopped",
+              file,
+              seconds,
+              message: "The microphone stopped (it was disconnected or its permission was turned off). What was recorded so far is kept.",
+            });
         };
+        // Most browsers stop the recorder when its microphone goes away; this makes sure of it.
+        for (const track of media.getAudioTracks())
+          track.addEventListener("ended", () => {
+            if (rec.state !== "inactive") rec.stop();
+          });
         recorder.current = rec;
         rec.start(1000);
         clock.current = { total: 0, since: performance.now() };
@@ -161,7 +194,8 @@ export function AudioRecorder({
           last = t;
           setElapsed(now());
           if (now() >= MAX_RECORDING_MS && rec.state !== "inactive") {
-            keep.current = true;
+            requested.current = true;
+            setPhase({ kind: "saving" });
             rec.stop();
             return;
           }
@@ -179,8 +213,10 @@ export function AudioRecorder({
     return () => {
       cancelled = true;
       // Unmounting without Save discards the recording.
-      if (recorder.current && recorder.current.state !== "inactive" && !keep.current)
+      if (recorder.current && recorder.current.state !== "inactive" && !requested.current) {
+        discard.current = true;
         recorder.current.stop();
+      }
       release();
     };
     // Runs once per panel; the callbacks are read from `handlers` when the recording ends.
@@ -205,24 +241,33 @@ export function AudioRecorder({
     const rec = recorder.current;
     if (!rec || rec.state === "inactive") return;
     clock.current = { total: now(), since: 0 };
-    keep.current = true;
+    requested.current = true;
     setPhase({ kind: "saving" });
     rec.stop();
   };
   const cancel = () => {
-    keep.current = false;
+    discard.current = true;
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     release();
     onClose();
   };
 
   const live = phase.kind === "recording" || phase.kind === "paused";
+  const stopped = phase.kind === "stopped" ? phase : null;
+  // Leaving the page would lose audio that isn't in the note yet: the browser asks first.
+  const unsaved = live || phase.kind === "saving" || phase.kind === "stopped";
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
   return (
     <div
       className="grid gap-3 p-2.5 text-sm"
       onKeyDown={(e) => {
         // Escape only closes before anything is recorded, so a stray key can't throw a recording away.
-        if (e.key === "Escape" && !live && phase.kind !== "saving") {
+        if (e.key === "Escape" && !unsaved) {
           e.preventDefault();
           e.stopPropagation();
           cancel();
@@ -244,11 +289,13 @@ export function AudioRecorder({
                 ? "Paused"
                 : phase.kind === "saving"
                   ? "Saving…"
-                  : phase.kind === "error"
+                  : phase.kind === "stopped"
+                    ? "Recording stopped"
+                    : phase.kind === "error"
                     ? "Can’t record"
                     : "Recording"}
           </p>
-          {live || phase.kind === "saving" ? (
+          {unsaved ? (
             <p className="text-xs tabular-nums text-muted" aria-live="off">
               {formatDuration(elapsed / 1000)}
               <span className="text-faint"> / {formatDuration(MAX_RECORDING_MS / 1000)}</span>
@@ -258,8 +305,8 @@ export function AudioRecorder({
         <button
           type="button"
           onClick={cancel}
-          aria-label={live ? "Cancel and discard the recording" : "Close"}
-          title={live ? "Cancel" : "Close"}
+          aria-label={live || stopped ? "Cancel and discard the recording" : "Close"}
+          title={live || stopped ? "Discard" : "Close"}
           className="grid size-8 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
         >
           <X size={15} aria-hidden />
@@ -269,6 +316,10 @@ export function AudioRecorder({
       {phase.kind === "error" ? (
         <p className="rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger" role="alert">
           {phase.message}
+        </p>
+      ) : stopped ? (
+        <p className="rounded-[8px] bg-sunken px-3 py-2 text-[13px] text-ink" role="alert">
+          {stopped.message}
         </p>
       ) : (
         <div
@@ -312,6 +363,20 @@ export function AudioRecorder({
             className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-[13px]"
           >
             <Square size={12} aria-hidden className="fill-current" /> Stop and save
+          </button>
+        </div>
+      ) : null}
+      {stopped ? (
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={cancel} className="ui-btn ui-btn-secondary h-9 px-3 text-[13px]">
+            Discard
+          </button>
+          <button
+            type="button"
+            onClick={() => void store(stopped.file, stopped.seconds)}
+            className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-[13px]"
+          >
+            Save recording
           </button>
         </div>
       ) : null}

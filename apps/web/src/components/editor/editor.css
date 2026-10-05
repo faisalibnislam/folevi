@@ -191,7 +191,13 @@
 .fb-tone-danger .fb-callout-icon { color: var(--color-coral-ink); }
 .fb-tone-note { background: var(--color-ember-soft) !important; }
 .fb-tone-note .fb-callout-icon { color: var(--color-ember-ink); }
-:root[data-theme="dark"] .fb-editor .fb-callout { box-shadow: inset 0 1px 0 rgb(255 240 230 / 0.05), inset 0 0 0 1px rgb(255 240 230 / 0.06); }
+/* Dark pages (dark theme, a night sheet, artwork pages in the dark theme) get a faint edge instead of the white
+   highlight; a light sheet chosen in the dark theme keeps the light one. */
+:root[data-theme="dark"] .fb-editor .fb-callout,
+.fb-sheet[data-sheet="night"] .fb-editor .fb-callout { box-shadow: inset 0 1px 0 rgb(255 240 230 / 0.05), inset 0 0 0 1px rgb(255 240 230 / 0.06); }
+:root[data-theme="dark"] .fb-sheet[data-sheet]:not([data-sheet="night"]):not([data-sheet="art"]) .fb-editor .fb-callout {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 6%, transparent);
+}
 
 /* Code */
 .fb-editor pre.fb-code {
@@ -395,8 +401,10 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-editor > .fb[data-color="orange"] { --block-color: #d9801f; }
 .fb-editor > .fb[data-color="brown"] { --block-color: #7a4f24; }
 :root[data-theme="dark"] .fb-sheet:not([data-sheet]) .fb-editor > .fb[data-color="navy"],
+:root[data-theme="dark"] .fb-sheet[data-sheet="art"] .fb-editor > .fb[data-color="navy"],
 .fb-sheet[data-sheet="night"] .fb-editor > .fb[data-color="navy"] { --block-color: #7b8cff; }
 :root[data-theme="dark"] .fb-sheet:not([data-sheet]) .fb-editor > .fb[data-color="brown"],
+:root[data-theme="dark"] .fb-sheet[data-sheet="art"] .fb-editor > .fb[data-color="brown"],
 .fb-sheet[data-sheet="night"] .fb-editor > .fb[data-color="brown"] { --block-color: #c89565; }
 
 .fb-editor > .fb[data-align="center"] { text-align: center; }

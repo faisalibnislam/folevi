@@ -131,7 +131,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
   };
   if (docs === undefined) {
     return (
-      <div className="flex gap-8 overflow-hidden pb-7 pt-1" role="status" aria-busy aria-label="Loading">
+      <div className="flex gap-8 overflow-hidden pb-7 pt-2" role="status" aria-busy aria-label="Loading">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-[2px] rounded-r-[12px] bg-sunken motion-reduce:animate-none`} />
         ))}
@@ -141,14 +141,14 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
   // The cards fade out at either edge while there's more to scroll that way. A mask on the row, not a
   // coloured overlay, so the fade matches whatever is behind it (the glass panel, a note's artwork).
   const fadeMask = `linear-gradient(to right, ${edges.start ? "#000" : "transparent"} 0, #000 64px, #000 calc(100% - 64px), ${edges.end ? "#000" : "transparent"} 100%)`;
-  const arrow = "absolute top-[calc(50%-12px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[6px] bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[6px] bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div className="relative">
       <ul
         ref={setEl}
         aria-label={label}
         style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask }}
-        className="-mx-2 flex snap-x snap-mandatory scroll-px-2 gap-8 overflow-x-auto px-2 pb-7 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 -mb-5 flex snap-x snap-mandatory scroll-px-4 gap-8 overflow-x-auto px-4 pb-12 pt-2 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden"
       >
         {docs.slice(0, CAROUSEL_COUNT).map((d) => (
           <li key={d.id} style={{ width: CARD_WIDTH }} className="flex-none snap-start">

@@ -821,6 +821,16 @@ export const emptyTrash = mutation({
 });
 
 /** Follow-up pages of emptyTrash. Re-checks that the person may still do this before each page. */
+/** A page's derived fields (search text, excerpt, counts, preview), refreshed after a large batch of edits. */
+export const refreshDerivedLater = internalMutation({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+    if (doc) await refreshDerived(ctx, doc);
+    return null;
+  },
+});
+
 export const emptyTrashContinue = internalMutation({
   args: { profileId: v.id("profiles"), scope: vScope, cursor: v.string() },
   handler: async (ctx, args) => {

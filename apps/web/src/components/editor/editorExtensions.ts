@@ -6,6 +6,7 @@ import { BlockSelectionExtension } from "./blockSelection";
 import { FindReplace } from "./findReplace";
 import { Autolink } from "./autolink";
 import { BlockHighlight } from "./blockHighlight";
+import { PageLinkStatus } from "./pageLinkStatus";
 
 /**
  * The editor's extensions: every block and mark, their node views, undo, the drop and gap cursors, the
@@ -53,6 +54,7 @@ export function editorExtensions({
     FindReplace,
     Autolink,
     BlockHighlight,
+    PageLinkStatus,
     Triggers.configure({ onChange: onTrigger }),
   ];
 }

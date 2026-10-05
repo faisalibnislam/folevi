@@ -31,6 +31,7 @@ import { fail } from "./errors";
 import { mentionedIds, notify } from "./notify";
 import { ReaderLabels, titleIsShared } from "./linkLabels";
 import { copyCollectionsInto } from "./collections";
+import { internal } from "../_generated/api";
 
 export const MAX_BATCH = 100;
 
@@ -122,7 +123,18 @@ export class SyncEngine {
   }
 
   /** Scope an op is recorded under: the touched document's, else the one it names, the routing scope or the caller's Personal. */
+  private recordScopes = new Map<string, Scope>();
   private async recordScope(op: SyncOp): Promise<Scope> {
+    // Block ops on one page (a paste) share its scope: looked up once per batch.
+    const key = op.kind === "document.create" ? null : op.documentId;
+    const cached = key ? this.recordScopes.get(key) : undefined;
+    if (cached) return cached;
+    const scope = await this.findRecordScope(op);
+    if (key && op.kind !== "document.update") this.recordScopes.set(key, scope);
+    return scope;
+  }
+
+  private async findRecordScope(op: SyncOp): Promise<Scope> {
     const candidates = op.kind === "document.create" ? [op.document.id, op.document.parentDocumentId] : [op.documentId];
     for (const id of candidates) {
       const doc = typeof id === "string" ? await getDocumentByPublicId(this.ctx, id) : null;
@@ -272,6 +284,25 @@ export class SyncEngine {
     return doc;
   }
 
+  /**
+   * The document a block op writes to, checked once per batch (a paste of a hundred lines is a hundred ops
+   * on one page; checking access for each made big pastes slow to save). A document op in the same batch
+   * clears it, so later block ops see the change.
+   */
+  private blockDocs = new Map<string, Doc<"documents">>();
+  /** Blocks this batch created: nothing (tasks, backlinks) can be indexed for them yet. */
+  private newRows = new Set<string>();
+  /** Of those, the ones that need no task and no backlinks at all. */
+  private plainNewRows = new Set<Id<"blocks">>();
+  private insertedHere = new Map<string, number>();
+  private async blockDoc(publicId: string): Promise<Doc<"documents">> {
+    const cached = this.blockDocs.get(publicId);
+    if (cached) return cached;
+    const doc = await this.writableDoc(publicId);
+    this.blockDocs.set(publicId, doc);
+    return doc;
+  }
+
   private touch(doc: Doc<"documents">, blockRowId?: Id<"blocks">) {
     let t = this.touched.get(doc._id);
     if (!t) {
@@ -311,7 +342,7 @@ export class SyncEngine {
   }
 
   private async upsertBlock(op: Extract<SyncOp, { kind: "block.upsert" }>): Promise<ServerOpResult> {
-    const doc = await this.writableDoc(op.documentId);
+    const doc = await this.blockDoc(op.documentId);
     const incoming: WireBlock = { ...op.block };
     delete incoming.revision;
     const issues = validateWireBlock(incoming);
@@ -333,8 +364,12 @@ export class SyncEngine {
     const now = Date.now();
 
     if (!existing) {
-      if (doc.blockCount >= LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "This document has too many blocks.");
-      const rowId = await insertScoped(this.ctx, "blocks", scopeOfRow(doc), {
+      // The count as the batch began, plus what this batch has added.
+      const added = this.insertedHere.get(op.documentId) ?? 0;
+      if (doc.blockCount + added >= LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "This document has too many blocks.");
+      this.insertedHere.set(op.documentId, added + 1);
+      this.newRows.add(incoming.id);
+      const values = {
         blockId: incoming.id,
         documentId: doc._id,
         parentId,
@@ -350,11 +385,14 @@ export class SyncEngine {
         createdAt: now,
         updatedAt: now,
         updatedBy: this.profile._id,
-      });
+      };
+      const rowId = await insertScoped(this.ctx, "blocks", scopeOfRow(doc), values);
       this.touch(doc, rowId);
       this.trackMentions(doc, [], incoming);
-      const row = (await this.ctx.db.get(rowId))!;
-      return { opId: op.opId, status: "applied", revision: 1, block: toWireBlock(row), deleted: false, normalized: normalized || undefined };
+      // A new block with no task and no page links has nothing to index afterwards (see finish()).
+      if (incoming.type !== "todo" && !hasLinkTargets(values as unknown as Doc<"blocks">)) this.plainNewRows.add(rowId);
+      // What was just written (no need to read it back).
+      return { opId: op.opId, status: "applied", revision: 1, block: toWireBlock(values as unknown as Doc<"blocks">), deleted: false, normalized: normalized || undefined };
     }
 
     if (existing.deletedAt !== undefined) {
@@ -455,7 +493,7 @@ export class SyncEngine {
   }
 
   private async deleteBlock(op: Extract<SyncOp, { kind: "block.delete" }>): Promise<ServerOpResult> {
-    const doc = await this.writableDoc(op.documentId);
+    const doc = await this.blockDoc(op.documentId);
     const row = await this.findBlock(op.blockId);
     if (!row || row.documentId !== doc._id) return { opId: op.opId, status: "applied", block: null, deleted: true };
     if (row.deletedAt !== undefined) return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: true };
@@ -479,7 +517,7 @@ export class SyncEngine {
   }
 
   private async restoreBlock(op: Extract<SyncOp, { kind: "block.restore" }>): Promise<ServerOpResult> {
-    const doc = await this.writableDoc(op.documentId);
+    const doc = await this.blockDoc(op.documentId);
     const row = await this.findBlock(op.blockId);
     if (!row || row.documentId !== doc._id) return { opId: op.opId, status: "rejected", error: { code: "not_found", message: "Block not found." } };
     if (row.deletedAt === undefined) return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: false };
@@ -648,6 +686,7 @@ export class SyncEngine {
   }
 
   private async updateDoc(op: Extract<SyncOp, { kind: "document.update" }>): Promise<ServerOpResult> {
+    this.blockDocs.delete(op.documentId);
     const doc = await this.writableDoc(op.documentId);
     const patch: WireDocumentPatch = op.patch;
     const now = Date.now();
@@ -766,14 +805,31 @@ export class SyncEngine {
         seq,
       });
       for (const rowId of changedBlocks) {
+        if (this.plainNewRows.has(rowId)) continue;
         const row = await this.ctx.db.get(rowId);
         if (!row) continue;
-        await syncTaskProjection(this.ctx, row, fresh, this.profile._id);
-        await syncLinks(this.ctx, fresh, row);
+        // A block made in this batch has no task or backlinks yet: only a to-do needs a task, only a block
+        // with page links needs backlinks (a pasted page of plain lines skips both lookups per line).
+        const fresh_ = this.newRows.has(row.blockId);
+        if (!fresh_ || row.type === "todo") await syncTaskProjection(this.ctx, row, fresh, this.profile._id);
+        if (!fresh_ || hasLinkTargets(row)) await syncLinks(this.ctx, fresh, row);
       }
-      await refreshDerived(this.ctx, (await this.ctx.db.get(fresh._id))!);
+      // A big batch (a paste of many lines) gets its search text, counts and preview a moment later, so
+      // saving it doesn't wait on reading the whole page each time; small edits update them at once.
+      if (changedBlocks.size >= BULK_DERIVED) await this.ctx.scheduler.runAfter(0, internal.documents.refreshDerivedLater, { documentId: fresh._id });
+      else await refreshDerived(this.ctx, (await this.ctx.db.get(fresh._id))!);
     }
   }
+}
+
+const BULK_DERIVED = 20;
+
+/** Whether a block links to a page (a page card, or page links in its text or table cells). */
+function hasLinkTargets(row: Doc<"blocks">): boolean {
+  if (row.type === "page") return true;
+  const scan = (nodes: unknown): boolean => Array.isArray(nodes) && nodes.some((n) => n && typeof n === "object" && (n as { type?: string }).type === "pageLink");
+  if (scan(row.text)) return true;
+  return row.type === "table" && ((row.props as { rows?: unknown[][] }).rows ?? []).some((r) => r.some(scan));
 }
 
 /** Maintains the backlink index for one block. */

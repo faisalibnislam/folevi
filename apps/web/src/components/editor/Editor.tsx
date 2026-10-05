@@ -13,6 +13,7 @@ import { editorExtensions } from "./editorExtensions";
 import { blocksToDoc, diffBlocks, docToBlocks } from "./convert";
 import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "./paste";
 import { remoteTransaction } from "./remoteApply";
+import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
 import { pasteAddress } from "./autolink";
 import { EditorMenus } from "./EditorMenus";
 import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands";
@@ -393,6 +394,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           onCommentBlock={onCommentBlock}
         />
       ) : null}
+      {editor ? <PageLinkStatusWatcher editor={editor} /> : null}
     </div>
   );
 });

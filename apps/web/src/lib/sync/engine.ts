@@ -477,7 +477,8 @@ export class SyncEngine {
     this.flushing = true;
     try {
       for (let rounds = 0; rounds < 20; rounds++) {
-        const batched = sync.takeBatch(this.state, 50);
+        // As many as the server takes in one request (MAX_BATCH): a big paste saves in fewer round trips.
+        const batched = sync.takeBatch(this.state, 100);
         if (batched === this.state || batched.inflight.length === 0) break;
         this.commit(batched);
         await this.persisted();

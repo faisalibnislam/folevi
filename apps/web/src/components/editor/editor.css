@@ -52,6 +52,8 @@
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--doc-accent-soft, var(--color-accent-soft)) 85%, transparent);
   transition: background-color 200ms var(--motion-easing), box-shadow 200ms var(--motion-easing);
 }
+/* A [[ page link whose page is in Trash or gone. */
+.fb-editor .fb-page-link-gone, .fb-editor .fb-page-link-gone .fb-page-link { color: var(--color-ink-muted); text-decoration: line-through; }
 /* The text a link is being added to, while focus is in the link field. */
 .fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: 2px; }
 /* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */

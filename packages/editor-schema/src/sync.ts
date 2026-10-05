@@ -198,22 +198,66 @@ export function setConnection(prev: SyncState, connection: "online" | "offline")
   return state;
 }
 
-/** Moves up to `max` sendable ops to `inflight`. Returns the same state when a batch is already in flight. */
+/**
+ * Moves up to `max` sendable ops to `inflight`. Returns the same state when a batch is already in flight.
+ *
+ * A new block's children never go before the block itself: the server would find no parent, file the child
+ * at the top level, and the note would lose its nesting. (Typing in a line, then making a new line above it
+ * and tabbing the first under it, queues the child's edit first.) So an upsert waits for its parent's
+ * create in the same batch, and stays back with it when that create is held (an upload, a full batch).
+ */
 export function takeBatch(prev: SyncState, max = 100): SyncState {
   if (prev.inflight.length || prev.connection === "offline" || prev.authRequired) return prev;
   const state = clone(prev);
+  const order = new Map(state.pending.map((op, i) => [op, i]));
+  const unsentNew = new Set(state.pending.flatMap((op) => (op.kind === "block.upsert" && state.blocks[op.block.id]?.serverRevision == null ? [op.block.id] : [])));
+  const created = new Set<string>();
   const blocked = new Set<string>();
   const take: SyncOp[] = [];
   const keep: SyncOp[] = [];
-  for (const op of state.pending) {
+  const hold = (op: SyncOp) => {
     const bid = opBlockId(op);
-    const isBlocked = (op.kind === "block.upsert" && op.blockedBy) || (bid !== null && blocked.has(bid));
-    if (isBlocked) {
-      if (bid) blocked.add(bid);
-      keep.push(op);
-    } else if (take.length < max) take.push(op);
-    else keep.push(op);
+    if (bid) blocked.add(bid);
+    keep.push(op);
+  };
+  let queue = state.pending;
+  while (queue.length) {
+    const later: SyncOp[] = [];
+    const waiting = new Set<string>();
+    let moved = false;
+    for (const op of queue) {
+      const bid = opBlockId(op);
+      if ((op.kind === "block.upsert" && op.blockedBy) || (bid !== null && blocked.has(bid))) {
+        hold(op);
+        continue;
+      }
+      const parent = op.kind === "block.upsert" ? op.block.parentId : null;
+      const parentUnsent = parent !== null && unsentNew.has(parent) && !created.has(parent);
+      if (parentUnsent && blocked.has(parent)) {
+        hold(op);
+        continue;
+      }
+      if (parentUnsent || (bid !== null && waiting.has(bid))) {
+        // After its parent (and so are later ops on the same block, to keep their order).
+        if (bid) waiting.add(bid);
+        later.push(op);
+        continue;
+      }
+      if (take.length >= max) {
+        hold(op);
+        continue;
+      }
+      take.push(op);
+      moved = true;
+      if (op.kind === "block.upsert" && unsentNew.has(op.block.id)) created.add(op.block.id);
+    }
+    if (!moved) {
+      for (const op of later) hold(op);
+      break;
+    }
+    queue = later;
   }
+  keep.sort((a, b) => order.get(a)! - order.get(b)!);
   state.inflight = take;
   state.pending = keep;
   return state;

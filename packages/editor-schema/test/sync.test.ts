@@ -116,6 +116,28 @@ describe("sync reducer details", () => {
     expect(s.blocks.a!.block.text[0]).toEqual({ type: "text", text: "v3" });
   });
 
+  it("sends a new block before a child that was queued ahead of it", () => {
+    let s = sync.emptySyncState();
+    s = sync.remoteUpdate(s, { documentId: "d", block: { ...block("c", "v1"), revision: 1 }, deleted: false });
+    // Typed in C, then a new line N above it, then C tabbed under N.
+    s = sync.localUpsert(s, { opId: "1", documentId: "d", block: block("c", "v2"), fields: ["content"] });
+    s = sync.localUpsert(s, { opId: "2", documentId: "d", block: block("n", ""), fields: ["content", "position"] });
+    s = sync.localUpsert(s, { opId: "3", documentId: "d", block: { ...block("c", "v2"), parentId: "n" }, fields: ["position"] });
+    s = sync.takeBatch(s);
+    expect(s.inflight.map((op) => (op.kind === "block.upsert" ? op.block.id : null))).toEqual(["n", "c"]);
+    expect(s.pending).toEqual([]);
+  });
+
+  it("holds a child back while its new parent waits for an upload", () => {
+    let s = sync.emptySyncState();
+    s = sync.localUpsert(s, { opId: "1", documentId: "d", block: block("img", ""), fields: ["content", "position"], blockedBy: "u1" });
+    s = sync.localUpsert(s, { opId: "2", documentId: "d", block: { ...block("cap", "under"), parentId: "img" }, fields: ["content", "position"] });
+    s = sync.localUpsert(s, { opId: "3", documentId: "d", block: block("other", "x"), fields: ["content", "position"] });
+    s = sync.takeBatch(s);
+    expect(s.inflight.map((op) => (op.kind === "block.upsert" ? op.block.id : null))).toEqual(["other"]);
+    expect(s.pending.map((op) => op.opId)).toEqual(["1", "2"]);
+  });
+
   it("remote updates never clobber unsent local work", () => {
     let s = sync.emptySyncState();
     s = sync.remoteUpdate(s, { documentId: "d", block: { ...block("a", "v1"), revision: 1 }, deleted: false });

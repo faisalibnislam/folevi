@@ -163,16 +163,19 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
       setTurns((ts) => ts.map((t, i) => (i === index ? { ...t, outcome: { error: errorMessage(e) } } : t)));
     }
   };
-  // The box grows with what's typed, up to about six lines (then it scrolls).
+  // The box grows with what's typed, from two lines up to about six (then it scrolls). Measured only while
+  // the chat is showing (closed, it has no size), and again whenever it opens.
   useLayoutEffect(() => {
     const el = inputRef.current;
-    if (!el) return;
+    if (!el || !open || !el.getClientRects().length) return;
+    const cs = getComputedStyle(el);
+    const line = parseFloat(cs.lineHeight) || 21;
+    const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
     el.style.height = "auto";
-    const line = parseFloat(getComputedStyle(el).lineHeight) || 21;
-    const pad = parseFloat(getComputedStyle(el).paddingTop) + parseFloat(getComputedStyle(el).paddingBottom);
-    el.style.height = `${Math.min(el.scrollHeight, line * 6 + pad)}px`;
-    el.style.overflowY = el.scrollHeight > line * 6 + pad ? "auto" : "hidden";
-  }, [draft]);
+    const max = line * 6 + pad;
+    el.style.height = `${Math.max(line * 2 + pad, Math.min(el.scrollHeight, max))}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  }, [draft, open]);
 
   const send = async (question: string) => {
     const q = question.trim();
@@ -292,7 +295,7 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
               }
             }}
             placeholder={turns.length ? "Ask a follow-up…" : "Ask anything about your notes…"}
-            className="block w-full resize-none bg-transparent px-3.5 pb-2 pr-12 pt-3 text-[14px] text-ink outline-none placeholder:text-faint"
+            className="block min-h-[4.25rem] w-full resize-none bg-transparent px-3.5 pb-2.5 pr-12 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
           />
           <button type="button" aria-label="Ask" disabled={!draft.trim() || busy} onClick={() => void send(draft)} className="absolute bottom-2.5 right-2.5 grid h-8 w-8 place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-30">
             <ArrowUp size={16} aria-hidden />

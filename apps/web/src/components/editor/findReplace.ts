@@ -44,7 +44,9 @@ function foldCase(raw: string): { text: string; rawAt: number[] } {
 /** Every occurrence of `query` in the note's text, in document order (at most MAX_MATCHES). */
 export function findMatches(doc: PMNode, query: string, caseSensitive: boolean): FindMatch[] {
   if (!query) return [];
-  const needle = caseSensitive ? query : query.toLocaleLowerCase();
+  // Folded the same way as the text, a character at a time (lower-casing "ΟΔΟΣ" whole gives a final "ς",
+  // which the text's "σ" wouldn't match).
+  const needle = caseSensitive ? query : foldCase(query).text;
   const out: FindMatch[] = [];
   doc.descendants((node, pos) => {
     if (out.length >= MAX_MATCHES) return false;

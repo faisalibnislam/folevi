@@ -332,14 +332,21 @@ function buildEntries({
     }
   }
   if (target.date && editable) {
-    const pos = target.date.pos;
+    // Where the date sits inside its block, so it's found again even if text above it changed.
+    const inBlock = target.date.pos - blockPos;
+    const datePos = () => {
+      const at = live();
+      const p = at ? at.pos + inBlock : -1;
+      return p >= 0 && editor.state.doc.nodeAt(p)?.type.name === "dateMention" ? p : null;
+    };
     context.push(
       {
         label: "Change date…",
         icon: <CalendarDays size={14} />,
         run: () => {
           // The date's own click handler opens the picker.
-          const el = editor.view.nodeDOM(pos);
+          const p = datePos();
+          const el = p === null ? null : editor.view.nodeDOM(p);
           if (el instanceof HTMLElement) el.click();
         },
       },
@@ -347,8 +354,9 @@ function buildEntries({
         label: "Remove date",
         icon: <X size={14} />,
         run: () => {
-          const node = editor.state.doc.nodeAt(pos);
-          if (node?.type.name === "dateMention") editor.view.dispatch(editor.state.tr.delete(pos, pos + node.nodeSize));
+          const p = datePos();
+          const node = p === null ? null : editor.state.doc.nodeAt(p);
+          if (p !== null && node) editor.view.dispatch(editor.state.tr.delete(p, p + node.nodeSize));
         },
       },
     );
@@ -570,15 +578,20 @@ function buildEntries({
     blockEntries.push({ label: "Copy link to block", icon: <Link2 size={14} />, run: () => void copyText(`${location.origin}${location.pathname}#block-${id}`, "Link copied") });
   }
   if (editable) {
+    const doomed = new Set((range ? Array.from({ length: count }, (_, i) => range.from + i) : refs.map((r) => r.index)).map((i) => state.doc.maybeChild(i)?.attrs.id as string));
     blockEntries.push("separator", {
       label: count > 1 ? `Delete ${count} blocks` : "Delete block",
       icon: <Trash2 size={14} />,
       shortcut: "⌘⇧⌫",
       danger: true,
       run: () => {
-        const indices = range ? Array.from({ length: count }, (_, i) => range.from + i) : refs.map((r) => r.index);
+        // By id: an edit elsewhere since the menu opened would shift the indices onto other blocks.
+        const now: number[] = [];
+        editor.state.doc.forEach((n, _offset, i) => {
+          if (doomed.has(n.attrs.id as string)) now.push(i);
+        });
         clearBlockSelection(editor.view);
-        deleteBlocks(editor, indices);
+        if (now.length) deleteBlocks(editor, now);
       },
     });
   }

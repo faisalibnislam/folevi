@@ -10,6 +10,7 @@ import { TEXT_NODES } from "./convert";
 import { hiddenIndices, neighbourIndex } from "./blockSelectionState";
 import { setBlockSelection } from "./blockSelection";
 import { sliceToText } from "./clipboardText";
+import { clipboardSerializer } from "./clipboardHtml";
 
 /** Every top-level block has a unique id; depth is always valid. Runs after every transaction. */
 /** The empty line made for a composition that started over a selected block (see compositionend). */
@@ -83,6 +84,8 @@ export const BlockIdentity = Extension.create({
           handleClick: (_view, _pos, event) => (isMac ? event.metaKey : event.ctrlKey),
           // Text for other apps: one line per block, Markdown-style.
           clipboardTextSerializer: (slice) => sliceToText(slice),
+          // HTML for other apps too: real lists, tables and images (see clipboardHtml.ts).
+          clipboardSerializer: clipboardSerializer(this.editor.schema),
           // Typing while a whole block (an image, a table, a divider…) is selected writes on a new line after
           // it instead of replacing it.
           handleTextInput: (view, _from, _to, text) => {
@@ -754,7 +757,13 @@ export const BlockKeymap = Extension.create({
       }
       // Deleting into an atom block above (an image, a divider…) selects it first instead of removing it.
       if (prev.isAtom && !hiddenAbove) {
-        if (cur.empty) return deleteBlocks(editor, [index], false);
+        if (cur.empty) {
+          // The line goes and the block above is selected (left alone, the caret would jump to the line below).
+          const atom = cur.pos - prev.nodeSize;
+          if (!deleteBlocks(editor, [index], false)) return true;
+          editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, atom)).scrollIntoView());
+          return true;
+        }
         editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos - prev.nodeSize)).scrollIntoView());
         return true;
       }

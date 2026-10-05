@@ -9,7 +9,7 @@ import { dropTarget, subtreeRange } from "./commands";
 import { blockElements } from "./plugins";
 
 export type DragPayload =
-  | { kind: "block"; index: number }
+  | { kind: "block"; index: number; /** The last of several selected blocks (their subtrees move too). */ last?: number }
   | { kind: "insert"; label: string; icon?: string };
 
 export interface DropResult {
@@ -64,19 +64,33 @@ function rootSelector(dom: HTMLElement): string {
   return root ? `[data-fb-root="${CSS.escape(root.dataset.fbRoot!)}"] .fb-editor` : ".fb-editor";
 }
 
-/** Styles a range of top-level blocks (1-based nth-child range) without touching their DOM. */
-function rangeRule(dom: HTMLElement, index: number, count: number, body: string): () => void {
-  const sel = `${rootSelector(dom)} > :nth-child(n+${index + 1}):nth-child(-n+${index + count})`;
+/** The ids of a run of top-level blocks. */
+function idsOf(editor: Editor, index: number, count: number): string[] {
+  const ids: string[] = [];
+  for (let i = index; i < index + count && i < editor.state.doc.childCount; i++) {
+    const id = editor.state.doc.child(i).attrs.id as string | null;
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * Styles top-level blocks, by id, without touching their DOM. (By position it would drift: comment lines
+ * sit between blocks, and a collaborator's edit can shift everything while the rule is up.)
+ */
+function blocksRule(dom: HTMLElement, ids: string[], body: string): () => void {
+  if (!ids.length) return () => {};
+  const root = rootSelector(dom);
+  const sel = ids.map((id) => `${root} > [data-block-id="${CSS.escape(id)}"]`).join(", ");
   return injectRule(`${sel} { ${body} }`);
 }
 
 /** Briefly glows the blocks that just landed. */
 export function glowBlocks(editor: Editor, index: number, count: number) {
   const dom = editor.view.dom as HTMLElement;
-  const remove = rangeRule(
+  const remove = blocksRule(
     dom,
-    index,
-    count,
+    idsOf(editor, index, count),
     reducedMotion() ? "background: var(--color-ember-soft);" : "animation: fb-drop-glow 700ms var(--motion-easing) both;",
   );
   window.setTimeout(remove, 760);
@@ -105,14 +119,22 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   let target: DropResult | null = null;
   const scroller = scrollParent(dom);
 
-  const source =
-    payload.kind === "block"
-      ? (() => {
-          const range = subtreeRange(view.state, payload.index);
-          const first = view.state.doc.child(payload.index);
-          return { index: payload.index, count: range.count, depth: Number(first.attrs.depth ?? 0) };
-        })()
-      : null;
+  // What's being dragged: the block (or selected run of blocks) and everything nested under it. Found by
+  // id each time, so an edit from someone else mid-drag doesn't swap in a different block.
+  const firstId = payload.kind === "block" ? ((view.state.doc.maybeChild(payload.index)?.attrs.id as string | undefined) ?? null) : null;
+  const lastId = payload.kind === "block" ? ((view.state.doc.maybeChild(payload.last ?? payload.index)?.attrs.id as string | undefined) ?? null) : null;
+  const findSource = (): { index: number; count: number; depth: number } | null => {
+    if (payload.kind !== "block") return null;
+    let index = firstId ? -1 : payload.index;
+    let last = lastId ? -1 : (payload.last ?? payload.index);
+    view.state.doc.forEach((n, _offset, i) => {
+      if (firstId && n.attrs.id === firstId) index = i;
+      if (lastId && n.attrs.id === lastId) last = i;
+    });
+    if (index < 0 || last < index || last >= view.state.doc.childCount) return null;
+    return { index, count: last - index + subtreeRange(view.state, last).count, depth: Number(view.state.doc.child(index).attrs.depth ?? 0) };
+  };
+  let source = findSource();
 
   const buildGhost = () => {
     const g = document.createElement("div");
@@ -174,6 +196,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
       if (line) line.style.opacity = "0";
       return;
     }
+    source = findSource() ?? source;
     const desired =
       payload.kind === "block" && source ? source.depth + Math.round((px - startX) / indent) : Math.floor(Math.max(0, px - edRect.left) / indent);
     const t = dropTarget(boxes, py, desired, source ? { from: source.index, count: source.count } : null);
@@ -213,7 +236,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     line.className = `fb-drop-line${reduce ? " fb-drop-line-instant" : ""}`;
     line.setAttribute("aria-hidden", "true");
     document.body.appendChild(line);
-    if (source) unfade = rangeRule(dom, source.index, source.count, "opacity: 0.35; transition: opacity 120ms;");
+    if (source) unfade = blocksRule(dom, idsOf(editor, source.index, source.count), "opacity: 0.35; transition: opacity 120ms;");
     document.documentElement.classList.add("fb-dragging");
     raf = requestAnimationFrame(frame);
   };

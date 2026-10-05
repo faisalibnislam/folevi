@@ -1,7 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { beginPointerDrag, isDragging } from "./blockDrag";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -465,23 +465,78 @@ export function EditorMenus({
   }, [editor]);
 
   // ---------------------------------------------------------------- special inserts (slash menu + Insert panel)
+  // A block dropped from the Insert panel first makes an empty line for itself. Whatever happens next
+  // (picked, cancelled, failed), that line goes if it's still empty.
+  const dropLeftover = useCallback(() => {
+    const placeholder = dropPlaceholder.current;
+    dropPlaceholder.current = null;
+    if (!placeholder) return;
+    editor.state.doc.forEach((n, pos) => {
+      if (n.attrs.id === placeholder && n.type.name === "paragraph" && n.content.size === 0) {
+        editor.view.dispatch(editor.state.tr.delete(pos, pos + n.nodeSize).setMeta("addToHistory", false));
+      }
+    });
+  }, [editor]);
+  // File pickers say nothing when cancelled except this event.
+  useEffect(() => {
+    const inputs = [imageInput.current, fileInput.current];
+    for (const el of inputs) el?.addEventListener("cancel", dropLeftover);
+    return () => {
+      for (const el of inputs) el?.removeEventListener("cancel", dropLeftover);
+    };
+  }, [dropLeftover]);
+
+  // Changing a date: keep pointing at it while the note changes around it (a collaborator's edit above),
+  // and close if it's deleted.
+  const editingDate = datePicker?.mode === "edit";
+  useEffect(() => {
+    if (!editingDate) return;
+    const on = ({ transaction }: { transaction: Transaction }) => {
+      if (!transaction.docChanged) return;
+      setDatePicker((d) => {
+        if (d?.mode !== "edit") return d;
+        const r = transaction.mapping.mapResult(d.pos, 1);
+        return r.deleted ? null : r.pos === d.pos ? d : { mode: "edit", pos: r.pos };
+      });
+    };
+    editor.on("transaction", on);
+    return () => {
+      editor.off("transaction", on);
+    };
+  }, [editor, editingDate]);
+
   const insertCollection = useCallback(
     async (view: "table" | "gallery" | "board", name: string) => {
       try {
         // A brand-new page may still be on its way to the server; the collection needs it to exist.
+        // The block it was asked from (by id: the caret may move while the server answers).
+        const $head = editor.state.selection.$head;
+        const fromId = $head.depth >= 1 ? ($head.node(1).attrs.id as string | null) : null;
         await engine.whenDocumentOnServer(documentId);
         const r = await createCollection({ documentId, name, view });
+        let pos: number | null = null;
+        editor.state.doc.forEach((n, offset) => {
+          if (pos === null && fromId && n.attrs.id === fromId) pos = offset + (n.isTextblock ? 1 + n.content.size : 0);
+        });
+        if (pos !== null) editor.commands.setTextSelection(pos);
         insertBlockAfterCurrent(editor, "collection", { collectionId: r.collectionId, viewId: r.viewId });
       } catch (e) {
         toast.show(errorMessage(e), { tone: "error" });
+        dropLeftover();
       }
     },
-    [engine, documentId, createCollection, editor, toast],
+    [engine, documentId, createCollection, editor, toast, dropLeftover],
   );
 
   const special = useMemo<Record<SpecialInsert, () => void | Promise<void>>>(() => {
     // Without an account (the site's demo note), inserts that need the server ask to sign up instead.
-    const account = (feature: string, run: () => void | Promise<void>) => (env.demo ? () => env.unavailable(feature) : run);
+    const account = (feature: string, run: () => void | Promise<void>) =>
+      env.demo
+        ? () => {
+            env.unavailable(feature);
+            dropLeftover();
+          }
+        : run;
     return {
       image: account("Images", () => imageInput.current?.click()),
       unsplash: account("Images", () => setUnsplashOpen(true)),
@@ -503,7 +558,7 @@ export function EditorMenus({
         setDatePicker({ mode: "insert" });
       },
     };
-  }, [env, navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret]);
+  }, [env, navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret, dropLeftover]);
 
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
@@ -707,11 +762,17 @@ export function EditorMenus({
         icon: <FileText size={15} />,
         run: () => void editor.chain().focus().insertContent({ type: "pageLink", attrs: { documentId: d.id, label: d.title || "Untitled" } }).insertContent(" ").run(),
       }));
-    if (debounced) {
-      items.push({ id: "__create", label: `Create page “${debounced}”`, keywords: "", icon: <Plus size={15} />, run: () => void createNestedPage(debounced, true) });
+    // Named from what's typed now, not the search that's still catching up.
+    const typed = open.query.trim();
+    if (typed) {
+      items.push({ id: "__create", label: `Create page “${typed}”`, keywords: "", icon: <Plus size={15} />, run: () => void createNestedPage(typed, true) });
     }
     return items;
-  }, [env, open?.kind, debounced, searchResults, recent, editor, documentId, createNestedPage]);
+  }, [env, open, debounced, searchResults, recent, editor, documentId, createNestedPage]);
+  // Results for an older query, or none yet: Enter waits for them rather than linking the wrong page or
+  // creating a duplicate of one that's still loading.
+  const pagesSettling =
+    open?.kind === "page" && !env.demo && (open.query.trim() !== debounced || (debounced ? searchResults === undefined : recent === undefined));
 
   // ---------------------------------------------------------------- mentions & dates
   const people = useQuery(api.comments.mentionable, open?.kind === "mention" ? { documentId } : "skip");
@@ -752,6 +813,15 @@ export function EditorMenus({
   }, [open, people, today, editor, special.pickDate]);
 
   const items = open?.kind === "slash" ? filteredSlash : open?.kind === "page" ? pageItems : mentionItems;
+  // A different list (results arrived, people loaded above the dates): start from the top again, so the
+  // highlighted row is never one that moved under it or no longer exists.
+  const itemsKey = items.map((i) => i.id).join("|");
+  useEffect(() => setActive(0), [itemsKey]);
+  const current = items[Math.min(active, items.length - 1)];
+  const queuedEnter = useRef(false);
+  useEffect(() => {
+    if (!open) queuedEnter.current = false;
+  }, [open]);
   const menuLabel = open?.kind === "slash" ? "Insert block" : open?.kind === "page" ? "Link to page" : "Mention a person or date";
 
   const run = useCallback(
@@ -777,10 +847,14 @@ export function EditorMenus({
         e.preventDefault();
         e.stopImmediatePropagation();
         setActive((a) => Math.max(0, a - 1));
-      } else if ((e.key === "Enter" || e.key === "Tab") && items[active]) {
+      } else if ((e.key === "Enter" || e.key === "Tab") && pagesSettling) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        run(items[active]!);
+        queuedEnter.current = true;
+      } else if ((e.key === "Enter" || e.key === "Tab") && current) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        run(current);
       } else if (e.key === "Escape") {
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -790,7 +864,13 @@ export function EditorMenus({
     const dom = editor.view.dom;
     dom.addEventListener("keydown", onKey, true);
     return () => dom.removeEventListener("keydown", onKey, true);
-  }, [open, items, active, run, editor, triggerKey]);
+  }, [open, items, current, pagesSettling, run, editor, triggerKey]);
+  // Enter pressed while the page search caught up: take the top result once it's in.
+  useEffect(() => {
+    if (!queuedEnter.current || pagesSettling || !open || !items[0]) return;
+    queuedEnter.current = false;
+    run(items[0]);
+  }, [pagesSettling, open, items, run]);
 
   // Combobox-style semantics on the editor while a suggestion list is open, so screen readers announce
   // the active option as it changes (aria-expanded isn't allowed on role=textbox; the list is linked
@@ -832,7 +912,8 @@ export function EditorMenus({
         onChange={(e) => {
           const files = [...(e.target.files ?? [])];
           e.target.value = "";
-          if (files.length) void onInsertFiles(files);
+          if (files.length) void Promise.resolve(onInsertFiles(files)).finally(dropLeftover);
+          else dropLeftover();
         }}
       />
       <input
@@ -843,13 +924,15 @@ export function EditorMenus({
         onChange={(e) => {
           const files = [...(e.target.files ?? [])];
           e.target.value = "";
-          if (files.length) void onInsertFiles(files);
+          if (files.length) void Promise.resolve(onInsertFiles(files)).finally(dropLeftover);
+          else dropLeftover();
         }}
       />
       <UnsplashDialog
         open={unsplashOpen}
         onClose={() => {
           setUnsplashOpen(false);
+          dropLeftover();
           editor.view.focus();
         }}
         onPick={(photo) => {
@@ -867,6 +950,7 @@ export function EditorMenus({
         open={bookmarkPrompt}
         onClose={() => {
           setBookmarkPrompt(false);
+          dropLeftover();
           editor.view.focus();
         }}
         onSubmit={(url) => {
@@ -886,6 +970,7 @@ export function EditorMenus({
             onSave={onInsertAudio}
             onClose={() => {
               setRecorderAnchor(null);
+              dropLeftover();
               editor.view.focus();
             }}
           />
@@ -899,16 +984,7 @@ export function EditorMenus({
           today={today}
           onClose={() => {
             setDatePicker(null);
-            // Cancelled after a drop: the empty line made for it goes again.
-            const placeholder = dropPlaceholder.current;
-            dropPlaceholder.current = null;
-            if (placeholder) {
-              editor.state.doc.forEach((n, pos) => {
-                if (n.attrs.id === placeholder && n.type.name === "paragraph" && n.content.size === 0) {
-                  editor.view.dispatch(editor.state.tr.delete(pos, pos + n.nodeSize).setMeta("addToHistory", false));
-                }
-              });
-            }
+            dropLeftover();
             editor.view.focus();
           }}
         />
@@ -1133,8 +1209,9 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     const left = Math.min(Math.max(8, state.left - w / 2), window.innerWidth - w - 8);
-    const top = state.top - h - 8 >= 8 ? state.top - h - 8 : state.bottom + 8;
-    setPlaced({ left, top });
+    // A selection taller than the window (⌘A in a long note): the toolbar stays on screen.
+    const top = Math.min(state.top - h - 8 >= 8 ? state.top - h - 8 : state.bottom + 8, window.innerHeight - h - 8);
+    setPlaced({ left, top: Math.max(8, top) });
   }, [state, mode]);
 
   // Pressed states follow every change (⌘B, undo…); the toolbar follows the text when the page scrolls.
@@ -1474,6 +1551,18 @@ const TURN_INTO = [
   ["code", "Code", { language: "plaintext" }],
 ] as const;
 
+/** Where the menu's blocks are now (found by id), or null if they've gone. */
+function liveRange(editor: Editor, menu: { from: number; to: number; fromId: string | null; toId: string | null }): { from: number; to: number } | null {
+  if (!menu.fromId || !menu.toId) return menu.from < editor.state.doc.childCount ? { from: menu.from, to: Math.min(menu.to, editor.state.doc.childCount - 1) } : null;
+  let from = -1;
+  let to = -1;
+  editor.state.doc.forEach((n, _offset, i) => {
+    if (n.attrs.id === menu.fromId) from = i;
+    if (n.attrs.id === menu.toId) to = i;
+  });
+  return from >= 0 && to >= from ? { from, to } : null;
+}
+
 /**
  * Hover gutter with a drag handle and block menu. The menu is also reachable from the keyboard with
  * ⌘. (Ctrl+.): focus moves into it, ↑/↓ move between items, Escape returns to the text. With several
@@ -1482,7 +1571,9 @@ const TURN_INTO = [
 function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number, depth: number, last?: number) => { index: number; count: number } | null; onCommentBlock?: (blockId: string) => void }) {
   const aiOn = useAiEnabled();
   const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number } | null>(null);
-  const [menu, setMenu] = useState<{ from: number; to: number; left: number; top: number; bottom: number } | null>(null);
+  // The blocks the menu is for, by index and by id: indices for drawing, ids to find them again when the
+  // note changes while the menu is open (a collaborator's edit above shifts every index).
+  const [menu, setMenu] = useState<{ from: number; to: number; fromId: string | null; toId: string | null; left: number; top: number; bottom: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
   const justDragged = useRef(false);
@@ -1536,7 +1627,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       const el = blockDom(editor, from);
       const r = el?.getBoundingClientRect();
       if (!el || !r) return;
-      setMenu({ from, to, left: left ?? blockIndentLeft(el), top: r.top, bottom: r.top + 24 });
+      const id = (i: number) => (editor.state.doc.maybeChild(i)?.attrs.id as string | undefined) ?? null;
+      setMenu({ from, to, fromId: id(from), toId: id(to), left: left ?? blockIndentLeft(el), top: r.top, bottom: r.top + 24 });
     },
     [editor],
   );
@@ -1556,6 +1648,20 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     dom.addEventListener("keydown", onKey);
     return () => dom.removeEventListener("keydown", onKey);
   }, [editor, openMenuFor]);
+
+  // The note changed while the menu is open: follow its blocks, or close if they're gone.
+  useEffect(() => {
+    if (!menu?.fromId) return;
+    const onUpdate = () => {
+      const at = liveRange(editor, menu);
+      if (!at) setMenu(null);
+      else if (at.from !== menu.from || at.to !== menu.to) setMenu({ ...menu, ...at });
+    };
+    editor.on("update", onUpdate);
+    return () => {
+      editor.off("update", onUpdate);
+    };
+  }, [editor, menu]);
 
   // Focus moves into the menu when it opens.
   useEffect(() => {
@@ -1586,13 +1692,14 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   };
 
   const act = (fn: () => void) => {
-    if (!menu) return;
+    const at = menu && liveRange(editor, menu);
+    if (!at) return closeMenu();
     editor.view.focus();
     // Where the caret was (by block id, as the action may replace the block, e.g. Turn into Code).
     const $caret = editor.state.selection.$head;
     const caretId = $caret.depth >= 1 ? ($caret.node(1).attrs.id as string | null) : null;
     const caretOffset = $caret.depth >= 1 ? $caret.parentOffset : 0;
-    selectTargets(menu.from, menu.to);
+    selectTargets(at.from, at.to);
     fn();
     // The block's text was selected only so the action applied to it: the caret goes back where it was
     // (or to the end of the text), so the next key typed doesn't replace the text or land elsewhere.
@@ -1690,9 +1797,11 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
               const inSelection = selected && hover.index >= selected.from && hover.index <= selected.to;
               const index = inSelection ? selected.from : hover.index;
               const last = inSelection ? selected.to : hover.index;
+              // Found again by id when dropped (the note may have changed during the drag).
+              const ids = [editor.state.doc.maybeChild(index)?.attrs.id as string | undefined, editor.state.doc.maybeChild(last)?.attrs.id as string | undefined];
               beginPointerDrag({
                 editor,
-                payload: { kind: "block", index },
+                payload: { kind: "block", index, last },
                 event: e,
                 onStart: () => {
                   justDragged.current = true;
@@ -1700,7 +1809,15 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                   setDragging(true);
                   setHover(null);
                 },
-                onDrop: (t) => onDropBlock(index, t.index, t.depth, last),
+                onDrop: (t) => {
+                  let from = ids[0] ? -1 : index;
+                  let to = ids[1] ? -1 : last;
+                  editor.state.doc.forEach((n, _offset, i) => {
+                    if (ids[0] && n.attrs.id === ids[0]) from = i;
+                    if (ids[1] && n.attrs.id === ids[1]) to = i;
+                  });
+                  return from < 0 || to < from ? null : onDropBlock(from, t.index, t.depth, to);
+                },
                 onEnd: () => {
                   setDragging(false);
                   window.setTimeout(() => (justDragged.current = false), 0);
@@ -1764,13 +1881,14 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                         hint: "⌘J",
                         icon: <AiIcon size={14} className="text-[#7c6cf0]" />,
                         run: () => {
-                          if (!menu) return;
+                          const at = menu && liveRange(editor, menu);
+                          if (!at) return closeMenu();
                           // The text of the chosen blocks, as one range.
                           let from = 0;
                           let to = 0;
                           editor.state.doc.forEach((node, offset, index) => {
-                            if (index === menu.from) from = offset + 1;
-                            if (index === menu.from + count - 1) to = offset + node.nodeSize - 1;
+                            if (index === at.from) from = offset + 1;
+                            if (index === at.to) to = offset + node.nodeSize - 1;
                           });
                           const text = editor.state.doc.textBetween(from, to, "\n");
                           clearBlockSelection(editor.view);
@@ -1827,8 +1945,9 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                   icon: <Trash2 size={14} />,
                   danger: true,
                   run: () => {
-                    if (!menu) return;
-                    const indices = Array.from({ length: count }, (_, i) => menu.from + i);
+                    const at = menu && liveRange(editor, menu);
+                    if (!at) return closeMenu();
+                    const indices = Array.from({ length: at.to - at.from + 1 }, (_, i) => at.from + i);
                     clearBlockSelection(editor.view);
                     deleteBlocks(editor, indices);
                     closeMenu();

@@ -185,9 +185,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     onCreate: () => {
       hydrated.current = true;
     },
-    onUpdate: ({ transaction }) => {
+    onUpdate: ({ editor: ed, transaction }) => {
       // Only genuine local document changes count (setEditable and meta-only transactions emit updates too).
-      if (!transaction.docChanged || transaction.getMeta("remote")) return;
+      // Someone who can only read may still open and close toggles: that's theirs alone, never saved.
+      if (!transaction.docChanged || transaction.getMeta("remote") || !ed.isEditable) return;
       dirty.current = true;
       if (hydrated.current) engine.setEditing(documentId, true);
       if (flushTimer.current) clearTimeout(flushTimer.current);

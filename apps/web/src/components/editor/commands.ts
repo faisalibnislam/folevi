@@ -134,7 +134,8 @@ export function turnInto(editor: Editor, type: string, attrs: Record<string, unk
     const from = tr.mapping.map(b.pos);
     const to = tr.mapping.map(b.pos + b.node.nodeSize);
     if (schemaType.name === "codeBlock" && b.node.type.name !== "codeBlock") {
-      const code = schemaType.create(baseAttrs, b.node.textContent ? state.schema.text(b.node.textContent) : null);
+      const text = codeText(b.node);
+      const code = schemaType.create(baseAttrs, text ? state.schema.text(text) : null);
       tr.replaceWith(from, to, code);
       if (b.index === caretBlock) caretPos = from + 1 + Math.min(caretOffset, code.content.size);
     } else if (b.node.type.name === "codeBlock" && schemaType.name !== "codeBlock") {
@@ -195,6 +196,13 @@ export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
     const range = subtreeRange(state, b.index);
     const applied = next - depth;
     if (applied === 0) continue;
+    // Its deepest nested block can't go past the limit either: clamping that one alone would turn a child
+    // into a sibling.
+    if (applied > 0) {
+      let deepest = depth;
+      for (let i = b.index + 1; i < b.index + range.count; i++) deepest = Math.max(deepest, Number(state.doc.child(i).attrs.depth ?? 0));
+      if (deepest + applied > LIMITS.maxDepth) continue;
+    }
     // Nesting under a collapsed toggle opens it, so the block doesn't vanish.
     if (applied > 0) {
       for (let i = b.index - 1; i >= 0; i--) {
@@ -219,6 +227,24 @@ export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
   editor.view.dispatch(closeHistory(tr));
   endHistoryGroup(editor);
   return true;
+}
+
+/** A line's text as code: line breaks stay line breaks, and mentions, dates and page links keep their text. */
+function codeText(node: EditorState["doc"]): string {
+  return node.textBetween(0, node.content.size, "", (leaf) => {
+    switch (leaf.type.name) {
+      case "hardBreak":
+        return "\n";
+      case "mention":
+        return `@${String(leaf.attrs.label ?? "")}`;
+      case "dateMention":
+        return String(leaf.attrs.date ?? "");
+      case "pageLink":
+        return `[[${String(leaf.attrs.label ?? "")}]]`;
+      default:
+        return "";
+    }
+  });
 }
 
 /**

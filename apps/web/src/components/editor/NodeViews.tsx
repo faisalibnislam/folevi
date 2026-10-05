@@ -776,7 +776,8 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             </span>
           </span>
           {showImage ? (
-            <span className="relative hidden w-[34%] max-w-[260px] flex-none border-l border-line bg-sunken sm:block" aria-hidden>
+            // The standard social image shape (1.91:1), so the whole picture shows rather than a cropped strip.
+            <span className="relative my-3 mr-3 hidden aspect-[1.91/1] w-[34%] max-w-[260px] flex-none self-center overflow-hidden rounded-[6px] bg-sunken shadow-[inset_0_0_0_1px_var(--color-line)] sm:block" aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={a.image!} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setImageFailed(true)} className="absolute inset-0 h-full w-full object-cover" />
             </span>

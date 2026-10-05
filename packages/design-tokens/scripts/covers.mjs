@@ -64,15 +64,5 @@ for (const file of files) {
 }
 writeFileSync(resolve(out, "covers.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
-// Folder colours are the styles' light page colours (one per distinct colour, in style order), named after
-// the first style that has it. Ids are the style's name as a slug, so they stay put when styles are rebuilt.
-const seen = new Set();
-const folderColors = [];
-for (const s of manifest) {
-  if (seen.has(s.paper)) continue;
-  seen.add(s.paper);
-  folderColors.push({ id: s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), name: s.name, hex: s.paper });
-}
-writeFileSync(resolve(out, "folder-colors.json"), `${JSON.stringify(folderColors, null, 2)}\n`);
-console.log(`wrote ${folderColors.length} folder colours`);
+// Folder colours are their own palette now (covers/folder-colors.json, edited by hand), not the styles' page colours.
 console.log(`wrote ${manifest.length} styles`);

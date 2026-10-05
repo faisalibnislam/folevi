@@ -3,15 +3,15 @@
 import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { Check } from "lucide-react";
-import { DEFAULT_FOLDER_COLOR, FOLDER_COLORS } from "@/lib/folderColors";
+import { FOLDER_COLORS, folderColorId } from "@/lib/folderColors";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 
-/** Pick a folder colour: the note styles' light page colours, named after their style. */
+/** Pick a folder colour from the palette's 25. */
 export function FolderColorDialog({ open, onClose, folder }: { open: boolean; onClose: () => void; folder: { id: string; name: string; color: string | null } }) {
   const setColor = useMutation(api.organization.setFolderColor);
   const toast = useToast();
-  const current = folder.color ?? DEFAULT_FOLDER_COLOR;
+  const current = folderColorId(folder.color);
   return (
     <Dialog open={open} onClose={onClose} title={`Color for “${folder.name}”`} size="sm">
       <div role="radiogroup" aria-label="Folder color" className="grid grid-cols-5 gap-2.5">

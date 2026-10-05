@@ -14,7 +14,7 @@ export type DemoFolder = { name: string; color: string; age: string; notes: Demo
 export const DEMO_FOLDERS: DemoFolder[] = [
   {
     name: "Projects",
-    color: "summer-sky",
+    color: "sky",
     age: "2 hours ago",
     notes: [
       { title: "Launch checklist", style: "Harbor blue", lines: ["Final copy, then the press kit.", "Everyone signs off by Wednesday."] },
@@ -24,7 +24,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Personal",
-    color: "peach-haze",
+    color: "orange",
     age: "Sep 21",
     notes: [
       { title: "Weekly reset", lines: ["Clear the inbox, plan the week, water the plants.", "Sunday evening, twenty minutes."] },
@@ -34,7 +34,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Clients",
-    color: "ultramarine",
+    color: "indigo",
     age: "12 mins ago",
     notes: [
       { title: "Bakery rebrand: kickoff", style: "Wood thrush", lines: ["New logo and menu boards before the summer opening.", "Next call on Tuesday at 10."] },
@@ -45,7 +45,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Reading",
-    color: "irises",
+    color: "emerald",
     age: "3 days ago",
     notes: [
       { title: "Reading shelf", style: "Poppy print", lines: ["Books in progress, books waiting, books finished.", "Two library copies due back soon."] },
@@ -55,7 +55,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Travel",
-    color: "neon-silk",
+    color: "pink",
     age: "1 hour ago",
     notes: [
       { title: "Coastal weekend", style: "Watercolour marsh", lines: ["A long weekend by the sea in October.", "Book the ferry for Friday morning."] },
@@ -67,7 +67,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Recipes",
-    color: "red-lacquer",
+    color: "red",
     age: "5 days ago",
     notes: [
       { title: "Soups for winter", lines: ["Leek and potato, then the red lentil one.", "Freeze half of each batch."] },
@@ -77,7 +77,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Research",
-    color: "galvanized",
+    color: "slate",
     age: "Sep 18",
     notes: [
       { title: "Interview notes", lines: ["Five calls so far, two more next week.", "Most people keep notes in more than one place."] },
@@ -87,7 +87,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Meetings",
-    color: "weathered-wood",
+    color: "amber",
     age: "4 hours ago",
     notes: [
       { title: "Design review", lines: ["Tighter spacing on the cards.", "Try the lighter grey for the sidebar."] },
@@ -97,7 +97,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Ideas",
-    color: "runners",
+    color: "violet",
     age: "2 days ago",
     notes: [
       { title: "Weekend workshop", lines: ["A half-day on binding small notebooks.", "Ask the library about the back room."] },
@@ -107,7 +107,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Garden",
-    color: "crackle-green",
+    color: "sage",
     age: "6 days ago",
     notes: [
       { title: "Compost notes", lines: ["Turn it every two weeks.", "More dry leaves when it gets wet."] },
@@ -117,7 +117,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Health",
-    color: "seafoam-drift",
+    color: "teal",
     age: "Sep 12",
     notes: [
       { title: "Appointments", lines: ["Dentist on the 3rd at 9:30.", "Eye test some time in November."] },
@@ -126,7 +126,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
   },
   {
     name: "Finance",
-    color: "kraft",
+    color: "yellow",
     age: "1 day ago",
     notes: [
       { title: "Tax documents", lines: ["Receipts in the blue folder.", "Send everything to the accountant by the 31st."] },

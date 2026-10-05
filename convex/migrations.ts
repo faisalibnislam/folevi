@@ -6,7 +6,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { liveBlocks, refreshDerived, syncTaskProjection } from "./lib/documents";
 import { randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
-import { isFolderColor, randomFolderColor } from "./lib/folderColors";
+import { currentFolderColor, isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { startTrial } from "./lib/billing";
 import { hasValidScope, SCOPED_TABLES, sameScope, scopeOfRow, type ScopedTable } from "./lib/scope";
 
@@ -104,8 +104,9 @@ export const folderColorsFromStyles = internalMutation({
     let updated = 0;
     for (const f of page.page) {
       if (f.color && isFolderColor(f.color)) continue;
-      const mapped = f.color ? OLD_FOLDER_COLOR_TO_STYLE[f.color] : undefined;
-      await ctx.db.patch(f._id, { color: mapped && isFolderColor(mapped) ? mapped : randomFolderColor() });
+      // Through the style colours to the current palette (a re-run keeps folders' colours close to what they had).
+      const mapped = currentFolderColor(f.color ? (OLD_FOLDER_COLOR_TO_STYLE[f.color] ?? f.color) : null);
+      await ctx.db.patch(f._id, { color: mapped ?? randomFolderColor() });
       updated++;
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.folderColorsFromStyles, { cursor: page.continueCursor });

@@ -9,7 +9,8 @@
     ".": "./generated/tokens.ts",
     "./covers.json": "./covers/covers.json",
     "./palette": "./src/palette.ts",
-    "./folder-colors.json": "./covers/folder-colors.json"
+    "./folder-colors.json": "./covers/folder-colors.json",
+    "./folder-colors-legacy.json": "./covers/folder-colors-legacy.json"
   },
   "scripts": {
     "build": "node scripts/build.mjs",

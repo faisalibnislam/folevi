@@ -219,8 +219,8 @@ export function PageSidebar({ note, chrome = "web" }: { note: NoteContent; chrom
 
 const DEFAULT_FOLDERS = [
   { color: "irises", label: "Projects" },
-  { color: "poppy-print", label: "Reading" },
-  { color: "harbor-blue", label: "Studio" },
+  { color: "coral", label: "Reading" },
+  { color: "blue", label: "Studio" },
 ];
 
 /**

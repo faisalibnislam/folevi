@@ -65,11 +65,11 @@ test("a new note on a folder page lands in that folder with no page icon; folder
   await nav.getByRole("button", { name: "Folder options for Projects" }).click();
   await expect(page.getByRole("menuitem", { name: /^Move into/ })).toHaveCount(0);
   await page.getByRole("menuitem", { name: "Change color…" }).click();
-  await page.getByRole("dialog", { name: /Color for/ }).getByRole("radio", { name: "Crackle green" }).click();
+  await page.getByRole("dialog", { name: /Color for/ }).getByRole("radio", { name: "Sage" }).click();
   await nav.getByRole("link", { name: "Projects" }).hover();
   await nav.getByRole("button", { name: "Folder options for Projects" }).click();
   await page.getByRole("menuitem", { name: "Change color…" }).click();
-  await expect(page.getByRole("dialog", { name: /Color for/ }).getByRole("radio", { name: "Crackle green" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("dialog", { name: /Color for/ }).getByRole("radio", { name: "Sage" })).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("Escape");
 
   // Home: Recent notes, Starred and Recent folders, each with See all.

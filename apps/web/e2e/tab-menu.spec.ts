@@ -41,3 +41,40 @@ test("the tab menu closes a tab, the tabs to its right or left, or all of them",
   await expect(page).toHaveURL(/\/documents/);
   await context.close();
 });
+
+test("tabs reorder by dragging, or ⌥⇧← / ⌥⇧→ from the keyboard, and a drag doesn't open the tab", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { context, page } = await newPerson(browser, "Dragger");
+  for (const t of ["Alpha", "Bravo"]) await newPage(page, t);
+  const strip = page.getByRole("navigation", { name: "Open pages" });
+  const tab = (name: string) => strip.getByRole("link", { name, exact: true });
+  const names = async () => (await strip.getByRole("link").allTextContents()).map((s) => s.trim()).filter((s) => s !== "Home");
+  await expect.poll(names, { timeout: 20_000 }).toEqual(["Welcome to Folevi", "Alpha", "Bravo"]);
+  const url = page.url();
+  // Drag Bravo (showing) left past Alpha and Welcome.
+  const from = (await tab("Bravo").boundingBox())!;
+  const to = (await tab("Welcome to Folevi").boundingBox())!;
+  await page.mouse.move(from.x + 20, from.y + from.height / 2);
+  await page.mouse.down();
+  for (let x = from.x + 20; x > to.x; x -= 20) await page.mouse.move(x, from.y + from.height / 2);
+  await page.mouse.up();
+  await expect.poll(names).toEqual(["Bravo", "Welcome to Folevi", "Alpha"]);
+  // Dragging Alpha didn't open it either: still on Bravo.
+  const alpha = (await tab("Alpha").boundingBox())!;
+  const welcome = (await tab("Welcome to Folevi").boundingBox())!;
+  await page.mouse.move(alpha.x + 20, alpha.y + alpha.height / 2);
+  await page.mouse.down();
+  for (let x = alpha.x + 20; x > welcome.x + 10; x -= 20) await page.mouse.move(x, alpha.y + alpha.height / 2);
+  await page.mouse.up();
+  await expect.poll(names).toEqual(["Bravo", "Alpha", "Welcome to Folevi"]);
+  expect(page.url()).toBe(url);
+  // From the keyboard.
+  await tab("Bravo").focus();
+  await page.keyboard.press("Alt+Shift+ArrowRight");
+  await expect.poll(names).toEqual(["Alpha", "Bravo", "Welcome to Folevi"]);
+  await expect(tab("Bravo")).toBeFocused();
+  // The order is kept after a reload.
+  await page.reload();
+  await expect.poll(names, { timeout: 20_000 }).toEqual(["Alpha", "Bravo", "Welcome to Folevi"]);
+  await context.close();
+});

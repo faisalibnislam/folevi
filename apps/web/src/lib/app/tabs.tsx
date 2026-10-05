@@ -31,6 +31,8 @@ interface TabsValue {
    * `then` is shown instead (a tab that stays), else Home.
    */
   closeMany: (ids: string[], then?: string) => void;
+  /** Moves a tab to another place in the strip (dragging it, or ⌥⇧← / ⌥⇧→ on it). */
+  move: (id: string, to: number) => void;
   /** Files the open page under its top-level page's tab (nested pages never get a tab of their own). */
   place: (documentId: string, root: { id: string; title: string }) => void;
 }
@@ -130,6 +132,19 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     [tabs, setTabs, docId, navigate, homeHref],
   );
 
+  const move = useCallback(
+    (id: string, to: number) => {
+      setTabs((cur) => {
+        const from = cur.findIndex((t) => t.id === id);
+        if (from === -1 || to < 0 || to >= cur.length || from === to) return cur;
+        const next = [...cur];
+        next.splice(to, 0, ...next.splice(from, 1));
+        return next;
+      });
+    },
+    [setTabs],
+  );
+
   const place = useCallback(
     (documentId: string, root: { id: string; title: string }) => {
       const i = tabs.findIndex((t) => tabPage(t) === documentId);
@@ -155,7 +170,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     setViewState((prev) => (prev && prev.path === next.path && prev.title === next.title ? prev : next));
   }, []);
 
-  const value = useMemo(() => ({ tabs, view, setView, homeHref, close, closeMany, place }), [tabs, view, setView, homeHref, close, closeMany, place]);
+  const value = useMemo(() => ({ tabs, view, setView, homeHref, close, closeMany, move, place }), [tabs, view, setView, homeHref, close, closeMany, move, place]);
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }
 

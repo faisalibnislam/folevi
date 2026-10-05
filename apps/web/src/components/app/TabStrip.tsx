@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ChevronRight, FileText, Folder, Hash, House, LayoutList, Plus, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabPage, useTabs } from "@/lib/app/tabs";
@@ -24,7 +24,7 @@ const ARROW = "grid h-8 w-6 flex-none place-items-center rounded-[6px] text-mute
 export function TabStrip() {
   const { sidebarOpen } = useShell();
   const { route, pathname } = useAppRouter();
-  const { tabs, close, closeMany, view } = useTabs();
+  const { tabs, close, closeMany, move, view } = useTabs();
   // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
   // its title arrived, or renamed elsewhere, would keep the old one).
   const live = useQuery(api.documents.titles, tabs.length ? { documentIds: tabs.map((t) => t.id) } : "skip");
@@ -66,6 +66,64 @@ export function TabStrip() {
     if (!el) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.7), behavior: reduce ? "auto" : "smooth" });
+  };
+  // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
+  // places with a neighbour once it passes that tab's middle, as tabs do in a browser.
+  const drag = useRef<{ id: string; el: HTMLElement; startX: number; grab: number; x: number; dx: number; moved: boolean } | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const justDragged = useRef(false);
+  const follow = () => {
+    const d = drag.current;
+    if (!d?.moved) return;
+    const r = d.el.getBoundingClientRect();
+    const natural = r.left - d.dx;
+    const nav = navRef.current?.getBoundingClientRect();
+    let left = d.x - d.grab;
+    if (nav) left = Math.min(Math.max(left, nav.left), nav.right - r.width);
+    d.dx = left - natural;
+    d.el.style.transform = `translateX(${d.dx}px)`;
+    const i = tabs.findIndex((t) => t.id === d.id);
+    const middle = (id: string | undefined) => {
+      const box = id ? navRef.current?.querySelector(`[data-tab="${CSS.escape(id)}"]`)?.getBoundingClientRect() : undefined;
+      return box ? box.left + box.width / 2 : null;
+    };
+    const after = middle(tabs[i + 1]?.id);
+    const before = middle(tabs[i - 1]?.id);
+    if (after !== null && left + r.width > after) move(d.id, i + 1);
+    else if (before !== null && left < before) move(d.id, i - 1);
+  };
+  // After a swap the tab sits in its new slot; keep it under the pointer.
+  useLayoutEffect(follow, [tabs]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dragStart = (e: PointerEvent<HTMLDivElement>, id: string) => {
+    if (e.button !== 0 || e.pointerType === "touch" || (e.target as Element).closest("button")) return;
+    const el = e.currentTarget;
+    drag.current = { id, el, startX: e.clientX, grab: e.clientX - el.getBoundingClientRect().left, x: e.clientX, dx: 0, moved: false };
+  };
+  const dragMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    d.x = e.clientX;
+    if (!d.moved) {
+      if (Math.abs(e.clientX - d.startX) < 5) return;
+      d.moved = true;
+      d.el.setPointerCapture(e.pointerId);
+      setDragging(d.id);
+    }
+    follow();
+  };
+  const dragEnd = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d?.moved) return;
+    // Settle into the slot, then let the click that ends the drag pass without opening the tab.
+    d.el.style.transition = "transform 150ms var(--ease-folio)";
+    d.el.style.transform = "";
+    window.setTimeout(() => {
+      d.el.style.transition = "";
+      setDragging(null);
+    }, 150);
+    justDragged.current = true;
+    window.setTimeout(() => (justDragged.current = false), 0);
   };
   const fade = 28;
   const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${fade}px, #000 calc(100% - ${fade}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
@@ -134,7 +192,16 @@ export function TabStrip() {
           return (
             <div
               key={t.id}
-              className={`${tabBase} min-w-[172px] flex-[0_1_284px] pr-1 ${active ? tabOn : tabOff}`}
+              data-tab={t.id}
+              className={`${tabBase} min-w-[172px] flex-[0_1_284px] pr-1 ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+              onPointerDown={(e) => dragStart(e, t.id)}
+              onPointerMove={dragMove}
+              onPointerUp={dragEnd}
+              onPointerCancel={dragEnd}
+              onDragStart={(e) => e.preventDefault()}
+              onClickCapture={(e) => {
+                if (justDragged.current) e.preventDefault();
+              }}
               onAuxClick={(e) => {
                 if (e.button === 1) {
                   e.preventDefault();
@@ -147,6 +214,13 @@ export function TabStrip() {
               }}
               // From the keyboard too (the Menu key or Shift+F10 on the tab).
               onKeyDown={(e) => {
+                // ⌥⇧← / ⌥⇧→ moves the tab (the keyboard's way to drag it).
+                if (e.altKey && e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+                  e.preventDefault();
+                  const i = tabs.findIndex((x) => x.id === t.id);
+                  move(t.id, i + (e.key === "ArrowLeft" ? -1 : 1));
+                  return;
+                }
                 if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
                 e.preventDefault();
                 const r = e.currentTarget.getBoundingClientRect();

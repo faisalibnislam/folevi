@@ -24,7 +24,7 @@ export function useEngineStatus(engine: SyncEngine | null) {
   );
 }
 
-export function useLocalStorage<T>(key: string, initial: T): [T, (v: T) => void] {
+export function useLocalStorage<T>(key: string, initial: T): [T, (v: T | ((current: T) => T)) => void] {
   const value = useSyncExternalStore(
     (cb) => {
       const handler = (e: StorageEvent | Event) => {
@@ -47,9 +47,16 @@ export function useLocalStorage<T>(key: string, initial: T): [T, (v: T) => void]
     () => null,
   );
   const parsed = value === null ? initial : (JSON.parse(value) as T);
-  const set = (v: T) => {
+  // A function gets the value as stored right now (not as of this render), so quick updates in a row
+  // build on each other instead of the last one overwriting the others.
+  const set = (v: T | ((current: T) => T)) => {
     try {
-      localStorage.setItem(key, JSON.stringify(v));
+      let next = v;
+      if (typeof v === "function") {
+        const raw = localStorage.getItem(key);
+        next = (v as (current: T) => T)(raw === null ? initial : (JSON.parse(raw) as T));
+      }
+      localStorage.setItem(key, JSON.stringify(next));
     } catch {
       /* ignore */
     }

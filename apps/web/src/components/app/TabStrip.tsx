@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, FileText, Folder, Hash, House, LayoutList, Plus, X } from "lucide-react";
+import { ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ChevronRight, FileText, Folder, Hash, House, LayoutList, Plus, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabPage, useTabs } from "@/lib/app/tabs";
 import { Button } from "@/components/ui/Button";
+import { ContextMenu } from "@/components/ui/Menu";
+import { useQuery } from "convex/react";
+import { api } from "@/lib/convex/api";
 import { useShell } from "./Shell";
 import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
@@ -21,7 +24,12 @@ const ARROW = "grid h-8 w-6 flex-none place-items-center rounded-[6px] text-mute
 export function TabStrip() {
   const { sidebarOpen } = useShell();
   const { route, pathname } = useAppRouter();
-  const { tabs, close, view } = useTabs();
+  const { tabs, close, closeMany, view } = useTabs();
+  // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
+  // its title arrived, or renamed elsewhere, would keep the old one).
+  const live = useQuery(api.documents.titles, tabs.length ? { documentIds: tabs.map((t) => t.id) } : "skip");
+  // The tab menu (right-click): close this tab, those to its right or left, or all of them.
+  const [tabMenu, setTabMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const createDocument = useCreateDocument();
   const docId = route.name === "doc" ? route.id : null;
   // The first tab is always Home (the dashboard); other list views don't take it over. While one is open it
@@ -122,7 +130,7 @@ export function TabStrip() {
         ) : null}
         {tabs.map((t) => {
           const active = tabPage(t) === docId;
-          const label = t.title || "Untitled";
+          const label = live?.[t.id]?.title || t.title || "Untitled";
           return (
             <div
               key={t.id}
@@ -132,6 +140,17 @@ export function TabStrip() {
                   e.preventDefault();
                   close(t.id);
                 }
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setTabMenu({ id: t.id, at: { x: e.clientX, y: e.clientY } });
+              }}
+              // From the keyboard too (the Menu key or Shift+F10 on the tab).
+              onKeyDown={(e) => {
+                if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+                e.preventDefault();
+                const r = e.currentTarget.getBoundingClientRect();
+                setTabMenu({ id: t.id, at: { x: r.left + 8, y: r.bottom + 4 } });
               }}
             >
               <AppLink href={`/d/${tabPage(t)}`} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label}>
@@ -150,6 +169,26 @@ export function TabStrip() {
           );
         })}
       </nav>
+      {tabMenu ? (() => {
+        const i = tabs.findIndex((t) => t.id === tabMenu.id);
+        if (i < 0) return null;
+        const left = tabs.slice(0, i).map((t) => t.id);
+        const right = tabs.slice(i + 1).map((t) => t.id);
+        return (
+          <ContextMenu
+            at={tabMenu.at}
+            label="Tab options"
+            onClose={() => setTabMenu(null)}
+            items={[
+              { label: "Close tab", icon: <X size={14} />, onSelect: () => close(tabMenu.id) },
+              { label: "Close tabs to the right", icon: <ArrowRightToLine size={14} />, disabled: !right.length, onSelect: () => closeMany(right, tabMenu.id) },
+              { label: "Close tabs to the left", icon: <ArrowLeftToLine size={14} />, disabled: !left.length, onSelect: () => closeMany(left, tabMenu.id) },
+              "separator",
+              { label: "Close all tabs", icon: <XCircle size={14} />, danger: true, onSelect: () => closeMany(tabs.map((t) => t.id)) },
+            ]}
+          />
+        );
+      })() : null}
       <div className="flex-1" />
       {/* Always here: a new note opens in its own tab (in the open folder, else in Drafts). */}
       <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="flex-none">

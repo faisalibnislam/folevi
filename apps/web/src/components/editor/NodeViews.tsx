@@ -23,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { plainText, sanitizeHref, type InlineNode } from "@folevi/editor-schema";
+import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
@@ -692,12 +693,21 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     },
     [env.demo, fetchPreview, getPos, editor, updateAttributes],
   );
+  // An address saved broken ("https://Address:https://site.com/", from text pasted after the "https://"
+  // the field started with) is repaired, and its page read again.
+  useEffect(() => {
+    if (!editable || !a.url) return;
+    const fixed = webAddressIn(a.url);
+    if (!fixed || fixed === a.url || webAddressIn(a.url) === sanitizeHref(a.url)) return;
+    updateAttributes({ url: fixed, title: hostOf(fixed), description: null, siteName: null, image: null, icon: null });
+    void loadPreview(fixed, true);
+  }, [editable, a.url, updateAttributes, loadPreview]);
   useEffect(() => {
     if (!editable || !a.url || previewed.has(a.url)) return;
-    // A new bookmark, or one saved before previews existed.
-    if (a.image || a.description || (a.title && a.title !== host && a.title !== a.url)) return;
+    // A new bookmark, or one saved before previews (or their images and icons) existed.
+    if (a.image || a.icon || (a.description && a.title && a.title !== host && a.title !== a.url)) return;
     void loadPreview(a.url, false);
-  }, [editable, a.url, a.image, a.description, a.title, host, loadPreview]);
+  }, [editable, a.url, a.image, a.icon, a.description, a.title, host, loadPreview]);
 
   const startEditing = () => {
     setAddress(a.url ?? "");
@@ -717,8 +727,8 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
 
   // A changed address is saved once it's a web address, and its page's preview is read again.
   const saveAddress = (): boolean => {
-    const next = sanitizeHref(address.trim());
-    if (!next || !/^https?:\/\//i.test(next)) {
+    const next = webAddressIn(address);
+    if (!next) {
       setAddressError("Enter a web address starting with http:// or https://");
       return false;
     }

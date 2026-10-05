@@ -26,6 +26,29 @@ export function addressIn(word: string): { text: string; href: string } | null {
   return href ? { text, href } : null;
 }
 
+/**
+ * The web address in what was typed or pasted for a bookmark: the whole text when it's a sound address,
+ * otherwise the last http(s) address inside it ("https://" left in the field before a pasted link, or
+ * "Address: https://…" copied with its label). Null when there's none.
+ */
+export function webAddressIn(input: string): string | null {
+  const text = input.trim();
+  const sound = (s: string) => {
+    const href = sanitizeHref(s);
+    if (!href || !/^https?:\/\//i.test(href)) return null;
+    try {
+      const u = new URL(href);
+      return u.hostname.includes(".") && !u.username && !u.password ? href : null;
+    } catch {
+      return null;
+    }
+  };
+  const whole = sound(text);
+  if (whole) return whole;
+  const at = Math.max(text.lastIndexOf("https://"), text.lastIndexOf("http://"));
+  return at > 0 ? sound(text.slice(at).split(/\s/)[0]!) : null;
+}
+
 /** Links the address just before `pos` (the caret) in its line, if there is one not linked yet. */
 export function linkWordBefore(state: EditorState, pos: number, tr: Transaction): boolean {
   const $pos = state.doc.resolve(pos);

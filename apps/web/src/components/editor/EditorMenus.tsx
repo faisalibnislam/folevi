@@ -99,6 +99,7 @@ import { Select } from "@/components/ui/Select";
 import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
 import { keyLabel, withKeyLabels } from "@/lib/shortcuts";
+import { webAddressIn } from "./autolink";
 import { setRangeHighlight } from "./blockHighlight";
 
 interface MenuItem {
@@ -952,8 +953,8 @@ function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: (
         id={formId}
         onSubmit={(e) => {
           e.preventDefault();
-          const href = sanitizeHref(value);
-          if (!href || !/^https?:\/\//.test(href)) {
+          const href = webAddressIn(value);
+          if (!href) {
             setError("Enter a web address starting with http:// or https://");
             return;
           }

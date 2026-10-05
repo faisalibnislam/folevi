@@ -31,6 +31,7 @@ import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
 import { FLOWCHART_SYSTEM, flowchartForPrompt, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
+import { ACT_SYSTEM, checkPlan, type AiAction } from "./lib/aiActions";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 const model = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
@@ -424,6 +425,15 @@ export const gather = internalQuery({
 
 const vTurn = v.object({ role: v.union(v.literal("user"), v.literal("assistant")), text: v.string() });
 
+/** Whether the person asked for a change to their notes (write notes, put them in a folder), not an answer. */
+function parseAct(raw: string): boolean {
+  try {
+    return (JSON.parse(raw) as { act?: unknown }).act === true;
+  } catch {
+    return false;
+  }
+}
+
 function parseQueries(raw: string, fallback: string): string[] {
   try {
     const parsed = JSON.parse(raw) as { queries?: unknown };
@@ -453,7 +463,7 @@ export const ask = action({
     /** Write the answer into this stream as it's generated (startStream). */
     streamId: v.optional(v.id("aiStreams")),
   },
-  handler: async (ctx, args): Promise<{ answer: string; sources: { id: string; title: string }[] }> => {
+  handler: async (ctx, args): Promise<{ answer: string; sources: { id: string; title: string }[]; actions?: AiAction[] }> => {
     // Signed in (checked here), then profile, scope access and budget (ai.begin).
     await requireIdentity(ctx);
     const question = args.question.trim().slice(0, MAX_QUESTION);
@@ -463,13 +473,16 @@ export const ask = action({
     // The estimate: the search-terms call (Flash-Lite), and the answer at its largest (every note it may read).
     const plan: PlannedCall[] = [
       ...(args.range !== "note" ? [{ fast: true, inputChars: 600 + question.length + Math.min(historyChars, 1500), maxOutputTokens: 200 }] : []),
-      { fast: false, inputChars: PERSONA.length + 600 + question.length + historyChars + (args.documentId ? FOCUS_CHARS : 0) + (args.range !== "note" ? 8 * (NOTE_CHARS + 80) : 0), maxOutputTokens: 2048 },
+      // Large enough for either an answer or a plan of changes (which can carry whole notes).
+      { fast: false, inputChars: PERSONA.length + ACT_SYSTEM.length + 600 + question.length + historyChars + (args.documentId ? FOCUS_CHARS : 0) + (args.range !== "note" ? 8 * (NOTE_CHARS + 80) : 0), maxOutputTokens: 8192 },
     ];
     const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note", plan });
     return await metered(ctx, holdId, async (meter) => {
       if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
 
       const notes: SourceNote[] = [];
+      let act = false;
+      let queries: string[] = [question];
       if (args.documentId) notes.push(await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }));
       if (args.range !== "note") {
         const context = history.map((t) => t.text).join("\n").slice(-1500);
@@ -479,9 +492,47 @@ export const ask = action({
           temperature: 0,
           maxOutputTokens: 200,
           system: "You turn a question about someone's personal notes into full-text search queries.",
-          prompt: `Conversation so far (may be empty):\n${context}\n\nQuestion: ${question}\n\nReturn JSON {"queries": [...]} with 2 to 4 short keyword queries (1-4 words each, no punctuation) likely to match the words used in the relevant notes. Include synonyms. Use the question's language.`,
+          prompt: `Conversation so far (may be empty):\n${context}\n\nQuestion: ${question}\n\nReturn JSON {"queries": [...], "act": boolean}. "queries": 2 to 4 short keyword queries (1-4 words each, no punctuation) likely to match the words used in the relevant notes. Include synonyms. Use the question's language. "act": true only when the person asks you to change their notes: write or create notes, save something as a note, make a folder, or put/move notes into a folder. A question, a summary or a request to draft text in the chat is false.`,
         }, meter);
-        notes.push(...(await ctx.runQuery(internal.ai.gather, { scope: args.scope, queries: parseQueries(raw, question), exclude: args.documentId, limit: 8, folderId: args.folderId })));
+        act = parseAct(raw);
+        queries = parseQueries(raw, question);
+        notes.push(...(await ctx.runQuery(internal.ai.gather, { scope: args.scope, queries, exclude: args.documentId, limit: 8, folderId: args.folderId })));
+      }
+
+      // A change to make: a plan the person checks and applies (Ask AI never changes notes by itself).
+      if (act) {
+        const folders = await ctx.runQuery(internal.aiActions.folders, { scope: args.scope });
+        // Asked from a folder, notes elsewhere may be the ones to move into it: look beyond it too.
+        if (args.folderId) {
+          const seen = new Set(notes.map((n) => n.id));
+          for (const n of await ctx.runQuery(internal.ai.gather, { scope: args.scope, queries, exclude: args.documentId, limit: 8 })) if (!seen.has(n.id)) notes.push(n);
+        }
+        const here = args.folderId ? folders.find((f) => f.id === args.folderId) : undefined;
+        const convo = history.map((t) => `${t.role === "user" ? "Person" : "Assistant"}: ${t.text}`).join("\n");
+        const raw = await gemini({
+          json: true,
+          temperature: 0.2,
+          maxOutputTokens: 8192,
+          system: `${PERSONA}\n\n${ACT_SYSTEM}`,
+          prompt: [
+            `<folders>\n${JSON.stringify(folders)}\n</folders>`,
+            here ? `The person is looking at the folder "${here.name}" (id ${here.id}); "this folder" means it.` : "",
+            `<notes>\n${notes.map((n) => JSON.stringify({ id: n.id, title: n.title, text: n.text.slice(0, 1500) })).join("\n") || "(none)"}\n</notes>`,
+            convo ? `<conversation>\n${convo}\n</conversation>` : "",
+            `Request: ${question}`,
+          ].filter(Boolean).join("\n\n"),
+        }, meter);
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          parsed = null;
+        }
+        const actions = checkPlan(parsed, folders, notes);
+        const reply = typeof (parsed as { reply?: unknown })?.reply === "string" ? String((parsed as { reply: string }).reply).slice(0, 1000) : "";
+        const answer = actions.length ? reply || "Here's what I'll change. Check it, then apply." : reply || "I couldn't work out what to change from that. Say which notes to write, or which folder to use.";
+        if (args.streamId) await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: answer, status: "done" });
+        return { answer, sources: [], actions };
       }
 
       const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");

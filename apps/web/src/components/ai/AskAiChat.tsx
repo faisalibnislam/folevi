@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/lib/convex/api";
+import { useAppState } from "@/lib/app/state";
 import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowUp, Copy, FileText, Folder, Loader2, RotateCcw, X } from "lucide-react";
+import { ArrowRight, ArrowUp, Check, Copy, FileText, Folder, FolderPlus, Loader2, RotateCcw, X } from "lucide-react";
 import { useAppRouter } from "@/lib/app/router";
 import { modKey } from "@/lib/hooks/useEngine";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
@@ -11,11 +14,27 @@ import { useAiStream } from "./useAiStream";
 import { markdownToPlain } from "./insert";
 import { useAi, type AskTurn } from "./useAi";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
+import { errorMessage } from "@/components/ui/Toast";
+
+/** A change Ask AI proposes (convex/lib/aiActions.ts); nothing happens until the person applies it. */
+type AiAction =
+  | { type: "createFolder"; name: string }
+  | { type: "createNote"; title: string; markdown: string; folderId?: string; folderName?: string }
+  | { type: "moveNote"; noteId: string; noteTitle: string; folderId?: string; folderName?: string };
+
+interface Applied {
+  folders: { id: string; name: string }[];
+  notes: { id: string; title: string }[];
+  moved: number;
+}
 
 interface Turn {
   question: string;
   answer?: string;
   sources?: { id: string; title: string }[];
+  actions?: AiAction[];
+  /** "applying", the result, "dismissed", or an error message. */
+  outcome?: "applying" | "dismissed" | Applied | { error: string };
   error?: AiProblem;
 }
 
@@ -131,6 +150,30 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [turns, busy]);
 
+  const applyActions = useMutation(api.aiActions.apply);
+  const { scope: appScope } = useAppState();
+  const apply = async (index: number) => {
+    const turn = turns[index];
+    if (!turn?.actions || turn.outcome) return;
+    setTurns((ts) => ts.map((t, i) => (i === index ? { ...t, outcome: "applying" } : t)));
+    try {
+      const result = await applyActions({ scope: appScope, actions: turn.actions });
+      setTurns((ts) => ts.map((t, i) => (i === index ? { ...t, outcome: result } : t)));
+    } catch (e) {
+      setTurns((ts) => ts.map((t, i) => (i === index ? { ...t, outcome: { error: errorMessage(e) } } : t)));
+    }
+  };
+  // The box grows with what's typed, up to about six lines (then it scrolls).
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const line = parseFloat(getComputedStyle(el).lineHeight) || 21;
+    const pad = parseFloat(getComputedStyle(el).paddingTop) + parseFloat(getComputedStyle(el).paddingBottom);
+    el.style.height = `${Math.min(el.scrollHeight, line * 6 + pad)}px`;
+    el.style.overflowY = el.scrollHeight > line * 6 + pad ? "auto" : "hidden";
+  }, [draft]);
+
   const send = async (question: string) => {
     const q = question.trim();
     if (!q || busy) return;
@@ -140,9 +183,9 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
     setBusy(true);
     try {
       const streamId = await stream.begin().catch(() => undefined);
-      const { answer, sources } = await ask(q, { history, folderId: scope?.id, streamId });
+      const { answer, sources, actions } = await ask(q, { history, folderId: scope?.id, streamId });
       await stream.finish(answer);
-      setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, answer: answer || "(stopped)", sources } : t)));
+      setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, answer: answer || "(stopped)", sources, actions: actions?.length ? actions : undefined } : t)));
     } catch (e) {
       setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, error: aiProblem(e) } : t)));
     } finally {
@@ -176,6 +219,7 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
             {t.answer ? (
               <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
                 <AiMarkdown markdown={t.answer} />
+                {t.actions ? <ActionsCard actions={t.actions} outcome={t.outcome} onApply={() => void apply(i)} onDismiss={() => setTurns((ts) => ts.map((x, k) => (k === i ? { ...x, outcome: "dismissed" } : x)))} onOpen={(href) => { onNavigate(); navigate(href); }} /> : null}
                 {t.sources?.length ? (
                   <div className="mt-3 border-t border-line/70 pt-2.5">
                     <p className="ui-caps mb-1.5">Sources</p>
@@ -242,7 +286,7 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 void send(draft);
               }
@@ -264,5 +308,71 @@ function Conversation({ open, initial, folder, onNavigate }: { open: boolean; in
         </div>
       </div>
     </>
+  );
+}
+
+/** The changes Ask AI proposes, to check and apply (or not). After applying, links to what was made. */
+function ActionsCard({ actions, outcome, onApply, onDismiss, onOpen }: { actions: AiAction[]; outcome: Turn["outcome"]; onApply: () => void; onDismiss: () => void; onOpen: (href: string) => void }) {
+  const where = (a: { folderId?: string; folderName?: string }) => (a.folderName ? ` in ${a.folderName}` : "");
+  const applied = outcome && typeof outcome === "object" && "notes" in outcome ? outcome : null;
+  return (
+    <div className="mt-3 rounded-[12px] bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
+      <p className="ui-caps mb-2">{applied ? "Done" : "Changes to make"}</p>
+      <ul className="space-y-1.5 text-[13px] text-ink">
+        {actions.map((a, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <span className="mt-0.5 flex-none text-muted" aria-hidden>
+              {applied ? <Check size={14} /> : a.type === "createFolder" ? <FolderPlus size={14} /> : a.type === "createNote" ? <FileText size={14} /> : <ArrowRight size={14} />}
+            </span>
+            <span className="min-w-0">
+              {a.type === "createFolder" ? (
+                <>New folder <strong className="font-semibold text-heading">{a.name}</strong></>
+              ) : a.type === "createNote" ? (
+                <>New note <strong className="font-semibold text-heading">{a.title}</strong>{where(a)}</>
+              ) : (
+                <>Move <strong className="font-semibold text-heading">{a.noteTitle}</strong> to {a.folderName ?? "the folder"}</>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {applied ? (
+        applied.notes.length || applied.folders.length ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {applied.folders.map((f) => (
+              <button key={f.id} type="button" onClick={() => onOpen(`/folders/${f.id}`)} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[var(--glass-active)] px-2.5 py-1 text-[12.5px] text-ink hover:text-heading">
+                <Folder size={12} aria-hidden className="flex-none text-muted" />
+                <span className="truncate">{f.name}</span>
+              </button>
+            ))}
+            {applied.notes.map((n) => (
+              <button key={n.id} type="button" onClick={() => onOpen(`/d/${n.id}`)} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[var(--glass-active)] px-2.5 py-1 text-[12.5px] text-ink hover:text-heading">
+                <FileText size={12} aria-hidden className="flex-none text-muted" />
+                <span className="truncate">{n.title}</span>
+              </button>
+            ))}
+          </div>
+        ) : null
+      ) : outcome === "dismissed" ? (
+        <p className="mt-2 text-[12.5px] text-muted">Not applied.</p>
+      ) : (
+        <>
+          {outcome && typeof outcome === "object" && "error" in outcome ? (
+            <p role="alert" className="mt-2 text-[12.5px] text-danger">
+              {outcome.error}
+            </p>
+          ) : null}
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={onApply} disabled={outcome === "applying"} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-heading px-3 text-[13px] font-medium text-canvas disabled:opacity-60">
+              {outcome === "applying" ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Check size={14} aria-hidden />}
+              {outcome === "applying" ? "Applying…" : "Apply changes"}
+            </button>
+            <button type="button" onClick={onDismiss} disabled={outcome === "applying"} className="h-8 rounded-[8px] px-3 text-[13px] text-muted hover:bg-[var(--glass-active)] hover:text-heading">
+              Not now
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

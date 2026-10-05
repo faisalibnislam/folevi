@@ -274,13 +274,14 @@ function MenuPanel({
               onClose(true);
               item.onSelect();
             }}
-            className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.danger ? "!text-danger" : ""}`}
+            // A row with a second line (a workspace and its plan) gets room to breathe.
+            className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.description ? "!gap-3 py-2" : ""} ${item.danger ? "!text-danger" : ""}`}
           >
             {item.icon ? <span className="text-muted" aria-hidden>{item.icon}</span> : null}
             {item.description ? (
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block truncate">{item.label}</span>
-                <span className="block truncate text-[11.5px] text-muted">{item.description}</span>
+                <span className="mt-0.5 block truncate text-[11.5px] text-muted">{item.description}</span>
               </span>
             ) : (
               <span className="flex-1">{item.label}</span>

@@ -81,7 +81,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
     {
       label: "Personal",
       description: plan ? `${profile.displayName} · ${plan}` : profile.displayName,
-      icon: <PersonalMark size={18} />,
+      icon: <PersonalMark size={26} />,
       checked: context.kind === "personal",
       onSelect: () => switchTo({ kind: "personal" }),
     },
@@ -90,7 +90,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
       label: w.name,
       // "Owner · Pro": your role here, and this workspace's own plan.
       description: `${workspaceRoleLabel(w.role)} · ${w.plan.shortName}`,
-      icon: <WorkspaceLogo workspace={w} size={18} />,
+      icon: <WorkspaceLogo workspace={w} size={26} />,
       checked: context.kind === "workspace" && context.workspaceId === w.id,
       onSelect: () => switchTo({ kind: "workspace", workspaceId: w.id }),
     })),
@@ -146,7 +146,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
         side="top"
         align="start"
         className="w-full"
-        menuClassName="w-full min-w-64"
+        menuClassName="w-full min-w-64 pt-3"
         triggerClassName="flex h-12 w-full items-center gap-2.5 rounded-[6px] px-2 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)]"
         items={items}
         trigger={

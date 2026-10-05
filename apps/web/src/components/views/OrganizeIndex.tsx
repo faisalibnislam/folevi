@@ -87,7 +87,7 @@ function shortAge(t: number): string {
 export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; parentName?: string }) {
   const label = `${f.name}${parentName ? `, in ${parentName}` : ""}, ${pages(f.documentCount)}, updated ${formatRelative(f.updatedAt)}`;
   return (
-    <div className={FOLDER_CARD_BOX}>
+    <div data-ctx-host="" className={FOLDER_CARD_BOX}>
       <AppLink
         href={`/folders/${f.id}`}
         aria-label={label}
@@ -187,7 +187,7 @@ export function FoldersIndex() {
         ) : (
           <ul className="ui-card mt-6 divide-y divide-line overflow-hidden rounded-[6px]" aria-label="Folders">
             {list.map((f) => (
-              <li key={f.id} className="group relative">
+              <li key={f.id} data-ctx-host="" className="group relative">
                 <AppLink href={`/folders/${f.id}`} className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none">
                   <FolderGlyph color={f.color} size={24} />
                   <span className="min-w-0 flex-1 truncate font-medium">

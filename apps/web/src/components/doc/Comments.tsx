@@ -488,7 +488,7 @@ function CommentRow({
     ...(c.canDelete ? [{ label: "Delete", danger: true, onSelect: onDelete }] : []),
   ];
   return (
-    <li className={`group relative flex gap-2.5 px-4 py-2 ${isPending(c.id) ? "opacity-60" : ""}`}>
+    <li data-ctx-host="" className={`group relative flex gap-2.5 px-4 py-2 ${isPending(c.id) ? "opacity-60" : ""}`}>
       <Avatar name={c.authorName} url={c.authorAvatarUrl} size={24} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline gap-1 pr-7 text-[12.5px]">
@@ -853,7 +853,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
             // Threads that can't float under their block open here (also one whose block is folded away).
             const inline = !t.blockId || t.blockExists === false || focusThreadId === t.id;
             return (
-              <li key={t.id} className="group/thread relative">
+              <li key={t.id} data-ctx-host="" className="group/thread relative">
                 {!isPending(t.id) ? (
                   <MenuButton
                     label="Thread actions"

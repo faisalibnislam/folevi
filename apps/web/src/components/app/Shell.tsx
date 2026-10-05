@@ -15,6 +15,7 @@ import { CommandPalette } from "./CommandPalette";
 import { QuickAddTask } from "./QuickAddTask";
 import { RouteView } from "./RouteView";
 import { TabStrip } from "./TabStrip";
+import { AppContextMenu } from "./AppContextMenu";
 import { AskAiChat } from "@/components/ai/AskAiChat";
 import { useAiAccess } from "@/components/ai/useAi";
 import { SyncStatus } from "./SyncStatus";
@@ -323,6 +324,7 @@ export function Shell() {
         </div>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <AppContextMenu />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
       {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} /> : null}

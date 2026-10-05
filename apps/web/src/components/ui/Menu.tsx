@@ -117,7 +117,7 @@ export function MenuButton({
  * A right-click (or Shift+F10 / context-menu key) menu at a point: the same menu as MenuButton's, opened
  * where the pointer is. Escape or an outside click closes it and focus returns to where it was.
  */
-export function ContextMenu({ at, label, items, onClose }: { at: { x: number; y: number }; label: string; items: (MenuItem | "separator")[]; onClose: () => void }) {
+export function ContextMenu({ at, label, items, onClose, host }: { at: { x: number; y: number }; label: string; items: (MenuItem | "separator")[]; onClose: () => void; /** Where it renders: inside an open dialog it must be in the dialog to be usable. */ host?: HTMLElement }) {
   const id = useId();
   // Whatever had focus when the menu opened (the card), to return to on Escape.
   const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
@@ -126,7 +126,7 @@ export function ContextMenu({ at, label, items, onClose }: { at: { x: number; y:
       id={id}
       label={label}
       items={items}
-      host={document.body}
+      host={host ?? document.body}
       anchor={() => new DOMRect(at.x, at.y, 0, 0)}
       align="start"
       side="bottom"

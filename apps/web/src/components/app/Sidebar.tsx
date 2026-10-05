@@ -435,7 +435,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   ) : (
                     <span className="w-5" />
                   )}
-                  <div className="group/folder flex min-w-0 flex-1 items-center">
+                  <div data-ctx-host="" className="group/folder flex min-w-0 flex-1 items-center">
                     <div className="min-w-0 flex-1">
                       <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} />
                     </div>
@@ -444,7 +444,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 </div>
                 {open
                   ? children.map((c) => (
-                      <div key={c.id} className="group/folder flex items-center pl-7">
+                      <div key={c.id} data-ctx-host="" className="group/folder flex items-center pl-7">
                         <div className="min-w-0 flex-1">
                           <NavItem href={`/folders/${c.id}`} icon={<FolderGlyph color={c.color} size={18} />} label={c.name} onNavigate={onNavigate} draggableFolderId={c.id} />
                         </div>
@@ -461,7 +461,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Section title="Tags" href="/tags" onNavigate={onNavigate} defaultOpen={false}>
           {org?.tags.length === 0 ? <p className="px-2 py-1 text-xs text-faint">Tag documents from the inspector</p> : null}
           {shownTags.map((t) => (
-            <div key={t.id} className="group/tag flex items-center">
+            <div key={t.id} data-ctx-host="" className="group/tag flex items-center">
               <div className="min-w-0 flex-1">
                 <NavItem href={`/tags/${t.id}`} icon={<Hash size={15} style={{ color: tagColorVar(t.color) }} />} label={t.name} onNavigate={onNavigate} />
               </div>

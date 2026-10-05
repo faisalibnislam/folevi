@@ -3,10 +3,11 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useState, type ReactNode } from "react";
-import { CalendarDays, Plus, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, Check, ExternalLink, FileText, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
-import { AppLink } from "@/lib/app/router";
+import { AppLink, useAppRouter } from "@/lib/app/router";
+import { ContextMenu } from "@/components/ui/Menu";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -37,8 +38,36 @@ function useTasks(view: View) {
 export function TaskItem({ task, today, onToggle, onEdit, draggable = true, action }: { task: TaskRow; today: string; onToggle: (t: TaskRow) => void; onEdit?: (t: TaskRow) => void; draggable?: boolean; action?: ReactNode }) {
   const overdue = task.status === "open" && task.dueDate !== null && task.dueDate < today;
   const closed = task.status !== "open";
+  const { navigate } = useAppRouter();
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const noteHref = `/d/${task.documentId}#block-${task.blockId}`;
   return (
-    <li className="group flex items-start gap-3 px-4 py-2.5 hover:bg-surface" draggable={draggable} onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-task", task.blockId)}>
+    <li
+      className="group flex items-start gap-3 px-4 py-2.5 hover:bg-surface"
+      draggable={draggable}
+      onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-task", task.blockId)}
+      onContextMenu={(e) => {
+        if (e.shiftKey) return;
+        e.preventDefault();
+        setMenuAt({ x: e.clientX, y: e.clientY });
+      }}
+    >
+      {menuAt ? (
+        <ContextMenu
+          at={menuAt}
+          label="Task options"
+          onClose={() => setMenuAt(null)}
+          items={[
+            task.status === "open"
+              ? { label: "Mark as done", icon: <Check size={14} />, onSelect: () => onToggle(task) }
+              : { label: task.status === "canceled" ? "Reopen" : "Mark as not done", icon: <RotateCcw size={14} />, onSelect: () => onToggle(task) },
+            ...(onEdit ? [{ label: "Edit task…", icon: <SlidersHorizontal size={14} />, onSelect: () => onEdit(task) }] : []),
+            "separator",
+            { label: "Open note", icon: <FileText size={14} />, onSelect: () => navigate(noteHref) },
+            { label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(noteHref, "_blank", "noopener") },
+          ]}
+        />
+      ) : null}
       <button
         type="button"
         role="checkbox"
@@ -58,7 +87,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
       <div className="min-w-0 flex-1">
         <p className={`text-[15px] leading-snug ${closed ? "text-muted line-through" : ""}`}>{task.title || "Untitled task"}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
-          <AppLink href={`/d/${task.documentId}#block-${task.blockId}`} className="truncate hover:text-ink hover:underline">
+          <AppLink href={noteHref} className="truncate hover:text-ink hover:underline">
             {task.documentIcon ? `${task.documentIcon} ` : ""}
             {task.documentTitle || "Untitled"}
           </AppLink>

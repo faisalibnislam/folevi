@@ -71,10 +71,11 @@ function useFitLines() {
 /**
  * Classes for the link that wraps a NoteCardFace in a grid (shape, shadow, hover lift, focus ring). The card
  * is a notebook: portrait, square-ish at the spine and rounded on the open edge, with a soft shadow falling
- * down and a little to the left.
+ * down and a little to the left. The close layer reaches under the spine too, so that corner never shows a
+ * pale gap.
  */
 export const NOTE_CARD_LINK =
-  "block aspect-[25/27] rounded-l-[0.8cqw] rounded-r-[4.6cqw] shadow-[-4px_18px_30px_-18px_rgb(20_20_30/0.2),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-5px_24px_36px_-18px_rgb(20_20_30/0.24),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+  "block aspect-[25/27] rounded-l-[0.8cqw] rounded-r-[4.6cqw] shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 /** Aspect ratio of a note card (a portrait notebook), for placeholders that stand in for one. */
 export const NOTE_CARD_ASPECT = "aspect-[25/27]";
@@ -127,7 +128,7 @@ export function NoteCardFace({
   return (
     <div className="relative h-full w-full [container-type:inline-size]">
       {/* the page block, peeking out past the cover's open edge and bottom */}
-      <span aria-hidden className="absolute bottom-0 left-[1%] right-0 top-[1.4%] rounded-l-[0.8cqw] rounded-r-[4.6cqw] bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
+      <span aria-hidden className="absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-[0.8cqw] rounded-r-[4.6cqw] bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
       {/* the cover */}
       <div
         {...sheet}

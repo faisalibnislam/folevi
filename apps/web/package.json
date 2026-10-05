@@ -18,7 +18,7 @@
     "@folevi/editor-schema": "workspace:*",
     "@tiptap/core": "3.31.3",
     "@tiptap/extension-highlight": "3.31.3",
-    "@tiptap/extension-link": "3.31.3",
+    "@tiptap/extension-link": "3.31.4",
     "@tiptap/extension-text-style": "3.31.3",
     "@tiptap/extension-underline": "3.31.3",
     "@tiptap/extensions": "3.31.3",

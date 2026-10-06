@@ -40,7 +40,6 @@ const artUrl = (id: string | undefined) => {
   const a = resolveArt(id);
   return a ? `image-set("/covers/${a.id}-1x.webp" 1x, "/covers/${a.id}.webp" 2x)` : null;
 };
-export const coverArtUrl = (id: string) => `/covers/${resolveArt(id)?.id ?? id}.webp`;
 export const coverArtThumbUrl = (id: string) => `/covers/${resolveArt(id)?.id ?? id}-thumb.webp`;
 
 // The "Accent" page accent renders ember (docs/DESIGN_SYSTEM.md); the Mac app uses the same rule.

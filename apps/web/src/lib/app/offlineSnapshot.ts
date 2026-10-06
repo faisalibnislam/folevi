@@ -46,11 +46,3 @@ export async function loadAccountSnapshot(): Promise<AccountSnapshot | null> {
     return null;
   }
 }
-
-export function forgetLastAccount(): void {
-  try {
-    localStorage.removeItem(LAST_ACCOUNT_KEY);
-  } catch {
-    /* storage unavailable */
-  }
-}

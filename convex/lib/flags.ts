@@ -38,14 +38,3 @@ export async function isFeatureEnabled(ctx: QueryCtx | MutationCtx, key: string)
     .unique();
   return row ? row.enabled : known.default;
 }
-
-/** All known flags with their effective values (for clients / admin views). */
-export async function effectiveFlags(ctx: QueryCtx | MutationCtx): Promise<Record<FlagKey, boolean>> {
-  const rows = await ctx.db.query("featureFlags").take(100);
-  const out = {} as Record<FlagKey, boolean>;
-  for (const f of KNOWN_FLAGS) {
-    const row = rows.find((r) => r.key === f.key);
-    out[f.key] = row ? row.enabled : f.default;
-  }
-  return out;
-}

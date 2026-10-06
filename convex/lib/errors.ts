@@ -25,7 +25,3 @@ export type ErrorCode =
 export function fail(code: ErrorCode, message?: string, extra?: Record<string, string | number | boolean>): never {
   throw new ConvexError({ code, message: message ?? code, ...extra });
 }
-
-export function assertArg(condition: unknown, message: string): asserts condition {
-  if (!condition) fail("invalid_argument", message);
-}

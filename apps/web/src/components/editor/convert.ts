@@ -16,12 +16,9 @@ import {
   type WireBlock,
 } from "@folevi/editor-schema";
 
-/** The editor names the code block node "codeBlock" (the inline mark is "code"); canonically it is "code". */
-export const nodeNameFor = (type: string) => (type === "code" ? "codeBlock" : type);
 export const blockTypeFor = (nodeName: string) => (nodeName === "codeBlock" ? "code" : nodeName);
 
 export const TEXT_NODES = new Set(["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote", "callout"]);
-export const ATOM_NODES = new Set(["divider", "pageBreak", "image", "file", "audio", "table", "page", "bookmark", "collection", "formula", "whiteboard", "flowchart", "unknownBlock"]);
 
 /** Props each node stores as attributes (besides id/depth). */
 const FORMAT = ["decoration", "color", "align", "font", "group"];

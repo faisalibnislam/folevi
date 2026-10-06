@@ -43,7 +43,6 @@ type Ctx = QueryCtx | MutationCtx;
  *
  * A model not listed here is priced as Flash (the dearer of the two).
  */
-export const GEMINI_PRICES_AS_OF = "2027-01";
 export const GEMINI_PRICES = {
   flash: { inputNanoPerToken: 1_500, outputNanoPerToken: 7_500 },
   flashLite: { inputNanoPerToken: 300, outputNanoPerToken: 2_500 },

@@ -126,8 +126,6 @@ export const vCollectionPropertyType = v.union(
 );
 export const vCollectionViewType = v.union(v.literal("table"), v.literal("board"), v.literal("gallery"));
 
-export const vInline = v.any();
-
 export const vWireBlock = v.object({
   id: v.string(),
   type: v.string(),

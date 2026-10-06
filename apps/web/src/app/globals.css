@@ -325,8 +325,6 @@
   /* Headings in views */
   /* Titles and larger UI text: Spectral. */
   .ui-display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.012em; color: var(--color-heading); }
-  .ui-title { font-size: var(--text-title); line-height: 1.1; font-weight: 650; letter-spacing: var(--tracking-tight); color: var(--color-heading); }
-  .ui-h2 { font-size: var(--text-xl); line-height: 1.2; font-weight: 600; letter-spacing: var(--tracking-snug); color: var(--color-heading); }
 
   /* Menus */
   .ui-menu-item {
@@ -340,17 +338,6 @@
 
 @media (prefers-contrast: more) {
   .ui-btn-secondary, .ui-raised, .ui-card { box-shadow: 0 0 0 1px var(--color-line-strong); }
-}
-
-/* Index-line texture used across marketing and the canvas (thin, quiet). */
-.folio-lines {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 31px,
-    color-mix(in oklab, var(--color-line) 55%, transparent) 31px,
-    color-mix(in oklab, var(--color-line) 55%, transparent) 32px
-  );
 }
 
 @keyframes folio-rise {

@@ -330,11 +330,3 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   }
   return issues;
 }
-
-export function assertValidWireBlock(block: unknown): asserts block is WireBlock {
-  const issues = validateWireBlock(block);
-  if (issues.length) {
-    const first = issues[0]!;
-    throw new Error(`invalid block: ${first.path} ${first.message}`);
-  }
-}

@@ -41,7 +41,6 @@
   /* Marketing-only surfaces, both neutral. */
   --mk-well: #F5F5F7;
   --mk-hair: var(--color-line);
-  --mk-hair-strong: var(--color-line-strong);
   --mk-ease: var(--motion-easing, cubic-bezier(0.2, 0.7, 0.2, 1));
   --mk-title-shade-deep: rgb(0 0 0 / 0.42);
   --mk-title-shade-light: rgb(255 255 255 / 0.5);
@@ -86,7 +85,6 @@
 @media (prefers-contrast: more) {
   :root:has(.mk-root) {
     --mk-hair: var(--color-line-strong);
-    --mk-hair-strong: var(--color-ink-muted);
   }
 }
 
@@ -139,7 +137,6 @@
   text-transform: uppercase;
   color: var(--color-ink-faint);
 }
-.mk-heading { color: var(--color-heading); }
 .mk-link {
   color: var(--color-heading);
   font-weight: 550;
@@ -153,7 +150,6 @@
 
 /* Hairlines ------------------------------------------------------------------------------------ */
 .mk-hair { border-color: var(--mk-hair); }
-.mk-hair-strong { border-color: var(--mk-hair-strong); }
 
 /* Skip link --------------------------------------------------------------------------------------- */
 .mk-skip:focus {
@@ -275,25 +271,6 @@
 @media (prefers-reduced-transparency: reduce) {
   .mk-rail { background: var(--color-canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
-/* Nav links behave like the app's tabs: quiet at rest, outlined and raised when current. */
-.mk-navlink {
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-ink-muted);
-  transition: color var(--motion-fast, 140ms) var(--mk-ease), background-color var(--motion-fast, 140ms) var(--mk-ease), box-shadow var(--motion-fast, 140ms) var(--mk-ease);
-}
-.mk-navlink:hover { color: var(--color-heading); background: var(--color-surface-sunken); }
-.mk-navlink[aria-current="page"] {
-  color: var(--color-heading);
-  font-weight: 600;
-  background: var(--color-surface-raised);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent);
-}
 /* Buttons (the app's .ui-btn) ------------------------------------------------------------------ */
 .mk-btn {
   display: inline-flex;
@@ -345,26 +322,6 @@
   color: var(--color-ink);
   background: var(--color-surface-sunken);
 }
-.mk-chip--raised {
-  color: var(--color-heading);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-control);
-}
-.mk-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--tone, var(--color-heading));
-}
-/* Tones are for note content (the colours a note's style gives), never for chrome. */
-.mk-tone--moss { --tone: var(--color-moss); --tone-ink: var(--color-moss-ink); --tone-soft: var(--color-moss-soft); }
-.mk-tone--marigold { --tone: var(--color-marigold); --tone-ink: var(--color-marigold-ink); --tone-soft: var(--color-marigold-soft); }
-.mk-tone--plum { --tone: var(--color-plum); --tone-ink: var(--color-plum-ink); --tone-soft: var(--color-plum-soft); }
-.mk-tone--coral { --tone: var(--color-coral); --tone-ink: var(--color-coral-ink); --tone-soft: var(--color-coral-soft); }
-.mk-tone--ember { --tone: var(--color-ember); --tone-ink: var(--color-ember-ink); --tone-soft: var(--color-ember-soft); }
-.mk-tone--accent { --tone: var(--color-heading); --tone-ink: var(--color-heading); --tone-soft: var(--color-surface-sunken); }
-.mk-tone-ink { color: var(--tone-ink, var(--color-heading)); }
 
 /* Icon tile: the rounded square the app puts beside section titles on Home. */
 .mk-tile {
@@ -497,10 +454,6 @@
 .mk-lights span:nth-child(3) { background: #61C554; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
 
 /* Miniature app pieces used by the demos. */
-.mk-mini-raised {
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-control);
-}
 .mk-mini-sunken { background: var(--color-surface-sunken); }
 
 /* A checkbox as the editor draws it (never the OS control). */
@@ -784,7 +737,6 @@
   --glass-active: rgba(255, 255, 255, 0.12);
   --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.4);
   --mk-hair: var(--color-line);
-  --mk-hair-strong: var(--color-line-strong);
 }
 .mk-box.mk-dark {
   background: var(--color-canvas);

@@ -18,7 +18,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { subscriptionOf, workspaceSubscriptionOf, type WorkspaceSubscription } from "./billing";
-import { GB, PLAN_CATALOG, STORAGE_BYTES, TIER_NAMES, personalEntitlementsOf, planName, workspaceEntitlementsOf, type Entitlements, type PersonalEntitlements, type WorkspaceEntitlements, type WorkspaceSubscriptionLike } from "./plans";
+import { GB, PLAN_CATALOG, STORAGE_BYTES, TIER_NAMES, personalEntitlementsOf, planName, workspaceEntitlementsOf, type PersonalEntitlements, type WorkspaceEntitlements, type WorkspaceSubscriptionLike } from "./plans";
 import type { Scope } from "./scope";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -58,10 +58,6 @@ export async function workspaceEntitlements(ctx: Ctx, workspace: Id<"workspaces"
   const w = typeof workspace === "string" ? await ctx.db.get(workspace) : workspace;
   const subscription = w ? workspaceSubscriptionLike(await workspaceSubscriptionOf(ctx, w._id)) : null;
   return workspaceEntitlementsOf(subscription, { storageBytes: w ? workspaceStorageOverride(w) : undefined }, now);
-}
-
-export async function resolveEntitlements(ctx: Ctx, scope: Scope, now = Date.now()): Promise<Entitlements> {
-  return scope.kind === "personal" ? await personalEntitlements(ctx, scope.profileId, now) : await workspaceEntitlements(ctx, scope.workspaceId, now);
 }
 
 const isMember = async (ctx: Ctx, profileId: Id<"profiles">, workspaceId: Id<"workspaces">) =>

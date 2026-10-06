@@ -59,11 +59,6 @@ export async function findAuthUser(ctx: ReadCtx, userId: string): Promise<AuthUs
   return (doc as AuthUser | null) ?? null;
 }
 
-export async function findAuthUserByEmail(ctx: ReadCtx, email: string): Promise<AuthUser | null> {
-  const doc = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email.toLowerCase() }] });
-  return (doc as AuthUser | null) ?? null;
-}
-
 export async function deleteSession(ctx: WriteCtx, sessionId: string): Promise<void> {
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "session", where: [{ field: "_id", value: sessionId }] } });
 }

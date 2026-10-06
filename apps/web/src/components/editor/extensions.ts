@@ -625,7 +625,6 @@ export const FoleviMarker = Extension.create({ name: "foleviMarker" });
 
 /** Text blocks that carry the Format panel's block styling (decoration, colour, alignment, font, group). */
 export const FORMATTABLE_NODES = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"] as const;
-export const BLOCK_FORMAT_PROPS = ["decoration", "color", "align", "font", "group"] as const;
 
 const dataAttr = (prop: string, attr: string) => ({
   default: null,

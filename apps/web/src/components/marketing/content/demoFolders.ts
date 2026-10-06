@@ -135,6 +135,3 @@ export const DEMO_FOLDERS: DemoFolder[] = [
     ],
   },
 ];
-
-/** A note left in Drafts; the Move to folder replica shows it being filed. */
-export const DEMO_DRAFT: DemoNote = { title: "Ideas for the balcony", lines: ["Herbs in the window box, tomatoes by the rail.", "Ask about the watering can at the hardware store."] };

@@ -147,8 +147,6 @@ export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
   workspace_pro_ai_yearly: plan("workspace_pro_ai_yearly", "workspace", "pro_ai", "year", PRICES.pro_ai.year),
 };
 
-export const PAID_WORKSPACE_PLAN_IDS: PaidWorkspacePlanId[] = ["workspace_core_monthly", "workspace_core_yearly", "workspace_pro_monthly", "workspace_pro_yearly", "workspace_pro_ai_monthly", "workspace_pro_ai_yearly"];
-
 /** The catalog id for a personal tier and interval (a paid plan without an interval is monthly). */
 export function personalPlanId(tier: PersonalTier, interval?: BillingInterval | null): PersonalPlanId {
   if (tier === "free") return "personal_free";

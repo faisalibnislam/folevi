@@ -20,7 +20,7 @@
 // Guests (page grants without a membership) never get anything workspace-wide.
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { DELETION_SCHEDULED_MESSAGE, isScheduledForDeletion, membership, memberLevel, normalizeMembership, requireWorkspace, type Access, type DocumentAccessInfo, type MemberAccess, type WorkspaceRole } from "./auth";
+import { DELETION_SCHEDULED_MESSAGE, isScheduledForDeletion, memberLevel, normalizeMembership, requireWorkspace, type DocumentAccessInfo, type MemberAccess, type WorkspaceRole } from "./auth";
 import { fail } from "./errors";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -64,9 +64,6 @@ export function canInviteGuest(member: Membership | null | undefined): boolean {
   return level === "owner" || level === "admin" || level === "edit";
 }
 
-/** Who manages the workspace's guests (the Guests list: their access, removal, conversion to member). */
-export const canManageWorkspaceGuests = canManageWorkspace;
-
 /** Exporting a whole workspace (members can't: it would hand them pages restricted from them). */
 export const canExportWorkspace = canManageWorkspace;
 
@@ -101,12 +98,6 @@ export function memberCanManageBilling(member: Membership | null): boolean {
   return role === "owner" || (role === "admin" && member.canManageBilling === true);
 }
 
-/** Whether `profile` may manage `workspace`'s billing (see memberCanManageBilling). */
-export async function canManageWorkspaceBilling(ctx: Ctx, profile: Doc<"profiles">, workspace: Doc<"workspaces">): Promise<boolean> {
-  if (workspace.status === "deleting" || isScheduledForDeletion(workspace)) return false;
-  return memberCanManageBilling(await membership(ctx, profile._id, workspace._id));
-}
-
 export const BILLING_FORBIDDEN = "Only the workspace owner, or an admin they allow, can manage its plan and billing.";
 
 /**
@@ -139,6 +130,3 @@ export function roleLabel(role: WorkspaceRole): string {
   const r = normalizeMembership({ role }).role;
   return r === "owner" ? "Owner" : r === "admin" ? "Admin" : "Member";
 }
-
-/** Access words for a page grant or a member's access. */
-export const ACCESS_WORDS: Record<Access, string> = { none: "No access", read: "Can view", comment: "Can comment", write: "Can edit", manage: "Full access" };

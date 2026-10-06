@@ -84,7 +84,6 @@ const DECK = [
   { id: "art-49", x: 250, y: 36, r: 13 },
   { id: "art-03", x: 0, y: -4, r: 0 },
 ];
-export const DECK_ARTS = DECK.map((d) => d.id);
 
 const SEED_PAGES = ["Field Notes: A Quiet Morning", "Project Atlas Brief", "Trip Sketch: Coastal Weekend", "Reading Shelf"];
 

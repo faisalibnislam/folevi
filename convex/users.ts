@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { deviceStatus } from "./lib/devices";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -599,13 +599,6 @@ export const getForEmail = internalQuery({
     const p = await ctx.db.get(profileId);
     if (!p) return null;
     return { email: p.email, displayName: p.displayName, status: p.status, prefs: p.notificationPrefs, authSubject: p.authSubject };
-  },
-});
-
-export const touchClaims = internalMutation({
-  args: { profileId: v.id("profiles"), emailVerified: v.boolean(), mfaVerified: v.boolean() },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.profileId, { emailVerified: args.emailVerified, mfaVerified: args.mfaVerified });
   },
 });
 

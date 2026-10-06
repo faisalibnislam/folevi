@@ -22,10 +22,6 @@ export function ulid(now: number = Date.now()): string {
   return time + rand;
 }
 
-export function isUlid(value: string): boolean {
-  return /^[0-9A-HJKMNP-TV-Z]{26}$/.test(value);
-}
-
 /** Ids are ULIDs for new content; legacy/imported ids may be any url-safe string up to 64 chars. */
 export function isValidId(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value);

@@ -44,37 +44,12 @@ export interface UnknownBlock {
 }
 
 export type Block = KnownBlock | UnknownBlock;
-export type BlockOf<K extends KnownBlockType> = KnownBlockOf<K>;
 
 /**
  * Where content lives: the signed-in person's own Personal, or a team workspace (public id). Personal
  * is not a workspace, and a client can only ever name its own Personal.
  */
 export type WireScope = { kind: "personal" } | { kind: "workspace"; workspaceId: string };
-
-export interface WireDocument {
-  id: string;
-  /** The team workspace it's in; null when it's in someone's Personal (see `ownerProfileId`). */
-  workspaceId: string | null;
-  /** Whose Personal it's in; null in a team workspace. */
-  ownerProfileId?: string | null;
-  parentDocumentId: string | null;
-  folderId: string | null;
-  kind: DocumentKind;
-  title: string;
-  icon: string | null;
-  cover: DocumentCover;
-  style: DocumentStyle;
-  dailyDate: string | null;
-  templateId: string | null;
-  collectionId: string | null;
-  createdAt: number;
-  updatedAt: number;
-  createdBy: string;
-  archivedAt: number | null;
-  deletedAt: number | null;
-  revision: number;
-}
 
 export interface WireDocumentCreate {
   id: string;

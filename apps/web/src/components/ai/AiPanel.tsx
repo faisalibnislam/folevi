@@ -9,7 +9,8 @@ import { useShell } from "@/components/app/Shell";
 import { Select } from "@/components/ui/Select";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
-import { insertAiMarkdown, markdownToPlain, type AiPlacement } from "./insert";
+import { insertAiMarkdown, type AiPlacement } from "./insert";
+import { markdownToPlain } from "./plainText";
 import { SELECTION_ACTIONS, useAi, type AiRunDetail, type AiTask } from "./useAi";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 

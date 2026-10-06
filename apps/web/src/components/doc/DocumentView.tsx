@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvex, useMutation, useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -33,7 +33,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scope";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { useEngineState } from "@/lib/hooks/useEngine";
+import { sameItems, useEngineSelector } from "@/lib/hooks/useEngine";
 import { localDb } from "@/lib/sync/db";
 import { Button } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -42,7 +42,6 @@ import { ViewChrome, useShell } from "@/components/app/Shell";
 import { setBlockHighlight } from "@/components/editor/blockHighlight";
 import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
-import { CollectionRowProperties } from "@/components/editor/CollectionEmbed";
 import type { DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
 import { BlurredBackdrop } from "./BlurredBackdrop";
@@ -68,6 +67,9 @@ import "@/components/editor/insert-blocks.css";
 import "@/components/editor/flowchart/flowchart.css";
 import { Select } from "@/components/ui/Select";
 
+// Only a collection's row pages have properties; the collection code loads for those alone.
+const CollectionRowProperties = lazy(() => import("@/components/editor/CollectionEmbed").then((m) => ({ default: m.CollectionRowProperties })));
+
 const IDLE_SNAPSHOT_MS = 2 * 60_000;
 
 /** When the pointer last went down (to tell a panel opened by mouse from one opened by keyboard). */
@@ -79,7 +81,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const meta = useQuery(api.documents.get, { documentId });
   const server = useQuery(api.blocks.list, { documentId });
   const settings = useQuery(api.settings.status, {});
-  const engineState = useEngineState(engine);
   const editorRef = useRef<EditorHandle>(null);
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
@@ -128,9 +129,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const leave = useMutation(api.presence.leave);
   const sessionId = useMemo(() => Math.random().toString(36).slice(2), []);
 
-  const pendingCreateOp = useMemo(
-    () => engineState.pending.concat(engineState.inflight).find((op) => op.kind === "document.create" && op.document.id === documentId),
-    [engineState, documentId],
+  // Only what this view shows of the sync state, so a change elsewhere in the account doesn't re-render the note.
+  // A queued create never changes, but a flush hands back a copy of it: the same op id is the same create.
+  const pendingCreateOp = useEngineSelector(
+    engine,
+    (s) => s.pending.find((op) => op.kind === "document.create" && op.document.id === documentId) ?? s.inflight.find((op) => op.kind === "document.create" && op.document.id === documentId),
+    (a, b) => a?.opId === b?.opId,
   );
   // Remember a page created on this device until the server has it, so the view never flashes "unavailable".
   const localCreate = useRef<typeof pendingCreateOp>(undefined);
@@ -152,36 +156,81 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
   // Server → engine → editor. Local keystrokes are flushed into the durable queue first so a remote
   // update can never overwrite unsent typing (the server decides conflicts on base revisions).
+  // A result whose page counters and block revisions are all unchanged (the query re-ran for something
+  // else) has nothing new for the engine. Block revisions count too: renaming a linked page relabels
+  // blocks here without touching this page's own counters.
+  const reconciledAt = useRef<{ engine: unknown; at: string } | null>(null);
+  const cacheWrite = useRef<{ timer: ReturnType<typeof setTimeout>; run: () => void } | null>(null);
   useEffect(() => {
     if (!engine || !server) return;
+    let revisions = 0;
+    for (const b of server.blocks) revisions += b.revision ?? 0;
+    const at = `${server.revision}:${server.contentSeq}:${server.blocks.length}:${revisions}`;
+    if (reconciledAt.current?.engine === engine && reconciledAt.current.at === at) return;
+    reconciledAt.current = { engine, at };
     editorRef.current?.flush();
     engine.reconcileDocument(documentId, server.blocks);
     editorRef.current?.applyFromEngine();
     setReconciled(true);
-    void (async () => {
-      const db = await localDb(profile.id);
-      await db.put("blocks", { documentId, blocks: server.blocks, cachedAt: Date.now() });
-    })();
+    // The offline copy is the whole note: written once typing (and its echoes) settles, not per save.
+    const blocks = server.blocks;
+    const accountKey = profile.id;
+    const run = () => {
+      cacheWrite.current = null;
+      void (async () => {
+        const db = await localDb(accountKey);
+        await db.put("blocks", { documentId, blocks, cachedAt: Date.now() });
+      })();
+    };
+    if (cacheWrite.current) clearTimeout(cacheWrite.current.timer);
+    cacheWrite.current = { timer: setTimeout(run, 2000), run };
   }, [engine, server, documentId, profile.id]);
+  // Leaving the note writes the copy still waiting.
+  useEffect(
+    () => () => {
+      const pending = cacheWrite.current;
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      pending.run();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (meta) void recordView({ documentId }).catch(() => undefined);
   }, [meta?.document.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Presence heartbeat with the focused block (never leaves the authorization boundary: server-checked).
+  const focusedRef = useRef(focusedBlock);
+  focusedRef.current = focusedBlock;
+  const sentFocus = useRef<string | null | undefined>(undefined);
+  const beat = () => {
+    sentFocus.current = focusedRef.current;
+    void heartbeat({ documentId, sessionId, focusedBlockId: focusedRef.current }).catch(() => undefined);
+  };
   useEffect(() => {
     if (!meta || !online) return;
-    const beat = () => void heartbeat({ documentId, sessionId, focusedBlockId: focusedBlock }).catch(() => undefined);
     beat();
     const id = setInterval(beat, 20_000);
     return () => clearInterval(id);
+  }, [meta?.document.id, online]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Moving through the note tells others where the caret is once it rests, not at every block it passes.
+  useEffect(() => {
+    if (!meta || !online || focusedBlock === sentFocus.current) return;
+    const t = setTimeout(beat, 1500);
+    return () => clearTimeout(t);
   }, [meta?.document.id, online, focusedBlock]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => void leave({ documentId, sessionId }).catch(() => undefined), []); // eslint-disable-line react-hooks/exhaustive-deps
   const presenceNow = Math.floor(Date.now() / 15_000) * 15_000;
-  const presence = useQuery(api.presence.list, meta ? { documentId, now: presenceNow } : "skip");
+  const livePresence = useQuery(api.presence.list, meta ? { documentId, now: presenceNow } : "skip");
+  // Every 15 seconds `now` moves on and the query starts again from nothing: keep showing the last answer
+  // meanwhile, so presence doesn't blink off and on.
+  const lastPresence = useRef(livePresence);
+  if (livePresence !== undefined) lastPresence.current = livePresence;
+  const presence = meta ? (livePresence ?? lastPresence.current) : undefined;
 
   // Idle and close snapshots: meaningful versions, never one per keystroke.
-  const pendingForDoc = engineState.pending.some((op) => "documentId" in op && op.documentId === documentId) || engineState.inflight.length > 0;
+  const pendingForDoc = useEngineSelector(engine, (s) => s.pending.some((op) => "documentId" in op && op.documentId === documentId) || s.inflight.length > 0);
   const lastEditAt = useRef<number | null>(null);
   useEffect(() => {
     if (pendingForDoc) lastEditAt.current = Date.now();
@@ -233,18 +282,19 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
   const threads = useQuery(api.comments.threads, meta ? { documentId } : "skip");
   const openBlockThread = useCallback((blockId: string, threadId: string | null = null) => setOpenThread({ blockId, threadId }), []);
-  // Memoized so the editor's decorations aren't re-sent on every render of this view.
-  const conflicts = useMemo(() => engineState.conflicts.filter((c) => c.documentId === documentId), [engineState.conflicts, documentId]);
+  // The note's conflicted blocks, kept as the same array while they don't change, so the editor's
+  // decorations aren't re-sent on every render of this view.
+  const conflictBlockIds = useEngineSelector(engine, (s) => s.conflicts.filter((c) => c.documentId === documentId).map((c) => c.blockId), sameItems);
   const decorations: DecorationInputs = useMemo(
     () => ({
       presence: (presence ?? []).filter((p) => p.focusedBlockId).map((p) => ({ blockId: p.focusedBlockId!, color: p.color, name: p.name })),
       commentBlocks: new Set((threads?.threads ?? []).filter((t) => t.status === "open" && t.blockId).map((t) => t.blockId!)),
       selectedBlocks: new Set<string>(),
-      conflictBlocks: new Set(conflicts.map((c) => c.blockId)),
+      conflictBlocks: new Set(conflictBlockIds),
       commentSummaries: new Map((threads?.blocks ?? []).map((b) => [b.blockId, { count: b.comments, lastActivityAt: b.lastActivityAt, unread: b.unread, authors: b.authors }])),
       onOpenComments: openBlockThread,
     }),
-    [presence, threads, conflicts, openBlockThread],
+    [presence, threads, conflictBlockIds, openBlockThread],
   );
 
   // Deep links: a block (#block-<id>) or a comment thread (#comment-<thread id>). Also re-run when a
@@ -631,9 +681,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
               onEnter={focusEditorStart}
               hasContent={Boolean(summary?.excerpt?.trim())}
             />
-            {conflicts.length ? <ConflictBanner documentId={documentId} /> : null}
+            {conflictBlockIds.length ? <ConflictBanner documentId={documentId} /> : null}
             <div className="px-5 sm:px-16">
-              <CollectionRowProperties documentId={documentId} editable={!readOnly} />
+              {summary?.kind === "collectionRow" ? (
+                <Suspense fallback={null}>
+                  <CollectionRowProperties documentId={documentId} editable={!readOnly} />
+                </Suspense>
+              ) : null}
               {ready && engine ? (
                 <Editor
                   ref={editorRef}
@@ -1085,14 +1139,14 @@ function DocumentHeader({
 
 function ConflictBanner({ documentId }: { documentId: string }) {
   const { engine } = useAppState();
-  const state = useEngineState(engine);
-  const conflicts = state.conflicts.filter((c) => c.documentId === documentId);
+  const conflicts = useEngineSelector(engine, (s) => s.conflicts.filter((c) => c.documentId === documentId), sameItems);
   const [openId, setOpenId] = useState<string | null>(conflicts[0]?.id ?? null);
-  if (!conflicts.length || !engine) return null;
-  const c = conflicts.find((x) => x.id === openId) ?? conflicts[0]!;
+  const shown = conflicts.find((x) => x.id === openId) ?? conflicts[0];
   // The other version as it is now (it may have been edited again since the conflict began): what
   // "Keep theirs" keeps, and what "Keep mine" replaces.
-  const live = state.blocks[c.blockId];
+  const live = useEngineSelector(engine, (s) => (shown ? s.blocks[shown.blockId] : undefined));
+  if (!shown || !engine) return null;
+  const c = shown;
   const theirs = live && !live.deleted ? live.block : c.server;
   const text = (b: WireBlock | null) =>
     b ? (b.text.length ? b.text.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : n.type === "date" ? n.date : n.label)).join("") : `(${b.type} block)`) : "(deleted)";

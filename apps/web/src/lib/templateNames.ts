@@ -1,0 +1,31 @@
+// The built-in templates by key and name only, for pages that remember a template picked on the site
+// (sign-up, onboarding) without loading every template's content. test/template-names.test.ts keeps it in
+// step with convex/lib/templates.ts.
+export const TEMPLATE_NAMES: readonly { key: string; name: string }[] = [
+  { key: "daily-page", name: "Daily Page" },
+  { key: "weekly-reset", name: "Weekly Reset" },
+  { key: "monthly-review", name: "Monthly Review" },
+  { key: "journal", name: "Journal Entry" },
+  { key: "habit-tracker", name: "Habit Tracker" },
+  { key: "meeting-notes", name: "Meeting Notes" },
+  { key: "one-on-one", name: "1:1" },
+  { key: "standup", name: "Daily Standup" },
+  { key: "project-brief", name: "Project Brief" },
+  { key: "product-spec", name: "Product Spec" },
+  { key: "decision-record", name: "Decision Record" },
+  { key: "retrospective", name: "Retrospective" },
+  { key: "okrs", name: "Goals & OKRs" },
+  { key: "bug-report", name: "Bug Report" },
+  { key: "client-brief", name: "Client Brief" },
+  { key: "interview-notes", name: "Interview Notes" },
+  { key: "brainstorm", name: "Brainstorm" },
+  { key: "reading-notes", name: "Reading Notes" },
+  { key: "class-notes", name: "Class Notes" },
+  { key: "research-notes", name: "Research Notes" },
+  { key: "writing-draft", name: "Writing Draft" },
+  { key: "travel-plan", name: "Travel Plan" },
+  { key: "recipe", name: "Recipe" },
+  { key: "workout-log", name: "Workout Log" },
+  { key: "budget", name: "Monthly Budget" },
+  { key: "event-plan", name: "Event Plan" },
+];

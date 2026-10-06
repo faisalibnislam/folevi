@@ -78,8 +78,10 @@ export function SiteFooter() {
               <ul className="mt-3 space-y-0.5">
                 {column.links.map((link) => (
                   <li key={link.href}>
+                    {/* About twenty links: fetched when clicked, not all at once when the footer scrolls into view. */}
                     <Link
                       href={link.href}
+                      prefetch={false}
                       className="-ml-2 inline-flex min-h-11 items-center rounded-[6px] px-2 text-[14.5px] text-ink transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) sm:min-h-9"
                     >
                       {link.label}

@@ -66,9 +66,14 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
     note?.addEventListener("pointerenter", start, { once: true });
     note?.addEventListener("focusin", start, { once: true });
     note?.addEventListener("touchstart", start, { once: true, passive: true });
+    // Without a hand on the note, it loads once the page is idle, except with Data Saver on or on 2G, where
+    // only reaching for the note does: the editor is a few hundred KB. (Browsers' 3G estimate is too rough
+    // to act on: it shows up on fast connections too.)
     const w = window as Window & { requestIdleCallback?: Window["requestIdleCallback"] };
-    const idle = w.requestIdleCallback ? w.requestIdleCallback(start, { timeout: 4000 }) : null;
-    const timer = idle === null ? setTimeout(start, 2500) : null;
+    const net = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    const frugal = Boolean(net?.saveData) || /2g$/.test(net?.effectiveType ?? "");
+    const idle = !frugal && w.requestIdleCallback ? w.requestIdleCallback(start, { timeout: 4000 }) : null;
+    const timer = !frugal && idle === null ? setTimeout(start, 2500) : null;
     return () => {
       cancelled = true;
       note?.removeEventListener("pointerenter", start);

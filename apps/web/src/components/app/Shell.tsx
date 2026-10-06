@@ -11,10 +11,10 @@ import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { IconButton } from "@/components/ui/Button";
 import { Sidebar } from "./Sidebar";
-import { CommandPalette } from "./CommandPalette";
-import { QuickAddTask } from "./QuickAddTask";
 import { RouteView } from "./RouteView";
 import { TabStrip } from "./TabStrip";
+import { CommandPalette } from "./CommandPalette";
+import { QuickAddTask } from "./QuickAddTask";
 import { AppContextMenu } from "./AppContextMenu";
 import { AskAiChat } from "@/components/ai/AskAiChat";
 import { useAiAccess } from "@/components/ai/useAi";
@@ -261,17 +261,29 @@ export function Shell() {
     [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed],
   );
 
+  // Dragging moves the panel's edge directly and saves the width once, on release: saving on every move
+  // wrote localStorage and re-rendered the whole app each time.
+  const sidebarPanel = useRef<HTMLDivElement>(null);
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
     const startX = e.clientX;
     const startW = width;
-    const move = (ev: PointerEvent) => setWidth(Math.max(248, Math.min(320, startW + ev.clientX - startX)));
+    const handle = e.currentTarget;
+    let next = startW;
+    const move = (ev: PointerEvent) => {
+      next = Math.max(248, Math.min(320, startW + ev.clientX - startX));
+      if (sidebarPanel.current) sidebarPanel.current.style.width = `${next}px`;
+      handle.setAttribute("aria-valuenow", String(next));
+    };
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      if (next !== startW) setWidth(next);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
 
   return (
@@ -296,7 +308,7 @@ export function Shell() {
         {isNarrow ? (
           drawerOpen ? <NavDrawer onClose={closeDrawer}>{pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar onNavigate={closeDrawer} />}</NavDrawer> : null
         ) : !collapsed ? (
-          <div className="relative z-20 flex-none" style={{ width }}>
+          <div ref={sidebarPanel} className="relative z-20 flex-none" style={{ width }}>
             {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
             <div
               role="separator"

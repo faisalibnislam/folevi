@@ -7,7 +7,7 @@ type Mermaid = typeof import("mermaid").default;
 
 let katexPromise: Promise<Katex> | null = null;
 export function loadKatex(): Promise<Katex> {
-  katexPromise ??= import("katex").then((m) => m.default);
+  katexPromise ??= Promise.all([import("katex"), import("./katexStyles")]).then(([m]) => m.default);
   return katexPromise;
 }
 

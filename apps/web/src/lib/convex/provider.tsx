@@ -9,7 +9,9 @@ const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 let client: ConvexReactClient | null = null;
 export function getConvexClient(): ConvexReactClient {
   if (!convexUrl) throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
-  if (!client) client = new ConvexReactClient(convexUrl, { unsavedChangesWarning: false });
+  // initialAuthTokenReuse: the first token is always freshly minted (see fetchAccessToken), so once the
+  // server accepts it there's no need for Convex's usual second fetch, which also re-ran every query.
+  if (!client) client = new ConvexReactClient(convexUrl, { unsavedChangesWarning: false, initialAuthTokenReuse: true });
   return client;
 }
 
@@ -50,11 +52,31 @@ function tokenExpiry(jwt: string): number {
   }
 }
 
+type TokenResult = Awaited<ReturnType<typeof authClient.convex.token>>;
+// Opening the app asks for the session and then a token for it. Both need a round trip to the auth server,
+// so the token request starts at once, alongside the session check, and the first fetch uses its answer.
+let early: { at: number; result: Promise<TokenResult> } | null = null;
+let earlyStarted = false;
+function startTokenFetch() {
+  if (earlyStarted) return;
+  earlyStarted = true;
+  early = { at: Date.now(), result: authClient.convex.token({ fetchOptions: { throw: false } }) };
+}
+/** The early answer, if it's a token and still fresh (a "no session" from before signing in never counts). */
+async function takeEarlyToken(): Promise<TokenResult | null> {
+  const pending = early;
+  early = null;
+  if (!pending || Date.now() - pending.at > 30_000) return null;
+  const res = await pending.result.catch(() => null);
+  return res?.data?.token ? res : null;
+}
+
 /**
  * Bridges Better Auth to Convex. Convex asks for a short-lived JWT (15 minutes) from
  * /api/auth/convex/token; the session cookie itself is HTTP-only and never readable here.
  */
 function useFoleviAuth() {
+  if (typeof window !== "undefined") startTokenFetch();
   const { data: session, isPending, error } = authClient.useSession();
   const online = useOnline();
   const cache = useRef<{ token: string; exp: number; sessionId: string | undefined } | null>(null);
@@ -68,7 +90,7 @@ function useFoleviAuth() {
       const cached = cache.current?.sessionId === sessionId || !sessionId ? cache.current : null;
       if (!forceRefreshToken && cached && cached.exp - Date.now() > 60_000) return cached.token;
       try {
-        const res = await authClient.convex.token({ fetchOptions: { throw: false } });
+        const res = (forceRefreshToken ? null : await takeEarlyToken()) ?? (await authClient.convex.token({ fetchOptions: { throw: false } }));
         const token = res.data?.token ?? null;
         if (token) {
           cache.current = { token, exp: tokenExpiry(token), sessionId };

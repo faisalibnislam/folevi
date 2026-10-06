@@ -5,7 +5,6 @@
 import { useEffect, useRef, useState } from "react";
 import { WHITEBOARD_WIDTH, LIMITS, parseWhiteboard, strokeD, type WhiteboardStroke } from "@folevi/editor-schema";
 import { onThemeChange, renderLatex, renderMermaid, svgDataUrl, type MermaidResult } from "./richRender";
-import "katex/dist/katex.min.css";
 
 /** KaTeX rendering of a LaTeX formula (display style). */
 export function FormulaRender({ latex, className = "" }: { latex: string; className?: string }) {

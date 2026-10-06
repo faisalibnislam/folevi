@@ -2,7 +2,7 @@
 // through sign-up, email confirmation and onboarding, and the app then opens that template as a new page.
 // The confirmation email returns to /documents?template=<key>, so confirming on another device carries it
 // there too. Only built-in template keys are kept; the server still checks the template exists and is on.
-import { BUILT_IN_TEMPLATES } from "./templates";
+import { TEMPLATE_NAMES } from "./templateNames";
 
 const STORAGE_KEY = "folevi:pending-template";
 /** A template picked more than a week ago is forgotten. */
@@ -15,7 +15,7 @@ export interface PendingTemplate {
 
 function builtIn(key: string | null | undefined): PendingTemplate | null {
   if (!key) return null;
-  const t = BUILT_IN_TEMPLATES.find((x) => x.key === key);
+  const t = TEMPLATE_NAMES.find((x) => x.key === key);
   return t ? { key: t.key, name: t.name } : null;
 }
 

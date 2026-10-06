@@ -5,6 +5,7 @@ import { ulid, DEFAULT_DOCUMENT_STYLE, DEFAULT_COVER } from "@folevi/editor-sche
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { openNextInNewTab } from "@/lib/app/tabs";
+import { loadDocumentView } from "@/lib/app/noteView";
 
 /**
  * Creates a document through the sync engine (works offline: the create is queued durably and the
@@ -36,6 +37,8 @@ export function useCreateDocument() {
       });
       await engine.persisted();
       if (opts.navigateTo !== false) {
+        // The new note opens ready to type in, never on a placeholder that would swallow the first keys.
+        await loadDocumentView().catch(() => undefined);
         // A new top-level page opens in its own tab; a nested one stays in the note's tab.
         if (!opts.parentDocumentId) openNextInNewTab();
         navigate(`/d/${id}?new=1`);

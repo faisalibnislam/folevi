@@ -11,7 +11,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { modKey } from "@/lib/hooks/useEngine";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
-import { markdownToPlain } from "./insert";
+import { markdownToPlain } from "./plainText";
 import { useAi, type AskTurn } from "./useAi";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { errorMessage } from "@/components/ui/Toast";

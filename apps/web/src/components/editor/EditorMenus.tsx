@@ -4,9 +4,8 @@ import type { Editor } from "@tiptap/react";
 import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { beginPointerDrag, isDragging } from "./blockDrag";
 import { useMutation, useQuery } from "convex/react";
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { AudioRecorder } from "./AudioRecorder";
 import {
   Bold,
   CalendarDays,
@@ -101,6 +100,9 @@ import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
 import { keyLabel, withKeyLabels } from "@/lib/shortcuts";
 import { webAddressIn } from "./autolink";
 import { setRangeHighlight } from "./blockHighlight";
+
+// Used now and then, so it loads when first opened rather than with every note.
+const AudioRecorder = lazy(() => import("./AudioRecorder").then((m) => ({ default: m.AudioRecorder })));
 
 interface MenuItem {
   id: string;
@@ -966,14 +968,16 @@ export function EditorMenus({
       />
       {recorderAnchor ? (
         <Popover anchor={recorderAnchor} label="Audio recording" width={320} scroll={false}>
-          <AudioRecorder
-            onSave={onInsertAudio}
-            onClose={() => {
-              setRecorderAnchor(null);
-              dropLeftover();
-              editor.view.focus();
-            }}
-          />
+          <Suspense fallback={<div className="h-40" aria-busy aria-label="Loading recorder" />}>
+            <AudioRecorder
+              onSave={onInsertAudio}
+              onClose={() => {
+                setRecorderAnchor(null);
+                dropLeftover();
+                editor.view.focus();
+              }}
+            />
+          </Suspense>
         </Popover>
       ) : null}
       {datePicker && datePickerAnchor ? (

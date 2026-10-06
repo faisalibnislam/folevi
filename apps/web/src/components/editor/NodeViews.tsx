@@ -6,7 +6,7 @@ import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup } from "./commands";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowLeft,
@@ -23,12 +23,12 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { plainText, sanitizeHref, type InlineNode } from "@folevi/editor-schema";
+import { plainText, sanitizeHref, type InlineNode, type SyncState } from "@folevi/editor-schema";
 import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
-import { useEngineState } from "@/lib/hooks/useEngine";
+import { useEngineSelector } from "@/lib/hooks/useEngine";
 import { localPreviewUrl, releaseLocalPreview } from "@/lib/sync/uploads";
 import { formatBytes } from "@/lib/format";
 import {
@@ -49,9 +49,36 @@ import { useEditorEnvironment } from "./environment";
 import { useDraft } from "./useDraft";
 import { useEditable } from "./useEditable";
 import { AudioPlayer } from "./AudioPlayer";
-import { WhiteboardView } from "./WhiteboardView";
-import { FlowchartView } from "./flowchart/FlowchartView";
-import { CollectionEmbed } from "./CollectionEmbed";
+
+// The whiteboard, flowchart and collection blocks are large and most notes have none: each loads the first
+// time a note shows one, in a placeholder of the block's own height so nothing moves when it arrives.
+const WhiteboardView = lazy(() => import("./WhiteboardView").then((m) => ({ default: m.WhiteboardView })));
+const FlowchartView = lazy(() => import("./flowchart/FlowchartView").then((m) => ({ default: m.FlowchartView })));
+const CollectionEmbed = lazy(() => import("./CollectionEmbed").then((m) => ({ default: m.CollectionEmbed })));
+
+function LoadingBlock({ height }: { height: number }) {
+  return (
+    <NodeViewWrapper>
+      <div contentEditable={false} aria-busy aria-label="Loading" className="my-3 animate-pulse rounded-[10px] bg-sunken motion-reduce:animate-none" style={{ height }} />
+    </NodeViewWrapper>
+  );
+}
+
+function LazyWhiteboard(props: ReactNodeViewProps) {
+  return (
+    <Suspense fallback={<LoadingBlock height={Number(props.node.attrs.height) || 420} />}>
+      <WhiteboardView {...props} />
+    </Suspense>
+  );
+}
+
+function LazyFlowchart(props: ReactNodeViewProps) {
+  return (
+    <Suspense fallback={<LoadingBlock height={Number(props.node.attrs.height) || 440} />}>
+      <FlowchartView {...props} />
+    </Suspense>
+  );
+}
 
 function useNow(bucketMs: number): number {
   const [now, setNow] = useState(() => Math.floor(Date.now() / bucketMs) * bucketMs);
@@ -107,10 +134,17 @@ function useLocalPreview(fileId: string | null, uploadId: string | undefined, se
   return preview?.url ?? null;
 }
 
+// One per attachment in the note: each re-renders only when its own upload changes, not on every keystroke.
 function useUploadState(blockId: string | null) {
   const { engine } = useAppState();
-  const state = useEngineState(engine);
-  return blockId ? state.uploads.find((u) => u.blockId === blockId) : undefined;
+  return useEngineSelector(engine, (s) => (blockId ? s.uploads.find((u) => u.blockId === blockId) : undefined), sameUpload);
+}
+
+type UploadRecord = SyncState["uploads"][number];
+
+// The sync state copies upload records as it changes: the same upload in the same state is no change.
+function sameUpload(a: UploadRecord | undefined, b: UploadRecord | undefined): boolean {
+  return a === b || (a !== undefined && b !== undefined && a.uploadId === b.uploadId && a.state === b.state && a.attempts === b.attempts);
 }
 
 function Frame({
@@ -916,11 +950,9 @@ function CollectionView({ node, selected, editor }: ReactNodeViewProps) {
   return (
     <Frame selected={selected} label="Collection">
       <div contentEditable={false} className="my-3">
-        <CollectionEmbed
-          collectionId={a.collectionId}
-          initialViewId={a.viewId}
-          editable={editable}
-        />
+        <Suspense fallback={<div aria-busy aria-label="Loading collection" className="h-48 animate-pulse rounded-[10px] bg-sunken motion-reduce:animate-none" />}>
+          <CollectionEmbed collectionId={a.collectionId} initialViewId={a.viewId} editable={editable} />
+        </Suspense>
       </div>
     </Frame>
   );
@@ -1079,10 +1111,10 @@ export const NODE_VIEW_EXTENSIONS = [
   }),
   // Drawing needs every pointer event; the toolbar needs its clicks.
   WhiteboardBlock.extend({
-    addNodeView: () => blockView(WhiteboardView, () => true),
+    addNodeView: () => blockView(LazyWhiteboard, () => true),
   }),
   // The canvas handles its own pointer, wheel and keyboard input (and its own undo while focused).
   FlowchartBlock.extend({
-    addNodeView: () => blockView(FlowchartView, () => true),
+    addNodeView: () => blockView(LazyFlowchart, () => true),
   }),
 ];

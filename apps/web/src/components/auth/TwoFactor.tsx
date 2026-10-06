@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
 import { Check, Copy, Download, KeyRound, ShieldCheck } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink, safeReturnTo } from "./fields";
@@ -174,7 +173,8 @@ export function TotpEnrollment({ totpUri }: { totpUri: string }) {
   const secret = secretFromUri(totpUri);
   useEffect(() => {
     let alive = true;
-    void QRCode.toDataURL(totpUri, { margin: 1, width: 220, errorCorrectionLevel: "M", color: { dark: "#1D1814", light: "#FFFFFF" } }).then((url) => {
+    // The QR library loads only here, when someone is setting up an authenticator app.
+    void import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(totpUri, { margin: 1, width: 220, errorCorrectionLevel: "M", color: { dark: "#1D1814", light: "#FFFFFF" } })).then((url) => {
       if (alive) setQr(url);
     });
     return () => {

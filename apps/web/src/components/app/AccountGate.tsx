@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvexAuth, useMutation } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { useAuthPhase } from "@/lib/convex/provider";
 import { authClient } from "@/lib/auth/client";
@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
 import { SignOutButton, signOutNow } from "@/components/auth/SignOut";
 import { Shell } from "./Shell";
-import { Onboarding } from "./Onboarding";
 import { DeviceLimitScreen } from "./DeviceLimit";
+
+// Seen once per account, so it loads only for people who haven't finished it.
+const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
 
 function currentPath(): string {
   return typeof window === "undefined" ? "/documents" : `${window.location.pathname}${window.location.search}`;
@@ -154,7 +156,13 @@ export function AccountGate() {
     case "ready":
       return (
         <AppStateProvider profile={me.profile}>
-          {me.profile.onboardingStep !== "done" || route.name === "onboarding" ? <Onboarding /> : <Shell />}
+          {me.profile.onboardingStep !== "done" || route.name === "onboarding" ? (
+            <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
+              <Onboarding />
+            </Suspense>
+          ) : (
+            <Shell />
+          )}
         </AppStateProvider>
       );
   }

@@ -77,13 +77,3 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
   editor.commands.focus();
   return true;
 }
-
-/** Markdown → plain text for copying (keeps line breaks, drops markup). */
-export function markdownToPlain(markdown: string): string {
-  return markdown
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/(^|\W)[*_](.+?)[*_](?=\W|$)/g, "$1$2")
-    .replace(/`([^`]+)`/g, "$1")
-    .trim();
-}

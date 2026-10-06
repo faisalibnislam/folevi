@@ -30,6 +30,8 @@ describe("bookmark previews", () => {
     for (const h of ["localhost", "app.localhost", "127.0.0.1", "10.1.2.3", "192.168.0.10", "172.20.0.1", "169.254.169.254", "[::1]", "fd00::1", "printer.local", "intranet"]) {
       expect(isPrivateHost(h), h).toBe(true);
     }
-    for (const h of ["involets.com", "www.example.org", "8.8.8.8", "172.32.0.1"]) expect(isPrivateHost(h), h).toBe(false);
+    for (const h of ["involets.com", "www.example.org", "8.8.8.8", "172.32.0.1", "[2606:4700::1]"]) expect(isPrivateHost(h), h).toBe(false);
+    // Benchmarking and IETF ranges, and IPv6 forms that carry an IPv4 address or translate to one.
+    for (const h of ["198.18.0.1", "198.19.255.255", "192.0.0.8", "[::7f00:1]", "[::127.0.0.1]", "[64:ff9b::a00:1]"]) expect(isPrivateHost(h), h).toBe(true);
   });
 });

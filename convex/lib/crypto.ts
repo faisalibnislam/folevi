@@ -12,9 +12,23 @@ export async function sha256Hex(value: string): Promise<string> {
   return toHex(await crypto.subtle.digest("SHA-256", enc.encode(value)));
 }
 
+/**
+ * A secret from the environment, or a fixed stand-in on development and test deployments. Production never
+ * falls back: a known stand-in would let anyone forge signed links or reverse keyed hashes. (The deploy check,
+ * scripts/check-prod-env.mjs, also refuses to ship without them.)
+ */
+export function secretOrDevFallback(names: string[], fallback: string): string {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  if (process.env.FOLEVI_ENV === "production") throw new Error(`${names[0]} is not set`);
+  return fallback;
+}
+
 /** Keyed hash for identifiers that must be correlatable but not reversible (emails, IPs, user agents). */
 export async function keyedHash(value: string, purpose: string): Promise<string> {
-  const secret = process.env.FOLEVI_HASH_SALT ?? "folevi-development-salt";
+  const secret = secretOrDevFallback(["FOLEVI_HASH_SALT"], "folevi-development-salt");
   const key = await crypto.subtle.importKey("raw", enc.encode(`${secret}:${purpose}`), { name: "HMAC", hash: "SHA-256" }, false, [
     "sign",
   ]);

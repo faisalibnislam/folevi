@@ -3,7 +3,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { accessAtLeast, documentAccess } from "./auth";
 
-export const appUrl = () => process.env.FOLEVI_APP_URL ?? "https://app.folevi.com";
+/** The web app's address for links in emails and redirects (no trailing slash). */
+export const appUrl = () => (process.env.FOLEVI_APP_URL ?? "https://app.folevi.com").replace(/\/$/, "");
 
 type Kind = Doc<"notifications">["kind"];
 type Prefs = Doc<"profiles">["notificationPrefs"];

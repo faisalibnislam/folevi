@@ -1,9 +1,9 @@
-import { toHex } from "./crypto";
+import { secretOrDevFallback, toHex } from "./crypto";
 
 const enc = new TextEncoder();
 
 export async function signFileUrl(value: string): Promise<string> {
-  const secret = process.env.FOLEVI_FILE_URL_SECRET ?? process.env.FOLEVI_HASH_SALT ?? "folevi-development-file-secret";
+  const secret = secretOrDevFallback(["FOLEVI_FILE_URL_SECRET", "FOLEVI_HASH_SALT"], "folevi-development-file-secret");
   const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return toHex(await crypto.subtle.sign("HMAC", key, enc.encode(value))).slice(0, 40);
 }

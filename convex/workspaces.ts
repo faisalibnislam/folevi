@@ -31,14 +31,13 @@ import { insertScoped, workspaceScope } from "./lib/scope";
 import { PLAN_CATALOG, TIER_NAMES, planName } from "./lib/plans";
 import { canInviteMember, canManageMember, canManageWorkspace, memberCanManageBilling, requireWorkspaceManager } from "./lib/permissions";
 import { billableSeatCount, seatsChanged, seatSummary } from "./lib/seats";
-import { notifyAccessChange, notifyInvite, workspaceRoleLabel } from "./lib/notify";
+import { appUrl, notifyAccessChange, notifyInvite, workspaceRoleLabel } from "./lib/notify";
 import { workspaceClosing } from "./workspaceBilling";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** How long a workspace the owner deleted can still be restored (like accounts). */
 export const WORKSPACE_DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[a-z]{2,}$/i;
-const appUrl = () => process.env.FOLEVI_APP_URL ?? "https://app.folevi.com";
 
 /**
  * The team workspaces you're a member of, with your role and each workspace's own plan and limits.

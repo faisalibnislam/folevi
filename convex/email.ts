@@ -5,6 +5,7 @@ import { emailManifest, hashRecipient, redactEmail, selectProvider, sendEmail, t
 import { ulid } from "@folevi/editor-schema";
 import type { Doc, Id } from "./_generated/dataModel";
 import { bump, type MetricKey } from "./lib/metrics";
+import { secretOrDevFallback } from "./lib/crypto";
 
 type Environment = "production" | "preview" | "development" | "test";
 
@@ -90,7 +91,7 @@ export const sendTemplate = internalAction({
       }
     }
     if (!to) throw new Error("no recipient");
-    const salt = process.env.FOLEVI_HASH_SALT ?? "folevi-development-salt";
+    const salt = secretOrDevFallback(["FOLEVI_HASH_SALT"], "folevi-development-salt");
     const recipientHash = await hashRecipient(to, salt);
     const requestId = ulid();
     const env = process.env as Record<string, string | undefined>;
@@ -275,11 +276,6 @@ export const profileByEmail = internalQuery({
   },
 });
 
-export const getAttempt = internalQuery({
-  args: { attemptId: v.id("emailSendAttempts") },
-  handler: async (ctx, { attemptId }) => await ctx.db.get(attemptId),
-});
-
 // ---------------------------------------------------------------- Mailtrap webhooks
 
 /**
@@ -333,7 +329,7 @@ export const recordMailtrapEvents = internalMutation({
   args: { events: v.array(vMailtrapEvent) },
   handler: async (ctx, { events }) => {
     if (events.length > 200) throw new Error("too many events in one batch");
-    const salt = process.env.FOLEVI_HASH_SALT ?? "folevi-development-salt";
+    const salt = secretOrDevFallback(["FOLEVI_HASH_SALT"], "folevi-development-salt");
     let stored = 0;
     let duplicates = 0;
     let matched = 0;

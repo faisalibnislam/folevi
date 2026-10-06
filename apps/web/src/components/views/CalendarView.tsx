@@ -52,7 +52,12 @@ export function CalendarView({ month }: { month: string | null }) {
 
   const byDate = useMemo(() => {
     const m = new Map<string, TaskRow[]>();
-    for (const t of tasks ?? []) if (t.dueDate) m.set(t.dueDate, [...(m.get(t.dueDate) ?? []), t]);
+    for (const t of tasks ?? []) {
+      if (!t.dueDate) continue;
+      const day = m.get(t.dueDate);
+      if (day) day.push(t);
+      else m.set(t.dueDate, [t]);
+    }
     return m;
   }, [tasks]);
 

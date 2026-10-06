@@ -101,13 +101,19 @@ export class Uploader {
     private onError: (message: string) => void,
   ) {}
 
+  /** Set once the account's engine is torn down: a pass still running then must not schedule another. */
+  private stopped = false;
+
   kick(delay = 0) {
+    if (this.stopped) return;
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.run(), delay);
   }
 
   stop() {
+    this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
   }
 
   private async run() {

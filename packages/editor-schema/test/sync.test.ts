@@ -146,6 +146,38 @@ describe("sync reducer details", () => {
     expect(s.blocks.a!.block.text[0]).toEqual({ type: "text", text: "mine" });
   });
 
+  it("a batch of remote rows ends where applying them one by one does", () => {
+    let s = sync.emptySyncState();
+    s = sync.remoteUpdate(s, { documentId: "d", block: { ...block("a", "v1"), revision: 3 }, deleted: false });
+    s = sync.remoteUpdate(s, { documentId: "d", block: { ...block("b", "v1"), revision: 1 }, deleted: false });
+    s = sync.localUpsert(s, { opId: "1", documentId: "d", block: block("b", "mine"), fields: ["content"] });
+    const rows = [
+      { documentId: "d", block: { ...block("a", "older"), revision: 2 }, deleted: false },
+      { documentId: "d", block: { ...block("b", "theirs"), revision: 2 }, deleted: false },
+      { documentId: "d", block: { ...block("c", "new"), revision: 1 }, deleted: false },
+      { documentId: "d", block: { ...block("c", "newer"), revision: 2 }, deleted: false },
+      { documentId: "d", block: { ...block("c", "stale"), revision: 1 }, deleted: false },
+    ];
+    const oneByOne = rows.reduce((acc, row) => sync.remoteUpdate(acc, row), s);
+    const batched = sync.remoteUpdates(s, rows);
+    expect(sync.canonicalSyncState(batched)).toBe(sync.canonicalSyncState(oneByOne));
+    expect(batched.blocks.a!.block.text[0]).toEqual({ type: "text", text: "v1" });
+    expect(batched.blocks.b!.block.text[0]).toEqual({ type: "text", text: "mine" });
+    expect(batched.blocks.c!.block.text[0]).toEqual({ type: "text", text: "newer" });
+    expect(batched.blocks.c!.block.revision).toBeUndefined();
+  });
+
+  it("remote rows that change nothing return the same state, and others leave the old one as it was", () => {
+    let s = sync.emptySyncState();
+    s = sync.remoteUpdate(s, { documentId: "d", block: { ...block("a", "v1"), revision: 2 }, deleted: false });
+    expect(sync.remoteUpdates(s, [{ documentId: "d", block: { ...block("a", "v0"), revision: 1 }, deleted: false }])).toBe(s);
+    expect(sync.remoteUpdates(s, [])).toBe(s);
+    const before = sync.canonicalSyncState(s);
+    const next = sync.remoteUpdates(s, [{ documentId: "d", block: { ...block("a", "v2"), revision: 3 }, deleted: true }]);
+    expect(next.blocks.a!.deleted).toBe(true);
+    expect(sync.canonicalSyncState(s)).toBe(before);
+  });
+
   it("status reflects saved only when nothing is outstanding", () => {
     let s = sync.emptySyncState();
     expect(sync.syncStatus(s)).toBe("saved");

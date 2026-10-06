@@ -107,10 +107,6 @@ function opBlockId(op: SyncOp): string | null {
   }
 }
 
-function hasOutstanding(state: SyncState, blockId: string): boolean {
-  return [...state.pending, ...state.inflight].some((op) => opBlockId(op) === blockId);
-}
-
 export function localUpsert(
   prev: SyncState,
   input: { opId: string; documentId: string; block: WireBlock; fields: ChangedField[]; blockedBy?: string },
@@ -193,9 +189,7 @@ export function localRestore(prev: SyncState, input: { opId: string; documentId:
 }
 
 export function setConnection(prev: SyncState, connection: "online" | "offline"): SyncState {
-  const state = clone(prev);
-  state.connection = connection;
-  return state;
+  return { ...prev, connection };
 }
 
 /**
@@ -208,7 +202,8 @@ export function setConnection(prev: SyncState, connection: "online" | "offline")
  */
 export function takeBatch(prev: SyncState, max = 100): SyncState {
   if (prev.inflight.length || prev.connection === "offline" || prev.authRequired) return prev;
-  const state = clone(prev);
+  // Only the queues are replaced below (nothing is changed in place): the rest is shared with `prev`.
+  const state = { ...prev };
   const order = new Map(state.pending.map((op, i) => [op, i]));
   const unsentNew = new Set(state.pending.flatMap((op) => (op.kind === "block.upsert" && state.blocks[op.block.id]?.serverRevision == null ? [op.block.id] : [])));
   const created = new Set<string>();
@@ -363,9 +358,7 @@ function stripRevision(b: WireBlock): WireBlock {
 }
 
 export function batchFailed(prev: SyncState, reason: "network" | "unauthenticated" | "server"): SyncState {
-  const state = clone(prev);
-  state.pending = [...state.inflight, ...state.pending];
-  state.inflight = [];
+  const state = { ...prev, pending: [...prev.inflight, ...prev.pending], inflight: [] };
   if (reason === "unauthenticated") state.authRequired = true;
   if (reason === "network") state.connection = "offline";
   return state;
@@ -373,28 +366,45 @@ export function batchFailed(prev: SyncState, reason: "network" | "unauthenticate
 
 /** Dismisses surfaced errors (after the person has seen them). */
 export function clearErrors(prev: SyncState, opIds?: string[]): SyncState {
-  const state = clone(prev);
-  state.errors = opIds ? state.errors.filter((e) => !opIds.includes(e.opId)) : [];
-  return state;
+  return { ...prev, errors: opIds ? prev.errors.filter((e) => !opIds.includes(e.opId)) : [] };
 }
 
 export function authRefreshed(prev: SyncState): SyncState {
-  const state = clone(prev);
-  state.authRequired = false;
-  return state;
+  return { ...prev, authRequired: false };
+}
+
+export interface RemoteRow {
+  documentId: string;
+  block: WireBlock;
+  deleted: boolean;
 }
 
 /** A server row arrived via subscription or pull. Local unsent work always wins until acknowledged. */
-export function remoteUpdate(prev: SyncState, input: { documentId: string; block: WireBlock; deleted: boolean }): SyncState {
-  const rev = input.block.revision ?? 0;
-  const existing = prev.blocks[input.block.id];
-  if (existing && existing.serverRevision !== null && existing.serverRevision >= rev) return prev;
-  if (hasOutstanding(prev, input.block.id)) return prev;
-  const state = clone(prev);
-  const b = clone(input.block);
-  delete b.revision;
-  state.blocks[b.id] = { documentId: input.documentId, block: b, serverRevision: rev, deleted: input.deleted };
-  return state;
+export function remoteUpdate(prev: SyncState, input: RemoteRow): SyncState {
+  return remoteUpdates(prev, [input]);
+}
+
+/**
+ * Several server rows at once (a document's subscription), with the same result as applying them one by
+ * one through `remoteUpdate`. The state is copied once for the whole batch, and only its block map: a
+ * deep copy per row made a large account cost blocks × rows to reconcile.
+ */
+export function remoteUpdates(prev: SyncState, inputs: readonly RemoteRow[]): SyncState {
+  let state: SyncState | null = null;
+  // Rows never change the queues, so what's outstanding is the same for every row.
+  let outstanding: Set<string> | null = null;
+  for (const input of inputs) {
+    const rev = input.block.revision ?? 0;
+    const existing = (state ?? prev).blocks[input.block.id];
+    if (existing && existing.serverRevision !== null && existing.serverRevision >= rev) continue;
+    outstanding ??= new Set([...prev.pending, ...prev.inflight].flatMap((op) => opBlockId(op) ?? []));
+    if (outstanding.has(input.block.id)) continue;
+    state ??= { ...prev, blocks: { ...prev.blocks } };
+    const b = clone(input.block);
+    delete b.revision;
+    state.blocks[b.id] = { documentId: input.documentId, block: b, serverRevision: rev, deleted: input.deleted };
+  }
+  return state ?? prev;
 }
 
 export function queueUpload(prev: SyncState, input: { uploadId: string; documentId: string; blockId: string }): SyncState {

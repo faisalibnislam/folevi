@@ -2,7 +2,7 @@
 
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
-import { useState, type ReactNode } from "react";
+import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Check, ExternalLink, FileText, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -278,11 +278,35 @@ export function TasksView({ view }: { view: View }) {
   const counts = useQuery(api.tasks.counts, { scope, today });
   const { openQuickAdd } = useShell();
   const toggle = useToggleTask();
-  const [filter, setFilter] = useState("");
-  const [editing, setEditing] = useState<TaskRow | null>(null);
-  const shown = (tasks ?? []).filter((t) => !filter || t.title.toLowerCase().includes(filter.toLowerCase()) || t.documentTitle.toLowerCase().includes(filter.toLowerCase()));
-  const groups = view === "upcoming" ? groupByDate(shown) : [{ key: "all", label: null as string | null, items: shown }];
+  // The rows are memoized below, so they need a toggle that keeps its identity between renders.
+  const toggleRef = useRef(toggle);
+  toggleRef.current = toggle;
+  const onToggle = useCallback((t: TaskRow) => toggleRef.current(t), []);
   const meta = VIEWS.find((v) => v.id === view)!;
+  const [filter, setFilter] = useState("");
+  // Typing in the filter stays immediate; the list (up to a thousand rows) catches up when React has time.
+  const query = useDeferredValue(filter);
+  const [editing, setEditing] = useState<TaskRow | null>(null);
+  const shown = useMemo(() => {
+    const q = query.toLowerCase();
+    return (tasks ?? []).filter((t) => !q || t.title.toLowerCase().includes(q) || t.documentTitle.toLowerCase().includes(q));
+  }, [tasks, query]);
+  const groups = useMemo(() => (view === "upcoming" ? groupByDate(shown) : [{ key: "all", label: null as string | null, items: shown }]), [view, shown]);
+  // The same elements while the rows haven't changed, so a keystroke in the filter doesn't re-render them all.
+  const list = useMemo(
+    () =>
+      groups.map((g) => (
+        <section key={g.key} className="mt-6" aria-label={g.label ?? meta.label}>
+          {g.label ? <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
+          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[8px]">
+            {g.items.map((t) => (
+              <TaskItem key={t.blockId} task={t} today={today} onToggle={onToggle} onEdit={setEditing} />
+            ))}
+          </ul>
+        </section>
+      )),
+    [groups, meta, today, onToggle],
+  );
   const empty = view === "mine" && context.kind === "personal" ? "No open tasks. In Personal every unassigned task is yours." : meta.empty;
 
   return (
@@ -330,18 +354,9 @@ export function TasksView({ view }: { view: View }) {
             ))}
           </div>
         ) : shown.length === 0 ? (
-          <p className="mt-10 text-center ui-display text-2xl text-muted">{filter ? "No tasks match that filter." : empty}</p>
+          <p className="mt-10 text-center ui-display text-2xl text-muted">{query ? "No tasks match that filter." : empty}</p>
         ) : (
-          groups.map((g) => (
-            <section key={g.key} className="mt-6" aria-label={g.label ?? meta.label}>
-              {g.label ? <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
-              <ul className="divide-y divide-line overflow-hidden ui-card rounded-[8px]">
-                {g.items.map((t) => (
-                  <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
-                ))}
-              </ul>
-            </section>
-          ))
+          list
         )}
       </div>
       <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
@@ -353,7 +368,9 @@ function groupByDate(tasks: TaskRow[]) {
   const groups = new Map<string, TaskRow[]>();
   for (const t of tasks) {
     const key = t.dueDate ?? "none";
-    groups.set(key, [...(groups.get(key) ?? []), t]);
+    const list = groups.get(key);
+    if (list) list.push(t);
+    else groups.set(key, [t]);
   }
   return [...groups.entries()].map(([key, items]) => ({
     key,

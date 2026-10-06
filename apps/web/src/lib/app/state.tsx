@@ -207,6 +207,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
     if (!ready) return;
     let cancelled = false;
     let opened: SyncEngine | null = null;
+    let uploading: Uploader | null = null;
     (async () => {
       const id = await loadDeviceId(profile.id);
       // Your workspaces let page creates queued by an older build find their scope (engine.ts adoptLegacyCreates).
@@ -219,14 +220,17 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
       setDevice(id);
       setEngine(e);
       const up = new Uploader(convex, profile.id, e, (message) => window.dispatchEvent(new CustomEvent("folevi:error", { detail: message })));
+      uploading = up;
       setUploader(up);
       e.scheduleFlush(0);
       up.kick(500);
     })();
     return () => {
       cancelled = true;
-      // Replaced (another account) or unmounted: it stops listening to the page.
+      // Replaced (another account) or unmounted: it stops listening to the page, and its uploader stops
+      // retrying (its timer would otherwise keep running uploads for an engine nobody uses).
       opened?.dispose();
+      uploading?.stop();
     };
   }, [convex, profile.id, ready]);
 

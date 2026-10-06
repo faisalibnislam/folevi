@@ -73,10 +73,22 @@ export function formatDateTime(value: Date | number | string, locale = formattin
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(toDate(value));
 }
 
+/**
+ * Formatters by locale and options: making one is far slower than using it, and a calendar or a task
+ * list formats hundreds of dates per render with a handful of option sets.
+ */
+const calendarFormats = new Map<string, Intl.DateTimeFormat>();
+
 /** A calendar date ("2026-09-25") shown without time-zone drift. */
 export function formatCalendarDate(isoDate: string, options: Intl.DateTimeFormatOptions = { dateStyle: "medium" }, locale = formattingLocale): string {
   const [y, m, d] = isoDate.split("-").map(Number) as [number, number, number];
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
+  const key = `${locale ?? ""}|${JSON.stringify(options)}`;
+  let format = calendarFormats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
+    calendarFormats.set(key, format);
+  }
+  return format.format(new Date(Date.UTC(y, m - 1, d)));
 }
 
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions, locale = formattingLocale): string {

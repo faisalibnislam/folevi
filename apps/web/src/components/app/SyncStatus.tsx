@@ -7,7 +7,7 @@ import { AlertTriangle, Check, Cloud, CloudOff, FileText, GitMerge, Loader2, Pap
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
-import { useEngineState, useEngineStatus } from "@/lib/hooks/useEngine";
+import { useEngineSelector, useEngineStatus } from "@/lib/hooks/useEngine";
 import { usePendingDocs, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { localDb } from "@/lib/sync/db";
 import { t } from "@/i18n";
@@ -30,10 +30,14 @@ const LIST_LIMIT = 6;
  */
 export function SyncStatus({ documentId, compact = true, align = "end" }: { documentId?: string; /** Icon only (the default). */ compact?: boolean; /** Which edge the details popover lines up with. */ align?: "start" | "end" }) {
   const { engine } = useAppState();
-  const state = useEngineState(engine);
+  // Counts and flags only: it's always on screen, and should re-render when they change, not on every
+  // change to the queue.
+  const pending = useEngineSelector(engine, (s) => s.pending.length + s.inflight.length);
+  const conflicts = useEngineSelector(engine, (s) => (documentId ? s.conflicts.filter((c) => c.documentId === documentId).length : s.conflicts.length));
+  const allConflicts = useEngineSelector(engine, (s) => s.conflicts.length);
+  const authRequired = useEngineSelector(engine, (s) => s.authRequired);
+  const errors = useEngineSelector(engine, (s) => s.errors, sameErrors);
   const status = useEngineStatus(engine);
-  const pending = state.pending.length + state.inflight.length;
-  const conflicts = documentId ? state.conflicts.filter((c) => c.documentId === documentId).length : state.conflicts.length;
   const [open, setOpen] = useState(false);
   const [announce, setAnnounce] = useState("");
   const last = useRef(status);
@@ -87,7 +91,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
     status === "offline" ? "text-warning" :
     status === "conflict" ? "text-plum-ink" :
     status === "error" ? "text-danger" : "text-muted";
-  const conflictCount = conflicts || state.conflicts.length;
+  const conflictCount = conflicts || allConflicts;
 
   return (
     <div className="relative">
@@ -138,17 +142,17 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
             {status === "offline" && t("sync.offline.detail", { count: pending })}
             {status === "conflict" && t("sync.conflict.detail", { count: conflictCount })}
             {status === "error" &&
-              (state.authRequired ? "Your session needs to be refreshed. Sign in again; your changes are kept on this device." : "Some changes were rejected by the server and were not saved.")}
+              (authRequired ? "Your session needs to be refreshed. Sign in again; your changes are kept on this device." : "Some changes were rejected by the server and were not saved.")}
           </p>
           <PendingList onNavigate={() => setOpen(false)} />
-          {state.errors.length ? (
+          {errors.length ? (
             <ul className="mt-2 list-disc pl-5 text-xs text-muted">
-              {state.errors.slice(-3).map((e) => (
+              {errors.slice(-3).map((e) => (
                 <li key={e.opId}>{describeError(e.code)}</li>
               ))}
             </ul>
           ) : null}
-          {status !== "saved" || state.errors.length ? (
+          {status !== "saved" || errors.length ? (
           <div className="mt-3 flex gap-2 pl-4">
             {status !== "saved" ? (
               <button
@@ -162,7 +166,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
                 <RefreshCw size={12} aria-hidden /> Retry now
               </button>
             ) : null}
-            {state.errors.length ? (
+            {errors.length ? (
               <button type="button" className="ui-btn ui-btn-quiet h-8 px-3 text-xs" onClick={() => engine?.clearErrors()}>
                 Dismiss
               </button>
@@ -259,6 +263,11 @@ function useDocumentTitles(pending: PendingDocument[]): Map<string, string> {
     }
     return out;
   }, [pending, results, cached]);
+}
+
+/** Surfaced errors compare by what they say: the sync state copies them as it changes. */
+function sameErrors(a: readonly { opId: string; code: string }[], b: readonly { opId: string; code: string }[]): boolean {
+  return a.length === b.length && a.every((e, i) => e.opId === b[i]!.opId && e.code === b[i]!.code);
 }
 
 function describeError(code: string): string {

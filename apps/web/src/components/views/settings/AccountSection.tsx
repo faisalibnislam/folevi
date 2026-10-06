@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvex, useMutation } from "convex/react";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
@@ -22,7 +22,19 @@ export function AccountSection() {
   const removeAvatar = useMutation(api.users.removeAvatar);
   const toast = useToast();
   const [name, setName] = useState(profile.displayName);
-  const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
+  // About 400 zones: built once per change of zone, not on every keystroke in the name field.
+  const zoneField = useMemo(() => {
+    const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
+    return (
+      <Select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full ui-input rounded-[6px] px-3">
+        {zones.map((z) => (
+          <option key={z} value={z}>
+            {z}
+          </option>
+        ))}
+      </Select>
+    );
+  }, [timeZone, update]);
   return (
     <>
       <Card title="Profile">
@@ -63,13 +75,7 @@ export function AccountSection() {
           </label>
           <label className="text-sm">
             <span className="mb-1 block font-medium">Time zone</span>
-            <Select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full ui-input rounded-[6px] px-3">
-              {zones.map((z) => (
-                <option key={z} value={z}>
-                  {z}
-                </option>
-              ))}
-            </Select>
+            {zoneField}
             <span className="mt-1 block text-xs text-muted">Used for Today, the calendar and reminders.</span>
           </label>
           <div>

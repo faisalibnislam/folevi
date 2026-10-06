@@ -93,6 +93,10 @@ export function useCardSelection(ids: string[], enabled = true) {
     return () => window.removeEventListener("keydown", onKey);
   }, [enabled, selectedIds.length, clear, selectAll]);
 
+  // A drag still going when the view goes away (navigating with the keyboard mid-drag) stops with it.
+  const endDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => endDrag.current?.(), []);
+
   /** For the surface around the cards (it should fill the scrolling area). */
   const onSurfacePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
@@ -107,31 +111,39 @@ export function useCardSelection(ids: string[], enabled = true) {
       const start = { x: e.clientX, y: e.clientY + scroller.scrollTop };
       let last = { x: e.clientX, y: e.clientY };
       let moved = false;
+      let dirty = false;
       let frame = 0;
+      // Where each card is, measured once when the drag starts (in the scroller's content, so scrolling
+      // during the drag doesn't move them): measuring every card on every pointer move forced a layout each time.
+      let cards: { id: string; left: number; right: number; top: number; bottom: number }[] = [];
+      let hit: Set<string> | null = null;
 
       const update = () => {
+        dirty = false;
         const y = last.y + scroller.scrollTop;
         const left = Math.min(start.x, last.x);
         const top = Math.min(start.y, y) - scroller.scrollTop;
         const width = Math.abs(last.x - start.x);
         const height = Math.abs(y - start.y);
         setMarquee({ left, top, width, height });
+        const from = top + scroller.scrollTop;
         const hits = new Set(base);
-        surface.querySelectorAll<HTMLElement>("[data-card-id]").forEach((el) => {
-          const r = el.getBoundingClientRect();
-          if (r.right >= left && r.left <= left + width && r.bottom >= top && r.top <= top + height) hits.add(el.dataset.cardId!);
-        });
+        for (const c of cards) {
+          if (c.right >= left && c.left <= left + width && c.bottom >= from && c.top <= from + height) hits.add(c.id);
+        }
+        // Most moves don't reach another card: the selection stays as it is.
+        const prev = hit;
+        if (prev && hits.size === prev.size && [...hits].every((id) => prev.has(id))) return;
+        hit = hits;
         setPicked(hits);
       };
-      // Scroll while the pointer is near the top or bottom edge of the scrolling area.
+      // Once a frame: follow the pointer, and scroll while it's near the top or bottom edge of the scrolling area.
       const tick = () => {
         const r = scroller.getBoundingClientRect();
         const topEdge = r.top + (parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0);
         const speed = last.y < topEdge + EDGE ? -Math.ceil((topEdge + EDGE - last.y) / 4) : last.y > r.bottom - EDGE ? Math.ceil((last.y - (r.bottom - EDGE)) / 4) : 0;
-        if (speed) {
-          scroller.scrollTop += speed;
-          update();
-        }
+        if (speed) scroller.scrollTop += speed;
+        if (speed || dirty) update();
         frame = requestAnimationFrame(tick);
       };
       const onMove = (ev: PointerEvent) => {
@@ -142,20 +154,33 @@ export function useCardSelection(ids: string[], enabled = true) {
           // No text selection while drawing.
           document.body.style.userSelect = "none";
           window.getSelection()?.removeAllRanges();
+          const scrollTop = scroller.scrollTop;
+          cards = [...surface.querySelectorAll<HTMLElement>("[data-card-id]")].map((el) => {
+            const r = el.getBoundingClientRect();
+            return { id: el.dataset.cardId!, left: r.left, right: r.right, top: r.top + scrollTop, bottom: r.bottom + scrollTop };
+          });
+          update();
           frame = requestAnimationFrame(tick);
+          return;
         }
-        update();
+        dirty = true;
       };
-      const onUp = () => {
+      const stop = () => {
+        endDrag.current = null;
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
         window.removeEventListener("pointercancel", onUp);
         cancelAnimationFrame(frame);
         document.body.style.userSelect = "";
+      };
+      const onUp = () => {
+        stop();
         setMarquee(null);
         // A plain click on empty space clears the selection.
         if (!moved && !additive) clear();
       };
+      endDrag.current?.();
+      endDrag.current = stop;
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);

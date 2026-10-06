@@ -1,19 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { flattenTree, plainText, type WireBlock } from "@folevi/editor-schema";
-import { useEngineState } from "@/lib/hooks/useEngine";
+import { useEffect, useMemo, useState } from "react";
+import { flattenTree, plainText } from "@folevi/editor-schema";
+import { useDocumentBlocks } from "@/lib/hooks/useEngine";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 
 /** Outline generated from headings and nested pages; click to jump. The section in view is marked. */
 export function Outline({ documentId, onJump }: { documentId: string; onJump: (blockId: string) => void; variant?: "panel" }) {
   const { engine } = useAppState();
-  useEngineState(engine); // re-render as blocks change
-  const blocks: WireBlock[] = engine?.documentBlocks(documentId) ?? [];
-  const items = flattenTree(blocks)
-    .map(({ block }) => block)
-    .filter((b) => b.type === "heading" || b.type === "page");
+  // Re-renders only when this note's blocks change (not on every change elsewhere in the account).
+  const blocks = useDocumentBlocks(engine, documentId);
+  const items = useMemo(
+    () =>
+      flattenTree(blocks)
+        .map(({ block }) => block)
+        .filter((b) => b.type === "heading" || b.type === "page"),
+    [blocks],
+  );
   const current = useCurrentHeading(items.filter((b) => b.type === "heading").map((b) => b.id));
 
   if (!items.length) {

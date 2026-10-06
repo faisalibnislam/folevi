@@ -9,7 +9,7 @@ import { CommentsOverview, type CommentThread } from "./Comments";
 import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
-import { useEngineState, useLocalStorage } from "@/lib/hooks/useEngine";
+import { useDocumentBlocks, useLocalStorage } from "@/lib/hooks/useEngine";
 import { IconButton } from "@/components/ui/Button";
 import { Outline } from "./Outline";
 import { WorkspaceMenu } from "@/components/app/WorkspaceMenu";
@@ -181,8 +181,9 @@ function PanelTitle({ children, aside }: { children: React.ReactNode; aside?: Re
 
 function useBlocks(documentId: string): WireBlock[] {
   const { engine } = useAppState();
-  useEngineState(engine); // re-render as the page changes
-  return engine ? flattenTree(engine.documentBlocks(documentId)).map(({ block }) => block) : [];
+  // Re-renders only when this note's blocks change; the tree is ordered once per change.
+  const blocks = useDocumentBlocks(engine, documentId);
+  return useMemo(() => flattenTree(blocks).map(({ block }) => block), [blocks]);
 }
 
 function ContentsPanel({ documentId, title, onJump }: { documentId: string; title: string; onJump: (id: string) => void }) {

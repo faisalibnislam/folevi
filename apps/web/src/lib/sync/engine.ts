@@ -2,7 +2,7 @@
 
 import type { ConvexReactClient } from "convex/react";
 import { ConvexError } from "convex/values";
-import { randomNoteEmoji, sync, type ChangedField, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
+import { randomNoteEmoji, sync, type ChangedField, type ConflictRecord, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { ACCOUNT_SYNC_KEY, localDb } from "./db";
 
@@ -126,6 +126,8 @@ export class SyncEngine {
       // Closing fires pagehide and then visibilitychange: once closing, it stays closing.
       this.journalClosing = this.journalClosing || closing;
       writeJournal(key, this.state, this.journalClosing);
+      // A save still waiting for its moment starts now: timers may not run again in a hidden page.
+      this.writeState();
     };
     // Capture, so this runs before the editor's own flush on the same event (which writes the journal again).
     // A page kept for back/forward (persisted) isn't closing: its journal stays its own.
@@ -178,6 +180,7 @@ export class SyncEngine {
 
   /** Stops listening to the page (an engine that's been replaced, or opened and then not used). */
   dispose() {
+    this.writeState();
     this.unwatch?.();
     this.unwatch = null;
     this.journaling = false;
@@ -190,18 +193,40 @@ export class SyncEngine {
       this.batchDirty = true;
       return;
     }
-    const snapshot = next;
+    this.unsaved = true;
+    // While the page is hidden or closing it's saved straight away (the journal covers it until then).
+    if (this.journaling) this.writeState();
+    else this.saveTimer ??= setTimeout(() => this.writeState(), SAVE_DELAY);
+    this.emit({ type: "state" });
+  }
+
+  /**
+   * Each save writes the whole account state, so commits that come in a burst (a document's rows arriving,
+   * a flush round, a paste) share one save a moment later instead of one each. Nothing waits on it longer
+   * than that: `persisted()` saves at once, and so does hiding or closing the page.
+   */
+  private unsaved = false;
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private writeState() {
+    if (this.saveTimer !== null) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    if (!this.unsaved) return;
+    this.unsaved = false;
+    const snapshot = this.state;
     this.persistChain = this.persistChain
       .then(async () => {
         const db = await localDb(this.accountKey);
         await db.put("syncState", snapshot, ACCOUNT_SYNC_KEY);
       })
       .catch(() => undefined);
-    this.emit({ type: "state" });
   }
 
   /** Resolves once everything committed so far is on disk. */
   persisted(): Promise<void> {
+    this.writeState();
     return this.persistChain;
   }
 
@@ -368,20 +393,20 @@ export class SyncEngine {
 
   /** Server rows for one document (subscription). Also drops rows the server no longer has. */
   reconcileDocument(documentId: string, serverBlocks: WireBlock[]) {
-    let next = this.state;
-    const present = new Set<string>();
-    for (const b of serverBlocks) {
-      present.add(b.id);
-      next = sync.remoteUpdate(next, { documentId, block: b, deleted: false });
-    }
+    let next = sync.remoteUpdates(
+      this.state,
+      serverBlocks.map((block) => ({ documentId, block, deleted: false })),
+    );
+    const present = new Set(serverBlocks.map((b) => b.id));
     const outstanding = new Set(
       [...next.pending, ...next.inflight].flatMap((op) =>
         op.kind === "block.upsert" ? [op.block.id] : op.kind === "block.delete" || op.kind === "block.restore" ? [op.blockId] : [],
       ),
     );
     let blocks = next.blocks;
-    for (const [id, entity] of Object.entries(next.blocks)) {
-      if (entity.documentId !== documentId || present.has(id) || outstanding.has(id)) continue;
+    for (const id of this.blockIdsOf(next.blocks, documentId)) {
+      const entity = next.blocks[id]!;
+      if (present.has(id) || outstanding.has(id)) continue;
       if (entity.serverRevision === null) continue;
       if (!entity.deleted) {
         if (blocks === next.blocks) blocks = { ...next.blocks };
@@ -402,19 +427,49 @@ export class SyncEngine {
    * (kept in the conflict, even when the other side deleted it) until they choose.
    */
   documentBlocks(documentId: string): WireBlock[] {
+    const { blocks } = this.state;
+    const ids = this.blockIdsOf(blocks, documentId);
+    const entities = ids.map((id) => blocks[id]!);
+    const conflicts = this.state.conflicts.filter((c) => c.documentId === documentId && c.reason !== "edited");
+    // The same array while nothing in this document changed, so views can memoize on it.
+    const cached = this.documentCache.get(documentId);
+    if (cached && sameItems(cached.entities, entities) && sameItems(cached.conflicts, conflicts)) return cached.blocks;
     const mine = new Map<string, WireBlock>();
-    for (const c of this.state.conflicts) if (c.documentId === documentId && c.reason !== "edited") mine.set(c.blockId, c.client);
+    for (const c of conflicts) mine.set(c.blockId, c.client);
     const out: WireBlock[] = [];
-    for (const [id, entity] of Object.entries(this.state.blocks)) {
-      if (entity.documentId !== documentId) continue;
+    ids.forEach((id, i) => {
       const own = mine.get(id);
       if (own) {
         out.push(own);
         mine.delete(id);
-      } else if (!entity.deleted) out.push(entity.block);
-    }
+      } else if (!entities[i]!.deleted) out.push(entities[i]!.block);
+    });
     out.push(...mine.values());
+    if (this.documentCache.size >= 64) this.documentCache.clear();
+    this.documentCache.set(documentId, { entities, conflicts, blocks: out });
     return out;
+  }
+
+  private documentCache = new Map<string, { entities: SyncState["blocks"][string][]; conflicts: ConflictRecord[]; blocks: WireBlock[] }>();
+
+  /**
+   * Block ids by document for one `state.blocks` map, built once per map (local edits and server rows
+   * replace the map, so it's never stale): a note's blocks are found without walking the whole account.
+   */
+  private byDocument: { blocks: SyncState["blocks"]; ids: Map<string, string[]> } | null = null;
+
+  private blockIdsOf(blocks: SyncState["blocks"], documentId: string): readonly string[] {
+    if (this.byDocument?.blocks !== blocks) {
+      const ids = new Map<string, string[]>();
+      for (const id in blocks) {
+        const doc = blocks[id]!.documentId;
+        const list = ids.get(doc);
+        if (list) list.push(id);
+        else ids.set(doc, [id]);
+      }
+      this.byDocument = { blocks, ids };
+    }
+    return this.byDocument.ids.get(documentId) ?? [];
   }
 
   serverRevision(blockId: string): number | null {
@@ -532,6 +587,11 @@ export class SyncEngine {
     }
   }
 }
+
+/** How long a commit may wait for others to share its save (see `writeState`). */
+const SAVE_DELAY = 100;
+
+const sameItems = <T>(a: readonly T[], b: readonly T[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 const journalPrefix = (accountKey: string) => `folevi:sync-journal:${accountKey}:`;
 const journalKey = (accountKey: string, tab: string) => `${journalPrefix(accountKey)}${tab}`;

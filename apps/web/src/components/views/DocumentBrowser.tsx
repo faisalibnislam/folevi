@@ -1,13 +1,13 @@
 "use client";
 
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { useLocalStorage } from "@/lib/hooks/useEngine";
+import { useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { startNoteDrag, NOTE_MIME } from "@/lib/app/noteDrag";
 import { Button } from "@/components/ui/Button";
 import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -22,7 +22,7 @@ import { localDb } from "@/lib/sync/db";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderBadge } from "./FolderBadge";
-import { usePendingDocs } from "@/lib/hooks/usePendingDocs";
+import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { Select } from "@/components/ui/Select";
 import { MoveToFolderDialog } from "./MoveToFolderDialog";
 import { SelectionBar, type SelectionAction } from "./SelectionBar";
@@ -64,6 +64,18 @@ const EMPTY: Record<View, string> = {
   folder: "This folder is empty. Drag documents here from the list.",
   tag: "No documents carry this tag yet.",
 };
+
+const PAGE_SIZE = 48;
+
+function samePending(a: PendingDocument[], b: PendingDocument[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((p, i) => {
+      const q = b[i]!;
+      return p.documentId === q.documentId && p.changes === q.changes && p.uploads === q.uploads && p.isNew === q.isNew && p.localTitle === q.localTitle;
+    })
+  );
+}
 
 export type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api.documents.list>>["results"]>[number];
 
@@ -108,13 +120,13 @@ export function contextPoint(e: React.MouseEvent): { x: number; y: number } {
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scope, scopeKey, profile, online } = useAppState();
+  const { scope, scopeKey, profile, online, engine } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   const { results, status, loadMore } = usePaginatedQuery(
     api.documents.list,
     { scope, view, folderId, tagId, sort },
-    { initialNumItems: 48 },
+    { initialNumItems: PAGE_SIZE },
   );
   const builtIns = useQuery(api.settings.builtInTemplates, view === "templates" ? {} : "skip");
   const createDocument = useCreateDocument();
@@ -130,17 +142,29 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const reorder = useMutation(api.documents.reorder);
 
-  // Keep a last-known copy for offline reloads.
+  // Keep a last-known copy for offline reloads. Results change with every edit anywhere in the list (and
+  // grow with each page loaded): only notes that changed since they were last written go, once the list
+  // settles.
+  const cachedRows = useRef<{ key: string; written: Map<string, string> }>({ key: "", written: new Map() });
   useEffect(() => {
     if (view !== "all" || status === "LoadingFirstPage") return;
-    void (async () => {
-      const db = await localDb(profile.id);
-      const tx = db.transaction("documents", "readwrite");
-      for (const d of results) {
-        await tx.store.put({ id: d.id, scopeKey, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
-      }
-      await tx.done;
-    })();
+    const key = `${profile.id}:${scopeKey}`;
+    if (cachedRows.current.key !== key) cachedRows.current = { key, written: new Map() };
+    const { written } = cachedRows.current;
+    const timer = setTimeout(() => {
+      const changed = results.map((d) => [d, JSON.stringify(d)] as const).filter(([d, json]) => written.get(d.id) !== json);
+      if (!changed.length) return;
+      void (async () => {
+        const db = await localDb(profile.id);
+        const tx = db.transaction("documents", "readwrite");
+        for (const [d] of changed) {
+          await tx.store.put({ id: d.id, scopeKey, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
+        }
+        await tx.done;
+        for (const [d, json] of changed) written.set(d.id, json);
+      })();
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [results, status, view, profile.id, scopeKey]);
 
   useEffect(() => {
@@ -151,13 +175,19 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       setCached(docs.map((d) => d.summary as Summary).sort((a, b) => b.updatedAt - a.updatedAt));
     })();
   }, [status, online, profile.id, scopeKey]);
+  // Offline, the saved copies come a page at a time too, like the live list.
+  const [cachedShown, setCachedShown] = useState(PAGE_SIZE);
 
   const title =
     titleOverride ?? (view === "folder" ? (org?.folders.find((f) => f.id === folderId)?.name ?? "Folder") : view === "tag" ? `#${org?.tags.find((t) => t.id === tagId)?.name ?? "tag"}` : TITLES[view]);
-  const docs = status === "LoadingFirstPage" && cached ? cached : results;
+  const fromCache = status === "LoadingFirstPage" && cached !== null;
+  const docs = useMemo(() => (fromCache ? cached.slice(0, cachedShown) : results), [fromCache, cached, cachedShown, results]);
+  const moreCached = fromCache && cached.length > cachedShown;
+  const canLoadMore = status === "CanLoadMore" || moreCached;
   const loading = status === "LoadingFirstPage" && !cached;
   const canArrange = sort === "manual" && view !== "trash";
-  const pendingDocs = usePendingDocs();
+  // Only the pages with unsynced work, compared by value: this list shouldn't re-render on every keystroke.
+  const pendingDocs = useEngineSelector(engine, pendingByDocument, samePending);
   const unsynced = useMemo(() => new Set(pendingDocs.filter((p) => p.changes > 0 || p.uploads > 0).map((p) => p.documentId)), [pendingDocs]);
 
   // Multi-select (templates have their own actions and aren't selectable).
@@ -265,7 +295,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           <p role="status" className="mr-auto min-w-0 truncate text-[13px] text-muted">
             {loading
           ? undefined
-          : `${docs.length}${status === "CanLoadMore" ? "+" : ""} ${view === "templates" ? (docs.length === 1 ? "template" : "templates") : docs.length === 1 ? "note" : "notes"}${!online && cached ? " · saved on this device" : ""}${canArrange ? " · drag to arrange" : ""}`}
+          : `${docs.length}${canLoadMore ? "+" : ""} ${view === "templates" ? (docs.length === 1 ? "template" : "templates") : docs.length === 1 ? "note" : "notes"}${!online && cached ? " · saved on this device" : ""}${canArrange ? " · drag to arrange" : ""}`}
           </p>
           <label className="flex items-center gap-2 text-sm text-muted">
             <span>Sort</span>
@@ -439,9 +469,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             })}
           </ul>
         )}
-        {status === "CanLoadMore" ? (
+        {canLoadMore ? (
           <div className="mt-12 text-center">
-            <Button onClick={() => loadMore(48)}>Load more</Button>
+            <Button onClick={() => (moreCached ? setCachedShown((n) => n + PAGE_SIZE) : loadMore(PAGE_SIZE))}>Load more</Button>
           </div>
         ) : null}
       </div>

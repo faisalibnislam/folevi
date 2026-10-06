@@ -2,7 +2,7 @@
 // Builds Folevi's note styles from the images in packages/design-tokens/covers/source/.
 //   NN-name-in-words.jpg  →  style art-NN, named "Name in words"
 // For each image it writes, into apps/web/public/covers/:
-//   art-NN.webp        up to 3200 px (never upscaled): the cover and page background on Retina (2×) screens
+//   art-NN.webp        up to 2400 px (never upscaled): the cover and page background on Retina (2×) screens
 //   art-NN-1x.webp     up to 1600 px: the same on regular (1×) screens; picked by CSS image-set()
 //   art-NN-thumb.webp  640 px: picker tiles and note-card spines (sharp at 2× for their size)
 // and a manifest, packages/design-tokens/covers/covers.json, with each style's colours picked from the image
@@ -24,10 +24,12 @@ const webOut = resolve(here, "../../../apps/web/public/covers");
 const fromWeb = createRequire(resolve(here, "../../../apps/web/package.json"));
 const sharp = createRequire(fromWeb.resolve("next/package.json"))("sharp");
 
-const FULL = 3200;
+// 2400 px covers the widest page on a 2× screen; 3200 px files ran to 3 MB with no visible gain. Quality is
+// lower for the big and small sizes, where the difference doesn't show at the size they're drawn.
+const FULL = 2400;
 const HALF = 1600;
 const THUMB = 640;
-const QUALITY = 82;
+const QUALITY = { full: 75, half: 80, thumb: 75 };
 
 const files = readdirSync(source)
   .filter((f) => /^\d{2}-.+\.(jpe?g|png|webp)$/i.test(f))
@@ -47,11 +49,11 @@ for (const file of files) {
   const input = resolve(source, file);
   const meta = await sharp(input).metadata();
 
-  const webp = { quality: QUALITY, smartSubsample: true, effort: 6 };
+  const webp = (quality) => ({ quality, smartSubsample: true, effort: 6 });
   const fit = (px) => ({ width: px, height: px, fit: "inside", withoutEnlargement: true });
-  await sharp(input).rotate().resize(fit(FULL)).webp(webp).toFile(resolve(webOut, `${id}.webp`));
-  await sharp(input).rotate().resize(fit(HALF)).webp(webp).toFile(resolve(webOut, `${id}-1x.webp`));
-  await sharp(input).rotate().resize(THUMB, THUMB, { fit: "cover" }).webp(webp).toFile(resolve(webOut, `${id}-thumb.webp`));
+  await sharp(input).rotate().resize(fit(FULL)).webp(webp(QUALITY.full)).toFile(resolve(webOut, `${id}.webp`));
+  await sharp(input).rotate().resize(fit(HALF)).webp(webp(QUALITY.half)).toFile(resolve(webOut, `${id}-1x.webp`));
+  await sharp(input).rotate().resize(THUMB, THUMB, { fit: "cover" }).webp(webp(QUALITY.thumb)).toFile(resolve(webOut, `${id}-thumb.webp`));
 
   // Colours from a small sample. The cover shows a wide middle strip of the image, so the sample is the
   // image as a 16:10 landscape crop, like the cover.

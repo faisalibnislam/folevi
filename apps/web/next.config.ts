@@ -84,6 +84,13 @@ const nextConfig: NextConfig = {
       // Share pages set robots per link (noindex unless the owner allowed indexing) in their metadata.
       { source: "/s/:token*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
+      // Artwork, brand marks and icons: cached for a week (they were revalidated on every visit). Not
+      // immutable, as the files keep their names when they're replaced.
+      {
+        source: "/:dir(covers|marketing|brand|icons)/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
+      },
+      { source: "/:file(icon.svg|apple-icon.png)", headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }] },
     ];
   },
 };

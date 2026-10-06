@@ -65,7 +65,9 @@ Content lives in exactly one **scope**: a person's **Personal** (rows carry `own
 **workspace** (rows carry `workspaceId`). Personal is not a workspace. Clients name a scope as
 `{ kind: "personal" }` (always the caller's own Personal; a profile id is never accepted) or
 `{ kind: "workspace", workspaceId }` (the workspace's public id; membership required). Each scope has its
-own change counter: `profiles.personalChangeSeq` for Personal, `workspaces.changeSeq` for a workspace.
+own change counter, a row in `scopeCounters` keyed by scope (`convex/lib/seq.ts`). It lives apart from the
+profile and workspace rows, which nearly every query reads, so an edit doesn't re-run them all. A scope
+without a counter row yet continues from the older `profiles.personalChangeSeq` / `workspaces.changeSeq`.
 
 ## Routing
 

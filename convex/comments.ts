@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { normalizeInline, plainText, ulid, validateInline, type InlineNode } from "@folevi/editor-schema";
-import { assertWritable, getDocumentByPublicId, requireDocument, requireProfile, documentAccess, accessAtLeast, type Access } from "./lib/auth";
+import { assertWritable, getDocumentByPublicId, requireDocument, requireProfile, documentAccess, accessAtLeast, PageAudience, type Access } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { identityImageUrl } from "./lib/identityImages";
@@ -61,6 +61,14 @@ export const threads = query({
       if (!blocks.has(id)) blocks.set(id, await liveBlock(ctx, doc, id));
       return blocks.get(id)!;
     };
+    // The caller's read state of every thread here, in one read.
+    const reads = new Map<string, Doc<"readStates">>();
+    for (const r of await ctx.db
+      .query("readStates")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id).eq("profileId", profile._id))
+      .collect()) {
+      reads.set(r.threadId, r);
+    }
     const out = [];
     const byBlock = new Map<string, { blockId: string; threads: number; comments: number; lastActivityAt: number; unread: boolean; authors: { name: string; avatarUrl: string | null }[]; authorIds: Set<string> }>();
     for (const t of rows) {
@@ -68,10 +76,7 @@ export const threads = query({
         .query("comments")
         .withIndex("by_thread", (q) => q.eq("threadId", t._id))
         .take(200);
-      const read = await ctx.db
-        .query("readStates")
-        .withIndex("by_profile_thread", (q) => q.eq("profileId", profile._id).eq("threadId", t._id))
-        .unique();
+      const read = reads.get(t._id);
       const visible = [];
       for (const c of comments) {
         const author = await person(c.authorId);
@@ -155,32 +160,26 @@ export const mentionable = query({
         )
       : false;
     const candidates = new Map<string, { guest: boolean }>();
+    // Who can read the page is decided for everyone at once (its grants and ancestors are read once).
+    const audience = await PageAudience.load(ctx, doc);
     if (workspaceId && isMember) {
       const members = await ctx.db
         .query("workspaceMembers")
         .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
         .take(300);
+      audience.knownMembers(members);
       for (const m of members) candidates.set(m.profileId, { guest: false });
     } else {
       if (doc.ownerProfileId) candidates.set(doc.ownerProfileId, { guest: false });
       if (!candidates.has(doc.createdBy)) candidates.set(doc.createdBy, { guest: false });
     }
     // Explicit grants on the page and its ancestors.
-    let cursor: Doc<"documents"> | null = doc;
-    for (let depth = 0; cursor && depth < 12; depth++) {
-      const current: Doc<"documents"> = cursor;
-      const grants = await ctx.db
-        .query("documentPermissions")
-        .withIndex("by_document", (q) => q.eq("documentId", current._id))
-        .take(200);
-      for (const g of grants) if (!candidates.has(g.profileId)) candidates.set(g.profileId, { guest: true });
-      cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
-    }
+    for (const id of audience.grantHolders) if (!candidates.has(id)) candidates.set(id, { guest: true });
     const out: { profileId: string; displayName: string; isYou: boolean; guest: boolean }[] = [];
     for (const [id, info] of candidates) {
       const p = await ctx.db.get(id as Id<"profiles">);
       if (!p || p.status === "deleted") continue;
-      if (p._id !== profile._id && !accessAtLeast(await documentAccess(ctx, p, doc), "read")) continue;
+      if (p._id !== profile._id && !accessAtLeast(await audience.access(p._id), "read")) continue;
       out.push({ profileId: p._id as string, displayName: p.displayName, isYou: p._id === profile._id, guest: info.guest });
     }
     out.sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -203,14 +202,18 @@ export const unreadCount = query({
       .query("commentThreads")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id))
       .take(200);
+    const reads = new Map<string, number>();
+    for (const r of await ctx.db
+      .query("readStates")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id).eq("profileId", profile._id))
+      .collect()) {
+      reads.set(r.threadId, r.lastReadAt);
+    }
     let unread = 0;
     for (const t of rows) {
       if (t.status !== "open") continue;
-      const read = await ctx.db
-        .query("readStates")
-        .withIndex("by_profile_thread", (q) => q.eq("profileId", profile._id).eq("threadId", t._id))
-        .unique();
-      if (!read || read.lastReadAt < t.lastActivityAt) unread++;
+      const read = reads.get(t._id);
+      if (read === undefined || read < t.lastActivityAt) unread++;
     }
     return { unread, open: rows.filter((t) => t.status === "open").length };
   },

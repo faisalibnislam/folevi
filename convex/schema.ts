@@ -32,8 +32,8 @@ const scoped = {
 
 /**
  * Folevi data model. Every table that holds content carries its scope (`scoped` above) so reads can be
- * authorized and listed per scope, and a `seq` stamped from the scope's change counter (a workspace's
- * `changeSeq`, or the owner's `personalChangeSeq`; see SYNC_PROTOCOL.md). Client-visible identity uses
+ * authorized and listed per scope, and a `seq` stamped from the scope's change counter (its `scopeCounters`
+ * row; see lib/seq.ts and SYNC_PROTOCOL.md). Client-visible identity uses
  * `publicId` (ULID) fields; Convex `_id`s never leave the backend as identity.
  */
 export default defineSchema({
@@ -66,7 +66,10 @@ export default defineSchema({
     platformRole: v.optional(vPlatformRole),
     status: vProfileStatus,
     suspendedReason: v.optional(v.string()),
-    /** Change counter of this person's Personal (unset = 0); `seq` of Personal rows comes from it. */
+    /**
+     * Legacy change counter of this person's Personal (unset = 0). The counter now lives in `scopeCounters`;
+     * this is only read once, to seed that row on the Personal's first change since the move (lib/seq.ts).
+     */
     personalChangeSeq: v.optional(v.number()),
     /** Bytes stored in this person's Personal (unset = 0), checked against their Personal plan only. */
     personalStorageUsedBytes: v.optional(v.number()),
@@ -91,6 +94,7 @@ export default defineSchema({
     icon: v.optional(v.string()),
     /** Square logo (a `files` row of kind "logo", counted in this workspace's storage). */
     logoFileId: v.optional(v.id("files")),
+    /** Legacy change counter, read once to seed the workspace's `scopeCounters` row (lib/seq.ts). */
     changeSeq: v.number(),
     status: v.union(v.literal("active"), v.literal("suspended"), v.literal("deleting")),
     storageUsedBytes: v.number(),
@@ -111,6 +115,16 @@ export default defineSchema({
     .index("by_public_id", ["publicId"])
     .index("by_owner", ["ownerId"])
     .index("by_created", ["createdAt"]),
+
+  /**
+   * Change counter of a scope (lib/seq.ts): `key` is scopeKey(scope). Kept off the profile and workspace
+   * rows so a sync push doesn't invalidate every query that reads those. A scope with no row yet still
+   * has its counter on the old `personalChangeSeq` / `changeSeq` field.
+   */
+  scopeCounters: defineTable({
+    key: v.string(),
+    seq: v.number(),
+  }).index("by_key", ["key"]),
 
   workspaceMembers: defineTable({
     workspaceId: v.id("workspaces"),
@@ -143,7 +157,9 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_token_hash", ["tokenHash"])
     .index("by_email", ["email"])
-    .index("by_public_id", ["publicId"]),
+    .index("by_public_id", ["publicId"])
+    // Expiring pending invitations (maintenance.housekeeping).
+    .index("by_status_expires", ["status", "expiresAt"]),
 
   folders: defineTable({
     publicId: v.string(),
@@ -265,6 +281,16 @@ export default defineSchema({
     .index("by_owner_daily", ["ownerProfileId", "dailyOwnerId", "dailyDate"])
     .index("by_owner_kind", ["ownerProfileId", "kind"])
     .index("by_collection", ["collectionId"])
+    // Listed pages without scanning the scope: Drafts (top level, not trashed or archived, no folder) and
+    // the Archive (archivedAt set), per workspace and per Personal.
+    .index("by_workspace_listed", ["workspaceId", "parentDocumentId", "inTrash", "archivedAt", "folderId"])
+    .index("by_owner_listed", ["ownerProfileId", "parentDocumentId", "inTrash", "archivedAt", "folderId"])
+    // A folder's listed pages, most recently edited first (folder views, All folders, Home).
+    .index("by_folder_listed", ["folderId", "parentDocumentId", "inTrash", "archivedAt", "updatedAt"])
+    // Whether a workspace has any restricted page at all (lib/auth.ts PageReader.opensAllInScope).
+    .index("by_workspace_access", ["workspaceId", "accessMode"])
+    // Trash retention (maintenance.purgeExpiredTrash): pages in Trash, oldest deletion first.
+    .index("by_trash_deleted", ["inTrash", "deletedAt"])
     .searchIndex("search_text", {
       searchField: "searchText",
       filterFields: ["workspaceId", "ownerProfileId", "inTrash", "folderId", "createdBy", "kind"],
@@ -350,6 +376,10 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
   })
     .index("by_document", ["documentId"])
+    // A page's live blocks (deletedAt unset) without reading its tombstones (lib/documents.ts liveBlocks).
+    .index("by_document_deleted", ["documentId", "deletedAt"])
+    // Tombstone retention (maintenance.purgeTombstones).
+    .index("by_deleted", ["deletedAt"])
     .index("by_block_id", ["blockId"])
     .index("by_workspace_seq", ["workspaceId", "seq"])
     .index("by_owner_seq", ["ownerProfileId", "seq"]),
@@ -448,8 +478,11 @@ export default defineSchema({
   })
     .index("by_profile", ["profileId"])
     .index("by_workspace", ["workspaceId"])
-    .index("by_owner_type", ["ownerType"])
+    // Paid workspace plans whose period has ended, per plan and provider (workspaceBilling.settleExpiredWorkspacePlans).
+    .index("by_owner_type_plan_provider_period", ["ownerType", "planId", "provider", "currentPeriodEnd"])
     .index("by_plan", ["plan"])
+    // Personal plans whose period has ended, per tier and provider (billing.settleExpiredPlans).
+    .index("by_plan_provider_period", ["plan", "provider", "currentPeriodEnd"])
     .index("by_polar_subscription", ["polarSubscriptionId"]),
 
   /**
@@ -648,7 +681,9 @@ export default defineSchema({
     .index("by_owner_status_due", ["ownerProfileId", "status", "dueDate"])
     .index("by_owner_status_completed", ["ownerProfileId", "status", "completedAt"])
     .index("by_assignee_status", ["assigneeId", "status"])
-    .index("by_reminder", ["reminderAt"]),
+    .index("by_reminder", ["reminderAt"])
+    // Reminders still to send (processReminders): open, on a page not in Trash, not sent yet.
+    .index("by_reminder_pending", ["status", "documentInTrash", "reminderSentAt", "reminderAt"]),
 
   collections: defineTable({
     publicId: v.string(),
@@ -778,7 +813,8 @@ export default defineSchema({
     lastReadAt: v.number(),
   })
     .index("by_profile_thread", ["profileId", "threadId"])
-    .index("by_profile_document", ["profileId", "documentId"])
+    // By page (cleanup), and one reader's states on a page (comments.threads) through the profile suffix.
+    .index("by_document", ["documentId", "profileId"])
     .index("by_thread", ["threadId"]),
 
   /** Page grants (shares and guests), inherited by nested pages. Scoped like the page they're on. */
@@ -819,7 +855,9 @@ export default defineSchema({
     .index("by_token_hash", ["tokenHash"])
     .index("by_public_id", ["publicId"])
     .index("by_workspace", ["workspaceId"])
-    .index("by_owner", ["ownerProfileId"]),
+    .index("by_owner", ["ownerProfileId"])
+    // Expiring pending invitations (maintenance.housekeeping).
+    .index("by_status_expires", ["status", "expiresAt"]),
 
   publicLinks: defineTable({
     publicId: v.string(),
@@ -943,7 +981,8 @@ export default defineSchema({
   })
     .index("by_profile", ["profileId", "createdAt"])
     .index("by_workspace", ["workspaceId"])
-    .index("by_owner", ["ownerProfileId"]),
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_expires", ["expiresAt"]),
 
   syncOperations: defineTable({
     opId: v.string(),
@@ -1144,7 +1183,9 @@ export default defineSchema({
     bucket: v.string(),
     windowStart: v.number(),
     count: v.number(),
-  }).index("by_bucket", ["bucket"]),
+  })
+    .index("by_bucket", ["bucket"])
+    .index("by_window", ["windowStart"]),
 
   rateLimitEvents: defineTable({
     rule: v.string(),
@@ -1238,5 +1279,6 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_document", ["documentId", "updatedAt"])
-    .index("by_session", ["sessionKey", "documentId"]),
+    .index("by_session", ["sessionKey", "documentId"])
+    .index("by_updated", ["updatedAt"]),
 });

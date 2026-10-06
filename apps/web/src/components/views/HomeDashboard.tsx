@@ -104,6 +104,8 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
 }
 
 const CAROUSEL_COUNT = 10;
+/** Recent folders fetched at least (two rows of the widest grid). */
+const RECENT_FOLDERS = 12;
 
 /**
  * One row of note cards that scrolls sideways, with arrow buttons at either end (shown only when there's
@@ -180,10 +182,10 @@ export function HomeDashboard() {
   // The latest edited notes, minus any this person removed from the list.
   const recent = useQuery(api.documents.recentNotes, { scope, limit: CAROUSEL_COUNT });
   const starred = useQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
-  const org = useQuery(api.organization.index, { scope });
   const folders = useColumns(FOLDER_MIN);
-  const names = new Map((org?.folders ?? []).map((f) => [f.id, f.name]));
-  const recentFolders = [...(org?.folders ?? [])].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, folders.cols * 2);
+  // Only the most recently changed folders are counted (a fixed minimum, so resizing rarely refetches).
+  const org = useQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
+  const recentFolders = (org?.folders ?? []).slice(0, folders.cols * 2);
 
   return (
     <ViewChrome
@@ -204,14 +206,14 @@ export function HomeDashboard() {
           title="Recent folders"
           href="/folders"
           icon={<Folder size={17} strokeWidth={1.9} />}
-          count={org ? `${org.folders.length}` : undefined}
-          empty={org && !org.folders.length ? <p className="text-sm text-muted">No folders yet. Create one from the sidebar to group related notes.</p> : undefined}
+          count={org ? `${org.total}` : undefined}
+          empty={org && !org.total ? <p className="text-sm text-muted">No folders yet. Create one from the sidebar to group related notes.</p> : undefined}
         >
           <div ref={folders.ref}>
             <ul className="grid gap-x-8 gap-y-10" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))` }}>
               {recentFolders.map((f) => (
                 <li key={f.id}>
-                  <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.parentFolderId) : undefined} />
+                  <FolderCard folder={f} parentName={f.parentName ?? undefined} />
                 </li>
               ))}
             </ul>

@@ -63,64 +63,111 @@ export const sidebar = query({
   },
 });
 
+/** A folder's listed pages (top level, not trashed or archived), most recently edited first. */
+function folderPages(ctx: QueryCtx, folderId: Id<"folders">) {
+  return ctx.db
+    .query("documents")
+    .withIndex("by_folder_listed", (q) => q.eq("folderId", folderId).eq("parentDocumentId", undefined).eq("inTrash", false).eq("archivedAt", undefined))
+    .order("desc");
+}
+
+/**
+ * One folder of the All folders view / Home: its page count, last change and previews, counting only the
+ * pages this person can open (a restricted page they can't open is neither counted nor previewed).
+ */
+async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, idToPublic: Map<Id<"folders">, string>) {
+  const docs = await reader.filter((await folderPages(ctx, f._id).take(2000)).filter((d) => d.kind !== "template"));
+  return {
+    id: f.publicId,
+    name: f.name,
+    color: f.color ?? null,
+    parentFolderId: f.parentFolderId ? (idToPublic.get(f.parentFolderId) ?? null) : null,
+    rank: f.rank,
+    createdAt: f.createdAt,
+    updatedAt: Math.max(f.updatedAt, ...docs.map((d) => d.updatedAt)),
+    documentCount: docs.length,
+    // The most recently edited notes inside that this person can read: style, title and opening text,
+    // shown as small pages peeking out of the folder.
+    previews: [...docs]
+      .sort((a, b) => b.updatedAt - a.updatedAt || a._creationTime - b._creationTime)
+      .slice(0, 3)
+      .map((d) => ({ cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280) })),
+  };
+}
+
 /**
  * Every folder and tag with its page count and dates, for the All folders / All tags views (the
  * sidebar shows only the first few). Counts are pages the person can see in lists: not trashed, not
  * archived, top-level in the folder, and only pages they can open (a restricted page they can't open
- * is neither counted nor previewed).
+ * is neither counted nor previewed). `only` leaves the other half out (each view shows one).
  */
 export const index = query({
-  args: { scope: vScopeArg },
+  args: { scope: vScopeArg, only: v.optional(v.union(v.literal("folders"), v.literal("tags"))) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const standing = await resolveScope(ctx, profile, args.scope);
     const { scope } = standing;
     const reader = new PageReader(ctx, profile, standing);
-    const folders = (await scopeFolders(ctx, scope)).filter((f) => !f.deletedAt);
-    const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
     const folderRows = [];
-    for (const f of folders) {
-      const docs = await reader.filter(
-        (
-          await ctx.db
-            .query("documents")
-            .withIndex("by_folder", (q) => q.eq("folderId", f._id))
-            .take(2000)
-        ).filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && d.kind !== "template"),
-      );
-      folderRows.push({
-        id: f.publicId,
-        name: f.name,
-        color: f.color ?? null,
-        parentFolderId: f.parentFolderId ? (idToPublic.get(f.parentFolderId) ?? null) : null,
-        rank: f.rank,
-        createdAt: f.createdAt,
-        updatedAt: Math.max(f.updatedAt, ...docs.map((d) => d.updatedAt)),
-        documentCount: docs.length,
-        // The most recently edited notes inside that this person can read: style, title and opening text,
-        // shown as small pages peeking out of the folder.
-        previews: [...docs]
-          .sort((a, b) => b.updatedAt - a.updatedAt)
-          .slice(0, 3)
-          .map((d) => ({ cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280) })),
-      });
+    if (args.only !== "tags") {
+      const folders = (await scopeFolders(ctx, scope)).filter((f) => !f.deletedAt);
+      const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
+      for (const f of folders) folderRows.push(await folderRow(ctx, reader, f, idToPublic));
     }
-    const tags = await scopeTags(ctx, scope);
     const tagRows = [];
-    for (const t of tags) {
-      const links = await ctx.db
-        .query("documentTags")
-        .withIndex("by_tag", (q) => q.eq("tagId", t._id))
-        .take(2000);
-      // Someone who opens everything here counts every tagged page; a member only the ones they can open.
-      let documentCount = links.length;
-      if (!reader.opensEverything) {
-        documentCount = 0;
-        for (const l of links) if (await reader.canOpenId(l.documentId)) documentCount++;
+    if (args.only !== "folders") {
+      // Someone who opens every page here counts every tagged page; anyone else only the ones they can open.
+      const all = await reader.opensAllInScope();
+      for (const t of await scopeTags(ctx, scope)) {
+        const links = await ctx.db
+          .query("documentTags")
+          .withIndex("by_tag", (q) => q.eq("tagId", t._id))
+          .take(2000);
+        let documentCount = links.length;
+        if (!all) {
+          documentCount = 0;
+          for (const l of links) if (await reader.canOpenId(l.documentId)) documentCount++;
+        }
+        tagRows.push({ id: t.publicId, name: t.name, color: t.color, createdAt: t.createdAt, documentCount });
       }
-      tagRows.push({ id: t.publicId, name: t.name, color: t.color, createdAt: t.createdAt, documentCount });
     }
     return { folders: folderRows, tags: tagRows };
+  },
+});
+
+/**
+ * Home's Recent folders: the `limit` most recently changed folders (as the All folders view rows), how
+ * many folders there are, and each one's parent folder name. Only those few are counted in full; for the
+ * rest it reads just the newest page each can show.
+ */
+export const recentFolders = query({
+  args: { scope: vScopeArg, limit: v.number() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const standing = await resolveScope(ctx, profile, args.scope);
+    const reader = new PageReader(ctx, profile, standing);
+    const folders = (await scopeFolders(ctx, standing.scope)).filter((f) => !f.deletedAt);
+    const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
+    const byId = new Map(folders.map((f) => [f._id as string, f]));
+    // A folder's last change: its own, or its most recently edited page this person can open.
+    const latest = new Map<string, number>();
+    for (const f of folders) {
+      let at = f.updatedAt;
+      for await (const d of folderPages(ctx, f._id)) {
+        if (d.kind === "template" || !(await reader.canOpen(d))) continue;
+        at = Math.max(at, d.updatedAt);
+        break;
+      }
+      latest.set(f._id, at);
+    }
+    const limit = Math.max(0, Math.min(Math.floor(args.limit), 100));
+    const recent = [...folders].sort((a, b) => latest.get(b._id)! - latest.get(a._id)!).slice(0, limit);
+    const rows = [];
+    for (const f of recent) {
+      const parent = f.parentFolderId ? byId.get(f.parentFolderId) : undefined;
+      rows.push({ ...(await folderRow(ctx, reader, f, idToPublic)), parentName: parent?.name ?? null });
+    }
+    return { total: folders.length, folders: rows };
   },
 });
 
@@ -208,12 +255,17 @@ export const draftCount = query({
     const standing = await resolveScope(ctx, profile, args.scope);
     const { scope } = standing;
     const base = ctx.db.query("documents");
+    // Only the Drafts themselves are read (not nested pages, Trash or the Archive, which share "no folder").
     const rows = await (
       scope.kind === "personal"
-        ? base.withIndex("by_owner_folder", (q) => q.eq("ownerProfileId", scope.profileId).eq("folderId", undefined))
-        : base.withIndex("by_workspace_folder", (q) => q.eq("workspaceId", scope.workspaceId).eq("folderId", undefined))
+        ? base.withIndex("by_owner_listed", (q) =>
+            q.eq("ownerProfileId", scope.profileId).eq("parentDocumentId", undefined).eq("inTrash", false).eq("archivedAt", undefined).eq("folderId", undefined),
+          )
+        : base.withIndex("by_workspace_listed", (q) =>
+            q.eq("workspaceId", scope.workspaceId).eq("parentDocumentId", undefined).eq("inTrash", false).eq("archivedAt", undefined).eq("folderId", undefined),
+          )
     ).take(5000);
-    const drafts = rows.filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && (d.kind === "document" || d.kind === "daily"));
+    const drafts = rows.filter((d) => d.kind === "document" || d.kind === "daily");
     return (await new PageReader(ctx, profile, standing).filter(drafts)).length;
   },
 });

@@ -90,12 +90,25 @@ function toPhoto(raw: unknown): UnsplashPhoto | null {
   };
 }
 
+/** An Unsplash request (answer included) that takes longer than this is given up. */
+const TIMEOUT_MS = 10_000;
+
 async function unsplashGet(path: string, key: string): Promise<unknown> {
-  const res = await fetch(`${API}${path}`, { headers: { Authorization: `Client-ID ${key}`, "Accept-Version": "v1" } });
-  if (res.status === 401 || res.status === 403) fail("forbidden", "Unsplash didn't accept this server's access key.");
-  if (res.status === 429) fail("rate_limited", "Unsplash is busy right now. Try again in a few minutes.");
-  if (!res.ok) fail("invalid_argument", "Unsplash couldn't be reached. Try again.");
-  return res.json();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API}${path}`, { signal: controller.signal, headers: { Authorization: `Client-ID ${key}`, "Accept-Version": "v1" } });
+    if (res.status === 401 || res.status === 403) fail("forbidden", "Unsplash didn't accept this server's access key.");
+    if (res.status === 429) fail("rate_limited", "Unsplash is busy right now. Try again in a few minutes.");
+    if (!res.ok) fail("invalid_argument", "Unsplash couldn't be reached. Try again.");
+    return await res.json();
+  } catch (e) {
+    // Given up at the deadline: the same answer as an Unsplash that can't be reached.
+    if (controller.signal.aborted) fail("invalid_argument", "Unsplash couldn't be reached. Try again.");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Searches Unsplash photos (an empty query lists editorial picks). */

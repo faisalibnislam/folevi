@@ -210,12 +210,12 @@ export function toWireBlock(row: Doc<"blocks">): WireBlock {
   };
 }
 
+/** A page's blocks that aren't deleted. Tombstones are left out by the index, so they're never read. */
 export async function liveBlocks(ctx: Ctx, documentId: Id<"documents">): Promise<Doc<"blocks">[]> {
-  const rows = await ctx.db
+  return await ctx.db
     .query("blocks")
-    .withIndex("by_document", (q) => q.eq("documentId", documentId))
+    .withIndex("by_document_deleted", (q) => q.eq("documentId", documentId).eq("deletedAt", undefined))
     .collect();
-  return rows.filter((r) => r.deletedAt === undefined);
 }
 
 /** One line of a page thumbnail: block type, trimmed text, and just enough shape to draw it. */
@@ -296,6 +296,9 @@ export async function syncTaskProjection(
     const normalized = ctx.db.normalizeId("profiles", projection.assigneeId);
     if (normalized) assigneeId = normalized;
   }
+  // A done to-do whose block doesn't say when keeps the time it was first seen done (re-projecting it, on
+  // any later edit of the block, mustn't move it to now).
+  const doneAt = existing?.status === "done" && existing.completedAt !== undefined ? existing.completedAt : Date.now();
   const fields = {
     blockId: row.blockId,
     blockDocId: row._id,
@@ -307,13 +310,20 @@ export async function syncTaskProjection(
     priority: projection.priority,
     assigneeId,
     reminderAt: projection.reminderAt ?? undefined,
-    completedAt: projection.completedAt ?? (projection.status === "done" ? Date.now() : undefined),
-    updatedAt: Date.now(),
+    completedAt: projection.completedAt ?? (projection.status === "done" ? doneAt : undefined),
     documentInTrash: doc.inTrash,
   };
   // A task is in its document's scope (documents never change scope).
-  if (existing) await ctx.db.patch(existing._id, fields);
-  else await insertScoped(ctx, "tasks", scopeOfRow(doc), { ...fields, createdBy: actorId });
+  if (!existing) {
+    await insertScoped(ctx, "tasks", scopeOfRow(doc), { ...fields, createdBy: actorId, updatedAt: Date.now() });
+    return;
+  }
+  // Most block edits don't change the task; writing it anyway would wake every task list watching it.
+  const unchanged = (Object.keys(fields) as (keyof typeof fields)[]).every((k) => existing[k] === fields[k]);
+  if (unchanged) return;
+  // A reminder set to a new time is a new reminder: it goes out again even if the old one already did.
+  const reminderMoved = existing.reminderSentAt !== undefined && existing.reminderAt !== fields.reminderAt;
+  await ctx.db.patch(existing._id, { ...fields, ...(reminderMoved ? { reminderSentAt: undefined } : {}), updatedAt: Date.now() });
 }
 
 export async function lastRootRank(ctx: Ctx, scope: Scope): Promise<string | null> {

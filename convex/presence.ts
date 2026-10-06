@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, requireProfile } from "./lib/auth";
 import type { MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 /** Presence is best-effort: pages that are not (yet) on the server or not readable are ignored quietly. */
 async function readableDoc(ctx: MutationCtx, profile: Awaited<ReturnType<typeof requireProfile>>, publicId: string) {
@@ -71,13 +72,17 @@ export const list = query({
   },
 });
 
+const CLEANUP_BATCH = 500;
+
 export const cleanup = internalMutation({
   args: {},
   handler: async (ctx) => {
     const stale = await ctx.db
       .query("presence")
-      .filter((q) => q.lt(q.field("updatedAt"), Date.now() - 10 * 60_000))
-      .take(500);
+      .withIndex("by_updated", (q) => q.lt("updatedAt", Date.now() - 10 * 60_000))
+      .take(CLEANUP_BATCH);
     for (const s of stale) await ctx.db.delete(s._id);
+    // A full batch means there's more; finish now rather than letting stale rows pile up between runs.
+    if (stale.length === CLEANUP_BATCH) await ctx.scheduler.runAfter(0, internal.presence.cleanup, {});
   },
 });

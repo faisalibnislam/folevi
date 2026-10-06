@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { inboxDocumentId, rankBetween, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
@@ -113,11 +114,13 @@ export const counts = query({
     const standing = await resolveScope(ctx, profile, args.scope);
     const { scope } = standing;
     // Only tasks on pages this person can open count (the same tasks the lists show them): a member's
-    // numbers never include a restricted page they can't open.
+    // numbers never include a restricted page they can't open. Someone who opens every page here needs
+    // no page reads at all (the task row knows whether its page is in Trash).
     const reader = new PageReader(ctx, profile, standing);
+    const all = await reader.opensAllInScope();
     const open: Doc<"tasks">[] = [];
     for (const t of await tasksByDue(ctx, scope, "open").take(1000)) {
-      if (!t.documentInTrash && (await reader.canOpenId(t.documentId))) open.push(t);
+      if (!t.documentInTrash && (all || (await reader.canOpenId(t.documentId)))) open.push(t);
     }
     const c = { inbox: 0, today: 0, upcoming: 0, all: 0, mine: 0 };
     // In your own Personal unassigned tasks are yours.
@@ -351,18 +354,28 @@ export const moveToDocument = mutation({
   },
 });
 
+/** Reminders sent per run; a full batch schedules the next one right away. */
+const REMINDER_BATCH = 200;
+
 /** Creates in-app notifications for due reminders (the Mac app also schedules local notifications). */
 export const processReminders = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
+    // Only reminders still to send: sent ones (which keep their reminderAt, shown on the task) and closed
+    // or trashed tasks fall outside the range, so they can never crowd out new ones.
     const due = await ctx.db
       .query("tasks")
-      .withIndex("by_reminder", (q) => q.gte("reminderAt", now - 24 * 60 * 60 * 1000).lte("reminderAt", now))
-      .take(200);
-    let sent = 0;
+      .withIndex("by_reminder_pending", (q) =>
+        q
+          .eq("status", "open")
+          .eq("documentInTrash", false)
+          .eq("reminderSentAt", undefined)
+          .gte("reminderAt", now - 24 * 60 * 60 * 1000)
+          .lte("reminderAt", now),
+      )
+      .take(REMINDER_BATCH);
     for (const t of due) {
-      if (t.reminderSentAt || t.status !== "open" || t.documentInTrash) continue;
       const recipient = t.assigneeId ?? t.createdBy;
       await ctx.db.insert("notifications", {
         profileId: recipient,
@@ -373,9 +386,8 @@ export const processReminders = internalMutation({
         createdAt: now,
       });
       await ctx.db.patch(t._id, { reminderSentAt: now });
-      sent++;
     }
-    return sent;
+    if (due.length === REMINDER_BATCH) await ctx.scheduler.runAfter(0, internal.tasks.processReminders, {});
+    return due.length;
   },
 });
-

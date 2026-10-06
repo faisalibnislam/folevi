@@ -246,35 +246,49 @@ export const resumePlan = mutation({
   },
 });
 
+/** Providers whose Personal plans this job ends (Polar plans are ended by Polar's own events). */
+const SETTLED_PROVIDERS = ["none", "manual", "test", "stripe"] as const;
+const SETTLE_BATCH = 200;
+
 /**
  * Plans set to cancel at period end, and plans whose period has ended: Personal plans back to Free,
  * workspace plans back to Workspace Free (nothing is deleted). Polar plans are ended by Polar's own
  * events. Hourly.
+ *
+ * Personal plans are read straight from the expired part of the index (paid tier, non-Polar provider,
+ * period ended), so Polar rows and plans still running are never read, and every row read leaves that
+ * range once handled (moved to Free, or a test plan renewed). A full batch reschedules the job.
  */
 export const settleExpiredPlans = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
     let changed = 0;
+    let more = false;
     for (const plan of ["core", "pro", "pro_ai"] as const) {
-      const subs = await ctx.db
-        .query("subscriptions")
-        .withIndex("by_plan", (q) => q.eq("plan", plan))
-        .take(2000);
-      for (const s of subs) {
-        if (!isPersonalSubscription(s) || !onPaidPlan(s)) continue;
-        if (s.provider === "polar" || s.currentPeriodEnd === undefined || s.currentPeriodEnd > now) continue;
-        if (s.provider === "test" && !s.cancelAtPeriodEnd) {
-          // Test plans renew by themselves (so development isn't interrupted).
-          await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: periodEndFrom(now, s.interval), updatedAt: now });
-          continue;
+      for (const provider of SETTLED_PROVIDERS) {
+        const subs = await ctx.db
+          .query("subscriptions")
+          // A lower bound of 0 leaves out rows without a period end (they sort first).
+          .withIndex("by_plan_provider_period", (q) => q.eq("plan", plan).eq("provider", provider).gte("currentPeriodEnd", 0).lte("currentPeriodEnd", now))
+          .take(SETTLE_BATCH);
+        if (subs.length === SETTLE_BATCH) more = true;
+        for (const s of subs) {
+          if (!isPersonalSubscription(s) || !onPaidPlan(s)) continue;
+          if (s.provider === "polar" || s.currentPeriodEnd === undefined || s.currentPeriodEnd > now) continue;
+          if (s.provider === "test" && !s.cancelAtPeriodEnd) {
+            // Test plans renew by themselves (so development isn't interrupted).
+            await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: periodEndFrom(now, s.interval), updatedAt: now });
+            continue;
+          }
+          await ctx.db.patch(s._id, { plan: "free", interval: undefined, status: "canceled", canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
+          changed++;
         }
-        await ctx.db.patch(s._id, { plan: "free", interval: undefined, status: "canceled", canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
-        changed++;
       }
     }
     const workspaces = await settleExpiredWorkspacePlans(ctx, now);
-    return { changed: changed + workspaces };
+    if (more || workspaces.more) await ctx.scheduler.runAfter(0, internal.billing.settleExpiredPlans, {});
+    return { changed: changed + workspaces.changed };
   },
 });
 

@@ -326,38 +326,132 @@ export interface DocumentAccessInfo {
 }
 
 export async function documentAccessInfo(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<DocumentAccessInfo> {
-  const none: DocumentAccessInfo = { access: "none", inScope: false, member: null, restricted: false };
-  if (!hasValidScope(doc)) return none;
+  if (!hasValidScope(doc)) return noAccess();
   const scope = scopeOfRow(doc);
   if (scope.kind === "personal") {
     if (scope.profileId === profile._id) return { access: "manage", inScope: true, member: null, restricted: false };
     const owner = await ctx.db.get(scope.profileId);
-    if (!owner || owner.status === "deleted") return none;
-    const { grant } = await inheritedGrant(ctx, profile, doc);
-    // A suspended account's Personal stays readable to the people it was shared with, nothing more.
-    if (owner.status === "suspended") return { ...none, access: grant !== "none" ? "read" : "none" };
-    return { ...none, access: grant };
+    if (!owner || owner.status === "deleted") return noAccess();
+    return personalGuestVerdict(owner, (await inheritedGrant(ctx, profile, doc)).grant);
   }
   const workspace = await ctx.db.get(scope.workspaceId);
-  if (!workspace || workspace.status === "deleting") return none;
+  if (!workspace || workspace.status === "deleting") return noAccess();
   const member = await membership(ctx, profile._id, workspace._id);
-  const level = member ? memberLevel(member) : null;
-  // Scheduled for deletion: its owner can still read it (to export or cancel); everyone else, guests
-  // included, has lost it.
-  if (isScheduledForDeletion(workspace)) return level === "owner" ? { access: "read", inScope: true, member, restricted: false } : none;
+  if (isScheduledForDeletion(workspace)) return scheduledVerdict(member);
   const { grant, restricted } = await inheritedGrant(ctx, profile, doc);
-  const info = { inScope: member !== null, member, restricted };
+  return workspaceVerdict(profile._id, doc, workspace, member, grant, restricted);
+}
 
+function noAccess(): DocumentAccessInfo {
+  return { access: "none", inScope: false, member: null, restricted: false };
+}
+
+/** Someone else's Personal page, for a person holding `grant` on it (or a page above it). */
+function personalGuestVerdict(owner: Doc<"profiles">, grant: Access): DocumentAccessInfo {
+  // A suspended account's Personal stays readable to the people it was shared with, nothing more.
+  if (owner.status === "suspended") return { ...noAccess(), access: grant !== "none" ? "read" : "none" };
+  return { ...noAccess(), access: grant };
+}
+
+/**
+ * A workspace scheduled for deletion: its owner can still read it (to export or cancel); everyone else,
+ * guests included, has lost it.
+ */
+function scheduledVerdict(member: Doc<"workspaceMembers"> | null): DocumentAccessInfo {
+  return member && memberLevel(member) === "owner" ? { access: "read", inScope: true, member, restricted: false } : noAccess();
+}
+
+/** A page of a live workspace, from the person's membership (if any) and their inherited grant. */
+function workspaceVerdict(
+  profileId: Id<"profiles">,
+  doc: Doc<"documents">,
+  workspace: Doc<"workspaces">,
+  member: Doc<"workspaceMembers"> | null,
+  grant: Access,
+  restricted: boolean,
+): DocumentAccessInfo {
+  const level = member ? memberLevel(member) : null;
+  const info = { inScope: member !== null, member, restricted };
   if (workspace.status === "suspended" && level !== "owner") {
     return { ...info, access: member || grant !== "none" ? "read" : "none" };
   }
   if (level === "owner" || level === "admin") return { ...info, access: "manage" };
   if (restricted) {
-    if (doc.createdBy === profile._id && member) return { ...info, access: "manage" };
+    if (doc.createdBy === profileId && member) return { ...info, access: "manage" };
     return { ...info, access: grant };
   }
   const base: Access = member ? memberToAccess(member) : "none";
   return { ...info, access: maxAccess(base, grant) };
+}
+
+/**
+ * documentAccess of many people on one page (who can be mentioned, notified…): the page's ancestors,
+ * every grant on them and its Personal's owner or workspace are read once; then each person costs at
+ * most a membership lookup (none for members passed to `knownMembers`). Same verdicts as documentAccess.
+ */
+export class PageAudience {
+  private members = new Map<string, Doc<"workspaceMembers"> | null>();
+  private constructor(
+    private ctx: Ctx,
+    private doc: Doc<"documents">,
+    private grants: Map<string, Access>,
+    private restricted: boolean,
+    private owner: Doc<"profiles"> | null,
+    private workspace: Doc<"workspaces"> | null,
+  ) {}
+
+  static async load(ctx: Ctx, doc: Doc<"documents">): Promise<PageAudience> {
+    // The same walk as inheritedGrant, with every grant on each page instead of one person's.
+    const grants = new Map<string, Access>();
+    let restricted = false;
+    let cursor: Doc<"documents"> | null = doc;
+    for (let depth = 0; cursor && depth < 12; depth++) {
+      if (cursor.accessMode === "restricted") restricted = true;
+      const current: Doc<"documents"> = cursor;
+      for (const g of await ctx.db
+        .query("documentPermissions")
+        .withIndex("by_document", (q) => q.eq("documentId", current._id))
+        .collect()) {
+        grants.set(g.profileId, maxAccess(grants.get(g.profileId) ?? "none", roleToAccess(g.role)));
+      }
+      cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
+    }
+    const scope = hasValidScope(doc) ? scopeOfRow(doc) : null;
+    const owner = scope?.kind === "personal" ? await ctx.db.get(scope.profileId) : null;
+    const workspace = scope?.kind === "workspace" ? await ctx.db.get(scope.workspaceId) : null;
+    return new PageAudience(ctx, doc, grants, restricted, owner, workspace);
+  }
+
+  /** Everyone holding a grant on the page or a page above it (nearest page first). */
+  get grantHolders(): Id<"profiles">[] {
+    return [...this.grants.keys()] as Id<"profiles">[];
+  }
+
+  /** Memberships already in hand (e.g. the workspace's member list), so they aren't looked up again. */
+  knownMembers(rows: Doc<"workspaceMembers">[]): void {
+    for (const m of rows) if (this.workspace && m.workspaceId === this.workspace._id) this.members.set(m.profileId, m);
+  }
+
+  async access(profileId: Id<"profiles">): Promise<Access> {
+    const doc = this.doc;
+    if (!hasValidScope(doc)) return "none";
+    const scope = scopeOfRow(doc);
+    const grant = this.grants.get(profileId) ?? "none";
+    if (scope.kind === "personal") {
+      if (scope.profileId === profileId) return "manage";
+      if (!this.owner || this.owner.status === "deleted") return "none";
+      return personalGuestVerdict(this.owner, grant).access;
+    }
+    const workspace = this.workspace;
+    if (!workspace || workspace.status === "deleting") return "none";
+    let member = this.members.get(profileId);
+    if (member === undefined) {
+      member = await membership(this.ctx, profileId, workspace._id);
+      this.members.set(profileId, member);
+    }
+    if (isScheduledForDeletion(workspace)) return scheduledVerdict(member).access;
+    return workspaceVerdict(profileId, doc, workspace, member, grant, this.restricted).access;
+  }
 }
 
 /**
@@ -372,15 +466,55 @@ export class PageReader {
   private restricted = new Map<string, boolean>();
   private verdicts = new Map<string, boolean>();
   private docs = new Map<string, Doc<"documents"> | null>();
+  private allInScope: boolean | undefined;
+  /** `standing` null: the caller has no standing in the pages' scope (a guest), so every page goes through documentAccess. */
   constructor(
     private ctx: Ctx,
     private profile: Doc<"profiles">,
-    private standing: Pick<ScopeAccess, "scope" | "level">,
+    private standing: Pick<ScopeAccess, "scope" | "level"> | null,
   ) {}
+
+  /**
+   * A reader for the pages of `scope` that never fails: their own Personal, or a workspace where
+   * resolveScope would let them read; anyone else (a guest, or a member who has lost the workspace to a
+   * suspension or a scheduled deletion) gets one that decides every page through documentAccess.
+   */
+  static async forScope(ctx: Ctx, profile: Doc<"profiles">, scope: Scope): Promise<PageReader> {
+    if (scope.kind === "personal") return new PageReader(ctx, profile, scope.profileId === profile._id ? { scope, level: "owner" } : null);
+    const workspace = await ctx.db.get(scope.workspaceId);
+    const member = workspace && workspace.status !== "deleting" ? await membership(ctx, profile._id, workspace._id) : null;
+    if (!workspace || !member) return new PageReader(ctx, profile, null);
+    const level = memberLevel(member);
+    if ((isScheduledForDeletion(workspace) || workspace.status === "suspended") && level !== "owner") return new PageReader(ctx, profile, null);
+    return new PageReader(ctx, profile, { scope, level });
+  }
 
   /** Opens everything in the scope (their own Personal, or its owner / an admin). */
   get opensEverything(): boolean {
+    if (!this.standing) return false;
     return this.standing.scope.kind === "personal" || this.standing.level === "owner" || this.standing.level === "admin";
+  }
+
+  /**
+   * Opens every page of the scope: opensEverything, or a member of a workspace without a single restricted
+   * page (one indexed read, cached). Counts use it to skip reading each page.
+   */
+  async opensAllInScope(): Promise<boolean> {
+    if (this.allInScope === undefined) {
+      const standing = this.standing;
+      if (!standing) this.allInScope = false;
+      else if (this.opensEverything) this.allInScope = true;
+      else {
+        const scope = standing.scope;
+        this.allInScope =
+          scope.kind === "workspace" &&
+          (await this.ctx.db
+            .query("documents")
+            .withIndex("by_workspace_access", (q) => q.eq("workspaceId", scope.workspaceId).eq("accessMode", "restricted"))
+            .first()) === null;
+      }
+    }
+    return this.allInScope;
   }
 
   private async get(id: Id<"documents">): Promise<Doc<"documents"> | null> {
@@ -416,7 +550,7 @@ export class PageReader {
     const known = this.verdicts.get(doc._id);
     if (known !== undefined) return known;
     let ok: boolean;
-    if (!hasValidScope(doc) || !sameScope(scopeOfRow(doc), this.standing.scope)) ok = accessAtLeast(await documentAccess(this.ctx, this.profile, doc), "read");
+    if (!this.standing || !hasValidScope(doc) || !sameScope(scopeOfRow(doc), this.standing.scope)) ok = accessAtLeast(await documentAccess(this.ctx, this.profile, doc), "read");
     else if (this.opensEverything) ok = true;
     // A member: every page outside a restriction is open to them (at least view); a restricted one needs a
     // grant (or being its creator), which documentAccess decides.

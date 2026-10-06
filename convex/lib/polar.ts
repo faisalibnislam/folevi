@@ -11,6 +11,7 @@
 import { fail } from "./errors";
 import { timingSafeEqualHex } from "./crypto";
 import { CREDIT_PACKS, PLAN_CATALOG, type BillingInterval, type CreditPackId, type PaidWorkspacePlanId, type PersonalPlanId, type PersonalTier } from "./plans";
+import { appUrl } from "./notify";
 
 /** The API version every request is pinned to (Polar dates its versions; `Polar-Version` header). */
 export const POLAR_API_VERSION = "2026-10";
@@ -18,7 +19,6 @@ export const POLAR_API_VERSION = "2026-10";
 export const polarToken = () => process.env.POLAR_ACCESS_TOKEN ?? "";
 export const polarServer = (): "sandbox" | "production" => (process.env.POLAR_SERVER === "production" ? "production" : "sandbox");
 export const polarApiBase = () => (polarServer() === "production" ? "https://api.polar.sh/v1" : "https://sandbox-api.polar.sh/v1");
-export const appUrl = () => (process.env.FOLEVI_APP_URL ?? "http://app.localhost:3000").replace(/\/$/, "");
 /** Development and test deployments may switch plans and add credits without paying; production never. */
 export const testPurchasesAllowed = () => process.env.FOLEVI_ENV !== "production";
 
@@ -103,22 +103,35 @@ export interface PolarResponse {
   data: Json;
 }
 
+/** A Polar request (answer included) that takes longer than this is given up as unreachable. */
+const POLAR_TIMEOUT_MS = 20_000;
+
 /**
  * One request to the Polar API with the access token and the pinned API version. Throws only when Polar
- * can't be reached; an error answer is returned for the caller to explain. Never logs the token or a body.
+ * can't be reached (or doesn't answer in time); an error answer is returned for the caller to explain.
+ * Never logs the token or a body.
  */
 export async function polarSend(method: "GET" | "POST" | "PATCH", path: string, body?: Json): Promise<PolarResponse> {
-  const res = await fetch(`${polarApiBase()}/${path}`, {
-    method,
-    headers: {
-      authorization: `Bearer ${polarToken()}`,
-      "polar-version": POLAR_API_VERSION,
-      accept: "application/json",
-      ...(body ? { "content-type": "application/json" } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), POLAR_TIMEOUT_MS);
+  let res: Response;
+  let text: string;
+  try {
+    res = await fetch(`${polarApiBase()}/${path}`, {
+      method,
+      signal: controller.signal,
+      headers: {
+        authorization: `Bearer ${polarToken()}`,
+        "polar-version": POLAR_API_VERSION,
+        accept: "application/json",
+        ...(body ? { "content-type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    text = await res.text();
+  } finally {
+    clearTimeout(timer);
+  }
   let data: Json;
   try {
     const parsed: unknown = text ? JSON.parse(text) : {};
@@ -135,7 +148,13 @@ export async function polarSend(method: "GET" | "POST" | "PATCH", path: string, 
 
 async function request(method: "GET" | "POST" | "PATCH", path: string, body?: Json): Promise<Json> {
   if (!polarToken()) fail("maintenance", "Payments aren't set up on this server yet.");
-  const res = await polarSend(method, path, body);
+  let res: PolarResponse;
+  try {
+    res = await polarSend(method, path, body);
+  } catch {
+    // Unreachable, or no answer in time.
+    fail("maintenance", "Payments couldn't be reached. Try again shortly.");
+  }
   if (!res.ok) fail("maintenance", res.status === 429 ? "Payments are busy right now. Try again in a minute." : "Payments couldn't be started. Try again shortly.");
   return res.data;
 }

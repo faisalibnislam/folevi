@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { rankBetween, ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, requireDocument, requireProfile, type Access } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireDocument, requireProfile, type Access } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { addView, createCollection, normalizeValue } from "./lib/collections";
 import { createDocument, specsToWireBlocks } from "./lib/create";
@@ -57,7 +57,6 @@ export const get = query({
     )
       .filter((p) => !p.deletedAt)
       .sort((a, b) => (a.rank < b.rank ? -1 : 1));
-    const propPublic = new Map(props.map((p) => [p._id as string, p.publicId]));
     const views = (
       await ctx.db
         .query("collectionViews")
@@ -72,20 +71,26 @@ export const get = query({
     )
       .filter((r) => !r.deletedAt)
       .sort((a, b) => (a.rank < b.rank ? -1 : 1));
+    // Every live property's values in one read each (not one read per row), keyed by row.
+    const valuesByRow = new Map<string, Record<string, unknown>>();
+    for (const p of props) {
+      for (const val of await ctx.db
+        .query("collectionValues")
+        .withIndex("by_property", (q) => q.eq("propertyId", p._id))
+        .collect()) {
+        const vals = valuesByRow.get(val.rowId) ?? {};
+        vals[p.publicId] = val.value;
+        valuesByRow.set(val.rowId, vals);
+      }
+    }
+    // Row pages sit under the host page: their restriction walks stop at pages already looked at.
+    const reader = await PageReader.forScope(ctx, profile, scopeOfRow(collection));
     const outRows = [];
     for (const r of rows) {
       const doc = await ctx.db.get(r.documentId);
       if (!doc || doc.inTrash) continue;
-      if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
-      const values = await ctx.db
-        .query("collectionValues")
-        .withIndex("by_row", (q) => q.eq("rowId", r._id))
-        .collect();
-      const vals: Record<string, unknown> = {};
-      for (const val of values) {
-        const pid = propPublic.get(val.propertyId);
-        if (pid) vals[pid] = val.value;
-      }
+      if (!(await reader.canOpen(doc))) continue;
+      const vals = valuesByRow.get(r._id) ?? {};
       outRows.push({
         id: r.publicId,
         documentId: doc.publicId,
@@ -143,7 +148,7 @@ export const get = query({
       /** In the collection's scope: its Personal's owner, or a member of its workspace. */
       isMember,
       people,
-      hostDocumentId: (await ctx.db.get(collection.documentId))!.publicId,
+      hostDocumentId: host.publicId,
       canEdit: accessAtLeast(access, "write"),
       properties: props.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options })),
       views: views.map((vw) => ({ id: vw.publicId, name: vw.name, type: vw.type, config: vw.config })),

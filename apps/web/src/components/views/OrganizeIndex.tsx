@@ -108,7 +108,7 @@ export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; p
 /** Every folder in the current context (Personal or a workspace), with search and sorting (the sidebar only lists the first few). */
 export function FoldersIndex() {
   const { scope, canEdit } = useAppState();
-  const data = useQuery(api.organization.index, { scope });
+  const data = useQuery(api.organization.index, { scope, only: "folders" });
   const createFolder = useMutation(api.organization.createFolder);
   const { navigate } = useAppRouter();
   const toast = useToast();
@@ -226,7 +226,7 @@ export function FoldersIndex() {
 /** Every tag in the current context, with search and sorting. */
 export function TagsIndex() {
   const { scope } = useAppState();
-  const data = useQuery(api.organization.index, { scope });
+  const data = useQuery(api.organization.index, { scope, only: "tags" });
   const [q, setQ] = useState("");
   const [sort, setSort] = useLocalStorage<TagSort>("folevi:tags-sort", "name");
   const list = useMemo(() => {

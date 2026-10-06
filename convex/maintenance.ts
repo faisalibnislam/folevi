@@ -13,12 +13,14 @@ import { seatsChanged } from "./lib/seats";
 import { normalizeMembership } from "./lib/auth";
 import { workspaceClosing } from "./workspaceBilling";
 import { subscriptionOf } from "./lib/billing";
-import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, type Scope } from "./lib/scope";
+import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope } from "./lib/scope";
+import { bumpSeq, deleteSeq } from "./lib/seq";
 
 const BUDGET = 400;
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const SYNC_OP_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const TOMBSTONE_BATCH = 300;
 
 class Budget {
   constructor(public left: number) {}
@@ -84,9 +86,13 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
   if (threads.length) return false;
   const reads = await ctx.db
     .query("readStates")
-    .filter((q) => q.eq(q.field("documentId"), docId))
+    .withIndex("by_document", (q) => q.eq("documentId", docId))
     .take(Math.max(1, budget.left));
-  for (const r of reads) await ctx.db.delete(r._id);
+  for (const r of reads) {
+    await ctx.db.delete(r._id);
+    budget.spend();
+  }
+  if (budget.exhausted) return false;
   const snaps = await ctx.db
     .query("documentSnapshots")
     .withIndex("by_document", (q) => q.eq("documentId", docId))
@@ -146,23 +152,13 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
   if (hasValidScope(doc)) {
     const scope = scopeOfRow(doc);
     await adjustDocumentCount(ctx, scope, -1);
-    await bumpChangeSeq(ctx, scope);
+    // Clients re-pull and notice the page is gone.
+    await bumpSeq(ctx, scope);
   }
   await ctx.db.delete(docId);
   await bump(ctx, "documents_total", -1);
   budget.spend();
   return true;
-}
-
-/** Advances a scope's change counter (clients re-pull); a scope already gone is left alone. */
-async function bumpChangeSeq(ctx: MutationCtx, scope: Scope): Promise<void> {
-  if (scope.kind === "personal") {
-    const owner = await ctx.db.get(scope.profileId);
-    if (owner) await ctx.db.patch(owner._id, { personalChangeSeq: (owner.personalChangeSeq ?? 0) + 1 });
-    return;
-  }
-  const ws = await ctx.db.get(scope.workspaceId);
-  if (ws) await ctx.db.patch(ws._id, { changeSeq: ws.changeSeq + 1 });
 }
 
 /**
@@ -269,6 +265,7 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     .take(200);
   for (const c of counters) await ctx.db.delete(c._id);
   if (counters.length === 200) return false;
+  await deleteSeq(ctx, workspaceScope(workspaceId));
   await ctx.db.delete(workspaceId);
   await bump(ctx, "workspaces_total", -1);
   return true;
@@ -438,17 +435,21 @@ export const runDeletionJobs = internalMutation({
   },
 });
 
-/** Trash retention: documents in Trash longer than 30 days are scheduled for permanent deletion. */
+/**
+ * Trash retention: documents in Trash longer than 30 days are scheduled for permanent deletion. Walks the
+ * expired range a page at a time (rescheduling itself), since a page can be skipped (its parent is in
+ * Trash too, or its deletion is already queued) and a fixed first page would never get past those.
+ */
 export const purgeExpiredTrash = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const cutoff = Date.now() - TRASH_RETENTION_MS;
-    const expired = await ctx.db
+  args: { cursor: v.optional(v.union(v.string(), v.null())), cutoff: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const cutoff = args.cutoff ?? Date.now() - TRASH_RETENTION_MS;
+    const page = await ctx.db
       .query("documents")
-      .filter((q) => q.and(q.eq(q.field("inTrash"), true), q.lt(q.field("deletedAt"), cutoff)))
-      .take(100);
+      .withIndex("by_trash_deleted", (q) => q.eq("inTrash", true).lt("deletedAt", cutoff))
+      .paginate({ cursor: args.cursor ?? null, numItems: 100 });
     let n = 0;
-    for (const d of expired) {
+    for (const d of page.page) {
       if (d.parentDocumentId) {
         const parent = await ctx.db.get(d.parentDocumentId);
         if (parent?.inTrash) continue;
@@ -472,6 +473,7 @@ export const purgeExpiredTrash = internalMutation({
       n++;
     }
     if (n) await ctx.scheduler.runAfter(0, internal.maintenance.runDeletionJobs, {});
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.maintenance.purgeExpiredTrash, { cursor: page.continueCursor, cutoff });
     return n;
   },
 });
@@ -481,54 +483,69 @@ export const purgeTombstones = internalMutation({
   args: {},
   handler: async (ctx) => {
     const cutoff = Date.now() - TOMBSTONE_RETENTION_MS;
+    // Live blocks (no deletedAt) sort first in the index; the lower bound skips them.
     const rows = await ctx.db
       .query("blocks")
-      .filter((q) => q.and(q.neq(q.field("deletedAt"), undefined), q.lt(q.field("deletedAt"), cutoff)))
-      .take(300);
+      .withIndex("by_deleted", (q) => q.gte("deletedAt", 0).lt("deletedAt", cutoff))
+      .take(TOMBSTONE_BATCH);
     for (const r of rows) await ctx.db.delete(r._id);
+    if (rows.length === TOMBSTONE_BATCH) await ctx.scheduler.runAfter(0, internal.maintenance.purgeTombstones, {});
     return rows.length;
   },
 });
 
+/**
+ * Daily cleanup of expired rows. Every sweep reads an index range in bounded batches; when any batch
+ * comes back full there is a backlog, and the job runs again right away until it's cleared.
+ */
 export const housekeeping = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
+    let backlog = false;
     const ops = await ctx.db
       .query("syncOperations")
       .withIndex("by_created", (q) => q.lt("createdAt", now - SYNC_OP_RETENTION_MS))
       .take(500);
     for (const o of ops) await ctx.db.delete(o._id);
+    backlog ||= ops.length === 500;
     const limits = await ctx.db
       .query("rateLimits")
-      .filter((q) => q.lt(q.field("windowStart"), now - 24 * 60 * 60 * 1000))
+      .withIndex("by_window", (q) => q.lt("windowStart", now - 24 * 60 * 60 * 1000))
       .take(500);
     for (const l of limits) await ctx.db.delete(l._id);
+    backlog ||= limits.length === 500;
     const events = await ctx.db
       .query("rateLimitEvents")
       .withIndex("by_created", (q) => q.lt("createdAt", now - 90 * 24 * 60 * 60 * 1000))
       .take(500);
     for (const e of events) await ctx.db.delete(e._id);
+    backlog ||= events.length === 500;
     const intents = await ctx.db
       .query("uploadIntents")
-      .filter((q) => q.lt(q.field("expiresAt"), now - 60 * 60_000))
+      .withIndex("by_expires", (q) => q.lt("expiresAt", now - 60 * 60_000))
       .take(500);
     for (const i of intents) await ctx.db.delete(i._id);
+    backlog ||= intents.length === 500;
     const invites = await ctx.db
       .query("workspaceInvites")
-      .filter((q) => q.and(q.eq(q.field("status"), "pending"), q.lt(q.field("expiresAt"), now)))
+      .withIndex("by_status_expires", (q) => q.eq("status", "pending").lt("expiresAt", now))
       .take(200);
     for (const i of invites) await ctx.db.patch(i._id, { status: "expired" });
+    backlog ||= invites.length === 200;
     const pageInvites = await ctx.db
       .query("pageInvites")
-      .filter((q) => q.and(q.eq(q.field("status"), "pending"), q.lt(q.field("expiresAt"), now)))
+      .withIndex("by_status_expires", (q) => q.eq("status", "pending").lt("expiresAt", now))
       .take(200);
     for (const i of pageInvites) await ctx.db.patch(i._id, { status: "expired" });
+    backlog ||= pageInvites.length === 200;
     const notes = await ctx.db
       .query("notifications")
       .withIndex("by_created", (q) => q.lt("createdAt", now - 180 * 24 * 60 * 60 * 1000))
       .take(500);
     for (const n of notes) await ctx.db.delete(n._id);
+    backlog ||= notes.length === 500;
+    if (backlog) await ctx.scheduler.runAfter(0, internal.maintenance.housekeeping, {});
   },
 });
 

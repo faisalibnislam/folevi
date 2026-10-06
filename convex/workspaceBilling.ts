@@ -19,7 +19,7 @@
 import { v } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx } from "./_generated/server";
 import { normalizeMembership, requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
@@ -35,6 +35,9 @@ import { productIds } from "./lib/billingProducts";
 import { vPaidWorkspacePlanId } from "./lib/validators";
 
 const intervalOf = (planId: PaidWorkspacePlanId) => PLAN_CATALOG[planId].interval!;
+const PAID_WORKSPACE_PLANS = (Object.keys(PLAN_CATALOG) as (keyof typeof PLAN_CATALOG)[]).filter(
+  (id): id is PaidWorkspacePlanId => id.startsWith("workspace_") && isPaidPlan(id),
+);
 /** Whether a row is a paid plan that hasn't ended (a canceled row still in its paid period counts). */
 const livePaid = (s: WorkspaceSubscription, now = Date.now()) => isPaidPlan(s.planId) && (s.status !== "canceled" || (s.currentPeriodEnd ?? 0) > now);
 
@@ -455,11 +458,24 @@ export async function applyWorkspaceOrder(ctx: MutationCtx, row: WorkspaceSubscr
 // ---------------------------------------------------------------------------------------------------
 
 /** Test and manual workspace plans whose period ended → Workspace Free (test plans renew unless canceled). */
-export async function settleExpiredWorkspacePlans(ctx: MutationCtx, now: number): Promise<number> {
-  const rows = await ctx.db
-    .query("subscriptions")
-    .withIndex("by_owner_type", (q) => q.eq("ownerType", "workspace"))
-    .take(2000);
+export async function settleExpiredWorkspacePlans(ctx: MutationCtx, now: number): Promise<{ changed: number; more: boolean }> {
+  // Only rows that are due: a paid plan (not Polar, which settles itself) whose period has ended. Each one
+  // handled leaves the range (it becomes Workspace Free, or a renewed test plan's period moves on), so a full
+  // batch means there's more for the next run, never a stall behind rows already done.
+  const rows: Doc<"subscriptions">[] = [];
+  let more = false;
+  for (const planId of PAID_WORKSPACE_PLANS) {
+    for (const provider of ["none", "manual", "test", "stripe"] as const) {
+      const batch = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_owner_type_plan_provider_period", (q) =>
+          q.eq("ownerType", "workspace").eq("planId", planId).eq("provider", provider).gte("currentPeriodEnd", 0).lte("currentPeriodEnd", now),
+        )
+        .take(200);
+      if (batch.length === 200) more = true;
+      rows.push(...batch);
+    }
+  }
   let changed = 0;
   for (const s of rows) {
     if (!isWorkspaceSubscription(s)) continue;
@@ -472,5 +488,5 @@ export async function settleExpiredWorkspacePlans(ctx: MutationCtx, now: number)
     await ctx.db.patch(s._id, { planId: "workspace_free", status: "canceled", quantity: undefined, canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
     changed++;
   }
-  return changed;
+  return { changed, more };
 }

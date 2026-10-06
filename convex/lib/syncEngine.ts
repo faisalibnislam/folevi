@@ -387,6 +387,7 @@ export class SyncEngine {
         updatedBy: this.profile._id,
       };
       const rowId = await insertScoped(this.ctx, "blocks", scopeOfRow(doc), values);
+      this.reparented(doc._id, incoming.id, rowId, null, parentId);
       this.touch(doc, rowId);
       this.trackMentions(doc, [], incoming);
       // A new block with no task and no page links has nothing to index afterwards (see finish()).
@@ -453,6 +454,7 @@ export class SyncEngine {
       };
     }
     await this.ctx.db.patch(existing._id, patch);
+    if (patch.parentId !== undefined) this.reparented(doc._id, existing.blockId, existing._id, existing.parentId, patch.parentId);
     this.touch(doc, existing._id);
     if (patch.text !== undefined) this.trackMentions(doc, existing.text, incoming);
     const row = (await this.ctx.db.get(existing._id))!;
@@ -468,27 +470,53 @@ export class SyncEngine {
     return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: false, normalized: normalized || undefined };
   }
 
-  private async subtree(doc: Doc<"documents">, rootBlockId: string): Promise<Doc<"blocks">[]> {
+  /**
+   * Per document, every block's children (tombstones included): parent block id to child block id to row
+   * id. Read once per batch: a batch deleting a hundred blocks of a long page used to read the whole page
+   * for each one. Kept in step with this batch's own moves (`reparented`); only the engine changes a
+   * block's parent, and a block never changes document.
+   */
+  private childIndex = new Map<Id<"documents">, Map<string, Map<string, Id<"blocks">>>>();
+
+  private async children(doc: Doc<"documents">): Promise<Map<string, Map<string, Id<"blocks">>>> {
+    const cached = this.childIndex.get(doc._id);
+    if (cached) return cached;
+    const index = new Map<string, Map<string, Id<"blocks">>>();
+    this.childIndex.set(doc._id, index);
     const all = await this.ctx.db
       .query("blocks")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id))
       .collect();
-    const byParent = new Map<string, Doc<"blocks">[]>();
-    for (const b of all) {
-      if (b.parentId === null) continue;
-      const list = byParent.get(b.parentId);
-      if (list) list.push(b);
-      else byParent.set(b.parentId, [b]);
-    }
+    for (const b of all) this.reparented(doc._id, b.blockId, b._id, null, b.parentId);
+    return index;
+  }
+
+  /** Records that a block of `documentId` (new, or moved) now sits under `to` instead of `from`. */
+  private reparented(documentId: Id<"documents">, blockId: string, rowId: Id<"blocks">, from: string | null, to: string | null) {
+    const index = this.childIndex.get(documentId);
+    if (!index) return;
+    if (from !== null) index.get(from)?.delete(blockId);
+    if (to === null) return;
+    let siblings = index.get(to);
+    if (!siblings) index.set(to, (siblings = new Map()));
+    siblings.set(blockId, rowId);
+  }
+
+  /** Every block nested under `rootBlockId`, deleted ones included, each as it is now. */
+  private async subtree(doc: Doc<"documents">, rootBlockId: string): Promise<Doc<"blocks">[]> {
+    const index = await this.children(doc);
     const out: Doc<"blocks">[] = [];
-    const walk = (id: string, depth: number) => {
+    const walk = async (id: string, depth: number) => {
       if (depth > 64) return;
-      for (const c of byParent.get(id) ?? []) {
+      for (const rowId of [...(index.get(id)?.values() ?? [])]) {
+        // The row itself is read fresh: earlier ops in the batch may have changed it.
+        const c = await this.ctx.db.get(rowId);
+        if (!c) continue;
         out.push(c);
-        walk(c.blockId, depth + 1);
+        await walk(c.blockId, depth + 1);
       }
     };
-    walk(rootBlockId, 0);
+    await walk(rootBlockId, 0);
     return out;
   }
 
@@ -539,6 +567,7 @@ export class SyncEngine {
       updatedAt: now,
       updatedBy: this.profile._id,
     });
+    if (parentId !== row.parentId) this.reparented(doc._id, row.blockId, row._id, row.parentId, parentId);
     this.touch(doc, row._id);
     for (const child of await this.subtree(doc, row.blockId)) {
       if (child.deletedAt !== deletedAt) continue;

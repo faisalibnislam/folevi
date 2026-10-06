@@ -7,8 +7,15 @@ import { identityImageUrl } from "./lib/identityImages";
 import { noteMode } from "./lib/notify";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 
+/**
+ * The caller's notifications, newest first. A query's result is cached until the rows it read change, so it
+ * never compares against its own clock: a page invitation's expiry is checked against `now` when the client
+ * sends it (as presence.list does), and its `pageInviteExpiresAt` is returned so the client can tell later.
+ * An invitation that runs out is also marked expired by maintenance.housekeeping, which refreshes this list,
+ * and accepting one that has run out is refused.
+ */
 export const list = query({
-  args: { limit: v.optional(v.number()) },
+  args: { limit: v.optional(v.number()), now: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const limit = Math.min(args.limit ?? 50, 100);
@@ -45,6 +52,7 @@ export const list = query({
       const doc = n.documentId ? await docOf(n.documentId) : null;
       const invite = n.inviteId ? await ctx.db.get(n.inviteId) : null;
       const pageInvite = n.pageInviteId ? await ctx.db.get(n.pageInviteId) : null;
+      const openPageInvite = pageInvite && pageInvite.status === "pending" && (args.now === undefined || pageInvite.expiresAt > args.now) ? pageInvite : null;
       const thread = doc && n.threadId ? await ctx.db.get(n.threadId) : null;
       out.push({
         id: n._id as string,
@@ -64,7 +72,8 @@ export const list = query({
         count: n.count ?? 1,
         inviteId: invite && invite.status === "pending" ? invite.publicId : null,
         /** A page shared with this person before they had an account, waiting to be accepted. */
-        pageInviteId: pageInvite && pageInvite.status === "pending" && pageInvite.expiresAt > Date.now() ? pageInvite.publicId : null,
+        pageInviteId: openPageInvite ? openPageInvite.publicId : null,
+        pageInviteExpiresAt: openPageInvite ? openPageInvite.expiresAt : null,
         createdAt: n.createdAt,
         read: n.readAt !== undefined,
       });

@@ -635,9 +635,7 @@ guest):**
 - The Mac app breaks for Personal content after Phase B until its catch-up.
 - Phase B has no dual-read window: between deploying and migrating, Personal looks empty. The runbook
   keeps the site read-only through that window (minutes at production's size).
-- A Personal change stamps the owner's profile row (`personalChangeSeq`). Every query that reads the
-  profile (most do, through `requireProfile`) re-runs on each Personal edit, the same fan-out a workspace
-  edit already had through the workspace row. If it shows up in costs, the counter can move to its own
-  table without changing the protocol.
+- The change counters have since moved to their own table (`scopeCounters`, see docs/SYNC_PROTOCOL.md):
+  stamping the profile or workspace row re-ran nearly every query on each edit.
 - Collaborators in someone's Personal keep access only to pages whose whole subtree they could open;
   pages mixing open and restricted sub-pages are reported by the migration for manual re-sharing.

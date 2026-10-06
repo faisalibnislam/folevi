@@ -31,7 +31,9 @@ describe("accounts", () => {
       expect(await ctx.db.query("workspaces").collect()).toEqual([]);
       expect(await ctx.db.query("workspaceMembers").collect()).toEqual([]);
       const p = (await ctx.db.query("profiles").collect()).find((x) => x.email === "ada@example.com")!;
-      expect(p.personalChangeSeq).toBeGreaterThan(0);
+      // The Personal's change counter lives in scopeCounters (lib/seq.ts), not on the profile.
+      const counter = await ctx.db.query("scopeCounters").withIndex("by_key", (q) => q.eq("key", `p:${p._id}`)).unique();
+      expect(counter!.seq).toBeGreaterThan(0);
       expect(p.personalDocumentCount).toBeGreaterThan(0);
       // Every seeded row is in their Personal, and only there.
       for (const table of ["documents", "blocks", "folders", "tags", "documentTags", "collections", "tasks"] as const) {

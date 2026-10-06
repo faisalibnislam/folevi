@@ -77,33 +77,84 @@ function scopeDailies(ctx: QueryCtx, scope: Scope, owner: Id<"profiles">, from: 
     : base.withIndex("by_daily", (q) => q.eq("workspaceId", scope.workspaceId).eq("dailyOwnerId", owner).gte("dailyDate", from).lte("dailyDate", to));
 }
 
-async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolver, docs: Doc<"documents">[]) {
+/** Stars and scope tags loaded up front for a list (beyond these, withExtras looks each one up). */
+const STAR_PRELOAD = 500;
+const TAG_PRELOAD = 200;
+
+/**
+ * Each page's star, tags and home folder for the caller. For a list (`opts.scope`, several pages) the
+ * caller's stars and the scope's tags are read once into maps, so a page costs one tag-link read; a
+ * single page (or more stars or tags than are preloaded) is looked up one by one. `opts.starred` is the
+ * complete set of starred page ids when the caller already has it (the Starred view).
+ */
+async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolver, docs: Doc<"documents">[], opts: { scope?: Scope; starred?: Set<string> } = {}) {
   const out: (DocumentSummary & { starred: boolean; tags: { id: string; name: string; color: string }[]; homeFolder: HomeFolder | null })[] = [];
   const homes = new HomeFolders(ctx);
   const place = new Placement(ctx, profile);
+  let starred = opts.starred ?? null;
+  const tags = new Map<string, Doc<"tags"> | null>();
+  if (opts.scope && docs.length > 1) {
+    if (!starred) {
+      const stars = await ctx.db
+        .query("stars")
+        .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+        .take(STAR_PRELOAD + 1);
+      if (stars.length <= STAR_PRELOAD) starred = new Set(stars.map((s) => s.documentId as string));
+    }
+    const scope = opts.scope;
+    const base = ctx.db.query("tags");
+    const scopeTags = await (
+      scope.kind === "personal" ? base.withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId)) : base.withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))
+    ).take(TAG_PRELOAD);
+    for (const t of scopeTags) tags.set(t._id, t);
+  }
   for (const d of docs) {
-    const star = await ctx.db
-      .query("stars")
-      .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", d._id))
-      .unique();
+    const star = starred
+      ? starred.has(d._id)
+      : Boolean(
+          await ctx.db
+            .query("stars")
+            .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", d._id))
+            .unique(),
+        );
     const tagLinks = await ctx.db
       .query("documentTags")
       .withIndex("by_document", (q) => q.eq("documentId", d._id))
       .take(20);
-    const tags = [];
+    const docTags = [];
     for (const l of tagLinks) {
-      const t = await ctx.db.get(l.tagId);
-      if (t) tags.push({ id: t.publicId, name: t.name, color: t.color });
+      let t = tags.get(l.tagId);
+      if (t === undefined) {
+        t = await ctx.db.get(l.tagId);
+        tags.set(l.tagId, t);
+      }
+      if (t) docTags.push({ id: t.publicId, name: t.name, color: t.color });
     }
-    out.push({ ...(await place.summary(ids, d)), starred: Boolean(star), tags, homeFolder: await homes.of(d) });
+    out.push({ ...(await place.summary(ids, d)), starred: star, tags: docTags, homeFolder: await homes.of(d) });
   }
   return out;
 }
 
-async function filterReadable(ctx: QueryCtx, profile: Doc<"profiles">, docs: Doc<"documents">[]) {
-  const out: Doc<"documents">[] = [];
-  for (const d of docs) if (accessAtLeast(await documentAccess(ctx, profile, d), "read")) out.push(d);
-  return out;
+/** A scope's templates (any sort; the caller orders them). */
+function scopeTemplates(ctx: QueryCtx, scope: Scope) {
+  const base = ctx.db.query("documents");
+  return scope.kind === "personal"
+    ? base.withIndex("by_owner_kind", (q) => q.eq("ownerProfileId", scope.profileId).eq("kind", "template"))
+    : base.withIndex("by_workspace_kind", (q) => q.eq("workspaceId", scope.workspaceId).eq("kind", "template"));
+}
+
+/** A scope's Archive: archived top-level pages not in Trash (archivedAt is a time, so >= 0 means set). */
+function scopeArchive(ctx: QueryCtx, scope: Scope) {
+  const base = ctx.db.query("documents");
+  return scope.kind === "personal"
+    ? base.withIndex("by_owner_listed", (q) => q.eq("ownerProfileId", scope.profileId).eq("parentDocumentId", undefined).eq("inTrash", false).gte("archivedAt", 0))
+    : base.withIndex("by_workspace_listed", (q) => q.eq("workspaceId", scope.workspaceId).eq("parentDocumentId", undefined).eq("inTrash", false).gte("archivedAt", 0));
+}
+
+/** The position an offset cursor names (a cursor from another kind of list starts over). */
+function offsetOf(cursor: string | null): number {
+  const n = cursor ? Number(cursor) : 0;
+  return Number.isInteger(n) && n > 0 ? n : 0;
 }
 
 /** Document lists of a scope (All, Starred, Archive, Trash, Templates, Daily, Drafts (no folder), folder, tag). */
@@ -128,20 +179,26 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const standing = await resolveScope(ctx, profile, args.scope);
+    const { scope } = standing;
+    const reader = new PageReader(ctx, profile, standing);
     const view = args.view as ListView;
     const ids = new IdResolver(ctx);
     const sort = args.sort ?? "updated";
 
-    // Views backed by small per-person/per-container sets are fetched fully, then sorted.
-    if (view === "starred" || view === "folder" || view === "tag") {
+    // Views backed by small per-person/per-container sets (read through their own indexes) are fetched
+    // fully, then sorted.
+    if (view === "starred" || view === "folder" || view === "tag" || view === "templates" || view === "archive") {
       let docs: Doc<"documents">[] = [];
+      let starred: Set<string> | undefined;
       if (view === "starred") {
         const stars = await ctx.db
           .query("stars")
           .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
           .order("desc")
           .take(500);
+        // Every page listed here is starred (withExtras needn't look the stars up again).
+        starred = new Set(stars.map((s) => s.documentId as string));
         for (const s of stars) {
           const d = await ctx.db.get(s.documentId);
           if (d && inScope(d, scope) && !d.inTrash) docs.push(d);
@@ -157,9 +214,13 @@ export const list = query({
         docs = (
           await ctx.db
             .query("documents")
-            .withIndex("by_folder", (q) => q.eq("folderId", folder._id))
+            .withIndex("by_folder_listed", (q) => q.eq("folderId", folder._id).eq("parentDocumentId", undefined).eq("inTrash", false).eq("archivedAt", undefined))
             .take(1000)
-        ).filter((d) => !d.inTrash && !d.archivedAt && !d.parentDocumentId && (d.kind === "document" || d.kind === "daily"));
+        ).filter((d) => d.kind === "document" || d.kind === "daily");
+      } else if (view === "templates") {
+        docs = (await scopeTemplates(ctx, scope).take(2000)).filter((d) => !d.inTrash);
+      } else if (view === "archive") {
+        docs = await scopeArchive(ctx, scope).take(2000);
       } else {
         const tag = args.tagId
           ? await ctx.db
@@ -177,13 +238,17 @@ export const list = query({
           if (d && !d.inTrash) docs.push(d);
         }
       }
-      docs = await filterReadable(ctx, profile, docs);
-      docs.sort(sorter(sort));
-      const start = args.paginationOpts.cursor ? Number(args.paginationOpts.cursor) : 0;
-      const page = docs.slice(start, start + args.paginationOpts.numItems);
+      docs = await reader.filter(docs);
+      // Templates and the Archive keep the order the scope's sort indexes give (as they did when walked
+      // through them): titles byte-wise, re-sorted case-insensitively only when the list fits one page.
+      const indexed = view === "templates" || view === "archive";
+      docs.sort(indexed ? indexOrder(sort) : sorter(sort));
+      const start = offsetOf(args.paginationOpts.cursor);
+      let page = docs.slice(start, start + args.paginationOpts.numItems);
       const end = start + page.length;
+      if (indexed && sort === "title" && start === 0 && end >= docs.length) page = [...page].sort(sorter(sort));
       return {
-        page: await withExtras(ctx, profile, ids, page),
+        page: await withExtras(ctx, profile, ids, page, { scope, starred }),
         isDone: end >= docs.length,
         continueCursor: String(end),
       };
@@ -195,10 +260,6 @@ export const list = query({
     const result = await scopeDocuments(ctx, scope, inTrash, sort)
       .filter((q) => {
         switch (view) {
-          case "archive":
-            return q.and(q.neq(q.field("archivedAt"), undefined), q.eq(q.field("parentDocumentId"), undefined));
-          case "templates":
-            return q.eq(q.field("kind"), "template");
           case "daily":
             return q.and(q.eq(q.field("kind"), "daily"), q.eq(q.field("dailyOwnerId"), profile._id));
           case "unsorted":
@@ -222,11 +283,27 @@ export const list = query({
       .paginate(args.paginationOpts);
     // Titles are indexed byte-wise (capitals first). When the whole list fits in one page, order it
     // case-insensitively; across pages the index order is kept so pages never overlap or skip.
-    let page = await filterReadable(ctx, profile, result.page);
+    let page = await reader.filter(result.page);
     if (sort === "title" && result.isDone && !args.paginationOpts.cursor) page = [...page].sort(sorter(sort));
-    return { ...result, page: await withExtras(ctx, profile, ids, page) };
+    return { ...result, page: await withExtras(ctx, profile, ids, page, { scope }) };
   },
 });
+
+/** The order a scope's sort index walks pages in (ties by creation, in the index's direction). */
+function indexOrder(sort: ListSort) {
+  return (a: Doc<"documents">, b: Doc<"documents">) => {
+    switch (sort) {
+      case "created":
+        return b.createdAt - a.createdAt || b._creationTime - a._creationTime;
+      case "title":
+        return a.title < b.title ? -1 : a.title > b.title ? 1 : a._creationTime - b._creationTime;
+      case "manual":
+        return a.rank < b.rank ? -1 : a.rank > b.rank ? 1 : a._creationTime - b._creationTime;
+      default:
+        return b.updatedAt - a.updatedAt || b._creationTime - a._creationTime;
+    }
+  };
+}
 
 function sorter(sort: ListSort) {
   return (a: Doc<"documents">, b: Doc<"documents">) => {
@@ -311,11 +388,8 @@ export const children = query({
       .withIndex("by_parent", (q) => q.eq("parentDocumentId", doc._id))
       .take(500);
     const ids = new IdResolver(ctx);
-    const readable = await filterReadable(
-      ctx,
-      profile,
-      kids.filter((k) => !k.inTrash && k.kind !== "collectionRow"),
-    );
+    const reader = await PageReader.forScope(ctx, profile, scopeOfRow(doc));
+    const readable = await reader.filter(kids.filter((k) => !k.inTrash && k.kind !== "collectionRow"));
     // A guest gets no folder ids (and the parent is this page, which they can open).
     const place = new Placement(ctx, profile);
     const out: DocumentSummary[] = [];
@@ -461,7 +535,8 @@ export const recentNotes = query({
   args: { scope: vScopeArg, limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const standing = await resolveScope(ctx, profile, args.scope);
+    const { scope } = standing;
     const limit = Math.max(1, Math.min(args.limit ?? 10, 30));
     const hiddenBase = ctx.db.query("recentHidden");
     const hiddenRows = await (
@@ -483,8 +558,8 @@ export const recentNotes = query({
       const at = hidden.get(d._id);
       return at === undefined || d.updatedAt > at;
     });
-    const page = (await filterReadable(ctx, profile, shown)).slice(0, limit);
-    return await withExtras(ctx, profile, new IdResolver(ctx), page);
+    const page = (await new PageReader(ctx, profile, standing).filter(shown)).slice(0, limit);
+    return await withExtras(ctx, profile, new IdResolver(ctx), page, { scope });
   },
 });
 
@@ -1257,22 +1332,35 @@ export const restoreSnapshot = mutation({
   },
 });
 
+/** Old snapshots looked at per run of purgeSnapshots (each run then hands on to the next). */
+const SNAPSHOT_PURGE_BATCH = 100;
+
 export const purgeSnapshots = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    // Keep the newest 50 per document and anything younger than 30 days.
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const old = await ctx.db
+  // A run started by the cron passes nothing; each follow-up carries the same cutoff and where to go on.
+  args: { cursor: v.optional(v.string()), cutoff: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    // Keep the newest 50 per document and anything younger than 30 days. The old ones are walked oldest
+    // first with a cursor, so snapshots that are kept never stop the walk from reaching the rest.
+    const cutoff = args.cutoff ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const { page: old, isDone, continueCursor } = await ctx.db
       .query("documentSnapshots")
       .withIndex("by_created", (q) => q.lt("createdAt", cutoff))
-      .take(200);
+      .paginate({ numItems: SNAPSHOT_PURGE_BATCH, cursor: args.cursor ?? null });
+    // Per document: the time of its 50th newest snapshot. Anything older has 50 newer ones and goes.
+    const keepFrom = new Map<string, number>();
     let removed = 0;
     for (const s of old) {
-      const newer = await ctx.db
-        .query("documentSnapshots")
-        .withIndex("by_document", (q) => q.eq("documentId", s.documentId).gt("createdAt", s.createdAt))
-        .take(50);
-      if (newer.length >= 50) {
+      let from = keepFrom.get(s.documentId);
+      if (from === undefined) {
+        const newest = await ctx.db
+          .query("documentSnapshots")
+          .withIndex("by_document", (q) => q.eq("documentId", s.documentId))
+          .order("desc")
+          .take(50);
+        from = newest.length >= 50 ? newest[49]!.createdAt : -Infinity;
+        keepFrom.set(s.documentId, from);
+      }
+      if (s.createdAt < from) {
         const chunks = await ctx.db
           .query("snapshotChunks")
           .withIndex("by_snapshot", (q) => q.eq("snapshotId", s._id))
@@ -1282,6 +1370,7 @@ export const purgeSnapshots = internalMutation({
         removed++;
       }
     }
+    if (!isDone) await ctx.scheduler.runAfter(0, internal.documents.purgeSnapshots, { cursor: continueCursor, cutoff });
     return removed;
   },
 });

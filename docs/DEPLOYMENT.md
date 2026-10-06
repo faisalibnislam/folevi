@@ -11,6 +11,12 @@ exact steps the account owner follows to set up or rebuild it. Every secret live
 | Preview | Vercel preview URLs | Convex preview deployment per branch | development mailbox if `FOLEVI_DEV_MAILBOX_SECRET` is set | Mailtrap **sandbox** (`MAILTRAP_SANDBOX_*`), or a live token restricted to test addresses (`FOLEVI_ENV=preview`) |
 | Production | `folevi.com`, `app.folevi.com` | production deployment | Mailtrap only; no mailbox | Mailtrap Email API, `mail.folevi.com` |
 
+**Previews are switched off for now.** No Preview deploy key is set in Vercel, so every branch build failed
+at `convex deploy`. `apps/web/vercel.json`'s `ignoreCommand` skips any build that isn't production; pull
+requests are still checked by GitHub CI (tests and a web build). To bring previews back, add the Convex
+Preview deploy key as `CONVEX_DEPLOY_KEY` (Preview only) with the variables below, then drop the
+`[ "$VERCEL_ENV" != "production" ] ||` part of the `ignoreCommand`.
+
 Non-production Convex deployments (`FOLEVI_ENV` ≠ `production`) send either to the Mailtrap Email Sandbox
 (captured, never delivered) or only to `@example.com`, `@test.com` or explicitly allowlisted addresses, so
 non-production email never reaches real people. Accounts are built in (Better Auth inside Convex, `docs/AUTH_DECISION.md`); there is no separate

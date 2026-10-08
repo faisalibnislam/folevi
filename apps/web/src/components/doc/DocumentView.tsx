@@ -295,7 +295,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const authorMarks = useMemo(() => {
     if (!blockAuthors) return undefined;
     const marks = new Map<string, { color: string; label: string }>();
-    for (const [blockId, [key, at]] of Object.entries(blockAuthors.authors)) {
+    for (const [blockId, key, at] of blockAuthors.authors) {
       const who = blockAuthors.people[key];
       marks.set(blockId, { color: who?.color ?? "ink-muted", label: `${who?.name ?? "Someone"} · ${formatRelative(at)}` });
     }
@@ -846,9 +846,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
 }
 
 /** "Show editors" is on: who edited this page (each in their colour), and a way to turn it off. */
-function EditorsBar({ authors, onHide }: { authors: { authors: Record<string, [string, number]>; people: Record<string, { name: string; color: string }> }; onHide: () => void }) {
+function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, number][]; people: Record<string, { name: string; color: string }> }; onHide: () => void }) {
   const counts = new Map<string, number>();
-  for (const [key] of Object.values(authors.authors)) counts.set(key, (counts.get(key) ?? 0) + 1);
+  for (const [, key] of authors.authors) counts.set(key, (counts.get(key) ?? 0) + 1);
   const people = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   return (
     <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[8px] bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">

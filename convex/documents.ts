@@ -1347,9 +1347,10 @@ async function versionContent(ctx: QueryCtx, profile: Doc<"profiles">, raw: stri
   const parsed = JSON.parse(raw) as VersionContent;
   if (!Array.isArray(parsed.blocks)) throw new Error("no blocks");
   const people = new People(ctx);
+  // As lists of [block id, person key, time]: an object keyed by block can't go over the wire past 1024 blocks.
   const attribution = async (map: VersionContent["authors"]) => {
-    const out: Record<string, [string, number]> = {};
-    for (const [blockId, [who, at]] of Object.entries(map ?? {})) out[blockId] = [(await people.get(who)).key, at];
+    const out: [string, string, number][] = [];
+    for (const [blockId, [who, at]] of Object.entries(map ?? {})) out.push([blockId, (await people.get(who)).key, at]);
     return out;
   };
   const authors = await attribution(parsed.authors);
@@ -1394,8 +1395,9 @@ export const blockAuthors = query({
   handler: async (ctx, args) => {
     const { doc } = await historyDocument(ctx, args.documentId);
     const people = new People(ctx);
-    const authors: Record<string, [string, number]> = {};
-    for (const r of await liveBlocks(ctx, doc._id)) authors[r.blockId] = [(await people.get(r.updatedBy)).key, r.updatedAt];
+    // Lists of [block id, person key, time], not objects keyed by block (at most 1024 fields per object).
+    const authors: [string, string, number][] = [];
+    for (const r of await liveBlocks(ctx, doc._id)) authors.push([r.blockId, (await people.get(r.updatedBy)).key, r.updatedAt]);
     // And who deleted what since that version (the current version's removed lines).
     const chosen = args.since
       ? await ctx.db
@@ -1411,13 +1413,13 @@ export const blockAuthors = query({
             .withIndex("by_document", (q) => q.eq("documentId", doc._id))
             .order("desc")
             .first();
-    const removed: Record<string, [string, number]> = {};
+    const removed: [string, string, number][] = [];
     if (latest) {
       const gone = await ctx.db
         .query("blocks")
         .withIndex("by_document_deleted", (q) => q.eq("documentId", doc._id).gte("deletedAt", latest.createdAt))
         .take(2000);
-      for (const r of gone) removed[r.blockId] = [(await people.get(r.updatedBy)).key, r.deletedAt!];
+      for (const r of gone) removed.push([r.blockId, (await people.get(r.updatedBy)).key, r.deletedAt!]);
     }
     return { authors, removed, people: await people.all() };
   },

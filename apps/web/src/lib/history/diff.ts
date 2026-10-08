@@ -25,7 +25,10 @@ export interface VersionDiff {
   authors: string[];
 }
 
-type Attribution = Record<string, [string, number]> | null;
+/** Who changed which block, as the server sends it: [block id, person key, time]. */
+export type Attribution = readonly (readonly [string, string, number])[] | null;
+
+const byBlock = (list: Attribution) => new Map((list ?? []).map(([blockId, who, at]) => [blockId, [who, at] as const]));
 
 // Words, runs of spaces and single punctuation marks: a changed word reads as one change, not letter by letter.
 const TOKEN = /\s+|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]/gu;
@@ -98,6 +101,8 @@ export function diffVersions(previous: WireBlock[] | null, current: WireBlock[],
   const changes = new Map<string, BlockChange>();
   if (!previous) return { blocks: current, changes, authors: [] };
   const before = new Map(previous.map((b) => [b.id, b]));
+  const changedBy = byBlock(authors);
+  const removedBy = byBlock(removed);
   const now = new Set(current.map((b) => b.id));
   const tally = new Map<string, number>();
   const credit = (author: string | null) => {
@@ -105,7 +110,7 @@ export function diffVersions(previous: WireBlock[] | null, current: WireBlock[],
   };
   for (const b of current) {
     const old = before.get(b.id);
-    const [author, at] = authors?.[b.id] ?? [null, null];
+    const [author, at] = changedBy.get(b.id) ?? [null, null];
     if (!old) {
       changes.set(b.id, { kind: "added", author, at });
       credit(author);
@@ -121,7 +126,7 @@ export function diffVersions(previous: WireBlock[] | null, current: WireBlock[],
   // Removed blocks keep their place (parent and rank), so they show where they were.
   const gone = previous.filter((b) => !now.has(b.id));
   for (const b of gone) {
-    const [author, at] = removed?.[b.id] ?? [null, null];
+    const [author, at] = removedBy.get(b.id) ?? [null, null];
     changes.set(b.id, { kind: "removed", author, at });
     credit(author);
   }

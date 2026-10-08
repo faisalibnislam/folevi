@@ -62,12 +62,28 @@ describe("versions", () => {
     for (const p of Object.values(people)) expect(p.key).not.toMatch(/profiles/);
 
     const content = await owner.as.query(api.documents.snapshotContent, { snapshotId: second.id! });
-    expect(content!.authors![b.id]![0]).toBe(versions[0]!.editors[0]);
-    expect(content!.authors![c.id]![0]).toBe(versions[0]!.editors[0]);
-    expect(content!.removed![a.id]![0]).toBe(versions[0]!.editors[1]);
+    const who = (list: [string, string, number][] | null, id: string) => list!.find(([blockId]) => blockId === id)![1];
+    expect(who(content!.authors, b.id)).toBe(versions[0]!.editors[0]);
+    expect(who(content!.authors, c.id)).toBe(versions[0]!.editors[0]);
+    expect(who(content!.removed, a.id)).toBe(versions[0]!.editors[1]);
     // The stored attribution (internal ids) never reaches the client inside the content.
     expect(content!.content).not.toContain("authors");
     expect(JSON.parse(content!.content!).blocks.map((x: { id: string }) => x.id)).toEqual([b.id, c.id]);
+  });
+
+  test("a page of more than 1024 lines: who wrote each line still comes back (as lists, not objects keyed by line)", async () => {
+    const t = setup();
+    const { owner, workspaceId, documentId } = await page(t, "ver-big");
+    for (let batch = 0; batch < 11; batch++) {
+      // (A rank can't end in "0", hence the "V".)
+      const results = await push(owner, workspaceId, Array.from({ length: 100 }, (_, i) => upsert(documentId, para(ulid(), `Line ${batch}-${i}`, `X${String(batch).padStart(2, "0")}${String(i).padStart(3, "0")}V`))));
+      expect(results.every((r) => r.status === "applied")).toBe(true);
+    }
+    const live = await owner.as.query(api.documents.blockAuthors, { documentId });
+    expect(live.authors.length).toBe(1102);
+    const v = await owner.as.mutation(api.documents.createSnapshot, { documentId, reason: "manual" });
+    const content = await owner.as.query(api.documents.snapshotContent, { snapshotId: v.id! });
+    expect(content!.authors!.length).toBe(1102);
   });
 
   test("history is for people who can edit the page", async () => {
@@ -115,7 +131,7 @@ describe("versions", () => {
     expect(undoVersionId).toBeTruthy();
     // The current version knows who removed the line the restore took out.
     const now = await owner.as.query(api.documents.blockAuthors, { documentId });
-    expect(now.people[now.removed[added.id]![0]]!.name).toBe("ver-restore-owner");
+    expect(now.people[now.removed.find(([id]) => id === added.id)![1]]!.name).toBe("ver-restore-owner");
     await owner.as.mutation(api.documents.restoreSnapshot, { snapshotId: undoVersionId! });
     expect(await lines()).toEqual(["Owner's line", "Rewritten", "Added after"]);
 

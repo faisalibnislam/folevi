@@ -47,7 +47,18 @@ describe("diffVersions", () => {
   test("added, edited, restyled and removed blocks, each with its author; moves are not changes", () => {
     const before = [block("a", "Keep me"), block("b", "Edit me"), block("c", "Style me"), block("d", "Delete me"), block("e", "Move me", { rank: "e" })];
     const after = [block("a", "Keep me"), block("b", "Edited me"), block("c", "Style me", { type: "heading", props: { level: 2 } }), block("f", "New"), block("e", "Move me", { rank: "0" })];
-    const diff = diffVersions(before, after, { b: ["ann", 2], c: ["ben", 3], f: ["ann", 4], a: ["ann", 1], e: ["ben", 5] }, { d: ["ben", 6] });
+    const diff = diffVersions(
+      before,
+      after,
+      [
+        ["b", "ann", 2],
+        ["c", "ben", 3],
+        ["f", "ann", 4],
+        ["a", "ann", 1],
+        ["e", "ben", 5],
+      ],
+      [["d", "ben", 6]],
+    );
     expect(diff.changes.get("a")).toBeUndefined();
     expect(diff.changes.get("e")).toBeUndefined();
     expect(diff.changes.get("b")).toMatchObject({ kind: "edited", author: "ann", at: 2 });

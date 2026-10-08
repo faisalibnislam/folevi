@@ -87,7 +87,10 @@ Content tables all carry `workspaceId` and a `seq` stamped from the workspace ch
   folder, access mode, revision/titleRev, derived search text and counts
 - `blocks`: the canonical block rows (`blockId`, `parentId`, `rank`, `type`, `schemaVersion`, `text`,
   `props`, `revision`, `contentRev`, `positionRev`, `deletedAt`)
-- `documentSnapshots` (+ `snapshotChunks` for large pages): version history
+- `documentSnapshots` (+ `snapshotChunks` for large pages): version history. Each version stores the
+  page, who last changed each block and who deleted what since the version before (internal ids, never
+  sent as stored: `documents.snapshotContent` turns them into keyed people), plus its `editors` and an
+  optional `name`. The first edit after a version schedules the next (`documents.autoVersion`, from sync).
 - `tasks`: a projection of `todo` blocks (the block is canonical)
 - `documentLinks`: backlink index
 - `collections`, `collectionProperties`, `collectionRows` (each row is a page), `collectionValues`,

@@ -1,111 +1,415 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
-import { blocksToHtml, type WireBlock } from "@folevi/editor-schema";
+import type { FunctionReturnType } from "convex/server";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { ArrowLeft, Copy, MoreHorizontal, Pencil, RotateCcw } from "lucide-react";
+import type { DocumentCover, DocumentStyle, WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { useAppState } from "@/lib/app/state";
+import { useAppRouter } from "@/lib/app/router";
+import { useDocumentBlocks } from "@/lib/hooks/useEngine";
+import { sheetProps } from "@/lib/cover";
+import { diffVersions } from "@/lib/history/diff";
+import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { Button } from "@/components/ui/Button";
+import { MenuButton } from "@/components/ui/Menu";
+import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
-import { formatDateTime } from "@/lib/format";
+import { ReadOnlyBlocks, type ChangePerson } from "./ReadOnlyBlocks";
 
-const REASONS: Record<string, string> = { idle: "Autosaved version", close: "Saved when closed", before_restore: "Before a restore", manual: "Saved manually", import: "Imported" };
+type VersionList = FunctionReturnType<typeof api.documents.versions>;
+type Version = VersionList["versions"][number];
+type People = Record<string, ChangePerson>;
 
-/** Version snapshots with a read-only preview and restore (the current state is snapshotted first). */
-export function VersionHistory({ open, onClose, documentId, canRestore }: { open: boolean; onClose: () => void; documentId: string; canRestore: boolean }) {
-  const list = useQuery(api.documents.snapshots, open ? { documentId } : "skip");
-  const [selected, setSelected] = useState<string | null>(null);
-  const content = useQuery(api.documents.snapshotContent, selected ? { snapshotId: selected } : "skip");
-  const restore = useMutation(api.documents.restoreSnapshot);
-  const createSnapshot = useMutation(api.documents.createSnapshot);
-  const toast = useToast();
-  const [confirm, setConfirm] = useState(false);
-  // "loading" while the query is in flight; otherwise either a preview or a reason it can't be shown.
-  let preview: string | null = null;
-  let previewError: string | null = null;
-  if (selected && content === null) previewError = "This version is no longer available.";
-  else if (content) {
-    try {
-      const parsed = JSON.parse(content.content ?? "") as { title?: string; blocks?: WireBlock[] };
-      if (!Array.isArray(parsed.blocks)) throw new Error("no blocks");
-      preview = blocksToHtml(parsed.blocks, { title: parsed.title || "Untitled" });
-    } catch {
-      previewError = "This version can’t be previewed. It may have been saved by a newer version of Folevi.";
-    }
+/** The page as it is now, at the top of the list (like the live document in Google Docs' history). */
+const CURRENT = "current";
+
+const REASONS: Partial<Record<string, string>> = { before_restore: "Before a restore", import: "Imported" };
+
+function dayLabel(ts: number, now = new Date()): string {
+  const d = new Date(ts);
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((start(now) - start(d)) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: days < 7 ? "long" : undefined, month: "long", day: "numeric", year: d.getFullYear() === now.getFullYear() ? undefined : "numeric" });
+}
+const timeOf = (ts: number) => new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+const whenOf = (ts: number) => new Date(ts).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+/** A stored version, readable or not (saved by a newer Folevi, or gone). */
+function parseVersion(content: string | null | undefined): { title: string; style?: DocumentStyle; blocks: WireBlock[] } | null {
+  if (!content) return null;
+  try {
+    const parsed = JSON.parse(content) as { title?: string; style?: DocumentStyle; blocks?: WireBlock[] };
+    return Array.isArray(parsed.blocks) ? { title: parsed.title ?? "", style: parsed.style, blocks: parsed.blocks } : null;
+  } catch {
+    return null;
   }
+}
+
+/**
+ * Version history over the whole window, as in Google Docs: the page as it was in the chosen version (with
+ * what changed since the version before marked in the colour of whoever changed it) and the list of versions
+ * beside it, newest first and grouped by day. Restore (undoable), name a version, or make a copy of it.
+ */
+export function VersionHistory(props: { open: boolean; onClose: () => void; documentId: string; title: string; style: DocumentStyle; cover: DocumentCover }) {
+  if (!props.open) return null;
+  return <HistoryView {...props} />;
+}
+
+function HistoryView({ onClose, documentId, title, style, cover }: { onClose: () => void; documentId: string; title: string; style: DocumentStyle; cover: DocumentCover }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = dialog.current;
+    if (el && !el.open) el.showModal();
+  }, []);
+  const { engine } = useAppState();
+  const toast = useToast();
+  const { navigate } = useAppRouter();
+  const [namedOnly, setNamedOnly] = useState(false);
+  const [selected, setSelected] = useState<string>(CURRENT);
+  const [showChanges, setShowChanges] = useState(true);
+  const [naming, setNaming] = useState<string | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+
+  // Every version (for what each one is compared with), and the named ones when only those are listed.
+  const all = useQuery(api.documents.versions, { documentId });
+  const named = useQuery(api.documents.versions, namedOnly ? { documentId, namedOnly: true } : "skip");
+  const listed = namedOnly ? named : all;
+  const versions = useMemo(() => all?.versions ?? [], [all]);
+  const order = versions.findIndex((v) => v.id === selected);
+  const previousId = selected === CURRENT ? (versions[0]?.id ?? null) : (versions[order + 1]?.id ?? null);
+  const version = order >= 0 ? versions[order]! : null;
+
+  const chosen = useQuery(api.documents.snapshotContent, selected !== CURRENT ? { snapshotId: selected } : "skip");
+  const before = useQuery(api.documents.snapshotContent, showChanges && previousId ? { snapshotId: previousId } : "skip");
+  const live = useDocumentBlocks(engine, documentId);
+  // Compared with the same version the list says comes before (a new one may have just been saved).
+  const liveAuthors = useQuery(api.documents.blockAuthors, selected === CURRENT ? { documentId, ...(previousId ? { since: previousId } : {}) } : "skip");
+
+  const shown = useMemo(() => (selected === CURRENT ? { title, style, blocks: live } : parseVersion(chosen?.content)), [selected, title, style, live, chosen]);
+  const unreadable = selected !== CURRENT && chosen !== undefined && !shown;
+  // The version it's compared with: undefined while it loads, null when there's none (the first version).
+  const earlier = useMemo(() => (previousId ? (before === undefined ? undefined : (parseVersion(before?.content)?.blocks ?? null)) : null), [previousId, before]);
+  const diff = useMemo(() => {
+    if (!shown || !showChanges || earlier === undefined) return null;
+    const authors = selected === CURRENT ? (liveAuthors?.authors ?? null) : (chosen?.authors ?? null);
+    const removed = selected === CURRENT ? (liveAuthors?.removed ?? null) : (chosen?.removed ?? null);
+    return diffVersions(earlier, shown.blocks, authors, removed);
+  }, [shown, showChanges, earlier, selected, liveAuthors, chosen]);
+  const people: People = useMemo(() => ({ ...all?.people, ...before?.people, ...chosen?.people, ...liveAuthors?.people }), [all, before, chosen, liveAuthors]);
+
+  const fileIds = useMemo(() => [...new Set((diff?.blocks ?? shown?.blocks ?? []).map((b) => (b.props as { fileId?: unknown }).fileId).filter((x): x is string => typeof x === "string"))], [diff, shown]);
+  const [now] = useState(() => Date.now());
+  const files = useQuery(api.files.urls, fileIds.length ? { fileIds, now } : "skip");
+  const fileUrls = useMemo(() => Object.fromEntries(Object.entries(files ?? {}).map(([id, f]) => [id, f.url])), [files]);
+
+  const restore = useMutation(api.documents.restoreSnapshot);
+  const nameVersion = useMutation(api.documents.nameVersion);
+  const saveVersion = useMutation(api.documents.createSnapshot);
+  const copyVersion = useMutation(api.documents.copyVersion);
+
+  const doRestore = async (id: string, when: number, name: string | null) => {
+    try {
+      const { undoVersionId } = await restore({ snapshotId: id });
+      onClose();
+      toast.show(name ? `Restored “${name}”` : `Restored the version from ${whenOf(when)}`, {
+        tone: "success",
+        action: undoVersionId
+          ? {
+              label: "Undo",
+              onClick: () => void restore({ snapshotId: undoVersionId }).then(() => toast.show("Restore undone"), (e) => toast.show(errorMessage(e), { tone: "error" })),
+            }
+          : undefined,
+      });
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    }
+  };
+  const doCopy = async (id: string) => {
+    try {
+      const copy = await copyVersion({ snapshotId: id });
+      toast.show(`Saved a copy: ${copy.title}`, { action: { label: "Open", onClick: () => navigate(`/d/${copy.id}`) } });
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    }
+  };
+  const doName = async (id: string, name: string) => {
+    setNaming(null);
+    try {
+      if (id === CURRENT) {
+        const r = await saveVersion({ documentId, reason: "manual", name });
+        if (r.id) setSelected(r.id);
+      } else await nameVersion({ snapshotId: id, name });
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    }
+  };
+
+  const heading = selected === CURRENT ? "Current version" : version ? (version.name ?? whenOf(version.createdAt)) : "Version";
+  const subheading = version ? (version.name ? whenOf(version.createdAt) : REASONS[version.reason]) : null;
+  const sheet = sheetProps(shown?.style ?? style, cover);
+
+  // ↑ / ↓ move through the list too (Tab works as well: each version is a button).
+  const items = useMemo(() => [CURRENT, ...(listed?.versions ?? []).map((v) => v.id)], [listed]);
+  const onListKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (naming || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    e.preventDefault();
+    const i = Math.max(0, items.indexOf(selected));
+    const next = items[Math.min(items.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)))]!;
+    setSelected(next);
+    document.getElementById(`version-${next}`)?.focus();
+  };
+
   return (
-    <Dialog open={open} onClose={() => { setSelected(null); setConfirm(false); onClose(); }} title="Version history" description="Versions are saved after a pause in editing and when you close a page, not on every keystroke." size="lg">
-      <div className="grid min-h-[50vh] gap-4 md:grid-cols-[220px_1fr]">
-        <div>
-          {canRestore ? (
-            <Button size="sm" className="mb-3 w-full" onClick={() => void createSnapshot({ documentId, reason: "manual" }).then((r) => toast.show(r.created ? "Version saved" : "No changes since the last version"), (e) => toast.show(errorMessage(e), { tone: "error" }))}>
-              Save a version now
+    <dialog
+      ref={dialog}
+      aria-label="Version history"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (naming) setNaming(null);
+        else onClose();
+      }}
+      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none bg-canvas p-0 text-ink backdrop:bg-transparent"
+    >
+      <div className="flex h-full flex-col">
+        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-3 py-2.5 sm:px-4">
+          <IconButton label="Back to the note" onClick={onClose}>
+            <ArrowLeft size={18} aria-hidden />
+          </IconButton>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-[15px] font-semibold text-heading">{heading}</h1>
+            {subheading ? <p className="truncate text-xs text-muted">{subheading}</p> : null}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <Switch checked={showChanges} onChange={setShowChanges} label="Show changes" />
+            <span aria-hidden>Show changes</span>
+          </label>
+          {version ? (
+            <Button variant="primary" onClick={() => setConfirmRestore(true)}>
+              <RotateCcw size={14} aria-hidden /> Restore this version
             </Button>
           ) : null}
-          <ul role="listbox" aria-label="Versions" className="space-y-1">
-            {list === undefined ? <li className="text-sm text-muted">Loading…</li> : null}
-            {list?.length === 0 ? <li className="text-sm text-muted">No versions yet.</li> : null}
-            {list?.map((s) => (
-              <li key={s.id}>
-                <button type="button" role="option" aria-selected={selected === s.id} onClick={() => { setSelected(s.id); setConfirm(false); }} className={`w-full rounded-[6px] px-3 py-2 text-left text-sm ${selected === s.id ? "bg-accent-soft text-accent-soft-ink" : "hover:bg-surface"}`}>
-                  <span className="block font-medium">{formatDateTime(s.createdAt)}</span>
-                  <span className="block text-xs text-muted">
-                    {REASONS[s.reason] ?? "Version"} · {s.createdBy}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex min-h-0 flex-col ui-card rounded-[8px]">
-          {!selected ? (
-            <p className="m-auto p-6 text-sm text-muted">Choose a version to preview it.</p>
-          ) : previewError ? (
-            <p role="alert" className="m-auto max-w-sm p-6 text-center text-sm text-muted">
-              {previewError}
-            </p>
-          ) : !preview ? (
-            <p className="m-auto p-6 text-sm text-muted" role="status">
-              Loading preview…
-            </p>
-          ) : (
-            <>
-              <iframe title="Version preview" srcDoc={preview} sandbox="" className="min-h-[45vh] w-full flex-1 rounded-t-[6px] bg-white" />
-              {canRestore ? (
-                <div className="flex items-center justify-end gap-2 border-t border-line p-3">
-                  {confirm ? (
-                    <>
-                      <span className="mr-auto text-xs text-muted">Your current page is saved as a version first, so you can undo this.</span>
-                      <Button size="sm" onClick={() => setConfirm(false)}>
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={() =>
-                          void restore({ snapshotId: selected }).then(
-                            () => {
-                              toast.show("Version restored", { tone: "success" });
-                              onClose();
-                            },
-                            (e) => toast.show(errorMessage(e), { tone: "error" }),
-                          )
-                        }
-                      >
-                        Restore this version
-                      </Button>
-                    </>
-                  ) : (
-                    <Button size="sm" variant="primary" onClick={() => setConfirm(true)}>
-                      Restore…
-                    </Button>
-                  )}
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <main className="fb-page min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-surface-sunken)] px-3 py-6 sm:px-8" data-font={(shown?.style ?? style).font} data-width={(shown?.style ?? style).width}>
+            {diff && diff.authors.length ? (
+              <p className="mx-auto mb-3 flex max-w-[calc(var(--editor-width)+8rem)] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Changes in this version by">
+                <span>Changes by</span>
+                {diff.authors.map((key) => (
+                  <PersonChip key={key} person={people[key]} />
+                ))}
+              </p>
+            ) : null}
+            <article className="fb-sheet ui-sheet relative mx-auto px-6 pb-16 pt-10 sm:px-14" data-background={(shown?.style ?? style).background} {...sheet} style={{ ...sheet.style, maxWidth: "calc(var(--editor-width) + 8rem)" }}>
+              {unreadable ? (
+                <p role="alert" className="py-16 text-center text-sm text-muted">
+                  This version can’t be shown. It may have been saved by a newer version of Folevi, or it’s no longer available.
+                </p>
+              ) : !shown ? (
+                <div className="space-y-3 py-6" aria-busy aria-label="Loading version">
+                  {[60, 95, 80, 88].map((w, i) => (
+                    <div key={i} className="h-4 animate-pulse rounded bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
+                  ))}
                 </div>
+              ) : (
+                <>
+                  <h2 className="ui-display mb-6 break-words text-[2.1rem] leading-tight text-heading">{shown.title || "Untitled"}</h2>
+                  <ReadOnlyBlocks blocks={diff?.blocks ?? shown.blocks} fileUrls={fileUrls} changes={diff?.changes} people={people} />
+                </>
+              )}
+            </article>
+          </main>
+
+          <aside className="flex max-h-[42vh] min-h-0 flex-col border-t border-line md:max-h-none md:w-[300px] md:border-l md:border-t-0" aria-label="Versions">
+            <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
+              <h2 className="text-sm font-semibold text-heading">Version history</h2>
+              <div role="group" aria-label="Show" className="ui-seg bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+                <button type="button" aria-pressed={!namedOnly} onClick={() => setNamedOnly(false)}>
+                  All
+                </button>
+                <button type="button" aria-pressed={namedOnly} onClick={() => setNamedOnly(true)}>
+                  Named
+                </button>
+              </div>
+            </div>
+            <div onKeyDown={onListKey} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+              {!namedOnly ? (
+                <VersionRow
+                  id={CURRENT}
+                  selected={selected === CURRENT}
+                  onSelect={() => setSelected(CURRENT)}
+                  title="Current version"
+                  detail="The page as it is now"
+                  editors={[]}
+                  people={people}
+                  naming={naming === CURRENT}
+                  onName={(name) => void doName(CURRENT, name)}
+                  onCancelName={() => setNaming(null)}
+                  menu={[{ label: "Name current version", icon: <Pencil size={14} />, onSelect: () => setNaming(CURRENT) }]}
+                />
               ) : null}
-            </>
-          )}
+              {listed === undefined ? <p className="px-3 py-2 text-sm text-muted">Loading…</p> : null}
+              {listed?.versions.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-muted">{namedOnly ? "No named versions yet. Name one from its menu." : "No versions yet. They’re saved as you edit."}</p>
+              ) : null}
+              {groupByDay(listed?.versions ?? []).map(([day, rows]) => (
+                <section key={day} aria-label={day}>
+                  <h3 className="ui-caps px-3 pb-1 pt-3" aria-hidden>
+                    {day}
+                  </h3>
+                  {rows.map((v) => (
+                    <VersionRow
+                      key={v.id}
+                      id={v.id}
+                      selected={selected === v.id}
+                      onSelect={() => setSelected(v.id)}
+                      title={v.name ?? timeOf(v.createdAt)}
+                      detail={v.name ? timeOf(v.createdAt) : REASONS[v.reason]}
+                      editors={v.editors}
+                      people={{ ...listed?.people, ...people }}
+                      naming={naming === v.id}
+                      currentName={v.name}
+                      onName={(name) => void doName(v.id, name)}
+                      onCancelName={() => setNaming(null)}
+                      menu={[
+                        { label: v.name ? "Rename version" : "Name this version", icon: <Pencil size={14} />, onSelect: () => setNaming(v.id) },
+                        { label: "Restore this version", icon: <RotateCcw size={14} />, onSelect: () => (setSelected(v.id), setConfirmRestore(true)) },
+                        { label: "Make a copy", icon: <Copy size={14} />, onSelect: () => void doCopy(v.id) },
+                      ]}
+                    />
+                  ))}
+                </section>
+              ))}
+            </div>
+          </aside>
         </div>
       </div>
-    </Dialog>
+
+      <Dialog open={confirmRestore && Boolean(version)} onClose={() => setConfirmRestore(false)} title="Restore this version?" size="sm" description={version ? `The page goes back to how it was ${version.name ? `in “${version.name}”` : `on ${whenOf(version.createdAt)}`}. The way it is now is kept as a version first, so you can undo this.` : undefined}>
+        <div className="flex justify-end gap-2">
+          <Button onClick={() => setConfirmRestore(false)}>Cancel</Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setConfirmRestore(false);
+              if (version) void doRestore(version.id, version.createdAt, version.name);
+            }}
+          >
+            Restore
+          </Button>
+        </div>
+      </Dialog>
+    </dialog>
+  );
+}
+
+function groupByDay(rows: Version[]): [string, Version[]][] {
+  const groups: [string, Version[]][] = [];
+  for (const v of rows) {
+    const day = dayLabel(v.createdAt);
+    const last = groups[groups.length - 1];
+    if (last && last[0] === day) last[1].push(v);
+    else groups.push([day, [v]]);
+  }
+  return groups;
+}
+
+function PersonDot({ person }: { person: ChangePerson | undefined }) {
+  return <span aria-hidden className="inline-block h-2 w-2 flex-none rounded-full" style={{ background: `var(--color-${person?.color ?? "ink-muted"})` }} />;
+}
+
+function PersonChip({ person }: { person: ChangePerson | undefined }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-ink">
+      <PersonDot person={person} />
+      {person?.name ?? "Someone"}
+    </span>
+  );
+}
+
+function VersionRow({
+  id,
+  selected,
+  onSelect,
+  title,
+  detail,
+  editors,
+  people,
+  naming,
+  currentName,
+  onName,
+  onCancelName,
+  menu,
+}: {
+  id: string;
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  detail?: string | null;
+  editors: string[];
+  people: People;
+  naming: boolean;
+  currentName?: string | null;
+  onName: (name: string) => void;
+  onCancelName: () => void;
+  menu: { label: string; icon: React.ReactNode; onSelect: () => void }[];
+}) {
+  const shown = editors.slice(0, 3);
+  const more = editors.length - shown.length;
+  return (
+    <div className={`group relative mb-0.5 rounded-[8px] ${selected ? "bg-accent-soft" : "hover:bg-[var(--glass-hover)]"}`}>
+      {naming ? (
+        <form
+          className="px-3 py-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onName(String(new FormData(e.currentTarget).get("name") ?? ""));
+          }}
+        >
+          <input
+            name="name"
+            autoFocus
+            defaultValue={currentName ?? ""}
+            maxLength={80}
+            placeholder="Name this version"
+            aria-label="Version name"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancelName();
+              }
+            }}
+            className="ui-input h-8 w-full rounded-[6px] px-2 text-sm"
+          />
+          <p className="mt-1 text-[11px] text-muted">Enter to save, Esc to cancel. Named versions are kept for good.</p>
+        </form>
+      ) : (
+        <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className="block w-full rounded-[8px] px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <span className={`block truncate text-sm ${selected ? "font-semibold text-heading" : "font-medium text-ink"}`}>{title}</span>
+          {detail ? <span className="block truncate text-xs text-muted">{detail}</span> : null}
+          {shown.length ? (
+            <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted">
+              {shown.map((key) => (
+                <span key={key} className="inline-flex items-center gap-1">
+                  <PersonDot person={people[key]} />
+                  {people[key]?.name ?? "Someone"}
+                </span>
+              ))}
+              {more > 0 ? <span>+{more}</span> : null}
+            </span>
+          ) : null}
+        </button>
+      )}
+      {!naming ? (
+        <div className={`absolute right-1.5 top-1.5 ${selected ? "" : "opacity-0 focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"}`}>
+          <MenuButton label={`Options for ${title}`} trigger={<MoreHorizontal size={15} aria-hidden />} items={menu} />
+        </div>
+      ) : null}
+    </div>
   );
 }

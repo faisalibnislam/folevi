@@ -36,7 +36,13 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   image, serif/sans/mono font, width, background, card style.
 - A tool bar at the bottom of each note (AI, Insert, Format, Style, Info), a page sidebar (contents,
   tasks, files, search) and browser-style tabs.
-- Nested pages, backlinks, version history (snapshots) with restore.
+- Nested pages, backlinks.
+- Version history, as in Google Docs: versions saved as you edit (after a pause, on leaving a page, and at
+  least every 10 minutes of continuous editing, server-side), grouped by day with who edited in each. A
+  version shows what changed since the one before (added, removed and reworded lines, word by word) in the
+  colour of whoever changed it. Name a version (named ones are kept for good), restore one (undoable: the
+  page as it was is saved first) or make a copy. "Show editors" marks each line of the live page with who
+  last changed it. History is for people who can edit the page.
 
 ### Organizing
 - Home dashboard, folders (shown with the notes inside them), starred pages, tags, Drafts (pages not in

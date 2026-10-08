@@ -225,6 +225,8 @@ export default defineSchema({
     rank: v.string(),
     createdBy: v.id("profiles"),
     lastEditedBy: v.id("profiles"),
+    /** When the automatic version for the edits since the last one is due (documents.autoVersion). */
+    versionDueAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     archivedAt: v.optional(v.number()),
@@ -398,8 +400,13 @@ export default defineSchema({
     contentSeq: v.number(),
     createdBy: v.id("profiles"),
     createdAt: v.number(),
+    /** A name someone gave this version ("Sent to the client"). Named versions are never cleaned up. */
+    name: v.optional(v.string()),
+    /** Who changed the page since the version before this one, most changes first (unset on older rows). */
+    editors: v.optional(v.array(v.id("profiles"))),
   })
     .index("by_document", ["documentId", "createdAt"])
+    .index("by_document_name", ["documentId", "name"])
     .index("by_public_id", ["publicId"])
     .index("by_created", ["createdAt"])
     .index("by_storage", ["storageId"])

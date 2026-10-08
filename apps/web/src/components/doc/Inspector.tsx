@@ -78,7 +78,8 @@ export function Inspector({
   /** A thread to open inside the overview (on the whole note or a deleted block), e.g. from a link. */
   focusThreadId?: string | null;
   onClose: () => void;
-  onHistory: () => void;
+  /** Opens version history (absent for people who can't edit the page). */
+  onHistory?: () => void;
   /** The page's actions (same as the "…" menu), listed under Info → Actions. */
   actions: (MenuItem | "separator")[];
   readOnly: boolean;
@@ -485,7 +486,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   );
 }
 
-function InfoPanel({ documentId, meta, onHistory, actions, disabled }: { documentId: string; meta: Meta | null; onHistory: () => void; actions: (MenuItem | "separator")[]; disabled: boolean }) {
+function InfoPanel({ documentId, meta, onHistory, actions, disabled }: { documentId: string; meta: Meta | null; onHistory?: () => void; actions: (MenuItem | "separator")[]; disabled: boolean }) {
   const [view, setView] = useState<"page" | "actions">("page");
   return (
     <div className="space-y-4">
@@ -528,7 +529,7 @@ function ActionList({ actions }: { actions: (MenuItem | "separator")[] }) {
   );
 }
 
-function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: string; meta: Meta | null; onHistory: () => void; disabled: boolean }) {
+function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: string; meta: Meta | null; onHistory?: () => void; disabled: boolean }) {
   const info = useQuery(api.documents.info, meta ? { documentId } : "skip");
   // Tags come from the note's own scope (it may be open from another context than the current one).
   const home = meta?.isMember ? documentScope(meta.document) : null;
@@ -669,9 +670,11 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
       <section>
         <h3 className="ui-caps mb-2 flex items-center justify-between px-1">
           Activity
-          <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 normal-case tracking-normal text-heading hover:bg-accent-soft">
-            <History size={12} aria-hidden /> Version history
-          </button>
+          {onHistory ? (
+            <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 normal-case tracking-normal text-heading hover:bg-accent-soft">
+              <History size={12} aria-hidden /> Version history
+            </button>
+          ) : null}
         </h3>
         <ul className="space-y-1.5">
           {info?.activity.length === 0 ? <li className="text-muted">Versions are saved after a pause in editing.</li> : null}

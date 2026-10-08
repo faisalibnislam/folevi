@@ -32,7 +32,7 @@ describe("backend invariants", () => {
       const re = /export const (\w+) = (query|mutation|action)\(\{[\s\S]*?handler: async \([^)]*\)[^{]*\{([\s\S]*?)\n {2}\},\n\}\);/g;
       for (const m of s.matchAll(re)) {
         const [, fn, , body] = m;
-        const guarded = /requireProfile|requirePlatformRole|optionalProfile|requireIdentity|collectionFor|threadFor|commentFor|folderFor|tagFor|writableDoc|checkServer|taskBlock|currentProfileId|internal\.exports\.prepare/.test(body!);
+        const guarded = /requireProfile|requirePlatformRole|optionalProfile|requireIdentity|collectionFor|threadFor|commentFor|folderFor|tagFor|writableDoc|historyDocument|versionByPublicId|checkServer|taskBlock|currentProfileId|internal\.exports\.prepare/.test(body!);
         if (!guarded && !allowPublic.has(`${name}:${fn}`)) throw new Error(`${name}:${fn} has no authorization check`);
       }
     }

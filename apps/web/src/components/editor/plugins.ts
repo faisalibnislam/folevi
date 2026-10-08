@@ -196,6 +196,8 @@ export interface DecorationInputs {
   commentSummaries?: Map<string, CommentSummary>;
   /** Opens a block's comment thread (from that line). Keep it stable: lines are cached by content. */
   onOpenComments?: (blockId: string) => void;
+  /** "Show editors": who last changed each block, as a colour and a label ("Ann · 3 hours ago"). */
+  authors?: Map<string, { color: string; label: string }>;
 }
 
 /** The top-level elements of blocks, in document order (skipping lines drawn between blocks, like comment lines). */
@@ -297,6 +299,12 @@ function buildDecorations(doc: PMNode, inputs: DecorationInputs): DecorationSet 
       classes.push("fb-presence");
       attrs.style = `--presence:var(--color-${who.color === "accent" ? "accent" : who.color})`;
       attrs["data-presence"] = who.name;
+    }
+    const author = id ? inputs.authors?.get(id) : undefined;
+    if (author && !who) {
+      classes.push("fb-authored");
+      attrs.style = `--author:var(--color-${author.color})`;
+      attrs["data-author"] = author.label;
     }
     if (classes.length || Object.keys(attrs).length) decos.push(Decoration.node(pos, end, { ...attrs, class: classes.join(" ") }));
     const summary = id ? inputs.commentSummaries?.get(id) : undefined;

@@ -26,10 +26,12 @@ import {
   StarOff,
   Trash2,
   Undo2,
+  Users,
   House as Home,
 } from "lucide-react";
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { formatRelative } from "@/lib/format";
 import { useAppState } from "@/lib/app/state";
 import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scope";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -285,6 +287,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // The note's conflicted blocks, kept as the same array while they don't change, so the editor's
   // decorations aren't re-sent on every render of this view.
   const conflictBlockIds = useEngineSelector(engine, (s) => s.conflicts.filter((c) => c.documentId === documentId).map((c) => c.blockId), sameItems);
+  // "Show editors": who last changed each block, in their colour (people who can edit the page only, like
+  // version history).
+  const canEditPage = meta?.access === "write" || meta?.access === "manage";
+  const [showEditors, setShowEditors] = useState(false);
+  const blockAuthors = useQuery(api.documents.blockAuthors, showEditors && canEditPage ? { documentId } : "skip");
+  const authorMarks = useMemo(() => {
+    if (!blockAuthors) return undefined;
+    const marks = new Map<string, { color: string; label: string }>();
+    for (const [blockId, [key, at]] of Object.entries(blockAuthors.authors)) {
+      const who = blockAuthors.people[key];
+      marks.set(blockId, { color: who?.color ?? "ink-muted", label: `${who?.name ?? "Someone"} · ${formatRelative(at)}` });
+    }
+    return marks;
+  }, [blockAuthors]);
   const decorations: DecorationInputs = useMemo(
     () => ({
       presence: (presence ?? []).filter((p) => p.focusedBlockId).map((p) => ({ blockId: p.focusedBlockId!, color: p.color, name: p.name })),
@@ -293,8 +309,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
       conflictBlocks: new Set(conflictBlockIds),
       commentSummaries: new Map((threads?.blocks ?? []).map((b) => [b.blockId, { count: b.comments, lastActivityAt: b.lastActivityAt, unread: b.unread, authors: b.authors }])),
       onOpenComments: openBlockThread,
+      authors: authorMarks,
     }),
-    [presence, threads, conflictBlockIds, openBlockThread],
+    [presence, threads, conflictBlockIds, openBlockThread, authorMarks],
   );
 
   // Deep links: a block (#block-<id>) or a comment thread (#comment-<thread id>). Also re-run when a
@@ -509,7 +526,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
     kind: meta?.document.kind ?? "document",
     canManage: meta?.access === "manage" || meta?.access === "write",
     blocks: () => engine?.documentBlocks(documentId) ?? [],
-    onHistory: () => setHistoryOpen(true),
+    onHistory: canEditPage ? () => setHistoryOpen(true) : undefined,
+    onToggleEditors: canEditPage ? () => setShowEditors((on) => !on) : undefined,
+    showingEditors: showEditors,
     onShare: () => setShareOpen(true),
     onComments: () => showCommentsTab(null),
     onInfo: () => {
@@ -682,6 +701,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               hasContent={Boolean(summary?.excerpt?.trim())}
             />
             {conflictBlockIds.length ? <ConflictBanner documentId={documentId} /> : null}
+            {showEditors && blockAuthors ? <EditorsBar authors={blockAuthors} onHide={() => setShowEditors(false)} /> : null}
             <div className="px-5 sm:px-16">
               {summary?.kind === "collectionRow" ? (
                 <Suspense fallback={null}>
@@ -794,7 +814,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 setOpenThread({ blockId: t.blockId, threadId: t.id });
               }}
               onClose={closeInspector}
-              onHistory={() => setHistoryOpen(true)}
+              onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
               actions={actions}
               readOnly={readOnly}
               hideTabs
@@ -806,7 +826,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
       </div>
       {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
-      <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} canRestore={!readOnly} />
+      {canEditPage ? <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
       {meta && !readOnly ? (
         <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={summary?.title ?? ""} currentParentId={meta.breadcrumbs[meta.breadcrumbs.length - 1]?.id ?? null} home={meta.isMember ? documentScope(meta.document) : null} />
       ) : null}
@@ -822,6 +842,27 @@ export function DocumentView({ documentId }: { documentId: string }) {
       ) : null}
     </ViewChrome>
     </NotePaletteProvider>
+  );
+}
+
+/** "Show editors" is on: who edited this page (each in their colour), and a way to turn it off. */
+function EditorsBar({ authors, onHide }: { authors: { authors: Record<string, [string, number]>; people: Record<string, { name: string; color: string }> }; onHide: () => void }) {
+  const counts = new Map<string, number>();
+  for (const [key] of Object.values(authors.authors)) counts.set(key, (counts.get(key) ?? 0) + 1);
+  const people = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  return (
+    <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[8px] bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">
+      <span>Each line shows who last edited it.</span>
+      {people.map(([key]) => (
+        <span key={key} className="inline-flex items-center gap-1.5 text-ink">
+          <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: `var(--color-${authors.people[key]?.color ?? "ink-muted"})` }} />
+          {authors.people[key]?.name ?? "Someone"}
+        </span>
+      ))}
+      <button type="button" onClick={onHide} className="ml-auto rounded-[6px] px-2 py-0.5 font-medium text-heading hover:bg-accent-soft">
+        Hide editors
+      </button>
+    </div>
   );
 }
 
@@ -1261,6 +1302,8 @@ function useDocumentActions({
   canManage,
   blocks,
   onHistory,
+  onToggleEditors,
+  showingEditors,
   onShare,
   onComments,
   onInfo,
@@ -1278,7 +1321,11 @@ function useDocumentActions({
   kind: string;
   canManage: boolean;
   blocks: () => WireBlock[];
-  onHistory: () => void;
+  /** Opens version history (absent for people who can't edit the page). */
+  onHistory?: () => void;
+  /** Turns "Show editors" on or off (absent for people who can't edit the page). */
+  onToggleEditors?: () => void;
+  showingEditors?: boolean;
   onShare: () => void;
   /** Opens the Comments tab in the page's sidebar. */
   onComments?: () => void;
@@ -1326,7 +1373,8 @@ function useDocumentActions({
         { label: "Share…", icon: <Share2 size={14} />, onSelect: onShare },
         ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
-        { label: "Version history…", icon: <History size={14} />, onSelect: onHistory },
+        ...(onHistory ? [{ label: "Version history…", icon: <History size={14} />, onSelect: onHistory }] : []),
+        ...(onToggleEditors ? [{ label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: onToggleEditors }] : []),
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),
         ...(onMoveToFolder ? [{ label: "Move to folder…", icon: <Folder size={14} />, onSelect: onMoveToFolder }] : []),
         { label: "Move to page…", icon: <FolderInput size={14} />, disabled: !canManage, onSelect: onMove },

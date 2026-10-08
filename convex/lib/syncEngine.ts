@@ -827,12 +827,17 @@ export class SyncEngine {
       if (changedBlocks.size === 0) continue;
       const fresh = (await this.ctx.db.get(doc._id))!;
       const seq = await this.seq.for(scopeOfRow(fresh));
+      // The first edit after a version schedules the next one (documents.autoVersion), so a long stretch of
+      // editing still gets a version every few minutes, whichever app made it and whether or not it stays open.
+      const versionDue = fresh.versionDueAt === undefined;
       await this.ctx.db.patch(fresh._id, {
         updatedAt: Date.now(),
         lastEditedBy: this.profile._id,
         contentSeq: fresh.contentSeq + 1,
         seq,
+        ...(versionDue ? { versionDueAt: Date.now() + AUTO_VERSION_MS } : {}),
       });
+      if (versionDue) await this.ctx.scheduler.runAfter(AUTO_VERSION_MS, internal.documents.autoVersion, { documentId: fresh._id });
       for (const rowId of changedBlocks) {
         if (this.plainNewRows.has(rowId)) continue;
         const row = await this.ctx.db.get(rowId);
@@ -852,6 +857,8 @@ export class SyncEngine {
 }
 
 const BULK_DERIVED = 20;
+/** However long someone keeps typing, the page gets a version at least this often (documents.autoVersion). */
+export const AUTO_VERSION_MS = 10 * 60_000;
 
 /** Whether a block links to a page (a page card, or page links in its text or table cells). */
 function hasLinkTargets(row: Doc<"blocks">): boolean {

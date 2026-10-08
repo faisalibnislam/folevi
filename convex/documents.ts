@@ -31,6 +31,7 @@ import { SeqAllocator, nextSeq } from "./lib/seq";
 import { copyCollectionsInto } from "./lib/collections";
 import { inScope, insertScoped, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { vDocumentKind } from "./lib/validators";
+import { People } from "./lib/authors";
 
 export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -1131,6 +1132,21 @@ export const dailyDates = query({
 // ---------------------------------------------------------------- snapshots / version history
 
 const MAX_INLINE_SNAPSHOT = 700_000;
+const MAX_VERSION_NAME = 80;
+
+/**
+ * What a stored version holds. `authors` (who last changed each block, and when) and `removed` (who deleted
+ * the blocks that are gone since the version before) are on versions saved since who-edited-what was added;
+ * they carry internal profile ids, so they never leave the backend as stored (see versionContent).
+ */
+interface VersionContent {
+  title: string;
+  icon: string | null;
+  style?: Doc<"documents">["style"];
+  blocks: WireBlock[];
+  authors?: Record<string, [Id<"profiles">, number]>;
+  removed?: Record<string, [Id<"profiles">, number]>;
+}
 
 async function snapshotText(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnapshots">): Promise<string | null> {
   if (snap.content !== undefined) return snap.content;
@@ -1145,14 +1161,43 @@ async function snapshotText(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnap
     .join("");
 }
 
+function versionName(raw: string | undefined): string | undefined {
+  const name = (raw ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_VERSION_NAME);
+  return name || undefined;
+}
+
+/**
+ * History belongs to the people who can edit the page, as in Google Docs: an old version can hold text that
+ * was deleted on purpose, which someone who may only read the page shouldn't get back.
+ */
+async function historyDocument(ctx: QueryCtx | MutationCtx, publicId: string) {
+  const profile = await requireProfile(ctx);
+  const { doc } = await requireDocument(ctx, profile, publicId, "write");
+  return { profile, doc };
+}
+
+async function versionByPublicId(ctx: QueryCtx | MutationCtx, publicId: string) {
+  const snap = await ctx.db
+    .query("documentSnapshots")
+    .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
+    .unique();
+  if (!snap) fail("not_found", "Version not found.");
+  const doc = await ctx.db.get(snap.documentId);
+  if (!doc) fail("not_found", "Version not found.");
+  const { profile } = await historyDocument(ctx, doc.publicId);
+  return { snap, doc, profile };
+}
+
 export const createSnapshot = mutation({
   args: {
     documentId: v.string(),
     reason: v.union(v.literal("idle"), v.literal("close"), v.literal("manual")),
+    /** Names the version ("Name current version"); with no changes since the last version, that one is named. */
+    name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { profile, doc } = await writableDoc(ctx, args.documentId);
-    return await snapshot(ctx, doc, profile._id, args.reason);
+    return await snapshot(ctx, doc, profile._id, args.reason, versionName(args.name));
   },
 });
 
@@ -1161,6 +1206,7 @@ async function snapshot(
   doc: Doc<"documents">,
   actor: Id<"profiles">,
   reason: Doc<"documentSnapshots">["reason"],
+  name?: string,
 ): Promise<{ created: boolean; id?: string }> {
   const last = await ctx.db
     .query("documentSnapshots")
@@ -1168,10 +1214,41 @@ async function snapshot(
     .order("desc")
     .first();
   if (last && last.contentSeq === doc.contentSeq && last.title === doc.title && reason !== "before_restore") {
-    return { created: false };
+    // Nothing new to keep: naming "the current version" names the one that already holds it.
+    if (name && last.name !== name) await ctx.db.patch(last._id, { name });
+    return { created: false, id: last.publicId };
   }
-  const blocks = (await liveBlocks(ctx, doc._id)).map(toWireBlock);
-  const content = JSON.stringify({ title: doc.title, icon: doc.icon ?? null, style: doc.style, blocks });
+  // Who did what since the version before: each block's last editor, and who deleted what's gone since.
+  // "Since" includes its own moment: time stands still within a mutation, so a restore's changes carry the
+  // same time as the version it saves first, and belong to the next one.
+  const since = last?.createdAt ?? 0;
+  const rows = await liveBlocks(ctx, doc._id);
+  const blocks = rows.map(toWireBlock);
+  const authors: Record<string, [Id<"profiles">, number]> = {};
+  const changes = new Map<Id<"profiles">, number>();
+  const count = (who: Id<"profiles">) => changes.set(who, (changes.get(who) ?? 0) + 1);
+  for (const r of rows) {
+    authors[r.blockId] = [r.updatedBy, r.updatedAt];
+    if (r.updatedAt >= since) count(r.updatedBy);
+  }
+  const removed: Record<string, [Id<"profiles">, number]> = {};
+  if (last) {
+    const gone = await ctx.db
+      .query("blocks")
+      .withIndex("by_document_deleted", (q) => q.eq("documentId", doc._id).gte("deletedAt", since))
+      .take(2000);
+    for (const r of gone) {
+      removed[r.blockId] = [r.updatedBy, r.deletedAt!];
+      count(r.updatedBy);
+    }
+    if (doc.title !== last.title) count(doc.lastEditedBy);
+  } else if (!changes.size) count(doc.lastEditedBy);
+  const editors = [...changes.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([id]) => id);
+  const stored: VersionContent = { title: doc.title, icon: doc.icon ?? null, style: doc.style, blocks, authors, removed };
+  const content = JSON.stringify(stored);
   const inline = content.length > MAX_INLINE_SNAPSHOT ? undefined : content;
   const chunks = inline ? [] : (content.match(new RegExp(`[\\s\\S]{1,${MAX_INLINE_SNAPSHOT}}`, "g")) ?? []);
   const publicId = ulid();
@@ -1187,16 +1264,35 @@ async function snapshot(
     contentSeq: doc.contentSeq,
     createdBy: actor,
     createdAt: Date.now(),
+    name,
+    editors,
   });
   for (const [index, data] of chunks.entries()) await ctx.db.insert("snapshotChunks", { snapshotId, index, data });
   return { created: true, id: publicId };
 }
 
+/**
+ * The automatic version for a stretch of editing, scheduled by the first edit after a version (sync push,
+ * lib/syncEngine.ts). It doesn't depend on any app staying open: long sessions, crashed tabs and other
+ * devices all get their history.
+ */
+export const autoVersion = internalMutation({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, { documentId }) => {
+    const doc = await ctx.db.get(documentId);
+    if (!doc) return null;
+    await ctx.db.patch(doc._id, { versionDueAt: undefined });
+    if (doc.inTrash) return null;
+    await snapshot(ctx, doc, doc.lastEditedBy, "idle");
+    return null;
+  },
+});
+
+/** The version list as older clients read it (the Mac app). The web app uses `versions`. */
 export const snapshots = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
-    const profile = await requireProfile(ctx);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    const { doc } = await historyDocument(ctx, args.documentId);
     const rows = await ctx.db
       .query("documentSnapshots")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id))
@@ -1211,6 +1307,63 @@ export const snapshots = query({
   },
 });
 
+/** A page's versions, newest first, with their names and who edited in each (people as keys into `people`). */
+export const versions = query({
+  args: { documentId: v.string(), namedOnly: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const { doc } = await historyDocument(ctx, args.documentId);
+    const rows = args.namedOnly
+      ? (
+          await ctx.db
+            .query("documentSnapshots")
+            .withIndex("by_document_name", (q) => q.eq("documentId", doc._id).gt("name", ""))
+            .take(200)
+        ).sort((a, b) => b.createdAt - a.createdAt)
+      : await ctx.db
+          .query("documentSnapshots")
+          .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+          .order("desc")
+          .take(200);
+    const people = new People(ctx);
+    const out = [];
+    for (const r of rows) {
+      const editors = r.editors ?? [r.createdBy];
+      out.push({
+        id: r.publicId,
+        reason: r.reason,
+        name: r.name ?? null,
+        title: r.title,
+        blockCount: r.blockCount,
+        createdAt: r.createdAt,
+        editors: await Promise.all(editors.map(async (e) => (await people.get(e)).key)),
+      });
+    }
+    return { versions: out, people: await people.all(), current: { contentSeq: doc.contentSeq, latestContentSeq: rows[0]?.contentSeq ?? null } };
+  },
+});
+
+/** Turns stored version content into what a client may see: links labelled for this reader, people as keys. */
+async function versionContent(ctx: QueryCtx, profile: Doc<"profiles">, raw: string) {
+  const parsed = JSON.parse(raw) as VersionContent;
+  if (!Array.isArray(parsed.blocks)) throw new Error("no blocks");
+  const people = new People(ctx);
+  const attribution = async (map: VersionContent["authors"]) => {
+    const out: Record<string, [string, number]> = {};
+    for (const [blockId, [who, at]] of Object.entries(map ?? {})) out[blockId] = [(await people.get(who)).key, at];
+    return out;
+  };
+  const authors = await attribution(parsed.authors);
+  const removed = await attribution(parsed.removed);
+  // Links in an old version show labels this person may see, like the live page (lib/linkLabels.ts).
+  const blocks = await new ReaderLabels(ctx, profile).blocks(parsed.blocks);
+  return {
+    content: JSON.stringify({ title: parsed.title, icon: parsed.icon, style: parsed.style, blocks }),
+    authors: parsed.authors ? authors : null,
+    removed: parsed.removed ? removed : null,
+    people: await people.all(),
+  };
+}
+
 export const snapshotContent = query({
   args: { snapshotId: v.string() },
   handler: async (ctx, args) => {
@@ -1221,17 +1374,89 @@ export const snapshotContent = query({
       .unique();
     if (!snap) return null;
     const doc = await ctx.db.get(snap.documentId);
-    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
-    const content = await snapshotText(ctx, snap);
-    if (content === null) return { content };
-    // Links in an old version show labels this person may see, like the live page (lib/linkLabels.ts).
+    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "write")) return null;
+    const raw = await snapshotText(ctx, snap);
+    if (raw === null) return { content: null, authors: null, removed: null, people: {} };
     try {
-      const parsed = JSON.parse(content) as { blocks?: WireBlock[] };
-      if (!Array.isArray(parsed.blocks)) return { content };
-      return { content: JSON.stringify({ ...parsed, blocks: await new ReaderLabels(ctx, profile).blocks(parsed.blocks) }) };
+      return await versionContent(ctx, profile, raw);
     } catch {
-      return { content: null };
+      return { content: null, authors: null, removed: null, people: {} };
     }
+  },
+});
+
+/**
+ * Who last changed each block of the page as it is now (the "Show editors" view, and the current version),
+ * and who deleted what since the version it's compared with (`since`, else the latest version).
+ */
+export const blockAuthors = query({
+  args: { documentId: v.string(), since: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const { doc } = await historyDocument(ctx, args.documentId);
+    const people = new People(ctx);
+    const authors: Record<string, [string, number]> = {};
+    for (const r of await liveBlocks(ctx, doc._id)) authors[r.blockId] = [(await people.get(r.updatedBy)).key, r.updatedAt];
+    // And who deleted what since that version (the current version's removed lines).
+    const chosen = args.since
+      ? await ctx.db
+          .query("documentSnapshots")
+          .withIndex("by_public_id", (q) => q.eq("publicId", args.since!))
+          .unique()
+      : null;
+    const latest =
+      chosen && chosen.documentId === doc._id
+        ? chosen
+        : await ctx.db
+            .query("documentSnapshots")
+            .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+            .order("desc")
+            .first();
+    const removed: Record<string, [string, number]> = {};
+    if (latest) {
+      const gone = await ctx.db
+        .query("blocks")
+        .withIndex("by_document_deleted", (q) => q.eq("documentId", doc._id).gte("deletedAt", latest.createdAt))
+        .take(2000);
+      for (const r of gone) removed[r.blockId] = [(await people.get(r.updatedBy)).key, r.deletedAt!];
+    }
+    return { authors, removed, people: await people.all() };
+  },
+});
+
+/** Names a version, or clears its name (an empty name). */
+export const nameVersion = mutation({
+  args: { snapshotId: v.string(), name: v.string() },
+  handler: async (ctx, args) => {
+    const { snap, profile } = await versionByPublicId(ctx, args.snapshotId);
+    await assertWritable(ctx, profile);
+    await ctx.db.patch(snap._id, { name: versionName(args.name) });
+    return null;
+  },
+});
+
+/** A new page holding a version's content, next to the original ("Make a copy"). */
+export const copyVersion = mutation({
+  args: { snapshotId: v.string() },
+  handler: async (ctx, args) => {
+    const { snap, doc, profile } = await versionByPublicId(ctx, args.snapshotId);
+    await assertWritable(ctx, profile);
+    const { scope } = await requireRowScope(ctx, profile, doc, "edit", "Document not found.");
+    const raw = await snapshotText(ctx, snap);
+    if (!raw) fail("not_found", "Version content is unavailable.");
+    const parsed = JSON.parse(raw) as VersionContent;
+    const copy = await createDocument(ctx, {
+      scope,
+      actor: profile,
+      title: `${snap.name ?? parsed.title ?? "Untitled"} (copy)`.slice(0, 500),
+      icon: parsed.icon ?? doc.icon,
+      kind: doc.kind === "template" ? "template" : "document",
+      folderId: doc.folderId,
+      parentDocumentId: doc.parentDocumentId,
+      style: parsed.style ?? doc.style,
+      cover: doc.cover,
+      blocks: cloneBlocks(parsed.blocks),
+    });
+    return await new Placement(ctx, profile).summary(new IdResolver(ctx), copy);
   },
 });
 
@@ -1239,19 +1464,13 @@ export const snapshotContent = query({
 export const restoreSnapshot = mutation({
   args: { snapshotId: v.string() },
   handler: async (ctx, args) => {
-    const profile = await requireProfile(ctx);
+    const { snap, doc: writable, profile } = await versionByPublicId(ctx, args.snapshotId);
     await assertWritable(ctx, profile);
-    const snap = await ctx.db
-      .query("documentSnapshots")
-      .withIndex("by_public_id", (q) => q.eq("publicId", args.snapshotId))
-      .unique();
-    if (!snap) fail("not_found", "Version not found.");
-    const doc = (await ctx.db.get(snap.documentId))!;
-    const { doc: writable } = await requireDocument(ctx, profile, doc.publicId, "write");
     const raw = await snapshotText(ctx, snap);
     if (!raw) fail("not_found", "Version content is unavailable.");
-    const parsed = JSON.parse(raw) as { title: string; icon: string | null; style?: Doc<"documents">["style"]; blocks: WireBlock[] };
-    await snapshot(ctx, writable, profile._id, "before_restore");
+    const parsed = JSON.parse(raw) as VersionContent;
+    // The page as it is now is kept first, so a restore can be undone (by restoring that version).
+    const before = await snapshot(ctx, writable, profile._id, "before_restore");
     const seq = await nextSeq(ctx, scopeOfRow(writable));
     const now = Date.now();
     const current = await ctx.db
@@ -1328,7 +1547,7 @@ export const restoreSnapshot = mutation({
     }
     await refreshDerived(ctx, fresh);
     if (fresh.title !== writable.title || (fresh.icon ?? null) !== (writable.icon ?? null)) await refreshLinkLabels(ctx, fresh, profile._id);
-    return null;
+    return { undoVersionId: before.id ?? null };
   },
 });
 
@@ -1339,7 +1558,7 @@ export const purgeSnapshots = internalMutation({
   // A run started by the cron passes nothing; each follow-up carries the same cutoff and where to go on.
   args: { cursor: v.optional(v.string()), cutoff: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    // Keep the newest 50 per document and anything younger than 30 days. The old ones are walked oldest
+    // Keep the newest 50 per document, anything younger than 30 days and every named version. The old ones are walked oldest
     // first with a cursor, so snapshots that are kept never stop the walk from reaching the rest.
     const cutoff = args.cutoff ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
     const { page: old, isDone, continueCursor } = await ctx.db
@@ -1360,7 +1579,8 @@ export const purgeSnapshots = internalMutation({
         from = newest.length >= 50 ? newest[49]!.createdAt : -Infinity;
         keepFrom.set(s.documentId, from);
       }
-      if (s.createdAt < from) {
+      // A named version is someone's deliberate checkpoint: it stays as long as the page does.
+      if (s.createdAt < from && !s.name) {
         const chunks = await ctx.db
           .query("snapshotChunks")
           .withIndex("by_snapshot", (q) => q.eq("snapshotId", s._id))

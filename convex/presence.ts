@@ -11,9 +11,9 @@ async function readableDoc(ctx: MutationCtx, profile: Awaited<ReturnType<typeof 
   return accessAtLeast(await documentAccess(ctx, profile, doc), "read") ? doc : null;
 }
 import { keyedHash } from "./lib/crypto";
+import { personColor } from "./lib/authors";
 
 const ACTIVE_MS = 45_000;
-const COLORS = ["accent", "moss", "marigold", "plum", "coral"];
 
 /** Heartbeat from a document view. Presence is only readable by people who can read the document. */
 export const heartbeat = mutation({
@@ -65,7 +65,8 @@ export const list = query({
       if (r.profileId === profile._id) continue;
       const p = await ctx.db.get(r.profileId);
       if (!p) continue;
-      const color = COLORS[parseInt(r.profileId.slice(-2), 36) % COLORS.length] ?? "accent";
+      // The same colour as in version history and "Show editors".
+      const color = personColor(r.profileId);
       byProfile.set(r.profileId, { profileId: r.profileId, name: p.displayName, color, focusedBlockId: r.focusedBlockId ?? null });
     }
     return [...byProfile.values()];

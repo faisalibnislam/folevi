@@ -32,6 +32,7 @@ import {
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { formatRelative } from "@/lib/format";
+import { Avatar } from "@/components/ui/Avatar";
 import { useAppState } from "@/lib/app/state";
 import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scope";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -846,7 +847,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
 }
 
 /** "Show editors" is on: who edited this page (each in their colour), and a way to turn it off. */
-function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, number][]; people: Record<string, { name: string; color: string }> }; onHide: () => void }) {
+function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, number][]; people: Record<string, { name: string; color: string; avatarUrl: string | null }> }; onHide: () => void }) {
   const counts = new Map<string, number>();
   for (const [, key] of authors.authors) counts.set(key, (counts.get(key) ?? 0) + 1);
   const people = [...counts.entries()].sort((a, b) => b[1] - a[1]);
@@ -855,7 +856,7 @@ function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, 
       <span>Each line shows who last edited it.</span>
       {people.map(([key]) => (
         <span key={key} className="inline-flex items-center gap-1.5 text-ink">
-          <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: `var(--color-${authors.people[key]?.color ?? "ink-muted"})` }} />
+          <Avatar name={authors.people[key]?.name ?? "Someone"} url={authors.people[key]?.avatarUrl} size={16} ring={`var(--color-${authors.people[key]?.color ?? "ink-muted"})`} />
           {authors.people[key]?.name ?? "Someone"}
         </span>
       ))}

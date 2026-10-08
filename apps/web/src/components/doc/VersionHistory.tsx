@@ -12,6 +12,7 @@ import { useDocumentBlocks } from "@/lib/hooks/useEngine";
 import { sheetProps } from "@/lib/cover";
 import { diffVersions } from "@/lib/history/diff";
 import { Button, IconButton } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { Dialog } from "@/components/ui/Dialog";
 import { MenuButton } from "@/components/ui/Menu";
 import { Switch } from "@/components/ui/Switch";
@@ -318,14 +319,15 @@ function groupByDay(rows: Version[]): [string, Version[]][] {
   return groups;
 }
 
-function PersonDot({ person }: { person: ChangePerson | undefined }) {
-  return <span aria-hidden className="inline-block h-2 w-2 flex-none rounded-full" style={{ background: `var(--color-${person?.color ?? "ink-muted"})` }} />;
+/** A person's picture (or initial), ringed in their colour: the colour their changes are marked in. */
+function PersonAvatar({ person, size = 16 }: { person: ChangePerson | undefined; size?: number }) {
+  return <Avatar name={person?.name ?? "Someone"} url={person?.avatarUrl} size={size} ring={`var(--color-${person?.color ?? "ink-muted"})`} />;
 }
 
 function PersonChip({ person }: { person: ChangePerson | undefined }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-ink">
-      <PersonDot person={person} />
+      <PersonAvatar person={person} />
       {person?.name ?? "Someone"}
     </span>
   );
@@ -395,8 +397,8 @@ function VersionRow({
           {shown.length ? (
             <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted">
               {shown.map((key) => (
-                <span key={key} className="inline-flex items-center gap-1">
-                  <PersonDot person={people[key]} />
+                <span key={key} className="inline-flex items-center gap-1.5">
+                  <PersonAvatar person={people[key]} size={18} />
                   {people[key]?.name ?? "Someone"}
                 </span>
               ))}

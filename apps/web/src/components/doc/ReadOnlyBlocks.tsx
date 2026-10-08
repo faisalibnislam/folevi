@@ -67,6 +67,7 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
 export interface ChangePerson {
   name: string;
   color: string;
+  avatarUrl?: string | null;
 }
 
 /** A line's text, or for an edited line in version history, its words with what was added and removed. */

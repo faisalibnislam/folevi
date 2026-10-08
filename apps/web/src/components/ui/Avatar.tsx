@@ -4,8 +4,8 @@
  * A person's round picture, or their initial on a neutral disc when they have none. Decorative by
  * default (the name is always written next to it); pass `label` when it stands alone.
  */
-export function Avatar({ name, url, size = 24, label, className = "" }: { name: string; url?: string | null; size?: number; label?: string; className?: string }) {
-  const style = { width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.42)) };
+export function Avatar({ name, url, size = 24, label, className = "", ring }: { name: string; url?: string | null; size?: number; label?: string; className?: string; /** A colour ringing the picture (the person's colour in version history and "Show editors"). */ ring?: string }) {
+  const style = { width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.42)), ...(ring ? { boxShadow: `0 0 0 1.5px ${ring}` } : {}) };
   const a11y = label ? { role: "img", "aria-label": label, title: label } : { "aria-hidden": true };
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element -- signed file URL from our own backend

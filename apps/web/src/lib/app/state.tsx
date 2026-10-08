@@ -327,8 +327,10 @@ function browserLabel(): string {
 }
 
 export function FullPageMessage({ title, body, busy, children }: { title: string; body?: ReactNode; busy?: boolean; children?: ReactNode }) {
+  // Shown before the app (and its neutral chrome) is up, starting with the server's first paint: it carries
+  // the neutral chrome itself (globals.css), so loading looks like the app, not the warmer marketing palette.
   return (
-    <main id="main" tabIndex={-1} className="grid min-h-dvh place-items-center bg-canvas px-6">
+    <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6">
       <div className="w-full max-w-md rounded-[6px] border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>
         <h1 className="font-display text-3xl leading-tight text-ink">{title}</h1>
         {body ? <div className="mt-3 text-muted">{body}</div> : null}

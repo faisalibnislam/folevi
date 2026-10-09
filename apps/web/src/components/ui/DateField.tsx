@@ -407,9 +407,10 @@ export function DateTimeField({ value, onChange, "aria-label": ariaLabel = "Date
     onChange(new Date(y, m - 1, day, h, min).getTime());
   };
   return (
-    <span className="grid grid-cols-[1fr_auto] gap-1.5">
+    // The time keeps room for "12:45 PM" however narrow the row is.
+    <span className="grid grid-cols-[minmax(0,1fr)_minmax(7.5rem,auto)] gap-1.5">
       <DateField value={date} onChange={(v) => make(v, time)} aria-label={ariaLabel} />
-      <TimeField value={time} onChange={(v) => make(date, v || "09:00")} disabled={!date} allowEmpty={!date} aria-label={`${ariaLabel} time`} emptyLabel="Time" />
+      <TimeField value={time} onChange={(v) => make(date, v || "09:00")} disabled={!date} allowEmpty={!date} aria-label={`${ariaLabel} time`} emptyLabel="Time" className="w-full" />
     </span>
   );
 }

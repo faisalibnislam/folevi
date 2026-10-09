@@ -201,7 +201,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               </ul>
               {data.publicLinksAvailable ? (
                 <form
-                  className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+                  className="mt-3 space-y-3 rounded-[8px] bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] p-3"
                   onSubmit={async (e) => {
                     e.preventDefault();
                     if (linkForm.password && linkForm.password.length < 5) {
@@ -221,23 +221,23 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     }
                   }}
                 >
-                  <div className="text-xs">
-                    Expires (optional)
-                    <span className="mt-1 block">
-                      <DateTimeField
-                        value={linkForm.expires ? new Date(linkForm.expires).getTime() : null}
-                        onChange={(ts) => setLinkForm({ ...linkForm, expires: ts ? localDateTimeValue(ts) : "" })}
-                        aria-label="Expiry"
-                      />
-                    </span>
+                  <div className="grid items-center gap-x-3 gap-y-1.5 sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+                    <span className="text-[13px] font-medium text-ink">Expires</span>
+                    <DateTimeField
+                      value={linkForm.expires ? new Date(linkForm.expires).getTime() : null}
+                      onChange={(ts) => setLinkForm({ ...linkForm, expires: ts ? localDateTimeValue(ts) : "" })}
+                      aria-label="Expiry"
+                    />
+                    <label htmlFor="share-link-password" className="text-[13px] font-medium text-ink">
+                      Password
+                    </label>
+                    <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-[6px] px-3 text-sm" />
                   </div>
-                  <label className="text-xs">
-                    Password
-                    <input type="password" autoComplete="new-password" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="mt-1 block h-9 w-full ui-input rounded-[6px] px-2" />
-                  </label>
-                  <Button type="submit" className="self-end">
-                    Create link
-                  </Button>
+                  <div className="flex justify-end">
+                    <Button type="submit" variant="primary">
+                      <Globe size={14} aria-hidden /> Create link
+                    </Button>
+                  </div>
                 </form>
               ) : null}
             </section>

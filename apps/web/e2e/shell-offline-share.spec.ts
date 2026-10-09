@@ -73,7 +73,7 @@ test("password-protected links keep only a sealed grant, never the password, in 
   await waitForSaved(page);
   await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
-  await share.getByLabel(/Password \(optional/).fill("correct horse battery");
+  await share.getByLabel("Password", { exact: true }).fill("correct horse battery");
   await share.getByRole("button", { name: "Create link" }).click();
   const link = await share.getByLabel("Public link").inputValue();
 

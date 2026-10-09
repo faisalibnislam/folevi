@@ -13,12 +13,12 @@ export async function sha256Hex(blob: Blob): Promise<string> {
 
 /**
  * Uploads one file right away (online only) and returns its file id, for imports where the file must
- * exist before the document that references it is created. With a `documentId` the page's scope decides
+ * exist before the document that references it is created, and for files attached to an AI chat. With a `documentId` the page's scope decides
  * where it's stored; without one it goes to `scope`. Errors carry the server's message.
  */
 export async function uploadFileNow(
   client: ConvexReactClient,
-  input: { scope?: WireScope; blob: Blob; filename: string; mimeType: string; kind: "image" | "file" | "cover"; documentId?: string },
+  input: { scope?: WireScope; blob: Blob; filename: string; mimeType: string; kind: "image" | "file" | "cover" | "attachment"; documentId?: string },
 ): Promise<string> {
   const { uploadUrl, intentId } = await client.mutation(api.files.generateUploadUrl, {
     scope: input.scope,

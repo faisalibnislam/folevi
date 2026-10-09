@@ -43,6 +43,9 @@ import { toHex } from "./lib/crypto";
 import { signFileUrl as sign } from "./lib/fileUrls";
 import { bump } from "./lib/metrics";
 import { MAX_IDENTITY_IMAGE_BYTES } from "./lib/identityImages";
+import { MAX_ATTACHMENT_UPLOAD } from "./lib/ai/attachments";
+import { ATTACHMENTS_OFF } from "./lib/ai/attachmentFiles";
+import { aiPrefsOf } from "./lib/ai/prefs";
 
 const INTENT_TTL_MS = 10 * 60_000;
 const vKind = v.union(
@@ -52,9 +55,11 @@ const vKind = v.union(
   v.literal("avatar"),
   v.literal("logo"),
   v.literal("cover"),
+  v.literal("attachment"),
 );
 
 function maxBytesFor(kind: Doc<"uploadIntents">["kind"]): number {
+  if (kind === "attachment") return MAX_ATTACHMENT_UPLOAD;
   return kind === "file" || kind === "audio"
     ? MAX_FILE_BYTES
     : kind === "avatar" || kind === "logo"
@@ -65,7 +70,8 @@ function maxBytesFor(kind: Doc<"uploadIntents">["kind"]): number {
 /**
  * Step 1: authorize and issue a short-lived upload URL. Every file belongs to exactly one scope and counts
  * toward that scope's storage only: a page attachment to the page's scope; a profile picture to your
- * Personal; a workspace logo to that workspace; anything else to `scope`.
+ * Personal; a workspace logo to that workspace; anything else to `scope`. An AI chat attachment goes to
+ * the conversation's scope (`scope`), is never a page's, and only its uploader can open it.
  */
 export const generateUploadUrl = mutation({
   args: {
@@ -98,6 +104,12 @@ export const generateUploadUrl = mutation({
           (await requireWorkspace(ctx, profile, args.scope.workspaceId, "admin")).workspace._id,
         );
       }
+    } else if (args.kind === "attachment") {
+      if (args.documentId) fail("invalid_argument", "Chat attachments aren't added to a page.");
+      if (!args.scope) fail("invalid_argument", "Say where the file goes.");
+      if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
+      if (!aiPrefsOf(profile).attachments) fail("forbidden", ATTACHMENTS_OFF);
+      scope = (await resolveScope(ctx, profile, args.scope, "edit")).scope;
     } else if (args.documentId) {
       const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
       scope = scopeOfRow(doc);
@@ -250,13 +262,14 @@ export const finalize = action({
     if (clientHash !== serverHash)
       return await reject("The file was damaged during upload. Try again.");
     // Audio recordings are checked against the audio formats browsers record and play; nothing else passes.
-    const audioMime = intent.kind === "audio" ? sniffAudio(bytes) : null;
+    // A chat attachment may be a recording too (anything else it is, it's checked when it's sent).
+    const audioMime = intent.kind === "audio" || intent.kind === "attachment" ? sniffAudio(bytes) : null;
     if (intent.kind === "audio" && !audioMime)
       return await reject("Recordings must be WebM, Ogg, MP4, WAV or MP3 audio.");
     const sniffed = audioMime
       ? ({ kind: "file", mime: audioMime, risky: false } as const)
       : sniff(bytes);
-    const wantsImage = intent.kind !== "file" && intent.kind !== "audio";
+    const wantsImage = intent.kind !== "file" && intent.kind !== "audio" && intent.kind !== "attachment";
     if (wantsImage && sniffed.kind !== "image")
       return await reject("Images must be PNG, JPEG, GIF or WebP.");
     let storageId = args.storageId;
@@ -303,7 +316,8 @@ export const finalize = action({
 /**
  * A file not attached to a page: its Personal's owner, or a member of its workspace, may see it (a
  * workspace scheduled for deletion: only its owner). An export ZIP only ever goes to the person it was
- * made for (a workspace export holds everything its admin could see, restricted pages included).
+ * made for (a workspace export holds everything its admin could see, restricted pages included), and an
+ * AI chat attachment only to the person who attached it.
  */
 async function canSeeLooseFile(
   ctx: QueryCtx,
@@ -311,6 +325,7 @@ async function canSeeLooseFile(
   file: Doc<"files">,
 ): Promise<boolean> {
   if (file.kind === "export") return file.uploadedBy === profile._id;
+  if (file.kind === "attachment" && file.uploadedBy !== profile._id) return false;
   const scope = scopeOfRow(file);
   if (scope.kind === "personal") return scope.profileId === profile._id;
   const workspace = await ctx.db.get(scope.workspaceId);
@@ -326,7 +341,7 @@ async function canEditLooseFile(
   profile: Doc<"profiles">,
   file: Doc<"files">,
 ): Promise<boolean> {
-  if (file.kind === "export") return false;
+  if (file.kind === "export" || file.kind === "attachment") return false;
   const scope = scopeOfRow(file);
   if (scope.kind === "personal") return scope.profileId === profile._id;
   const workspace = await ctx.db.get(scope.workspaceId);

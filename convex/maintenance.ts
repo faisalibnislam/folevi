@@ -8,6 +8,7 @@ import type { MutationCtx } from "./_generated/server";
 import { normalizeEmail } from "./lib/support";
 import { bump } from "./lib/metrics";
 import { releaseFileStorage } from "./lib/entitlements";
+import { deleteConversationFiles } from "./lib/ai/attachmentFiles";
 import { adjustDocumentCount } from "./lib/create";
 import { seatsChanged } from "./lib/seats";
 import { normalizeMembership } from "./lib/auth";
@@ -241,7 +242,7 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     return false;
   }
   // Folders, tags, everyone's AI conversations here (with their messages), semantic search's and the graph's rows.
-  for (const table of ["folders", "tags", "aiRuns", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState"] as const) {
+  for (const table of ["folders", "tags", "aiRuns", "aiResearch", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -345,11 +346,15 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiCreditPeriods").withIndex("by_account_period", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditPacks").withIndex("by_account_expires", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditHolds").withIndex("by_account", (q) => q.eq("profileId", profileId)).take(200),
-    // Their AI conversations in workspaces (the ones in their Personal went with it above), and agent runs.
+    // Their AI conversations in workspaces (the ones in their Personal went with it above), agent runs and research.
     () => ctx.db.query("aiRuns").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("aiResearch").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiMessages").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
+  // Files they uploaded into AI chats in workspaces (the ones in their Personal went with it above).
+  const chats = await ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200);
+  for (const c of chats) if (await deleteConversationFiles(ctx, c._id)) return false;
   for (const load of personalBatches) {
     const rows = await load();
     for (const r of rows) await ctx.db.delete(r._id);

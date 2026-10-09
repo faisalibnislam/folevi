@@ -20,6 +20,7 @@ import {
 import { vAiAction } from "./lib/aiActions";
 import { vAiContext } from "./lib/ai/chat";
 import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
+import { vReportSource, vResearchStep } from "./lib/ai/research";
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
@@ -724,6 +725,13 @@ export default defineSchema({
     citations: v.optional(
       v.array(v.object({ n: v.number(), noteId: v.string(), title: v.string(), blockId: v.optional(v.string()), quote: v.optional(v.string()) })),
     ),
+    /** Web pages the answer cited (web research), numbered after the notes. */
+    webCitations: v.optional(v.array(v.object({ n: v.number(), url: v.string(), title: v.string(), domain: v.string() }))),
+    /**
+     * Google's Search Suggestions chips (grounding searchEntryPoint.renderedContent, at most 32 KB together),
+     * shown with a grounded answer as Google's terms require, only ever in a sandboxed frame.
+     */
+    searchEntryPoints: v.optional(v.array(v.string())),
     actions: v.optional(v.array(vAiAction)),
     /** What became of the proposed changes. */
     actionsOutcome: v.optional(
@@ -780,6 +788,40 @@ export default defineSchema({
     .index("by_profile", ["profileId"])
     .index("by_owner", ["ownerProfileId"])
     .index("by_workspace", ["workspaceId"]),
+
+  /**
+   * Deep research jobs (convex/aiResearch.ts, docs/AI_ASSISTANT.md milestone 6): private to the person who
+   * asked, in the conversation's scope. The report is written into the conversation's message
+   * (`messageId`); the job keeps its steps, sources, cost and the note it was saved as. Credits are held
+   * up front (`holdId`) and settled when it ends. Deleted with its conversation, the account or workspace.
+   */
+  aiResearch: defineTable({
+    publicId: v.string(),
+    ...scoped,
+    profileId: v.id("profiles"),
+    conversationId: v.id("aiConversations"),
+    messageId: v.id("aiMessages"),
+    question: v.string(),
+    status: v.union(v.literal("running"), v.literal("done"), v.literal("failed"), v.literal("cancelled")),
+    steps: v.array(vResearchStep),
+    holdId: v.optional(v.id("aiCreditHolds")),
+    sources: v.optional(v.array(vReportSource)),
+    /** The note the report was saved as (public id). */
+    noteId: v.optional(v.string()),
+    error: v.optional(v.object({ code: v.string(), message: v.string(), action: v.optional(v.string()), reason: v.optional(v.string()) })),
+    usage: v.optional(v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() })),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_profile", ["profileId"])
+    .index("by_profile_place", ["profileId", "workspaceId", "createdAt"])
+    .index("by_conversation", ["conversationId"])
+    .index("by_message", ["messageId"])
+    .index("by_status_updated", ["status", "updatedAt"]),
 
   /**
    * Semantic search (convex/aiIndex.ts, docs/AI_ASSISTANT.md "Retrieval"): a note's text in chunks of about
@@ -1207,7 +1249,13 @@ export default defineSchema({
     mimeType: v.string(),
     size: v.number(),
     sha256: v.string(),
-    kind: v.union(v.literal("image"), v.literal("file"), v.literal("audio"), v.literal("avatar"), v.literal("logo"), v.literal("cover"), v.literal("export")),
+    /**
+     * "attachment": a file someone added to an AI chat message (convex/aiAttachments.ts). Only they can
+     * open it; it belongs to the conversation it was sent in (`conversationId`) and goes with it.
+     */
+    kind: v.union(v.literal("image"), v.literal("file"), v.literal("audio"), v.literal("avatar"), v.literal("logo"), v.literal("cover"), v.literal("export"), v.literal("attachment")),
+    /** An AI chat attachment: the conversation it was sent in (unset until it's sent). */
+    conversationId: v.optional(v.id("aiConversations")),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
     /** For a note style image: the page and text colours picked from it (apps/web/src/lib/palette.ts). */
@@ -1221,13 +1269,14 @@ export default defineSchema({
     .index("by_owner", ["ownerProfileId", "createdAt"])
     .index("by_document", ["documentId"])
     .index("by_storage", ["storageId"])
-    .index("by_kind_created", ["kind", "createdAt"]),
+    .index("by_kind_created", ["kind", "createdAt"])
+    .index("by_kind_conversation", ["kind", "conversationId", "createdAt"]),
 
   uploadIntents: defineTable({
     profileId: v.id("profiles"),
     ...scoped,
     documentId: v.optional(v.id("documents")),
-    kind: v.union(v.literal("image"), v.literal("file"), v.literal("audio"), v.literal("avatar"), v.literal("logo"), v.literal("cover")),
+    kind: v.union(v.literal("image"), v.literal("file"), v.literal("audio"), v.literal("avatar"), v.literal("logo"), v.literal("cover"), v.literal("attachment")),
     filename: v.string(),
     declaredSize: v.number(),
     declaredMime: v.string(),

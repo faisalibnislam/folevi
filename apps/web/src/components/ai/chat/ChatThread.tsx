@@ -10,20 +10,29 @@ import { useAppRouter } from "@/lib/app/router";
 import { errorMessage } from "@/components/ui/Toast";
 import { AiIcon } from "../AiIcon";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "../AiCredits";
+import { useAiAccess } from "../useAi";
 import { AssistantMessage, UserMessage, type Citation } from "./ChatMessage";
 import { ContextChips } from "./ContextChips";
 import { citationHref, WHOLE_SCOPE, type ChatContext } from "./chatText";
 import type { ActionsOutcome, AiAction } from "./ActionsCard";
 import type { RunActivity } from "./AgentRunCard";
+import { WebToggle } from "./WebToggle";
+import { AttachControl, AttachmentChips, AttachmentProblems, useChatAttachments, type PendingFile } from "./Attachments";
+import type { ResearchHandlers } from "./ResearchCard";
 
 export const SUGGESTIONS = ["What am I working on this week?", "Summarize my notes about travel", "Which tasks are still open?", "What ideas have I written down recently?"];
 const FOLDER_SUGGESTIONS = ["Summarize this folder", "What are the open questions here?", "What decisions have been made?", "What should I do next?"];
 const NOTE_SUGGESTIONS = ["Summarize this", "What are the action items?", "What questions are still open?", "Explain it simply"];
 const AGENT_SUGGESTIONS = ["Put my notes about travel in a Travel folder", "Turn the open questions in my notes into tasks", "Find notes that look like duplicates", "Tag my recent notes by topic"];
 const AGENT_NOTE_SUGGESTIONS = ["Turn the action items into tasks with dates", "Tidy up the headings", "Add a short summary at the top", "Suggest a better title"];
+const RESEARCH_SUGGESTIONS = ["Compare the best note-taking methods", "What changed in remote work rules this year?", "How do heat pumps compare with gas boilers?", "What are good habits for deep work?"];
 
-/** Chat ("ask") answers from your notes; Agent can also propose changes to them (nothing changes until you approve). */
-export type ChatMode = "ask" | "agent";
+/**
+ * Chat ("ask") answers from your notes (and the web with the Web switch); Agent can also propose changes to
+ * them (nothing changes until you approve); Research writes a cited report from the web and your notes,
+ * in the background. Research and the Web switch show only when web research is on in Settings.
+ */
+export type ChatMode = "ask" | "agent" | "research";
 const IDLE: RunActivity = { busy: null, error: null };
 
 /** Focus the chat's box (⌘J on the AI page). */
@@ -75,13 +84,25 @@ export function ChatThread({
   const approveRun = useAction(api.aiAgent.approve);
   const undoRun = useAction(api.aiAgent.undo);
   const discardRun = useMutation(api.aiAgent.discard);
+  const researchStart = useAction(api.aiResearch.start);
+  const researchRegenerate = useAction(api.aiResearch.regenerate);
+  const cancelResearch = useMutation(api.aiResearch.cancel);
+  const saveResearch = useMutation(api.aiResearch.saveAsNote);
+  const jobs = useQuery(api.aiResearch.forConversation, conversationId ? { conversationId } : "skip");
+  const caps = useQuery(api.aiChat.capabilities, {});
+  const ai = useAiAccess();
+  // The web (the Web switch, Research) only when Settings > AI allows it, the plan has AI and the model can search.
+  const webAvailable = Boolean(ai.on && caps?.prefs.webResearch && caps.searchGrounding);
   const [mode, setMode] = useState<ChatMode>(initialMode ?? "ask");
+  const [web, setWeb] = useState(false);
+  const webOn = web && webAvailable && mode === "ask";
   const [runs, setRuns] = useState<Record<string, RunActivity>>({});
+  const [saving, setSaving] = useState<Record<string, ResearchHandlers["saving"]>>({});
 
   const [draft, setDraft] = useState(initialDraft ?? "");
   const [newContext, setNewContext] = useState<ChatContext>(initialContext ?? WHOLE_SCOPE);
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<{ text: string; after: number } | null>(null);
+  const [pending, setPending] = useState<{ text: string; after: number; files?: PendingFile[] } | null>(null);
   const [problem, setProblem] = useState<AiProblem | null>(null);
   const [applying, setApplying] = useState<Record<string, ActionsOutcome>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -91,6 +112,9 @@ export function ChatThread({
   useEffect(() => {
     if (initialDraft) setDraft(initialDraft);
   }, [initialDraft]);
+  useEffect(() => {
+    if (!webAvailable && mode === "research") setMode("ask");
+  }, [webAvailable, mode]);
   useEffect(() => {
     setNewContext(initialContext ?? WHOLE_SCOPE);
   }, [initialContext]);
@@ -117,6 +141,14 @@ export function ChatThread({
   const names: Record<string, string> = { ...initialNames, ...Object.fromEntries((conversation?.context.items ?? []).map((i) => [i.id, i.name])) };
   const lastUser = messages.map((m) => m.role).lastIndexOf("user");
   const answering = Boolean(messages[messages.length - 1]?.text);
+  // Files for the next message (the Attach control): only when Settings > AI allows reading them, not for Research.
+  const attachAvailable = Boolean(ai.on && caps && caps.prefs.attachments !== false) && mode !== "research";
+  const attachments = useChatAttachments({ scope: conversation?.scope ?? scope, caps: caps ? { vision: caps.vision, audioIn: caps.audioIn } : undefined });
+  const contextNotes = context.kind === "note" || context.kind === "notes" ? context.ids : [];
+  const noteFiles = useQuery(api.aiAttachments.noteFiles, attachAvailable && contextNotes.length ? { documentIds: contextNotes } : "skip");
+  const clearAttachments = attachments.clear;
+  // Another conversation: what was attached for this one doesn't go with it.
+  useEffect(() => clearAttachments(), [conversationId, clearAttachments]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -151,7 +183,7 @@ export function ChatThread({
 
   const send = (text: string) => {
     const q = text.trim();
-    if (!q || working) return;
+    if (!q || working || attachments.uploading) return;
     let id = conversationId;
     // What it's about goes with the first question (a conversation that's still loading keeps its own).
     const isNew = !id || data === null;
@@ -160,10 +192,14 @@ export function ChatThread({
       onConversation(id);
     }
     setDraft("");
-    setPending({ text: q, after: messages.length });
+    const fileIds = attachAvailable ? attachments.fileIds : [];
+    setPending({ text: q, after: messages.length, files: fileIds.length ? attachments.files : undefined });
+    attachments.clear();
     const target = id;
-    const sendIt = mode === "agent" ? agentSend : sendAction;
-    void run(() => sendIt({ scope: conversation?.scope ?? scope, conversationId: target, text: q, context: isNew ? newContext : undefined }));
+    const args = { scope: conversation?.scope ?? scope, conversationId: target, text: q, context: isNew ? newContext : undefined, ...(fileIds.length ? { attachments: fileIds } : {}) };
+    if (mode === "research") void run(() => researchStart(args));
+    else if (mode === "agent") void run(() => agentSend(args));
+    else void run(() => sendAction({ ...args, ...(webOn ? { web: true } : {}) }));
   };
 
   const changeContext = (next: ChatContext) => {
@@ -203,6 +239,19 @@ export function ChatThread({
       setRuns((r) => ({ ...r, [runId]: { busy: null, error: errorMessage(e) } }));
     }
   };
+  const jobFor = (messageId: string) => jobs?.find((j) => j.messageId === messageId);
+  const researchHandlers = (job: NonNullable<ReturnType<typeof jobFor>>): ResearchHandlers => ({
+    job,
+    saving: saving[job.id] ?? null,
+    onCancel: () => void cancelResearch({ researchId: job.id }).catch((e) => setProblem(aiProblem(e))),
+    onSave: () => {
+      setSaving((s) => ({ ...s, [job.id]: "saving" }));
+      void saveResearch({ researchId: job.id }).then(
+        () => setSaving((s) => ({ ...s, [job.id]: null })),
+        (e) => setSaving((s) => ({ ...s, [job.id]: { error: errorMessage(e) } })),
+      );
+    },
+  });
   const runHandlers = (runId: string) => ({
     activity: runs[runId] ?? IDLE,
     onApprove: (operationIds: string[]) => void onRun(runId, "approving", () => approveRun({ runId, operationIds })),
@@ -212,7 +261,7 @@ export function ChatThread({
 
   const empty = !messages.length && !showPending;
   const aboutNotes = context.kind === "note" || context.kind === "notes";
-  const suggestions = mode === "agent" ? (aboutNotes ? AGENT_NOTE_SUGGESTIONS : AGENT_SUGGESTIONS) : context.kind === "folder" ? FOLDER_SUGGESTIONS : aboutNotes ? NOTE_SUGGESTIONS : SUGGESTIONS;
+  const suggestions = mode === "research" ? RESEARCH_SUGGESTIONS : mode === "agent" ? (aboutNotes ? AGENT_NOTE_SUGGESTIONS : AGENT_SUGGESTIONS) : context.kind === "folder" ? FOLDER_SUGGESTIONS : aboutNotes ? NOTE_SUGGESTIONS : SUGGESTIONS;
   const page = variant === "page";
   const loading = Boolean(conversationId && data === undefined);
 
@@ -222,7 +271,7 @@ export function ChatThread({
       <div className="mx-auto flex max-w-xl flex-col items-center pt-[12vh] text-center">
         <AiIcon size={28} aria-hidden />
         <h2 className="ui-display mt-4 text-[28px] leading-tight text-heading">What can I help you with?</h2>
-        <p className="mt-2 text-[14px] text-muted">{mode === "agent" ? "Ask it to organize, edit or create notes. It shows every change first, and nothing happens until you approve." : "Ask about your notes, get a summary, or have it draft something. Answers link to the notes they come from."}</p>
+        <p className="mt-2 text-[14px] text-muted">{mode === "research" ? "Ask a question and it researches the web and your notes, then writes a report with sources. It takes a few minutes." : mode === "agent" ? "Ask it to organize, edit or create notes. It shows every change first, and nothing happens until you approve." : "Ask about your notes, get a summary, or have it draft something. Answers link to the notes they come from."}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           {suggestions.map((s) => (
             <button key={s} type="button" onClick={() => send(s)} className="rounded-full bg-[var(--glass-hover)] px-3.5 py-2 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
@@ -233,7 +282,7 @@ export function ChatThread({
       </div>
     ) : (
       <div>
-        <p className="text-[13.5px] text-muted">{mode === "agent" ? "The agent can read your notes and propose changes: new notes, edits, folders, tags and tasks. Nothing changes until you approve it." : context.kind === "folder" ? "Answers come from the notes in this folder, with links to the notes used." : context.kind === "workspace" ? "Answers come from your notes, with links to the notes used." : "Answers come from the notes below, with links to what they used."}</p>
+        <p className="text-[13.5px] text-muted">{mode === "research" ? "Research searches the web and your notes, then writes a report with sources. It takes a few minutes." : mode === "agent" ? "The agent can read your notes and propose changes: new notes, edits, folders, tags and tasks. Nothing changes until you approve it." : context.kind === "folder" ? "Answers come from the notes in this folder, with links to the notes used." : context.kind === "workspace" ? "Answers come from your notes, with links to the notes used." : "Answers come from the notes below, with links to what they used."}</p>
         <p className="mb-2.5 mt-5 flex items-center gap-2 text-[12.5px] font-medium text-muted">
           <AiIcon size={13} aria-hidden /> Try asking
         </p>
@@ -261,7 +310,7 @@ export function ChatThread({
           {intro}
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <UserMessage key={m.id} text={m.text} disabled={working} onEdit={i === lastUser && conversationId ? (text) => void run(() => (mode === "agent" ? agentEdit : editAction)({ conversationId, messageId: m.id, text })) : undefined} />
+              <UserMessage key={m.id} text={m.text} attachments={m.attachments} disabled={working} onEdit={i === lastUser && conversationId ? (text) => void run(() => (mode === "agent" ? agentEdit({ conversationId, messageId: m.id, text }) : editAction({ conversationId, messageId: m.id, text, ...(webOn ? { web: true } : {}) }))) : undefined} />
             ) : m.role === "assistant" ? (
               <AssistantMessage
                 key={m.id}
@@ -272,19 +321,26 @@ export function ChatThread({
                 onCite={cite}
                 onStop={() => void stop({ messageId: m.id })}
                 onRegenerate={() => {
-                  if (conversationId) void run(() => (m.agent ? agentRegenerate : regenerateAction)({ conversationId }));
+                  if (!conversationId) return;
+                  if (jobFor(m.id)) void run(() => researchRegenerate({ conversationId }));
+                  else if (m.agent) void run(() => agentRegenerate({ conversationId }));
+                  else void run(() => regenerateAction({ conversationId, ...(webOn || m.webCitations.length ? { web: true } : {}) }));
                 }}
                 onSuggestion={send}
                 onApply={() => void apply(m.id, (m.actions ?? []) as AiAction[])}
                 onDismiss={() => void setOutcome({ messageId: m.id, outcome: { kind: "dismissed" } })}
                 onOpen={open}
                 run={m.agent?.run ? runHandlers(m.agent.run.id) : undefined}
+                research={(() => {
+                  const job = jobFor(m.id);
+                  return job ? researchHandlers(job) : undefined;
+                })()}
               />
             ) : null,
           )}
           {showPending ? (
             <>
-              <UserMessage text={showPending} />
+              <UserMessage text={showPending} attachments={pending?.files} />
               <p role="status" className="flex items-center gap-2 px-1 text-[13px] text-muted">
                 <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> Thinking…
               </p>
@@ -306,12 +362,24 @@ export function ChatThread({
               <button type="button" aria-pressed={mode === "agent"} onClick={() => setMode("agent")} title="Can propose changes to your notes. Nothing changes until you approve.">
                 Agent
               </button>
+              {webAvailable ? (
+                <button type="button" aria-pressed={mode === "research"} onClick={() => setMode("research")} title="Researches the web and your notes, then writes a report with sources">
+                  Research
+                </button>
+              ) : null}
             </div>
             <ContextChips context={context} names={names} onChange={changeContext} disabled={working} />
+            {webAvailable && mode === "ask" ? <WebToggle on={web} onChange={setWeb} disabled={working} /> : null}
           </div>
+          {attachAvailable && attachments.problems.length ? (
+            <div className="mb-2">
+              <AttachmentProblems problems={attachments.problems} onDismiss={attachments.dismiss} />
+            </div>
+          ) : null}
           <div className="relative w-full rounded-[14px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
+            {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className="px-3 pt-2.5" /> : null}
             <label htmlFor={`${uid}-q`} className="sr-only">
-              {mode === "agent" ? "Tell the AI what to change in your notes" : "Ask a question about your notes"}
+              {mode === "research" ? "What should the AI research?" : mode === "agent" ? "Tell the AI what to change in your notes" : "Ask a question about your notes"}
             </label>
             <textarea
               id={`${uid}-q`}
@@ -326,15 +394,18 @@ export function ChatThread({
                 }
               }}
               maxLength={4000}
-              placeholder={mode === "agent" ? "Ask the AI to organize, edit or create notes…" : messages.length ? "Ask a follow-up…" : "Ask anything about your notes…"}
-              className="block min-h-[4.25rem] w-full resize-none bg-transparent px-3.5 pb-2.5 pr-12 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
+              placeholder={mode === "research" ? "What should I research?" : mode === "agent" ? "Ask the AI to organize, edit or create notes…" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything about your notes…"}
+              className={`block min-h-[4.25rem] w-full resize-none bg-transparent px-3.5 pb-2.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint ${attachAvailable ? "pr-[5.25rem]" : "pr-12"}`}
             />
-            <button type="button" aria-label="Ask" disabled={!draft.trim() || working} onClick={() => send(draft)} className="absolute bottom-2.5 right-2.5 grid h-8 w-8 place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-30">
+            <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="absolute bottom-2.5 right-2.5 grid h-8 w-8 place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-30">
               <ArrowUp size={16} aria-hidden />
             </button>
+            {attachAvailable ? <AttachControl className="absolute bottom-2.5 right-12" noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
           </div>
           <p className="mt-2 px-1 text-[11px] text-faint">
             AI can make mistakes. Questions and the notes they need go to Google Gemini.
+            {webOn || mode === "research" ? " Web searches go through Google Search." : ""}
+            {attachAvailable && attachments.files.length ? " Attached files go too." : ""}
             {conversation?.ephemeral ? " History is off: this conversation is deleted when you close it." : ""}
           </p>
         </div>

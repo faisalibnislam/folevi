@@ -21,6 +21,12 @@ export function phaseLabel(phase: string | null, hasText: boolean): string {
       return "Reading your notes…";
     case "writing":
       return "Writing…";
+    case "web":
+      return "Searching the web…";
+    case "page":
+      return "Reading the page…";
+    case "research":
+      return "Researching…";
     case "planning":
       return "Planning…";
     case "working":
@@ -107,6 +113,12 @@ export function stepLines(steps: AgentStep[]): string[] {
         break;
       case "get_workspace_context":
         out.push("Looked around");
+        break;
+      case "search_web":
+        out.push(g.n === 1 ? "Searched the web" : `Searched the web ${g.n} times`);
+        break;
+      case "read_web_page":
+        out.push(`Read ${plural(g.count, "a web page", "web pages")}`);
         break;
       case "calculate":
         out.push(g.n === 1 ? "Did a calculation" : `Did ${g.n} calculations`);

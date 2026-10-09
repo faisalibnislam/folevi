@@ -29,6 +29,9 @@ import { vAiAction } from "./lib/aiActions";
 import { wireRun } from "./lib/ai/tools/wire";
 import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext } from "./lib/ai/chat";
 import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, type AnswerSink, type Settled } from "./ai";
+import { attachmentChips, claimAttachments, deleteConversationFiles, sweepUnsentAttachments, type AttachmentChip } from "./lib/ai/attachmentFiles";
+import { answerWithFiles, filesPlan, type FileForModel } from "./aiAttachments";
+import { domainOf, entryPointsToShow, extractUrls, resolveLink } from "./lib/ai/web";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -51,6 +54,7 @@ const vOutcome = v.union(
   v.object({ kind: v.literal("applied"), folders: v.array(v.object({ id: v.string(), name: v.string() })), notes: v.array(v.object({ id: v.string(), title: v.string() })), moved: v.number() }),
 );
 const vCitation = v.object({ n: v.number(), noteId: v.string(), title: v.string(), blockId: v.optional(v.string()), quote: v.optional(v.string()) });
+const vWebCitation = v.object({ n: v.number(), url: v.string(), title: v.string(), domain: v.string() });
 const vError = v.object({ code: v.string(), message: v.string(), action: v.optional(v.string()), reason: v.optional(v.string()) });
 
 // ---------------------------------------------------------------------------------------------------
@@ -137,7 +141,7 @@ function listRow(c: Doc<"aiConversations">) {
   return { id: c.publicId, title: c.title, pinned: c.pinned, context: c.context.kind, lastMessageAt: c.lastMessageAt, createdAt: c.createdAt };
 }
 
-function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, Doc<"aiRuns">> = new Map()) {
+function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, Doc<"aiRuns">> = new Map(), files: Map<Id<"files">, AttachmentChip> = new Map()) {
   const stale = m.status === "streaming" && now - m.updatedAt > STALE_MS;
   const run = m.agent?.runId ? runs.get(m.agent.runId) : undefined;
   return {
@@ -145,6 +149,10 @@ function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, 
     role: m.role,
     text: m.text,
     citations: m.citations ?? [],
+    /** Web pages cited (web research), numbered after the notes. */
+    webCitations: m.webCitations ?? [],
+    /** Google's Search Suggestions for a grounded answer (HTML to show in a sandboxed frame only). */
+    searchEntryPoints: m.searchEntryPoints ?? [],
     actions: m.actions ?? null,
     actionsOutcome: m.actionsOutcome ?? null,
     suggestions: m.suggestions ?? [],
@@ -152,6 +160,8 @@ function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, 
     phase: stale ? null : (m.phase ?? null),
     error: stale ? { code: "interrupted", message: "This answer was cut off. Try again." } : (m.error ?? null),
     credits: m.usage?.credits ?? null,
+    /** Files sent with the message (the ones the person can still open). */
+    attachments: (m.attachments ?? []).flatMap((id) => files.get(id) ?? []),
     /** An agent's answer: the steps it took, and the changes it proposed (aiAgent.ts). */
     agent: m.agent ? { steps: m.agent.steps, run: run ? wireRun(run) : null } : null,
     createdAt: m.createdAt,
@@ -207,12 +217,20 @@ async function deleteConversation(ctx: MutationCtx, c: Doc<"aiConversations">): 
     .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
     .take(200);
   for (const r of runs) await ctx.db.delete(r._id);
+  // Its research jobs (a running one notices at its next step, stops and settles its credits).
+  const research = await ctx.db
+    .query("aiResearch")
+    .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
+    .take(200);
+  for (const r of research) await ctx.db.delete(r._id);
   const messages = await ctx.db
     .query("aiMessages")
     .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
     .take(401);
   for (const m of messages.slice(0, 400)) await ctx.db.delete(m._id);
   if (messages.length > 400) await ctx.scheduler.runAfter(0, internal.aiChat.purgeMessages, { conversationId: c._id });
+  // Files uploaded into it (a note's files stay with the note); many go in the background.
+  if ((await deleteConversationFiles(ctx, c._id)) === 50) await ctx.scheduler.runAfter(0, internal.aiChat.purgeFiles, { conversationId: c._id });
   await ctx.db.delete(c._id);
 }
 
@@ -298,6 +316,7 @@ export const get = query({
       .order("desc")
       .take(SHOWN_MESSAGES);
     const runs = await runsOf(ctx, rows);
+    const files = await attachmentChips(ctx, profile, c, rows);
     const now = Date.now();
     return {
       conversation: {
@@ -310,7 +329,7 @@ export const get = query({
         createdAt: c.createdAt,
         lastMessageAt: c.lastMessageAt,
       },
-      messages: rows.reverse().map((m) => wireMessage(m, now, runs)),
+      messages: rows.reverse().map((m) => wireMessage(m, now, runs, files)),
     };
   },
 });
@@ -443,6 +462,8 @@ export const post = internalMutation({
     context: v.optional(vAiContext),
     /** The answer comes from the agent (aiAgent.ts): it records its steps and proposed changes. */
     agent: v.optional(v.boolean()),
+    /** Files sent with the message (public ids): a note's files, or ones uploaded into the chat. */
+    attachments: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages"> }> => {
     const profile = await requireProfile(ctx);
@@ -474,10 +495,17 @@ export const post = internalMutation({
       const run = m.agent?.runId ? await ctx.db.get(m.agent.runId) : null;
       if (applied(run)) fail("invalid_argument", "Those changes were applied. Undo them first, or start a new conversation.");
       if (run) await ctx.db.delete(run._id);
+      const research = await ctx.db
+        .query("aiResearch")
+        .withIndex("by_message", (q) => q.eq("messageId", m._id))
+        .first();
+      if (research) await ctx.db.delete(research._id);
     }
     if (args.mode === "send") {
       if (messages.length >= MAX_MESSAGES) fail("limit_exceeded", "This conversation is full. Start a new one.");
-      await insertScoped(ctx, "aiMessages", scopeOfRow(c), { conversationId: c._id, profileId: profile._id, role: "user", text, status: "done", createdAt: now, updatedAt: now });
+      // Each file is checked (access, kind, size, Settings > AI) before anything is sent (lib/ai/attachmentFiles.ts).
+      const attachments = await claimAttachments(ctx, profile, c, args.attachments ?? []);
+      await insertScoped(ctx, "aiMessages", scopeOfRow(c), { conversationId: c._id, profileId: profile._id, role: "user", text, ...(attachments.length ? { attachments } : {}), status: "done", createdAt: now, updatedAt: now });
     } else if (args.mode === "regenerate") {
       const last = messages[messages.length - 1];
       if (!last || last.role !== "assistant" || !messages.some((m) => m.role === "user")) fail("invalid_argument", "There's no answer to write again.");
@@ -544,6 +572,8 @@ export const finishMessage = internalMutation({
     status: v.union(v.literal("done"), v.literal("error")),
     text: v.optional(v.string()),
     citations: v.optional(v.array(vCitation)),
+    webCitations: v.optional(v.array(vWebCitation)),
+    searchEntryPoints: v.optional(v.array(v.string())),
     actions: v.optional(v.array(vAiAction)),
     suggestions: v.optional(v.array(v.string())),
     error: v.optional(vError),
@@ -560,6 +590,9 @@ export const finishMessage = internalMutation({
       phase: undefined,
       ...(args.text !== undefined ? { text: args.text.slice(0, 60_000) } : {}),
       ...(args.citations?.length ? { citations: args.citations } : {}),
+      ...(args.webCitations?.length ? { webCitations: args.webCitations } : {}),
+      // Capped again here: whole chips only, 32 KB together.
+      ...(args.searchEntryPoints?.length ? { searchEntryPoints: entryPointsToShow(args.searchEntryPoints) } : {}),
       ...(args.actions?.length ? { actions: args.actions } : {}),
       ...(args.suggestions?.length && !stopped ? { suggestions: args.suggestions } : {}),
       ...(args.error && !stopped ? { error: args.error } : {}),
@@ -616,21 +649,50 @@ export function storedError(e: unknown): { code: string; message: string; action
   return { code: "internal", message: "Something went wrong. Try again." };
 }
 
-/** Writes an answer into its message: the AI pipeline, credits, citations, follow-ups and the title. */
-async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ status: "done" | "error" }> {
+/** Web research for one answer is refused: Settings > AI turned it off, or the model can't search. */
+const WEB_OFF = "Web research is turned off in Settings > AI.";
+const WEB_UNSUPPORTED = "The AI model in use can't search the web.";
+
+/**
+ * Writes an answer into its message: the AI pipeline, credits, citations, follow-ups and the title. With
+ * `web` (the Web toggle) it also searches the web; pages linked in the question are read when web
+ * research is allowed. Notes and pages are cited with one numbering.
+ */
+async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false): Promise<{ status: "done" | "error" }> {
   const turn = await ctx.runQuery(internal.aiChat.turn, { messageId });
+  // Files sent with the question (and earlier ones), checked again as the person (aiAttachments.ts). A
+  // message with files is answered from them and the conversation's notes.
+  let files: { files: FileForModel[]; noteIds: string[] };
+  try {
+    files = await ctx.runQuery(internal.aiAttachments.forTurn, { messageId });
+  } catch (e) {
+    const error = storedError(e);
+    console.warn(JSON.stringify({ event: "ai.chat_refused", code: error.code }));
+    await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "error", error });
+    return { status: "error" };
+  }
+  const withFiles = files.files.length > 0;
+  // Web research must be allowed by the person's settings (checked here, on the server) and the model.
+  const prefs = await ctx.runQuery(internal.aiAgent.prefs, {});
+  const refusal = web && !prefs.webResearch ? WEB_OFF : web && !modelCapabilities().searchGrounding ? WEB_UNSUPPORTED : null;
+  if (refusal) {
+    await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "error", error: { code: "forbidden", message: refusal } });
+    return { status: "error" };
+  }
+  const urls = prefs.webResearch ? extractUrls(turn.question) : [];
+  const withWeb = web || urls.length > 0;
   const notesOnly = turn.context.kind === "note" || turn.context.kind === "notes";
   const documentIds = notesOnly ? turn.context.ids : [];
   const folderId = turn.context.kind === "folder" ? turn.context.ids[0] : undefined;
   const nameIt = !turn.titled && !turn.ephemeral;
   const historyChars = turn.history.reduce((n, t) => n + t.text.length + 12, 0);
   const plan = [
-    ...answerPlan({ questionChars: turn.question.length, historyChars, focusNotes: documentIds.length, search: !notesOnly }),
+    ...(withFiles ? filesPlan({ questionChars: turn.question.length, historyChars, notes: documentIds.length, files: files.files }) : answerPlan({ questionChars: turn.question.length, historyChars, focusNotes: documentIds.length, search: !notesOnly, ...(withWeb ? { web: { search: web, pages: urls.length } } : {}) })),
     ...(nameIt ? [{ fast: true, inputChars: 2_400, maxOutputTokens: 40 }] : []),
   ];
   let holdId: Id<"aiCreditHolds">;
   try {
-    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, documentIds, noteOnly: notesOnly, plan }));
+    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, documentIds: [...documentIds, ...files.noteIds], noteOnly: notesOnly, plan }));
   } catch (e) {
     const error = storedError(e);
     console.warn(JSON.stringify({ event: "ai.chat_refused", code: error.code }));
@@ -650,7 +712,9 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ s
       ctx,
       holdId,
       async (meter) => {
-        const out = await answerFromNotes(ctx, { scope: turn.scope, question: turn.question, history: turn.history, documentIds, notesOnly, folderId, sink, chat: true }, meter);
+        const out = withFiles
+          ? await answerWithFiles(ctx, { question: turn.question, history: turn.history, documentIds, files: files.files, sink }, meter)
+          : await answerFromNotes(ctx, { scope: turn.scope, question: turn.question, history: turn.history, documentIds, notesOnly, folderId, sink, chat: true, ...(withWeb ? { web: { search: web, urls } } : {}) }, meter);
         if (nameIt && out.answer) {
           let title = "";
           try {
@@ -681,7 +745,17 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ s
       const hit = found.find((f) => f.noteId === c.noteId);
       return hit ? { ...c, blockId: hit.blockId, quote: hit.quote } : c;
     });
-    await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "done", text: out.answer, citations, actions: out.actions, suggestions: out.suggestions, usage: cost });
+    // Web pages cited, numbered after the notes; a search result's Google link becomes the page's own.
+    const webCitations = await Promise.all(
+      (out.web ?? [])
+        .map((w, i) => ({ ...w, n: out.notes.length + i + 1 }))
+        .filter((w) => out.cited.has(w.n - 1))
+        .map(async (w) => {
+          const url = w.kind === "search" ? await resolveLink(w.url) : w.url;
+          return { n: w.n, url, title: w.title.slice(0, 200), domain: (url === w.url ? w.domain : domainOf(url)) || w.domain };
+        }),
+    );
+    await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "done", text: out.answer, citations, webCitations, ...("searchEntryPoint" in out && out.searchEntryPoint ? { searchEntryPoints: [out.searchEntryPoint] } : {}), actions: out.actions, suggestions: out.suggestions, usage: cost });
     return { status: "done" };
   } catch (e) {
     const error = storedError(e);
@@ -697,31 +771,31 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ s
  * included) are stored on the answer, not thrown.
  */
 export const send = action({
-  args: { scope: vScopeArg, conversationId: v.string(), text: v.string(), context: v.optional(vAiContext) },
+  args: { scope: vScopeArg, conversationId: v.string(), text: v.string(), context: v.optional(vAiContext), web: v.optional(v.boolean()), attachments: v.optional(v.array(v.string())) },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
-    const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "send", scope: args.scope, conversationId: args.conversationId, text: args.text, context: args.context });
-    return { messageId, ...(await respond(ctx, messageId)) };
+    const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "send", scope: args.scope, conversationId: args.conversationId, text: args.text, context: args.context, attachments: args.attachments });
+    return { messageId, ...(await respond(ctx, messageId, args.web === true)) };
   },
 });
 
 /** Writes the last answer again. */
 export const regenerate = action({
-  args: { conversationId: v.string() },
+  args: { conversationId: v.string(), web: v.optional(v.boolean()) },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "regenerate", conversationId: args.conversationId });
-    return { messageId, ...(await respond(ctx, messageId)) };
+    return { messageId, ...(await respond(ctx, messageId, args.web === true)) };
   },
 });
 
 /** Changes one of the person's messages, drops everything after it, and answers again. */
 export const edit = action({
-  args: { conversationId: v.string(), messageId: v.id("aiMessages"), text: v.string() },
+  args: { conversationId: v.string(), messageId: v.id("aiMessages"), text: v.string(), web: v.optional(v.boolean()) },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "edit", conversationId: args.conversationId, messageId: args.messageId, text: args.text });
-    return { messageId, ...(await respond(ctx, messageId)) };
+    return { messageId, ...(await respond(ctx, messageId, args.web === true)) };
   },
 });
 
@@ -743,7 +817,19 @@ export const purgeMessages = internalMutation({
   },
 });
 
-/** Hourly: history-off conversations left behind for a day, and answers cut off mid-way (a crash). */
+/** The rest of a deleted conversation's uploaded files (lib/ai/attachmentFiles.ts). */
+export const purgeFiles = internalMutation({
+  args: { conversationId: v.id("aiConversations") },
+  handler: async (ctx, args) => {
+    if ((await deleteConversationFiles(ctx, args.conversationId)) === 50) await ctx.scheduler.runAfter(0, internal.aiChat.purgeFiles, { conversationId: args.conversationId });
+    return null;
+  },
+});
+
+/**
+ * Hourly: history-off conversations left behind for a day, answers cut off mid-way (a crash), and files
+ * uploaded into a chat but never sent.
+ */
 export const sweep = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -758,6 +844,7 @@ export const sweep = internalMutation({
       .withIndex("by_status_updated", (q) => q.eq("status", "streaming").lt("updatedAt", now - STALE_MS))
       .take(200);
     for (const m of stuck) await ctx.db.patch(m._id, { status: "error", phase: undefined, error: { code: "interrupted", message: "This answer was cut off. Try again." }, updatedAt: now });
-    return { conversations: old.length, messages: stuck.length };
+    const files = await sweepUnsentAttachments(ctx, now);
+    return { conversations: old.length, messages: stuck.length, files };
   },
 });

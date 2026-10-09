@@ -11,6 +11,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiAccess } from "@/components/ai/useAi";
 import { ChatThread } from "@/components/ai/chat/ChatThread";
 import { ConversationList } from "@/components/ai/chat/ConversationList";
+import { ResearchList } from "@/components/ai/chat/ResearchList";
 
 /** The conversation list as a drawer (phones): Escape or the scrim closes it. */
 function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: () => void }) {
@@ -35,8 +36,11 @@ function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: (
         <button type="button" aria-label="Close conversations" onClick={onClose} className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-[8px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
           <X size={16} aria-hidden />
         </button>
-        <div className="h-full pt-8">
-          <ConversationList activeId={activeId} onNavigate={onClose} />
+        <div className="flex h-full flex-col pt-8">
+          <div className="min-h-0 flex-1">
+            <ConversationList activeId={activeId} onNavigate={onClose} />
+          </div>
+          <ResearchList activeId={activeId} onNavigate={onClose} />
         </div>
       </div>
       <button type="button" aria-label="Close conversations" tabIndex={-1} className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={onClose} />
@@ -45,8 +49,8 @@ function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: (
 }
 
 /**
- * The AI page (/ai, /ai/<conversation>): your conversations on the left (a drawer on phones), the chat on
- * the right. A new chat gets its address once you ask the first question. With history off, leaving a
+ * The AI page (/ai, /ai/<conversation>): your conversations and research jobs on the left (a drawer on
+ * phones), the chat on the right. A new chat gets its address once you ask the first question. With history off, leaving a
  * conversation deletes it.
  */
 export function AiView({ id }: { id: string | null }) {
@@ -95,8 +99,11 @@ export function AiView({ id }: { id: string | null }) {
     <ViewChrome title="AI" tabTitle={title || "AI"}>
       <div className="flex h-full min-h-0">
         {narrow ? null : (
-          <aside className="w-[264px] flex-none border-r border-line/70">
-            <ConversationList activeId={id} />
+          <aside className="flex w-[264px] flex-none flex-col border-r border-line/70">
+            <div className="min-h-0 flex-1">
+              <ConversationList activeId={id} />
+            </div>
+            <ResearchList activeId={id} />
           </aside>
         )}
         <section aria-label={title || "Conversation"} className="flex min-w-0 flex-1 flex-col">

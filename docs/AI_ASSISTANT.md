@@ -86,13 +86,38 @@ and reports with links. Before any write the run saves a version of each affecte
 idempotency keys per operation, and rate limits. Text from notes, files and web pages is data: it is wrapped and
 labelled as untrusted and can never call a tool on its own.
 
-### Attachments
+### Attachments (`convex/aiAttachments.ts`, `convex/lib/ai/attachments.ts`, `convex/lib/ai/attachmentFiles.ts`)
 
 Files already in Convex storage are sent to Gemini as inline data (images, PDFs up to the inline limit; larger PDFs
 through the Gemini Files API). Text, Markdown, CSV and HTML are read directly. DOCX, XLSX and PPTX are read where a
 parser already exists in the app (import/export code); otherwise they are offered as "not supported yet" rather than
 guessed. Numbers in spreadsheets go through the `calculate` tool, never model arithmetic. Audio blocks get a
 Transcribe action (Gemini audio input), never automatic.
+
+As built (milestone 5):
+
+- What can be attached: a file of a note the person can read (its images, files and recordings), or a file uploaded
+  into the chat. Chat uploads are `files` rows of kind `attachment`, stored through the normal upload path in the
+  conversation's scope (they count toward its storage), and only their uploader can open them, even in a shared
+  workspace. The first message that sends one claims it for its conversation (`files.conversationId`); it is deleted
+  with that conversation, the account or the workspace, and one never sent is swept after a day.
+- Kinds and limits: PNG, JPEG and WebP images (7 MB), PDFs (14 MB), recordings (14 MB), and text, Markdown, CSV, HTML
+  (stripped to its text) and JSON (2 MB, the first 100,000 characters read, 200,000 per message). At most 5 files per
+  message, and at most 14 MB of images, PDFs and recordings together (base64 keeps a request under Gemini's 20 MB).
+  A larger PDF or recording is refused with the limit: the Gemini Files API isn't used yet. No DOCX, XLSX or PPTX
+  parser exists in the app, so those are "not supported yet", refused in the composer before anything is uploaded.
+- Every file is checked again as the person when it's read (they can still open it, Settings > AI allows it, the
+  model takes it in), and its text reaches the model wrapped as untrusted. Follow-ups carry the conversation's
+  earlier files (up to the same limits). A message with files is answered from them and the conversation's notes
+  (no search, no web). With CSV data the model gets `calculate` and is told to use it for every number.
+- The agent's `read_attachment` reads a file sent in its conversation or a file of a note in its place (get_note
+  shows file ids): text formats directly, images, PDFs and recordings through one model call that writes out what
+  is in them.
+- Transcribe on an audio block sends the recording to Gemini, shows the transcript in a preview under the block, and
+  inserts it (or its summary, through the writing assistant's `summarizeText`) below the block only on Insert below.
+- Settings > AI "Read attachments" off: uploads, attaching, `read_attachment` and transcription are refused on the
+  server, and the Attach control and Transcribe action are hidden. Credits: every call goes through `metered()`;
+  Gemini's usage metadata counts the files' tokens.
 
 ### Knowledge graph (`convex/aiGraph.ts`)
 

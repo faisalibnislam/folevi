@@ -37,6 +37,7 @@ import { ACT_SYSTEM, checkPlan, type AiAction } from "./lib/aiActions";
 import { provider, type GenerateRequest, type OnDelta } from "./lib/ai/provider";
 import { dedupePassages, fitToBudget, reciprocalRankFusion } from "./lib/ai/retrieval";
 import { hybridSearch } from "./aiIndex";
+import { PAGE_CHARS, WEB_RULE, webBlock, webForQuestion, type WebSource } from "./lib/ai/web";
 import { finishWriting, needsInstruction, needsSelection, readsNote, taskSpec, usesFlashLite, writingInputChars, writingRequest, writingTask } from "./lib/ai/writing";
 
 export const MAX_QUESTION = 2000;
@@ -209,8 +210,8 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
   return streamInto(streamId ? streamSink(ctx, streamId) : undefined, req, meter);
 }
 
-const vPlannedCall = v.object({ fast: v.boolean(), inputChars: v.number(), maxOutputTokens: v.number() });
-const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), outputTokens: v.number(), thoughtsTokens: v.number() });
+const vPlannedCall = v.object({ fast: v.boolean(), inputChars: v.number(), maxOutputTokens: v.number(), searches: v.optional(v.number()) });
+const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), outputTokens: v.number(), thoughtsTokens: v.number(), searches: v.optional(v.number()) });
 
 /**
  * Auth, whether AI may be used where it's asked for, the hourly abuse limit, and a hold on the request's
@@ -482,12 +483,22 @@ export function hideFollowUps(text: string): string {
   return text;
 }
 
-/** The estimate held for an answer: the search-terms call (Flash-Lite), and the answer at its largest. */
-export function answerPlan(o: { questionChars: number; historyChars: number; focusNotes: number; search: boolean }): PlannedCall[] {
+/** Search queries a grounded web search is expected to run, held for (each one is billed). */
+const WEB_SEARCHES_HELD = 3;
+/** Web sources an answer may draw on (search results; pasted links come on top). */
+const WEB_SOURCES = 8;
+
+/**
+ * The estimate held for an answer: the search-terms call (Flash-Lite), a grounded web search and the pages
+ * pasted (with the Web toggle or links in the question), and the answer at its largest.
+ */
+export function answerPlan(o: { questionChars: number; historyChars: number; focusNotes: number; search: boolean; web?: { search: boolean; pages: number } }): PlannedCall[] {
+  const webChars = o.web ? (o.web.search ? WEB_SOURCES * 1_400 : 0) + o.web.pages * (PAGE_CHARS + 200) : 0;
   return [
     ...(o.search ? [{ fast: true, inputChars: 600 + o.questionChars + Math.min(o.historyChars, 1500), maxOutputTokens: 200 }] : []),
+    ...(o.web?.search ? [{ fast: false, inputChars: 2_500 + o.questionChars, maxOutputTokens: 1_536, searches: WEB_SEARCHES_HELD }] : []),
     // Large enough for either an answer or a plan of changes (which can carry whole notes).
-    { fast: false, inputChars: PERSONA.length + ACT_SYSTEM.length + 600 + o.questionChars + o.historyChars + o.focusNotes * FOCUS_CHARS + (o.search ? 8 * (NOTE_CHARS + 80) : 0), maxOutputTokens: 8192 },
+    { fast: false, inputChars: PERSONA.length + ACT_SYSTEM.length + 600 + o.questionChars + o.historyChars + o.focusNotes * FOCUS_CHARS + (o.search ? 8 * (NOTE_CHARS + 80) : 0) + webChars, maxOutputTokens: 8192 },
   ];
 }
 
@@ -504,6 +515,8 @@ export interface AnswerInput {
   sink?: AnswerSink;
   /** An AI chat: tables are welcome, and the answer ends with 2 or 3 follow-up questions. */
   chat?: boolean;
+  /** The web too (lib/ai/web.ts): a grounded search (the Web toggle) and pages linked in the question. */
+  web?: { search: boolean; urls: string[] };
 }
 
 export interface AnswerOutput {
@@ -515,6 +528,10 @@ export interface AnswerOutput {
   /** A plan of changes, when the person asked for one (applied only once they check it). */
   actions?: AiAction[];
   suggestions: string[];
+  /** Web sources, numbered after the notes ([notes.length + 1] onwards); `cited` counts them on from there. */
+  web?: WebSource[];
+  /** Google's Search Suggestions chip for the web search (shown with the answer, as Google requires). */
+  searchEntryPoint?: string;
 }
 
 const CHAT_FORMAT = "Format with Markdown: short paragraphs, '-' bullets, '1.' lists, '- [ ]' for to-dos, '##' headings only when the text is long, a table when comparing things, and fenced code blocks (with the language) for code. No HTML.";
@@ -586,6 +603,16 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
     return { answer, notes: [], cited: new Set(), actions, suggestions: [] };
   }
 
+  // The web: pages linked in the question, and (Web toggle) a grounded search. Untrusted, like notes.
+  let web: WebSource[] = [];
+  let unread: { url: string; error: string }[] = [];
+  let searchEntryPoint: string | undefined;
+  const withWeb = Boolean(input.web && (input.web.search || input.web.urls.length));
+  if (input.web && withWeb) {
+    const context = history.map((t) => t.text).join("\n").slice(-1500);
+    ({ sources: web, unread, entryPoint: searchEntryPoint } = await webForQuestion(input.web, question, context, meter, WEB_SOURCES, async (p) => void (await sink?.phase?.(p))));
+  }
+
   await sink?.phase?.("writing");
   const sources = notes.map((n, i) => `[${i + 1}] ${n.title}${n.blockIds ? " (passages)" : ""}\n${n.text}`).join("\n\n---\n\n");
   const convo = history.map((t) => `${t.role === "user" ? "Person" : "Assistant"}: ${t.text}`).join("\n");
@@ -593,15 +620,21 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
   // "Not found" honesty: when the search matched nothing, the model is told so rather than left to guess.
   const unmatched = !input.notesOnly && !input.documentIds.length && notes.every((n) => n.recent);
   const found = !notes.length ? "(no notes found)" : unmatched ? `(No note matched the question. These are only the most recent notes and may be unrelated.)\n\n${sources}` : sources;
+  const webPart = withWeb
+    ? `<web>\n${[web.length ? webBlock(web, notes.length + 1) : "(nothing found on the web)", ...unread.map((u) => `(The page ${u.url.slice(0, 300)} couldn't be read: ${u.error})`)].join("\n\n")}\n</web>\n\n`
+    : "";
+  const rules = withWeb
+    ? `Answer questions using the person's notes and the web sources below. Notes and web sources share one numbering: cite what you use with bracketed numbers like [1] or [2][3] right after the sentence they support, and make clear which points come from the web. Only say something is in their notes when a note below says it. If neither contains the answer, say so plainly. ${WEB_RULE}`
+    : "Answer questions using the person's notes below. Cite the notes you use with bracketed numbers like [1] or [2][3] right after the sentence they support. Only say something is in their notes when a note below says it. If the notes don't contain the answer, say so plainly in one sentence, then offer a short general answer clearly labelled as not from their notes.";
   const raw = await streamInto(sink, {
-    system: `${persona} Answer questions using the person's notes below. Cite the notes you use with bracketed numbers like [1] or [2][3] right after the sentence they support. Only say something is in their notes when a note below says it. If the notes don't contain the answer, say so plainly in one sentence, then offer a short general answer clearly labelled as not from their notes.${input.chat ? ` ${FOLLOW_UP_RULE}` : ""}`,
-    prompt: `<notes>\n${found}\n</notes>\n\n${convo ? `<conversation>\n${convo}\n</conversation>\n\n` : ""}Question: ${question}`,
+    system: `${persona} ${rules}${input.chat ? ` ${FOLLOW_UP_RULE}` : ""}`,
+    prompt: `<notes>\n${found}\n</notes>\n\n${webPart}${convo ? `<conversation>\n${convo}\n</conversation>\n\n` : ""}Question: ${question}`,
     temperature: 0.3,
     maxOutputTokens: input.chat ? 2304 : 2048,
   }, meter);
   const { answer, suggestions } = input.chat ? splitFollowUps(raw) : { answer: raw, suggestions: [] };
   const cited = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1]) - 1));
-  return { answer, notes, cited, suggestions };
+  return { answer, notes, cited, suggestions, ...(withWeb ? { web } : {}), ...(searchEntryPoint ? { searchEntryPoint } : {}) };
 }
 
 /**

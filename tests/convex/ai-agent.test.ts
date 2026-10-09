@@ -115,7 +115,8 @@ describe("tools", () => {
     expect((await runTool(host, { name: "get_note", args: {} }, [])).response).toEqual({ error: "noteId is required." });
     expect((await runTool(host, { name: "get_note", args: { noteId: "N1" } }, [])).response).toEqual({ error: "That didn't work." });
     expect((await runTool(host, { name: "calculate", args: { expression: "6 * 7" } }, [])).response).toEqual({ result: 42 });
-    expect((await runTool(host, { name: "search_web", args: { query: "x" } }, [])).response.error).toMatch(/isn't available yet/);
+    // Without the web (Settings > AI turned web research off), the web tools say so.
+    expect((await runTool(host, { name: "search_web", args: { query: "x" } }, [])).response.error).toMatch(/turned off/);
   });
 
   test("note text is wrapped as untrusted, and can't close the wrapper; duplicates by similarity", () => {

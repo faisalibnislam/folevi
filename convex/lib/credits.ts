@@ -26,7 +26,7 @@ import { subscriptionOf, workspaceSubscriptionOf } from "./billing";
 import { DAY_MS, PACK_VALID_MONTHS, PLAN_CATALOG, TIER_NAMES, TRIAL_DAYS, addMonthsUtc, monthStartUtc, planName, type PlanTier } from "./plans";
 import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
-import { priceOf } from "./ai/capabilities";
+import { priceOf, SEARCH_GROUNDING_NANO_PER_QUERY } from "./ai/capabilities";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -46,6 +46,8 @@ export interface CallUsage {
   outputTokens: number;
   /** Thinking tokens (thoughtsTokenCount), billed as output. */
   thoughtsTokens: number;
+  /** Google Search queries a grounded call ran (web research), each billed on top of the tokens. */
+  searches?: number;
 }
 
 /** The cost of some calls, in nano-dollars (integers, so rounding is exact). */
@@ -54,6 +56,7 @@ export function costNano(calls: CallUsage[]): number {
   for (const c of calls) {
     const p = priceOf(c.model);
     total += Math.max(0, Math.round(c.promptTokens)) * p.inputNanoPerToken + (Math.max(0, Math.round(c.outputTokens)) + Math.max(0, Math.round(c.thoughtsTokens))) * p.outputNanoPerToken;
+    total += Math.max(0, Math.round(c.searches ?? 0)) * SEARCH_GROUNDING_NANO_PER_QUERY;
   }
   return total;
 }
@@ -72,6 +75,8 @@ export interface PlannedCall {
   fast: boolean;
   inputChars: number;
   maxOutputTokens: number;
+  /** Google Search queries a grounded call may run (web research). */
+  searches?: number;
 }
 
 /**
@@ -79,7 +84,7 @@ export interface PlannedCall {
  * output (thinking included in the output budget) on the model it would use.
  */
 export function estimateCredits(calls: PlannedCall[], models: { main: string; fast: string }): number {
-  return creditsFor(calls.map((c) => ({ model: c.fast ? models.fast : models.main, promptTokens: tokensForChars(c.inputChars), outputTokens: c.maxOutputTokens, thoughtsTokens: 0 })));
+  return creditsFor(calls.map((c) => ({ model: c.fast ? models.fast : models.main, promptTokens: tokensForChars(c.inputChars), outputTokens: c.maxOutputTokens, thoughtsTokens: 0, searches: c.searches ?? 0 })));
 }
 
 // ---------------------------------------------------------------------------------------------------

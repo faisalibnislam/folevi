@@ -23,6 +23,15 @@ export const GEMINI_PRICES = {
   flashLite: { inputNanoPerToken: 300, outputNanoPerToken: 2_500 },
 } as const;
 
+/**
+ * Grounding with Google Search, per search query, in nano-dollars, on top of the call's tokens. Gemini 3 and
+ * newer bill each query the model runs (one grounded prompt can run several, listed in the reply's
+ * groundingMetadata.webSearchQueries): $14 per 1,000 queries, after 5,000 free a month that credits don't
+ * count on. Checked on 2026-10-10 at ai.google.dev/gemini-api/docs/pricing; check it again when Google's
+ * prices change (Gemini 2.5 billed $35 per 1,000 grounded prompts instead).
+ */
+export const SEARCH_GROUNDING_NANO_PER_QUERY = 14_000_000;
+
 /** Embeddings (gemini-embedding-001): $0.15 per 1M input tokens. Platform-paid, never charged to credits. */
 export const EMBEDDING_PRICE: TokenPrice = { inputNanoPerToken: 150, outputNanoPerToken: 0 };
 

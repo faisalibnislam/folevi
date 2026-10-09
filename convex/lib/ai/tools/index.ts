@@ -10,6 +10,7 @@ import { MAX_EDITS, MAX_ITEMS, MAX_MERGE, MAX_OP_MARKDOWN, MAX_TAGS, OP_KINDS, t
 import { findRelated } from "./related";
 import { checkArgs, type ObjectSchema } from "./schema";
 import { untrusted } from "./untrusted";
+import type { PageResult, SearchResult } from "../web";
 
 /** What tools run through: the database as the person, search, and proposals (convex/aiAgent.ts). */
 export interface ToolHost {
@@ -23,6 +24,22 @@ export interface ToolHost {
   graphDuplicates?(noteId?: string): Promise<{ a: { id: string; title: string }; b: { id: string; title: string }; score: number }[]>;
   /** A write tool's proposal (lib/ai/tools/propose.ts PROPOSERS), as the person. */
   propose(kind: OpKind, args: Record<string, unknown>, earlier: AgentOp[]): Promise<AgentOp>;
+  /**
+   * One attached file, read as the person (aiAttachments.readForAgent): one sent in the conversation, or a
+   * note's file. Left out, read_attachment says reading attachments is off.
+   */
+  readAttachment?(fileId: string): Promise<Record<string, unknown>>;
+  /**
+   * The web (lib/ai/web.ts), when the person's settings allow web research: a grounded search (its own
+   * request, billed per query) and reading one page. Left out, the web tools say it's off.
+   */
+  web?: WebHost;
+}
+
+/** The web, for the agent's search_web and read_web_page. */
+export interface WebHost {
+  search(query: string): Promise<SearchResult>;
+  read(url: string): Promise<PageResult>;
 }
 
 /** One line of what the agent did, for the chat ("Searched notes", "Read 3 notes"). */
@@ -60,14 +77,6 @@ const folderArgs = {
 function hits(notes: { id: string; title: string; excerpt: string }[]) {
   return notes.map((n) => ({ id: n.id, title: n.title, excerpt: untrusted("note", { id: n.id, title: n.title }, n.excerpt) }));
 }
-
-const unavailable = (name: string, description: string, parameters: ObjectSchema, what: string): Tool => ({
-  name,
-  description,
-  parameters,
-  kind: "unavailable",
-  run: async () => ({ response: { error: `${what} isn't available yet. Tell the person, and carry on without it.` }, count: 0 }),
-});
 
 /** A write tool: it checks the arguments, then asks the host for a proposal. */
 const writeTool = (name: OpKind, description: string, parameters: ObjectSchema): Tool => ({
@@ -191,8 +200,46 @@ export const TOOLS: Tool[] = [
       return { response: r.ok ? { result: r.value } : { error: r.error }, count: 0 };
     },
   },
-  unavailable("read_attachment", "Read a file attached to a note (PDF, image, spreadsheet).", { type: "object", properties: { fileId: id("The file's id.") }, required: ["fileId"] }, "Reading attachments"),
-  unavailable("search_web", "Search the web.", { type: "object", properties: { query: { type: "string", description: "What to look for.", maxLength: 300, minLength: 1 } }, required: ["query"] }, "Web search"),
+  {
+    name: "read_attachment",
+    description: "Read a file: one the person attached to their message, or a file in a note (get_note shows its fileId). PDFs, images (PNG, JPEG, WebP), recordings, and text, Markdown, CSV, HTML and JSON files. Word, Excel and PowerPoint files can't be read yet. Use calculate for any arithmetic on numbers from a file.",
+    parameters: { type: "object", properties: { fileId: id("The file's id.") }, required: ["fileId"] },
+    kind: "read",
+    async run(host, args) {
+      if (!host.readAttachment) return { response: { error: "Reading attachments is turned off in the person's settings. Tell them, and carry on without it." }, count: 0 };
+      return { response: await host.readAttachment(String(args.fileId)), count: 1 };
+    },
+  },
+  {
+    name: "search_web",
+    description: "Search the web (Google). Returns a short brief of what was found and the pages it came from (titles, links, excerpts). Use it for facts that aren't in the person's notes, recent events or anything outside Folevi. Cite pages by linking them.",
+    parameters: { type: "object", properties: { query: { type: "string", description: "What to look for, as a question or a few words.", maxLength: 300, minLength: 1 } }, required: ["query"] },
+    kind: "read",
+    async run(host, args) {
+      if (!host.web) return { response: { error: "Web research is turned off in the person's settings. Tell them, and carry on without it." }, count: 0 };
+      const r = await host.web.search(String(args.query));
+      if (!r.sources.length && !r.summary) return { response: { results: [], note: "Nothing found on the web." }, count: 0 };
+      return {
+        response: {
+          summary: untrusted("web", { query: String(args.query) }, r.summary),
+          results: r.sources.map((s) => ({ title: s.title, url: s.url, site: s.domain, excerpt: untrusted("web", { url: s.url, title: s.title }, s.text) })),
+        },
+        count: r.sources.length,
+      };
+    },
+  },
+  {
+    name: "read_web_page",
+    description: "Read a web page (http or https) as text: one the person linked, or a search result worth reading in full.",
+    parameters: { type: "object", properties: { url: { type: "string", description: "The page's full address.", maxLength: 2_000, minLength: 8 } }, required: ["url"] },
+    kind: "read",
+    async run(host, args) {
+      if (!host.web) return { response: { error: "Web research is turned off in the person's settings. Tell them, and carry on without it." }, count: 0 };
+      const page = await host.web.read(String(args.url));
+      if (!page.ok) return { response: { error: page.error }, count: 0 };
+      return { response: { url: page.url, title: page.title, site: page.domain, text: untrusted("web", { url: page.url, title: page.title }, page.text) }, count: 1 };
+    },
+  },
 
   writeTool("create_note", "Propose a new note.", {
     type: "object",

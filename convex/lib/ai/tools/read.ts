@@ -64,7 +64,8 @@ function blockLine(b: WireBlock, depth: number): string {
     case "callout":
       break;
     default:
-      mark = `(${b.type}) `;
+      // A note's files show their id, for read_attachment.
+      mark = typeof p.fileId === "string" ? `(${b.type}, fileId ${p.fileId}${typeof p.name === "string" && p.name ? `, ${p.name.replace(/[()\n]/g, " ").slice(0, 120)}` : ""}) ` : `(${b.type}) `;
   }
   return `${"  ".repeat(Math.min(depth, 6))}[${b.id}] ${mark}${text}`;
 }

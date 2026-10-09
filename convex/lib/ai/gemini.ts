@@ -6,8 +6,10 @@
 // counts are.
 import { fail } from "../errors";
 import { tokensForChars, type CallUsage } from "../credits";
-import type { AiProvider, Content, EmbedResult, EmbedTask, GenerateRequest, GenerateResult, OnDelta, Part, ToolCall } from "./provider";
+import type { AiProvider, Content, EmbedResult, EmbedTask, GenerateRequest, GenerateResult, Grounding, OnDelta, Part, ToolCall } from "./provider";
+import { capabilitiesOf } from "./capabilities";
 import { EMBEDDING_DIMENSIONS, normalize } from "./retrieval";
+import { attachmentTokens } from "./attachments";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 export const geminiModel = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
@@ -17,19 +19,30 @@ export const geminiEmbeddingModel = () => process.env.GEMINI_EMBEDDING_MODEL ?? 
 
 type GeminiUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 type GeminiPart = { text?: string; thought?: boolean; thoughtSignature?: string; functionCall?: { name?: string; args?: Record<string, unknown>; id?: string } };
-type GeminiChunk = { candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string }[]; usageMetadata?: GeminiUsage };
+type GeminiGrounding = {
+  webSearchQueries?: unknown[];
+  groundingChunks?: { web?: { uri?: unknown; title?: unknown } }[];
+  groundingSupports?: { segment?: { text?: unknown }; groundingChunkIndices?: unknown[] }[];
+  searchEntryPoint?: { renderedContent?: unknown };
+};
+type GeminiChunk = { candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string; groundingMetadata?: GeminiGrounding }[]; usageMetadata?: GeminiUsage };
 
 /** Characters sent in a request (for a usage estimate when none came back). */
 function charsSent(req: GenerateRequest): number {
   let n = req.system.length + req.prompt.length;
-  for (const c of req.contents ?? []) {
-    for (const p of c.parts) {
-      if ("text" in p) n += p.text.length;
-      else if ("functionCall" in p) n += JSON.stringify(p.functionCall.args).length;
-      else if ("functionResponse" in p) n += JSON.stringify(p.functionResponse.response).length;
-    }
+  for (const p of [...(req.contents ?? []).flatMap((c) => c.parts), ...(req.attachments ?? [])]) {
+    if ("text" in p) n += p.text.length;
+    else if ("functionCall" in p) n += JSON.stringify(p.functionCall.args).length;
+    else if ("functionResponse" in p) n += JSON.stringify(p.functionResponse.response).length;
+    else if ("inlineData" in p) n += inlineChars(p.inlineData);
   }
   return n;
+}
+
+/** A file sent inline, as characters' worth of its tokens (lib/ai/attachments.ts estimates them). */
+function inlineChars(d: { mimeType: string; data: string }): number {
+  const kind = d.mimeType.startsWith("image/") ? "image" : d.mimeType.startsWith("audio/") ? "audio" : "pdf";
+  return attachmentTokens(kind, Math.floor((d.data.length * 3) / 4)) * 4;
 }
 
 /**
@@ -40,6 +53,44 @@ function usageOf(model: string, meta: GeminiUsage | undefined, req: GenerateRequ
   if (meta && typeof meta.promptTokenCount === "number") return { model, promptTokens: meta.promptTokenCount, outputTokens: meta.candidatesTokenCount ?? 0, thoughtsTokens: meta.thoughtsTokenCount ?? 0 };
   return { model, promptTokens: tokensForChars(charsSent(req)), outputTokens: tokensForChars(text.length), thoughtsTokens: 0 };
 }
+
+/**
+ * A grounded answer's metadata (Google Search grounding): the queries it ran, the pages (web chunks with a
+ * link and a title) and which stretches of text each backs. Anything malformed is left out.
+ */
+function groundingOf(data: GeminiChunk): Grounding | undefined {
+  const g = data.candidates?.[0]?.groundingMetadata;
+  if (!g) return undefined;
+  const queries = (g.webSearchQueries ?? []).filter((q): q is string => typeof q === "string" && q.trim().length > 0).map((q) => q.slice(0, 300));
+  const sources: Grounding["sources"] = [];
+  const at = new Map<number, number>();
+  for (const [i, c] of (g.groundingChunks ?? []).entries()) {
+    const uri = c?.web?.uri;
+    if (typeof uri !== "string" || !/^https?:\/\//i.test(uri)) continue;
+    at.set(i, sources.length);
+    sources.push({ uri: uri.slice(0, 2_000), title: typeof c.web?.title === "string" ? c.web.title.slice(0, 300) : "" });
+  }
+  const supports: Grounding["supports"] = [];
+  for (const s of g.groundingSupports ?? []) {
+    const text = typeof s?.segment?.text === "string" ? s.segment.text : "";
+    const refs = (s?.groundingChunkIndices ?? []).filter((n): n is number => typeof n === "number" && at.has(n)).map((n) => at.get(n)!);
+    if (text.trim() && refs.length) supports.push({ text: text.slice(0, 2_000), sources: [...new Set(refs)] });
+  }
+  if (!queries.length && !sources.length) return undefined;
+  // Google's Search Suggestions chip, kept as Google wrote it (shown in a sandboxed frame), unless too large.
+  const rendered = g.searchEntryPoint?.renderedContent;
+  const entryPoint = typeof rendered === "string" && rendered.trim() && rendered.length <= MAX_ENTRY_POINT_CHARS ? rendered : undefined;
+  return { queries, sources, supports, ...(entryPoint ? { entryPoint } : {}) };
+}
+
+/** Google Search queries a grounded reply ran (each is billed; a reply with sources ran at least one). */
+/** The largest Search Suggestions chip kept (Google's HTML and CSS); a larger one is left out, never cut. */
+export const MAX_ENTRY_POINT_CHARS = 32 * 1024;
+
+const searchesOf = (g: Grounding | undefined) => (g ? Math.max(g.queries.length, g.sources.length ? 1 : 0) : 0);
+
+/** A call's usage with the Google Search queries it ran (billed per query, lib/ai/capabilities.ts). */
+const withSearches = (u: CallUsage, g: Grounding | undefined): CallUsage => (searchesOf(g) ? { ...u, searches: searchesOf(g) } : u);
 
 const partsOf = (data: GeminiChunk) => data.candidates?.[0]?.content?.parts ?? [];
 const textOf = (data: GeminiChunk) =>
@@ -70,9 +121,11 @@ const modelPartsOf = (parts: GeminiPart[]): Part[] =>
 function bodyOf(req: GenerateRequest, model: string): string {
   const ask: Part[] = [...(req.prompt ? [{ text: req.prompt }] : []), ...(req.attachments ?? [])];
   const contents: Content[] = [...(req.contents ?? []), ...(ask.length ? [{ role: "user" as const, parts: ask }] : [])];
+  // Google Search grounding goes in a request of its own: not every model takes it with function
+  // declarations (lib/ai/provider.ts), so the declarations win and the search is left out.
   const tools = [
     ...(req.tools?.length ? [{ functionDeclarations: req.tools }] : []),
-    ...(req.searchGrounding ? [{ google_search: {} }] : []),
+    ...(req.searchGrounding && !req.tools?.length ? [{ google_search: {} }] : []),
   ];
   return JSON.stringify({
     systemInstruction: { parts: [{ text: req.system }] },
@@ -110,7 +163,8 @@ const TOO_SLOW = "The AI took too long to answer. Try again shortly.";
 async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDelta): Promise<GenerateResult> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) fail("maintenance", "The AI Assistant isn't set up on this server yet.");
-  const models = req.fast ? [geminiFastModel()] : [geminiModel(), geminiFastModel()];
+  // A grounded request only goes to models that can search (no fallback to one that can't).
+  const models = (req.fast ? [geminiFastModel()] : [geminiModel(), geminiFastModel()]).filter((m, i) => i === 0 || !req.searchGrounding || capabilitiesOf(m).searchGrounding);
   let lastStatus = 0;
   for (const m of models) {
     const stream = Boolean(onDelta);
@@ -152,6 +206,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         let finish: string | null = null;
         let stopped = false;
         let usage: GeminiUsage | undefined;
+        let grounding: Grounding | undefined;
         const callParts: Part[] = [];
         // Server-sent events: one JSON object per "data:" line, events separated by a blank line (\n or \r\n).
         const take = (event: string) => {
@@ -164,6 +219,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
               callParts.push(...modelPartsOf(partsOf(data)).filter((p) => "functionCall" in p));
               finish = data.candidates?.[0]?.finishReason ?? finish;
               usage = data.usageMetadata ?? usage;
+              grounding = groundingOf(data) ?? grounding;
             } catch {
               /* a partial or keep-alive line */
             }
@@ -194,12 +250,12 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         }
         if (!stopped && !timedOut && buffer.trim()) take(buffer);
         // A stream cut off by its deadline was still billed for what it produced.
-        const used = usageOf(m, usage, req, text);
+        const used = withSearches(usageOf(m, usage, req, text), grounding);
         meter.push(used);
         console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped, timedOut, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens }));
         if (timedOut) fail("maintenance", TOO_SLOW);
         if (!text.trim() && !stopped && !toolCalls.length) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
-        return { text: text.trim(), toolCalls, parts: [...(text ? [{ text }] : []), ...callParts], finish, stopped, model: m, usage: used };
+        return { text: text.trim(), toolCalls, parts: [...(text ? [{ text }] : []), ...callParts], finish, stopped, model: m, usage: used, ...(grounding ? { grounding } : {}) };
       }
       if (res.ok) {
         let data: GeminiChunk;
@@ -213,11 +269,12 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         const text = textOf(data).trim();
         const toolCalls = callsOf(data);
         const finish = data.candidates?.[0]?.finishReason ?? null;
-        const used = usageOf(m, data.usageMetadata, req, text);
+        const grounding = groundingOf(data);
+        const used = withSearches(usageOf(m, data.usageMetadata, req, text), grounding);
         meter.push(used);
-        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens }));
+        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens, ...(used.searches ? { searches: used.searches } : {}) }));
         if (!text && !toolCalls.length) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
-        return { text, toolCalls, parts: modelPartsOf(partsOf(data)), finish, stopped: false, model: m, usage: used };
+        return { text, toolCalls, parts: modelPartsOf(partsOf(data)), finish, stopped: false, model: m, usage: used, ...(grounding ? { grounding } : {}) };
       }
       console.warn(JSON.stringify({ event: "ai.error", model: m, status: res.status }));
       if (res.status !== 429 && res.status !== 503 && res.status !== 500) break;

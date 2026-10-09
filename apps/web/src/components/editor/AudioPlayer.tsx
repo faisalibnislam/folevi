@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Download, Pause, Play } from "lucide-react";
 import { formatBytes } from "@/lib/format";
 import { formatDuration } from "./AudioRecorder";
@@ -20,6 +20,7 @@ export function AudioPlayer({
   size,
   duration,
   status,
+  actions,
   className,
 }: {
   src: string | null;
@@ -35,6 +36,8 @@ export function AudioPlayer({
   duration: number | null;
   /** Upload progress, shown after the size. */
   status?: string | null;
+  /** More controls at the end (a note's Transcribe). */
+  actions?: ReactNode;
   className?: string;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
@@ -181,6 +184,7 @@ export function AudioPlayer({
           <Download size={15} aria-hidden />
         </a>
       ) : null}
+      {actions}
       {src ? (
         <audio
           ref={audio}

@@ -9,13 +9,15 @@ import { endHistoryGroup, normalizeDepths } from "@/components/editor/commands";
 
 /**
  * Where AI-written text goes: replacing a range (a selection), after the block at the cursor, above or
- * below the block holding a position (the text it was about), or at the end of the note.
+ * below the block holding a position (the text it was about), at a position between blocks at a depth
+ * (after a block with no text in it, like a recording), or at the end of the note.
  */
 export type AiPlacement =
   | { kind: "replace"; from: number; to: number; original: string }
   | { kind: "cursor" }
   | { kind: "above"; at: number }
   | { kind: "below"; at: number }
+  | { kind: "after"; pos: number; depth: number }
   | { kind: "end" };
 
 /** Put the cursor at the end of what was inserted (nothing left selected). */
@@ -66,6 +68,15 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
       else tr.insert(blockEnd, nodes);
       cursorAt(tr, start + nodes.reduce((n, x) => n + x.nodeSize, 0) - 1);
     }
+    commit(editor, tr);
+    return true;
+  }
+  if (placement.kind === "after") {
+    const nodes = nodesFor(editor, markdown, placement.depth);
+    if (!nodes.length) return true;
+    const pos = Math.max(0, Math.min(placement.pos, state.doc.content.size));
+    const tr = state.tr.insert(pos, nodes);
+    cursorAt(tr, pos + nodes.reduce((n, x) => n + x.nodeSize, 0) - 1);
     commit(editor, tr);
     return true;
   }

@@ -35,6 +35,8 @@ export const DEFAULT_RATE_RULES = {
   aiAgent: { limit: 40, windowMs: 60 * 60_000 },
   /** Approving or undoing an agent run's changes, per person. */
   aiAgentApply: { limit: 60, windowMs: 60 * 60_000 },
+  /** Deep research jobs per person (each also holds and pays credits). */
+  aiResearch: { limit: 10, windowMs: 60 * 60_000 },
   /** Notes read for the knowledge graph per account (a Personal or a workspace); platform-paid. */
   aiGraph: { limit: 300, windowMs: 60 * 60_000 },
   /** Support requests from the support page or the app, per client (hashed IP). */

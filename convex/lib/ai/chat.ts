@@ -101,7 +101,7 @@ export function passageBlock(blocks: { id: string; text: string }[], blockIds: s
 /** A conversation as Markdown: its title, then each message (answers with their sources). */
 export function conversationMarkdown(
   title: string,
-  messages: { role: string; text: string; citations?: { n: number; title: string }[] }[],
+  messages: { role: string; text: string; citations?: { n: number; title: string }[]; webCitations?: { n: number; title: string; url: string }[] }[],
   when: number,
 ): string {
   const out = [`# ${title}`, "", `_Exported from Folevi AI on ${new Date(when).toISOString().slice(0, 10)}._`, ""];
@@ -109,7 +109,8 @@ export function conversationMarkdown(
     if (m.role === "user") out.push("## You", "", m.text.trim(), "");
     else if (m.role === "assistant") {
       out.push("## Folevi AI", "", m.text.trim() || "_(no answer)_", "");
-      if (m.citations?.length) out.push("Sources:", ...m.citations.map((c) => `- [${c.n}] ${c.title}`), "");
+      const sources = [...(m.citations ?? []).map((c) => ({ n: c.n, line: `- [${c.n}] ${c.title}` })), ...(m.webCitations ?? []).map((c) => ({ n: c.n, line: `- [${c.n}] [${c.title.replace(/[[\]]/g, "")}](${c.url})` }))];
+      if (sources.length) out.push("Sources:", ...sources.sort((a, b) => a.n - b.n).map((s) => s.line), "");
     }
   }
   return `${out.join("\n").trim()}\n`;

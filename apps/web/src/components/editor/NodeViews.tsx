@@ -51,6 +51,7 @@ import { useEditorEnvironment } from "./environment";
 import { useDraft } from "./useDraft";
 import { useEditable } from "./useEditable";
 import { AudioPlayer } from "./AudioPlayer";
+import { TranscribeButton, useCanTranscribe, useTranscription } from "@/components/ai/AudioTranscribe";
 
 // The whiteboard, flowchart and collection blocks are large and most notes have none: each loads the first
 // time a note shows one, in a placeholder of the block's own height so nothing moves when it arrives.
@@ -312,8 +313,11 @@ function FileView({ node, selected }: ReactNodeViewProps) {
   );
 }
 
-/** An audio recording: the uploaded file, or the copy saved on this device while it waits to upload. */
-function AudioView({ node, selected }: ReactNodeViewProps) {
+/**
+ * An audio recording: the uploaded file, or the copy saved on this device while it waits to upload. An
+ * uploaded one can be transcribed (on request), with the transcript previewed under it.
+ */
+function AudioView({ node, selected, editor, getPos }: ReactNodeViewProps) {
   const a = node.attrs as {
     id: string;
     fileId: string | null;
@@ -324,6 +328,9 @@ function AudioView({ node, selected }: ReactNodeViewProps) {
   const { file, missing } = useFileUrl(a.fileId);
   const upload = useUploadState(a.id);
   const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
+  const editable = useEditable(editor);
+  const canTranscribe = useCanTranscribe(file ? a.fileId : null);
+  const transcription = useTranscription({ fileId: a.fileId, editor, getPos, node, editable });
   const status = upload
     ? upload.state === "failed"
       ? "Upload interrupted, retrying"
@@ -346,8 +353,10 @@ function AudioView({ node, selected }: ReactNodeViewProps) {
         size={a.size}
         duration={a.duration}
         status={status}
+        actions={canTranscribe ? <TranscribeButton onClick={transcription.start} busy={transcription.busy} /> : null}
         className="my-1.5"
       />
+      {transcription.preview}
     </Frame>
   );
 }

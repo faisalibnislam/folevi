@@ -53,8 +53,36 @@ export interface GenerateRequest {
   tools?: ToolDeclaration[];
   /** "none": the tools stay declared (earlier turns used them) but this reply must be text. */
   toolChoice?: "auto" | "none";
-  /** Ground the answer in Google Search results. */
+  /**
+   * Ground the answer in Google Search results (lib/ai/web.ts). Never together with `tools`: not every
+   * model takes Google Search and function declarations in one request, so a search is its own call and
+   * its results go back to a tool loop as a tool result. The adapter drops the search when both are set.
+   */
   searchGrounding?: boolean;
+}
+
+/** A web page a grounded answer drew on (Google's link to it, and its title, often the site's domain). */
+export interface GroundingSource {
+  uri: string;
+  title: string;
+}
+
+/** A stretch of a grounded answer and the sources (indexes into `sources`) that back it. */
+export interface GroundingSupport {
+  text: string;
+  sources: number[];
+}
+
+/** What a grounded answer was based on: the searches the model ran, the pages, and which text each backs. */
+export interface Grounding {
+  queries: string[];
+  sources: GroundingSource[];
+  supports: GroundingSupport[];
+  /**
+   * Google's Search Suggestions chip (searchEntryPoint.renderedContent: HTML and CSS), which Google's terms
+   * require showing with a grounded answer. Untrusted markup: only ever shown in a sandboxed frame.
+   */
+  entryPoint?: string;
 }
 
 export interface GenerateResult {
@@ -71,6 +99,8 @@ export interface GenerateResult {
   stopped: boolean;
   model: string;
   usage: CallUsage;
+  /** A grounded answer's searches and sources (searchGrounding). */
+  grounding?: Grounding;
 }
 
 /**

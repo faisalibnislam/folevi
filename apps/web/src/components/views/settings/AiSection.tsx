@@ -41,18 +41,16 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "attachments",
     label: "Read attachments",
-    body: "Let the assistant read files you add to a question, such as PDFs, images and spreadsheets.",
+    body: "Let the assistant read files you add to a question, such as PDFs, images, text and spreadsheets, and transcribe recordings when you ask. Files are only read when you send them.",
     on: "Attachments turned on",
     off: "Attachments turned off",
-    soon: true,
   },
   {
     key: "webResearch",
     label: "Web research",
-    body: "Let the assistant search the web when you ask it to, with links to what it found.",
+    body: "Let the assistant search the web and read pages you link when you ask it to, with links to what it found. This also turns on Research. Searches go through Google Search.",
     on: "Web research turned on",
     off: "Web research turned off",
-    soon: true,
   },
   {
     key: "digests",

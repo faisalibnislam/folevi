@@ -446,38 +446,32 @@ export function DocumentView({ documentId }: { documentId: string }) {
     });
   }, [setInspectorOpen, inspectorTab]);
 
-  // AI on a note lives in its right sidebar (the "AI" tool): this note's tools, or the chat with all notes. A
-  // selection rewrite from the editor's toolbar, "ask AI to write" from the slash menu, ⌘J and Ask AI open it.
+  // AI on a note lives in its right sidebar (the "AI" tool), about this note. A selection rewrite from the
+  // editor's toolbar, "ask AI to write" from the slash menu and ⌘J open it.
   const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
   // AI follows the note's own scope (your Personal: your Personal plan; a team: its workspace plan).
   const aiOn = useAiEnabled(meta?.document);
-  const [aiView, setAiView] = useState<"note" | "all">("note");
-  const [aiQuestion, setAiQuestion] = useState<{ text: string; at: number } | undefined>(undefined);
-  const openAi = useCallback(
-    (view: "note" | "all", question?: string) => {
-      setAiView(view);
-      if (question) setAiQuestion({ text: question, at: Date.now() });
-      setInspectorTab("ai");
-      setInspectorOpen(true);
-    },
-    [setInspectorTab, setInspectorOpen],
-  );
+  // AI in a note is always about this note: its tools open in the sidebar.
+  const openAi = useCallback(() => {
+    setInspectorTab("ai");
+    setInspectorOpen(true);
+  }, [setInspectorTab, setInspectorOpen]);
   // AI turned off while its tool is open: show another one instead.
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
   }, [aiOn, inspectorTab, setInspectorTab]);
   useEffect(() => {
     if (!aiOn) return;
-    setNoteAi(({ view, question }) => openAi(view, question));
+    setNoteAi(() => openAi());
     return () => setNoteAi(null);
   }, [aiOn, setNoteAi, openAi]);
   useEffect(() => {
     if (!aiOn) return;
     const onRun = (e: Event) => {
       setAiRun({ ...(e as CustomEvent<AiRunDetail>).detail, id: Date.now() });
-      openAi("note");
+      openAi();
     };
-    const onOpen = () => openAi("note");
+    const onOpen = () => openAi();
     window.addEventListener(AI_RUN_EVENT, onRun);
     window.addEventListener(AI_OPEN_EVENT, onOpen);
     return () => {
@@ -814,7 +808,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
           tab={inspectorTab}
           open={inspectorOpen}
           onPick={(t) => {
-            if (t === "ai") setAiView("note");
             if (inspectorOpen && inspectorTab === t) closeInspector();
             else {
               setInspectorTab(t);
@@ -855,9 +848,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
               }}
               onClose={closeInspector}
               aiRun={aiRun}
-              aiView={aiView}
-              onAiView={setAiView}
-              aiQuestion={aiQuestion}
               onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
               onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
               actions={actions}
@@ -900,9 +890,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 }}
                 onClose={closeInspector}
                 aiRun={aiRun}
-                aiView={aiView}
-                onAiView={setAiView}
-                aiQuestion={aiQuestion}
                 onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
                 onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
                 actions={actions}

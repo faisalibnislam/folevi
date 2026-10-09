@@ -271,7 +271,9 @@ export function Shell() {
         } else setCollapsed(false);
       },
       setAmbient,
-      openAsk: (q, folder) => (noteAi.current && !folder ? noteAi.current({ view: "all", question: q }) : setAskOpen({ q, folder })),
+      // A typed question (the palette) or a folder is about more than this note: the floating chat. Plain Ask AI on
+      // a note opens the note's AI.
+      openAsk: (q, folder) => (noteAi.current && !folder && !q ? noteAi.current({ view: "note" }) : setAskOpen({ q, folder })),
       setNoteAi,
     }),
     [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient, setNoteAi],

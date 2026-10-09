@@ -126,8 +126,7 @@ export function AskAiChat({
   );
 }
 
-/** The chat with your notes (questions, cited answers, proposed changes): in the floating chat, and in a note's AI sidebar. */
-export function Conversation({ open, initial, folder, onNavigate }: { open: boolean; initial?: string; folder?: { id: string; name: string }; onNavigate: () => void }) {
+function Conversation({ open, initial, folder, onNavigate }: { open: boolean; initial?: string; folder?: { id: string; name: string }; onNavigate: () => void }) {
   const { ask } = useAi();
   const stream = useAiStream();
   const { navigate } = useAppRouter();

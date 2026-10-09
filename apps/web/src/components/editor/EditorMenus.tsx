@@ -205,7 +205,7 @@ function Popover({
       aria-label={role === "dialog" ? label : undefined}
       popover="manual"
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, visibility: pos ? "visible" : "hidden" }}
-      className={`z-[100] border-0 text-ink ${scroll ? `${tall ? "max-h-[min(600px,85vh)]" : "max-h-[min(420px,70vh)]"} overflow-y-auto` : ""} ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
+      className={`z-[100] border-0 text-ink ${scroll ? `${tall ? "max-h-[min(600px,85vh)]" : "max-h-[min(420px,70vh)]"} overflow-y-auto` : ""} ui-pop ui-app-colors p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
       onMouseDown={(e) => {
         // Keep focus in the editor, except for form controls inside the popover (fields, and Folevi's own
         // dropdowns and date fields, which are buttons that open a list).
@@ -1429,7 +1429,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
       aria-label="Text formatting"
       aria-orientation="horizontal"
       popover="manual"
-      className="z-[100] ui-pop max-w-[calc(100vw-16px)] rounded-[8px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
+      className="z-[100] ui-pop ui-app-colors max-w-[calc(100vw-16px)] rounded-[8px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: placed?.left ?? 0, top: placed?.top ?? 0, visibility: placed ? "visible" : "hidden" }}
       onMouseDown={(e) => {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
@@ -1861,7 +1861,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       </p>
       {hover && !menu && !dragging ? (
         <div
-          className="ui-raised fixed z-30 flex items-center gap-px rounded-[8px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
+          className="ui-raised ui-app-colors fixed z-30 flex items-center gap-px rounded-[8px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
           // Where there's no room beside the line (narrow windows, phones) only the grip shows, so the handle
           // never covers the start of the text (the grip's menu has Insert below).
           // On touch screens only the grip shows too (Return adds a line there).

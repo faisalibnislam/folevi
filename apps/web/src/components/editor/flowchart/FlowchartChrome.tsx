@@ -54,7 +54,7 @@ export function MainToolbar({
   aiOpen: boolean;
 }) {
   return (
-    <div className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="fc-bar ui-app-colors fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
       <span role="group" aria-label="Add a shape" className="fc-group">
         {FLOWCHART_SHAPES.map((s) => (
           <button key={s} type="button" className="fc-btn" aria-label={`Add ${FLOWCHART_SHAPE_LABEL[s].toLowerCase()}`} title={FLOWCHART_SHAPE_LABEL[s]} onClick={() => onAdd(s)}>
@@ -84,7 +84,7 @@ export function MainToolbar({
 
 export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit }: { zoom: number; onZoomIn: () => void; onZoomOut: () => void; onFit: () => void }) {
   return (
-    <div className="fc-bar fc-bar-zoom" role="toolbar" aria-label="Zoom" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="fc-bar ui-app-colors fc-bar-zoom" role="toolbar" aria-label="Zoom" onPointerDown={(e) => e.stopPropagation()}>
       <button type="button" className="fc-btn" aria-label="Zoom out" title="Zoom out (−)" onClick={onZoomOut}>
         <Minus size={15} aria-hidden />
       </button>
@@ -130,7 +130,7 @@ export function NodeBar({
   style: React.CSSProperties;
 }) {
   return (
-    <div className="fc-bar fc-bar-float" role="toolbar" aria-label="Selected shapes" style={style} onPointerDown={(e) => e.stopPropagation()}>
+    <div className="fc-bar ui-app-colors fc-bar-float" role="toolbar" aria-label="Selected shapes" style={style} onPointerDown={(e) => e.stopPropagation()}>
       <MenuButton
         label="Change shape"
         align="start"
@@ -181,7 +181,7 @@ export function EdgeBar({
     </svg>
   );
   return (
-    <div className="fc-bar fc-bar-float" role="toolbar" aria-label="Selected connectors" style={style} onPointerDown={(e) => e.stopPropagation()}>
+    <div className="fc-bar ui-app-colors fc-bar-float" role="toolbar" aria-label="Selected connectors" style={style} onPointerDown={(e) => e.stopPropagation()}>
       <span role="group" aria-label="Line" className="fc-group">
         <button type="button" className="fc-btn" aria-pressed={lineStyle === "solid"} aria-label="Solid line" title="Solid" onClick={() => onStyle("solid")}>
           {icon("M3 10h14")}

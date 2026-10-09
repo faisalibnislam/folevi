@@ -49,7 +49,7 @@ export function FlowchartAi({
   const ideas = mode === "create" ? CREATE_IDEAS : UPDATE_IDEAS;
   return (
     <div
-      className="fc-ai ui-pop"
+      className="fc-ai ui-pop ui-app-colors"
       role="dialog"
       aria-label={mode === "create" ? "Create a flowchart with AI" : "Change the flowchart with AI"}
       onPointerDown={(e) => e.stopPropagation()}

@@ -941,7 +941,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
             <div className="fc-empty">
               <p>Double-click anywhere to add a shape, or pick one above.</p>
               {aiOn ? (
-                <button type="button" className="fc-btn fc-btn-text fc-empty-ai" onClick={() => setAiOpen(true)} onPointerDown={(e) => e.stopPropagation()}>
+                <button type="button" className="fc-btn fc-btn-text fc-empty-ai ui-app-colors" onClick={() => setAiOpen(true)} onPointerDown={(e) => e.stopPropagation()}>
                   Create with AI
                 </button>
               ) : null}
@@ -983,7 +983,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
           ) : null}
           {aiOpen ? <FlowchartAi hasChart={nodeCount > 0} current={() => serializeFlowchart(docRef.current)} onApply={applyDraft} onClose={() => setAiOpen(false)} /> : null}
           {tooLarge ? (
-            <p className="fc-warning" role="alert">
+            <p className="fc-warning ui-app-colors" role="alert">
               This flowchart is too large to save. Remove some shapes or text.
             </p>
           ) : null}

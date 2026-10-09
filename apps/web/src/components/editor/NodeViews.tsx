@@ -203,7 +203,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             <img src={src} alt={a.alt || ""} className="block h-auto max-w-full rounded-[6px] border border-line bg-sunken" draggable={false} />
             {selected && editable ? (
               <div
-                className="ui-pop absolute bottom-2 left-2 z-20 flex w-max max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-xs text-muted"
+                className="ui-pop ui-app-colors absolute bottom-2 left-2 z-20 flex w-max max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-xs text-muted"
                 contentEditable={false}
               >
                 <label className="flex items-center gap-1">

@@ -173,7 +173,7 @@ export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, deco
 
   const buildCard = () => {
     bar = document.createElement("div");
-    bar.className = "fb-mermaid-bar";
+    bar.className = "fb-mermaid-bar ui-app-colors";
     bar.contentEditable = "false";
     const label = document.createElement("span");
     label.className = "fb-mermaid-label";

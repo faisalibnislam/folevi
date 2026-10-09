@@ -46,7 +46,8 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
       {!data ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : (
-        <div className="space-y-6 text-sm">
+        // (Room below the last card, so it never sits on the dialog's bottom edge.)
+        <div className="space-y-6 pb-3 text-sm">
           <section>
             <h3 className="mb-2 font-semibold">Who has access</h3>
             {personal ? (

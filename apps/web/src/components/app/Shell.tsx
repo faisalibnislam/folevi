@@ -45,8 +45,11 @@ interface ShellValue {
   /** Focus mode hides both sidebars. */
   focusMode: boolean;
   setFocusMode: (on: boolean) => void;
-  /** The ambient light behind the glass chrome: a CSS background (a note's style image), or null for neutral. */
-  setAmbient: (css: string | null) => void;
+  /**
+   * The ambient light behind the glass chrome: a CSS background (a note's style image), or null for neutral;
+   * `tone` says whether it reads dark ("deep") or light, so the chrome over it stays readable.
+   */
+  setAmbient: (css: string | null, tone?: "deep" | "light" | null) => void;
   /** Opens Ask AI (⌘J), optionally with a question typed in, or about one folder's notes. */
   openAsk: (question?: string, folder?: { id: string; name: string }) => void;
 }
@@ -153,7 +156,21 @@ export function Shell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [ambient, setAmbient] = useState<string | null>(null);
+  const [ambient, setAmbientCss] = useState<string | null>(null);
+  const [ambientTone, setAmbientTone] = useState<"deep" | "light" | null>(null);
+  const setAmbient = useCallback((css: string | null, tone: "deep" | "light" | null = null) => {
+    setAmbientCss(css);
+    setAmbientTone(css ? tone : null);
+  }, []);
+  // A dark style in light mode (or a light one in dark mode) gets a stronger veil (globals.css, data-ambient).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (ambientTone) root.dataset.ambient = ambientTone;
+    else delete root.dataset.ambient;
+    return () => {
+      delete root.dataset.ambient;
+    };
+  }, [ambientTone]);
   const [askOpen, setAskOpen] = useState<{ q?: string; folder?: { id: string; name: string } } | null>(null);
   const ai = useAiAccess();
   const aiOn = ai.on;
@@ -248,7 +265,7 @@ export function Shell() {
       setAmbient,
       openAsk: (q, folder) => setAskOpen({ q, folder }),
     }),
-    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed],
+    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient],
   );
 
   // Dragging moves the panel's edge directly and saves the width once, on release: saving on every move

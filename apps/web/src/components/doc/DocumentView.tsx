@@ -379,9 +379,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
     : ambientCover.kind === "image"
       ? (coverImageUrl ? `url(${JSON.stringify(coverImageUrl)}) center / cover no-repeat` : null)
       : (pageBackdrop(style, ambientCover, coverImageUrl) ?? null);
+  // How dark the art reads: the style's own tone, or for a person's image, the one picked from it.
+  const ambientTone = ambientArt ? ambientArt.tone : ambientCover.kind === "image" ? (coverPalette?.tone ?? null) : null;
   useEffect(() => {
-    setAmbient(ambient);
-  }, [ambient, setAmbient]);
+    setAmbient(ambient, ambientTone);
+  }, [ambient, ambientTone, setAmbient]);
   useEffect(() => () => setAmbient(null), [setAmbient]);
   const readOnly = Boolean(meta && (meta.access === "read" || meta.access === "comment" || meta.inTrash)) || Boolean(settings?.readOnly && !profile.platformRole);
 

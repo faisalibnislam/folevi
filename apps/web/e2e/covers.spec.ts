@@ -14,6 +14,8 @@ test("pick one of the note styles (or Plain) from the inspector; it persists", a
   await expect(styles).toHaveCount(57);
   await page.getByRole("radio", { name: "Note style: Irises" }).click();
   await expect(page.getByRole("radio", { name: "Note style: Irises" })).toHaveAttribute("aria-checked", "true");
+  // A dark style: the chrome around it is veiled for legibility (light mode keeps light glass).
+  await expect(page.locator("html")).toHaveAttribute("data-ambient", "deep");
   await expect(noteStyle.getByRole("button", { name: "Irises" })).toBeVisible();
   // Auto colours come from the style: a light page and dark text in its hue.
   await expect(page.locator("article.fb-sheet")).toHaveAttribute("data-sheet", "art");

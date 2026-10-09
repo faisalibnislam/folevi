@@ -169,6 +169,16 @@
   --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(20 20 40 / 0.14);
   --ambient-veil: var(--glass-veil);
 }
+/* A note whose style reads dark, in light mode, would darken the light glass under dark text (and a light
+   style in dark mode the reverse): its ambient light is veiled far more, so the chrome stays legible. */
+:root[data-theme="light"][data-ambient="deep"] { --ambient-veil: rgb(238 238 241 / 0.84); --glass-sidebar: rgb(255 255 255 / 0.6); }
+:root[data-theme="dark"][data-ambient="light"] { --ambient-veil: rgb(12 12 14 / 0.84); --glass-sidebar: rgb(28 28 31 / 0.6); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"])[data-ambient="deep"] { --ambient-veil: rgb(238 238 241 / 0.84); --glass-sidebar: rgb(255 255 255 / 0.6); }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-ambient="light"] { --ambient-veil: rgb(12 12 14 / 0.84); --glass-sidebar: rgb(28 28 31 / 0.6); }
+}
 :root[data-theme="dark"] {
   --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.4);
   --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -14px rgb(0 0 0 / 0.6);

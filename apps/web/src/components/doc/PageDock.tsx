@@ -43,7 +43,12 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
           </button>
         );
       })}
-      {extra}
+      {extra ? (
+        <>
+          <span aria-hidden className="mx-1 h-6 w-px bg-line" />
+          {extra}
+        </>
+      ) : null}
     </div>
   );
 }

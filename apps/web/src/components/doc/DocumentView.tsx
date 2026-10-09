@@ -18,6 +18,8 @@ import {
   History,
   LayoutTemplate,
   Info,
+  Link2,
+  Lock,
   MoreHorizontal,
   Printer,
   Search,
@@ -47,7 +49,7 @@ import { ViewChrome, useShell } from "@/components/app/Shell";
 import { setBlockHighlight } from "@/components/editor/blockHighlight";
 import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
-import { personInk, type DecorationInputs } from "@/components/editor/plugins";
+import type { DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
 import { BlurredBackdrop } from "./BlurredBackdrop";
 import { NotePaletteProvider } from "@/components/editor/notePalette";
@@ -87,6 +89,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const meta = useQuery(api.documents.get, { documentId });
   const server = useQuery(api.blocks.list, { documentId });
   const settings = useQuery(api.settings.status, {});
+  // Who else can open it (the bar's Share button says "Shared"); once the server knows the note.
+  const sharing = useQuery(api.sharing.get, meta ? { documentId } : "skip");
   const editorRef = useRef<EditorHandle>(null);
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
@@ -605,9 +609,39 @@ export function DocumentView({ documentId }: { documentId: string }) {
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
   const pageTitle = summary?.title || localTitle || "Untitled";
+  // Shared once anyone else can open it: a public link, people (or a pending invitation), the whole workspace, or
+  // it's someone else's page you were given.
+  const shareState: "link" | "people" | null = !sharing
+    ? null
+    : sharing.links.some((l) => !l.expired)
+      ? "link"
+      : sharing.youAreGuest || sharing.people.some((p) => !p.isYou) || sharing.pendingInvites.length || (sharing.accessMode === "workspace" && meta?.document.workspaceId)
+        ? "people"
+        : null;
+  const others = presence ?? [];
   const pageGroup = (
     <div role="group" aria-label="Page" className="flex items-center gap-0.5">
-      <PresenceAvatars people={presence ?? []} />
+      {/* Who's here, like Google Docs: you and the others, only while someone else has the note open. */}
+      {others.length ? (
+        <>
+          <BarAvatars me={{ name: profile.displayName, avatarUrl: profile.avatarUrl ?? null, color: personColorOf(profile.id) }} others={others} />
+          <span aria-hidden className="mx-1 h-6 w-px bg-line" />
+        </>
+      ) : null}
+      {meta ? (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setShareOpen(true)}
+          title={shareState === "link" ? "Anyone with the link can view" : shareState === "people" ? "Shared with other people" : "Only you can open this"}
+          className={`inline-flex h-10 items-center gap-2 rounded-[6px] px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
+            shareState ? "bg-accent-soft text-heading hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_80%,var(--color-ink)_8%)]" : "text-ink hover:bg-accent-soft hover:text-heading"
+          }`}
+        >
+          {shareState === "link" ? <Link2 size={15} aria-hidden /> : shareState === "people" ? <Users size={15} aria-hidden /> : <Lock size={14} aria-hidden />}
+          <span className="max-sm:sr-only">{shareState ? "Shared" : "Share"}</span>
+        </button>
+      ) : null}
       {summary ? (
         <MenuButton
           label="Document actions"
@@ -1005,21 +1039,25 @@ function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, 
   );
 }
 
-function PresenceAvatars({ people }: { people: { profileId: string; name: string; color: string }[] }) {
-  if (!people.length) return null;
+// A person's colour, as the server picks it (convex/lib/authors.ts personColor): the same everywhere they appear.
+const PERSON_COLORS = ["accent", "moss", "marigold", "plum", "coral", "ember"] as const;
+const personColorOf = (profileId: string) => PERSON_COLORS[parseInt(profileId.slice(-2), 36) % PERSON_COLORS.length] ?? "accent";
+
+/** You and whoever else has the note open: pictures (or initials) ringed in each person's colour, up to four, then +N. */
+function BarAvatars({ me, others }: { me: { name: string; avatarUrl: string | null; color: string }; others: { profileId: string; name: string; color: string; avatarUrl?: string | null }[] }) {
+  const people = [{ key: "me", name: `${me.name} (you)`, avatarUrl: me.avatarUrl, color: me.color }, ...others.map((p) => ({ key: p.profileId, name: p.name, avatarUrl: p.avatarUrl ?? null, color: p.color }))];
+  const shown = people.slice(0, 4);
+  const more = people.length - shown.length;
   return (
-    <div className="mr-1 flex -space-x-1.5" aria-label={`Also here: ${people.map((p) => p.name).join(", ")}`} role="group">
-      {people.slice(0, 4).map((p) => (
-        // White initials on the deeper shade of their colour in light mode (the bright one is too pale for small text).
-        <span
-          key={p.profileId}
-          title={p.name}
-          className="grid h-6 w-6 place-items-center rounded-full border-2 border-canvas bg-(--who-ink) text-[10px] font-semibold text-white dark:bg-(--who)"
-          style={{ "--who": `var(--color-${p.color})`, "--who-ink": personInk(p.color) } as React.CSSProperties}
-        >
-          {p.name.slice(0, 1).toUpperCase()}
-        </span>
-      ))}
+    <div role="group" aria-label={`Here now: ${people.map((p) => p.name).join(", ")}`} className="flex items-center px-1.5">
+      <div className="flex -space-x-1.5">
+        {shown.map((p) => (
+          <span key={p.key} title={p.name} className="rounded-full bg-[var(--color-surface-raised)] p-[1.5px]">
+            <Avatar name={p.name} url={p.avatarUrl} size={24} ring={`var(--color-${p.color})`} />
+          </span>
+        ))}
+      </div>
+      {more > 0 ? <span className="ml-1.5 text-xs font-medium text-muted">+{more}</span> : null}
     </div>
   );
 }

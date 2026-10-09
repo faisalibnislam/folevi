@@ -12,6 +12,7 @@ async function readableDoc(ctx: MutationCtx, profile: Awaited<ReturnType<typeof 
 }
 import { keyedHash } from "./lib/crypto";
 import { personColor } from "./lib/authors";
+import { identityImageUrl } from "./lib/identityImages";
 
 const ACTIVE_MS = 45_000;
 
@@ -60,14 +61,15 @@ export const list = query({
       .query("presence")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id).gt("updatedAt", args.now - ACTIVE_MS))
       .take(50);
-    const byProfile = new Map<string, { profileId: string; name: string; color: string; focusedBlockId: string | null }>();
+    const byProfile = new Map<string, { profileId: string; name: string; color: string; avatarUrl: string | null; focusedBlockId: string | null }>();
     for (const r of rows) {
       if (r.profileId === profile._id) continue;
       const p = await ctx.db.get(r.profileId);
       if (!p) continue;
       // The same colour as in version history and "Show editors".
       const color = personColor(r.profileId);
-      byProfile.set(r.profileId, { profileId: r.profileId, name: p.displayName, color, focusedBlockId: r.focusedBlockId ?? null });
+      if (byProfile.has(r.profileId)) continue;
+      byProfile.set(r.profileId, { profileId: r.profileId, name: p.displayName, color, avatarUrl: await identityImageUrl(ctx, p.avatarFileId), focusedBlockId: r.focusedBlockId ?? null });
     }
     return [...byProfile.values()];
   },

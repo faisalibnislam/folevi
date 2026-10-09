@@ -81,6 +81,11 @@ test("an outsider with “Can edit” edits a page shared from a workspace they'
   // The guest isn't a member: the page shows the workspace's name, and edits sync from their Personal.
   await editShared(guest.page, /Harbor plan/, "Harbor Studio", "Edited from outside the workspace");
   await expect(owner.page.getByRole("textbox", { name: "Document body" })).toContainText("Edited from outside the workspace", { timeout: 20_000 });
+  // Both on the page: each one's bar shows who's here (you and the other), and the page reads as shared.
+  const ownerBar = owner.page.getByRole("toolbar", { name: "Page tools" });
+  await expect(ownerBar.getByRole("group", { name: /^Here now: .*Studio Owner \(you\).*Studio Guest/ })).toBeVisible({ timeout: 20_000 });
+  await expect(ownerBar.getByRole("button", { name: "Shared" })).toBeVisible();
+  await expect(guest.page.getByRole("toolbar", { name: "Page tools" }).getByRole("group", { name: /^Here now: .*Studio Guest \(you\).*Studio Owner/ })).toBeVisible({ timeout: 20_000 });
 
   // A deep link keeps working after a reload on the guest's side too (the queue is account-wide), and the
   // guest still has no workspaces of their own.

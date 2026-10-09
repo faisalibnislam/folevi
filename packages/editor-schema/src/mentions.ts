@@ -1,0 +1,59 @@
+// "@Name" in AI-written text turned into real mentions (a meeting summary's owners, docs/AI_ASSISTANT.md
+// milestone 8). Shared by the web app (inserting into a note) and the server (saving a new note), so both
+// link the same names the same way.
+import { TEXT_BLOCK_TYPES, type InlineNode } from "./generated/schema";
+import type { WireBlock } from "./types";
+import { normalizeInline } from "./richtext";
+
+/** Someone who can be mentioned in a note. */
+export interface MentionablePerson {
+  profileId: string;
+  displayName: string;
+}
+
+const TEXT_TYPES: ReadonlySet<string> = new Set(TEXT_BLOCK_TYPES);
+const WORD = /[\p{L}\p{N}_]/u;
+
+/** "@Name" in plain text, as text and mention nodes: the longest name that matches, ending at a word boundary. */
+function mentionsIn(text: string, people: readonly MentionablePerson[]): InlineNode[] | null {
+  const byLength = [...people].filter((p) => p.displayName.trim()).sort((a, b) => b.displayName.length - a.displayName.length);
+  const out: InlineNode[] = [];
+  let rest = 0;
+  let found = false;
+  for (let i = text.indexOf("@"); i >= 0; i = text.indexOf("@", i + 1)) {
+    if (i < rest || (i > 0 && WORD.test(text[i - 1]!))) continue;
+    const after = text.slice(i + 1);
+    const who = byLength.find((p) => after.toLowerCase().startsWith(p.displayName.toLowerCase()) && !WORD.test(after[p.displayName.length] ?? ""));
+    if (!who) continue;
+    if (i > rest) out.push({ type: "text", text: text.slice(rest, i) });
+    out.push({ type: "mention", userId: who.profileId, label: who.displayName });
+    rest = i + 1 + who.displayName.length;
+    found = true;
+  }
+  if (!found) return null;
+  if (rest < text.length) out.push({ type: "text", text: text.slice(rest) });
+  return out;
+}
+
+/**
+ * AI-written blocks with "@Name" turned into real mentions of `people`, and a to-do that mentions someone
+ * (and has no assignee) assigned to the first of them. Names that match nobody stay as written.
+ */
+export function linkPeople(blocks: readonly WireBlock[], people: readonly MentionablePerson[] | undefined): WireBlock[] {
+  if (!people?.length) return [...blocks];
+  return blocks.map((b) => {
+    if (!TEXT_TYPES.has(b.type)) return b;
+    let changed = false;
+    const text = b.text.flatMap((n): InlineNode[] => {
+      if (n.type !== "text" || n.marks?.length) return [n];
+      const linked = mentionsIn(n.text, people);
+      if (!linked) return [n];
+      changed = true;
+      return linked;
+    });
+    if (!changed) return b;
+    const first = text.find((n) => n.type === "mention");
+    const props = b.type === "todo" && first && !b.props.assigneeId ? { ...b.props, assigneeId: (first as { userId: string }).userId } : b.props;
+    return { ...b, text: normalizeInline(text), props };
+  });
+}

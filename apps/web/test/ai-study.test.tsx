@@ -68,7 +68,8 @@ const texts = (e: Editor) => {
   return out;
 };
 /** Lines for study mode from Markdown (as the note would hold it). */
-const linesOf = (md: string) => flattenTree(markdownToBlocks(md, { titleFromHeading: false }).blocks).map(({ block, depth }) => ({ id: block.id, type: block.type, depth, text: plainText(block.text) }));
+const linesOf = (md: string) =>
+  flattenTree(markdownToBlocks(md, { titleFromHeading: false }).blocks).map(({ block, depth }) => ({ id: block.id, type: block.type, depth, text: plainText(block.text), study: (block.props as { study?: "card" | "quiz" }).study ?? null }));
 const button = (host: HTMLElement, name: string) => [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === name);
 const option = (host: HTMLElement, name: string) => [...host.querySelectorAll('[role="option"]')].find((o) => o.textContent?.trim() === name) as HTMLElement | undefined;
 
@@ -97,8 +98,8 @@ describe("the new actions", () => {
       expect(TOOL_TASKS.has(t.task)).toBe(true);
     }
     expect(AI_TOOL_SLASH_ITEMS.map((i) => i.label)).toEqual([
-      "AI: Meeting summary", "AI: Flashcards", "AI: Quiz", "AI: Pros and cons", "AI: Decision matrix", "AI: SWOT analysis",
-      "AI: Risks and mitigations", "AI: Pre-mortem", "AI: Mind map", "AI: How might we", "AI: SCAMPER", "AI: Six thinking hats",
+      "Foli: Meeting summary", "Foli: Flashcards", "Foli: Quiz", "Foli: Pros and cons", "Foli: Decision matrix", "Foli: SWOT analysis",
+      "Foli: Risks and mitigations", "Foli: Pre-mortem", "Foli: Mind map", "Foli: How might we", "Foli: SCAMPER", "Foli: Six thinking hats",
     ]);
     // "think" finds the frameworks, "ai" finds them all.
     expect(AI_TOOL_SLASH_ITEMS.filter((i) => i.keywords.includes("think")).map((i) => i.task)).toEqual(["prosCons", "decisionMatrix", "swot", "risks", "premortem", "mindMap", "howMightWe", "scamper", "sixHats"]);

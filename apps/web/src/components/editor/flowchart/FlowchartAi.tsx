@@ -62,7 +62,7 @@ export function FlowchartAi({
       }}
     >
       {hasChart ? (
-        <div className="fc-ai-modes" role="group" aria-label="What the AI should do">
+        <div className="fc-ai-modes" role="group" aria-label="What Foli should do">
           <button type="button" aria-pressed={mode === "update"} onClick={() => setMode("update")}>
             Update this chart
           </button>
@@ -122,7 +122,7 @@ export function FlowchartAi({
           </ul>
         </>
       )}
-      <p className="fc-ai-foot">AI can make mistakes. Sent to Google Gemini. {mode === "update" ? "Undo with ⌘Z." : ""}</p>
+      <p className="fc-ai-foot">Foli can make mistakes. Sent to Google Gemini. {mode === "update" ? "Undo with ⌘Z." : ""}</p>
     </div>
   );
 }

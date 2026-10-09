@@ -10,7 +10,7 @@ import { Eyebrow } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Folevi docs: how the notes app works",
   description:
-    "How Folevi works: getting started, blocks and the / menu, tasks, sync and offline, sharing, workspaces, import and export, the AI Assistant and security.",
+    "How Folevi works: getting started, blocks and the / menu, tasks, sync and offline, sharing, workspaces, import and export, Foli (the AI assistant) and security.",
   path: "/docs",
   ogImage: "segment",
 });

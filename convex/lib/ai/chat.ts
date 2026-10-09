@@ -98,20 +98,38 @@ export function passageBlock(blocks: { id: string; text: string }[], blockIds: s
   return bestBlock(candidates, said) ?? quoteOf(candidates[0]!);
 }
 
-/** A conversation as Markdown: its title, then each message (answers with their sources). */
-export function conversationMarkdown(
-  title: string,
-  messages: { role: string; text: string; citations?: { n: number; title: string }[]; webCitations?: { n: number; title: string; url: string }[] }[],
-  when: number,
-): string {
-  const out = [`# ${title}`, "", `_Exported from Folevi AI on ${new Date(when).toISOString().slice(0, 10)}._`, ""];
+/** What became of an agent's proposed change, in the export. */
+const CHANGE_STATES: Record<string, string> = { proposed: "proposed", applied: "done", failed: "couldn't be done", skipped: "skipped" };
+
+/** A message as the Markdown export writes it (an agent's answer also lists its changes). */
+export interface MarkdownMessage {
+  role: string;
+  text: string;
+  citations?: { n: number; title: string; noteId?: string }[];
+  webCitations?: { n: number; title: string; url: string }[];
+  changes?: { summary: string; status: string }[];
+}
+
+/**
+ * A conversation as Markdown: its title, then each message (answers with their sources, an agent's answer
+ * with its changes). `noteLine` writes a cited note's source line (a note export makes it a page link).
+ * Without a title, just the messages (one answer copied on its own).
+ */
+export function conversationMarkdown(title: string | null, messages: MarkdownMessage[], when: number, noteLine?: (c: { n: number; title: string; noteId?: string }) => string): string {
+  const out = title === null ? [] : [`# ${title}`, "", `_Exported from Folevi AI on ${new Date(when).toISOString().slice(0, 10)}._`, ""];
   for (const m of messages) {
     if (m.role === "user") out.push("## You", "", m.text.trim(), "");
     else if (m.role === "assistant") {
       out.push("## Folevi AI", "", m.text.trim() || "_(no answer)_", "");
-      const sources = [...(m.citations ?? []).map((c) => ({ n: c.n, line: `- [${c.n}] ${c.title}` })), ...(m.webCitations ?? []).map((c) => ({ n: c.n, line: `- [${c.n}] [${c.title.replace(/[[\]]/g, "")}](${c.url})` }))];
+      if (m.changes?.length) out.push("Changes:", ...m.changes.map((c) => `- ${c.summary} (${CHANGE_STATES[c.status] ?? c.status})`), "");
+      const sources = [...(m.citations ?? []).map((c) => ({ n: c.n, line: noteLine ? noteLine(c) : `- [${c.n}] ${c.title}` })), ...(m.webCitations ?? []).map((c) => ({ n: c.n, line: `- [${c.n}] [${c.title.replace(/[[\]]/g, "")}](${c.url})` }))];
       if (sources.length) out.push("Sources:", ...sources.sort((a, b) => a.n - b.n).map((s) => s.line), "");
     }
   }
   return `${out.join("\n").trim()}\n`;
+}
+
+/** A conversation's title as a file name (no path or reserved characters). */
+export function conversationFilename(title: string): string {
+  return title.replace(/[\\/:*?"<>|\u0000-\u001F]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Conversation";
 }

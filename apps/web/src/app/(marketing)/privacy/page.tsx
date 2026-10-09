@@ -7,7 +7,7 @@ import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Privacy",
-  description: "How Folevi collects, uses and protects your information, including for the AI Assistant, payments and email. Written in plain language.",
+  description: "How Folevi collects, uses and protects your information, including for Foli (the AI assistant), payments and email. Written in plain language.",
   path: "/privacy",
 });
 
@@ -15,7 +15,7 @@ const toc = [
   { id: "short", label: "The short version" },
   { id: "collect", label: "What we collect" },
   { id: "use", label: "How we use it" },
-  { id: "ai", label: "The AI Assistant" },
+  { id: "ai", label: "Foli, the AI assistant" },
   { id: "payments", label: "Payments" },
   { id: "never", label: "What we don’t do" },
   { id: "share", label: "Who we share it with" },
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <li>We collect what we need to run Folevi for you: your account details and the content you put in it.</li>
           <li>Your content is private by default. We don’t sell it, rent it, or use it for advertising.</li>
           <li>This website has no third-party trackers or advertising scripts.</li>
-          <li>The AI Assistant is optional. When you use it, your request and the notes it needs are sent to Google’s Gemini API to answer. Nothing is sent while it’s off.</li>
+          <li>Foli, the AI assistant, is optional. When you use it, your request and the notes it needs are sent to Google’s Gemini API to answer. Nothing is sent while it’s off.</li>
           <li>You can export everything and delete your account at any time (if you own a workspace other people use, you transfer or delete it first).</li>
         </ul>
 
@@ -77,14 +77,14 @@ export default function PrivacyPage() {
           <li>To keep your account secure: verify your email, offer two-step verification, detect abuse.</li>
           <li>To send you service emails, such as verification, security notices and share invitations. They carry no tracking pixels, and their links aren’t rewritten to track clicks.</li>
           <li>To run plans: apply your personal plan’s storage, device and AI credit limits and each workspace plan’s own limits, and bill paid plans (workspace plans per member seat) and credit packs.</li>
-          <li>When you ask it to, to answer with the AI Assistant (below).</li>
+          <li>When you ask it to, to answer with Foli (below).</li>
           <li>To fix problems and improve Folevi, using technical data rather than the content of your notes.</li>
           <li>To meet legal obligations.</li>
         </ul>
 
-        <h2 id="ai">The AI Assistant</h2>
+        <h2 id="ai">Foli, the AI assistant</h2>
         <p>
-          The AI Assistant (asking questions of your notes, writing and summarizing) is powered by Google’s Gemini API. It is
+          Foli, Folevi’s AI assistant (asking questions of your notes, writing and summarizing), is powered by Google’s Gemini API. It is
           on by default for plans that include it, and you can turn it off in Settings → Account; while it’s off, nothing is
           sent to Google.
         </p>
@@ -94,7 +94,7 @@ export default function PrivacyPage() {
             note you’re in or of notes found by search that you can already read. Never notes you can’t open.
           </li>
           <li>
-            <strong>What isn’t:</strong> your password, two-step secrets, payment details, or anything while the AI Assistant
+            <strong>What isn’t:</strong> your password, two-step secrets, payment details, or anything while Foli
             is off.
           </li>
           <li>

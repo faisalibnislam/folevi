@@ -147,6 +147,7 @@ function ResultRow({ op, onOpen, undone }: { op: AgentOperation; onOpen: (href: 
  * An agent's proposed changes on its answer: each one to check (with a preview of what it would do), then
  * Approve selected or Discard. While they run, each change's progress; after, what happened with links
  * to the notes, and one Undo for the lot. When Undo finds notes changed since, it asks before going on.
+ * `readOnly` (a conversation someone shared) lists the changes and what happened, with nothing to act on.
  */
 export function AgentRunCard({
   run,
@@ -155,6 +156,7 @@ export function AgentRunCard({
   onDiscard,
   onUndo,
   onOpen,
+  readOnly = false,
 }: {
   run: AgentRun;
   activity: RunActivity;
@@ -162,6 +164,7 @@ export function AgentRunCard({
   onDiscard: () => void;
   onUndo: (changed?: "all" | "rest") => void;
   onOpen: (href: string) => void;
+  readOnly?: boolean;
 }) {
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(run.operations.map((o) => o.id)));
   const [askDismissed, setAskDismissed] = useState(false);
@@ -189,14 +192,23 @@ export function AgentRunCard({
         <h3 id={headingId} className="ui-caps">
           {preview ? "Proposed changes" : (DONE[run.status] ?? "Changes")}
         </h3>
-        {preview && run.operations.length > 1 ? (
+        {preview && !readOnly && run.operations.length > 1 ? (
           <button type="button" disabled={busy} onClick={() => setChosen(all ? new Set() : new Set(run.operations.map((o) => o.id)))} className="ml-auto text-[12px] text-muted hover:text-heading disabled:opacity-40">
             {all ? "Select none" : "Select all"}
           </button>
         ) : null}
       </div>
 
-      {preview ? (
+      {preview && readOnly ? (
+        <>
+          <p className="mb-1 text-[12.5px] text-muted">Proposed, not approved yet.</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-[13px] text-ink">
+            {run.operations.map((o) => (
+              <li key={o.id}>{o.summary}</li>
+            ))}
+          </ul>
+        </>
+      ) : preview ? (
         <>
           <p className="mb-1 text-[12.5px] text-muted">Nothing changes until you approve. A version of each note is saved first, and you can undo it all.</p>
           <ul className="divide-y divide-line/60">
@@ -224,7 +236,7 @@ export function AgentRunCard({
               {run.status === "undoing" ? "Undoing…" : `Applying ${Math.min(applied + failed + 1, applied + failed + pending)} of ${applied + failed + pending}…`}
             </p>
           ) : run.status === "undone" ? (
-            <p className="mb-1 text-[12.5px] text-muted">Everything the AI changed was put back. The notes&apos; versions before the undo are in their version history.</p>
+            <p className="mb-1 text-[12.5px] text-muted">Everything Foli changed was put back. The notes&apos; versions before the undo are in their version history.</p>
           ) : (
             <p className="mb-1 text-[12.5px] text-muted">
               {applied ? `${applied} change${applied === 1 ? "" : "s"} made` : "No changes made"}
@@ -236,7 +248,7 @@ export function AgentRunCard({
               <ResultRow key={o.id} op={o} onOpen={onOpen} undone={run.status === "undone"} />
             ))}
           </ul>
-          {changed ? (
+          {readOnly ? null : changed ? (
             <div role="alert" className="mt-3 rounded-[10px] bg-[var(--glass-active)] p-2.5 text-[12.5px] text-ink">
               <p className="font-medium text-heading">Some of this changed after the AI&apos;s edits:</p>
               <ul className="mt-1 list-disc pl-4">
@@ -244,7 +256,7 @@ export function AgentRunCard({
                   <li key={c.key}>{c.label}</li>
                 ))}
               </ul>
-              <p className="mt-1 text-muted">Undo anyway puts them back as they were before the AI (the later edits stay in version history).</p>
+              <p className="mt-1 text-muted">Undo anyway puts them back as they were before Foli (the later edits stay in version history).</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button variant="primary" size="sm" disabled={busy} onClick={() => onUndo("all")}>
                   Undo anyway

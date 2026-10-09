@@ -18,7 +18,7 @@ export const metadata = pageMetadata({
 /** Rough costs of common AI actions, in credits (1 credit is one cent of AI cost). */
 const CREDIT_EXAMPLES: Array<{ action: string; cost: string }> = [
   { action: "Rewrite or shorten a paragraph", cost: "about 1 credit" },
-  { action: "Ask AI a question about your notes", cost: "about 2 credits" },
+  { action: "Ask Foli a question about your notes", cost: "about 2 credits" },
   { action: "Make a flowchart", cost: "3 to 5 credits" },
 ];
 
@@ -32,11 +32,11 @@ const faqs: Array<{ q: string; a: React.ReactNode; text?: string }> = [
   },
   {
     q: "What does “Unlimited AI, fair use” mean?",
-    a: `${TIER_NAMES.pro_ai} is for people who use AI every day. Fair use means ${credits(MONTHLY_CREDITS.pro_ai)} credits a month for each person, which is about ${credits(Math.floor(MONTHLY_CREDITS.pro_ai / 2))} questions to Ask AI. If you reach it, buy a credit pack or wait for your credits to reset. There is also an hourly limit that stops automated use.`,
+    a: `${TIER_NAMES.pro_ai} is for people who use AI every day. Fair use means ${credits(MONTHLY_CREDITS.pro_ai)} credits a month for each person, which is about ${credits(Math.floor(MONTHLY_CREDITS.pro_ai / 2))} questions to Foli. If you reach it, buy a credit pack or wait for your credits to reset. There is also an hourly limit that stops automated use.`,
   },
   {
     q: "Why does Core have no AI?",
-    a: "Some people want more room and no AI at all. On Core, nothing you write is sent to an AI model: the AI Assistant is off in your Personal, and in a Core workspace it’s off for everyone there.",
+    a: "Some people want more room and no AI at all. On Core, nothing you write is sent to an AI model: Foli is off in your Personal, and in a Core workspace it’s off for everyone there.",
   },
   {
     q: "When do AI credits reset?",

@@ -107,7 +107,7 @@ export const generateUploadUrl = mutation({
     } else if (args.kind === "attachment") {
       if (args.documentId) fail("invalid_argument", "Chat attachments aren't added to a page.");
       if (!args.scope) fail("invalid_argument", "Say where the file goes.");
-      if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
+      if (profile.aiEnabled === false) fail("forbidden", "Foli is turned off in your settings.");
       if (!aiPrefsOf(profile).attachments) fail("forbidden", ATTACHMENTS_OFF);
       scope = (await resolveScope(ctx, profile, args.scope, "edit")).scope;
     } else if (args.documentId) {

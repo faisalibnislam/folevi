@@ -45,8 +45,8 @@ test("note menu: move to folder, and find & replace inside the note", async ({ b
 
   // Move to folder from the page's "…" menu.
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Move to folder…" }).click();
-  const picker = page.getByRole("dialog", { name: "Move to folder" });
+  await page.getByRole("menuitem", { name: "Move…" }).click();
+  const picker = page.getByRole("dialog", { name: /^Move “/ });
   await picker.getByRole("combobox").fill("gui");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Moved to Guides" })).toBeVisible();

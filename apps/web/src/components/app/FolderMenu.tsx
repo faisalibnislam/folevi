@@ -66,7 +66,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
             : []),
         ]
       : []),
-    ...(aiOn ? [{ label: "Ask AI about this folder…", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, onSelect: () => openAsk(undefined, { id: folder.id, name: folder.name }) }] : []),
+    ...(aiOn ? [{ label: "Ask Foli about this folder…", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, onSelect: () => openAsk(undefined, { id: folder.id, name: folder.name }) }] : []),
     { label: "Copy link", icon: <Link2 size={14} />, onSelect: copyLink },
     ...(canManage ? [{ label: "Invite people…", icon: <UserPlus size={14} />, onSelect: () => setInviting(true) }] : []),
     ...(canEdit ? ["separator" as const, { label: "Delete folder…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setDeleting(true) }] : []),

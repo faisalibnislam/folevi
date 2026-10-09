@@ -106,8 +106,9 @@ test.describe("documents", () => {
     await page.keyboard.type("Child body");
     await waitForSaved(page);
     await page.getByRole("button", { name: "Document actions" }).click();
-    await page.getByRole("menuitem", { name: "Move to page…" }).click();
-    const dialog = page.getByRole("dialog", { name: "Move page" });
+    await page.getByRole("menuitem", { name: "Move…" }).click();
+    const dialog = page.getByRole("dialog", { name: /^Move “/ });
+    await dialog.getByRole("radio", { name: /A page/ }).click();
     await dialog.getByRole("textbox", { name: "Search pages" }).fill("Harbor parent");
     await dialog.getByRole("button", { name: /Harbor parent/ }).click();
     await expect(page.getByText("Moved into “Harbor parent”")).toBeVisible();
@@ -137,7 +138,8 @@ test.describe("documents", () => {
     await expect(page.locator(".fb-editor a[data-page-link]")).toBeVisible();
     await page.getByRole("button", { name: "Document actions" }).click();
     const download = page.waitForEvent("download");
-    await page.getByRole("menuitem", { name: "Export as Markdown" }).click();
+    await page.getByRole("menuitem", { name: "Export…" }).click();
+    await page.getByRole("dialog", { name: /^Export “/ }).getByRole("button", { name: "Export Markdown" }).click();
     const md = Buffer.concat(await (await (await download).createReadStream()).toArray()).toString("utf8");
     expect(md).toMatch(/\[Tide tables\]\(https?:\/\/[^)]+\/d\/[0-9A-Z]{26}\)/);
     expect(md).toMatch(/\[Loose child\]\(https?:\/\/[^)]+\/d\/[0-9A-Z]{26}\)/);
@@ -187,7 +189,7 @@ test.describe("documents", () => {
     await newPage(page, "Dock");
     const dock = page.getByRole("toolbar", { name: "Page tools" });
     const sidebar = page.getByRole("complementary", { name: "Page tools" });
-    for (const name of ["AI", "Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
+    for (const name of ["Foli", "Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
     const noteWidth = (await page.locator("#doc-scroll").boundingBox())!.width;
     // Style opens in the right sidebar (here from the keyboard), which shows the tool's name and a close button.
     await dock.getByRole("button", { name: "Style", exact: true }).focus();

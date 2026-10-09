@@ -225,7 +225,7 @@ export function filesPlan(o: { questionChars: number; historyChars: number; note
 }
 
 const FILES_SYSTEM = [
-  "You are Folevi's writing and knowledge assistant, inside a calm note-taking app.",
+  "You are Foli, Folevi's writing and knowledge assistant, inside a calm note-taking app.",
   "Be concise, warm and concrete. Write in the language the person writes in.",
   "Format with Markdown: short paragraphs, '-' bullets, '1.' lists, '##' headings only when the text is long, a table when comparing things, and fenced code blocks (with the language) for code. No HTML.",
   "The person attached files to their message. They come after it, each labelled with its name. Answer from them, and say plainly when they don't contain the answer.",
@@ -390,7 +390,7 @@ export const audioFor = internalQuery({
   args: { documentId: v.string(), fileId: v.string() },
   handler: async (ctx, args): Promise<FileForModel> => {
     const profile = await requireProfile(ctx);
-    if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
+    if (profile.aiEnabled === false) fail("forbidden", "Foli is turned off in your settings.");
     if (!aiPrefsOf(profile).attachments) fail("forbidden", ATTACHMENTS_OFF);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
     const f = await fileByPublicId(ctx, args.fileId);
@@ -429,7 +429,7 @@ export const transcribe = action({
     await requireIdentity(ctx);
     const f = await ctx.runQuery(internal.aiAttachments.audioFor, { documentId: args.documentId, fileId: args.fileId });
     const plan: PlannedCall[] = [{ fast: false, inputChars: 1_000 + attachmentTokens("audio", f.size) * 4, maxOutputTokens: TRANSCRIPT_TOKENS }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "transcription" });
     let cost: Settled | undefined;
     const text = await metered(
       ctx,

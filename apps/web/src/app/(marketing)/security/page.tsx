@@ -42,8 +42,8 @@ const subprocessors = [
   },
   {
     name: "Google (Gemini API)",
-    role: "AI Assistant",
-    data: "Only when you use the AI Assistant: your request and the notes it needs to answer (the open note, or notes found by search that you can already read). Never sent while the AI Assistant is off.",
+    role: "Foli (AI assistant)",
+    data: "Only when you use Foli: your request and the notes it needs to answer (the open note, or notes found by search that you can already read). Never sent while Foli is off.",
   },
   {
     name: "Polar",

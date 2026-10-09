@@ -23,12 +23,12 @@ test("comments tab lists, jumps and manages threads", async ({ browser }) => {
   await expect(link).toHaveAttribute("href", "https://example.com/guide");
   await expect(link).toHaveAttribute("target", "_blank");
   await page.keyboard.press("Escape");
-  // The floating bar: Share, no Comments or Info buttons; the "…" menu has Share and Info too.
+  // The floating bar: Share, no Comments or Info buttons; the "…" menu has Info (Share is only on the bar).
   const pageGroup = page.getByRole("group", { name: "Page" });
   await expect(pageGroup.getByRole("button", { name: /^Comments/ })).toHaveCount(0);
   await expect(pageGroup.getByRole("button", { name: /^Share/ })).toBeVisible();
   await pageGroup.getByRole("button", { name: "Document actions" }).click();
-  await expect(page.getByRole("menuitem", { name: "Share…" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Share…" })).toHaveCount(0);
   await expect(page.getByRole("menuitem", { name: "Info" })).toBeVisible();
   await page.keyboard.press("Escape");
   // Sidebar Comments tab.

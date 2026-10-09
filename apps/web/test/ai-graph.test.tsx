@@ -88,8 +88,8 @@ describe("layout", () => {
   test("degrees, sizes, neighbours and search", () => {
     const d = degrees(edges);
     expect(d.get("a")).toBe(3);
-    expect(radiusFor(0, false)).toBe(4);
-    expect(radiusFor(1_000, true)).toBe(14);
+    expect(radiusFor(0, false)).toBe(6);
+    expect(radiusFor(1_000, true)).toBe(20);
     expect([...neighbours(edges, "b")].sort()).toEqual(["a", "c"]);
     const nodes = [
       { id: "1", label: "Café plans" },

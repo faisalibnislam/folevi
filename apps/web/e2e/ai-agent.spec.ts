@@ -9,11 +9,11 @@ test("the chat's Agent mode sends a request and says plainly when the assistant 
   const { page, context } = await newPerson(browser, "Agent Person");
   await page.goto(`${APP}/ai`);
   await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible();
-  const modes = page.getByRole("group", { name: "How the AI helps" });
+  const modes = page.getByRole("group", { name: "How Foli helps" });
   await expect(modes.getByRole("button", { name: "Chat", exact: true })).toHaveAttribute("aria-pressed", "true");
   await modes.getByRole("button", { name: "Agent", exact: true }).click();
   await expect(modes.getByRole("button", { name: "Agent", exact: true })).toHaveAttribute("aria-pressed", "true");
-  const box = page.getByPlaceholder("Ask the AI to organize, edit or create notes…");
+  const box = page.getByPlaceholder("Ask Foli to organize, edit or create notes…");
   await expect(box).toBeVisible();
   await box.fill("Put my travel notes in a Travel folder");
   await page.getByRole("button", { name: "Ask", exact: true }).click();

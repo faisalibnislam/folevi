@@ -6,17 +6,30 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 import { formatRelative } from "@/lib/format";
+import { useAiAccess } from "../useAi";
 
 const STATUS: Record<string, string> = { running: "Running", done: "Ready", failed: "Didn't finish", cancelled: "Cancelled" };
 
 /**
  * Your research jobs here (the AI page's sidebar), latest first: each opens the conversation holding its
- * report. Nothing shows until there's one.
+ * report. With none yet, a line on how to start one (only where Research is available: the web is on in
+ * Settings > AI and the model can search).
  */
 export function ResearchList({ activeId, onNavigate }: { activeId: string | null; onNavigate?: () => void }) {
   const { scope } = useAppState();
   const jobs = useQuery(api.aiResearch.list, { scope });
-  if (!jobs?.length) return null;
+  const caps = useQuery(api.aiChat.capabilities, {});
+  const ai = useAiAccess();
+  if (!jobs) return null;
+  if (!jobs.length) {
+    if (!ai.on || !caps?.prefs.webResearch || !caps.searchGrounding) return null;
+    return (
+      <section aria-label="Research" className="flex-none border-t border-line/70 px-2.5 pb-3 pt-2.5">
+        <p className="ui-caps px-2.5 pb-1">Research</p>
+        <p className="px-2.5 text-[12.5px] leading-snug text-muted">Reports you start show up here. Pick Research under the box, then ask a question. It takes a few minutes.</p>
+      </section>
+    );
+  }
   return (
     <section aria-label="Research" className="max-h-[40%] flex-none overflow-y-auto border-t border-line/70 px-2.5 pb-3 pt-2.5">
       <p className="ui-caps px-2.5 pb-1">Research</p>

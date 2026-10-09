@@ -158,17 +158,17 @@ const POSTS: BlogPost[] = [
     body: () => (
       <>
         <p>
-          Folevi has four plans. Three of them include the AI Assistant. The fourth, Core, doesn’t, on purpose. Core costs {p(PRICES.core.month)} a month or {p(PRICES.core.year)} a year, has {gb(STORAGE_BYTES.core)} of storage and no device limit, and never sends anything to an AI model.
+          Folevi has four plans. Three of them include Foli. The fourth, Core, doesn’t, on purpose. Core costs {p(PRICES.core.month)} a month or {p(PRICES.core.year)} a year, has {gb(STORAGE_BYTES.core)} of storage and no device limit, and never sends anything to an AI model.
         </p>
 
         <h2 id="includes">What Core includes</h2>
         <p>
-          Core has everything in Folevi except the AI Assistant: the block editor, nested and linked pages, tasks with Today and the calendar, offline editing and sync, flowcharts and whiteboards, note styles, templates, sharing with guests and public links, {VERSION_DAYS} days of version history, and export. Compared with Free, it adds room ({gb(STORAGE_BYTES.core)} instead of {gb(STORAGE_BYTES.free)}) and removes the two-device limit.
+          Core has everything in Folevi except Foli: the block editor, nested and linked pages, tasks with Today and the calendar, offline editing and sync, flowcharts and whiteboards, note styles, templates, sharing with guests and public links, {VERSION_DAYS} days of version history, and export. Compared with Free, it adds room ({gb(STORAGE_BYTES.core)} instead of {gb(STORAGE_BYTES.free)}) and removes the two-device limit.
         </p>
 
         <h2 id="enforced">What “no AI” means in practice</h2>
         <p>
-          On Core, the AI isn’t only hidden. The server refuses every AI request from a Core Personal or a Core workspace, whoever sends it: the owner, a member or a guest. The app also hides every AI entry point there, so you won’t see Ask AI, the <Kbd>⌘J</Kbd> writing menu or Catch me up. The server check is the one that counts. It holds even if an older copy of the app, or a script, tried to call the AI.
+          On Core, the AI isn’t only hidden. The server refuses every AI request from a Core Personal or a Core workspace, whoever sends it: the owner, a member or a guest. The app also hides every AI entry point there, so you won’t see Ask Foli, the <Kbd>⌘J</Kbd> writing menu or Catch me up. The server check is the one that counts. It holds even if an older copy of the app, or a script, tried to call the AI.
         </p>
         <p>Core also covers the edges:</p>
         <ul>
@@ -188,7 +188,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="sometimes">If you want AI some of the time</h2>
         <p>
-          Free includes {MONTHLY_CREDITS.free} AI credits a month, Pro {MONTHLY_CREDITS.pro} and Pro AI {MONTHLY_CREDITS.pro_ai}. On any of them you can turn the AI Assistant off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves. On Core, the plan decides, for everyone in that space.
+          Free includes {MONTHLY_CREDITS.free} AI credits a month, Pro {MONTHLY_CREDITS.pro} and Pro AI {MONTHLY_CREDITS.pro_ai}. On any of them you can turn Foli off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves. On Core, the plan decides, for everyone in that space.
         </p>
 
         <h2 id="moving">Moving to Core</h2>
@@ -245,7 +245,7 @@ const POSTS: BlogPost[] = [
           rows={[
             ["Rewrite or shorten a paragraph", "1"],
             ["Fix spelling and grammar", "1"],
-            ["A question to Ask AI", "2 to 4"],
+            ["A question to Foli", "2 to 4"],
             ["Catch me up (a brief of your week)", "2"],
             ["Draw or update a flowchart", "3 to 5"],
           ]}
@@ -269,7 +269,7 @@ const POSTS: BlogPost[] = [
           </li>
         </ul>
         <p>
-          Paid plans reset each month of the billing period, including yearly plans, and monthly credits don’t carry over. In terms of work, {MONTHLY_CREDITS.pro} credits is about {MONTHLY_CREDITS.pro} paragraph rewrites, or about {Math.round(MONTHLY_CREDITS.pro / 3)} questions to Ask AI at 3 credits each. Settings → Plan & billing shows how many credits you have left and the day they reset.
+          Paid plans reset each month of the billing period, including yearly plans, and monthly credits don’t carry over. In terms of work, {MONTHLY_CREDITS.pro} credits is about {MONTHLY_CREDITS.pro} paragraph rewrites, or about {Math.round(MONTHLY_CREDITS.pro / 3)} questions to Foli at 3 credits each. Settings → Plan & billing shows how many credits you have left and the day they reset.
         </p>
         <p>
           In a paid workspace, each member has the plan’s credits there. In a free workspace, and on pages shared with you as a guest, you use your own personal credits.
@@ -298,7 +298,7 @@ const POSTS: BlogPost[] = [
           Counting in real cost means no plan can cost more in AI than it earns, so the prices on the <Link href="/pricing">pricing page</Link> can stay where they are. It also means you can see what you use, in a unit that means something.
         </p>
         <p>
-          It is also what makes Core possible: a plan with no credits is a plan with no AI. <Link href="/blog/why-folevi-has-a-plan-with-no-ai">Why Folevi has a plan with no AI</Link> explains that one. For what the AI can do, see <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/docs/ai-assistant">AI Assistant docs</Link>.
+          It is also what makes Core possible: a plan with no credits is a plan with no AI. <Link href="/blog/why-folevi-has-a-plan-with-no-ai">Why Folevi has a plan with no AI</Link> explains that one. For what the AI can do, see <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/docs/ai-assistant">Foli docs</Link>.
         </p>
       </>
     ),
@@ -389,7 +389,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="ai">Let the AI find the action items</h2>
         <p>
-          If you took notes as paragraphs, the AI Assistant can pull out the follow-ups. Open the AI on the note and choose <strong>Find action items</strong>. It lists the follow-ups and decisions it finds as to-dos, which you can date like any other. This uses AI credits and isn’t available on Core. <Link href="/blog/what-an-ai-credit-is">What an AI credit is</Link> explains the cost.
+          If you took notes as paragraphs, Foli can pull out the follow-ups. Open the AI on the note and choose <strong>Find action items</strong>. It lists the follow-ups and decisions it finds as to-dos, which you can date like any other. This uses AI credits and isn’t available on Core. <Link href="/blog/what-an-ai-credit-is">What an AI credit is</Link> explains the cost.
         </p>
 
         <h2 id="own">Make it your own</h2>

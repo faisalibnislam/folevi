@@ -400,7 +400,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
         <div className="mt-3 space-y-0.5">
           <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
-          {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} mono />} label="AI" onNavigate={onNavigate} /> : null}
+          {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} />} label="Work with Foli" onNavigate={onNavigate} /> : null}
           <NavItem href="/graph" icon={<Waypoints size={16} />} label="Graph" onNavigate={onNavigate} />
           <div className="group/starred relative">
             <NavItem href="/starred" icon={<Star size={16} />} label="Starred" onNavigate={onNavigate} />

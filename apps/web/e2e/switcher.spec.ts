@@ -120,9 +120,12 @@ test("a page from Personal still opens by link while a workspace is selected, wi
   await page.keyboard.press("Enter");
   await page.keyboard.type("Edited while in a workspace");
   await waitForSaved(page);
-  // It belongs to Personal, not the open workspace: no "Move to folder" here.
+  // It belongs to Personal, not the open workspace: Move can't file it in a folder here.
   await page.getByRole("button", { name: "Document actions" }).click();
-  await expect(page.getByRole("menuitem", { name: "Move to folder…" })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "Move…" }).click();
+  let move = page.getByRole("dialog", { name: /^Move “/ });
+  await move.getByRole("radio", { name: /A folder/ }).click();
+  await expect(move.getByText("You can't file this note in a folder here.")).toBeVisible();
   await page.keyboard.press("Escape");
 
   // Back in Personal, the edit is there and the page can be filed again.
@@ -130,5 +133,7 @@ test("a page from Personal still opens by link while a workspace is selected, wi
   await page.goto(personalUrl);
   await expect(page.getByRole("textbox", { name: "Document body" })).toContainText("Edited while in a workspace");
   await page.getByRole("button", { name: "Document actions" }).click();
-  await expect(page.getByRole("menuitem", { name: "Move to folder…" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Move…" }).click();
+  move = page.getByRole("dialog", { name: /^Move “/ });
+  await expect(move.getByRole("combobox", { name: "Search folders" })).toBeVisible();
 });

@@ -218,7 +218,7 @@ async function launch(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ me
   let holdId: Id<"aiCreditHolds">;
   try {
     await ctx.runMutation(internal.aiResearch.limit, {});
-    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, plan: RESEARCH_PLAN }));
+    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, plan: RESEARCH_PLAN, feature: "research" }));
     await ctx.runMutation(internal.aiResearch.setHold, { researchId, holdId });
   } catch (e) {
     const error = storedError(e);

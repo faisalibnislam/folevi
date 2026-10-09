@@ -50,18 +50,18 @@ const VERSION_DAYS = PLAN_CATALOG.personal_free.entitlements.versionHistoryDays;
 export const FEATURES: Feature[] = [
   {
     slug: "ai-notes",
-    name: "AI Assistant",
+    name: "Foli",
     summary: "Ask your notes a question, rewrite and translate text, draw flowcharts and get a brief of your week.",
     title: "AI notes app: ask your notes, summarize and rewrite",
-    description: `Folevi’s AI Assistant answers from your notes with sources, rewrites and translates text, draws flowcharts and briefs your week. Free has ${MONTHLY_CREDITS.free} credits a month.`,
+    description: `Foli, Folevi’s AI assistant, answers from your notes with sources, rewrites and translates text, draws flowcharts and briefs your week. Free has ${MONTHLY_CREDITS.free} credits a month.`,
     h1: "An AI notes app that answers from your own notes",
     intro:
-      "The AI Assistant works with the notes you can already open. Ask it a question and it answers with links to the notes it used. Select a paragraph to rewrite, shorten or translate it, turn a meeting into to-dos, draw a flowchart from a sentence, or ask it to sum up the whole note.",
+      "Foli works with the notes you can already open. Ask it a question and it answers with links to the notes it used. Select a paragraph to rewrite, shorten or translate it, turn a meeting into to-dos, draw a flowchart from a sentence, or ask it to sum up the whole note.",
     plans: `Free, Pro and Pro AI, and the ${TRIAL_DAYS}-day trial. Core has no AI.`,
     updated: "2026-10-01",
     art: "art-49",
     visual: "ai",
-    docs: { label: "AI Assistant and credits", href: "/docs/ai-assistant" },
+    docs: { label: "Foli and credits", href: "/docs/ai-assistant" },
     sections: [
       {
         id: "ask",
@@ -69,10 +69,10 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <strong>Ask AI about your notes</strong> in the <Kbd>⌘K</Kbd> palette. Ask AI answers from the open note, or from notes it finds by searching the ones you can read. Each answer lists its sources, so you can open the note and check. Answers appear word by word, and you can ask a follow-up in the same chat.
+              Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <strong>Ask Foli about your notes</strong> in the <Kbd>⌘K</Kbd> palette. Foli answers from the open note, or from notes it finds by searching the ones you can read. Each answer lists its sources, so you can open the note and check. Answers appear word by word, and you can ask a follow-up in the same chat.
             </p>
             <p>
-              From a folder’s menu, <strong>Ask AI about this folder</strong> keeps the answers inside that folder. If your notes don’t have the answer, it says so before it gives a general one. It only reads notes you already have access to: in a workspace, pages that are restricted from you stay out of its answers.
+              From a folder’s menu, <strong>Ask Foli about this folder</strong> keeps the answers inside that folder. If your notes don’t have the answer, it says so before it gives a general one. It only reads notes you already have access to: in a workspace, pages that are restricted from you stay out of its answers.
             </p>
           </>
         ),
@@ -83,7 +83,7 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              Select a sentence or a whole section and press <Kbd>⌘J</Kbd>, or use the AI button in the selection toolbar or <strong>Ask AI…</strong> in a block’s handle menu. The composer opens under the text with these actions:
+              Select a sentence or a whole section and press <Kbd>⌘J</Kbd>, or use the AI button in the selection toolbar or <strong>Ask Foli…</strong> in a block’s handle menu. The composer opens under the text with these actions:
             </p>
             <ul>
               <li>Improve writing, or fix spelling and grammar only.</li>
@@ -148,7 +148,7 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              AI use is counted in credits, and a credit is one cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Ask AI or a new flowchart usually 3 to 5. Before a request starts, Folevi sets a few credits aside so it can finish, and gives back what it didn’t use.
+              AI use is counted in credits, and a credit is one cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli or a new flowchart usually 3 to 5. Before a request starts, Folevi sets a few credits aside so it can finish, and gives back what it didn’t use.
             </p>
             <ul>
               <li>
@@ -175,16 +175,16 @@ export const FEATURES: Feature[] = [
         title: "What happens to your notes",
         body: (
           <p>
-            When you use the AI, your request and the notes it needs go to Google Gemini. Google doesn’t use them to train its models, and neither does Folevi. You can turn the AI Assistant off in Settings; while it’s off, none of your notes are sent. On Core, the server refuses every AI request. More on the <Link href="/privacy#ai">Privacy</Link> page.
+            When you use the AI, your request and the notes it needs go to Google Gemini. Google doesn’t use them to train its models, and neither does Folevi. You can turn Foli off in Settings; while it’s off, none of your notes are sent. On Core, the server refuses every AI request. More on the <Link href="/privacy#ai">Privacy</Link> page.
           </p>
         ),
       },
     ],
     faq: [
       { q: "Which Folevi plans include AI?", a: `Free (${MONTHLY_CREDITS.free} AI credits a month), Pro (${MONTHLY_CREDITS.pro} a month) and Pro AI (unlimited with fair use, ${credits(MONTHLY_CREDITS.pro_ai)} a month). The ${TRIAL_DAYS}-day trial includes ${TRIAL_CREDITS} credits. Core has no AI.` },
-      { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Ask AI or a new flowchart usually 3 to 5. A request needs a few credits free before it starts." },
-      { q: "Can the AI see notes I don’t have access to?", a: "No. Ask AI answers from the open note or from notes it finds by searching the ones you can already read." },
-      { q: "Can I turn the AI off?", a: "Yes. Turn the AI Assistant off in Settings at any time. While it’s off, none of your notes are sent to it." },
+      { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli or a new flowchart usually 3 to 5. A request needs a few credits free before it starts." },
+      { q: "Can the AI see notes I don’t have access to?", a: "No. Foli answers from the open note or from notes it finds by searching the ones you can already read." },
+      { q: "Can I turn the AI off?", a: "Yes. Turn Foli off in Settings at any time. While it’s off, none of your notes are sent to it." },
       { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and Google doesn’t use requests to its paid Gemini API for training either." },
       { q: "How does AI work in a team workspace?", a: "In a paid workspace, each member has the plan’s AI credits there. In a free workspace, and as a guest, you use your own personal credits. In a Core workspace nobody can use AI." },
     ],
@@ -321,7 +321,7 @@ export const FEATURES: Feature[] = [
         title: "Find action items with AI",
         body: (
           <p>
-            After a meeting, ask the AI Assistant to <strong>find action items</strong>. It lists the follow-ups and decisions in the note as to-dos, which are tasks like any other. This uses AI credits and isn’t available on Core. See <Link href="/features/ai-notes">AI notes</Link>.
+            After a meeting, ask Foli to <strong>find action items</strong>. It lists the follow-ups and decisions in the note as to-dos, which are tasks like any other. This uses AI credits and isn’t available on Core. See <Link href="/features/ai-notes">AI notes</Link>.
           </p>
         ),
       },
@@ -430,7 +430,7 @@ export const FEATURES: Feature[] = [
             <li>Organise: tables, collections as a table, gallery or kanban, sub-pages and links to pages.</li>
             <li>Draw and explain: flowcharts, whiteboards, Mermaid diagrams and TeX formulas.</li>
             <li>Add media: audio recordings, images (yours or from Unsplash), files and bookmarks.</li>
-            <li>Ask AI: continue writing, summarize the note, find action items, make an outline or brainstorm.</li>
+            <li>Ask Foli: continue writing, summarize the note, find action items, make an outline or brainstorm.</li>
           </ul>
         ),
       },
@@ -494,7 +494,7 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              With nothing typed, ⌘K shows the notes you opened most recently. It also runs commands: New document, Go to Tasks · Today, Go to Calendar, Go to Home, Open Trash, Open Settings and switching the app between light and dark. With the AI Assistant on, it can ask AI about your notes.
+              With nothing typed, ⌘K shows the notes you opened most recently. It also runs commands: New document, Go to Tasks · Today, Go to Calendar, Go to Home, Open Trash, Open Settings and switching the app between light and dark. With Foli on, it can ask Foli about your notes.
             </p>
             <p>
               Use the arrow keys and Return to open a result, and Escape to close. Inside a note, <Kbd>⌘F</Kbd> finds text and <Kbd>⌘⌥F</Kbd> replaces it.
@@ -803,10 +803,10 @@ export const FEATURES: Feature[] = [
       },
       {
         id: "ask",
-        title: "Ask AI about a folder",
+        title: "Ask Foli about a folder",
         body: (
           <p>
-            Choose <strong>Ask AI about this folder</strong> from the folder’s menu and the answer comes from that folder’s notes only. It’s there on plans with AI while the AI Assistant is on. See the <Link href="/features/ai-notes">AI Assistant</Link>.
+            Choose <strong>Ask Foli about this folder</strong> from the folder’s menu and the answer comes from that folder’s notes only. It’s there on plans with AI while Foli is on. See <Link href="/features/ai-notes">Foli</Link>.
           </p>
         ),
       },

@@ -11,6 +11,7 @@ import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
 import { useAi } from "./useAi";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
+import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 
 const EXAMPLES: Record<"template" | "note", string[]> = {
   template: ["Weekly team meeting", "Project kickoff", "Book notes", "Trip planner"],
@@ -35,6 +36,13 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
   const runSeq = useRef(0);
   const uid = useId();
   const noun = kind === "template" ? "template" : "note";
+  // Said once when the draft is ready; then focus moves to its name (the prompt box was disabled while writing).
+  const announce = useDoneAnnouncement(busy, draft ? `The ${noun} is ready. Check it, then save it.` : "");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const shown = Boolean(draft && !busy);
+  useEffect(() => {
+    if (shown) nameRef.current?.focus();
+  }, [shown]);
 
   useEffect(() => {
     if (open) return;
@@ -153,7 +161,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
             </div>
           ) : null}
           {busy ? (
-            <div className="max-h-[46vh] overflow-y-auto rounded-[10px] bg-[var(--glass-hover)] p-3" aria-live="polite" aria-busy="true">
+            <div className="max-h-[46vh] overflow-y-auto rounded-[10px] bg-[var(--glass-hover)] p-3" aria-busy="true">
               <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
                 <AiIcon size={12} aria-hidden className="animate-pulse motion-reduce:animate-none" /> Writing the {noun}…
               </p>
@@ -169,6 +177,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
               {kind === "template" ? "Template name" : "Title"}
             </label>
             <input
+              ref={nameRef}
               id={`${uid}-name`}
               value={draft.title}
               maxLength={120}
@@ -179,10 +188,11 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
           <div className="max-h-[46vh] overflow-y-auto rounded-[10px] bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
             <AiMarkdown markdown={draft.text} />
           </div>
-          <p className="text-[11.5px] text-faint">AI can make mistakes, so check it before you save. Sent to Google Gemini.</p>
+          <p className="text-[11.5px] text-faint">Foli can make mistakes, so check it before you save. Sent to Google Gemini.</p>
         </section>
       )}
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mt-3"} /> : null}
+      <AiAnnouncer text={announce} />
     </Dialog>
   );
 }

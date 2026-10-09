@@ -11,13 +11,17 @@
 // History off (Settings > AI): a conversation is `ephemeral`, deleted when its chat closes (`discard`)
 // and swept after a day. Account and workspace deletion remove conversations (maintenance.ts).
 //
+// Sharing a conversation with a workspace (read-only, for members who can open every note it uses) is in
+// aiSharing.ts. While an answer streams, its text goes to an aiStreams row (`streamText`), not the message,
+// so `get` (the whole conversation) isn't re-run on every chunk; it reads the message again when it settles.
+//
 // Privacy: prompts, note text and answers are never logged; only events, codes and counts are.
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { action, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { blockSearchText, ulid } from "@folevi/editor-schema";
+import { blockSearchText, markdownToBlocks, ulid, type InlineNode } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireDocument, requireIdentity, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { inScope, insertScoped, scopeOfRow, vScopeArg, type ScopeArg } from "./lib/scope";
@@ -27,21 +31,25 @@ import { aiPrefsOf } from "./lib/ai/prefs";
 import { capabilities as modelCapabilities, provider } from "./lib/ai/provider";
 import { vAiAction } from "./lib/aiActions";
 import { wireRun } from "./lib/ai/tools/wire";
-import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext } from "./lib/ai/chat";
+import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationFilename, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext, type MarkdownMessage } from "./lib/ai/chat";
 import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, type AnswerSink, type Settled } from "./ai";
 import { attachmentChips, claimAttachments, deleteConversationFiles, sweepUnsentAttachments, type AttachmentChip } from "./lib/ai/attachmentFiles";
 import { answerWithFiles, filesPlan, type FileForModel } from "./aiAttachments";
 import { domainOf, entryPointsToShow, extractUrls, resolveLink } from "./lib/ai/web";
 import { hideRemember, vMemoryKind } from "./lib/ai/memory";
+import { refreshNoteRefs } from "./lib/ai/sharing";
+import { createDocument } from "./lib/create";
+import { consume } from "./lib/rateLimit";
+import { MAX_DRAFT_BLOCKS, MAX_DRAFT_CHARS } from "./lib/ai/writing";
 
 type Ctx = QueryCtx | MutationCtx;
 
 /** The longest message a person can send. */
 export const MAX_MESSAGE = 4_000;
 /** Messages a conversation can hold (then: start a new one). */
-const MAX_MESSAGES = 400;
+export const MAX_MESSAGES = 400;
 /** Messages a conversation shows (the latest). */
-const SHOWN_MESSAGES = 200;
+export const SHOWN_MESSAGES = 200;
 /** An answer still "streaming" after this long was cut off (a crashed request). */
 const STALE_MS = 10 * 60_000;
 /** History off: conversations left behind (a closed tab) are deleted after a day. */
@@ -62,14 +70,14 @@ const vError = v.object({ code: v.string(), message: v.string(), action: v.optio
 // Access
 // ---------------------------------------------------------------------------------------------------
 
-const byPublicId = (ctx: Ctx, publicId: string) =>
+export const byPublicId = (ctx: Ctx, publicId: string) =>
   ctx.db
     .query("aiConversations")
     .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
     .unique();
 
 /** The caller's own conversation, in a place they can still open (null otherwise: never someone else's). */
-async function ownConversation(ctx: Ctx, profile: Doc<"profiles">, publicId: string): Promise<Doc<"aiConversations"> | null> {
+export async function ownConversation(ctx: Ctx, profile: Doc<"profiles">, publicId: string): Promise<Doc<"aiConversations"> | null> {
   const c = await byPublicId(ctx, publicId);
   if (!c || c.profileId !== profile._id) return null;
   try {
@@ -95,7 +103,7 @@ async function requireMessage(ctx: Ctx, profile: Doc<"profiles">, messageId: Id<
 }
 
 /** The conversation's scope, as clients and the AI pipeline name it. */
-async function scopeArgOf(ctx: Ctx, c: Doc<"aiConversations">): Promise<ScopeArg> {
+export async function scopeArgOf(ctx: Ctx, c: Doc<"aiConversations">): Promise<ScopeArg> {
   const scope = scopeOfRow(c);
   if (scope.kind === "personal") return { kind: "personal" };
   const ws = await ctx.db.get(scope.workspaceId);
@@ -119,7 +127,7 @@ async function checkContext(ctx: Ctx, profile: Doc<"profiles">, c: Pick<Doc<"aiC
 }
 
 /** Names for a context's notes or folder (only ones the person can still open). */
-async function contextItems(ctx: Ctx, profile: Doc<"profiles">, c: Doc<"aiConversations">): Promise<{ id: string; name: string }[]> {
+export async function contextItems(ctx: Ctx, profile: Doc<"profiles">, c: Doc<"aiConversations">): Promise<{ id: string; name: string }[]> {
   const out: { id: string; name: string }[] = [];
   if (c.context.kind === "note" || c.context.kind === "notes") {
     for (const id of c.context.ids) {
@@ -139,10 +147,10 @@ async function contextItems(ctx: Ctx, profile: Doc<"profiles">, c: Doc<"aiConver
 const appendSearch = (c: Doc<"aiConversations">, text: string) => `${c.searchText}\n${text}`.slice(0, SEARCH_TEXT_MAX);
 
 function listRow(c: Doc<"aiConversations">) {
-  return { id: c.publicId, title: c.title, pinned: c.pinned, context: c.context.kind, lastMessageAt: c.lastMessageAt, createdAt: c.createdAt };
+  return { id: c.publicId, title: c.title, pinned: c.pinned, context: c.context.kind, lastMessageAt: c.lastMessageAt, createdAt: c.createdAt, shared: c.sharedWith === "workspace", workspace: c.workspaceId !== undefined };
 }
 
-function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, Doc<"aiRuns">> = new Map(), files: Map<Id<"files">, AttachmentChip> = new Map()) {
+export function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, Doc<"aiRuns">> = new Map(), files: Map<Id<"files">, AttachmentChip> = new Map()) {
   const stale = m.status === "streaming" && now - m.updatedAt > STALE_MS;
   const run = m.agent?.runId ? runs.get(m.agent.runId) : undefined;
   return {
@@ -158,6 +166,8 @@ function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, 
     actionsOutcome: m.actionsOutcome ?? null,
     suggestions: m.suggestions ?? [],
     status: stale ? ("error" as const) : m.status,
+    /** The text so far is in a stream (aiChat.streamText) while it's being written. */
+    live: Boolean(m.streamId) && m.status === "streaming" && !stale,
     phase: stale ? null : (m.phase ?? null),
     error: stale ? { code: "interrupted", message: "This answer was cut off. Try again." } : (m.error ?? null),
     credits: m.usage?.credits ?? null,
@@ -172,7 +182,7 @@ function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, 
 }
 
 /** The agent runs of some messages, by id (one read each). */
-async function runsOf(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<Map<Id<"aiRuns">, Doc<"aiRuns">>> {
+export async function runsOf(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<Map<Id<"aiRuns">, Doc<"aiRuns">>> {
   const out = new Map<Id<"aiRuns">, Doc<"aiRuns">>();
   for (const m of messages) {
     const id = m.agent?.runId;
@@ -187,7 +197,7 @@ async function runsOf(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<Map<Id<"
 const applied = (run: Doc<"aiRuns"> | null) => Boolean(run && (run.status === "done" || run.status === "partial" || run.status === "executing" || run.status === "undoing"));
 
 async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, scopeArg: ScopeArg, publicId: string | undefined, context: AiContext | undefined): Promise<Doc<"aiConversations">> {
-  if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
+  if (profile.aiEnabled === false) fail("forbidden", "Foli is turned off in your settings.");
   const { scope } = await resolveScope(ctx, profile, scopeArg);
   const id = publicId ?? ulid();
   if (!ULID.test(id)) fail("invalid_argument", "That conversation id isn't valid.");
@@ -329,6 +339,9 @@ export const get = query({
         ephemeral: c.ephemeral === true,
         scope: await scopeArgOf(ctx, c),
         context: { kind: c.context.kind, items: await contextItems(ctx, profile, c) },
+        /** Shared with the workspace (aiSharing.ts); only a kept conversation in a workspace can be. */
+        shared: c.sharedWith === "workspace",
+        canShare: c.workspaceId !== undefined && c.ephemeral !== true,
         createdAt: c.createdAt,
         lastMessageAt: c.lastMessageAt,
       },
@@ -337,18 +350,79 @@ export const get = query({
   },
 });
 
-/** A conversation as Markdown, to download. */
+/** Messages as the Markdown export writes them: an agent's answer with what became of its changes. */
+export async function markdownMessages(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<MarkdownMessage[]> {
+  const runs = await runsOf(ctx, messages);
+  return messages.map((m) => {
+    const run = m.agent?.runId ? runs.get(m.agent.runId) : undefined;
+    return { role: m.role, text: m.text, citations: m.citations, webCitations: m.webCitations, ...(run && run.status !== "discarded" ? { changes: run.operations.map((o) => ({ summary: o.summary, status: o.status })) } : {}) };
+  });
+}
+
+/** One answer and the question it answers (a research report, an agent's report), from a conversation's messages. */
+function oneAnswer(messages: Doc<"aiMessages">[], messageId: Id<"aiMessages">): Doc<"aiMessages">[] {
+  const at = messages.findIndex((m) => m._id === messageId);
+  const answer = messages[at];
+  if (!answer || answer.role !== "assistant") fail("not_found", "That answer isn't there anymore.");
+  const asked = messages.slice(0, at).map((m) => m.role).lastIndexOf("user");
+  return asked < 0 ? [answer] : [messages[asked]!, answer];
+}
+
+const allMessages = (ctx: Ctx, c: Doc<"aiConversations">) =>
+  ctx.db
+    .query("aiMessages")
+    .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
+    .take(MAX_MESSAGES);
+
+/** A conversation as Markdown, to download or copy; with `messageId`, just that answer and its question. */
 export const exportMarkdown = query({
-  args: { conversationId: v.string() },
+  args: { conversationId: v.string(), messageId: v.optional(v.id("aiMessages")) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const c = await requireConversation(ctx, profile, args.conversationId);
-    const messages = await ctx.db
-      .query("aiMessages")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
-      .take(MAX_MESSAGES);
-    const name = c.title.replace(/[\\/:*?"<>|\u0000-\u001F]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Conversation";
-    return { filename: `${name}.md`, markdown: conversationMarkdown(c.title, messages, Date.now()) };
+    const all = await allMessages(ctx, c);
+    const messages = args.messageId ? oneAnswer(all, args.messageId) : all;
+    return { filename: `${conversationFilename(c.title)}.md`, markdown: conversationMarkdown(args.messageId ? null : c.title, await markdownMessages(ctx, messages), Date.now()) };
+  },
+});
+
+/**
+ * Every conversation the person keeps, a page at a time, as Markdown files for Settings > AI's "Export
+ * all conversations" (the browser zips them). History-off conversations aren't kept, so they're left out,
+ * and so are ones in places the person can no longer open. Each file goes in a folder for its place.
+ */
+export const exportAll = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const result = await ctx.db
+      .query("aiConversations")
+      .withIndex("by_profile_place", (q) => q.eq("profileId", profile._id))
+      .paginate({ ...args.paginationOpts, numItems: Math.min(Math.max(1, args.paginationOpts.numItems), 10) });
+    const places = new Map<string, string | null>();
+    const files: { folder: string; name: string; markdown: string; lastMessageAt: number }[] = [];
+    const now = Date.now();
+    for (const c of result.page) {
+      if (c.ephemeral || !(await ownConversation(ctx, profile, c.publicId))) continue;
+      const key = c.workspaceId ?? "personal";
+      if (!places.has(key)) places.set(key, c.workspaceId ? ((await ctx.db.get(c.workspaceId))?.name ?? null) : "Personal");
+      const folder = places.get(key);
+      if (!folder) continue;
+      files.push({ folder, name: conversationFilename(c.title), markdown: conversationMarkdown(c.title, await markdownMessages(ctx, await allMessages(ctx, c)), now), lastMessageAt: c.lastMessageAt });
+    }
+    return { page: files, isDone: result.isDone, continueCursor: result.continueCursor };
+  },
+});
+
+/** The text an answer has so far while it streams (only its own person can read it), or null. */
+export const streamText = query({
+  args: { messageId: v.id("aiMessages") },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const m = await ctx.db.get(args.messageId);
+    if (!m || m.profileId !== profile._id || !m.streamId) return null;
+    const row = await ctx.db.get(m.streamId);
+    return row ? { text: row.text } : null;
   },
 });
 
@@ -398,7 +472,52 @@ export const setContext = mutation({
     await assertWritable(ctx, profile);
     const c = await requireConversation(ctx, profile, args.conversationId);
     await ctx.db.patch(c._id, { context: await checkContext(ctx, profile, c, args.context), updatedAt: Date.now() });
+    await refreshNoteRefs(ctx, c._id);
     return null;
+  },
+});
+
+/** A stand-in for a cited note in a note's Markdown, swapped for a page link once it's blocks. */
+const noteRef = (i: number) => `FoleviNoteRef${i}x`;
+const NOTE_REF = /^FoleviNoteRef(\d+)x$/;
+
+/**
+ * Saves a conversation as a note where it lives (or, with `messageId`, one answer and its question: an
+ * agent's report, a research report). Cited notes become page links, as this person sees them. In a
+ * workspace the note starts restricted to them: a conversation can mention pages others can't open.
+ */
+export const saveAsNote = mutation({
+  args: { conversationId: v.string(), messageId: v.optional(v.id("aiMessages")) },
+  handler: async (ctx, args): Promise<{ id: string }> => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const c = await requireConversation(ctx, profile, args.conversationId);
+    const { scope } = await requireRowScope(ctx, profile, c, "edit", GONE);
+    const all = await allMessages(ctx, c);
+    const messages = args.messageId ? oneAnswer(all, args.messageId) : all;
+    if (!messages.some((m) => m.role === "assistant" && m.text.trim())) fail("invalid_argument", "There's nothing to save yet.");
+    const refs: { noteId: string; n: number; title: string }[] = [];
+    const markdown = conversationMarkdown(null, await markdownMessages(ctx, messages), Date.now(), (cite) => {
+      refs.push({ noteId: cite.noteId ?? "", n: cite.n, title: cite.title });
+      return `- ${noteRef(refs.length - 1)}`;
+    });
+    if (markdown.length > MAX_DRAFT_CHARS) fail("limit_exceeded", "That conversation is too long to save as a note. Save one answer instead.");
+    await consume(ctx, "bulk", profile._id);
+    const { blocks } = markdownToBlocks(markdown, { titleFromHeading: false });
+    if (blocks.length > MAX_DRAFT_BLOCKS) fail("limit_exceeded", "That conversation has too many blocks to save as a note.");
+    for (const b of blocks) {
+      const ref = NOTE_REF.exec(b.text.map((n) => (n.type === "text" ? n.text : "")).join(""));
+      const cited = ref ? refs[Number(ref[1])] : undefined;
+      if (!cited) continue;
+      const doc = cited.noteId ? await getDocumentByPublicId(ctx, cited.noteId) : null;
+      const open = doc && !doc.inTrash && accessAtLeast(await documentAccess(ctx, profile, doc), "read");
+      const text: InlineNode[] = open ? [{ type: "text", text: `[${cited.n}] ` }, { type: "pageLink", documentId: doc.publicId, label: doc.title || "Untitled" }] : [{ type: "text", text: `[${cited.n}] ${cited.title}` }];
+      b.text = text;
+    }
+    const question = messages.find((m) => m.role === "user")?.text ?? "";
+    const title = args.messageId ? titleFromQuestion(question || c.title) : c.title;
+    const doc = await createDocument(ctx, { scope, actor: profile, title, blocks, kind: "document", ...(scope.kind === "workspace" ? { accessMode: "restricted" as const } : {}) });
+    return { id: doc.publicId };
   },
 });
 
@@ -430,7 +549,11 @@ export const stop = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const { message } = await requireMessage(ctx, profile, args.messageId);
-    if (message.status === "streaming") await ctx.db.patch(message._id, { status: "stopped", phase: undefined, updatedAt: Date.now() });
+    if (message.status !== "streaming") return null;
+    // What it had so far comes back from its stream, so the stopped answer shows it right away.
+    const live = message.streamId ? await ctx.db.get(message.streamId) : null;
+    if (live) await ctx.db.delete(live._id);
+    await ctx.db.patch(message._id, { status: "stopped", phase: undefined, streamId: undefined, ...(live ? { text: live.text } : {}), updatedAt: Date.now() });
     return null;
   },
 });
@@ -471,7 +594,7 @@ export const post = internalMutation({
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages"> }> => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
+    if (profile.aiEnabled === false) fail("forbidden", "Foli is turned off in your settings.");
     const text = (args.text ?? "").trim();
     if (args.mode !== "regenerate") {
       if (!text) fail("invalid_argument", "Ask a question first.");
@@ -557,13 +680,24 @@ export const turn = internalQuery({
   },
 });
 
-/** Writes the answer so far, or what the assistant is doing. Returns false once the person pressed Stop. */
+/**
+ * Writes the answer so far, or what the assistant is doing. Returns false once the person pressed Stop.
+ * The text goes to the answer's stream row (made on the first write), never the message itself, so the
+ * conversation's query (`get`) isn't re-run for every chunk; `streamText` serves it to the chat.
+ */
 export const writeMessage = internalMutation({
   args: { messageId: v.id("aiMessages"), text: v.optional(v.string()), phase: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const m = await ctx.db.get(args.messageId);
     if (!m || m.status !== "streaming") return false;
-    await ctx.db.patch(m._id, { ...(args.text !== undefined ? { text: args.text.slice(0, 60_000) } : {}), ...(args.phase ? { phase: args.phase.slice(0, 20) } : {}), updatedAt: Date.now() });
+    const now = Date.now();
+    if (args.text !== undefined) {
+      const text = args.text.slice(0, 60_000);
+      const live = m.streamId ? await ctx.db.get(m.streamId) : null;
+      if (live) await ctx.db.patch(live._id, { text, updatedAt: now });
+      else await ctx.db.patch(m._id, { streamId: await ctx.db.insert("aiStreams", { profileId: m.profileId, text, status: "streaming", createdAt: now, updatedAt: now }), updatedAt: now });
+    }
+    if (args.phase) await ctx.db.patch(m._id, { phase: args.phase.slice(0, 20), updatedAt: now });
     return true;
   },
 });
@@ -589,10 +723,15 @@ export const finishMessage = internalMutation({
     // Stopped stays stopped (with what was written); an error after Stop is just a stop.
     const stopped = m.status === "stopped";
     const now = Date.now();
+    // The streamed text comes back to the message (what was written, when no final text is given).
+    const live = m.streamId ? await ctx.db.get(m.streamId) : null;
+    if (live) await ctx.db.delete(live._id);
+    const text = args.text ?? live?.text;
     await ctx.db.patch(m._id, {
       status: stopped ? "stopped" : args.status,
       phase: undefined,
-      ...(args.text !== undefined ? { text: args.text.slice(0, 60_000) } : {}),
+      streamId: undefined,
+      ...(text !== undefined ? { text: text.slice(0, 60_000) } : {}),
       ...(args.citations?.length ? { citations: args.citations } : {}),
       ...(args.webCitations?.length ? { webCitations: args.webCitations } : {}),
       // Capped again here: whole chips only, 32 KB together.
@@ -607,6 +746,8 @@ export const finishMessage = internalMutation({
     });
     const c = await ctx.db.get(m.conversationId);
     if (c && args.text) await ctx.db.patch(c._id, { searchText: appendSearch(c, args.text), updatedAt: now });
+    // Shared with the workspace: the notes it uses may have changed (aiSharing.ts).
+    if (c?.sharedWith === "workspace") await refreshNoteRefs(ctx, c._id);
     return null;
   },
 });
@@ -698,7 +839,7 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
   ];
   let holdId: Id<"aiCreditHolds">;
   try {
-    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, documentIds: [...documentIds, ...files.noteIds], noteOnly: notesOnly, plan }));
+    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, documentIds: [...documentIds, ...files.noteIds], noteOnly: notesOnly, plan, feature: withFiles ? "attachments" : "chat" }));
   } catch (e) {
     const error = storedError(e);
     console.warn(JSON.stringify({ event: "ai.chat_refused", code: error.code }));
@@ -849,7 +990,12 @@ export const sweep = internalMutation({
       .query("aiMessages")
       .withIndex("by_status_updated", (q) => q.eq("status", "streaming").lt("updatedAt", now - STALE_MS))
       .take(200);
-    for (const m of stuck) await ctx.db.patch(m._id, { status: "error", phase: undefined, error: { code: "interrupted", message: "This answer was cut off. Try again." }, updatedAt: now });
+    for (const m of stuck) {
+      // What was streamed before the crash stays on the answer.
+      const live = m.streamId ? await ctx.db.get(m.streamId) : null;
+      if (live) await ctx.db.delete(live._id);
+      await ctx.db.patch(m._id, { status: "error", phase: undefined, streamId: undefined, ...(live ? { text: live.text } : {}), error: { code: "interrupted", message: "This answer was cut off. Try again." }, updatedAt: now });
+    }
     const files = await sweepUnsentAttachments(ctx, now);
     return { conversations: old.length, messages: stuck.length, files };
   },

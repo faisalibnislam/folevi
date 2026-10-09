@@ -29,7 +29,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   bulleted: [...FORMAT],
   numbered: [...FORMAT],
   todo: ["checked", "canceled", "dueDate", "dueTime", "priority", "assigneeId", "reminderAt", "completedAt", ...FORMAT],
-  toggle: ["collapsed", ...FORMAT],
+  toggle: ["collapsed", "study", ...FORMAT],
   quote: [...FORMAT],
   callout: ["tone", "icon"],
   code: ["language"],

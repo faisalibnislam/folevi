@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { Download, MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Plus, Search, Trash2 } from "lucide-react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Plus, Search, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -11,27 +11,54 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { MenuButton } from "@/components/ui/Menu";
 import { errorMessage, useToast } from "@/components/ui/Toast";
+import { useConversationActions } from "./ConversationActions";
 
 interface Row {
   id: string;
   title: string;
   pinned: boolean;
   lastMessageAt: number;
+  /** Shared with the workspace (aiSharing.ts). */
+  shared?: boolean;
+  /** In a team workspace (so it can be shared). */
+  workspace?: boolean;
 }
 
-function download(text: string, filename: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+/** A conversation someone else shared with the workspace (aiSharing.list). */
+export interface SharedRow {
+  id: string;
+  title: string;
+  by: string;
+  lastMessageAt: number;
+}
+
+const ROW_LINK = "flex h-9 items-center gap-2 rounded-[6px] pl-2.5 text-[13.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
+const rowTone = (active: boolean) => (active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading");
+
+/**
+ * "Shared with you": conversations others in this workspace shared, that you can read (each opens
+ * read-only). Only shown when there are some.
+ */
+export function SharedWithYou({ rows, activeId, onNavigate }: { rows: SharedRow[]; activeId: string | null; onNavigate?: () => void }) {
+  if (!rows.length) return null;
+  return (
+    <section className="mb-3" aria-label="Shared with you">
+      <p className="ui-caps px-2.5 pb-1">Shared with you</p>
+      <ul className="space-y-0.5">
+        {rows.map((r) => (
+          <li key={r.id}>
+            <AppLink href={`/ai/${r.id}`} onClick={onNavigate} aria-current={r.id === activeId ? "page" : undefined} title={`Shared by ${r.by}`} className={`${ROW_LINK} pr-2.5 ${rowTone(r.id === activeId)}`}>
+              <span className="min-w-0 flex-1 truncate">{r.title}</span>
+              <span className="max-w-[40%] flex-none truncate text-[11.5px] font-normal text-faint">{r.by}</span>
+            </AppLink>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolean; onNavigate?: () => void }) {
-  const convex = useConvex();
   const rename = useMutation(api.aiChat.rename);
   const setPinned = useMutation(api.aiChat.setPinned);
   const remove = useMutation(api.aiChat.remove);
@@ -41,6 +68,7 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
   const [name, setName] = useState(row.title);
   const [deleting, setDeleting] = useState(false);
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
+  const actions = useConversationActions({ id: row.id, title: row.title, shared: row.shared === true, workspace: row.workspace === true });
 
   const save = () => {
     setEditing(false);
@@ -84,11 +112,15 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
           href={`/ai/${row.id}`}
           onClick={onNavigate}
           aria-current={active ? "page" : undefined}
-          className={`flex h-9 items-center gap-2 rounded-[6px] pl-2.5 pr-9 text-[13.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
-            active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
-          }`}
+          className={`${ROW_LINK} pr-9 ${rowTone(active)}`}
         >
           <span className="min-w-0 flex-1 truncate">{row.title}</span>
+          {row.shared ? (
+            <span title="Shared with the workspace" className="flex-none text-faint">
+              <Users size={12} aria-hidden />
+              <span className="sr-only">Shared</span>
+            </span>
+          ) : null}
           <span className="flex-none text-[11.5px] font-normal text-faint group-hover/conv:hidden">{formatRelative(row.lastMessageAt)}</span>
         </AppLink>
       )}
@@ -108,18 +140,14 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
               },
             },
             { label: row.pinned ? "Unpin" : "Pin", icon: row.pinned ? <PinOff size={14} /> : <Pin size={14} />, onSelect: () => void setPinned({ conversationId: row.id, pinned: !row.pinned }).catch(fail) },
-            {
-              label: "Export as Markdown",
-              icon: <Download size={14} />,
-              onSelect: () => {
-                void convex.query(api.aiChat.exportMarkdown, { conversationId: row.id }).then((r) => download(r.markdown, r.filename), fail);
-              },
-            },
+            "separator",
+            ...actions.items,
             "separator",
             { label: "Delete…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setDeleting(true) },
           ]}
         />
       )}
+      {actions.dialog}
       <Dialog
         open={deleting}
         onClose={() => setDeleting(false)}
@@ -150,7 +178,8 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
 
 /**
  * Your AI conversations here (Personal or this workspace): search, pinned ones first, then the rest by
- * when they were last used. Each can be renamed, pinned, exported or deleted.
+ * when they were last used, and in a workspace those shared with you. Each of yours can be renamed,
+ * pinned, shared with the workspace, exported (Markdown, or a note) or deleted.
  */
 export function ConversationList({ activeId, onNavigate }: { activeId: string | null; onNavigate?: () => void }) {
   const { scope, profile } = useAppState();
@@ -161,10 +190,12 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
     return () => clearTimeout(t);
   }, [search]);
   const pinned = useQuery(api.aiChat.pinned, term ? "skip" : { scope });
+  // Conversations others shared with this workspace (none in Personal).
+  const shared = useQuery(api.aiSharing.list, term || scope.kind !== "workspace" ? "skip" : { scope });
   const { results, status, loadMore } = usePaginatedQuery(api.aiChat.list, { scope, search: term || undefined }, { initialNumItems: 30 });
   const historyOff = (profile as { aiPrefs?: { history: boolean } }).aiPrefs?.history === false;
   const rows = (list: Row[]) => list.map((r) => <ConversationRow key={r.id} row={r} active={r.id === activeId} onNavigate={onNavigate} />);
-  const nothing = status !== "LoadingFirstPage" && !results.length && !(pinned?.length ?? 0);
+  const nothing = status !== "LoadingFirstPage" && !results.length && !(pinned?.length ?? 0) && !(shared?.length ?? 0);
 
   return (
     <nav aria-label="Conversations" className="flex h-full min-h-0 flex-col">
@@ -197,6 +228,7 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
             </AppLink>
           </p>
         ) : null}
+        {!term && shared ? <SharedWithYou rows={shared} activeId={activeId} onNavigate={onNavigate} /> : null}
         {!term && pinned?.length ? (
           <section className="mb-3">
             <p className="ui-caps px-2.5 pb-1">Pinned</p>

@@ -58,6 +58,8 @@ export function publicProfile(p: Doc<"profiles">) {
     appearance: p.appearance,
     aiEnabled: p.aiEnabled !== false,
     aiPrefs: aiPrefsOf(p),
+    /** The AI's first-time introduction was dismissed (it isn't shown again anywhere). */
+    aiIntroSeen: p.aiIntroDismissedAt !== undefined,
     locale: p.locale,
     timeZone: p.timeZone,
     onboardingStep: p.onboardingStep,
@@ -327,6 +329,21 @@ export const updateProfile = mutation({
     }
     if (args.notificationPrefs) patch.notificationPrefs = args.notificationPrefs;
     await ctx.db.patch(profile._id, patch);
+    return null;
+  },
+});
+
+/**
+ * The AI's first-time introduction (a card inside the AI surfaces): dismissed once, gone everywhere for this
+ * person. `seen: false` brings it back.
+ */
+export const setAiIntroSeen = mutation({
+  args: { seen: v.boolean() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    if (args.seen && profile.aiIntroDismissedAt !== undefined) return null;
+    await ctx.db.patch(profile._id, { aiIntroDismissedAt: args.seen ? Date.now() : undefined });
     return null;
   },
 });

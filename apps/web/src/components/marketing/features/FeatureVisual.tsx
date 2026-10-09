@@ -51,7 +51,7 @@ import { cx } from "../ui";
 
 /*
  * One product picture per feature page, built from the site's replicas of the app (Replica.tsx, the demos,
- * the Ask AI panel) and the app's own renderers where they run on the server (the flowchart). Labels match
+ * the Ask Foli panel) and the app's own renderers where they run on the server (the flowchart). Labels match
  * the app's. Pictures that aren't interactive are one image for assistive tech, with the details in the label.
  */
 

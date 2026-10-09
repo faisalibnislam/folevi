@@ -152,7 +152,7 @@ export function useShell(): ShellValue {
 export function Shell() {
   const { route, navigate } = useAppRouter();
   const [collapsed, setCollapsed] = useLocalStorage("folevi:sidebar-collapsed", false);
-  const [width, setWidth] = useLocalStorage("folevi:sidebar-width", 272);
+  const [width, setWidth] = useLocalStorage("folevi:sidebar-width", 248);
   const [inspectorPref, setInspectorPref] = useLocalStorage("folevi:inspector-open", false);
   const isNarrow = useMediaQuery("(max-width: 767px)");
   const isMedium = useMediaQuery("(max-width: 1199px)");

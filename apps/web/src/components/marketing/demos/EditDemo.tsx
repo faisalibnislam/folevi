@@ -158,7 +158,7 @@ export function EditDemo() {
           ) : null}
           <div className="flex items-center gap-2 px-3 py-2.5">
             <AiIcon size={16} className="flex-none text-[#7c6cf0]" />
-            <span className="min-w-0 flex-1 truncate text-[14px] text-faint">{phase.kind === "result" ? "Tell AI what to change… (⏎ to accept)" : "Ask AI to edit the selected text…"}</span>
+            <span className="min-w-0 flex-1 truncate text-[14px] text-faint">{phase.kind === "result" ? "Tell Foli what to change… (⏎ to accept)" : "Ask Foli to edit the selected text…"}</span>
             <button
               type="button"
               aria-label="Close"

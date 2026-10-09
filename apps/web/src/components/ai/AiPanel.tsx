@@ -23,6 +23,8 @@ import { aiDiff } from "./aiDiff";
 import { AiDiffLegend, AiDiffView } from "./AiDiffView";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { ChatThread } from "./chat/ChatThread";
+import { AI_INTRO, AiIntro } from "./AiIntro";
+import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -35,6 +37,8 @@ const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "flashcards", label: "Flashcards", icon: TOOL_ICONS.flashcards },
   { task: "quiz", label: "Quiz", icon: TOOL_ICONS.quiz },
 ];
+/** Questions about this note, offered in Ask while nothing has been asked yet. */
+const ASK_NOTE = ["Sum up this note in three lines", "Who is mentioned, and why?", "What should happen next?"];
 /** "Think it through": the decision and brainstorming frameworks. */
 const THINK = AI_TOOLS.filter((t) => t.group === "decide" || t.group === "ideas");
 
@@ -191,7 +195,7 @@ export function AiPanel({
     setBusy("Saving");
     setError(null);
     try {
-      const { id } = await saveDraft("note", title ? `${labelFor(result.task)}: ${title}` : labelFor(result.task), result.text);
+      const { id } = await saveDraft("note", title ? `${labelFor(result.task)}: ${title}` : labelFor(result.task), result.text, { people: result.task === "meetingSummary" });
       setResult(null);
       navigate(`/d/${id}`);
     } catch (e) {
@@ -201,8 +205,20 @@ export function AiPanel({
     }
   };
 
+  // Said once when a result is ready (the streaming text isn't announced word by word).
+  const announce = useDoneAnnouncement(Boolean(busy), error ? "" : "Done. The result is below.");
+
+  /** A starter from the first-time introduction: summarize, the action items, or a question about the note. */
+  const starter = (s: string) => {
+    const [summary, actions] = AI_INTRO.note.starters;
+    if (s === summary) return void doWrite({ task: "summarize", placement: { kind: "cursor" } });
+    if (s === actions && !readOnly) return void doWrite({ task: "actions", placement: { kind: "cursor" } });
+    setMode("ask");
+    void doAsk(s === actions ? "What are the action items in this note?" : "What's still unclear or open in this note?");
+  };
+
   const modes = (
-    <div className="ui-seg ui-well mb-2" role="group" aria-label="What the AI should do">
+    <div className="ui-seg ui-well mb-2" role="group" aria-label="What Foli should do">
       <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
         Write
       </button>
@@ -218,10 +234,14 @@ export function AiPanel({
     </div>
   );
 
+  // The first time: what the AI does in a note, where requests go, and starters for this note.
+  const intro = <AiIntro place="note" documentId={documentId} onStarter={starter} className="mb-3" />;
+
   // Agent: a conversation about this note that can propose changes (previewed, approved, undoable).
   if (mode === "agent") {
     return (
       <div className="text-sm">
+        {intro}
         {modes}
         <div className="flex h-[min(70vh,640px)] flex-col">
           <ChatThread conversationId={agentConversation} onConversation={setAgentConversation} initialContext={agentContext} variant="panel" initialMode="agent" autoFocus />
@@ -234,6 +254,7 @@ export function AiPanel({
   if (mode === "study") {
     return (
       <div className="text-sm">
+        {intro}
         {modes}
         <StudyMode
           editor={editor}
@@ -251,11 +272,12 @@ export function AiPanel({
   return (
     <div className="space-y-4 text-sm">
       {/* Prompt */}
-      <section aria-label="Ask AI">
+      <section aria-label="Ask Foli">
+        {intro}
         {modes}
         <div className="relative rounded-[10px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
-            {mode === "write" ? "Tell the AI what to write" : "Ask about this note and your other notes"}
+            {mode === "write" ? "Tell Foli what to write" : "Ask about this note and your other notes"}
           </label>
           <textarea
             id={`${uid}-prompt`}
@@ -296,6 +318,8 @@ export function AiPanel({
           <h3 id={`${uid}-quick`} className="ui-caps mb-2 px-1">
             For this note
           </h3>
+          {/* An empty note: say where to start (most actions need something to work on). */}
+          {editor && !editor.state.doc.textContent.trim() ? <p className="mb-2 px-1 text-[12.5px] text-muted">This note is empty. Tell Foli what to write above, or brainstorm ideas to get started.</p> : null}
           <div className="grid grid-cols-2 gap-1.5">
             {NOTE_ACTIONS.map((a) => (
               <button
@@ -314,13 +338,31 @@ export function AiPanel({
           </div>
         </section>
       ) : (
-        <button type="button" onClick={() => openAsk(prompt)} className="px-1 text-[12.5px] text-muted underline-offset-2 hover:text-heading hover:underline">
-          Open the full Ask AI window (⌘J)
-        </button>
+        <>
+          {/* Nothing asked yet: questions that fit this note. */}
+          {!result && !busy ? (
+            <section aria-labelledby={`${uid}-ask`}>
+              <h3 id={`${uid}-ask`} className="ui-caps mb-2 px-1">
+                Ask Foli about this note
+              </h3>
+              <div className="flex flex-col items-start gap-1.5">
+                {ASK_NOTE.map((q) => (
+                  <button key={q} type="button" onClick={() => void doAsk(q)} className="rounded-full bg-[var(--glass-hover)] px-2.5 py-1 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          <button type="button" onClick={() => openAsk(prompt)} className="px-1 text-[12.5px] text-muted underline-offset-2 hover:text-heading hover:underline">
+            Open the full Foli chat (⌘J)
+          </button>
+        </>
       )}
 
-      {/* Status */}
-      <div aria-live="polite" className="empty:hidden">
+      {/* Status (the streaming text isn't a live region: the announcer says when it's done) */}
+      <AiAnnouncer text={announce} />
+      <div className="empty:hidden">
         {busy && stream.text ? (
           <div className="rounded-[12px] bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]" aria-busy="true">
             <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
@@ -339,7 +381,11 @@ export function AiPanel({
           </p>
         ) : null}
         {error ? <AiProblemNotice problem={error} /> : null}
-        {notice ? <p className="px-1 text-[12.5px] text-muted">{notice}</p> : null}
+        {notice ? (
+          <p role="status" className="px-1 text-[12.5px] text-muted">
+            {notice}
+          </p>
+        ) : null}
       </div>
 
       {/* Result */}
@@ -424,7 +470,17 @@ export function AiPanel({
                 <RotateCcw size={14} aria-hidden />
               </button>
             ) : null}
-            <button type="button" onClick={() => setResult(null)} aria-label="Discard" title="Discard" className="ui-btn ui-btn-ghost ml-auto h-8 w-8 px-0">
+            <button
+              type="button"
+              onClick={() => {
+                setResult(null);
+                // The button goes with the result: focus back to the prompt, not lost.
+                inputRef.current?.focus();
+              }}
+              aria-label="Discard"
+              title="Discard"
+              className="ui-btn ui-btn-ghost ml-auto h-8 w-8 px-0"
+            >
               <X size={14} aria-hidden />
             </button>
           </div>
@@ -475,7 +531,7 @@ export function AiPanel({
         </>
       ) : null}
 
-      <p className="px-1 text-[11px] leading-snug text-faint">AI can make mistakes, so check what it writes. Your request and the notes it needs are sent to Google Gemini.</p>
+      <p className="px-1 text-[11px] leading-snug text-faint">Foli can make mistakes, so check what it writes. Your request and the notes it needs are sent to Google Gemini.</p>
     </div>
   );
 }

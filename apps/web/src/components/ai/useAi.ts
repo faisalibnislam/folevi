@@ -76,7 +76,7 @@ export const TOOL_TASKS: ReadonlySet<AiTask> = new Set(AI_TOOLS.map((t) => t.tas
 /** The tools as "/" menu items ("AI: Meeting summary"), each running on the whole note. */
 export const AI_TOOL_SLASH_ITEMS = AI_TOOLS.map((t) => ({
   id: `ai-${t.task}`,
-  label: `AI: ${t.label}`,
+  label: `Foli: ${t.label}`,
   keywords: `ai ${t.keywords}${t.group === "decide" || t.group === "ideas" ? " think it through framework" : ""}`,
   task: t.task,
 }));
@@ -190,9 +190,12 @@ export function useAi() {
     [writeAction, scope],
   );
   const saveDraftMutation = useMutation(api.aiWriting.saveDraft);
-  /** Saves a previewed page as a new note or template where you are (Markdown becomes real blocks). */
+  /**
+   * Saves a previewed page as a new note or template where you are (Markdown becomes real blocks). With
+   * `people` (a meeting summary), the server turns "@Name" into mentions of people who can be mentioned there.
+   */
   const saveDraft = useCallback(
-    (kind: "note" | "template", title: string, markdown: string) => saveDraftMutation({ scope, kind, title, markdown }),
+    (kind: "note" | "template", title: string, markdown: string, opts: { people?: boolean } = {}) => saveDraftMutation({ scope, kind, title, markdown, ...(opts.people ? { people: true } : {}) }),
     [saveDraftMutation, scope],
   );
   /** A flowchart draft (nodes and connectors, no positions) from a description, or the current chart changed. */

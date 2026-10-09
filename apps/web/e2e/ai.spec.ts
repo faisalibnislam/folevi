@@ -9,7 +9,7 @@ test.describe.configure({ timeout: 120_000 });
 test("Ask AI answers from your notes, with sources", async ({ browser }) => {
   const { page } = await newPerson(browser, "Ask Tester");
   await page.keyboard.press("Meta+j");
-  const dialog = page.getByRole("dialog", { name: "Ask AI" });
+  const dialog = page.getByRole("dialog", { name: "Foli" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("textbox", { name: /Ask a question/ }).fill("When is the coastal weekend trip and how do we get there?");
   await page.keyboard.press("Enter");
@@ -33,9 +33,9 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
   await body.locator("p.fb-paragraph").first().click({ clickCount: 3 });
   // Selection → toolbar → Ask AI: the inline composer, on the selected text.
   const toolbar = page.getByRole("toolbar", { name: "Text formatting" });
-  await toolbar.getByRole("button", { name: /^Ask AI/ }).click();
-  const ai = page.getByRole("dialog", { name: "AI Assistant" });
-  await expect(ai.getByRole("combobox", { name: "Ask AI to write or edit" })).toBeFocused();
+  await toolbar.getByRole("button", { name: /^Ask Foli/ }).click();
+  const ai = page.getByRole("dialog", { name: "Foli" });
+  await expect(ai.getByRole("combobox", { name: "Ask Foli to write or edit" })).toBeFocused();
   await ai.getByRole("option", { name: "Fix spelling & grammar" }).click();
   await expect(ai.getByRole("button", { name: "Replace", exact: true })).toBeVisible({ timeout: 60_000 });
   await ai.getByRole("button", { name: "Replace", exact: true }).click();
@@ -46,7 +46,7 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
   await body.locator("p.fb-paragraph").first().click();
   await page.keyboard.press("End");
   await page.keyboard.press("Meta+j");
-  await expect(ai.getByRole("combobox", { name: "Ask AI to write or edit" })).toBeFocused();
+  await expect(ai.getByRole("combobox", { name: "Ask Foli to write or edit" })).toBeFocused();
   await page.keyboard.type("A to-do list with exactly three items for a picnic, as Markdown '- [ ]' to-dos, nothing else");
   await page.keyboard.press("Enter");
   await expect(ai.getByRole("button", { name: "Insert", exact: true })).toBeVisible({ timeout: 60_000 });
@@ -58,7 +58,7 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter"); // an empty to-do turns back into a paragraph
   await page.keyboard.type("/summarize");
-  await page.getByRole("option", { name: /AI: Summarize page/ }).click();
+  await page.getByRole("option", { name: /Foli: Summarize page/ }).click();
   await expect(ai.getByRole("button", { name: "Insert", exact: true })).toBeVisible({ timeout: 60_000 });
   await ai.getByRole("button", { name: "Shorter" }).click();
   await expect(ai.getByText("Shorter", { exact: true }).first()).toBeVisible();
@@ -75,7 +75,7 @@ test("AI text streams in word by word, and Stop keeps what's written so far", as
   await page.getByRole("textbox", { name: "Title" }).fill("Streaming");
   await page.keyboard.press("Enter");
   await page.keyboard.press("Meta+j");
-  const ai = page.getByRole("dialog", { name: "AI Assistant" });
+  const ai = page.getByRole("dialog", { name: "Foli" });
   await page.keyboard.type("Write six detailed paragraphs about the history of lighthouses");
   await page.keyboard.press("Enter");
   // Partial text appears (with its caret) before the reply is finished…
@@ -102,8 +102,8 @@ test("Catch me up on Home, and Ask AI about one folder", async ({ browser }) => 
   const nav = page.getByRole("navigation", { name: "Folio" });
   await nav.getByRole("link", { name: "Projects" }).hover();
   await nav.getByRole("button", { name: "Folder options for Projects" }).click();
-  await page.getByRole("menuitem", { name: "Ask AI about this folder…" }).click();
-  const dialog = page.getByRole("dialog", { name: "Ask AI" });
+  await page.getByRole("menuitem", { name: "Ask Foli about this folder…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Foli" });
   await expect(dialog.getByText("In folder")).toBeVisible();
   await dialog.getByRole("button", { name: "Summarize this folder" }).click();
   await expect(dialog.getByRole("button", { name: /Project Atlas Brief/ })).toBeVisible({ timeout: 60_000 });

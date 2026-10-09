@@ -22,6 +22,7 @@ import { vAiContext } from "./lib/ai/chat";
 import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
 import { vReportSource, vResearchStep } from "./lib/ai/research";
 import { vMemoryKind } from "./lib/ai/memory";
+import { vAiFeature } from "./lib/ai/usage";
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
@@ -65,6 +66,8 @@ export default defineSchema({
     aiAttachments: v.optional(v.boolean()),
     aiWebResearch: v.optional(v.boolean()),
     aiDigests: v.optional(v.boolean()),
+    /** When the person dismissed the AI's first-time introduction (unset = not yet; components/ai/AiIntro.tsx). */
+    aiIntroDismissedAt: v.optional(v.number()),
     locale: v.string(),
     timeZone: v.string(),
     /** Where onboarding is (convex/lib/onboarding.ts ONBOARDING_STEPS). "workspace" is the first step. */
@@ -613,6 +616,9 @@ export default defineSchema({
     used: v.number(),
     /** Credits a request cost beyond everything available (clamped to zero, not charged). */
     overrun: v.optional(v.number()),
+    /** Credits charged this period (monthly and extra) by feature, and by UTC day (lib/ai/usage.ts). */
+    features: v.optional(v.record(v.string(), v.number())),
+    days: v.optional(v.record(v.string(), v.number())),
     updatedAt: v.number(),
   }).index("by_account_period", ["profileId", "workspaceId", "periodKey"]),
 
@@ -649,6 +655,8 @@ export default defineSchema({
     scope: v.union(v.literal("personal"), v.literal("workspace")),
     scopeWorkspaceId: v.optional(v.id("workspaces")),
     credits: v.number(),
+    /** What the request is for (lib/ai/usage.ts), counted when it settles. */
+    feature: v.optional(vAiFeature),
     createdAt: v.number(),
     expiresAt: v.number(),
   })
@@ -667,9 +675,9 @@ export default defineSchema({
   }).index("by_workspace_profile", ["workspaceId", "profileId"]),
 
   /**
-   * Live AI output while it's being written (convex/ai.ts), so the app can show it word by word. Holds only
-   * the AI's reply (never the prompt or the notes sent), readable only by its owner, and deleted shortly
-   * after it finishes (plus an hourly sweep for anything left behind).
+   * Live AI output while it's being written (convex/ai.ts, and chat answers in aiChat.ts), so the app can
+   * show it word by word. Holds only the AI's reply (never the prompt or the notes sent), readable only by
+   * its owner, and deleted shortly after it finishes (plus an hourly sweep for anything left behind).
    */
   aiStreams: defineTable({
     profileId: v.id("profiles"),
@@ -681,9 +689,9 @@ export default defineSchema({
 
   /**
    * AI conversations (convex/aiChat.ts): private to the person who started them (`profileId`), in the
-   * scope they were started in. Deleted with the account, the workspace, or by the person. With history
-   * off (profiles.aiHistory) a conversation is `ephemeral`: deleted when its chat closes, and swept after
-   * a day.
+   * scope they were started in, unless they share one with their workspace (read-only, aiSharing.ts).
+   * Deleted with the account, the workspace, or by the person. With history off (profiles.aiHistory) a
+   * conversation is `ephemeral`: deleted when its chat closes, and swept after a day.
    */
   aiConversations: defineTable({
     publicId: v.string(),
@@ -696,7 +704,14 @@ export default defineSchema({
     /** What the conversation is about: notes, a folder, or the whole scope (public ids). */
     context: vAiContext,
     model: v.optional(v.string()),
+    /**
+     * "workspace": shared read-only with the workspace's members (convex/aiSharing.ts). A member sees it
+     * only while they can open every note in `noteRefs`, checked on every read.
+     */
     sharedWith: v.union(v.literal("none"), v.literal("workspace")),
+    sharedAt: v.optional(v.number()),
+    /** While shared: every note the conversation cites, is about or used (public ids, capped). */
+    noteRefs: v.optional(v.array(v.string())),
     ephemeral: v.optional(v.boolean()),
     /** The title and messages, lowercased and capped, for the conversation list's search. */
     searchText: v.string(),
@@ -709,6 +724,7 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_profile_place", ["profileId", "workspaceId", "pinned", "lastMessageAt"])
     .index("by_ephemeral_updated", ["ephemeral", "updatedAt"])
+    .index("by_workspace_shared", ["workspaceId", "sharedWith", "lastMessageAt"])
     .searchIndex("search", { searchField: "searchText", filterFields: ["profileId", "workspaceId"] }),
 
   /**
@@ -750,6 +766,11 @@ export default defineSchema({
     phase: v.optional(v.string()),
     error: v.optional(v.object({ code: v.string(), message: v.string(), action: v.optional(v.string()), reason: v.optional(v.string()) })),
     usage: v.optional(v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() })),
+    /**
+     * While the answer streams, its text so far lives in this aiStreams row (aiChat.streamText), so the
+     * conversation's query isn't re-run on every chunk; the text comes back here when it settles.
+     */
+    streamId: v.optional(v.id("aiStreams")),
     /** An agent run's answer (convex/aiAgent.ts): the steps it took, and its proposed changes (aiRuns). */
     agent: v.optional(v.object({ steps: v.array(v.object({ tool: v.string(), count: v.number(), ok: v.boolean() })), runId: v.optional(v.id("aiRuns")) })),
     /** A preference the answer offers to remember (lib/ai/memory.ts): saved only when the person clicks Save. */

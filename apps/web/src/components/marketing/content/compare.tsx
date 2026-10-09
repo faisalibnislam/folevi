@@ -138,7 +138,7 @@ const diff = {
     title: "AI counted in credits",
     body: (
       <p>
-        One AI credit is one cent of what the AI costs Folevi to run. Rewriting a paragraph uses about 1 credit, a question to Ask AI about 2 and a flowchart 3 to 5. Settings shows what’s left this month and when it resets. See{" "}
+        One AI credit is one cent of what the AI costs Folevi to run. Rewriting a paragraph uses about 1 credit, a question to Foli about 2 and a flowchart 3 to 5. Settings shows what’s left this month and when it resets. See{" "}
         <Link href="/blog/what-an-ai-credit-is">what an AI credit is</Link>.
       </p>
     ),
@@ -300,7 +300,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Is Folevi an alternative to Craft?", a: "For notes, tasks and linked pages on the web, yes. Folevi doesn’t have Craft’s native apps, on-device AI or website publishing." },
       { q: "Can I move my Craft documents to Folevi?", a: "Yes. Export them from Craft as Markdown, then import the files, a folder or a ZIP in Folevi under Settings → Import & export." },
       { q: "Does Folevi have an iPhone or Android app?", a: "Not yet. Folevi runs in the browser today and the Mac app is coming soon." },
-      { q: "Can I use Folevi without AI?", a: `Yes. Core costs ${p(PRICES.core.month)} a month and has no AI at all. On the other plans you can turn the AI Assistant off in Settings.` },
+      { q: "Can I use Folevi without AI?", a: `Yes. Core costs ${p(PRICES.core.month)} a month and has no AI at all. On the other plans you can turn Foli off in Settings.` },
       { q: "How is Folevi priced for a team?", a: `Per member: ${p(PRICES.core.month)}, ${p(PRICES.pro.month)} or ${p(PRICES.pro_ai.month)} a month on Core, Pro or Pro AI. Guests are free.` },
     ],
     sources: [

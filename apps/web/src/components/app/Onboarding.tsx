@@ -25,7 +25,7 @@ const STEPS = [
   { key: "uses", name: "Your pages" },
   { key: "style", name: "Note style" },
   { key: "appearance", name: "Appearance" },
-  { key: "ai", name: "AI Assistant" },
+  { key: "ai", name: "Foli" },
   { key: "welcome", name: "Ready" },
 ] as const;
 const LAST = STEPS.length - 1;
@@ -185,7 +185,7 @@ export function Onboarding() {
       ? "Five note styles fanned out like cards: Cypresses, Summer sky, Irises, Poppy print and Aurora."
       : step === 1
         ? `A preview of your Home${pages.length ? ` with ${pages.length} new starter pages: ${listOf(pages.map((p) => p.title))}` : ""}.`
-        : `A preview of your “${WELCOME}” page in the ${styleName(styleId)} style${step === 4 && ai ? ", with the Ask AI panel open" : ""}.`;
+        : `A preview of your “${WELCOME}” page in the ${styleName(styleId)} style${step === 4 && ai ? ", with Foli open" : ""}.`;
   const preview = (compact: boolean) => (
     <OnboardingPreview
       scene={scene}
@@ -207,7 +207,7 @@ export function Onboarding() {
     "What will you use Folevi for?",
     "Pick a style for your first page",
     "Light or dark?",
-    "Meet your AI Assistant",
+    "Meet Foli",
     "Your Folevi is ready.",
   ][step]!;
   const lede = [
@@ -506,19 +506,19 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
     <>
       <FactList
         items={[
-          { icon: MessageSquareText, title: "Ask AI", body: "Ask a question about your notes and get an answer with links to its sources." },
+          { icon: MessageSquareText, title: "Ask Foli", body: "Ask a question about your notes and get an answer with links to its sources." },
           { icon: Sparkles, title: "Catch me up", body: "On Home, a short brief of your week: recent notes and what’s due." },
           { icon: PenLine, title: "Writing help", body: "Rewrite, shorten, fix or summarize the text you select, or press ⌘J in a note." },
         ]}
       />
       <div className="ob-rise mt-6 flex items-start gap-4 rounded-[12px] bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
         <div className="min-w-0 flex-1">
-          <p className="text-[14.5px] font-semibold text-heading">AI Assistant {on ? "on" : "off"}</p>
+          <p className="text-[14.5px] font-semibold text-heading">Foli {on ? "on" : "off"}</p>
           <p id={descId} className="mt-1 text-[13px] leading-relaxed text-muted">
-            When you use it, your request and the notes it needs are sent to Google Gemini. Nothing is sent while it’s off, and the AI buttons are hidden.
+            When you use it, your request and the notes it needs are sent to Google Gemini. Nothing is sent while it’s off, and Foli's buttons are hidden.
           </p>
         </div>
-        <Switch checked={on} onChange={onChange} label="AI Assistant" describedBy={descId} />
+        <Switch checked={on} onChange={onChange} label="Foli" describedBy={descId} />
       </div>
       <p className="mt-3.5 text-[13px] text-muted">{plan}</p>
     </>
@@ -530,7 +530,7 @@ function Summary({ pages, style, appearance, ai }: { pages: string[]; style: str
     { icon: <IconTile icon={Files} />, title: pages.length ? `${pages.length} starter ${pages.length === 1 ? "page" : "pages"}` : "Starter pages", body: pages.length ? listOf(pages) : "None this time. You’ll find templates in the sidebar." },
     { icon: <IconTile icon={Paintbrush} />, title: WELCOME, body: style === "Plain" ? "Plain, like every new page" : `In the ${style} style` },
     { icon: <IconTile icon={SunMoon} />, title: "Appearance", body: appearance === "system" ? "Matches your system" : appearance === "dark" ? "Dark" : "Light" },
-    { icon: <AiIconTile />, title: "AI Assistant", body: ai ? "On. Press ⌘J in a note to ask." : "Off. Turn it on in Settings any time." },
+    { icon: <AiIconTile />, title: "Foli", body: ai ? "On. Press ⌘J in a note to ask." : "Off. Turn it on in Settings any time." },
   ];
   return (
     <ul className="space-y-2.5">

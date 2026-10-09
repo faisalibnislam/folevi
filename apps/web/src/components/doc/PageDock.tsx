@@ -5,7 +5,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import type { InspectorTab } from "./Inspector";
 
 const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
-  { id: "ai", label: "AI", icon: <AiIcon size={16} /> },
+  { id: "ai", label: "Foli", icon: <AiIcon size={16} /> },
   { id: "insert", label: "Insert", icon: <Plus size={17} /> },
   { id: "format", label: "Format", icon: <Type size={16} /> },
   { id: "style", label: "Style", icon: <Paintbrush size={16} /> },

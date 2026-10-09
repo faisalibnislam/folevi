@@ -128,7 +128,12 @@ export function RelatedList({
           </ul>
         </section>
       ) : null}
-      {empty ? <p className="px-1 text-muted">Nothing related yet. Links to and from this note show up here.</p> : null}
+      {empty ? (
+        <div className="space-y-1.5 px-1">
+          <p className="text-muted">Nothing related yet. Links to and from this note show up here.</p>
+          <p className="text-[12.5px] text-faint">Type [[ in the note to link another one. Notes that look alike or say something different show up here too.</p>
+        </div>
+      ) : null}
       {related.note ? <p className="px-1 text-[12px] text-faint">{related.note}</p> : null}
     </div>
   );

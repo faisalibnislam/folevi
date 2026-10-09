@@ -23,11 +23,11 @@ test("the new actions in the '/' menu and the composer are refused without a mod
   // "/" menu: every tool, on the whole note.
   await page.keyboard.press("Enter");
   await page.keyboard.type("/ai");
-  for (const name of ["AI: Meeting summary", "AI: Flashcards", "AI: Quiz", "AI: Pros and cons", "AI: Decision matrix", "AI: SWOT analysis", "AI: Risks and mitigations", "AI: Pre-mortem", "AI: Mind map", "AI: How might we", "AI: SCAMPER", "AI: Six thinking hats"]) {
+  for (const name of ["Foli: Meeting summary", "Foli: Flashcards", "Foli: Quiz", "Foli: Pros and cons", "Foli: Decision matrix", "Foli: SWOT analysis", "Foli: Risks and mitigations", "Foli: Pre-mortem", "Foli: Mind map", "Foli: How might we", "Foli: SCAMPER", "Foli: Six thinking hats"]) {
     await expect(page.getByRole("option", { name, exact: true })).toBeVisible();
   }
-  await page.getByRole("option", { name: "AI: Meeting summary", exact: true }).click();
-  const ai = page.getByRole("dialog", { name: "AI Assistant" });
+  await page.getByRole("option", { name: "Foli: Meeting summary", exact: true }).click();
+  const ai = page.getByRole("dialog", { name: "Foli" });
   await expect(ai.getByRole("alert")).toContainText(/isn.t set up/i, { timeout: 30_000 });
   await page.keyboard.press("Escape");
   await expect(ai).toHaveCount(0);
@@ -36,7 +36,7 @@ test("the new actions in the '/' menu and the composer are refused without a mod
 
   // "Think it through" from the slash menu by keyword.
   await page.keyboard.type("/swot");
-  await page.getByRole("option", { name: "AI: SWOT analysis", exact: true }).click();
+  await page.getByRole("option", { name: "Foli: SWOT analysis", exact: true }).click();
   await expect(ai.getByRole("alert")).toContainText(/isn.t set up/i, { timeout: 30_000 });
   await page.keyboard.press("Escape");
   await expect(ai).toHaveCount(0);
@@ -44,7 +44,7 @@ test("the new actions in the '/' menu and the composer are refused without a mod
 
   // The composer on a selection: meeting and study tools, then the frameworks.
   await first.click({ clickCount: 3 });
-  await page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^Ask AI/ }).click();
+  await page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^Ask Foli/ }).click();
   const list = ai.getByRole("listbox", { name: "AI suggestions" });
   for (const name of ["Meeting summary", "Flashcards", "Quiz", "Pros and cons", "Decision matrix", "SWOT analysis", "Risks and mitigations", "Pre-mortem", "Mind map", "How might we", "SCAMPER", "Six thinking hats"]) {
     await expect(list.getByRole("option", { name, exact: true })).toBeVisible();
@@ -68,8 +68,8 @@ test("the AI panel: study mode's empty state, the frameworks and translation, al
   const body = page.getByRole("textbox", { name: "Document body" });
   const first = body.locator("p.fb-paragraph").first();
 
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "AI" }).click();
-  const modes = page.getByRole("group", { name: "What the AI should do" });
+  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli" }).click();
+  const modes = page.getByRole("group", { name: "What Foli should do" });
   await modes.getByRole("button", { name: "Study", exact: true }).click();
   const studyArea = page.getByRole("region", { name: "Study", exact: true });
   await expect(studyArea.getByText("Nothing to study yet")).toBeVisible();

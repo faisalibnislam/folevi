@@ -119,7 +119,7 @@ export function TitleAi({
 
   const replace = (text: string) => {
     const clean = cleanTitle(text);
-    if (!clean) return setError("The AI didn't return a title. Try again.");
+    if (!clean) return setError("Foli didn't return a title. Try again.");
     onApply(whole ? clean : `${title.slice(0, range.start)}${clean}${title.slice(range.end)}`);
   };
 
@@ -168,8 +168,8 @@ export function TitleAi({
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
           disabled={Boolean(busy)}
-          aria-label={whole ? "Ask AI to edit the title" : "Ask AI to edit the selected words"}
-          placeholder={whole ? "Ask AI to edit the title…" : "Ask AI to edit the selected words…"}
+          aria-label={whole ? "Ask Foli to edit the title" : "Ask Foli to edit the selected words"}
+          placeholder={whole ? "Ask Foli to edit the title…" : "Ask Foli to edit the selected words…"}
           className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-faint"
         />
         {instruction.trim() ? (
@@ -205,7 +205,7 @@ export function TitleAi({
           : null}
       </ul>
       {busy === "instruction" ? <p className="px-4 pb-2.5 text-[12.5px] text-muted">Working…</p> : null}
-      <p className="border-t border-line/60 px-4 py-2 text-[11.5px] text-faint">AI can make mistakes. Sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-4 py-2 text-[11.5px] text-faint">Foli can make mistakes. Sent to Google Gemini.</p>
     </div>,
     document.body,
   );

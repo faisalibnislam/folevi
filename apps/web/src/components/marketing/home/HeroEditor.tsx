@@ -90,9 +90,9 @@ type Notice = { title: string; body: ReactNode; items?: string[] };
 
 const NOTICES: Record<"ai" | "comments" | "share" | "info" | "more", Notice> = {
   ai: {
-    title: "AI Assistant",
+    title: "Foli",
     body: `Ask your notes a question, or let AI continue, summarize or tidy a page. Sign up to use it: the Free plan includes ${MONTHLY_CREDITS.free} AI credits a month.`,
-    items: ["Ask AI…", "Continue writing", "Summarize note", "Find action items"],
+    items: ["Ask Foli…", "Continue writing", "Summarize note", "Find action items"],
   },
   comments: { title: "Comments", body: "Comment on any block and reply in threads. Sign up to comment on your own pages." },
   share: { title: "Share", body: "Share a page with a link or invite people by email. Links can expire or need a password. Sign up to share your own pages." },

@@ -31,9 +31,11 @@ import { consume } from "./lib/rateLimit";
 import { insertScoped, scopeOfRow, vScopeArg, type ScopeArg } from "./lib/scope";
 import type { CallUsage, PlannedCall } from "./lib/credits";
 import { aiPrefsOf } from "./lib/ai/prefs";
+import { REMEMBER_RULE, takeRemember, vMemoryKind } from "./lib/ai/memory";
 import { capabilities, provider, type Content, type Part } from "./lib/ai/provider";
 import { vAiContext, type AiContext } from "./lib/ai/chat";
 import { recordUserAction } from "./lib/audit";
+import { refreshNoteRefs } from "./lib/ai/sharing";
 import { runTool, toolDeclarations, type AgentStep, type ToolHost } from "./lib/ai/tools";
 import { NOTE_CHARS, READERS, type ReadEnv } from "./lib/ai/tools/read";
 import { checkRoom, PROPOSERS } from "./lib/ai/tools/propose";
@@ -70,7 +72,7 @@ const GONE = "Those changes aren't there anymore.";
 
 const AGENT_SYSTEM = [
   PERSONA,
-  "You are working as an agent inside Folevi: you can look through the person's notes with tools and propose changes to them.",
+  "You are Foli, working as an agent inside Folevi: you can look through the person's notes with tools and propose changes to them.",
   "Read before you change: search or list to find notes, get_note to read one (its lines start with block ids in brackets, which update_note uses). Use ids exactly as tools return them; never invent ids.",
   "Write tools (create_note, update_note, append_to_note, rename_note, move_note, create_folder, add_tags, create_checklist, create_tasks, merge_notes) only propose a change. Nothing happens until the person reviews and approves it, so never say a change has been made.",
   "Propose only what the person asked for. Prefer an existing folder over a new one. Keep edits small and targeted: replace or insert the blocks that need it rather than rewriting a whole note.",
@@ -152,6 +154,8 @@ export const finish = internalMutation({
     operations: v.array(vAgentOp),
     usage: v.optional(v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() })),
     error: v.optional(v.object({ code: v.string(), message: v.string(), action: v.optional(v.string()), reason: v.optional(v.string()) })),
+    /** A preference the answer offers to remember (lib/ai/memory.ts), as in a chat answer. */
+    memory: v.optional(v.object({ kind: vMemoryKind, text: v.string() })),
   },
   handler: async (ctx, args) => {
     const m = await ctx.db.get(args.messageId);
@@ -179,10 +183,14 @@ export const finish = internalMutation({
       agent: { steps: args.steps.slice(-40), ...(runId ? { runId } : {}) },
       ...(args.error && !stopped ? { error: args.error } : {}),
       ...(args.usage ? { usage: args.usage } : {}),
+      // Only offered: nothing is remembered until the person clicks Save (aiMemory.saveProposal).
+      ...(args.memory && !stopped && !args.error ? { memory: { ...args.memory, status: "proposed" as const } } : {}),
       updatedAt: now,
     });
     const c = await ctx.db.get(m.conversationId);
     if (c && args.text) await ctx.db.patch(c._id, { searchText: `${c.searchText}\n${args.text}`.slice(0, 20_000), updatedAt: now });
+    // Shared with the workspace: the run's notes count too (aiSharing.ts).
+    if (runId && c?.sharedWith === "workspace") await refreshNoteRefs(ctx, c._id);
     return null;
   },
 });
@@ -236,7 +244,7 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
     files = (await ctx.runQuery(internal.aiAttachments.forTurn, { messageId })).files;
     await ctx.runMutation(internal.aiAgent.limit, {});
     // A run reads whatever notes it needs from where the conversation lives, so that place decides.
-    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, plan: webOn ? [...AGENT_PLAN, ...WEB_PLAN] : AGENT_PLAN }));
+    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, plan: webOn ? [...AGENT_PLAN, ...WEB_PLAN] : AGENT_PLAN, feature: "agent" }));
   } catch (e) {
     const error = storedError(e);
     console.warn(JSON.stringify({ event: "ai.agent_refused", code: error.code }));
@@ -254,6 +262,8 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
   // Tools the person's settings allow (attachments and web research can be turned off).
   const declarations = toolDeclarations().filter((d) => ((d.name !== "search_web" && d.name !== "read_web_page") || webOn) && (d.name !== "read_attachment" || prefs.attachments));
   const offered = new Set(declarations.map((d) => d.name));
+  // Memory on: the run's last message may offer to remember a preference, like a chat answer.
+  const system = prefs.memory ? `${AGENT_SYSTEM}\n${REMEMBER_RULE}` : AGENT_SYSTEM;
 
   let cost: Settled | undefined;
   let stopped = false;
@@ -289,7 +299,7 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
           }
           // The last call (or past the deadline, or out of tool calls) may not use tools: it has to answer.
           const last = step === MAX_MODEL_CALLS - 1 || calls >= MAX_TOOL_CALLS || Date.now() > deadline;
-          const res = await provider().generate({ system: AGENT_SYSTEM, prompt: "", contents, tools: declarations, toolChoice: last ? "none" : "auto", temperature: 0.2, maxOutputTokens: 4_096 }, meter);
+          const res = await provider().generate({ system, prompt: "", contents, tools: declarations, toolChoice: last ? "none" : "auto", temperature: 0.2, maxOutputTokens: 4_096 }, meter);
           if (!res.toolCalls.length || last) return res.text;
           contents.push({ role: "model", parts: res.parts });
           const answers: Part[] = [];
@@ -318,7 +328,9 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
       },
     );
     const fallback = ops.length ? "Here's what I'd change. Check it, then approve what you want." : "I couldn't finish that. Try asking for a smaller step.";
-    await ctx.runMutation(internal.aiAgent.finish, { messageId, text: stopped ? "" : text.trim() || fallback, steps, operations: ops, usage: cost });
+    // The offer (when there is one) comes off the answer and goes on the message.
+    const said = prefs.memory ? takeRemember(text) : { text, memory: null };
+    await ctx.runMutation(internal.aiAgent.finish, { messageId, text: stopped ? "" : said.text.trim() || fallback, steps, operations: ops, usage: cost, ...(said.memory && !stopped ? { memory: said.memory } : {}) });
     console.log(JSON.stringify({ event: "ai.agent_run", tools: steps.length, proposed: ops.length }));
     return { status: "done" };
   } catch (e) {
@@ -468,6 +480,8 @@ export const complete = internalMutation({
     const now = Date.now();
     await ctx.db.patch(run._id, { operations, status: !applied ? "failed" : failed ? "partial" : "done", executedAt: now, updatedAt: now });
     recordUserAction(profile, { action: "ai_agent.apply", targetType: "aiRun", targetId: run.publicId, counts: { applied, failed, notes: run.notes.length } });
+    // Notes the run made count for who can see the conversation, if it's shared.
+    await refreshNoteRefs(ctx, run.conversationId);
     return null;
   },
 });

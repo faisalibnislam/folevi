@@ -19,7 +19,7 @@ function exhaustCredits(email: string, workspaceId?: string) {
   });
 }
 
-const launcher = (page: Page) => page.getByRole("button", { name: "AI Assistant", exact: true });
+const launcher = (page: Page) => page.getByRole("button", { name: "Ask Foli", exact: true });
 
 /** No AI anywhere on Home or in a new note: no launcher, no Catch me up, no dock tab, toolbar, slash command, ⌘J or palette item. */
 async function expectNoAi(page: Page) {
@@ -28,27 +28,27 @@ async function expectNoAi(page: Page) {
   await expect(launcher(page)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Catch me up" })).toHaveCount(0);
   await page.keyboard.press("Meta+j");
-  await expect(page.getByRole("dialog", { name: "Ask AI" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Foli" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Some words to select");
-  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "AI" })).toHaveCount(0);
+  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli" })).toHaveCount(0);
   await page.keyboard.press("Shift+Home");
   const formatting = page.getByRole("toolbar", { name: "Text formatting" });
   await expect(formatting).toBeVisible();
-  await expect(formatting.getByRole("button", { name: /Ask AI/ })).toHaveCount(0);
+  await expect(formatting.getByRole("button", { name: /Ask Foli/ })).toHaveCount(0);
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/ask ai");
-  await expect(page.getByRole("option", { name: /Ask AI|AI ·|AI:/ })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: /Ask Foli|AI ·|Foli:/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Meta+j");
-  await expect(page.getByRole("dialog", { name: "AI Assistant" })).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "Ask AI" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Foli" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Foli" })).toHaveCount(0);
   await page.keyboard.press("Meta+k");
-  await expect(page.getByRole("option", { name: /Ask AI/ })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: /Ask Foli/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
   // Templates: no "Generate with AI".
   await page.goto(`${APP}/templates`);
@@ -59,7 +59,7 @@ async function expectNoAi(page: Page) {
 test("Core hides every AI entry point in Personal, and the AI setting says it isn't included", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Core Writer");
   // The trial includes AI.
-  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "AI" })).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli" })).toBeVisible();
   await page.goto(`${APP}/documents`);
   await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
 
@@ -73,7 +73,7 @@ test("Core hides every AI entry point in Personal, and the AI setting says it is
 
   // Settings → Account: the switch is off and can't be turned on, with the reason.
   await page.goto(`${APP}/settings/account`);
-  const toggle = page.getByRole("switch", { name: "AI Assistant" });
+  const toggle = page.getByRole("switch", { name: "Foli" });
   await expect(toggle).toBeDisabled({ timeout: 30_000 });
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await expect(page.getByText("Not included in Core.")).toBeVisible();
@@ -109,7 +109,7 @@ test("out of credits: the panel says so, with Upgrade, and the request is refuse
   exhaustCredits(email);
   await page.goto(`${APP}/documents`);
   await launcher(page).click();
-  const chat = page.getByRole("dialog", { name: "Ask AI" });
+  const chat = page.getByRole("dialog", { name: "Foli" });
   await expect(chat).toBeVisible();
 
   // The low-credits note: none left in the trial, and a plan is what helps.
@@ -144,7 +144,7 @@ test("buying a test credit pack adds extra credits, used after the monthly ones"
   exhaustCredits(email);
   await expect(personal.getByText(/^0 AI credits left/)).toBeVisible({ timeout: 30_000 });
   await launcher(page).click();
-  const chat = page.getByRole("dialog", { name: "Ask AI" });
+  const chat = page.getByRole("dialog", { name: "Foli" });
   const note = chat.getByTestId("ai-credits-note");
   await expect(note).toContainText("No AI credits left.");
   await expect(note).toContainText(/Resets /);

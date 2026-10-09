@@ -51,7 +51,7 @@ const ITEMS: Item[] = [
   { label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} /> },
   { label: "Kanban", keywords: "kanban board collection database columns", icon: <Columns3 size={15} /> },
   { label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} /> },
-  { label: "Ask AI…", hint: "⌘J", keywords: "ai assistant write generate gemini ask", icon: ai },
+  { label: "Ask Foli…", hint: "⌘J", keywords: "ai assistant write generate gemini ask", icon: ai },
   { label: "AI: Summarize page", keywords: "ai summary summarize tldr", icon: ai },
   { label: "AI: Action items", keywords: "ai tasks todo action items follow ups", icon: ai },
 ];

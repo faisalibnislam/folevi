@@ -56,8 +56,8 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await expect(page.getByText("Note style: Poppy print", { exact: false }).first()).toBeVisible();
 
   // AI needs an account.
-  await dock.getByRole("button", { name: "AI" }).click();
-  await expect(panel.getByRole("heading", { name: "AI Assistant" })).toBeVisible();
+  await dock.getByRole("button", { name: "Foli" }).click();
+  await expect(panel.getByRole("heading", { name: "Foli" })).toBeVisible();
   await expect(panel.getByRole("link", { name: "Sign up free" })).toBeVisible();
 
   expect(external).toEqual([]);
@@ -84,7 +84,7 @@ for (const scheme of ["light", "dark"] as const) {
     };
     await scan("note");
     const dock = page.getByRole("toolbar", { name: "Page tools" });
-    for (const tool of ["Insert", "Format", "Style", "AI"]) {
+    for (const tool of ["Insert", "Format", "Style", "Foli"]) {
       await dock.getByRole("button", { name: tool }).click();
       await expect(page.locator("#document-inspector")).toBeVisible();
       await scan(tool);

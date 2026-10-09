@@ -9,7 +9,8 @@ import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { errorMessage } from "@/components/ui/Toast";
 import { AiIcon } from "../AiIcon";
-import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "../AiCredits";
+import { AiIntroBody, type AiIntroPlace } from "../AiIntro";
+import { AiCreditsNote, AiProblemNotice, aiProblem, useAiCredits, type AiProblem } from "../AiCredits";
 import { useAiAccess } from "../useAi";
 import { AssistantMessage, UserMessage, type Citation } from "./ChatMessage";
 import { ContextChips } from "./ContextChips";
@@ -19,6 +20,8 @@ import type { RunActivity } from "./AgentRunCard";
 import { WebToggle } from "./WebToggle";
 import { AttachControl, AttachmentChips, AttachmentProblems, useChatAttachments, type PendingFile } from "./Attachments";
 import type { ResearchHandlers } from "./ResearchCard";
+import { useChatMode } from "./mode";
+import { AiAnnouncer, useDoneAnnouncement } from "../announce";
 
 export const SUGGESTIONS = ["What am I working on this week?", "Summarize my notes about travel", "Which tasks are still open?", "What ideas have I written down recently?"];
 const FOLDER_SUGGESTIONS = ["Summarize this folder", "What are the open questions here?", "What decisions have been made?", "What should I do next?"];
@@ -93,7 +96,8 @@ export function ChatThread({
   const ai = useAiAccess();
   // The web (the Web switch, Research) only when Settings > AI allows it, the plan has AI and the model can search.
   const webAvailable = Boolean(ai.on && caps?.prefs.webResearch && caps.searchGrounding);
-  const [mode, setMode] = useState<ChatMode>(initialMode ?? "ask");
+  // The last mode this person picked (the floating chat and the AI page), unless the surface sets one.
+  const [mode, setMode] = useChatMode(initialMode);
   const [web, setWeb] = useState(false);
   const webOn = web && webAvailable && mode === "ask";
   const [runs, setRuns] = useState<Record<string, RunActivity>>({});
@@ -113,8 +117,9 @@ export function ChatThread({
     if (initialDraft) setDraft(initialDraft);
   }, [initialDraft]);
   useEffect(() => {
-    if (!webAvailable && mode === "research") setMode("ask");
-  }, [webAvailable, mode]);
+    // Once the settings are known: Research needs the web (the remembered pick stays for when it's back).
+    if (caps !== undefined && !webAvailable && mode === "research") setMode("ask", { remember: false });
+  }, [caps, webAvailable, mode, setMode]);
   useEffect(() => {
     setNewContext(initialContext ?? WHOLE_SCOPE);
   }, [initialContext]);
@@ -137,10 +142,14 @@ export function ChatThread({
   const showPending = pending && messages.length <= pending.after ? pending.text : null;
   const streaming = messages.some((m) => m.status === "streaming");
   const working = busy || streaming;
+  // Said once when an answer has finished (the streaming text itself isn't announced word by word).
+  const lastMessage = messages[messages.length - 1];
+  const announce = useDoneAnnouncement(working, lastMessage?.role !== "assistant" || lastMessage.status === "error" ? "" : lastMessage.status === "stopped" ? "Stopped." : "Answer ready.");
   const context: ChatContext = conversation ? { kind: conversation.context.kind, ids: conversation.context.items.map((i) => i.id) } : newContext;
   const names: Record<string, string> = { ...initialNames, ...Object.fromEntries((conversation?.context.items ?? []).map((i) => [i.id, i.name])) };
   const lastUser = messages.map((m) => m.role).lastIndexOf("user");
-  const answering = Boolean(messages[messages.length - 1]?.text);
+  // The answer has started (its text streams separately, aiChat.streamText, so `live` says so first).
+  const answering = Boolean(messages[messages.length - 1]?.text || messages[messages.length - 1]?.live);
   // Files for the next message (the Attach control): only when Settings > AI allows reading them, not for Research.
   const attachAvailable = Boolean(ai.on && caps && caps.prefs.attachments !== false) && mode !== "research";
   const attachments = useChatAttachments({ scope: conversation?.scope ?? scope, caps: caps ? { vision: caps.vision, audioIn: caps.audioIn } : undefined });
@@ -265,6 +274,16 @@ export function ChatThread({
   const page = variant === "page";
   const loading = Boolean(conversationId && data === undefined);
 
+  const modeLine = mode === "research" ? "Research searches the web and your notes, then writes a report with sources. It takes a few minutes." : mode === "agent" ? "The agent can read your notes and propose changes: new notes, edits, folders, tags and tasks. Nothing changes until you approve it." : context.kind === "folder" ? "Answers come from the notes in this folder, with links to the notes used." : context.kind === "workspace" ? "Answers come from your notes, with links to the notes used." : "Answers come from the notes below, with links to what they used.";
+  const introPlace: AiIntroPlace = context.kind === "folder" ? "folder" : ai.context === "workspace" ? "workspace" : "personal";
+
+  const footNotes = [
+    webOn || mode === "research" ? "Web searches go through Google Search." : "",
+    attachAvailable && attachments.files.length ? "Attached files go to Google Gemini too." : "",
+    conversation?.ephemeral ? "History is off: this conversation is deleted when you close it." : "",
+  ].filter(Boolean);
+  const introCredits = useAiCredits({ skip: variant !== "floating" || !empty });
+
   let intro: ReactNode = null;
   if (empty && !loading) {
     intro = page ? (
@@ -282,7 +301,18 @@ export function ChatThread({
       </div>
     ) : (
       <div>
-        <p className="text-[13.5px] text-muted">{mode === "research" ? "Research searches the web and your notes, then writes a report with sources. It takes a few minutes." : mode === "agent" ? "The agent can read your notes and propose changes: new notes, edits, folders, tags and tasks. Nothing changes until you approve it." : context.kind === "folder" ? "Answers come from the notes in this folder, with links to the notes used." : context.kind === "workspace" ? "Answers come from your notes, with links to the notes used." : "Answers come from the notes below, with links to what they used."}</p>
+        {variant === "floating" ? (
+          // Meet Foli: what it does here, that it shows changes first, where requests go and what they cost.
+          <>
+            <h3 className="flex items-center gap-2 text-[14px] font-semibold text-heading">
+              <AiIcon size={16} aria-hidden /> Meet Foli
+            </h3>
+            <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
+            {mode !== "ask" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
+          </>
+        ) : (
+          <p className="text-[13.5px] text-muted">{modeLine}</p>
+        )}
         <p className="mb-2.5 mt-5 flex items-center gap-2 text-[12.5px] font-medium text-muted">
           <AiIcon size={13} aria-hidden /> Try asking
         </p>
@@ -299,7 +329,7 @@ export function ChatThread({
 
   return (
     <>
-      <div className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"}`} aria-live="polite">
+      <div className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"}`}>
         <div className={`space-y-5 ${page ? "mx-auto max-w-3xl" : ""}`}>
           {loading ? (
             <p className="flex items-center gap-2 px-1 text-[13px] text-muted">
@@ -331,6 +361,7 @@ export function ChatThread({
                 onDismiss={() => void setOutcome({ messageId: m.id, outcome: { kind: "dismissed" } })}
                 onOpen={open}
                 run={m.agent?.run ? runHandlers(m.agent.run.id) : undefined}
+                conversation={conversation ? { id: conversation.id, title: conversation.title } : undefined}
                 research={(() => {
                   const job = jobFor(m.id);
                   return job ? researchHandlers(job) : undefined;
@@ -347,6 +378,7 @@ export function ChatThread({
             </>
           ) : null}
           {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-[12px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} /> : null}
+          <AiAnnouncer text={announce} />
           <div ref={endRef} />
         </div>
       </div>
@@ -355,19 +387,6 @@ export function ChatThread({
         <div className={page ? "mx-auto max-w-3xl" : ""}>
           <AiCreditsNote className="mb-2" />
           <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
-            <div className="ui-seg ui-well" role="group" aria-label="How the AI helps">
-              <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")} title="Answers from your notes">
-                Chat
-              </button>
-              <button type="button" aria-pressed={mode === "agent"} onClick={() => setMode("agent")} title="Can propose changes to your notes. Nothing changes until you approve.">
-                Agent
-              </button>
-              {webAvailable ? (
-                <button type="button" aria-pressed={mode === "research"} onClick={() => setMode("research")} title="Researches the web and your notes, then writes a report with sources">
-                  Research
-                </button>
-              ) : null}
-            </div>
             <ContextChips context={context} names={names} onChange={changeContext} disabled={working} />
             {webAvailable && mode === "ask" ? <WebToggle on={web} onChange={setWeb} disabled={working} /> : null}
           </div>
@@ -379,7 +398,7 @@ export function ChatThread({
           <div className="relative w-full rounded-[14px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
             {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className="px-3 pt-2.5" /> : null}
             <label htmlFor={`${uid}-q`} className="sr-only">
-              {mode === "research" ? "What should the AI research?" : mode === "agent" ? "Tell the AI what to change in your notes" : "Ask a question about your notes"}
+              {mode === "research" ? "What should Foli research?" : mode === "agent" ? "Tell Foli what to change in your notes" : "Ask a question about your notes"}
             </label>
             <textarea
               id={`${uid}-q`}
@@ -394,19 +413,37 @@ export function ChatThread({
                 }
               }}
               maxLength={4000}
-              placeholder={mode === "research" ? "What should I research?" : mode === "agent" ? "Ask the AI to organize, edit or create notes…" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything about your notes…"}
-              className={`block min-h-[4.25rem] w-full resize-none bg-transparent px-3.5 pb-2.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint ${attachAvailable ? "pr-[5.25rem]" : "pr-12"}`}
+              placeholder={mode === "research" ? "What should I research?" : mode === "agent" ? "Ask Foli to organize, edit or create notes…" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything about your notes…"}
+              className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
             />
-            <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="absolute bottom-2.5 right-2.5 grid h-8 w-8 place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-30">
-              <ArrowUp size={16} aria-hidden />
-            </button>
-            {attachAvailable ? <AttachControl className="absolute bottom-2.5 right-12" noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
+            {/* How Foli helps on the left, attach and send on the right, all inside the box. */}
+            <div className="flex items-center gap-2 px-2.5 pb-2.5">
+                <div className="ui-seg ui-well flex-none" role="group" aria-label="How Foli helps">
+                  <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")} title="Answers from your notes">
+                    Chat
+                  </button>
+                  <button type="button" aria-pressed={mode === "agent"} onClick={() => setMode("agent")} title="Can propose changes to your notes. Nothing changes until you approve.">
+                    Agent
+                  </button>
+                  {webAvailable ? (
+                    <button type="button" aria-pressed={mode === "research"} onClick={() => setMode("research")} title="Researches the web and your notes, then writes a report with sources">
+                      Research
+                    </button>
+                  ) : null}
+                </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                {attachAvailable ? <AttachControl noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
+                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-8 w-8 flex-none place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-30">
+                  <ArrowUp size={16} aria-hidden />
+                </button>
+              </div>
+            </div>
           </div>
+          {/* The floating chat says where requests go in its Meet Foli intro; elsewhere this line says it too. */}
           <p className="mt-2 px-1 text-[11px] text-faint">
-            AI can make mistakes. Questions and the notes they need go to Google Gemini.
-            {webOn || mode === "research" ? " Web searches go through Google Search." : ""}
-            {attachAvailable && attachments.files.length ? " Attached files go too." : ""}
-            {conversation?.ephemeral ? " History is off: this conversation is deleted when you close it." : ""}
+            Foli is AI and can make mistakes.
+            {variant !== "floating" ? " Questions and the notes they need go to Google Gemini." : ""}
+            {footNotes.length ? ` ${footNotes.join(" ")}` : ""}
           </p>
         </div>
       </div>

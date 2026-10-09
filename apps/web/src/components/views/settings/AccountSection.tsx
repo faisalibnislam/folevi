@@ -98,28 +98,28 @@ export function AiSettingCard() {
   const toast = useToast();
   const descId = useId();
   return (
-    <Card title="AI Assistant">
+    <Card title="Foli">
       <div className="flex max-w-xl items-start justify-between gap-6">
         <p id={descId} className="text-sm text-muted">
           {core ? (
             <>
-              <span className="font-medium text-heading">Not included in Core.</span> Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include the AI Assistant.{" "}
+              <span className="font-medium text-heading">Not included in Core.</span> Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli.{" "}
               <AppLink href="/settings/billing" className="underline underline-offset-2">
                 See plans
               </AppLink>
             </>
           ) : (
-            "Ask AI, writing help and note summaries, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and all AI buttons are hidden."
+            "Foli answers from your notes, helps you write and sums notes up, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli's buttons are hidden."
           )}
         </p>
         <Switch
           checked={on && !core}
           disabled={core}
-          label="AI Assistant"
+          label="Foli"
           describedBy={descId}
           onChange={(next) => {
             void update({ aiEnabled: next }).then(
-              () => toast.show(next ? "AI Assistant turned on" : "AI Assistant turned off"),
+              () => toast.show(next ? "Foli turned on" : "Foli turned off"),
               (e) => toast.show(errorMessage(e), { tone: "error" }),
             );
           }}

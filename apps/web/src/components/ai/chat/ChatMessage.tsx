@@ -2,8 +2,10 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
-import { Check, Copy, FileText, Globe, Loader2, Pencil, RotateCcw } from "lucide-react";
-import type { api } from "@/lib/convex/api";
+import { useQuery } from "convex/react";
+import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, RotateCcw } from "lucide-react";
+import { api } from "@/lib/convex/api";
+import { MenuButton } from "@/components/ui/Menu";
 import { AiMarkdown, StreamingText } from "../AiMarkdown";
 import { useTypewriter } from "../useAiStream";
 import { markdownToPlain } from "../plainText";
@@ -15,6 +17,7 @@ import { AttachmentChips, type AttachmentInfo, type PendingFile } from "./Attach
 import { ResearchFooter, ResearchProgress, type ResearchHandlers } from "./ResearchCard";
 import { SearchSuggestions } from "./SearchSuggestions";
 import { MessageMemory } from "./SaveMemoryCard";
+import { useConversationActions } from "./ConversationActions";
 
 export type ChatMessageData = NonNullable<FunctionReturnType<typeof api.aiChat.get>>["messages"][number];
 export type Citation = ChatMessageData["citations"][number];
@@ -47,8 +50,27 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   );
 }
 
+/** A file on a shared conversation's message: `shared: false` is someone's own upload, not shown to others. */
+type MessageFile = (AttachmentInfo | PendingFile) & { shared?: boolean };
+
+/** Uploads in a conversation someone shared: only that a file was there. */
+export function NotSharedChips({ count }: { count: number }) {
+  if (!count) return null;
+  return (
+    <ul aria-label="Files not shared" className="mb-1 flex max-w-[85%] flex-wrap justify-end gap-1.5">
+      {Array.from({ length: count }, (_, i) => (
+        <li key={i} title="Only the person who uploaded it can open it." className="inline-flex h-7 items-center gap-1.5 rounded-full bg-[var(--glass-hover)] px-2.5 text-[12.5px] text-muted">
+          <EyeOff size={12} aria-hidden className="flex-none" /> File not shared
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The person's message, with the files sent with it; the last one can be edited and sent again. */
-export function UserMessage({ text, attachments, onEdit, disabled }: { text: string; attachments?: (AttachmentInfo | PendingFile)[]; onEdit?: (text: string) => void; disabled?: boolean }) {
+export function UserMessage({ text, attachments, onEdit, disabled }: { text: string; attachments?: MessageFile[]; onEdit?: (text: string) => void; disabled?: boolean }) {
+  const hidden = attachments?.filter((f) => f.shared === false).length ?? 0;
+  const files = attachments?.filter((f) => f.shared !== false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
   const fieldId = useId();
@@ -96,7 +118,8 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
   }
   return (
     <div className="group/user flex flex-col items-end gap-0.5">
-      {attachments?.length ? <AttachmentChips files={attachments} className="mb-1 max-w-[85%] justify-end" /> : null}
+      {files?.length ? <AttachmentChips files={files} className="mb-1 max-w-[85%] justify-end" /> : null}
+      <NotSharedChips count={hidden} />
       <p className="w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-[14px] rounded-br-[4px] bg-heading px-3.5 py-2 text-[14px] text-canvas">{text}</p>
       {onEdit ? (
         <button
@@ -120,7 +143,7 @@ export function AgentSteps({ steps, live }: { steps: AgentStep[]; live?: boolean
   const lines = stepLines(steps);
   if (!lines.length) return null;
   return (
-    <ul aria-label={live ? "What the AI is doing" : "What the AI did"} className="mb-2 flex flex-wrap gap-1.5">
+    <ul aria-label={live ? "What Foli is doing" : "What Foli did"} className="mb-2 flex flex-wrap gap-1.5">
       {lines.map((l) => (
         <li key={l} className="rounded-full bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
           {l}
@@ -181,8 +204,31 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
 }
 
 /**
+ * The text an answer has so far while it streams: it comes from the answer's stream (aiChat.streamText),
+ * so the conversation itself isn't reloaded for every chunk. Otherwise (and once it settles) the message's.
+ */
+function useLiveText(message: ChatMessageData): string {
+  const live = useQuery(api.aiChat.streamText, message.live ? { messageId: message.id } : "skip");
+  return message.live && live ? live.text : message.text;
+}
+
+/** Copy, download or save one answer on its own (an agent's report; a research report has its own Save as note). */
+function AnswerExport({ conversationId, messageId, title, saves = true }: { conversationId: string; messageId: ChatMessageData["id"]; title: string; saves?: boolean }) {
+  const actions = useConversationActions({ id: conversationId, title, shared: false, workspace: false }, { messageId });
+  const { dialog } = actions;
+  const items = saves ? actions.items : actions.items.filter((e) => typeof e === "string" || !("label" in e) || e.label !== "Save as note");
+  return (
+    <>
+      <MenuButton label="Export this answer" side="top" triggerClassName={ROW_BUTTON} trigger={<><MoreHorizontal size={12} aria-hidden /> Export</>} items={items} />
+      {dialog}
+    </>
+  );
+}
+
+/**
  * An answer: written word by word while it streams (with Stop), then the Markdown with inline citations,
- * sources, proposed changes, Copy and (the last one) Regenerate, and follow-up suggestions.
+ * sources, proposed changes, Copy and (the last one) Regenerate, and follow-up suggestions. `readOnly`
+ * (someone else's shared conversation) shows it without anything to act on.
  */
 export function AssistantMessage({
   message,
@@ -198,6 +244,8 @@ export function AssistantMessage({
   onOpen,
   run,
   research,
+  readOnly,
+  conversation,
 }: {
   message: ChatMessageData;
   last: boolean;
@@ -214,11 +262,16 @@ export function AssistantMessage({
   run?: RunHandlers;
   /** A deep research report: its job (steps, Cancel, Save as note). */
   research?: ResearchHandlers;
+  /** Someone else's shared conversation: nothing to stop, regenerate, apply, approve or undo. */
+  readOnly?: boolean;
+  /** The conversation, for exporting an agent's or research answer on its own. */
+  conversation?: { id: string; title: string };
 }) {
   const streaming = message.status === "streaming";
+  const liveText = useLiveText(message);
   // Revealed word by word while it streams, and until the reveal catches up with the finished answer.
   const [reveal, setReveal] = useState(streaming);
-  const { text, caughtUp } = useTypewriter(message.text, reveal);
+  const { text, caughtUp } = useTypewriter(liveText, reveal);
   useEffect(() => {
     if (reveal && !streaming && caughtUp) setReveal(false);
   }, [reveal, streaming, caughtUp]);
@@ -240,7 +293,7 @@ export function AssistantMessage({
           </div>
         ) : null}
         <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-[12px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} />
-        {last ? (
+        {last && !readOnly ? (
           <button type="button" disabled={busy} onClick={onRegenerate} className={ROW_BUTTON}>
             <RotateCcw size={12} aria-hidden /> Try again
           </button>
@@ -249,18 +302,20 @@ export function AssistantMessage({
     );
   }
 
-  if (streaming && !message.text && research?.job.status === "running") return <ResearchProgress research={research} />;
+  if (streaming && !liveText && research?.job.status === "running" && !readOnly) return <ResearchProgress research={research} />;
 
-  if (streaming && !message.text) {
+  if (streaming && !liveText) {
     return (
       <div className="px-1">
         <div className="flex items-center gap-3">
           <p role="status" className="flex items-center gap-2 text-[13px] text-muted">
-            <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {phaseLabel(message.phase, false)}
+            <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {readOnly ? "Still being written…" : phaseLabel(message.phase, false)}
           </p>
-          <button type="button" onClick={onStop} className={ROW_BUTTON}>
-            <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Stop
-          </button>
+          {readOnly ? null : (
+            <button type="button" onClick={onStop} className={ROW_BUTTON}>
+              <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Stop
+            </button>
+          )}
         </div>
         {message.agent?.steps.length ? (
           <div className="mt-2">
@@ -275,7 +330,7 @@ export function AssistantMessage({
     return (
       <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]" aria-busy="true">
         <StreamingText text={text} cited={cited} />
-        {streaming ? (
+        {streaming && !readOnly ? (
           <button type="button" onClick={onStop} className={`${ROW_BUTTON} mt-1`}>
             <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Stop
           </button>
@@ -289,23 +344,24 @@ export function AssistantMessage({
       <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
         {message.agent ? <AgentSteps steps={message.agent.steps} /> : null}
         {message.text ? <AiMarkdown markdown={message.text} cited={cited} onCite={citeBy} onNavigate={onOpen} /> : <p className="text-[13.5px] text-muted">Stopped before it said anything.</p>}
-        {message.agent?.run && run ? <AgentRunCard run={message.agent.run} activity={run.activity} onApprove={run.onApprove} onDiscard={run.onDiscard} onUndo={run.onUndo} onOpen={onOpen} /> : null}
-        {message.actions ? <ActionsCard actions={message.actions as AiAction[]} outcome={outcome} onApply={onApply} onDismiss={onDismiss} onOpen={onOpen} /> : null}
-        {message.memory && message.memory.status !== "dismissed" ? <MessageMemory messageId={message.id} memory={message.memory} /> : null}
+        {message.agent?.run && (run || readOnly) ? <AgentRunCard run={message.agent.run} activity={run?.activity ?? { busy: null, error: null }} onApprove={run?.onApprove ?? (() => {})} onDiscard={run?.onDiscard ?? (() => {})} onUndo={run?.onUndo ?? (() => {})} onOpen={onOpen} readOnly={readOnly} /> : null}
+        {message.actions && !readOnly ? <ActionsCard actions={message.actions as AiAction[]} outcome={outcome} onApply={onApply} onDismiss={onDismiss} onOpen={onOpen} /> : null}
+        {message.memory && message.memory.status !== "dismissed" && !readOnly ? <MessageMemory messageId={message.id} memory={message.memory} /> : null}
         {message.citations.length || message.webCitations.length ? <Sources citations={message.citations} webCitations={message.webCitations} onCite={onCite} /> : null}
         <SearchSuggestions entryPoints={message.searchEntryPoints} />
         <div className="-mb-1 mt-2 flex flex-wrap items-center gap-0.5">
           {message.text ? <CopyButton text={markdownToPlain(message.text)} /> : null}
-          {last ? (
+          {last && !readOnly ? (
             <button type="button" disabled={busy} onClick={onRegenerate} className={ROW_BUTTON}>
               <RotateCcw size={12} aria-hidden /> Regenerate
             </button>
           ) : null}
-          {research ? <ResearchFooter research={research} onOpen={onOpen} /> : null}
+          {research && !readOnly ? <ResearchFooter research={research} onOpen={onOpen} /> : null}
+          {conversation && !readOnly && message.text && (message.agent || research) ? <AnswerExport conversationId={conversation.id} messageId={message.id} title={conversation.title} saves={!research} /> : null}
           {message.status === "stopped" && research?.job.status !== "cancelled" ? <span className="px-1.5 text-[12px] text-faint">Stopped</span> : null}
         </div>
       </div>
-      {last && message.suggestions.length && !busy ? (
+      {last && message.suggestions.length && !busy && !readOnly ? (
         <div className="flex flex-col items-start gap-1.5" aria-label="Suggested follow-ups" role="group">
           {message.suggestions.map((s) => (
             <button key={s} type="button" onClick={() => onSuggestion(s)} className="rounded-full bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">

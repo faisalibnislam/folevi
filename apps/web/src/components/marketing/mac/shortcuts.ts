@@ -88,7 +88,7 @@ export const SHORTCUT_GROUPS: Array<{ group: string; rows: Array<{ action: strin
       { action: "Today’s tasks", keys: ["⌥⌘T"] },
       { action: "Show or hide the sidebar", keys: ["⌘\\"] },
       { action: "Show or hide the inspector", keys: ["⌥⌘I"] },
-      { action: "Ask AI (when AI is on)", keys: ["⌘J"] },
+      { action: "Ask Foli (when AI is on)", keys: ["⌘J"] },
     ],
   },
   {

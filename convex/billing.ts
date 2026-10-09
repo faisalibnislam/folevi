@@ -25,7 +25,8 @@ import {
   type PersonalSubscription,
 } from "./lib/billing";
 import { freePool, personalEntitlements, storageUsage } from "./lib/entitlements";
-import { addCredits, creditBalance, creditSummary, personalAccount, refundPackCredits, seatAccount, type CreditAccount } from "./lib/credits";
+import { addCredits, aiAccountFor, creditBalance, creditSummary, periodRow, personalAccount, refundPackCredits, seatAccount, type CreditAccount } from "./lib/credits";
+import { usageBreakdown } from "./lib/ai/usage";
 import { CREDIT_PACKS, PLAN_CATALOG, isPaidPlan, personalPlanId, type PersonalTier } from "./lib/plans";
 import { listUserSessions } from "./lib/authStore";
 import { scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
@@ -135,6 +136,36 @@ export const credits = query({
     if (args.documentId && (await getDocumentByPublicId(ctx, args.documentId))) scope = scopeOfRow((await requireDocument(ctx, profile, args.documentId, "read")).doc);
     else scope = (await resolveScope(ctx, profile, args.scope)).scope;
     return await creditSummary(ctx, profile, scope);
+  },
+});
+
+/**
+ * The usage card (Settings > AI): the credits that apply where the person is working (their seat in a paid
+ * workspace, otherwise their Personal credits), this period's allowance, what's used and left, extra
+ * credits, when it resets, and what was spent by feature and by day. Counts only.
+ */
+export const aiUsage = query({
+  args: { scope: vScopeArg },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { scope, workspace } = await resolveScope(ctx, profile, args.scope);
+    const now = Date.now();
+    const access = await aiAccountFor(ctx, profile, scope, now);
+    const a = access.account;
+    const balance = await creditBalance(ctx, a, now);
+    const row = await periodRow(ctx, a, a.period.key);
+    return {
+      aiIncluded: access.allowed,
+      blockedReason: access.message,
+      account: a.kind,
+      /** Where the credits come from: "Personal", or the workspace (a seat). */
+      place: a.kind === "seat" ? (workspace?.name ?? "This workspace") : "Personal",
+      plan: a.planLabel,
+      trialing: a.trialing,
+      canBuy: a.canBuy,
+      ...balance,
+      ...usageBreakdown(row, a.period, now),
+    };
   },
 });
 

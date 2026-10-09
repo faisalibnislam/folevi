@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor as TiptapEditor } from "@tiptap/react";
@@ -11,7 +11,7 @@ import {
   ArrowLeft,
   ChevronRight,
   Copy,
-  FileCode,
+  Download,
   FileText,
   Folder,
   FolderInput,
@@ -20,11 +20,9 @@ import {
   Info,
   Link2,
   Lock,
-  MoreHorizontal,
-  Printer,
-  Search,
   MessageSquare,
-  Share2,
+  MoreHorizontal,
+  Search,
   Star,
   StarOff,
   Trash2,
@@ -65,11 +63,10 @@ import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
 import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
 import { VersionHistory } from "./VersionHistory";
-import { MovePageDialog } from "./MovePageDialog";
+import { MoveNoteDialog } from "./MoveNoteDialog";
+import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
-import { MoveToFolderDialog } from "@/components/views/MoveToFolderDialog";
 import { useNoteActions } from "@/components/views/noteActions";
-import { exportHtml, exportMarkdown, exportPdf } from "./export";
 import { PageDock } from "./PageDock";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
@@ -87,7 +84,6 @@ let lastPointerDown = 0;
 
 export function DocumentView({ documentId }: { documentId: string }) {
   const { engine, profile, online, scopeKey } = useAppState();
-  const convex = useConvex();
   const meta = useQuery(api.documents.get, { documentId });
   const server = useQuery(api.blocks.list, { documentId });
   const settings = useQuery(api.settings.status, {});
@@ -132,7 +128,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
-  const [folderOpen, setFolderOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   // The find & replace bar: open with or without the replace row; `key` bumps on every ⌘F to refocus it.
   const [findBar, setFindBar] = useState<{ replace: boolean; key: number } | null>(null);
   const noteRef = useRef<HTMLDivElement>(null);
@@ -547,20 +543,22 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [editor, canComment, openBlockThread, openComments]);
 
   const noteNotify = useNoteNotifyItems(documentId, Boolean(meta));
+  // Move…: top-level notes of the current context (Personal or a workspace) can be filed in a folder (nested
+  // pages follow their parent page); managers can nest a page under another one.
+  const canFile = Boolean(meta && !readOnly && inCurrentScope(meta.document, meta.isMember, scopeKey) && !meta.document.parentDocumentId && meta.document.kind !== "template" && (meta.access === "write" || meta.access === "manage"));
+  const canNest = Boolean(meta && !readOnly && (meta.access === "write" || meta.access === "manage"));
   const docActions = useDocumentActions({
     documentId,
-    title: meta?.document.title ?? "",
     starred: meta?.document.starred ?? false,
     archived: Boolean(meta?.document.archivedAt),
     inTrash: meta?.inTrash ?? false,
     kind: meta?.document.kind ?? "document",
     canManage: meta?.access === "manage" || meta?.access === "write",
-    blocks: () => engine?.documentBlocks(documentId) ?? [],
     onHistory: canEditPage ? () => setHistoryOpen(true) : undefined,
     onToggleEditors: canEditPage ? () => setShowEditors((on) => !on) : undefined,
     showingEditors: showEditors,
-    onShare: () => setShareOpen(true),
-    onComments: () => showCommentsTab(null),
+    // The page sidebar has a Comments tab; without it (folders in the sidebar, phones) the menu opens comments.
+    onComments: sidebarSlot ? undefined : () => showCommentsTab(null),
     onInfo: () => {
       setInspectorTab("info");
       setInspectorOpen(true);
@@ -572,12 +570,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
     onFind: editor ? () => openFind(!readOnly) : undefined,
-    // Top-level notes of the current context (Personal or a workspace) can be filed; nested pages follow their parent page.
-    onMoveToFolder:
-      meta && !readOnly && inCurrentScope(meta.document, meta.isMember, scopeKey) && !meta.document.parentDocumentId && meta.document.kind !== "template" && (meta.access === "write" || meta.access === "manage")
-        ? () => setFolderOpen(true)
-        : undefined,
-    client: convex,
+    onExport: () => setExportOpen(true),
+    canMove: canFile || canNest,
   });
   // Plus following or muting this note's comment notifications.
   const actions: (MenuItem | "separator")[] = noteNotify.length ? [...docActions, "separator", ...noteNotify] : docActions;
@@ -742,8 +736,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
             sidebarSlot,
           )
         : null}
-      {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind. */}
-      <div className="relative flex h-full min-h-0">
+      {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
+          Inset like the tab strip above it (inset-x-2), so the page lines up with it. */}
+      <div className="relative flex h-full min-h-0 sm:px-2 sm:pb-2">
         <div ref={noteRef} className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
@@ -952,19 +947,22 @@ export function DocumentView({ documentId }: { documentId: string }) {
       </div>
       {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
-      {meta && !readOnly ? (
-        <MovePageDialog open={moveOpen} onClose={() => setMoveOpen(false)} documentId={documentId} title={summary?.title ?? ""} currentParentId={meta.breadcrumbs[meta.breadcrumbs.length - 1]?.id ?? null} home={meta.isMember ? documentScope(meta.document) : null} />
-      ) : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
       {meta ? (
-        <MoveToFolderDialog
-          open={folderOpen}
-          onClose={() => setFolderOpen(false)}
-          noteTitle={summary?.title ?? ""}
-          currentFolderId={meta.document.folderId}
-          onPick={(folder) => void notes.moveTo([documentId], folder)}
+        <MoveNoteDialog
+          open={moveOpen}
+          onClose={() => setMoveOpen(false)}
+          documentId={documentId}
+          title={summary?.title ?? ""}
+          folder={meta.folder ?? null}
+          parent={meta.breadcrumbs.length ? { id: meta.breadcrumbs[meta.breadcrumbs.length - 1]!.id, title: meta.breadcrumbs[meta.breadcrumbs.length - 1]!.title } : null}
+          canFile={canFile}
+          canNest={canNest}
+          home={meta.isMember ? documentScope(meta.document) : null}
+          onPickFolder={(folder) => void notes.moveTo([documentId], folder)}
         />
       ) : null}
+      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} title={summary?.title ?? ""} blocks={() => engine?.documentBlocks(documentId) ?? []} />
     </ViewChrome>
     </NotePaletteProvider>
   );
@@ -972,7 +970,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
 const PANEL_MIN = 280;
 const PANEL_MAX = 520;
-const PANEL_DEFAULT = 340;
+const PANEL_DEFAULT = 280;
 
 /**
  * The right sidebar the page tools open in. On wide windows the note makes room for it; on narrower ones it
@@ -1013,7 +1011,8 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
       aria-label="Page tools"
       style={{ width: w }}
       // Like the left sidebar: straight on the canvas, no card. Over the note (narrower windows) it needs a ground.
-      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute inset-y-0 right-0 z-30 max-w-[calc(100%-24px)] overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
+      // As an overlay it stops above the floating bar (0.5rem inset + 1.25rem, 3.25rem tall, 0.75rem gap), 0.75rem in from the page's edge.
+      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.75rem+var(--kb-inset,0px))] right-5 top-3 z-30 max-w-[calc(100%-52px)] overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
     >
       <div
         role="separator"
@@ -1541,41 +1540,35 @@ function Backlinks({ documentId }: { documentId: string }) {
 /** The page's actions, shown in the "…" menu and in Info → Actions. */
 function useDocumentActions({
   documentId,
-  title,
   starred,
   archived,
   inTrash,
   kind,
   canManage,
-  blocks,
   onHistory,
   onToggleEditors,
   showingEditors,
-  onShare,
   onComments,
   onInfo,
   onRelated,
   onDelete,
   onMove,
   onFind,
-  onMoveToFolder,
-  client,
+  onExport,
+  canMove,
 }: {
   documentId: string;
-  title: string;
   starred: boolean;
   archived: boolean;
   inTrash: boolean;
   kind: string;
   canManage: boolean;
-  blocks: () => WireBlock[];
   /** Opens version history (absent for people who can't edit the page). */
   onHistory?: () => void;
   /** Turns "Show editors" on or off (absent for people who can't edit the page). */
   onToggleEditors?: () => void;
   showingEditors?: boolean;
-  onShare: () => void;
-  /** Opens the Comments tab in the page's sidebar. */
+  /** Opens comments (only when the page sidebar, which has a Comments tab, isn't showing). */
   onComments?: () => void;
   /** Opens the page's Info panel (words, dates, backlinks…). */
   onInfo?: () => void;
@@ -1585,9 +1578,10 @@ function useDocumentActions({
   onMove: () => void;
   /** Opens the find & replace bar (absent until the editor is ready). */
   onFind?: () => void;
-  /** Opens the folder picker (absent where a note can't be filed: nested pages, templates, view-only). */
-  onMoveToFolder?: () => void;
-  client: ReturnType<typeof useConvex>;
+  /** Opens the Export dialog (Markdown, web page, PDF). */
+  onExport: () => void;
+  /** Whether Move… can do anything here (file it in a folder, or nest it under a page). */
+  canMove: boolean;
 }): (MenuItem | "separator")[] {
   const setStarred = useMutation(api.documents.setStarred);
   const setArchived = useMutation(api.documents.setArchived);
@@ -1598,19 +1592,6 @@ function useDocumentActions({
   const { navigate } = useAppRouter();
   const act = (p: Promise<unknown>, msg: string, undo?: () => void) =>
     p.then(() => toast.show(msg, undo ? { action: { label: "Undo", onClick: undo } } : undefined), (e) => toast.show(errorMessage(e), { tone: "error" }));
-  const exportWith = (fn: typeof exportMarkdown, label: string) =>
-    fn(client, title, blocks()).then(
-      (r) => {
-        const n = r.missingAssets.length;
-        if (!n) toast.show(`${label} export ready`);
-        else
-          toast.show(
-            `${label} export ready, but ${n === 1 ? `“${r.missingAssets[0]}” couldn’t be included` : `${n} attachments couldn’t be included`} (not available or not uploaded yet).`,
-            { tone: "error", duration: 10_000 },
-          );
-      },
-      (e) => toast.show(errorMessage(e), { tone: "error" }),
-    );
   const items = inTrash
     ? [
         { label: "Restore from Trash", icon: <Undo2 size={14} />, onSelect: () => void act(restore({ documentId }), "Restored") },
@@ -1620,19 +1601,14 @@ function useDocumentActions({
         starred
           ? { label: "Unstar", icon: <StarOff size={14} />, onSelect: () => void act(setStarred({ documentId, starred: false }), "Removed from Starred") }
           : { label: "Star", icon: <Star size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Starred") },
-        { label: "Share…", icon: <Share2 size={14} />, onSelect: onShare },
         ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
         ...(onRelated ? [{ label: "Related notes", icon: <Waypoints size={14} />, onSelect: onRelated }] : []),
         ...(onHistory ? [{ label: "Version history…", icon: <History size={14} />, onSelect: onHistory }] : []),
         ...(onToggleEditors ? [{ label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: onToggleEditors }] : []),
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),
-        ...(onMoveToFolder ? [{ label: "Move to folder…", icon: <Folder size={14} />, onSelect: onMoveToFolder }] : []),
-        { label: "Move to page…", icon: <FolderInput size={14} />, disabled: !canManage, onSelect: onMove },
-        "separator" as const,
-        { label: "Export as Markdown", icon: <FileText size={14} />, onSelect: () => void exportWith(exportMarkdown, "Markdown") },
-        { label: "Export as HTML", icon: <FileCode size={14} />, onSelect: () => void exportWith(exportHtml, "HTML") },
-        { label: "Export as PDF (print)", icon: <Printer size={14} />, onSelect: () => void exportWith(exportPdf, "PDF") },
+        { label: "Move…", icon: <FolderInput size={14} />, disabled: !canMove, onSelect: onMove },
+        { label: "Export…", icon: <Download size={14} />, onSelect: onExport },
         "separator" as const,
         { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
         ...(kind !== "template" ? [{ label: "Save as template", icon: <LayoutTemplate size={14} />, onSelect: () => void act(duplicate({ documentId, asTemplate: true }), "Saved to Templates") }] : []),

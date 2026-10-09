@@ -167,7 +167,7 @@ export function MemoryList({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted">Nothing yet. Add something here, or save a suggestion from a chat.</p>
+        <p className="text-sm text-muted">Nothing yet. Add something here, like &ldquo;Use British spelling&rdquo; or &ldquo;Keep answers short&rdquo;, or save one when a chat or the agent offers it.</p>
       )}
       {items.length ? (
         <Button variant="quiet" size="sm" onClick={() => setConfirming(true)}>

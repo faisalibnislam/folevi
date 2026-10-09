@@ -7,7 +7,7 @@ test("the AI page lists conversations and keeps a question even when the assista
   test.setTimeout(120_000);
   const { page } = await newPerson(browser, "Chat Person");
   await page.goto(`${APP}/documents`);
-  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "AI", exact: true }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Work with Foli", exact: true }).click();
   await page.waitForURL(/\/ai(\/|$)/);
   await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Conversations" })).toBeVisible();

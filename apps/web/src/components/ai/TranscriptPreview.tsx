@@ -6,6 +6,7 @@ import { AiIcon } from "./AiIcon";
 import { AiMarkdown } from "./AiMarkdown";
 import { AiProblemNotice, type AiProblem } from "./AiCredits";
 import { markdownToPlain } from "./plainText";
+import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 
 /** What a transcription shows: the transcript, its summary, or a meeting summary of it. */
 export type TranscriptView = "transcript" | "summary" | "meeting";
@@ -51,6 +52,8 @@ export function TranscriptPreview({
   onDiscard: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  // Said once when the transcript, summary or meeting summary is ready.
+  const announce = useDoneAnnouncement(working || summarizing || Boolean(meetingBusy), problem ? "" : "Ready. It's below the recording.");
   const written = view === "summary" ? summary : view === "meeting" ? meeting : null;
   const shown = written ?? transcript;
   const copy = () => {
@@ -60,9 +63,9 @@ export function TranscriptPreview({
     });
   };
   return (
-    <div role="region" aria-label="Transcript" className="ui-card mt-1.5 overflow-hidden rounded-[12px] text-ink" contentEditable={false}>
+    <div role="region" aria-label="Transcript" className="ui-card ui-app-colors mt-1.5 overflow-hidden rounded-[12px] text-ink" contentEditable={false}>
       {working ? (
-        <div className="px-4 pb-3 pt-3.5" aria-live="polite" aria-busy="true">
+        <div className="px-4 pb-3 pt-3.5" aria-busy="true">
           <p role="status" className="mb-2 flex items-center gap-2 text-[11.5px] font-semibold text-muted">
             <AiIcon size={12} aria-hidden className="animate-pulse text-[#7c6cf0] motion-reduce:animate-none" /> Transcribing…
           </p>
@@ -126,7 +129,8 @@ export function TranscriptPreview({
           </button>
         </div>
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">AI can make mistakes. The recording is sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">Foli can make mistakes. The recording is sent to Google Gemini.</p>
+      <AiAnnouncer text={announce} />
     </div>
   );
 }

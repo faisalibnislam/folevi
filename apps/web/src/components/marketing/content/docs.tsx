@@ -319,23 +319,23 @@ export const DOC_ARTICLES: DocArticle[] = [
   },
   {
     slug: "ai-assistant",
-    title: "AI Assistant and AI credits",
-    nav: "AI Assistant and credits",
-    description: "How the Folevi AI Assistant works: Ask AI, editing and writing with ⌘J, titles, Catch me up and flowcharts, AI credits per plan, and turning AI off.",
+    title: "Foli and AI credits",
+    nav: "Foli and credits",
+    description: "How Foli, Folevi’s AI assistant, works: Ask Foli, editing and writing with ⌘J, titles, Catch me up and flowcharts, AI credits per plan, and turning AI off.",
     published: "2026-09-30",
     updated: "2026-10-01",
     body: () => (
       <>
         <p>
-          The AI Assistant answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google Gemini. It’s part of every plan except Core.
+          Foli answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google Gemini. It’s part of every plan except Core.
         </p>
         <h2 id="use">Where to find it</h2>
         <ul>
           <li>
-            <strong>Ask AI</strong>: press <code>⌘J</code> anywhere outside a note, or pick Ask AI about your notes in the <code>⌘K</code> palette. Ask a question and get an answer with links to the notes it used, then ask follow-ups. From a folder’s menu, Ask AI about this folder keeps the answers inside that folder.
+            <strong>Ask Foli</strong>: press <code>⌘J</code> anywhere outside a note, or pick Ask Foli about your notes in the <code>⌘K</code> palette. Ask a question and get an answer with links to the notes it used, then ask follow-ups. From a folder’s menu, Ask Foli about this folder keeps the answers inside that folder.
           </li>
           <li>
-            <strong>Editing a selection</strong>: select text and press <code>⌘J</code>, or use the AI button in the selection toolbar or Ask AI… in a block’s handle menu. Improve it, fix spelling and grammar, make it shorter or longer, simplify it, make it sound professional or casual, translate it into one of 15 languages, explain it or summarize it. Or type your own instruction. Then Replace, Insert below, Try again, or tweak the result with Shorter, Longer, Simpler, More formal or More casual.
+            <strong>Editing a selection</strong>: select text and press <code>⌘J</code>, or use the AI button in the selection toolbar or Ask Foli… in a block’s handle menu. Improve it, fix spelling and grammar, make it shorter or longer, simplify it, make it sound professional or casual, translate it into one of 15 languages, explain it or summarize it. Or type your own instruction. Then Replace, Insert below, Try again, or tweak the result with Shorter, Longer, Simpler, More formal or More casual.
           </li>
           <li>
             <strong>Writing</strong>: on an empty line, type <code>/</code> and pick an AI item, or press <code>⌘J</code>, to continue writing, summarize the note, make an outline, brainstorm ideas or find the action items (written as to-dos, so they appear in Tasks). The AI panel in a note’s dock has the same tools, plus questions about the note.
@@ -353,7 +353,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         <p>Answers and rewrites appear word by word, and you can press Stop at any time.</p>
         <h2 id="credits">AI credits</h2>
         <p>
-          AI use is counted in credits. A credit is one cent of what the AI costs to run, and each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Ask AI or a new flowchart usually 3 to 5. Before a request starts, Folevi sets a few credits aside so it can finish, and gives back what it didn’t use.
+          AI use is counted in credits. A credit is one cent of what the AI costs to run, and each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli or a new flowchart usually 3 to 5. Before a request starts, Folevi sets a few credits aside so it can finish, and gives back what it didn’t use.
         </p>
         <ul>
           <li>
@@ -375,7 +375,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <h2 id="off">Turning it off</h2>
         <p>
-          Turn the AI Assistant off in Settings at any time. While it’s off, none of your notes are sent to it. On Core, the server refuses every AI request and the app hides AI. See <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/privacy#ai">Privacy</Link> page.
+          Turn Foli off in Settings at any time. While it’s off, none of your notes are sent to it. On Core, the server refuses every AI request and the app hides AI. See <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/privacy#ai">Privacy</Link> page.
         </p>
       </>
     ),

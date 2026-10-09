@@ -163,7 +163,8 @@ export function blocksToMarkdown(
         lines.push(`${indent}- [${p.checked ? "x" : " "}] ${t}${p.dueDate ? ` (due ${p.dueDate}${p.dueTime ? ` ${p.dueTime}` : ""})` : ""}`);
         break;
       case "toggle":
-        lines.push(`${indent}<details><summary>${t}</summary>`, "");
+        // A flashcard or quiz question the AI made keeps its marker (study mode reads only those by default).
+        lines.push(`${indent}<details${p.study === "card" || p.study === "quiz" ? ` data-study="${p.study}"` : ""}><summary>${t}</summary>`, "");
         openToggles.push(depth);
         break;
       case "quote":
@@ -700,12 +701,13 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       drafts.push({ id: newId(), type: "paragraph", depth: 0, text: [{ type: "text", text: line.trim() }], props: {} });
       continue;
     }
-    const details = /^\s*<details>\s*<summary>(.*?)<\/summary>(.*?)(<\/details>)?\s*$/.exec(line);
+    // `data-study` marks a flashcard or quiz question the AI wrote (convex/lib/ai/studyTools.ts).
+    const details = /^\s*<details(?:\s+data-study="(card|quiz)")?>\s*<summary>(.*?)<\/summary>(.*?)(<\/details>)?\s*$/.exec(line);
     if (details) {
       flushParagraph();
-      drafts.push({ id: newId(), type: "toggle", depth: 0, text: parseInlineMarkdown(details[1]!), props: { collapsed: true } });
+      drafts.push({ id: newId(), type: "toggle", depth: 0, text: parseInlineMarkdown(details[2]!), props: { collapsed: true, ...(details[1] ? { study: details[1] } : {}) } });
       // Not closed on the same line: what follows, up to </details>, goes inside the toggle.
-      if (!details[3]) openDetails.push(drafts.length);
+      if (!details[4]) openDetails.push(drafts.length);
       continue;
     }
     if (/^\s*<\/details>\s*$/.test(line)) {

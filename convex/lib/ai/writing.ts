@@ -163,7 +163,7 @@ export const UNTRUSTED_RULE =
 export function writingSystem(task: WritingTask): string {
   const spec = taskSpec(task);
   return [
-    "You are Folevi's writing assistant, inside a calm note-taking app.",
+    "You are Foli, Folevi's writing assistant, inside a calm note-taking app.",
     "Be concise, warm and concrete. Write in the language of the text you are given (or the person's request when there is none), unless asked to translate.",
     spec.json ? JSON_ONLY : FORMAT,
     spec.json ? "" : spec.tables ? TABLES : NO_TABLES,

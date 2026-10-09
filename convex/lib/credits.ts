@@ -27,6 +27,7 @@ import { DAY_MS, PACK_VALID_MONTHS, PLAN_CATALOG, TIER_NAMES, TRIAL_DAYS, addMon
 import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
 import { priceOf, SEARCH_GROUNDING_NANO_PER_QUERY } from "./ai/capabilities";
+import { recordFeatureUse, type AiFeature } from "./ai/usage";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -260,7 +261,8 @@ export interface CreditBalance {
   nextPackExpiry: number | null;
 }
 
-const periodRow = (ctx: Ctx, a: Pick<CreditAccount, "profileId" | "workspaceId">, key: string) =>
+/** An account's row for a period (credits used, and use by feature and day). */
+export const periodRow = (ctx: Ctx, a: Pick<CreditAccount, "profileId" | "workspaceId">, key: string) =>
   ctx.db
     .query("aiCreditPeriods")
     .withIndex("by_account_period", (q) => q.eq("profileId", a.profileId).eq("workspaceId", a.workspaceId).eq("periodKey", key))
@@ -324,9 +326,10 @@ export const HOLD_MS = 10 * 60_000;
 
 /**
  * Sets aside `estimate` credits for a request in `scope`, or refuses with `out_of_credits` (and when the
- * monthly credits reset, and whether buying or upgrading helps).
+ * monthly credits reset, and whether buying or upgrading helps). `feature` is what the credits are spent
+ * on, for the usage card (lib/ai/usage.ts).
  */
-export async function holdCredits(ctx: MutationCtx, account: CreditAccount, scope: Scope, estimate: number, now = Date.now()): Promise<Id<"aiCreditHolds">> {
+export async function holdCredits(ctx: MutationCtx, account: CreditAccount, scope: Scope, estimate: number, now = Date.now(), feature?: AiFeature): Promise<Id<"aiCreditHolds">> {
   const balance = await creditBalance(ctx, account, now);
   const needed = Math.max(1, estimate);
   if (balance.available < needed) {
@@ -343,6 +346,7 @@ export async function holdCredits(ctx: MutationCtx, account: CreditAccount, scop
     scope: scope.kind,
     scopeWorkspaceId: scope.kind === "workspace" ? scope.workspaceId : undefined,
     credits: needed,
+    ...(feature ? { feature } : {}),
     createdAt: now,
     expiresAt: now + HOLD_MS,
   });
@@ -391,7 +395,7 @@ export async function recordAiUsage(ctx: MutationCtx, profileId: Id<"profiles">,
 
 /**
  * Ends a request: releases its hold and charges what its calls really cost (nothing when no call was
- * made). Idempotent: a hold is settled once.
+ * made), counted under the hold's feature for the usage card. Idempotent: a hold is settled once.
  */
 export async function settleHold(ctx: MutationCtx, holdId: Id<"aiCreditHolds">, calls: CallUsage[], now = Date.now()): Promise<{ credits: number; overrun: number } | null> {
   const hold = await ctx.db.get(holdId);
@@ -401,6 +405,8 @@ export async function settleHold(ctx: MutationCtx, holdId: Id<"aiCreditHolds">, 
   if (!credits) return { credits: 0, overrun: 0 };
   const account = await accountByKey(ctx, hold.profileId, hold.workspaceId, now);
   const { overrun } = await deductCredits(ctx, account, credits, now);
+  const period = await periodRow(ctx, account, account.period.key);
+  if (period) await recordFeatureUse(ctx, period, hold.feature ?? "other", credits, now);
   const tokensIn = calls.reduce((n, c) => n + c.promptTokens, 0);
   const tokensOut = calls.reduce((n, c) => n + c.outputTokens + c.thoughtsTokens, 0);
   await recordAiUsage(ctx, hold.profileId, { kind: hold.scope, workspaceId: hold.scopeWorkspaceId }, { credits, tokensIn, tokensOut }, now);

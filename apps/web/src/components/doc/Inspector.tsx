@@ -38,8 +38,9 @@ import { BlurredBackdrop } from "./BlurredBackdrop";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
-import { useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
+import { useAiAccess, type AiRunDetail } from "@/components/ai/useAi";
 import { AiPanel } from "@/components/ai/AiPanel";
+import { AiUnavailable } from "@/components/ai/AiUnavailable";
 import { RelatedPanel } from "./RelatedPanel";
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
@@ -47,7 +48,7 @@ export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comm
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
 // The tools the sidebar shows by name (AI opens from the floating bar, so it has no tab of its own).
-const TITLES: Partial<Record<InspectorTab, string>> = { ai: "AI", insert: "Insert", format: "Format", style: "Style", info: "Info", related: "Related" };
+const TITLES: Partial<Record<InspectorTab, string>> = { ai: "Foli", insert: "Insert", format: "Format", style: "Style", info: "Info", related: "Related" };
 const TABS: { id: Exclude<InspectorTab, "comments" | "ai" | "related">; label: string }[] = [
   { id: "insert", label: "Insert" },
   { id: "format", label: "Format" },
@@ -97,7 +98,8 @@ export function Inspector({
   onAiTitle?: (title: string) => void;
 }) {
   const baseId = useId();
-  const aiOn = useAiEnabled(meta?.document);
+  const aiAccess = useAiAccess(meta?.document);
+  const aiOn = aiAccess.on;
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments" | "ai" | "related">>("format");
   useEffect(() => {
@@ -167,6 +169,8 @@ export function Inspector({
       <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} /> : null}
+        {/* AI off, or not on the plan where this note lives: how to turn it on, or what a plan with AI includes. */}
+        {tab === "ai" && !aiOn ? <AiUnavailable ai={aiAccess} compact headingLevel={3} /> : null}
         {tab === "insert" ? <InsertPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "format" ? <FormatPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}

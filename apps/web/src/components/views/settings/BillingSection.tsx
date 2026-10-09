@@ -304,7 +304,7 @@ export function BillingSection() {
             : data.testPurchases
               ? "Payments aren't connected yet, so upgrades here are test purchases (development only), and nothing is charged. "
               : "Online payments are coming soon. "}
-          AI credits: a rewrite uses about 1, Ask AI about 2, a flowchart 3 to 5.
+          AI credits: a rewrite uses about 1, a Foli answer about 2, a flowchart 3 to 5.
         </p>
       </Card>
 

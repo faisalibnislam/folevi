@@ -296,7 +296,7 @@ describe("off", () => {
     expect(calls).toHaveLength(0);
     expect(await notificationsOf(t, a)).toEqual([]);
     // Not allowed to turn on while AI is off.
-    await expect(a.as.mutation(api.aiDigest.save, { enabled: true })).rejects.toThrow(/Turn on the AI Assistant/);
+    await expect(a.as.mutation(api.aiDigest.save, { enabled: true })).rejects.toThrow(/Turn on Foli/);
   });
 
   test("settings are checked", async () => {

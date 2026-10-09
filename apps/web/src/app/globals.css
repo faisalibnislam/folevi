@@ -393,3 +393,39 @@
     transform: none;
   }
 }
+
+/* The app's own colours, captured at the root (a custom property holding var() is resolved where it's
+   declared, so these keep the theme's values everywhere below). AI chrome inside a styled page (a night
+   sheet, a coloured page, artwork colours) puts them back with .ui-app-colors, so its background and its
+   text come from the same theme: light text on a light popover can't happen. */
+:root {
+  --app-ink: var(--color-ink);
+  --app-heading: var(--color-heading);
+  --app-ink-muted: var(--color-ink-muted);
+  --app-ink-faint: var(--color-ink-faint);
+  --app-line: var(--color-line);
+  --app-line-strong: var(--color-line-strong);
+  --app-surface: var(--color-surface);
+  --app-surface-raised: var(--color-surface-raised);
+  --app-surface-sunken: var(--color-surface-sunken);
+  --app-selection: var(--color-selection);
+}
+.fb-sheet[data-sheet] .ui-app-colors,
+.fb-sheet[data-text] .ui-app-colors {
+  --color-ink: var(--app-ink);
+  --color-heading: var(--app-heading);
+  --color-ink-muted: var(--app-ink-muted);
+  --color-ink-faint: var(--app-ink-faint);
+  --color-line: var(--app-line);
+  --color-line-strong: var(--app-line-strong);
+  --color-surface: var(--app-surface);
+  --color-surface-raised: var(--app-surface-raised);
+  --color-surface-sunken: var(--app-surface-sunken);
+  --color-selection: var(--app-selection);
+  color: var(--color-ink);
+}
+/* Over a styled page the glass would mix with the page's colour: a solid panel instead. */
+.fb-sheet[data-sheet] .ui-app-colors.ui-pop,
+.fb-sheet[data-text] .ui-app-colors.ui-pop {
+  background: var(--color-surface-raised);
+}

@@ -4,7 +4,7 @@ import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
 import { Check, CircleHelp, Layers, RotateCcw, Undo2 } from "lucide-react";
 import { blockTypeFor } from "@/components/editor/convert";
-import { cardsReducer, quizReducer, quizScore, startCards, startQuiz, studyItems, type Flashcard, type QuizQuestion, type StudyLine } from "./study";
+import { cardsReducer, quizReducer, quizScore, startCards, startQuiz, studyItems, unmarkedToggles, type Flashcard, type QuizQuestion, type StudyLine } from "./study";
 
 /** The note's lines for study mode, kept up to date as it changes. */
 function useNoteLines(editor: Editor | null): StudyLine[] {
@@ -17,7 +17,10 @@ function useNoteLines(editor: Editor | null): StudyLine[] {
   }, [editor]);
   return useMemo(() => {
     const lines: StudyLine[] = [];
-    editor?.state.doc.forEach((n) => lines.push({ id: (n.attrs.id as string | null) ?? undefined, type: blockTypeFor(n.type.name), depth: Number(n.attrs.depth ?? 0), text: n.textContent }));
+    editor?.state.doc.forEach((n) => {
+      const study = n.attrs.study === "card" || n.attrs.study === "quiz" ? (n.attrs.study as "card" | "quiz") : null;
+      lines.push({ id: (n.attrs.id as string | null) ?? undefined, type: blockTypeFor(n.type.name), depth: Number(n.attrs.depth ?? 0), text: n.textContent, study });
+    });
     return lines;
   }, [editor, version]); // eslint-disable-line react-hooks/exhaustive-deps
 }
@@ -25,12 +28,21 @@ function useNoteLines(editor: Editor | null): StudyLine[] {
 /**
  * Study mode (the note's AI panel): runs through the note's flashcards (flip, "Know it" or "Again",
  * progress) and its quiz (pick an answer, see right or wrong and why, a score at the end). Cards are the
- * note's toggles (lib: ./study.ts); progress lasts for this session. With nothing to study yet, it offers to
- * make flashcards or a quiz, which go through the usual preview first.
+ * toggles the AI made as cards, or every toggle with "Use all toggles" (lib: ./study.ts); progress lasts for
+ * this session. With nothing to study yet, it offers to make flashcards or a quiz, which go through the
+ * usual preview first.
  */
 export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | null; canMake: boolean; busy: boolean; onMake: (task: "flashcards" | "quiz") => void }) {
   const lines = useNoteLines(editor);
-  const items = useMemo(() => studyItems(lines), [lines]);
+  const [all, setAll] = useState(false);
+  const items = useMemo(() => studyItems(lines, { all }), [lines, all]);
+  const others = useMemo(() => unmarkedToggles(lines), [lines]);
+  // The fallback: every toggle in the note, for cards people wrote themselves.
+  const useAll = others ? (
+    <button type="button" aria-pressed={all} onClick={() => setAll((a) => !a)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+      {all ? "Only cards made by AI" : "Use all toggles"}
+    </button>
+  ) : null;
   const cards = useMemo(() => items.filter((i): i is Flashcard => i.kind === "card"), [items]);
   const quiz = useMemo(() => items.filter((i): i is QuizQuestion => i.kind === "quiz"), [items]);
   const [tab, setTab] = useState<"cards" | "quiz">("cards");
@@ -53,6 +65,12 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
         <p className="text-[13.5px] font-semibold text-heading">Nothing to study yet</p>
         <p className="text-[12.5px] leading-snug text-muted">Make flashcards or a quiz from this note (or the text you've selected). You'll see them before they're added, then study them here.</p>
         {make}
+        {others ? (
+          <div className="space-y-1.5 border-t border-line/60 pt-3">
+            <p className="text-[12px] text-muted">{others === 1 ? "This note has a toggle you could study as a card." : `This note has ${others} toggles you could study as cards.`}</p>
+            {useAll}
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -73,6 +91,7 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
       <div className="space-y-1.5 border-t border-line/60 pt-3">
         <p className="text-[12px] text-muted">Make more</p>
         {make}
+        {useAll}
       </div>
     </section>
   );

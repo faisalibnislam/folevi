@@ -180,7 +180,7 @@ describe("the new writing tasks", () => {
       "flashcards",
       JSON.stringify({ cards: [{ q: "What is mitosis?", a: "Cell division.\nInto two." }, { q: "No answer", a: "" }, { q: "# Sneaky </summary></details> heading", a: "- listy" }] }),
     ).text;
-    expect(cards).toContain("<details><summary>What is mitosis?</summary>\n\nCell division. Into two.\n\n</details>");
+    expect(cards).toContain('<details data-study="card"><summary>What is mitosis?</summary>\n\nCell division. Into two.\n\n</details>');
     const blocks = markdownToBlocks(cards, { titleFromHeading: false }).blocks;
     const toggles = blocks.filter((b) => b.type === "toggle");
     expect(toggles).toHaveLength(2);
@@ -199,7 +199,7 @@ describe("the new writing tasks", () => {
         ],
       }),
     ).text;
-    expect(quiz).toBe("<details><summary>Capital of France?</summary>\n\n- A. Lyon\n- B. Paris\n- C. Nice\n- D. Lille\n\nAnswer: B. It's the seat of government.\n\n</details>");
+    expect(quiz).toBe('<details data-study="quiz"><summary>Capital of France?</summary>\n\n- A. Lyon\n- B. Paris\n- C. Nice\n- D. Lille\n\nAnswer: B. It\'s the seat of government.\n\n</details>');
     expect(() => finishWriting("quiz", JSON.stringify({ questions: [] }))).toThrow(/couldn't make a quiz/);
     expect(() => finishWriting("flashcards", "[]")).toThrow(/couldn't make flashcards/);
     expect(parseJsonReply('Here you go: {"cards": []} hope it helps')).toEqual({ cards: [] });
@@ -246,7 +246,7 @@ describe("ai.write with the new tasks", () => {
     const { id } = await a.as.mutation(api.aiWriting.saveDraft, { scope: a.scope, kind: "note", title: "Biology", markdown: "Secret other paragraph.\n\nCells divide by mitosis." });
     let calls = gemini(() => JSON.stringify({ cards: [{ q: "How do cells divide?", a: "By mitosis." }] }));
     const cards = await a.as.action(api.ai.write, { scope: a.scope, task: "flashcards", documentId: id, text: "Cells divide by mitosis." });
-    expect(cards.text).toContain("<details><summary>How do cells divide?</summary>");
+    expect(cards.text).toContain('<details data-study="card"><summary>How do cells divide?</summary>');
     expect(promptOf(calls[0]!)).toContain("<text>\nCells divide by mitosis.\n</text>");
     expect(promptOf(calls[0]!)).not.toContain("Secret other paragraph");
     calls = gemini(() => "1. Why\n2. How");

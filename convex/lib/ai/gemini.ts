@@ -162,7 +162,7 @@ const TOO_SLOW = "The AI took too long to answer. Try again shortly.";
  */
 async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDelta): Promise<GenerateResult> {
   const key = process.env.GEMINI_API_KEY;
-  if (!key) fail("maintenance", "The AI Assistant isn't set up on this server yet.");
+  if (!key) fail("maintenance", "Foli isn't set up on this server yet.");
   // A grounded request only goes to models that can search (no fallback to one that can't).
   const models = (req.fast ? [geminiFastModel()] : [geminiModel(), geminiFastModel()]).filter((m, i) => i === 0 || !req.searchGrounding || capabilitiesOf(m).searchGrounding);
   let lastStatus = 0;
@@ -284,8 +284,8 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
     }
   }
   if (lastStatus === 429) fail("rate_limited", "The AI is busy right now. Try again in a minute.");
-  if (lastStatus === 400 || lastStatus === 403) fail("maintenance", "The AI Assistant isn't available right now (the server's AI key was refused).");
-  fail("maintenance", "The AI Assistant couldn't be reached. Try again shortly.");
+  if (lastStatus === 400 || lastStatus === 403) fail("maintenance", "Foli isn't available right now (the server's AI key was refused).");
+  fail("maintenance", "Foli couldn't be reached. Try again shortly.");
 }
 
 /** Texts per batchEmbedContents request (Gemini's limit is 100). */
@@ -301,7 +301,7 @@ const EMBED_TIMEOUT_MS = 30_000;
  */
 async function embed(texts: string[], task: EmbedTask): Promise<EmbedResult> {
   const key = process.env.GEMINI_API_KEY;
-  if (!key) fail("maintenance", "The AI Assistant isn't set up on this server yet.");
+  if (!key) fail("maintenance", "Foli isn't set up on this server yet.");
   const model = geminiEmbeddingModel();
   const vectors: number[][] = [];
   for (let i = 0; i < texts.length; i += EMBED_BATCH) {
@@ -332,13 +332,13 @@ async function embed(texts: string[], task: EmbedTask): Promise<EmbedResult> {
     if (!res.ok) {
       console.warn(JSON.stringify({ event: "ai.embed_error", model, status: res.status }));
       if (res.status === 429) fail("rate_limited", "The AI is busy right now. Try again in a minute.");
-      fail("maintenance", "The AI Assistant couldn't be reached. Try again shortly.");
+      fail("maintenance", "Foli couldn't be reached. Try again shortly.");
     }
     const data = (await res.json().catch(() => null)) as { embeddings?: { values?: unknown }[] } | null;
     const got = (data?.embeddings ?? []).map((e) => (Array.isArray(e.values) ? (e.values as unknown[]).filter((x): x is number => typeof x === "number") : []));
     if (got.length !== batch.length || got.some((v) => v.length !== EMBEDDING_DIMENSIONS)) {
       console.warn(JSON.stringify({ event: "ai.embed_error", model, status: res.status, count: got.length }));
-      fail("maintenance", "The AI Assistant couldn't be reached. Try again shortly.");
+      fail("maintenance", "Foli couldn't be reached. Try again shortly.");
     }
     vectors.push(...got.map(normalize));
   }

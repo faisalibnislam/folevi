@@ -97,8 +97,11 @@ export function meetingMarkdown(raw: unknown): string {
   return out.join("\n").trim();
 }
 
-/** A flashcard as a toggle: the question is the toggle, the answer is inside it. */
-const toggle = (summary: string, inside: string[]) => [`<details><summary>${summary}</summary>`, "", ...inside, "", "</details>", ""];
+/**
+ * A flashcard or quiz question as a toggle: the question is the toggle, the answer is inside it. The toggle is
+ * marked (`data-study`, the toggle's `study` prop once inserted) so study mode can tell it from any other toggle.
+ */
+const toggle = (kind: "card" | "quiz", summary: string, inside: string[]) => [`<details data-study="${kind}"><summary>${summary}</summary>`, "", ...inside, "", "</details>", ""];
 
 /** Flashcards as toggles (question, then the answer hidden inside). Cards without both halves are dropped. */
 export function flashcardsMarkdown(raw: unknown): string {
@@ -110,7 +113,7 @@ export function flashcardsMarkdown(raw: unknown): string {
     })
     .filter((c) => c.q && c.a)
     .slice(0, MAX_CARDS);
-  return cards.flatMap((c) => toggle(c.q, [c.a])).join("\n").trim();
+  return cards.flatMap((c) => toggle("card", c.q, [c.a])).join("\n").trim();
 }
 
 const LETTERS = "ABCDEF";
@@ -132,7 +135,7 @@ export function quizMarkdown(raw: unknown): string {
     .filter((q) => q.q && q.options.length >= 2 && q.options.length <= LETTERS.length && q.options.every(Boolean) && new Set(q.options.map((o) => o.toLowerCase())).size === q.options.length && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length)
     .slice(0, MAX_CARDS);
   return questions
-    .flatMap((q) => toggle(q.q, [...q.options.map((o, i) => `- ${LETTERS[i]}. ${o}`), "", `Answer: ${LETTERS[q.answer]}.${q.explanation ? ` ${q.explanation}` : ""}`]))
+    .flatMap((q) => toggle("quiz", q.q, [...q.options.map((o, i) => `- ${LETTERS[i]}. ${o}`), "", `Answer: ${LETTERS[q.answer]}.${q.explanation ? ` ${q.explanation}` : ""}`]))
     .join("\n")
     .trim();
 }

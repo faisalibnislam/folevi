@@ -11,6 +11,8 @@ import { Card } from "./Card";
 import { AiSettingCard } from "./AccountSection";
 import { AiMemoryCard } from "./AiMemory";
 import { AiDigestCard } from "./AiDigest";
+import { AiUsageCard } from "./AiUsage";
+import { AiExportCard } from "./AiExport";
 
 type PrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests";
 type Prefs = Record<PrefKey, boolean>;
@@ -20,7 +22,7 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "history",
     label: "Keep conversations",
-    body: "Your AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.",
+    body: "Your AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.",
     on: "Conversations are kept",
     off: "New conversations aren't kept",
   },
@@ -100,6 +102,7 @@ export function AiSection() {
   return (
     <>
       <AiSettingCard />
+      <AiUsageCard />
       <Card title="Conversations">
         <PrefRow item={SETTINGS[0]!} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
       </Card>
@@ -112,6 +115,7 @@ export function AiSection() {
       </Card>
       <AiMemoryCard />
       <AiDigestCard />
+      <AiExportCard />
     </>
   );
 }

@@ -41,6 +41,26 @@ export function MoveToFolderDialog({
   /** Where the notes are now: a folder id, null for Drafts, undefined when mixed/unknown. */
   currentFolderId?: string | null;
 }) {
+  const what = count === 1 ? `“${noteTitle?.trim() || "Untitled"}”` : `${count.toLocaleString()} notes`;
+  return (
+    <Dialog open={open} onClose={onClose} title="Move to folder" description={`Choose where ${what} should live.`} size="sm">
+      <FolderPicker open={open} onClose={onClose} onPick={onPick} currentFolderId={currentFolderId} />
+    </Dialog>
+  );
+}
+
+/** The folder search and list (also the Folder side of a note's Move dialog). */
+export function FolderPicker({
+  open,
+  onClose,
+  onPick,
+  currentFolderId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (folder: FolderTarget) => void;
+  currentFolderId?: string | null;
+}) {
   const { scope } = useAppState();
   const org = useQuery(api.organization.sidebar, open ? { scope } : "skip");
   const [q, setQ] = useState("");
@@ -86,10 +106,8 @@ export function MoveToFolderDialog({
     onPick({ id: o.id, name: o.id ? o.name : "Drafts" });
   };
 
-  const what = count === 1 ? `“${noteTitle?.trim() || "Untitled"}”` : `${count.toLocaleString()} notes`;
-
   return (
-    <Dialog open={open} onClose={onClose} title="Move to folder" description={`Choose where ${what} should live.`} size="sm">
+    <>
       <label htmlFor={`${baseId}-q`} className="sr-only">
         Search folders
       </label>
@@ -162,6 +180,6 @@ export function MoveToFolderDialog({
         {org === undefined ? <li className="px-2 py-3 text-sm text-muted">Loading folders…</li> : null}
         {org && !options.length ? <li className="px-2 py-3 text-sm text-muted">No folders match “{q.trim()}”.</li> : null}
       </ul>
-    </Dialog>
+    </>
   );
 }

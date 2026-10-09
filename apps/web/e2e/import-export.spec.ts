@@ -16,7 +16,8 @@ test("import Markdown with a warning report, then export a page as Markdown", as
 
   await page.getByRole("button", { name: "Document actions" }).click();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("menuitem", { name: "Export as Markdown" }).click();
+  await page.getByRole("menuitem", { name: "Export…" }).click();
+  await page.getByRole("dialog", { name: /^Export “/ }).getByRole("button", { name: "Export Markdown" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("Garden log.md");
   const text = await (await download.createReadStream()).toArray();

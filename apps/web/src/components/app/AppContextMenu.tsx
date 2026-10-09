@@ -125,14 +125,14 @@ export function AppContextMenu() {
       const selection = window.getSelection()?.toString().trim() ?? "";
       if (selection) {
         items.push({ label: "Copy", icon: <Copy size={14} />, shortcut: "⌘C", onSelect: () => void copyText(selection, "Copied") });
-        if (aiOn) items.push({ label: "Ask AI about this", icon: <AiIcon size={14} />, onSelect: () => openAsk(`About this: “${selection.slice(0, 500)}”`) });
+        if (aiOn) items.push({ label: "Ask Foli about this", icon: <AiIcon size={14} />, onSelect: () => openAsk(`About this: “${selection.slice(0, 500)}”`) });
         items.push("separator");
       }
       // Anywhere.
       items.push(
         { label: "New note", icon: <FilePlus2 size={14} />, shortcut: "⌘⌥N", onSelect: () => void createDocument({}) },
         { label: "Search or jump to…", icon: <Search size={14} />, shortcut: "⌘K", onSelect: () => openPalette() },
-        ...(aiOn ? [{ label: "Ask AI", icon: <AiIcon size={14} />, shortcut: "⌘J", onSelect: () => openAsk() }] : []),
+        ...(aiOn ? [{ label: "Ask Foli", icon: <AiIcon size={14} />, shortcut: "⌘J", onSelect: () => openAsk() }] : []),
         "separator",
         { label: "Back", icon: <ArrowLeft size={14} />, onSelect: () => history.back() },
         { label: "Forward", icon: <ArrowRight size={14} />, onSelect: () => history.forward() },

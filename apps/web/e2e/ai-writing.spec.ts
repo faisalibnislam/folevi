@@ -16,10 +16,10 @@ test("selection actions, tones and turn-into are offered, and a refused request 
   await page.keyboard.type("We should maybe think about shipping the new plan next week");
   const body = page.getByRole("textbox", { name: "Document body" });
   await body.locator("p.fb-paragraph").first().click({ clickCount: 3 });
-  await page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^Ask AI/ }).click();
+  await page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^Ask Foli/ }).click();
 
-  const ai = page.getByRole("dialog", { name: "AI Assistant" });
-  const box = ai.getByRole("combobox", { name: "Ask AI to write or edit" });
+  const ai = page.getByRole("dialog", { name: "Foli" });
+  const box = ai.getByRole("combobox", { name: "Ask Foli to write or edit" });
   await expect(box).toBeFocused();
   const list = ai.getByRole("listbox", { name: "AI suggestions" });
   for (const name of ["Improve writing", "Fix spelling & grammar", "Make shorter", "Make longer", "Simplify language", "Change tone…", "Translate to…", "Turn into a list", "Turn into a table", "Turn into a checklist", "Summarize", "Explain", "Continue writing", "Extract action items"]) {
@@ -52,11 +52,11 @@ test("the slash menu's AI commands open the composer ready to write", async ({ b
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("/ai");
-  for (const name of ["AI: Continue writing", "AI: Summarize page", "AI: Action items", "AI: Outline", "AI: Brainstorm", "AI: Draft from prompt", "AI: Generate page"]) {
+  for (const name of ["Foli: Continue writing", "Foli: Summarize page", "Foli: Action items", "Foli: Outline", "Foli: Brainstorm", "Foli: Draft from prompt", "Foli: Generate page"]) {
     await expect(page.getByRole("option", { name })).toBeVisible();
   }
-  await page.getByRole("option", { name: "AI: Generate page" }).click();
-  const ai = page.getByRole("dialog", { name: "AI Assistant" });
+  await page.getByRole("option", { name: "Foli: Generate page" }).click();
+  const ai = page.getByRole("dialog", { name: "Foli" });
   const describe = ai.getByRole("combobox", { name: "Describe the page" });
   await expect(describe).toBeFocused();
   await page.keyboard.type("A packing list for a weekend hike");
@@ -69,9 +69,9 @@ test("the slash menu's AI commands open the composer ready to write", async ({ b
 
   // "Draft from prompt" opens on an empty prompt (nothing runs until you say what to write).
   await page.keyboard.type("/draft");
-  await page.getByRole("option", { name: "AI: Draft from prompt" }).click();
-  await expect(ai.getByRole("combobox", { name: "Ask AI to write or edit" })).toBeFocused();
-  await expect(ai.getByRole("combobox", { name: "Ask AI to write or edit" })).toHaveAttribute("placeholder", "Describe what to write…");
+  await page.getByRole("option", { name: "Foli: Draft from prompt" }).click();
+  await expect(ai.getByRole("combobox", { name: "Ask Foli to write or edit" })).toBeFocused();
+  await expect(ai.getByRole("combobox", { name: "Ask Foli to write or edit" })).toHaveAttribute("placeholder", "Describe what to write…");
   await page.keyboard.press("Escape");
   await context.close();
 });

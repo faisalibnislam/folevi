@@ -346,7 +346,7 @@ function Dock({ ai, highlight, compact }: { ai: boolean; highlight: "style" | "a
   const items = [
     {
       id: "ai",
-      label: "AI",
+      label: "Foli",
       icon: (
         <span className="ob-ai-mark grid place-items-center" data-on={ai}>
           <AiIcon size={14} />
@@ -396,7 +396,7 @@ function AskPanel({ on, compact }: { on: boolean; compact?: boolean }) {
     <div className={`ob-ai-pop ob-pop absolute bottom-16 flex flex-col overflow-hidden rounded-[16px] text-[12.5px] ${compact ? "inset-x-4" : "right-6 w-[330px]"}`} data-on={on}>
       <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
         <AiIcon size={15} />
-        <p className="flex-1 text-[13.5px] font-semibold text-heading">Ask AI</p>
+        <p className="flex-1 text-[13.5px] font-semibold text-heading">Ask Foli</p>
         <X size={14} className="text-muted" />
       </div>
       <div className="space-y-2 px-3.5 py-3">

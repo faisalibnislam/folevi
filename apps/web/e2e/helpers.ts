@@ -255,10 +255,9 @@ export async function openTool(page: Page, name: "Insert" | "Format" | "Style" |
   return panel;
 }
 
-/** Opens a page's Share dialog (Share is in the page's "…" menu on the floating bar). */
+/** Opens a page's Share dialog (the Share or Shared button on the floating bar). */
 export async function openShare(page: Page) {
-  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Share…" }).click();
+  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: /^Share/ }).click();
 }
 
 /** Chooses an option in one of Folevi's dropdowns (the custom Select: a combobox with a listbox). */

@@ -54,7 +54,8 @@
     "BlockAlign": { "type": "string", "values": ["left", "center", "right", "justify"] },
     "BlockFont": { "type": "string", "values": ["system", "serif", "mono", "rounded"] },
     "BlockGroup": { "type": "string", "values": ["page", "card"] },
-    "DividerStyle": { "type": "string", "values": ["extralight", "light", "regular", "strong"] }
+    "DividerStyle": { "type": "string", "values": ["extralight", "light", "regular", "strong"] },
+    "StudyKind": { "type": "string", "values": ["card", "quiz"] }
   },
   "unions": {
     "Mark": {
@@ -163,6 +164,7 @@
       "text": true,
       "props": {
         "collapsed": "bool",
+        "study": "StudyKind?",
         "decoration": "BlockDecoration?",
         "color": "BlockColor?",
         "align": "BlockAlign?",

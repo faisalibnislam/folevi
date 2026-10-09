@@ -136,7 +136,7 @@ export const translateNote = action({
     if (chars > MAX_TRANSLATE_CHARS || chunks.length > MAX_TRANSLATE_CHUNKS) fail("limit_exceeded", "This note is too long to translate in one go. Split it into shorter notes first.");
     // Every chunk's call is held up front.
     const plan: PlannedCall[] = chunks.map((c) => ({ fast: false, inputChars: TRANSLATE_SYSTEM.length + 400 + c.reduce((n, s) => n + s.text.length + 16, 0), maxOutputTokens: TRANSLATE_MAX_OUTPUT }));
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing" });
     return await metered(ctx, holdId, async (meter) => {
       const done = new Map<string, InlineNode[]>();
       await inParallel(chunks, PARALLEL, async (chunk) => {

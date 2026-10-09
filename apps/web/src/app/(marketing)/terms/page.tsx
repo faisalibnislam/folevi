@@ -7,7 +7,7 @@ import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Terms",
-  description: "The terms for using Folevi, in plain language. They cover Personal and workspaces, plans and billing, device limits, the AI Assistant and your content.",
+  description: "The terms for using Folevi, in plain language. They cover Personal and workspaces, plans and billing, device limits, Foli (the AI assistant) and your content.",
   path: "/terms",
 });
 
@@ -20,7 +20,7 @@ const toc = [
   { id: "use", label: "Acceptable use" },
   { id: "sharing", label: "Sharing" },
   { id: "price", label: "Plans and billing" },
-  { id: "ai", label: "The AI Assistant" },
+  { id: "ai", label: "Foli, the AI assistant" },
   { id: "ending", label: "Ending" },
   { id: "liability", label: "Warranties and liability" },
   { id: "changes", label: "Changes" },
@@ -156,9 +156,9 @@ export default function TermsPage() {
           <li>Nothing you’ve created is ever held back behind a payment. You can always export it.</li>
         </ul>
 
-        <h2 id="ai">The AI Assistant</h2>
+        <h2 id="ai">Foli, the AI assistant</h2>
         <p>
-          On plans that include it, the AI Assistant can answer questions about your notes and help you write. Every plan
+          On plans that include it, Foli, Folevi’s AI assistant, can answer questions about your notes and help you write. Every plan
           except Core includes it, with a number of AI credits each month; in a free workspace, members use their own
           personal credits, and in a paid workspace, each member gets the workspace plan’s credits. Core has no AI. A
           personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it available to everyone. It uses Google’s Gemini API, as described in our{" "}

@@ -51,7 +51,16 @@ export async function syncPageCards(client: Client, engine: SyncEngine, input: {
 }
 
 /** Moves a page under another page (or back to the top level), from the page menu or the Info panel. */
-export function MovePageDialog({
+export function MovePageDialog(props: { open: boolean; onClose: () => void; documentId: string; title: string; currentParentId: string | null; home?: WireScope | null }) {
+  return (
+    <Dialog open={props.open} onClose={props.onClose} title="Move page" description={`Choose a page to nest “${props.title || "Untitled"}” under.`}>
+      <PagePicker {...props} />
+    </Dialog>
+  );
+}
+
+/** The page search and list (also the Page side of a note's Move dialog). */
+export function PagePicker({
   open,
   onClose,
   documentId,
@@ -122,7 +131,7 @@ export function MovePageDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} title="Move page" description={`Choose a page to nest “${title || "Untitled"}” under.`}>
+    <>
       <label htmlFor={`${baseId}-q`} className="sr-only">
         Search pages
       </label>
@@ -140,7 +149,7 @@ export function MovePageDialog({
           {error}
         </p>
       ) : null}
-      <ul className="mt-3 space-y-0.5" aria-label={query ? "Matching pages" : "Recent pages"} aria-busy={loading}>
+      <ul className="mt-3 max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto" aria-label={query ? "Matching pages" : "Recent pages"} aria-busy={loading}>
         {currentParentId ? (
           <li>
             <button type="button" disabled={busy} onClick={() => void doMove(null, null)} className="ui-menu-item w-full disabled:opacity-50">
@@ -163,6 +172,6 @@ export function MovePageDialog({
         {!loading && !list.length ? <li className="px-2 py-3 text-sm text-muted">{query ? `No pages match “${query}”.` : "Search for the page to move this one into."}</li> : null}
         {loading ? <li className="px-2 py-3 text-sm text-muted">Loading…</li> : null}
       </ul>
-    </Dialog>
+    </>
   );
 }

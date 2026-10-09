@@ -10,7 +10,7 @@ test("the Web switch sends, Research starts and fails plainly without a key, and
   const { page, context } = await newPerson(browser, "Research Person");
   await page.goto(`${APP}/ai`);
   await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible();
-  const modes = page.getByRole("group", { name: "How the AI helps" });
+  const modes = page.getByRole("group", { name: "How Foli helps" });
 
   // Chat with the Web switch: off by default, then on, then a question.
   const web = page.getByRole("button", { name: "Web", exact: true });

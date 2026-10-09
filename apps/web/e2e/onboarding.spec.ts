@@ -62,8 +62,8 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
   await page.getByRole("button", { name: "Continue" }).click();
 
   // 5. AI Assistant: on by default, switched off here.
-  await expect(heading(page, "Meet your AI Assistant")).toBeFocused();
-  const ai = page.getByRole("switch", { name: "AI Assistant" });
+  await expect(heading(page, "Meet Foli")).toBeFocused();
+  const ai = page.getByRole("switch", { name: "Foli" });
   await expect(ai).toHaveAttribute("aria-checked", "true");
   await expect(page.getByText(/Included in your 7-day Pro AI trial, with 100 AI credits/)).toBeVisible();
   await ai.click();
@@ -87,7 +87,7 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveAttribute("style", /\/covers\/art-39/);
   await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Style", exact: true })).toBeVisible();
-  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "AI", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli", exact: true })).toHaveCount(0);
 
   // The starter pages exist.
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
@@ -109,7 +109,7 @@ test("onboarding: every step can be skipped, and passes axe in dark mode", async
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await scan(page, "welcome (dark)");
   await page.getByRole("button", { name: "Get started" }).click();
-  for (const name of ["What will you use Folevi for?", "Pick a style for your first page", "Light or dark?", "Meet your AI Assistant"]) {
+  for (const name of ["What will you use Folevi for?", "Pick a style for your first page", "Light or dark?", "Meet Foli"]) {
     await expect(heading(page, name)).toBeFocused();
     await scan(page, `${name} (dark)`);
     await page.getByRole("button", { name: "Skip", exact: true }).click();

@@ -372,7 +372,7 @@ function BillingDialogs({
             max: MAX_GRANT,
             step: 1,
             suffix: "credits",
-            hint: `1 to ${MAX_GRANT.toLocaleString()}. One credit is $0.01 of AI cost: a rewrite is about 1, Ask AI about 2.`,
+            hint: `1 to ${MAX_GRANT.toLocaleString()}. One credit is $0.01 of AI cost: a rewrite is about 1, a Foli answer about 2.`,
             validate: (v) => (Number.isInteger(Number(v)) ? null : "Use a whole number."),
           },
           ...(seatWorkspaces.length

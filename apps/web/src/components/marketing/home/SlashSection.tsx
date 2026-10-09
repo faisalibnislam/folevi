@@ -16,7 +16,7 @@ const GROUPS: Array<{ title: string; items: string }> = [
   { title: "Organise", items: "Tables, collections, kanban, sub-pages" },
   { title: "Draw", items: "Flowcharts, whiteboards, formulas" },
   { title: "Add media", items: "Audio recordings, images, files" },
-  { title: "Ask AI", items: "Summaries, outlines, action items" },
+  { title: "Ask Foli", items: "Summaries, outlines, action items" },
 ];
 
 export function SlashSection() {

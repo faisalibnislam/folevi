@@ -13,8 +13,8 @@ import { TitleDemo } from "../demos/TitleDemo";
 import { Kbd, SectionHeading, box, container, cx } from "../ui";
 
 /*
- * The AI Assistant, feature by feature. Every picture is an HTML replica of the app's own AI surfaces with
- * the app's labels: the Ask AI chat (components/ai/AskAiChat.tsx), the ⌘J composer (ai/InlineAi.tsx) in its
+ * Foli, feature by feature. Every picture is an HTML replica of the app's own AI surfaces with
+ * the app's labels: the Ask Foli chat (components/ai/AskAiChat.tsx), the ⌘J composer (ai/InlineAi.tsx) in its
  * edit and result states, flowchart AI (editor/flowchart/FlowchartAi.tsx, with a chart drawn by the app's
  * own renderer from an AI-shaped draft), Catch me up (ai/CatchUp.tsx) and title AI (doc/TitleAi.tsx).
  */
@@ -29,12 +29,12 @@ export function AiSection() {
             <SectionHeading
               className="mt-6"
               id="ai-title"
-              eyebrow="AI Assistant"
+              eyebrow="Foli"
               title="Ask, write and draw with your notes."
             />
           </div>
           <p className="mk-lede max-w-[52ch] lg:pb-1">
-            The AI Assistant works where you write. Ask a question across your notes, rewrite a
+            Foli works where you write. Ask a question across your notes, rewrite a
             paragraph, turn a meeting into tasks or describe a process and get a flowchart. It only
             reads the notes you can open.
           </p>
@@ -42,19 +42,19 @@ export function AiSection() {
 
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
-            eyebrow="Ask AI"
+            eyebrow="Ask Foli"
             title="Answers from your notes, with sources."
             art="art-49"
             picture={<AskDemo />}
             points={[
               <>
-                Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <b>Ask AI about your notes</b>{" "}
+                Press <Kbd>⌘J</Kbd> anywhere outside a note, or pick <b>Ask Foli about your notes</b>{" "}
                 in the <Kbd>⌘K</Kbd> palette.
               </>,
               <>Each answer lists the notes it used. Click a source to open it.</>,
               <>
                 Ask follow-ups in the same chat. From a folder’s menu,{" "}
-                <b>Ask AI about this folder</b> keeps answers inside that folder.
+                <b>Ask Foli about this folder</b> keeps answers inside that folder.
               </>,
               <>If your notes don’t have the answer, it says so before giving a general one.</>,
             ]}
@@ -176,7 +176,7 @@ export function AiSection() {
             href="/docs/ai-assistant"
             className="mk-link inline-flex min-h-11 items-center gap-1.5"
           >
-            AI Assistant guide <Icon name="arrow-right" size={15} />
+            Foli guide <Icon name="arrow-right" size={15} />
           </Link>
         </p>
       </div>

@@ -223,7 +223,11 @@ export const Toggle = Node.create({
   content: "inline*",
   defining: true,
   addAttributes: () =>
-    blockAttrs({ collapsed: { default: false, keepOnSplit: false, parseHTML: (el) => el.getAttribute("data-collapsed") === "true", renderHTML: (a) => ({ "data-collapsed": a.collapsed ? "true" : "false" }) } }),
+    blockAttrs({
+      collapsed: { default: false, keepOnSplit: false, parseHTML: (el) => el.getAttribute("data-collapsed") === "true", renderHTML: (a) => ({ "data-collapsed": a.collapsed ? "true" : "false" }) },
+      // A flashcard or quiz question the AI made ("card" or "quiz"): study mode reads these (components/ai/study.ts).
+      study: { ...plain("study"), keepOnSplit: false },
+    }),
   parseHTML: () => [{ tag: 'div[data-block="toggle"]' }, { tag: "details" }],
   renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes(HTMLAttributes, { "data-block": "toggle", class: "fb fb-toggle" }), 0],
   addNodeView() {

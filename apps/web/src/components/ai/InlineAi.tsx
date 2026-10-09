@@ -46,6 +46,7 @@ import { api } from "@/lib/convex/api";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { useAppRouter } from "@/lib/app/router";
 import { useToast } from "@/components/ui/Toast";
+import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 
 /** What the inline composer works on: a range of text (a selection or whole blocks), or the cursor. */
 export interface InlineAiRequest {
@@ -325,7 +326,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     try {
       // A tool's result is named for what it is and the note it came from ("Meeting summary: Weekly sync").
       const toolTitle = isTool ? (noteAi?.title?.trim() ? `${taskLabel(result.last.task)}: ${noteAi.title.trim()}` : taskLabel(result.last.task)) : "";
-      const { id } = await saveDraft(kind, toolTitle || result.title || result.last.instruction || "", result.text);
+      const { id } = await saveDraft(kind, toolTitle || result.title || result.last.instruction || "", result.text, { people: result.last.task === "meetingSummary" });
       onClose();
       if (kind === "note") navigate(`/d/${id}`);
       else toast.show("Saved to Templates", { action: { label: "Open", onClick: () => navigate(`/d/${id}`) } });
@@ -389,6 +390,9 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     }
   };
 
+  // Said once when the result is ready (the streaming text isn't announced word by word).
+  const announce = useDoneAnnouncement(phase.kind === "busy", result ? (replaceable ? "Ready. Review the changes below." : "Ready. Review the result below.") : "");
+
   const listId = `${uid}-list`;
   const resultId = `${uid}-result`;
   const inSubmenu = phase.kind === "menu" || (pageMode && request.mode !== "page" && phase.kind === "compose");
@@ -406,8 +410,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           : request.mode === "draft"
             ? "Describe what to write…"
             : target
-              ? "Ask AI to edit the selected text…"
-              : "Ask AI to write anything…";
+              ? "Ask Foli to edit the selected text…"
+              : "Ask Foli to write anything…";
   const groupTitle = phase.kind === "compose" && !input.trim() && !pageMode;
 
   return (
@@ -415,13 +419,13 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       ref={boxRef}
       popover="manual"
       role="dialog"
-      aria-label="AI Assistant"
+      aria-label="Foli"
       onKeyDown={onKeyDown}
       onMouseDown={(e) => {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
       }}
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? 0, top: pos?.top ?? 0, width: pos?.width ?? 480, visibility: pos ? "visible" : "hidden" }}
-      className="ui-pop z-[100] overflow-hidden rounded-[14px] border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
+      className="ui-pop ui-app-colors z-[100] overflow-hidden rounded-[14px] border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
     >
       {/* What it's working on */}
       {target ? (
@@ -466,7 +470,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
 
       {/* Working */}
       {phase.kind === "busy" ? (
-        <div className="max-h-[min(46vh,380px)] overflow-y-auto px-4 pb-2 pt-3.5" aria-live="polite" aria-busy="true">
+        <div className="max-h-[min(46vh,380px)] overflow-y-auto px-4 pb-2 pt-3.5" aria-busy="true">
           <p className="mb-1.5 flex items-center gap-2 text-[11.5px] font-semibold text-muted">
             <AiIcon size={12} aria-hidden className="animate-pulse text-[#7c6cf0] motion-reduce:animate-none" /> {phase.label}…
           </p>
@@ -501,7 +505,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
             aria-controls={phase.kind === "result" ? undefined : listId}
             aria-autocomplete={phase.kind === "result" ? undefined : "list"}
             aria-activedescendant={phase.kind !== "result" && options[active] ? `${uid}-${options[active]!.id}` : undefined}
-            aria-label={phase.kind === "result" ? "Tell the AI what to change" : phase.kind === "menu" ? (phase.menu === "languages" ? "Language" : "Tone") : pageMode ? "Describe the page" : "Ask AI to write or edit"}
+            aria-label={phase.kind === "result" ? "Tell Foli what to change" : phase.kind === "menu" ? (phase.menu === "languages" ? "Language" : "Tone") : pageMode ? "Describe the page" : "Ask Foli to write or edit"}
             placeholder={placeholder}
             className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-faint"
           />
@@ -616,7 +620,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           </ul>
         ) : null
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">AI can make mistakes. Sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">Foli can make mistakes. Sent to Google Gemini.</p>
+      <AiAnnouncer text={announce} />
     </div>
   );
 }

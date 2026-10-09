@@ -45,9 +45,14 @@ export function seedPosition(id: string, index: number): Point {
   return { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
 }
 
+/** The most steps one layout takes, however large the graph: the work is bounded (see GraphView's frames). */
+export const LAYOUT_MAX_TICKS = 300;
+
 export interface SimulationOptions {
   /** Positions from an earlier layout, kept so a refreshed graph doesn't reshuffle. */
   previous?: ReadonlyMap<string, Point>;
+  /** Stop after this many steps even if it hasn't cooled (default LAYOUT_MAX_TICKS). */
+  maxTicks?: number;
   /** How far apart linked nodes settle. */
   linkDistance?: number;
   /** How strongly nodes push each other apart. */
@@ -65,10 +70,14 @@ export class Simulation {
   private readonly index = new Map<string, number>();
   private readonly links: [number, number][] = [];
   alpha: number;
+  /** Steps taken so far. */
+  ticks = 0;
+  private readonly maxTicks: number;
   private readonly linkDistance: number;
   private readonly repulsion: number;
 
   constructor(ids: readonly string[], edges: readonly LayoutEdge[], opts: SimulationOptions = {}) {
+    this.maxTicks = opts.maxTicks ?? LAYOUT_MAX_TICKS;
     this.linkDistance = opts.linkDistance ?? 70;
     this.repulsion = opts.repulsion ?? 900;
     let kept = 0;
@@ -89,7 +98,7 @@ export class Simulation {
   }
 
   get settled(): boolean {
-    return this.alpha < Simulation.MIN_ALPHA;
+    return this.alpha < Simulation.MIN_ALPHA || this.ticks >= this.maxTicks;
   }
 
   /** One step. Returns false once settled. */
@@ -147,6 +156,7 @@ export class Simulation {
       p.y += p.vy;
     }
     this.alpha *= 0.97;
+    this.ticks++;
     return !this.settled;
   }
 
@@ -211,8 +221,95 @@ export function degrees(edges: readonly LayoutEdge[]): Map<string, number> {
   return out;
 }
 
-/** A node's radius: bigger with more connections, within limits. */
-export const radiusFor = (degree: number, entity: boolean) => Math.min(entity ? 14 : 12, (entity ? 5 : 4) + Math.sqrt(degree) * 1.6);
+/** A node's radius (world units): bigger with more connections, within limits, entities a little larger. */
+export const radiusFor = (degree: number, entity: boolean) => Math.min(entity ? 20 : 18, (entity ? 7 : 6) + Math.sqrt(degree) * 2.4);
+
+/** However far you zoom out, a node is drawn at least this many pixels across its radius. */
+export const MIN_DRAWN_PX = 4.5;
+/** And can be hit within this many pixels of its centre (a 24 px target, WCAG 2.5.8). */
+export const MIN_HIT_PX = 12;
+
+/** The radius to draw at zoom `k` (world units), so a node never shrinks to a speck. */
+export const drawnRadius = (r: number, k: number) => Math.max(r, MIN_DRAWN_PX / k);
+/** The radius that takes clicks and taps at zoom `k` (world units). */
+export const hitRadius = (r: number, k: number) => Math.max(r, MIN_HIT_PX / k);
+
+/** The `count` best-connected nodes (ties by id, so it's stable): they're always labelled. */
+export function topConnected(deg: ReadonlyMap<string, number>, count: number): Set<string> {
+  return new Set(
+    [...deg.entries()]
+      .filter(([, d]) => d > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, count)
+      .map(([id]) => id),
+  );
+}
+
+/**
+ * Each kind's shape, so entities differ from notes (and from each other) by shape as well as colour: notes
+ * are circles, people diamonds, projects squares, organizations hexagons, topics triangles, decisions
+ * pentagons.
+ */
+export const KIND_SHAPE: Record<string, "circle" | "diamond" | "square" | "hexagon" | "triangle" | "pentagon"> = {
+  note: "circle",
+  person: "diamond",
+  project: "square",
+  organization: "hexagon",
+  topic: "triangle",
+  decision: "pentagon",
+};
+
+const polygon = (sides: number, r: number, rotate: number) =>
+  `${Array.from({ length: sides }, (_, i) => {
+    const a = rotate + (i * 2 * Math.PI) / sides;
+    return `${i ? "L" : "M"}${(Math.cos(a) * r).toFixed(2)} ${(Math.sin(a) * r).toFixed(2)}`;
+  }).join(" ")} Z`;
+
+/** The SVG path of a kind's shape around (0, 0) with radius `r`, or null for a circle. */
+export function shapePath(kind: string, r: number): string | null {
+  switch (KIND_SHAPE[kind] ?? "circle") {
+    case "diamond":
+      return polygon(4, r * 1.2, -Math.PI / 2);
+    case "square":
+      return polygon(4, r * 1.15, Math.PI / 4);
+    case "hexagon":
+      return polygon(6, r * 1.1, 0);
+    case "triangle":
+      return polygon(3, r * 1.3, -Math.PI / 2);
+    case "pentagon":
+      return polygon(5, r * 1.15, -Math.PI / 2);
+    default:
+      return null;
+  }
+}
+
+export type Direction = "left" | "right" | "up" | "down";
+
+/**
+ * The node to move to from `from` with an arrow key: the nearest one in that direction (within 60° of it),
+ * preferring nodes straight ahead over ones off to the side. Null when there's none that way.
+ */
+export function nextInDirection(positions: ReadonlyMap<string, Point>, from: string, dir: Direction): string | null {
+  const p = positions.get(from);
+  if (!p) return null;
+  const [ax, ay] = dir === "left" ? [-1, 0] : dir === "right" ? [1, 0] : dir === "up" ? [0, -1] : [0, 1];
+  let best: string | null = null;
+  let bestScore = Infinity;
+  for (const [id, q] of positions) {
+    if (id === from) continue;
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
+    const ahead = dx * ax + dy * ay;
+    const side = Math.abs(dx * ay - dy * ax);
+    if (ahead <= 0 || side > ahead * 1.732) continue;
+    const score = ahead + side * 2;
+    if (score < bestScore || (score === bestScore && best !== null && id < best)) {
+      best = id;
+      bestScore = score;
+    }
+  }
+  return best;
+}
 
 /** The nodes joined to `id` by an edge. */
 export function neighbours(edges: readonly LayoutEdge[], id: string): Set<string> {

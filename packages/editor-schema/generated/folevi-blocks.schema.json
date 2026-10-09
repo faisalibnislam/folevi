@@ -580,6 +580,12 @@
         "strong"
       ]
     },
+    "StudyKind": {
+      "enum": [
+        "card",
+        "quiz"
+      ]
+    },
     "Mark": {
       "oneOf": [
         {
@@ -981,6 +987,9 @@
       "properties": {
         "collapsed": {
           "type": "boolean"
+        },
+        "study": {
+          "$ref": "#/$defs/StudyKind"
         },
         "decoration": {
           "$ref": "#/$defs/BlockDecoration"

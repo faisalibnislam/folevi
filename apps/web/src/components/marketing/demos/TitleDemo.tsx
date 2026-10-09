@@ -102,7 +102,7 @@ export function TitleDemo() {
         <div className="mk-app-pop mk-appear mt-2.5 overflow-hidden rounded-[14px] text-[13.5px]">
           <div className="flex items-center gap-2 px-3 py-2.5">
             <AiIcon size={16} className={cx("flex-none text-[#7c6cf0]", phase.kind === "thinking" && "animate-pulse")} />
-            <span className="min-w-0 flex-1 truncate text-faint">{phase.kind === "thinking" ? `${ROWS[phase.row]!.label}…` : "Ask AI to edit the title…"}</span>
+            <span className="min-w-0 flex-1 truncate text-faint">{phase.kind === "thinking" ? `${ROWS[phase.row]!.label}…` : "Ask Foli to edit the title…"}</span>
           </div>
           <ul className="border-t border-(--color-line) p-1.5">
             {ROWS.map((r, i) => (

@@ -2,16 +2,21 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { MessagesSquare, X } from "lucide-react";
+import { MessagesSquare, MoreHorizontal, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
-import { AppLink, useAppRouter } from "@/lib/app/router";
+import { useAppRouter } from "@/lib/app/router";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { ViewChrome } from "@/components/app/Shell";
-import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiAccess } from "@/components/ai/useAi";
-import { ChatThread } from "@/components/ai/chat/ChatThread";
+import { AI_FOCUS_EVENT, ChatThread } from "@/components/ai/chat/ChatThread";
+import { AiIntro } from "@/components/ai/AiIntro";
+import { AiUnavailable } from "@/components/ai/AiUnavailable";
 import { ConversationList } from "@/components/ai/chat/ConversationList";
 import { ResearchList } from "@/components/ai/chat/ResearchList";
+import { SharedThread } from "@/components/ai/chat/SharedThread";
+import { useConversationActions } from "@/components/ai/chat/ConversationActions";
+import { citationHref } from "@/components/ai/chat/chatText";
+import { MenuButton } from "@/components/ui/Menu";
 
 /** The conversation list as a drawer (phones): Escape or the scrim closes it. */
 function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: () => void }) {
@@ -58,8 +63,13 @@ export function AiView({ id }: { id: string | null }) {
   const narrow = useMediaQuery("(max-width: 767px)");
   const ai = useAiAccess();
   const [listOpen, setListOpen] = useState(false);
+  const [starter, setStarter] = useState<string | undefined>(undefined);
   const data = useQuery(api.aiChat.get, id && ai.on ? { conversationId: id } : "skip");
+  // Not yours: maybe one a member shared with the workspace (read-only, aiSharing.get).
+  const shared = useQuery(api.aiSharing.get, id && ai.on && data === null ? { conversationId: id } : "skip");
   const discard = useMutation(api.aiChat.discard);
+  const mine = data?.conversation;
+  const actions = useConversationActions(mine ? { id: mine.id, title: mine.title, shared: mine.shared, workspace: mine.scope.kind === "workspace", ephemeral: mine.ephemeral } : null);
 
   // History off: a conversation is deleted when you leave it (another one, a new chat, or another page).
   const leaving = useRef<string | null>(null);
@@ -78,25 +88,19 @@ export function AiView({ id }: { id: string | null }) {
   const created = useRef<string | null>(null);
   const threadKey = id && id === created.current ? "new" : (id ?? "new");
 
-  const title = data?.conversation.title ?? (id ? "" : "New chat");
+  const title = data?.conversation.title ?? shared?.conversation.title ?? (id ? "" : "New chat");
 
   if (!ai.on) {
     return (
       <ViewChrome title="AI" tabTitle="AI">
-        <div className="mx-auto max-w-md px-6 py-24 text-center">
-          <AiIcon size={28} aria-hidden className="mx-auto" />
-          <h1 className="ui-display mt-4 text-[26px]">AI isn&apos;t on here</h1>
-          <p className="mt-2 text-[14px] text-muted">{ai.setting ? "Your plan here doesn't include the AI Assistant." : "You turned the AI Assistant off."}</p>
-          <AppLink href={ai.setting ? "/settings/billing" : "/settings/ai"} className="ui-btn ui-btn-secondary mt-6 inline-flex h-9 items-center px-4 text-sm">
-            {ai.setting ? "See plans" : "Open AI settings"}
-          </AppLink>
-        </div>
+        {/* Turned off: how to turn it on. Not on the plan: what it includes, and Upgrade. */}
+        <AiUnavailable ai={ai} headingLevel={1} />
       </ViewChrome>
     );
   }
 
   return (
-    <ViewChrome title="AI" tabTitle={title || "AI"}>
+    <ViewChrome title="Foli" tabTitle={title || "Foli"}>
       <div className="flex h-full min-h-0">
         {narrow ? null : (
           <aside className="flex w-[264px] flex-none flex-col border-r border-line/70">
@@ -114,17 +118,41 @@ export function AiView({ id }: { id: string | null }) {
               </button>
             ) : null}
             <h1 className="min-w-0 flex-1 truncate text-[14px] font-semibold text-heading">{title}</h1>
+            {actions.items.length ? (
+              <MenuButton label="Conversation options" triggerClassName="grid h-8 w-8 place-items-center rounded-[8px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading" trigger={<MoreHorizontal size={16} aria-hidden />} items={actions.items} />
+            ) : null}
+            {actions.dialog}
           </div>
-          <ChatThread
-            key={threadKey}
-            variant="page"
-            conversationId={id}
-            autoFocus
-            onConversation={(next) => {
-              created.current = next;
-              navigate(`/ai/${next}`, { replace: true });
-            }}
-          />
+          {/* The first time: what the AI does and where requests go; a starter fills the box. */}
+          {id ? null : (
+            <div className="flex-none px-4 sm:px-8">
+              <AiIntro
+                place={ai.context === "workspace" ? "workspace" : "personal"}
+                className="mx-auto max-w-3xl"
+                onStarter={(s) => {
+                  setStarter(s);
+                  requestAnimationFrame(() => window.dispatchEvent(new Event(AI_FOCUS_EVENT)));
+                }}
+              />
+            </div>
+          )}
+          {data === null && shared ? (
+            <SharedThread data={shared} onOpen={navigate} onCite={(c) => navigate(citationHref(c))} />
+          ) : data === null && shared === undefined ? (
+            <div className="min-h-0 flex-1" aria-busy="true" />
+          ) : (
+            <ChatThread
+              key={threadKey}
+              variant="page"
+              conversationId={id}
+              initialDraft={starter}
+              autoFocus
+              onConversation={(next) => {
+                created.current = next;
+                navigate(`/ai/${next}`, { replace: true });
+              }}
+            />
+          )}
         </section>
       </div>
       {narrow && listOpen ? <ListDrawer activeId={id} onClose={() => setListOpen(false)} /> : null}

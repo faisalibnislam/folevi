@@ -26,6 +26,7 @@ import { ReaderLabels } from "./lib/linkLabels";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { capabilities as modelCapabilities, provider } from "./lib/ai/provider";
 import { vAiAction } from "./lib/aiActions";
+import { wireRun } from "./lib/ai/tools/wire";
 import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext } from "./lib/ai/chat";
 import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, type AnswerSink, type Settled } from "./ai";
 
@@ -136,8 +137,9 @@ function listRow(c: Doc<"aiConversations">) {
   return { id: c.publicId, title: c.title, pinned: c.pinned, context: c.context.kind, lastMessageAt: c.lastMessageAt, createdAt: c.createdAt };
 }
 
-function wireMessage(m: Doc<"aiMessages">, now: number) {
+function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, Doc<"aiRuns">> = new Map()) {
   const stale = m.status === "streaming" && now - m.updatedAt > STALE_MS;
+  const run = m.agent?.runId ? runs.get(m.agent.runId) : undefined;
   return {
     id: m._id,
     role: m.role,
@@ -150,9 +152,26 @@ function wireMessage(m: Doc<"aiMessages">, now: number) {
     phase: stale ? null : (m.phase ?? null),
     error: stale ? { code: "interrupted", message: "This answer was cut off. Try again." } : (m.error ?? null),
     credits: m.usage?.credits ?? null,
+    /** An agent's answer: the steps it took, and the changes it proposed (aiAgent.ts). */
+    agent: m.agent ? { steps: m.agent.steps, run: run ? wireRun(run) : null } : null,
     createdAt: m.createdAt,
   };
 }
+
+/** The agent runs of some messages, by id (one read each). */
+async function runsOf(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<Map<Id<"aiRuns">, Doc<"aiRuns">>> {
+  const out = new Map<Id<"aiRuns">, Doc<"aiRuns">>();
+  for (const m of messages) {
+    const id = m.agent?.runId;
+    if (!id) continue;
+    const run = await ctx.db.get(id);
+    if (run) out.set(id, run);
+  }
+  return out;
+}
+
+/** An agent run that changed notes and wasn't undone: its message must stay (it holds the Undo). */
+const applied = (run: Doc<"aiRuns"> | null) => Boolean(run && (run.status === "done" || run.status === "partial" || run.status === "executing" || run.status === "undoing"));
 
 async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, scopeArg: ScopeArg, publicId: string | undefined, context: AiContext | undefined): Promise<Doc<"aiConversations">> {
   if (profile.aiEnabled === false) fail("forbidden", "The AI Assistant is turned off in your settings.");
@@ -183,6 +202,11 @@ async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, sc
 
 /** Deletes a conversation and its messages (a long one's remaining messages go in the background). */
 async function deleteConversation(ctx: MutationCtx, c: Doc<"aiConversations">): Promise<void> {
+  const runs = await ctx.db
+    .query("aiRuns")
+    .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
+    .take(200);
+  for (const r of runs) await ctx.db.delete(r._id);
   const messages = await ctx.db
     .query("aiMessages")
     .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
@@ -273,6 +297,7 @@ export const get = query({
       .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
       .order("desc")
       .take(SHOWN_MESSAGES);
+    const runs = await runsOf(ctx, rows);
     const now = Date.now();
     return {
       conversation: {
@@ -285,7 +310,7 @@ export const get = query({
         createdAt: c.createdAt,
         lastMessageAt: c.lastMessageAt,
       },
-      messages: rows.reverse().map((m) => wireMessage(m, now)),
+      messages: rows.reverse().map((m) => wireMessage(m, now, runs)),
     };
   },
 });
@@ -416,6 +441,8 @@ export const post = internalMutation({
     text: v.optional(v.string()),
     messageId: v.optional(v.id("aiMessages")),
     context: v.optional(vAiContext),
+    /** The answer comes from the agent (aiAgent.ts): it records its steps and proposed changes. */
+    agent: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages"> }> => {
     const profile = await requireProfile(ctx);
@@ -440,6 +467,14 @@ export const post = internalMutation({
       .take(MAX_MESSAGES + 1);
     const now = Date.now();
     if (messages.some((m) => m.status === "streaming" && now - m.updatedAt < STALE_MS)) fail("invalid_argument", "Wait for the answer to finish, or stop it first.");
+    // Answers about to be dropped (regenerate, edit) take their agent runs with them, but never one whose
+    // changes were applied: its Undo lives there.
+    const dropped = args.mode === "regenerate" ? messages.slice(-1) : args.mode === "edit" ? messages.slice(messages.findIndex((m) => m._id === args.messageId) + 1) : [];
+    for (const m of dropped) {
+      const run = m.agent?.runId ? await ctx.db.get(m.agent.runId) : null;
+      if (applied(run)) fail("invalid_argument", "Those changes were applied. Undo them first, or start a new conversation.");
+      if (run) await ctx.db.delete(run._id);
+    }
     if (args.mode === "send") {
       if (messages.length >= MAX_MESSAGES) fail("limit_exceeded", "This conversation is full. Start a new one.");
       await insertScoped(ctx, "aiMessages", scopeOfRow(c), { conversationId: c._id, profileId: profile._id, role: "user", text, status: "done", createdAt: now, updatedAt: now });
@@ -454,7 +489,7 @@ export const post = internalMutation({
       await ctx.db.patch(edited._id, { text, updatedAt: now });
       for (const m of messages.slice(at + 1)) await ctx.db.delete(m._id);
     }
-    const messageId = await insertScoped(ctx, "aiMessages", scopeOfRow(c), { conversationId: c._id, profileId: profile._id, role: "assistant", text: "", status: "streaming", phase: "thinking", createdAt: now, updatedAt: now });
+    const messageId = await insertScoped(ctx, "aiMessages", scopeOfRow(c), { conversationId: c._id, profileId: profile._id, role: "assistant", text: "", status: "streaming", phase: "thinking", ...(args.agent ? { agent: { steps: [] } } : {}), createdAt: now, updatedAt: now });
     await ctx.db.patch(c._id, { updatedAt: now, lastMessageAt: now, ...(text ? { searchText: appendSearch(c, text) } : {}) });
     return { messageId };
   },
@@ -570,7 +605,7 @@ export const locate = internalQuery({
 });
 
 /** A request's error, as stored on the answer: the person-readable message and what helps. */
-function storedError(e: unknown): { code: string; message: string; action?: string; reason?: string } {
+export function storedError(e: unknown): { code: string; message: string; action?: string; reason?: string } {
   const data = (e as { data?: unknown })?.data;
   if (data && typeof data === "object") {
     const d = data as Record<string, unknown>;

@@ -21,6 +21,10 @@ export function phaseLabel(phase: string | null, hasText: boolean): string {
       return "Reading your notes…";
     case "writing":
       return "Writing…";
+    case "planning":
+      return "Planning…";
+    case "working":
+      return "Working on it…";
     default:
       return "Thinking…";
   }
@@ -49,4 +53,68 @@ export function without(context: ChatContext, id: string): ChatContext {
 /** Where a citation opens: the note, at the block it matched when there is one. */
 export function citationHref(c: { noteId: string; blockId?: string }): string {
   return `/d/${encodeURIComponent(c.noteId)}${c.blockId ? `#block-${encodeURIComponent(c.blockId)}` : ""}`;
+}
+
+/** One step an agent took (convex/lib/ai/tools: the tool, how many notes or results, whether it worked). */
+export interface AgentStep {
+  tool: string;
+  count: number;
+  ok: boolean;
+}
+
+const WRITE_TOOLS = new Set(["create_note", "update_note", "append_to_note", "rename_note", "move_note", "create_folder", "add_tags", "create_checklist", "create_tasks", "merge_notes"]);
+const READ_TOOLS = new Set(["get_note", "get_notes", "compare_notes"]);
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : `${n} ${many}`);
+
+/** An agent's steps as a few short lines, in the order it took them ("Searched notes", "Read 3 notes"). */
+export function stepLines(steps: AgentStep[]): string[] {
+  const groups = new Map<string, { n: number; count: number }>();
+  let refused = 0;
+  for (const s of steps) {
+    if (!s.ok) {
+      refused++;
+      continue;
+    }
+    const key = READ_TOOLS.has(s.tool) ? "read" : WRITE_TOOLS.has(s.tool) ? "write" : s.tool;
+    const g = groups.get(key) ?? { n: 0, count: 0 };
+    g.n++;
+    g.count += s.count;
+    groups.set(key, g);
+  }
+  const out: string[] = [];
+  for (const [key, g] of groups) {
+    switch (key) {
+      case "search_notes":
+        out.push(g.n === 1 ? "Searched notes" : `Searched notes ${g.n} times`);
+        break;
+      case "read":
+        out.push(`Read ${plural(g.count, "a note", "notes")}`);
+        break;
+      case "write":
+        out.push(`Proposed ${plural(g.count, "a change", "changes")}`);
+        break;
+      case "list_folders":
+        out.push("Looked at folders");
+        break;
+      case "list_tags":
+        out.push("Looked at tags");
+        break;
+      case "find_related":
+        out.push("Found related notes");
+        break;
+      case "find_duplicates":
+        out.push("Looked for duplicates");
+        break;
+      case "get_workspace_context":
+        out.push("Looked around");
+        break;
+      case "calculate":
+        out.push(g.n === 1 ? "Did a calculation" : `Did ${g.n} calculations`);
+        break;
+      default:
+        out.push("Looked something up");
+    }
+  }
+  if (refused) out.push(`${plural(refused, "A step", "steps")} didn't work`);
+  return out;
 }

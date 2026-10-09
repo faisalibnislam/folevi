@@ -31,6 +31,12 @@ export const DEFAULT_RATE_RULES = {
   aiHigh: { limit: 300, windowMs: 60 * 60_000 },
   /** Chunks embedded for semantic search per account (a Personal or a workspace); platform-paid. */
   aiIndex: { limit: 4_000, windowMs: 60 * 60_000 },
+  /** AI agent runs per person (each also counts as an AI request and is paid in credits). */
+  aiAgent: { limit: 40, windowMs: 60 * 60_000 },
+  /** Approving or undoing an agent run's changes, per person. */
+  aiAgentApply: { limit: 60, windowMs: 60 * 60_000 },
+  /** Notes read for the knowledge graph per account (a Personal or a workspace); platform-paid. */
+  aiGraph: { limit: 300, windowMs: 60 * 60_000 },
   /** Support requests from the support page or the app, per client (hashed IP). */
   supportSubmit: { limit: 10, windowMs: 60 * 60_000 },
   /** Support requests and in-app replies per requester address. */

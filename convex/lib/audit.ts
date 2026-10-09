@@ -35,3 +35,12 @@ export async function recordAudit(
     createdAt: Date.now(),
   });
 }
+
+/**
+ * A person's own action worth a trail (an AI agent's changes being applied or undone): a structured log
+ * entry with who, what and counts, never content. The admin audit log above is for the admin console's
+ * actions only; the record itself (an `aiRuns` row) keeps the details while its conversation exists.
+ */
+export function recordUserAction(actor: Pick<Doc<"profiles">, "_id">, entry: { action: string; targetType: string; targetId: string; counts?: Record<string, number> }): void {
+  console.log(JSON.stringify({ event: "audit.user", action: entry.action, actorId: actor._id, targetType: entry.targetType, targetId: entry.targetId, ...(entry.counts ?? {}), at: Date.now() }));
+}

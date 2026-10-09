@@ -30,6 +30,7 @@ import {
   Trash2,
   Undo2,
   Users,
+  Waypoints,
   House as Home,
 } from "lucide-react";
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
@@ -561,6 +562,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
     onComments: () => showCommentsTab(null),
     onInfo: () => {
       setInspectorTab("info");
+      setInspectorOpen(true);
+    },
+    onRelated: () => {
+      setInspectorTab("related");
       setInspectorOpen(true);
     },
     onDelete: () => setDeleteOpen(true),
@@ -1546,6 +1551,7 @@ function useDocumentActions({
   onShare,
   onComments,
   onInfo,
+  onRelated,
   onDelete,
   onMove,
   onFind,
@@ -1570,6 +1576,8 @@ function useDocumentActions({
   onComments?: () => void;
   /** Opens the page's Info panel (words, dates, backlinks…). */
   onInfo?: () => void;
+  /** Opens the page's Related panel (related notes, duplicates, contradictions). */
+  onRelated?: () => void;
   onDelete: () => void;
   onMove: () => void;
   /** Opens the find & replace bar (absent until the editor is ready). */
@@ -1612,6 +1620,7 @@ function useDocumentActions({
         { label: "Share…", icon: <Share2 size={14} />, onSelect: onShare },
         ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
+        ...(onRelated ? [{ label: "Related notes", icon: <Waypoints size={14} />, onSelect: onRelated }] : []),
         ...(onHistory ? [{ label: "Version history…", icon: <History size={14} />, onSelect: onHistory }] : []),
         ...(onToggleEditors ? [{ label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: onToggleEditors }] : []),
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),

@@ -78,7 +78,7 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: securityHeaders },
       {
         // Authenticated surfaces and share pages are never cached by shared caches.
-        source: "/:path(d|ai|documents|notes|tasks|calendar|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite|share-invite)/:rest*",
+        source: "/:path(d|ai|graph|documents|notes|tasks|calendar|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite|share-invite)/:rest*",
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
       // Share pages set robots per link (noindex unless the owner allowed indexing) in their metadata.

@@ -13,6 +13,8 @@ export type Route =
   | { name: "doc"; id: string }
   /** The AI page: the conversation list and one conversation (or a new one). */
   | { name: "ai"; id: string | null }
+  /** The graph view: notes, links and (on Pro) the people, projects and topics they mention. */
+  | { name: "graph" }
   | { name: "tasks"; view: "inbox" | "today" | "upcoming" | "all" | "completed" | "mine" }
   | { name: "calendar"; month: string | null }
   | { name: "daily"; date: string | null }
@@ -51,6 +53,8 @@ export function parseRoute(pathname: string): Route {
       return a ? { name: "doc", id: a } : { name: "not_found" };
     case "ai":
       return { name: "ai", id: a && /^[0-9A-Za-z]{1,64}$/.test(a) ? a : null };
+    case "graph":
+      return { name: "graph" };
     case "tasks":
       return { name: "tasks", view: (TASK_VIEWS as readonly string[]).includes(a ?? "") ? (a as (typeof TASK_VIEWS)[number]) : "today" };
     case "calendar":

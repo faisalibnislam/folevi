@@ -224,7 +224,12 @@ export const indexDocument = internalAction({
   args: { documentId: v.id("documents") },
   handler: async (ctx, args): Promise<string> => {
     const job = await ctx.runMutation(internal.aiIndex.prepare, { documentId: args.documentId });
-    if (job.kind !== "embed") return job.kind;
+    if (job.kind !== "embed") {
+      // The knowledge graph follows the index (convex/aiGraph.ts reads the note only if its text changed,
+      // and removes its part of the graph when the chunks went).
+      if (job.kind === "done") await ctx.scheduler.runAfter(0, internal.aiGraph.extract, { documentId: args.documentId });
+      return job.kind;
+    }
     let vectors: number[][];
     try {
       vectors = (await provider().embed(job.embed.map((e) => e.text), "document")).vectors;
@@ -241,6 +246,7 @@ export const indexDocument = internalAction({
       vectors: job.embed.map((e, i) => ({ hash: e.hash, embedding: vectors[i]! })),
     });
     console.log(JSON.stringify({ event: "ai.indexed", chunks: job.chunks.length, embedded: job.embed.length }));
+    await ctx.scheduler.runAfter(0, internal.aiGraph.extract, { documentId: args.documentId });
     return "indexed";
   },
 });
@@ -297,7 +303,8 @@ export const removeScope = internalMutation({
     const scope = args.scope as Scope;
     const row = await indexScopeRow(ctx, scope);
     if (!row || row.status !== "removing") return null;
-    for (const table of ["aiChunks", "aiIndexState"] as const) {
+    // The knowledge graph (convex/aiGraph.ts) follows the same plan rule, so it goes too.
+    for (const table of ["aiChunks", "aiIndexState", "aiEntities", "aiMentions", "aiRelations", "aiGraphState"] as const) {
       const rows = await (
         scope.kind === "personal"
           ? ctx.db.query(table).withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))

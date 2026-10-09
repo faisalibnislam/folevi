@@ -19,6 +19,7 @@ import {
 } from "./lib/validators";
 import { vAiAction } from "./lib/aiActions";
 import { vAiContext } from "./lib/ai/chat";
+import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
@@ -404,7 +405,7 @@ export default defineSchema({
     documentId: v.id("documents"),
     ...scoped,
     publicId: v.string(),
-    reason: v.union(v.literal("idle"), v.literal("close"), v.literal("before_restore"), v.literal("manual"), v.literal("import")),
+    reason: v.union(v.literal("idle"), v.literal("close"), v.literal("before_restore"), v.literal("manual"), v.literal("import"), v.literal("ai_run")),
     title: v.string(),
     content: v.optional(v.string()),
     chunkCount: v.optional(v.number()),
@@ -741,6 +742,8 @@ export default defineSchema({
     phase: v.optional(v.string()),
     error: v.optional(v.object({ code: v.string(), message: v.string(), action: v.optional(v.string()), reason: v.optional(v.string()) })),
     usage: v.optional(v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() })),
+    /** An agent run's answer (convex/aiAgent.ts): the steps it took, and its proposed changes (aiRuns). */
+    agent: v.optional(v.object({ steps: v.array(v.object({ tool: v.string(), count: v.number(), ok: v.boolean() })), runId: v.optional(v.id("aiRuns")) })),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -749,6 +752,34 @@ export default defineSchema({
     .index("by_conversation", ["conversationId", "createdAt"])
     .index("by_profile", ["profileId"])
     .index("by_status_updated", ["status", "updatedAt"]),
+
+  /**
+   * An agent run's proposed changes (convex/aiAgent.ts, docs/AI_ASSISTANT.md "Tools and the agent"):
+   * private to the person who asked, in the conversation's scope. Nothing in `operations` happens until
+   * they approve it; executing saves a version of each note first (`notes`, documentSnapshots "ai_run")
+   * and keeps what Undo needs on each operation. Deleted with its conversation, the account or workspace.
+   */
+  aiRuns: defineTable({
+    publicId: v.string(),
+    ...scoped,
+    profileId: v.id("profiles"),
+    conversationId: v.id("aiConversations"),
+    messageId: v.id("aiMessages"),
+    status: vRunStatus,
+    operations: v.array(vAgentOp),
+    notes: v.array(vRunNote),
+    /** Undo found parts changed since (not undone until the person confirms). */
+    changed: v.optional(v.array(v.object({ key: v.string(), label: v.string() }))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    executedAt: v.optional(v.number()),
+    undoneAt: v.optional(v.number()),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_conversation", ["conversationId"])
+    .index("by_profile", ["profileId"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_workspace", ["workspaceId"]),
 
   /**
    * Semantic search (convex/aiIndex.ts, docs/AI_ASSISTANT.md "Retrieval"): a note's text in chunks of about
@@ -810,6 +841,76 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"])
     .index("by_status", ["status", "checkedAt"]),
+
+  /**
+   * The knowledge graph (convex/aiGraph.ts, docs/AI_ASSISTANT.md "Knowledge graph"): entities found in
+   * notes of eligible scopes (the same rule as semantic search). Derived from notes, never a source of
+   * truth: rebuilt when a note changes, removed with it. One row per name per scope (`normalized`).
+   */
+  aiEntities: defineTable({
+    ...scoped,
+    name: v.string(),
+    normalized: v.string(),
+    kind: v.union(v.literal("person"), v.literal("project"), v.literal("organization"), v.literal("topic"), v.literal("decision")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    // The scope's entities by name (lookups when a note is read, and the whole scope for the graph view).
+    .index("by_workspace", ["workspaceId", "normalized"])
+    .index("by_owner", ["ownerProfileId", "normalized"]),
+
+  /** Where an entity is mentioned: one row per note, with the blocks it came from. */
+  aiMentions: defineTable({
+    ...scoped,
+    entityId: v.id("aiEntities"),
+    documentId: v.id("documents"),
+    blockIds: v.array(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_entity", ["entityId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * Inferred relations (explicit links stay in `documentLinks` and are never copied here): between two
+   * entities, or from a note's block to another note's block, found when `sourceDocumentId` was read.
+   * "similar" comes from embeddings and carries a `score`; the rest come from the model.
+   */
+  aiRelations: defineTable({
+    ...scoped,
+    kind: v.union(v.literal("references"), v.literal("related"), v.literal("contradicts"), v.literal("supersedes"), v.literal("similar")),
+    inferred: v.boolean(),
+    sourceDocumentId: v.id("documents"),
+    sourceBlockId: v.optional(v.string()),
+    fromEntityId: v.optional(v.id("aiEntities")),
+    toEntityId: v.optional(v.id("aiEntities")),
+    toDocumentId: v.optional(v.id("documents")),
+    targetBlockId: v.optional(v.string()),
+    /** Keys of the two blocks' text when it was found (lib/ai/graph.ts textKey): an edit to either retires it. */
+    sourceKey: v.optional(v.string()),
+    targetKey: v.optional(v.string()),
+    score: v.optional(v.number()),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_source", ["sourceDocumentId"])
+    .index("by_to_document", ["toDocumentId"])
+    // A scope's relations of one kind, closest first for "similar" (duplicates, contradictions).
+    .index("by_workspace", ["workspaceId", "kind", "score"])
+    .index("by_owner", ["ownerProfileId", "kind", "score"]),
+
+  /** What each note's graph was built from (its content hash), so an unchanged note isn't read again. */
+  aiGraphState: defineTable({
+    documentId: v.id("documents"),
+    ...scoped,
+    contentHash: v.string(),
+    entities: v.number(),
+    extractedAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 
   tasks: defineTable({
     blockId: v.string(),

@@ -26,7 +26,7 @@ type People = Record<string, ChangePerson>;
 /** The page as it is now, at the top of the list (like the live document in Google Docs' history). */
 const CURRENT = "current";
 
-const REASONS: Partial<Record<string, string>> = { before_restore: "Before a restore", import: "Imported" };
+const REASONS: Partial<Record<string, string>> = { before_restore: "Before a restore", import: "Imported", ai_run: "Before AI changes" };
 
 function dayLabel(ts: number, now = new Date()): string {
   const d = new Date(ts);

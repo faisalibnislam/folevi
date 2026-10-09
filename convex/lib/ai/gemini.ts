@@ -16,13 +16,19 @@ export const geminiFastModel = () => process.env.GEMINI_FAST_MODEL ?? "gemini-fl
 export const geminiEmbeddingModel = () => process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
 
 type GeminiUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
-type GeminiPart = { text?: string; thought?: boolean; functionCall?: { name?: string; args?: Record<string, unknown> } };
+type GeminiPart = { text?: string; thought?: boolean; thoughtSignature?: string; functionCall?: { name?: string; args?: Record<string, unknown>; id?: string } };
 type GeminiChunk = { candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string }[]; usageMetadata?: GeminiUsage };
 
 /** Characters sent in a request (for a usage estimate when none came back). */
 function charsSent(req: GenerateRequest): number {
   let n = req.system.length + req.prompt.length;
-  for (const c of req.contents ?? []) for (const p of c.parts) if ("text" in p) n += p.text.length;
+  for (const c of req.contents ?? []) {
+    for (const p of c.parts) {
+      if ("text" in p) n += p.text.length;
+      else if ("functionCall" in p) n += JSON.stringify(p.functionCall.args).length;
+      else if ("functionResponse" in p) n += JSON.stringify(p.functionResponse.response).length;
+    }
+  }
   return n;
 }
 
@@ -44,7 +50,21 @@ const textOf = (data: GeminiChunk) =>
 const callsOf = (data: GeminiChunk): ToolCall[] =>
   partsOf(data)
     .filter((p) => p.functionCall && typeof p.functionCall.name === "string")
-    .map((p) => ({ name: p.functionCall!.name!, args: p.functionCall!.args ?? {} }));
+    .map((p) => ({ name: p.functionCall!.name!, args: p.functionCall!.args ?? {}, ...(p.functionCall!.id ? { id: p.functionCall!.id } : {}) }));
+
+/**
+ * The model's turn to send back in the next request of a tool loop: its text and calls, each with the
+ * thought signature Gemini 3 attached (a request that drops them is refused), never its thoughts.
+ */
+const modelPartsOf = (parts: GeminiPart[]): Part[] =>
+  parts.flatMap((p): Part[] => {
+    const sig = typeof p.thoughtSignature === "string" ? { thoughtSignature: p.thoughtSignature } : {};
+    if (p.functionCall && typeof p.functionCall.name === "string") {
+      return [{ functionCall: { name: p.functionCall.name, args: p.functionCall.args ?? {}, ...(p.functionCall.id ? { id: p.functionCall.id } : {}) }, ...sig }];
+    }
+    if (!p.thought && typeof p.text === "string" && (p.text || sig.thoughtSignature)) return [{ text: p.text, ...sig }];
+    return [];
+  });
 
 /** The request body: the system prompt, the turns (earlier ones, then the question with any files), and settings. */
 function bodyOf(req: GenerateRequest, model: string): string {
@@ -58,6 +78,7 @@ function bodyOf(req: GenerateRequest, model: string): string {
     systemInstruction: { parts: [{ text: req.system }] },
     contents,
     ...(tools.length ? { tools } : {}),
+    ...(req.tools?.length && req.toolChoice === "none" ? { toolConfig: { functionCallingConfig: { mode: "NONE" } } } : {}),
     generationConfig: {
       temperature: req.temperature ?? 0.6,
       maxOutputTokens: req.maxOutputTokens ?? 2048,
@@ -131,6 +152,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         let finish: string | null = null;
         let stopped = false;
         let usage: GeminiUsage | undefined;
+        const callParts: Part[] = [];
         // Server-sent events: one JSON object per "data:" line, events separated by a blank line (\n or \r\n).
         const take = (event: string) => {
           for (const line of event.split("\n")) {
@@ -139,6 +161,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
               const data = JSON.parse(line.slice(5)) as GeminiChunk;
               text += textOf(data);
               toolCalls.push(...callsOf(data));
+              callParts.push(...modelPartsOf(partsOf(data)).filter((p) => "functionCall" in p));
               finish = data.candidates?.[0]?.finishReason ?? finish;
               usage = data.usageMetadata ?? usage;
             } catch {
@@ -176,7 +199,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped, timedOut, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens }));
         if (timedOut) fail("maintenance", TOO_SLOW);
         if (!text.trim() && !stopped && !toolCalls.length) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
-        return { text: text.trim(), toolCalls, finish, stopped, model: m, usage: used };
+        return { text: text.trim(), toolCalls, parts: [...(text ? [{ text }] : []), ...callParts], finish, stopped, model: m, usage: used };
       }
       if (res.ok) {
         let data: GeminiChunk;
@@ -194,7 +217,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         meter.push(used);
         console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens }));
         if (!text && !toolCalls.length) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
-        return { text, toolCalls, finish, stopped: false, model: m, usage: used };
+        return { text, toolCalls, parts: modelPartsOf(partsOf(data)), finish, stopped: false, model: m, usage: used };
       }
       console.warn(JSON.stringify({ event: "ai.error", model: m, status: res.status }));
       if (res.status !== 429 && res.status !== 503 && res.status !== 500) break;

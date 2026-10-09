@@ -1,0 +1,291 @@
+// The graph view's layout (components/views/GraphView.tsx): a small force-directed simulation written here
+// (no chart library), plus the view's pan and zoom maths, search matching and the list fallback. Pure
+// functions and one small class, so they're tested directly.
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface LayoutNode extends Point {
+  id: string;
+  vx: number;
+  vy: number;
+}
+
+export interface LayoutEdge {
+  source: string;
+  target: string;
+}
+
+/** Pan and zoom: a world point p shows at (p.x * k + x, p.y * k + y). */
+export interface ViewTransform {
+  x: number;
+  y: number;
+  k: number;
+}
+
+export const MIN_ZOOM = 0.15;
+export const MAX_ZOOM = 4;
+
+/** A stable number from a string (FNV-1a), for positions that don't jump between renders. */
+function hash(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}
+
+/** Where a node starts: on a sunflower spiral by its place in the list, nudged by its id. Always the same. */
+export function seedPosition(id: string, index: number): Point {
+  const angle = index * 2.399963 + (hash(id) % 360) * 0.0005;
+  const r = 18 * Math.sqrt(index + 1);
+  return { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
+}
+
+export interface SimulationOptions {
+  /** Positions from an earlier layout, kept so a refreshed graph doesn't reshuffle. */
+  previous?: ReadonlyMap<string, Point>;
+  /** How far apart linked nodes settle. */
+  linkDistance?: number;
+  /** How strongly nodes push each other apart. */
+  repulsion?: number;
+}
+
+/**
+ * A force-directed layout: nodes repel each other, edges pull their ends together, and a light pull keeps
+ * everything near the middle. Each `tick` moves the nodes a little and cools the simulation (`alpha`);
+ * it's settled once alpha is below `MIN_ALPHA`. Deterministic: the same graph lays out the same way.
+ */
+export class Simulation {
+  static readonly MIN_ALPHA = 0.005;
+  readonly nodes: LayoutNode[];
+  private readonly index = new Map<string, number>();
+  private readonly links: [number, number][] = [];
+  alpha: number;
+  private readonly linkDistance: number;
+  private readonly repulsion: number;
+
+  constructor(ids: readonly string[], edges: readonly LayoutEdge[], opts: SimulationOptions = {}) {
+    this.linkDistance = opts.linkDistance ?? 70;
+    this.repulsion = opts.repulsion ?? 900;
+    let kept = 0;
+    this.nodes = ids.map((id, i) => {
+      this.index.set(id, i);
+      const before = opts.previous?.get(id);
+      if (before) kept++;
+      const p = before ?? seedPosition(id, i);
+      return { id, x: p.x, y: p.y, vx: 0, vy: 0 };
+    });
+    for (const e of edges) {
+      const a = this.index.get(e.source);
+      const b = this.index.get(e.target);
+      if (a !== undefined && b !== undefined && a !== b) this.links.push([a, b]);
+    }
+    // Mostly laid out already: a gentle settle instead of a full one.
+    this.alpha = ids.length && kept / ids.length > 0.8 ? 0.3 : 1;
+  }
+
+  get settled(): boolean {
+    return this.alpha < Simulation.MIN_ALPHA;
+  }
+
+  /** One step. Returns false once settled. */
+  tick(): boolean {
+    if (this.settled) return false;
+    const n = this.nodes;
+    const a = this.alpha;
+    // Repulsion between every pair (fine for the few hundred nodes the view gets).
+    for (let i = 0; i < n.length; i++) {
+      const p = n[i]!;
+      for (let j = i + 1; j < n.length; j++) {
+        const q = n[j]!;
+        let dx = p.x - q.x;
+        let dy = p.y - q.y;
+        let d2 = dx * dx + dy * dy;
+        if (d2 < 0.01) {
+          // On top of each other: pushed apart in a direction fixed by their places.
+          dx = ((i * 7 + j * 13) % 11) - 5 || 1;
+          dy = ((i * 11 + j * 3) % 7) - 3 || 1;
+          d2 = dx * dx + dy * dy;
+        }
+        if (d2 > 250_000) continue;
+        const f = (this.repulsion * a) / d2;
+        p.vx += dx * f;
+        p.vy += dy * f;
+        q.vx -= dx * f;
+        q.vy -= dy * f;
+      }
+    }
+    // Springs along edges.
+    for (const [i, j] of this.links) {
+      const p = n[i]!;
+      const q = n[j]!;
+      const dx = q.x - p.x;
+      const dy = q.y - p.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const f = ((d - this.linkDistance) / d) * 0.08 * a;
+      p.vx += dx * f;
+      p.vy += dy * f;
+      q.vx -= dx * f;
+      q.vy -= dy * f;
+    }
+    // A light pull to the middle, then move (with friction, and a speed limit so nothing flies off).
+    for (const p of n) {
+      p.vx -= p.x * 0.01 * a;
+      p.vy -= p.y * 0.01 * a;
+      p.vx *= 0.6;
+      p.vy *= 0.6;
+      const speed = Math.hypot(p.vx, p.vy);
+      if (speed > 40) {
+        p.vx = (p.vx / speed) * 40;
+        p.vy = (p.vy / speed) * 40;
+      }
+      p.x += p.vx;
+      p.y += p.vy;
+    }
+    this.alpha *= 0.97;
+    return !this.settled;
+  }
+
+  /** Runs until settled (or `maxTicks`), e.g. when motion is reduced. */
+  run(maxTicks = 400): void {
+    for (let i = 0; i < maxTicks && this.tick(); i++);
+  }
+
+  positions(): Map<string, Point> {
+    return new Map(this.nodes.map((p) => [p.id, { x: p.x, y: p.y }]));
+  }
+}
+
+export interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export function boundsOf(points: Iterable<Point>): Bounds | null {
+  let b: Bounds | null = null;
+  for (const p of points) {
+    if (!b) b = { minX: p.x, minY: p.y, maxX: p.x, maxY: p.y };
+    else {
+      b.minX = Math.min(b.minX, p.x);
+      b.minY = Math.min(b.minY, p.y);
+      b.maxX = Math.max(b.maxX, p.x);
+      b.maxY = Math.max(b.maxY, p.y);
+    }
+  }
+  return b;
+}
+
+export const clampZoom = (k: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, k));
+
+/** The transform that shows all of `b` inside a width × height view, with `padding` around it. */
+export function fitTransform(b: Bounds | null, width: number, height: number, padding = 40): ViewTransform {
+  if (!b || width <= 0 || height <= 0) return { x: width / 2, y: height / 2, k: 1 };
+  const w = Math.max(1, b.maxX - b.minX);
+  const h = Math.max(1, b.maxY - b.minY);
+  const k = clampZoom(Math.min((width - padding * 2) / w, (height - padding * 2) / h, 1.6));
+  return { k, x: width / 2 - ((b.minX + b.maxX) / 2) * k, y: height / 2 - ((b.minY + b.maxY) / 2) * k };
+}
+
+/** Zooms by `factor` keeping the screen point (px, py) where it is. */
+export function zoomAround(t: ViewTransform, factor: number, px: number, py: number): ViewTransform {
+  const k = clampZoom(t.k * factor);
+  const f = k / t.k;
+  return { k, x: px - (px - t.x) * f, y: py - (py - t.y) * f };
+}
+
+export const toScreen = (t: ViewTransform, p: Point): Point => ({ x: p.x * t.k + t.x, y: p.y * t.k + t.y });
+
+/** Each node's number of edges. */
+export function degrees(edges: readonly LayoutEdge[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const e of edges) {
+    out.set(e.source, (out.get(e.source) ?? 0) + 1);
+    out.set(e.target, (out.get(e.target) ?? 0) + 1);
+  }
+  return out;
+}
+
+/** A node's radius: bigger with more connections, within limits. */
+export const radiusFor = (degree: number, entity: boolean) => Math.min(entity ? 14 : 12, (entity ? 5 : 4) + Math.sqrt(degree) * 1.6);
+
+/** The nodes joined to `id` by an edge. */
+export function neighbours(edges: readonly LayoutEdge[], id: string): Set<string> {
+  const out = new Set<string>();
+  for (const e of edges) {
+    if (e.source === id) out.add(e.target);
+    else if (e.target === id) out.add(e.source);
+  }
+  return out;
+}
+
+/** Text for matching: lowercased, accents dropped, spaces collapsed. */
+export const foldText = (s: string) =>
+  s
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/** The ids of nodes whose label contains every word of `query` (empty query: none). */
+export function matchNodes(nodes: readonly { id: string; label: string }[], query: string): Set<string> {
+  const words = foldText(query).split(" ").filter(Boolean);
+  if (!words.length) return new Set();
+  return new Set(nodes.filter((n) => words.every((w) => foldText(n.label).includes(w))).map((n) => n.id));
+}
+
+export interface GraphNodeData {
+  id: string;
+  kind: string;
+  label: string;
+}
+
+export interface GraphEdgeData extends LayoutEdge {
+  kind: string;
+  inferred: boolean;
+}
+
+export interface ListEntry {
+  id: string;
+  kind: string;
+  label: string;
+  /** What it's connected to, notes first, each once. */
+  connections: { id: string; kind: string; label: string; edge: string }[];
+}
+
+/**
+ * The graph as a list (for screen readers, keyboards and small screens): notes first, then entities,
+ * each alphabetically with what it's connected to. Only nodes matching `query` when one is given.
+ */
+export function graphList(nodes: readonly GraphNodeData[], edges: readonly GraphEdgeData[], query = ""): ListEntry[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const conns = new Map<string, Map<string, ListEntry["connections"][number]>>();
+  const add = (from: string, to: string, edge: string) => {
+    const other = byId.get(to);
+    if (!other || !byId.has(from)) return;
+    const m = conns.get(from) ?? new Map();
+    if (!m.has(to)) m.set(to, { id: to, kind: other.kind, label: other.label, edge });
+    conns.set(from, m);
+  };
+  for (const e of edges) {
+    add(e.source, e.target, e.kind);
+    add(e.target, e.source, e.kind);
+  }
+  const matches = query.trim() ? matchNodes(nodes, query) : null;
+  const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label);
+  return [...nodes]
+    .filter((n) => !matches || matches.has(n.id))
+    .sort((a, b) => Number(a.kind !== "note") - Number(b.kind !== "note") || byLabel(a, b))
+    .map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      label: n.label,
+      connections: [...(conns.get(n.id)?.values() ?? [])].sort((a, b) => Number(a.kind !== "note") - Number(b.kind !== "note") || byLabel(a, b)),
+    }));
+}

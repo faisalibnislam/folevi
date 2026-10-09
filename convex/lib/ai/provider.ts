@@ -7,11 +7,11 @@ import { geminiProvider } from "./gemini";
 
 /** One piece of a message: text, a file sent inline (base64), or a file the provider already holds. */
 export type Part =
-  | { text: string }
+  | { text: string; thoughtSignature?: string }
   | { inlineData: { mimeType: string; data: string } }
   | { fileData: { mimeType: string; fileUri: string } }
-  | { functionCall: { name: string; args: Record<string, unknown> } }
-  | { functionResponse: { name: string; response: Record<string, unknown> } };
+  | { functionCall: { name: string; args: Record<string, unknown>; id?: string }; thoughtSignature?: string }
+  | { functionResponse: { name: string; response: Record<string, unknown>; id?: string } };
 
 /** One turn of a conversation, as the provider sees it. */
 export interface Content {
@@ -23,13 +23,16 @@ export interface Content {
 export interface ToolDeclaration {
   name: string;
   description: string;
-  parameters: Record<string, unknown>;
+  /** Left out for a tool without arguments. */
+  parameters?: Record<string, unknown>;
 }
 
 /** A call the model asked for. The caller runs it (as the person) and answers with a functionResponse. */
 export interface ToolCall {
   name: string;
   args: Record<string, unknown>;
+  /** The provider's id for the call, when it gives one (sent back with the result). */
+  id?: string;
 }
 
 export interface GenerateRequest {
@@ -48,6 +51,8 @@ export interface GenerateRequest {
   maxOutputTokens?: number;
   /** Tools the model may call instead of (or before) answering. */
   tools?: ToolDeclaration[];
+  /** "none": the tools stay declared (earlier turns used them) but this reply must be text. */
+  toolChoice?: "auto" | "none";
   /** Ground the answer in Google Search results. */
   searchGrounding?: boolean;
 }
@@ -56,6 +61,11 @@ export interface GenerateResult {
   /** The answer's text (trimmed); empty when the model only called tools, or was stopped first. */
   text: string;
   toolCalls: ToolCall[];
+  /**
+   * The model's turn as it came back (text and tool calls, with any signatures the provider needs to see
+   * again), to send back as the "model" turn of a multi-step exchange (the agent's tool loop).
+   */
+  parts: Part[];
   finish: string | null;
   /** Whether the person pressed Stop while it streamed. */
   stopped: boolean;

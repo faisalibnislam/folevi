@@ -1,7 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowUp, Check, Copy, CornerDownLeft, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, X } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
@@ -16,6 +16,7 @@ import { AI_LANGUAGES } from "./languages";
 import { aiDiff } from "./aiDiff";
 import { AiDiffLegend, AiDiffView } from "./AiDiffView";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
+import { ChatThread } from "./chat/ChatThread";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -60,7 +61,12 @@ export function AiPanel({
   const { ask, write } = useAi();
   const stream = useAiStream();
   const { openAsk } = useShell();
-  const [mode, setMode] = useState<"write" | "ask">("write");
+  const [mode, setMode] = useState<"write" | "ask" | "agent">("write");
+  /** The Agent tab's conversation (about this note), once it has one. */
+  const [agentConversation, setAgentConversation] = useState<string | null>(null);
+  // The Agent tab is about the note it's open on (one object while the note stays, so the chat keeps it).
+  const agentContext = useMemo(() => ({ kind: "note" as const, ids: [documentId] }), [documentId]);
+  useEffect(() => setAgentConversation(null), [documentId]);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<AiProblem | null>(null);
@@ -156,18 +162,37 @@ export function AiPanel({
     void navigator.clipboard.writeText(markdownToPlain(result.text)).then(() => setNotice("Copied"));
   };
 
+  const modes = (
+    <div className="ui-seg ui-well mb-2" role="group" aria-label="What the AI should do">
+      <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
+        Write
+      </button>
+      <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")}>
+        Ask
+      </button>
+      <button type="button" aria-pressed={mode === "agent"} onClick={() => setMode("agent")} title="Can propose changes to this note and your others. Nothing changes until you approve.">
+        Agent
+      </button>
+    </div>
+  );
+
+  // Agent: a conversation about this note that can propose changes (previewed, approved, undoable).
+  if (mode === "agent") {
+    return (
+      <div className="text-sm">
+        {modes}
+        <div className="flex h-[min(70vh,640px)] flex-col">
+          <ChatThread conversationId={agentConversation} onConversation={setAgentConversation} initialContext={agentContext} variant="panel" initialMode="agent" autoFocus />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 text-sm">
       {/* Prompt */}
       <section aria-label="Ask AI">
-        <div className="ui-seg ui-well mb-2" role="group" aria-label="What the AI should do">
-          <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
-            Write
-          </button>
-          <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")}>
-            Ask
-          </button>
-        </div>
+        {modes}
         <div className="relative rounded-[10px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
             {mode === "write" ? "Tell the AI what to write" : "Ask about this note and your other notes"}

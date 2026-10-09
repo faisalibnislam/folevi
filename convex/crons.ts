@@ -18,5 +18,6 @@ crons.daily("orphaned upload cleanup", { hourUTC: 4, minuteUTC: 30 }, internal.f
 crons.daily("export retention", { hourUTC: 4, minuteUTC: 45 }, internal.files.purgeExpiredExports, {});
 crons.daily("daily metrics", { hourUTC: 0, minuteUTC: 15 }, internal.maintenance.dailyMetrics, {});
 crons.daily("ai index sweep", { hourUTC: 5, minuteUTC: 0 }, internal.aiIndex.sweep, {});
+crons.daily("ai graph sweep", { hourUTC: 5, minuteUTC: 30 }, internal.aiGraph.sweep, {});
 
 export default crons;

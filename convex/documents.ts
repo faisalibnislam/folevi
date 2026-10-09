@@ -794,7 +794,7 @@ export const moveToTrash = mutation({
 });
 
 /** Brings a trashed page back (with the pages trashed together with it). Callers check write access. */
-async function restoreDoc(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">) {
+export async function restoreDoc(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">) {
   if (!doc.inTrash) return;
   // If the parent is still in Trash, restore to the top level.
   if (doc.parentDocumentId) {
@@ -1258,7 +1258,11 @@ export const createSnapshot = mutation({
   },
 });
 
-async function snapshot(
+/**
+ * Saves a version of a page (when it changed since the last one). Versions saved before a restore or an
+ * AI agent's changes ("ai_run") are always new, so restoring them brings back exactly that moment.
+ */
+export async function snapshot(
   ctx: MutationCtx,
   doc: Doc<"documents">,
   actor: Id<"profiles">,
@@ -1270,7 +1274,7 @@ async function snapshot(
     .withIndex("by_document", (q) => q.eq("documentId", doc._id))
     .order("desc")
     .first();
-  if (last && last.contentSeq === doc.contentSeq && last.title === doc.title && reason !== "before_restore") {
+  if (last && last.contentSeq === doc.contentSeq && last.title === doc.title && reason !== "before_restore" && reason !== "ai_run") {
     // Nothing new to keep: naming "the current version" names the one that already holds it.
     if (name && last.name !== name) await ctx.db.patch(last._id, { name });
     return { created: false, id: last.publicId };
@@ -1533,96 +1537,104 @@ export const restoreSnapshot = mutation({
   handler: async (ctx, args) => {
     const { snap, doc: writable, profile } = await versionByPublicId(ctx, args.snapshotId);
     await assertWritable(ctx, profile);
-    const raw = await snapshotText(ctx, snap);
-    if (!raw) fail("not_found", "Version content is unavailable.");
-    const parsed = JSON.parse(raw) as VersionContent;
-    // The page as it is now is kept first, so a restore can be undone (by restoring that version).
-    const before = await snapshot(ctx, writable, profile._id, "before_restore");
-    const seq = await nextSeq(ctx, scopeOfRow(writable));
-    const now = Date.now();
-    const current = await ctx.db
-      .query("blocks")
-      .withIndex("by_document", (q) => q.eq("documentId", writable._id))
-      .collect();
-    const byId = new Map(current.map((b) => [b.blockId, b]));
-    const keep = new Set(parsed.blocks.map((b) => b.id));
-    for (const b of parsed.blocks) {
-      const existing = byId.get(b.id);
-      if (existing) {
-        // Lines that are already as they were stay untouched: they keep who wrote them ("Show editors"), and
-        // edits made offline to them don't come back as conflicts.
-        const sameContent = existing.type === b.type && sameJson(existing.text, b.text) && sameJson(existing.props, b.props);
-        const samePlace = existing.deletedAt === undefined && existing.parentId === b.parentId && existing.rank === b.rank;
-        if (sameContent && samePlace) continue;
-        const revision = existing.revision + 1;
-        await ctx.db.patch(existing._id, {
-          parentId: b.parentId,
-          rank: b.rank,
-          type: b.type,
-          schemaVersion: b.schemaVersion,
-          text: b.text,
-          props: b.props,
-          deletedAt: undefined,
-          revision,
-          ...(sameContent ? {} : { contentRev: revision }),
-          ...(samePlace ? {} : { positionRev: revision }),
-          seq,
-          updatedAt: now,
-          updatedBy: profile._id,
-        });
-      } else {
-        await insertScoped(ctx, "blocks", scopeOfRow(writable), {
-          blockId: b.id,
-          documentId: writable._id,
-          parentId: b.parentId,
-          rank: b.rank,
-          type: b.type,
-          schemaVersion: b.schemaVersion,
-          text: b.text,
-          props: b.props,
-          revision: 1,
-          contentRev: 1,
-          positionRev: 1,
-          seq,
-          createdAt: now,
-          updatedAt: now,
-          updatedBy: profile._id,
-        });
-      }
-    }
-    for (const b of current) {
-      if (!keep.has(b.blockId) && b.deletedAt === undefined) {
-        await ctx.db.patch(b._id, { deletedAt: now, revision: b.revision + 1, seq, updatedAt: now, updatedBy: profile._id });
-      }
-    }
-    const revision = writable.revision + 1;
-    await ctx.db.patch(writable._id, {
-      title: parsed.title,
-      icon: parsed.icon ?? undefined,
-      // The page's look as it was then too (versions saved before styles were kept leave it as it is).
-      ...(parsed.style !== undefined ? { style: parsed.style } : {}),
-      revision,
-      titleRev: revision,
-      seq,
-      contentSeq: writable.contentSeq + 1,
-      updatedAt: now,
-      lastEditedBy: profile._id,
-    });
-    const fresh = (await ctx.db.get(writable._id))!;
-    const rows = await ctx.db
-      .query("blocks")
-      .withIndex("by_document", (q) => q.eq("documentId", writable._id))
-      .collect();
-    for (const r of rows) {
-      await syncTaskProjection(ctx, r, fresh, profile._id);
-      await syncLinks(ctx, fresh, r);
-    }
-    await refreshDerived(ctx, fresh);
-    if (fresh.title !== writable.title || (fresh.icon ?? null) !== (writable.icon ?? null)) await refreshLinkLabels(ctx, fresh, profile._id);
-    await queueIndex(ctx, fresh);
-    return { undoVersionId: before.id ?? null };
+    return await restoreVersion(ctx, writable, snap, profile);
   },
 });
+
+/**
+ * Puts a page back as a version holds it (title, icon, style and blocks, ids kept), after saving the page as
+ * it is now, so the restore can itself be undone. Callers check the person may edit the page.
+ */
+export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents">, snap: Doc<"documentSnapshots">, profile: Doc<"profiles">): Promise<{ undoVersionId: string | null }> {
+  const raw = await snapshotText(ctx, snap);
+  if (!raw) fail("not_found", "Version content is unavailable.");
+  const parsed = JSON.parse(raw) as VersionContent;
+  // The page as it is now is kept first, so a restore can be undone (by restoring that version).
+  const before = await snapshot(ctx, writable, profile._id, "before_restore");
+  const seq = await nextSeq(ctx, scopeOfRow(writable));
+  const now = Date.now();
+  const current = await ctx.db
+    .query("blocks")
+    .withIndex("by_document", (q) => q.eq("documentId", writable._id))
+    .collect();
+  const byId = new Map(current.map((b) => [b.blockId, b]));
+  const keep = new Set(parsed.blocks.map((b) => b.id));
+  for (const b of parsed.blocks) {
+    const existing = byId.get(b.id);
+    if (existing) {
+      // Lines that are already as they were stay untouched: they keep who wrote them ("Show editors"), and
+      // edits made offline to them don't come back as conflicts.
+      const sameContent = existing.type === b.type && sameJson(existing.text, b.text) && sameJson(existing.props, b.props);
+      const samePlace = existing.deletedAt === undefined && existing.parentId === b.parentId && existing.rank === b.rank;
+      if (sameContent && samePlace) continue;
+      const revision = existing.revision + 1;
+      await ctx.db.patch(existing._id, {
+        parentId: b.parentId,
+        rank: b.rank,
+        type: b.type,
+        schemaVersion: b.schemaVersion,
+        text: b.text,
+        props: b.props,
+        deletedAt: undefined,
+        revision,
+        ...(sameContent ? {} : { contentRev: revision }),
+        ...(samePlace ? {} : { positionRev: revision }),
+        seq,
+        updatedAt: now,
+        updatedBy: profile._id,
+      });
+    } else {
+      await insertScoped(ctx, "blocks", scopeOfRow(writable), {
+        blockId: b.id,
+        documentId: writable._id,
+        parentId: b.parentId,
+        rank: b.rank,
+        type: b.type,
+        schemaVersion: b.schemaVersion,
+        text: b.text,
+        props: b.props,
+        revision: 1,
+        contentRev: 1,
+        positionRev: 1,
+        seq,
+        createdAt: now,
+        updatedAt: now,
+        updatedBy: profile._id,
+      });
+    }
+  }
+  for (const b of current) {
+    if (!keep.has(b.blockId) && b.deletedAt === undefined) {
+      await ctx.db.patch(b._id, { deletedAt: now, revision: b.revision + 1, seq, updatedAt: now, updatedBy: profile._id });
+    }
+  }
+  const revision = writable.revision + 1;
+  await ctx.db.patch(writable._id, {
+    title: parsed.title,
+    icon: parsed.icon ?? undefined,
+    // The page's look as it was then too (versions saved before styles were kept leave it as it is).
+    ...(parsed.style !== undefined ? { style: parsed.style } : {}),
+    revision,
+    titleRev: revision,
+    seq,
+    contentSeq: writable.contentSeq + 1,
+    updatedAt: now,
+    lastEditedBy: profile._id,
+  });
+  const fresh = (await ctx.db.get(writable._id))!;
+  const rows = await ctx.db
+    .query("blocks")
+    .withIndex("by_document", (q) => q.eq("documentId", writable._id))
+    .collect();
+  for (const r of rows) {
+    await syncTaskProjection(ctx, r, fresh, profile._id);
+    await syncLinks(ctx, fresh, r);
+  }
+  await refreshDerived(ctx, fresh);
+  if (fresh.title !== writable.title || (fresh.icon ?? null) !== (writable.icon ?? null)) await refreshLinkLabels(ctx, fresh, profile._id);
+  await queueIndex(ctx, fresh);
+  return { undoVersionId: before.id ?? null };
+}
 
 /** Old snapshots looked at per run of purgeSnapshots (each run then hands on to the next). */
 const SNAPSHOT_PURGE_BATCH = 100;

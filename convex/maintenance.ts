@@ -15,6 +15,7 @@ import { workspaceClosing } from "./workspaceBilling";
 import { subscriptionOf } from "./lib/billing";
 import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope } from "./lib/scope";
 import { bumpSeq, deleteSeq } from "./lib/seq";
+import { dropNoteGraph } from "./lib/ai/graphStore";
 
 const BUDGET = 400;
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -69,6 +70,9 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     }
     if (budget.exhausted) return false;
   }
+  // Its part of the knowledge graph (mentions, entities no other note mentions, relations either way).
+  budget.spend(await dropNoteGraph(ctx, docId, Math.max(1, budget.left)));
+  if (budget.exhausted) return false;
   const threads = await ctx.db
     .query("commentThreads")
     .withIndex("by_document", (q) => q.eq("documentId", docId))
@@ -236,8 +240,8 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     await purgeDocument(ctx, root._id, budget);
     return false;
   }
-  // Folders, tags, everyone's AI conversations here (with their messages), and semantic search's rows.
-  for (const table of ["folders", "tags", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes"] as const) {
+  // Folders, tags, everyone's AI conversations here (with their messages), semantic search's and the graph's rows.
+  for (const table of ["folders", "tags", "aiRuns", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -341,7 +345,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiCreditPeriods").withIndex("by_account_period", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditPacks").withIndex("by_account_expires", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditHolds").withIndex("by_account", (q) => q.eq("profileId", profileId)).take(200),
-    // Their AI conversations in workspaces (the ones in their Personal went with it above).
+    // Their AI conversations in workspaces (the ones in their Personal went with it above), and agent runs.
+    () => ctx.db.query("aiRuns").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiMessages").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;

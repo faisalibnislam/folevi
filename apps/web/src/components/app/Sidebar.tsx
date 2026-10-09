@@ -19,6 +19,7 @@ import {
   Trash2,
   House as Home,
   FileText,
+  Waypoints,
 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -48,6 +49,7 @@ function isActive(route: Route, href: string): boolean {
     "/documents": (r) => r.name === "documents",
     "/notes": (r) => r.name === "notes",
     "/ai": (r) => r.name === "ai",
+    "/graph": (r) => r.name === "graph",
     "/tasks/today": (r) => r.name === "tasks",
     "/shared": (r) => r.name === "shared",
     "/templates": (r) => r.name === "templates",
@@ -399,6 +401,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="mt-3 space-y-0.5">
           <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
           {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} mono />} label="AI" onNavigate={onNavigate} /> : null}
+          <NavItem href="/graph" icon={<Waypoints size={16} />} label="Graph" onNavigate={onNavigate} />
           <div className="group/starred relative">
             <NavItem href="/starred" icon={<Star size={16} />} label="Starred" onNavigate={onNavigate} />
             {starred?.page.length ? (

@@ -65,6 +65,7 @@ test("the slash menu's AI commands open the composer ready to write", async ({ b
   await expect(ai.getByRole("alert")).toContainText(/isn.t set up/i, { timeout: 30_000 });
   await page.keyboard.press("Escape");
   await expect(ai).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Document body" })).toBeFocused();
 
   // "Draft from prompt" opens on an empty prompt (nothing runs until you say what to write).
   await page.keyboard.type("/draft");

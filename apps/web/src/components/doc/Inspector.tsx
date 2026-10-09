@@ -40,14 +40,15 @@ import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
 import { AiPanel } from "@/components/ai/AiPanel";
+import { RelatedPanel } from "./RelatedPanel";
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
-export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments";
+export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments" | "related";
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
 // The tools the sidebar shows by name (AI opens from the floating bar, so it has no tab of its own).
-const TITLES: Partial<Record<InspectorTab, string>> = { ai: "AI", insert: "Insert", format: "Format", style: "Style", info: "Info" };
-const TABS: { id: Exclude<InspectorTab, "comments" | "ai">; label: string }[] = [
+const TITLES: Partial<Record<InspectorTab, string>> = { ai: "AI", insert: "Insert", format: "Format", style: "Style", info: "Info", related: "Related" };
+const TABS: { id: Exclude<InspectorTab, "comments" | "ai" | "related">; label: string }[] = [
   { id: "insert", label: "Insert" },
   { id: "format", label: "Format" },
   { id: "style", label: "Style" },
@@ -98,9 +99,9 @@ export function Inspector({
   const baseId = useId();
   const aiOn = useAiEnabled(meta?.document);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments" | "ai">>("format");
+  const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments" | "ai" | "related">>("format");
   useEffect(() => {
-    if (tab !== "comments" && tab !== "ai") setLastTab(tab);
+    if (tab !== "comments" && tab !== "ai" && tab !== "related") setLastTab(tab);
   }, [tab]);
   return (
     <div className="flex h-full flex-col">
@@ -171,6 +172,8 @@ export function Inspector({
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}
         {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} actions={actions} disabled={readOnly} /> : null}
         {tab === "comments" ? <CommentsOverview documentId={documentId} onOpenThread={onOpenThread} focusThreadId={focusThreadId} /> : null}
+        {/* Related notes, likely duplicates and contradictions (the knowledge graph; links only below Pro). */}
+        {tab === "related" ? <RelatedPanel documentId={documentId} /> : null}
       </div>
     </div>
   );
@@ -690,7 +693,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           {info?.activity.length === 0 ? <li className="text-muted">Versions are saved after a pause in editing.</li> : null}
           {info?.activity.map((a, i) => (
             <li key={i} className="text-muted">
-              <span className="text-ink">{a.by}</span> · {a.reason === "idle" ? "saved a version" : a.reason === "before_restore" ? "restored an earlier version" : a.reason === "close" ? "saved on close" : "saved a version"} · {formatRelative(a.at)}
+              <span className="text-ink">{a.by}</span> · {a.reason === "idle" ? "saved a version" : a.reason === "before_restore" ? "restored an earlier version" : a.reason === "ai_run" ? "saved a version before AI changes" : a.reason === "close" ? "saved on close" : "saved a version"} · {formatRelative(a.at)}
             </li>
           ))}
         </ul>

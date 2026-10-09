@@ -9,7 +9,8 @@ import { useTypewriter } from "../useAiStream";
 import { markdownToPlain } from "../plainText";
 import { AiProblemNotice } from "../AiCredits";
 import { ActionsCard, type ActionsOutcome, type AiAction } from "./ActionsCard";
-import { phaseLabel, storedProblem } from "./chatText";
+import { AgentRunCard, type RunActivity } from "./AgentRunCard";
+import { phaseLabel, stepLines, storedProblem, type AgentStep } from "./chatText";
 
 export type ChatMessageData = NonNullable<FunctionReturnType<typeof api.aiChat.get>>["messages"][number];
 export type Citation = ChatMessageData["citations"][number];
@@ -103,6 +104,29 @@ export function UserMessage({ text, onEdit, disabled }: { text: string; onEdit?:
   );
 }
 
+/** What an agent did, in a few words ("Searched notes", "Read 3 notes"). */
+export function AgentSteps({ steps, live }: { steps: AgentStep[]; live?: boolean }) {
+  const lines = stepLines(steps);
+  if (!lines.length) return null;
+  return (
+    <ul aria-label={live ? "What the AI is doing" : "What the AI did"} className="mb-2 flex flex-wrap gap-1.5">
+      {lines.map((l) => (
+        <li key={l} className="rounded-full bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
+          {l}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** What an agent's answer needs to act on its proposed changes. */
+export interface RunHandlers {
+  activity: RunActivity;
+  onApprove: (operationIds: string[]) => void;
+  onDiscard: () => void;
+  onUndo: (changed?: "all" | "rest") => void;
+}
+
 /** Sources under an answer: each cited note (numbered as in the text), opening at the cited block. */
 function Sources({ citations, onCite }: { citations: Citation[]; onCite: (c: Citation) => void }) {
   return (
@@ -143,6 +167,7 @@ export function AssistantMessage({
   onApply,
   onDismiss,
   onOpen,
+  run,
 }: {
   message: ChatMessageData;
   last: boolean;
@@ -155,6 +180,8 @@ export function AssistantMessage({
   onApply: () => void;
   onDismiss: () => void;
   onOpen: (href: string) => void;
+  /** An agent's answer: acting on its run. */
+  run?: RunHandlers;
 }) {
   const streaming = message.status === "streaming";
   // Revealed word by word while it streams, and until the reveal catches up with the finished answer.
@@ -190,13 +217,20 @@ export function AssistantMessage({
 
   if (streaming && !message.text) {
     return (
-      <div className="flex items-center gap-3 px-1">
-        <p role="status" className="flex items-center gap-2 text-[13px] text-muted">
-          <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {phaseLabel(message.phase, false)}
-        </p>
-        <button type="button" onClick={onStop} className={ROW_BUTTON}>
-          <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Stop
-        </button>
+      <div className="px-1">
+        <div className="flex items-center gap-3">
+          <p role="status" className="flex items-center gap-2 text-[13px] text-muted">
+            <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {phaseLabel(message.phase, false)}
+          </p>
+          <button type="button" onClick={onStop} className={ROW_BUTTON}>
+            <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Stop
+          </button>
+        </div>
+        {message.agent?.steps.length ? (
+          <div className="mt-2">
+            <AgentSteps steps={message.agent.steps} live />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -217,7 +251,9 @@ export function AssistantMessage({
   return (
     <div className="space-y-2">
       <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
+        {message.agent ? <AgentSteps steps={message.agent.steps} /> : null}
         {message.text ? <AiMarkdown markdown={message.text} cited={cited} onCite={citeBy} onNavigate={onOpen} /> : <p className="text-[13.5px] text-muted">Stopped before it said anything.</p>}
+        {message.agent?.run && run ? <AgentRunCard run={message.agent.run} activity={run.activity} onApprove={run.onApprove} onDiscard={run.onDiscard} onUndo={run.onUndo} onOpen={onOpen} /> : null}
         {message.actions ? <ActionsCard actions={message.actions as AiAction[]} outcome={outcome} onApply={onApply} onDismiss={onDismiss} onOpen={onOpen} /> : null}
         {message.citations.length ? <Sources citations={message.citations} onCite={onCite} /> : null}
         <div className="-mb-1 mt-2 flex flex-wrap items-center gap-0.5">

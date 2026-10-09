@@ -32,6 +32,7 @@ import { copyCollectionsInto } from "./lib/collections";
 import { inScope, insertScoped, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { vDocumentKind } from "./lib/validators";
 import { People } from "./lib/authors";
+import { queueIndex } from "./lib/ai/indexing";
 
 export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -777,6 +778,8 @@ export async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, act
       .withIndex("by_document", (q) => q.eq("documentId", d._id))
       .collect();
     for (const t of tasks) await ctx.db.patch(t._id, { documentInTrash: inTrash });
+    // Semantic search drops a trashed note's chunks, and indexes a restored one again.
+    await queueIndex(ctx, { ...d, inTrash, deletedAt: stamp });
   }
 }
 
@@ -1616,6 +1619,7 @@ export const restoreSnapshot = mutation({
     }
     await refreshDerived(ctx, fresh);
     if (fresh.title !== writable.title || (fresh.icon ?? null) !== (writable.icon ?? null)) await refreshLinkLabels(ctx, fresh, profile._id);
+    await queueIndex(ctx, fresh);
     return { undoVersionId: before.id ?? null };
   },
 });

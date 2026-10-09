@@ -41,7 +41,7 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/ask ai");
-  await expect(page.getByRole("option", { name: /Ask AI|AI ·/ })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: /Ask AI|AI ·|AI:/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Meta+j");
   await expect(page.getByRole("dialog", { name: "Ask AI" })).toHaveCount(0);

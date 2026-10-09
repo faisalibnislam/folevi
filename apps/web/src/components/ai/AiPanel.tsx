@@ -11,7 +11,10 @@ import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, type AiPlacement } from "./insert";
 import { markdownToPlain } from "./plainText";
-import { SELECTION_ACTIONS, useAi, type AiRunDetail, type AiTask } from "./useAi";
+import { REWRITE_TASKS, SELECTION_ACTIONS, useAi, type AiRunDetail, type AiTask } from "./useAi";
+import { AI_LANGUAGES } from "./languages";
+import { aiDiff } from "./aiDiff";
+import { AiDiffLegend, AiDiffView } from "./AiDiffView";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
@@ -22,8 +25,6 @@ const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "brainstorm", label: "Brainstorm ideas", icon: <Lightbulb size={15} /> },
   { task: "title", label: "Suggest a title", icon: <Type size={15} /> },
 ];
-
-const LANGUAGES = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Dutch", "Bengali", "Hindi", "Arabic", "Chinese", "Japanese", "Korean", "Turkish", "Russian"];
 
 const labelFor = (task: AiTask) => (task === "refine" ? "Revised" : null) ?? SELECTION_ACTIONS.find((a) => a.task === task)?.label.replace("…", "") ?? NOTE_ACTIONS.find((a) => a.task === task)?.label ?? (task === "draft" ? "Written for you" : "Answer");
 
@@ -140,6 +141,15 @@ export function AiPanel({
     }
     setResult(null);
   };
+
+  // A rewrite that keeps most of the text shows as changes (a translation or a table reads better whole).
+  const changes =
+    result?.kind === "write" && result.placement.kind === "replace" && REWRITE_TASKS.has(result.task) && result.task !== "translate" && result.task !== "toTable"
+      ? (() => {
+          const d = aiDiff((result.placement as { original: string }).original, result.text);
+          return d.kept >= 0.3 && !d.same ? d : null;
+        })()
+      : null;
 
   const copy = () => {
     if (!result) return;
@@ -259,7 +269,7 @@ export function AiPanel({
                 onChange={(e) => void doWrite({ ...result.request, language: e.target.value })}
                 className="ml-auto h-7 rounded-[6px] bg-[var(--glass-hover)] px-2 text-[12px] font-medium text-ink"
               >
-                {LANGUAGES.map((l) => (
+                {AI_LANGUAGES.map((l) => (
                   <option key={l} value={l}>
                     {l}
                   </option>
@@ -269,6 +279,12 @@ export function AiPanel({
           </div>
           {result.kind === "write" && result.task === "title" ? (
             <p className="font-serif text-[18px] font-semibold text-heading">{result.text}</p>
+          ) : changes ? (
+            // A rewrite of the selection: what it would remove and add, before anything changes.
+            <div className="max-h-[320px] overflow-y-auto pr-1">
+              <AiDiffView parts={changes.parts} />
+              <AiDiffLegend />
+            </div>
           ) : (
             <div className="max-h-[320px] overflow-y-auto pr-1">
               <AiMarkdown markdown={result.text} />
@@ -289,7 +305,7 @@ export function AiPanel({
               <button type="button" disabled={readOnly} onClick={() => (onTitle(result.text), setResult(null))} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
                 <Check size={14} aria-hidden /> Use as title
               </button>
-            ) : result.kind === "write" && result.placement.kind === "replace" && !["explain", "summarizeText"].includes(result.task) ? (
+            ) : result.kind === "write" && result.placement.kind === "replace" && REWRITE_TASKS.has(result.task) ? (
               <>
                 <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
                   <Check size={14} aria-hidden /> Replace selection

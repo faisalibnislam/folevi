@@ -66,7 +66,7 @@ describe("a remote change the editor hasn't shown yet", () => {
     engine.reconcileDocument(DOC, [{ ...para("X", "hello brave"), revision: 3 }, { ...para("R", "from B", 1), revision: 1 }]);
     ed.commands.setTextSelection(posIn(ed, "X", 5));
     ed.commands.insertContent("!");
-    shown = save(engine, ed, shown);
+    save(engine, ed, shown);
     const ops = engine.state.pending.map((op) => (op.kind === "block.upsert" ? `${op.kind} ${op.block.id} @${op.baseRevision}` : op.kind === "block.delete" ? `${op.kind} ${op.blockId}` : op.kind));
     // X is saved as based on the version the editor showed (the server will ask), and R is left alone.
     expect(ops).toEqual(["block.upsert X @2"]);
@@ -118,7 +118,7 @@ describe("a batch that may have landed without an answer", () => {
     shown = save(engine, ed, shown);
     await engine.flush();
     ed.commands.insertContent(" world");
-    shown = save(engine, ed, shown);
+    save(engine, ed, shown);
     await engine.flush();
     const id = engine.documentBlocks(DOC)[0]!.id;
     expect(textOf(server.get(id))).toBe("Hello world");
@@ -200,7 +200,7 @@ describe("undo after Edited elsewhere brought a block back", () => {
     shown = showing(engine);
     ed.commands.undo();
     expect(lines(ed)).toEqual(["a", "theirs", "mine", "b"]);
-    shown = save(engine, ed, shown);
+    save(engine, ed, shown);
     expect(engine.state.conflicts).toEqual([]);
     expect(engine.documentBlocks(DOC).map((b) => textOf(b)).sort()).toEqual(["a", "b", "mine", "theirs"]);
   });

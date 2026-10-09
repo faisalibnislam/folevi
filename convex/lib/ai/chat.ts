@@ -77,9 +77,25 @@ export function bestBlock(blocks: { id: string; text: string }[], said: string):
       bestScore = score;
     }
   }
-  if (!best) return null;
-  const quote = best.text.replace(/\s+/g, " ").trim();
-  return { blockId: best.id, quote: quote.length > 160 ? `${quote.slice(0, 159)}…` : quote };
+  return best ? quoteOf(best) : null;
+}
+
+/** A block and a short quote of it. */
+function quoteOf(block: { id: string; text: string }): { blockId: string; quote: string } {
+  const quote = block.text.replace(/\s+/g, " ").trim();
+  return { blockId: block.id, quote: quote.length > 160 ? `${quote.slice(0, 159)}…` : quote };
+}
+
+/**
+ * The block a citation points at when the note's source was passages (semantic search's chunks, their
+ * blocks best first): the one of those blocks that best matches what the answer said, else the first of
+ * them. Never a block outside the passages. Nothing when none of them is still there.
+ */
+export function passageBlock(blocks: { id: string; text: string }[], blockIds: string[], said: string): { blockId: string; quote: string } | null {
+  const order = new Map(blockIds.map((id, i) => [id, i]));
+  const candidates = blocks.filter((b) => order.has(b.id) && b.text.trim()).sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+  if (!candidates.length) return null;
+  return bestBlock(candidates, said) ?? quoteOf(candidates[0]!);
 }
 
 /** A conversation as Markdown: its title, then each message (answers with their sources). */

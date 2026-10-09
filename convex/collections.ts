@@ -11,6 +11,7 @@ import { nextSeq } from "./lib/seq";
 import { scopeOfRow } from "./lib/scope";
 import { vCollectionPropertyType, vCollectionViewType } from "./lib/validators";
 import { SyncEngine } from "./lib/syncEngine";
+import { queueIndex } from "./lib/ai/indexing";
 
 const OPTION_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
 
@@ -476,6 +477,7 @@ export const deleteRow = mutation({
     const doc = await ctx.db.get(row.documentId);
     if (doc && !doc.inTrash) {
       await ctx.db.patch(doc._id, { inTrash: true, deletedAt: Date.now(), deletedBy: profile._id, seq: await nextSeq(ctx, scopeOfRow(doc)) });
+      await queueIndex(ctx, doc);
     }
     return null;
   },

@@ -15,6 +15,7 @@ import { fail } from "./errors";
 import { bump } from "./metrics";
 import { nextSeq } from "./seq";
 import { insertScoped, type Scope } from "./scope";
+import { queueIndex } from "./ai/indexing";
 
 /** Compact authoring format for seed content, templates and programmatic documents. */
 export interface BlockSpec {
@@ -136,6 +137,7 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
   const doc = (await ctx.db.get(docId))!;
   for (const row of rows) if (row.type === "todo") await syncTaskProjection(ctx, row, doc, input.actor._id);
   await refreshDerived(ctx, doc, rows);
+  if (rows.length) await queueIndex(ctx, doc);
   await adjustDocumentCount(ctx, scope, 1);
   await bump(ctx, "documents_total");
   return (await ctx.db.get(docId))!;

@@ -713,22 +713,27 @@ export function EditorMenus({
         icon: <Minus size={15} />,
         run: () => void insertBlockAfterCurrent(editor, "divider", { style: d.style }),
       })),
-      // AI: opens the inline composer at the cursor (the "/" is already gone), some running a task at once.
+      // AI: opens the inline composer at the cursor (the "/" is already gone), some running a task at once,
+      // some ready for a prompt. Only where AI is on and included for this note's plan.
       ...(aiOn
-        ? ([
-            ["ai", "Ask AI…", "ai assistant write generate gemini ask"],
-            ["ai-continue", "AI · Continue writing", "ai continue write more next", "continue"],
-            ["ai-summarize", "AI · Summarize note", "ai summary summarize tldr", "summarize"],
-            ["ai-actions", "AI · Find action items", "ai tasks todo action items follow ups", "actions"],
-            ["ai-outline", "AI · Make an outline", "ai outline structure plan", "outline"],
-            ["ai-brainstorm", "AI · Brainstorm ideas", "ai ideas brainstorm", "brainstorm"],
-          ] as const).map(([id, label, keywords, task]) => ({
+        ? (
+            [
+              ["ai", "Ask AI…", "ai assistant write generate gemini ask"],
+              ["ai-continue", "AI: Continue writing", "ai continue write more next", { task: "continue" }],
+              ["ai-summarize", "AI: Summarize page", "ai summary summarize tldr note page", { task: "summarize" }],
+              ["ai-actions", "AI: Action items", "ai tasks todo action items follow ups find", { task: "actions" }],
+              ["ai-outline", "AI: Outline", "ai outline structure plan", { task: "outline" }],
+              ["ai-brainstorm", "AI: Brainstorm", "ai ideas brainstorm", { task: "brainstorm" }],
+              ["ai-draft", "AI: Draft from prompt", "ai draft write prompt compose generate", { mode: "draft" }],
+              ["ai-page", "AI: Generate page", "ai generate page note whole template create", { mode: "page" }],
+            ] as const
+          ).map(([id, label, keywords, open]) => ({
             id,
             label,
             keywords,
             hint: id === "ai" ? "⌘J" : undefined,
             icon: <AiIcon size={15} className="text-[#7c6cf0]" />,
-            run: () => openInlineAi(editor.view.dom, { target: null, task: task as InlineAiOpen["task"] }),
+            run: () => openInlineAi(editor.view.dom, { target: null, ...(open as Partial<InlineAiOpen> | undefined) }),
           }))
         : []),
       { id: "pagebreak", label: "Page break", keywords: "page break print pdf new sheet", icon: <SeparatorHorizontal size={15} />, run: () => void insertBlockAfterCurrent(editor, "pageBreak") },

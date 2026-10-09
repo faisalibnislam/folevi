@@ -55,6 +55,9 @@ export const SCOPED_TABLES = [
   "syncOperations",
   "aiConversations",
   "aiMessages",
+  "aiChunks",
+  "aiIndexState",
+  "aiIndexScopes",
 ] as const satisfies readonly TableNames[];
 export type ScopedTable = (typeof SCOPED_TABLES)[number];
 
@@ -126,6 +129,9 @@ const WORKSPACE_INDEX: Record<ScopedTable, string> = {
   syncOperations: "by_workspace",
   aiConversations: "by_workspace",
   aiMessages: "by_workspace",
+  aiChunks: "by_workspace",
+  aiIndexState: "by_workspace",
+  aiIndexScopes: "by_workspace",
 };
 const OWNER_INDEX: Record<ScopedTable, string> = {
   folders: "by_owner",
@@ -151,6 +157,9 @@ const OWNER_INDEX: Record<ScopedTable, string> = {
   syncOperations: "by_owner",
   aiConversations: "by_owner",
   aiMessages: "by_owner",
+  aiChunks: "by_owner",
+  aiIndexState: "by_owner",
+  aiIndexScopes: "by_owner",
 };
 
 export type AnyScopedRow = ScopedRow & { _id: Id<ScopedTable>; _creationTime: number };

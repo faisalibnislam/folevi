@@ -5,30 +5,44 @@ import { AI_LANGUAGES } from "./languages";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import {
+  ArrowDownToLine,
   ArrowUp,
+  ArrowUpToLine,
   BookOpen,
   Check,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
+  Copy,
   CornerDownLeft,
+  FilePlus2,
   FileText,
+  LayoutTemplate,
   Languages,
   Lightbulb,
+  List,
   ListChecks,
   ListTree,
+  Maximize2,
   Minimize2,
+  Mic2,
   PenLine,
   RotateCcw,
   SpellCheck,
-  Maximize2,
+  Table2,
   Wand2,
   X,
 } from "lucide-react";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
+import { AiDiffLegend, AiDiffView } from "./AiDiffView";
+import { aiDiff } from "./aiDiff";
 import { useAiStream } from "./useAiStream";
-import { insertAiMarkdown } from "./insert";
-import { useAi, type AiTask } from "./useAi";
+import { insertAiMarkdown, noteIsEmpty, type AiPlacement } from "./insert";
+import { markdownToPlain } from "./plainText";
+import { REWRITE_TASKS, SELECTION_ACTIONS, useAi, useNoteAi, type AiTask } from "./useAi";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
+import { useAppRouter } from "@/lib/app/router";
+import { useToast } from "@/components/ui/Toast";
 
 /** What the inline composer works on: a range of text (a selection or whole blocks), or the cursor. */
 export interface InlineAiRequest {
@@ -37,41 +51,77 @@ export interface InlineAiRequest {
   /** Run this right away (from a slash command or a toolbar action). */
   task?: AiTask;
   language?: string;
+  /** Open ready for a prompt: "draft" writes at the cursor, "page" writes a whole page. */
+  mode?: "draft" | "page";
 }
+
+type Submenu = "languages" | "tones";
 
 interface Suggestion {
   id: string;
   label: string;
   icon: React.ReactNode;
   task?: AiTask;
-  /** Opens the language list instead of running. */
-  languages?: boolean;
+  /** Opens a list (languages, tones) instead of running. */
+  menu?: Submenu;
+  /** Switches to writing a whole page from a description. */
+  page?: boolean;
+  group?: string;
 }
 
+const SELECTION_ICONS: Partial<Record<AiTask, React.ReactNode>> = {
+  improve: <Wand2 size={15} />,
+  fix: <SpellCheck size={15} />,
+  shorter: <Minimize2 size={15} />,
+  longer: <Maximize2 size={15} />,
+  simplify: <BookOpen size={15} />,
+  toList: <List size={15} />,
+  toTable: <Table2 size={15} />,
+  toChecklist: <CheckSquare size={15} />,
+  summarizeText: <FileText size={15} />,
+  explain: <Lightbulb size={15} />,
+  continueText: <PenLine size={15} />,
+  actionItemsText: <ListChecks size={15} />,
+};
+const GROUP_TITLE: Record<string, string> = { edit: "Edit", turn: "Turn into", use: "Use the text", write: "Write with AI" };
+
+const selection = (group: "edit" | "turn" | "use"): Suggestion[] =>
+  SELECTION_ACTIONS.filter((a) => a.group === group && a.task !== "translate").map((a) => ({ id: a.task, label: a.label, icon: SELECTION_ICONS[a.task] ?? <Wand2 size={15} />, task: a.task, group }));
 const EDIT: Suggestion[] = [
-  { id: "improve", label: "Improve writing", icon: <Wand2 size={15} />, task: "improve" },
-  { id: "fix", label: "Fix spelling & grammar", icon: <SpellCheck size={15} />, task: "fix" },
-  { id: "shorter", label: "Make shorter", icon: <Minimize2 size={15} />, task: "shorter" },
-  { id: "longer", label: "Make longer", icon: <Maximize2 size={15} />, task: "longer" },
-  { id: "simplify", label: "Simplify language", icon: <BookOpen size={15} />, task: "simplify" },
-  { id: "professional", label: "Sound professional", icon: <PenLine size={15} />, task: "professional" },
-  { id: "casual", label: "Sound casual", icon: <PenLine size={15} />, task: "casual" },
-  { id: "translate", label: "Translate to…", icon: <Languages size={15} />, languages: true },
-  { id: "explain", label: "Explain this", icon: <Lightbulb size={15} />, task: "explain" },
-  { id: "summarizeText", label: "Summarize this", icon: <FileText size={15} />, task: "summarizeText" },
+  ...selection("edit"),
+  { id: "tones", label: "Change tone…", icon: <Mic2 size={15} />, menu: "tones", group: "edit" },
+  { id: "translate", label: "Translate to…", icon: <Languages size={15} />, menu: "languages", group: "edit" },
+  ...selection("turn"),
+  ...selection("use"),
 ];
 const WRITE: Suggestion[] = [
-  { id: "continue", label: "Continue writing", icon: <PenLine size={15} />, task: "continue" },
-  { id: "summarize", label: "Summarize this note", icon: <FileText size={15} />, task: "summarize" },
-  { id: "actions", label: "Find action items", icon: <ListChecks size={15} />, task: "actions" },
-  { id: "outline", label: "Make an outline", icon: <ListTree size={15} />, task: "outline" },
-  { id: "brainstorm", label: "Brainstorm ideas", icon: <Lightbulb size={15} />, task: "brainstorm" },
+  { id: "continue", label: "Continue writing", icon: <PenLine size={15} />, task: "continue", group: "write" },
+  { id: "summarize", label: "Summarize this page", icon: <FileText size={15} />, task: "summarize", group: "write" },
+  { id: "actions", label: "Find action items", icon: <ListChecks size={15} />, task: "actions", group: "write" },
+  { id: "outline", label: "Make an outline", icon: <ListTree size={15} />, task: "outline", group: "write" },
+  { id: "brainstorm", label: "Brainstorm ideas", icon: <Lightbulb size={15} />, task: "brainstorm", group: "write" },
+  { id: "page", label: "Write a whole page…", icon: <FilePlus2 size={15} />, page: true, group: "write" },
 ];
+const TONES = SELECTION_ACTIONS.filter((a) => a.group === "tone");
 const REFINES = ["Shorter", "Longer", "Simpler", "More formal", "More casual"];
 
-const TASK_LABEL: Partial<Record<AiTask, string>> = Object.fromEntries([...EDIT, ...WRITE].filter((s) => s.task).map((s) => [s.task, s.label]));
+/** A result's heading: what was asked for. */
+export function taskLabel(task: AiTask, language?: string): string {
+  if (task === "translate") return `Translate to ${language ?? "English"}`;
+  const tone = TONES.find((t) => t.task === task);
+  if (tone) return `Tone: ${tone.label}`;
+  if (task === "page") return "Page";
+  return [...EDIT, ...WRITE].find((s) => s.task === task)?.label ?? "Writing";
+}
 
-type Phase = { kind: "compose" } | { kind: "languages" } | { kind: "busy"; label: string } | { kind: "result"; text: string; label: string; last: Run };
+/** Results that read better whole than as changes: little of the text stays (a translation, a table). */
+const showChangesFirst = (task: AiTask, kept: number) => task !== "translate" && task !== "toTable" && kept >= 0.3;
+
+type Phase =
+  | { kind: "compose" }
+  | { kind: "menu"; menu: Submenu }
+  | { kind: "busy"; label: string }
+  | { kind: "result"; text: string; title?: string; label: string; last: Run };
 interface Run {
   task: AiTask;
   text?: string;
@@ -80,19 +130,27 @@ interface Run {
 }
 
 /**
- * The inline AI composer: opens right at the cursor (⌘J, "/ai…", the toolbar's Ask AI, the block menu).
- * Type what you want or pick a suggestion; the result appears in place with Replace/Insert, Try again,
- * quick refinements ("Shorter", "More formal", or anything you type) and Discard.
+ * The inline AI composer: opens right at the cursor (⌘J, the "/" AI commands, the toolbar's Ask AI, the
+ * block menu). Pick an action or type what you want; the result is previewed in place (a rewrite as the
+ * words it would remove and add) and nothing in the note changes until you pick Replace, Insert above,
+ * Insert below or Append. Each of those is one undo step. Try again, quick refinements, Copy and Discard.
  */
 export function InlineAi({ editor, documentId, request, onClose }: { editor: Editor; documentId: string; request: InlineAiRequest; onClose: () => void }) {
-  const { write } = useAi();
+  const { write, saveDraft } = useAi();
   const stream = useAiStream();
+  const noteAi = useNoteAi();
+  const toast = useToast();
+  const { navigate } = useAppRouter();
   const target = request.target;
   const [phase, setPhase] = useState<Phase>({ kind: "compose" });
+  // Writing a whole page from a description (the "/" command, or "Write a whole page…").
+  const [pageMode, setPageMode] = useState(request.mode === "page");
   const [input, setInput] = useState("");
   const [active, setActive] = useState(0);
   const [error, setError] = useState<AiProblem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [view, setView] = useState<"changes" | "result">("changes");
+  const [saving, setSaving] = useState(false);
   const [pos, setPos] = useState<{ left: number; top: number; width: number; up: boolean } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,14 +158,21 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
   const uid = useId();
 
   // Suggestions: what you typed first (as an instruction), then the matching actions.
-  const base = target ? EDIT : WRITE;
   const q = input.trim().toLowerCase();
   const options: Suggestion[] = useMemo(() => {
-    if (phase.kind === "languages") return AI_LANGUAGES.filter((l) => !q || l.toLowerCase().startsWith(q)).map((l) => ({ id: `lang-${l}`, label: l, icon: <Languages size={15} />, task: "translate" as AiTask }));
+    if (phase.kind === "menu" && phase.menu === "languages") return AI_LANGUAGES.filter((l) => !q || l.toLowerCase().startsWith(q)).map((l) => ({ id: `lang-${l}`, label: l, icon: <Languages size={15} />, task: "translate" as AiTask }));
+    if (phase.kind === "menu") return TONES.filter((t) => !q || t.label.toLowerCase().startsWith(q)).map((t) => ({ id: `tone-${t.task}`, label: t.label, icon: <Mic2 size={15} />, task: t.task }));
+    const typed = input.trim();
+    if (pageMode) return typed ? [{ id: "custom-page", label: typed, icon: <FilePlus2 size={15} />, page: true }] : [];
+    if (request.mode === "draft") return typed ? [{ id: "custom", label: typed, icon: <AiIcon size={15} /> }] : [];
+    const base = target ? EDIT : WRITE;
     const matches = base.filter((s) => !q || s.label.toLowerCase().includes(q));
-    return input.trim() ? [{ id: "custom", label: input.trim(), icon: <AiIcon size={15} /> }, ...matches] : matches;
-  }, [base, q, input, phase.kind]);
-  useEffect(() => setActive(0), [q, phase.kind]);
+    if (!typed) return matches;
+    const custom: Suggestion[] = [{ id: "custom", label: typed, icon: <AiIcon size={15} /> }];
+    if (!target) custom.push({ id: "custom-page", label: typed, icon: <FilePlus2 size={15} />, page: true });
+    return [...custom, ...matches.filter((m) => !m.page)];
+  }, [phase, q, input, pageMode, request.mode, target]);
+  useEffect(() => setActive(0), [q, phase.kind, pageMode]);
 
   const run = useCallback(
     async (r: Run, label: string) => {
@@ -118,7 +183,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       try {
         // Stream the reply so it appears word by word (falls back to waiting for the whole reply).
         const streamId = await stream.begin().catch(() => undefined);
-        const { text } = await write(r.task, { documentId, text: r.text, instruction: r.instruction, language: r.language, streamId });
+        const { text, title } = await write(r.task, { documentId, text: r.text, instruction: r.instruction, language: r.language, streamId });
         if (seq !== runSeq.current) return;
         await stream.finish(text);
         if (seq !== runSeq.current) return;
@@ -126,7 +191,9 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           setPhase({ kind: "compose" });
           return;
         }
-        setPhase({ kind: "result", text, label, last: r });
+        const replaces = Boolean(target) && REWRITE_TASKS.has(r.task);
+        setView(replaces && showChangesFirst(r.task, aiDiff(target!.text, text).kept) ? "changes" : "result");
+        setPhase({ kind: "result", text, title, label, last: r });
         setInput("");
       } catch (e) {
         if (seq !== runSeq.current) return;
@@ -136,14 +203,20 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         if (seq === runSeq.current) stream.end();
       }
     },
-    [write, documentId, stream],
+    [write, documentId, stream, target],
   );
 
   const choose = (s: Suggestion | undefined) => {
     if (!s) return;
-    if (s.languages) {
+    if (s.menu) {
       setInput("");
-      setPhase({ kind: "languages" });
+      setPhase({ kind: "menu", menu: s.menu });
+      return;
+    }
+    if (s.id === "custom-page") return void run({ task: "page", instruction: s.label }, "Page");
+    if (s.page) {
+      setInput("");
+      setPageMode(true);
       return;
     }
     if (s.id === "custom") {
@@ -151,15 +224,12 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       return void run(target ? { task: "refine", text: target.text, instruction } : { task: "draft", instruction }, instruction);
     }
     const language = s.id.startsWith("lang-") ? s.label : undefined;
-    return void run({ task: s.task!, text: target?.text, language }, language ? `Translate to ${language}` : s.label);
+    return void run({ task: s.task!, text: target?.text, language }, taskLabel(s.task!, language));
   };
 
   // Started from a slash command or a toolbar action: run at once.
   useEffect(() => {
-    if (request.task) {
-      const label = request.task === "translate" ? `Translate to ${request.language ?? "English"}` : (TASK_LABEL[request.task] ?? "Writing");
-      void run({ task: request.task, text: target?.text, language: request.language }, label);
-    }
+    if (request.task) void run({ task: request.task, text: target?.text, language: request.language }, taskLabel(request.task, request.language));
   }, [request.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Place under the text it's about (or above when there's no room), as wide as the page's text column.
@@ -202,7 +272,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
   const placed = pos !== null;
   useEffect(() => {
     if (placed && phase.kind !== "busy") inputRef.current?.focus();
-  }, [placed, phase.kind]);
+  }, [placed, phase.kind, pageMode]);
 
   const close = () => {
     runSeq.current++;
@@ -210,34 +280,81 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     editor.commands.focus();
   };
 
-  const accept = (how: "replace" | "below") => {
-    if (phase.kind !== "result") return;
-    const placement = how === "replace" && target ? { kind: "replace" as const, ...target, original: target.text } : { kind: "cursor" as const };
-    if (how === "below" && target) editor.commands.setTextSelection(target.to);
-    if (!insertAiMarkdown(editor, phase.text, placement)) {
-      editor.commands.setTextSelection(Math.min(target?.to ?? 0, editor.state.doc.content.size));
-      insertAiMarkdown(editor, phase.text, { kind: "cursor" });
+  const result = phase.kind === "result" ? phase : null;
+  const replaceable = Boolean(result && target && REWRITE_TASKS.has(result.last.task));
+  const isPage = result?.last.task === "page";
+  const diff = useMemo(() => (result && target && replaceable ? aiDiff(target.text, result.text) : null), [result, target, replaceable]);
+
+  /** Puts the result into the note (one undo step) and closes. */
+  const accept = (how: "replace" | "above" | "below" | "end" | "cursor") => {
+    if (!result) return;
+    let placement: AiPlacement;
+    if (how === "replace" && target) placement = { kind: "replace", ...target, original: target.text };
+    else if ((how === "above" || how === "below") && target) placement = { kind: how, at: how === "above" ? target.from : target.to };
+    else if (how === "above") placement = { kind: "above", at: editor.state.selection.from };
+    else if (how === "end") placement = { kind: "end" };
+    else placement = target ? { kind: "below", at: target.to } : { kind: "cursor" };
+    // A page written into an empty note names it, when it has no title yet.
+    const nameIt = isPage && result.title && noteIsEmpty(editor) && !noteAi?.title?.trim();
+    if (!insertAiMarkdown(editor, result.text, placement)) {
+      // The selected text changed since it was sent: overwrite nothing, put the result below it instead.
+      insertAiMarkdown(editor, result.text, { kind: "below", at: Math.min(target?.to ?? 0, editor.state.doc.content.size) });
+      toast.show("The selected text changed, so the result went below it.");
     }
+    if (nameIt) noteAi?.setTitle?.(result.title!);
     onClose();
+  };
+  const primary = () => accept(replaceable ? "replace" : isPage && noteIsEmpty(editor) ? "end" : "below");
+
+  const save = async (kind: "note" | "template") => {
+    if (!result || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const { id } = await saveDraft(kind, result.title || result.last.instruction || "", result.text);
+      onClose();
+      if (kind === "note") navigate(`/d/${id}`);
+      else toast.show("Saved to Templates", { action: { label: "Open", onClick: () => navigate(`/d/${id}`) } });
+    } catch (e) {
+      setError(aiProblem(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copy = () => {
+    if (!result) return;
+    const text = isPage && result.title ? `${result.title}\n\n${markdownToPlain(result.text)}` : markdownToPlain(result.text);
+    void navigator.clipboard.writeText(text).then(
+      () => setNotice("Copied"),
+      () => setNotice("Couldn't copy. Select the text and copy it instead."),
+    );
   };
 
   const refine = (instruction: string) => {
-    if (phase.kind !== "result" || !instruction.trim()) return;
-    void run({ task: "refine", text: phase.text, instruction: instruction.trim() }, instruction.trim());
+    if (!result || !instruction.trim()) return;
+    if (isPage) return void run({ task: "page", instruction: `${result.last.instruction ?? ""}\n\nChange it: ${instruction.trim()}` }, instruction.trim());
+    void run({ task: "refine", text: result.text, instruction: instruction.trim() }, instruction.trim());
+  };
+
+  const back = () => {
+    setInput("");
+    if (phase.kind === "menu") setPhase({ kind: "compose" });
+    else if (pageMode && request.mode !== "page") setPageMode(false);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
-      if (phase.kind === "languages") return setPhase({ kind: "compose" });
+      if (phase.kind === "menu" || (pageMode && request.mode !== "page" && phase.kind === "compose")) return back();
       return close();
     }
     if (phase.kind === "result") {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey && e.target === inputRef.current) {
         e.preventDefault();
         if (input.trim()) refine(input);
-        else accept(target && !["explain", "summarizeText"].includes(phase.last.task) ? "replace" : "below");
+        else primary();
       }
       return;
     }
@@ -251,13 +368,31 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     } else if (e.key === "Enter") {
       e.preventDefault();
       choose(options[active]);
-    } else if (e.key === "ArrowLeft" && phase.kind === "languages" && !input) {
-      setPhase({ kind: "compose" });
+    } else if (e.key === "ArrowLeft" && !input && (phase.kind === "menu" || (pageMode && request.mode !== "page"))) {
+      back();
     }
   };
 
-  const replaceable = phase.kind === "result" && target && !["explain", "summarizeText"].includes(phase.last.task);
   const listId = `${uid}-list`;
+  const resultId = `${uid}-result`;
+  const inSubmenu = phase.kind === "menu" || (pageMode && request.mode !== "page" && phase.kind === "compose");
+  const placeholder =
+    phase.kind === "result"
+      ? isPage
+        ? "Tell AI what to change in the page… (⏎ to insert)"
+        : `Tell AI what to change… (⏎ to ${replaceable ? "replace" : "insert"})`
+      : phase.kind === "menu"
+        ? phase.menu === "languages"
+          ? "Translate to…"
+          : "Change the tone to…"
+        : pageMode
+          ? "Describe the page to write…"
+          : request.mode === "draft"
+            ? "Describe what to write…"
+            : target
+              ? "Ask AI to edit the selected text…"
+              : "Ask AI to write anything…";
+  const groupTitle = phase.kind === "compose" && !input.trim() && !pageMode;
 
   return (
     <div
@@ -277,15 +412,39 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         <p className="truncate border-b border-line/60 px-3.5 py-2 text-[12px] text-muted">
           <span className="font-semibold">Editing:</span> “{target.text.replace(/\s+/g, " ").slice(0, 140)}”
         </p>
+      ) : pageMode && phase.kind === "compose" ? (
+        <p className="border-b border-line/60 px-3.5 py-2 text-[12px] text-muted">Say what the page is for and what it should cover. You'll see it before anything is added.</p>
       ) : null}
 
-      {/* Result */}
-      {phase.kind === "result" ? (
-        <div className="max-h-[min(46vh,380px)] overflow-y-auto border-b border-line/60 px-4 pb-2 pt-3">
-          <p className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
-            <AiIcon size={12} aria-hidden className="text-[#7c6cf0]" /> {phase.label}
-          </p>
-          <AiMarkdown markdown={phase.text} />
+      {/* Result: the changes to the selected text, or what will be added */}
+      {result ? (
+        <div className="max-h-[min(46vh,380px)] overflow-y-auto border-b border-line/60 px-4 pb-2.5 pt-3">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+            <AiIcon size={12} aria-hidden className="text-[#7c6cf0]" />
+            <span className="min-w-0 flex-1 truncate">{result.label}</span>
+            {diff && !diff.same ? (
+              <div className="ui-seg ui-well text-[11.5px]" role="group" aria-label="Preview">
+                <button type="button" aria-pressed={view === "changes"} aria-controls={resultId} onClick={() => setView("changes")}>
+                  Changes
+                </button>
+                <button type="button" aria-pressed={view === "result"} aria-controls={resultId} onClick={() => setView("result")}>
+                  Result
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {diff?.same ? <p className="mb-1.5 text-[12.5px] text-muted">No changes needed.</p> : null}
+          {isPage && result.title ? <p className="mb-1 font-serif text-[18px] font-semibold text-heading">{result.title}</p> : null}
+          <div id={resultId}>
+            {diff && !diff.same && view === "changes" ? (
+              <>
+                <AiDiffView parts={diff.parts} />
+                <AiDiffLegend />
+              </>
+            ) : (
+              <AiMarkdown markdown={result.text} />
+            )}
+          </div>
         </div>
       ) : null}
 
@@ -310,8 +469,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       {/* Input: an instruction, a filter for the suggestions, or a refinement of the result */}
       {phase.kind !== "busy" ? (
         <div className="flex items-center gap-2 px-3 py-2.5">
-          {phase.kind === "languages" ? (
-            <button type="button" aria-label="Back" onClick={() => setPhase({ kind: "compose" })} className="grid h-7 w-7 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+          {inSubmenu ? (
+            <button type="button" aria-label="Back" onClick={back} className="grid h-7 w-7 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
               <ChevronLeft size={16} aria-hidden />
             </button>
           ) : (
@@ -324,17 +483,10 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
             role={phase.kind === "result" ? undefined : "combobox"}
             aria-expanded={phase.kind === "result" ? undefined : options.length > 0}
             aria-controls={phase.kind === "result" ? undefined : listId}
+            aria-autocomplete={phase.kind === "result" ? undefined : "list"}
             aria-activedescendant={phase.kind !== "result" && options[active] ? `${uid}-${options[active]!.id}` : undefined}
-            aria-label={phase.kind === "result" ? "Tell the AI what to change" : phase.kind === "languages" ? "Language" : "Ask AI to write or edit"}
-            placeholder={
-              phase.kind === "result"
-                ? "Tell AI what to change… (⏎ to accept)"
-                : phase.kind === "languages"
-                  ? "Translate to…"
-                  : target
-                    ? "Ask AI to edit the selected text…"
-                    : "Ask AI to write anything…"
-            }
+            aria-label={phase.kind === "result" ? "Tell the AI what to change" : phase.kind === "menu" ? (phase.menu === "languages" ? "Language" : "Tone") : pageMode ? "Describe the page" : "Ask AI to write or edit"}
+            placeholder={placeholder}
             className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-faint"
           />
           {input.trim() ? (
@@ -360,74 +512,130 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       )}
 
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-3 mb-2.5 rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 mb-2.5 w-auto"} /> : phase.kind === "compose" ? <AiCreditsNote documentId={documentId} className="mx-3 mb-2.5" /> : null}
-      {notice ? <p className="mx-4 mb-2 text-[12.5px] text-muted">{notice}</p> : null}
+      {notice ? (
+        <p className="mx-4 mb-2 text-[12.5px] text-muted" role="status">
+          {notice}
+        </p>
+      ) : null}
 
       {/* Result actions and quick refinements */}
-      {phase.kind === "result" ? (
+      {result ? (
         <div className="space-y-2 border-t border-line/60 px-3 py-2.5">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Use the result">
             {replaceable ? (
-              <>
-                <button type="button" onClick={() => accept("replace")} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
-                  <Check size={14} aria-hidden /> Replace
-                </button>
-                <button type="button" onClick={() => accept("below")} className="ui-btn ui-btn-secondary h-8 px-3 text-[12.5px]">
-                  <CornerDownLeft size={14} aria-hidden /> Insert below
-                </button>
-              </>
+              <button type="button" onClick={() => accept("replace")} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+                <Check size={14} aria-hidden /> Replace
+              </button>
             ) : (
-              <button type="button" onClick={() => accept("below")} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
-                <CornerDownLeft size={14} aria-hidden /> Insert
+              <button type="button" onClick={primary} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+                <CornerDownLeft size={14} aria-hidden /> {target ? "Insert below" : "Insert"}
               </button>
             )}
-            <button type="button" onClick={() => void run(phase.last, phase.label)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+            <button type="button" onClick={() => accept("above")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <ArrowUpToLine size={14} aria-hidden /> Insert above
+            </button>
+            {replaceable ? (
+              <button type="button" onClick={() => accept("below")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <CornerDownLeft size={14} aria-hidden /> Insert below
+              </button>
+            ) : null}
+            <button type="button" onClick={() => accept("end")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <ArrowDownToLine size={14} aria-hidden /> Append to note
+            </button>
+            {isPage ? (
+              <>
+                <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                  <FilePlus2 size={14} aria-hidden /> Create note
+                </button>
+                <button type="button" disabled={saving} onClick={() => void save("template")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                  <LayoutTemplate size={14} aria-hidden /> Save as template
+                </button>
+              </>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+              <Copy size={13} aria-hidden /> Copy
+            </button>
+            <button type="button" onClick={() => void run(result.last, result.label)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
               <RotateCcw size={13} aria-hidden /> Try again
             </button>
             <button type="button" onClick={close} className="ui-btn ui-btn-ghost ml-auto h-8 px-2.5 text-[12.5px] text-muted">
               Discard
             </button>
           </div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick changes">
-            {REFINES.map((r) => (
-              <button key={r} type="button" onClick={() => refine(r)} className="rounded-full bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
-                {r}
-              </button>
-            ))}
-          </div>
+          {!isPage ? (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick changes">
+              {REFINES.map((r) => (
+                <button key={r} type="button" onClick={() => refine(r)} className="rounded-full bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                  {r}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       {/* Suggestions */}
-      {phase.kind === "compose" || phase.kind === "languages" ? (
+      {phase.kind === "compose" || phase.kind === "menu" ? (
         options.length ? (
-          <ul id={listId} role="listbox" aria-label={phase.kind === "languages" ? "Languages" : "AI suggestions"} className="max-h-[min(40vh,320px)] overflow-y-auto border-t border-line/60 p-1.5">
-            {phase.kind === "compose" && !input.trim() ? (
-              <li role="presentation" className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
-                {target ? "Edit or review" : "Write with AI"}
-              </li>
-            ) : null}
+          <ul id={listId} role="listbox" aria-label={phase.kind === "menu" ? (phase.menu === "languages" ? "Languages" : "Tones") : "AI suggestions"} className="max-h-[min(40vh,320px)] overflow-y-auto border-t border-line/60 p-1.5">
             {options.map((o, i) => (
-              <li
+              <SuggestionRow
                 key={o.id}
+                o={o}
                 id={`${uid}-${o.id}`}
-                role="option"
-                aria-selected={i === active}
-                onPointerMove={() => i !== active && setActive(i)}
-                onClick={() => choose(o)}
-                className={`flex cursor-default items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13.5px] ${i === active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
-              >
-                <span aria-hidden className="text-muted">
-                  {o.icon}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{o.id === "custom" ? <>{target ? "Edit: " : "Write: "}<span className="font-medium">{o.label}</span></> : o.label}</span>
-                {o.languages ? <ChevronRight size={14} aria-hidden className="text-faint" /> : null}
-                {i === active ? <CornerDownLeft size={13} aria-hidden className="text-faint" /> : null}
-              </li>
+                active={i === active}
+                heading={groupTitle && o.group && o.group !== options[i - 1]?.group ? GROUP_TITLE[o.group] : undefined}
+                target={Boolean(target)}
+                onHover={() => i !== active && setActive(i)}
+                onChoose={() => choose(o)}
+              />
             ))}
           </ul>
         ) : null
       ) : null}
       <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">AI can make mistakes. Sent to Google Gemini.</p>
     </div>
+  );
+}
+
+function SuggestionRow({ o, id, active, heading, target, onHover, onChoose }: { o: Suggestion; id: string; active: boolean; heading?: string; target: boolean; onHover: () => void; onChoose: () => void }) {
+  return (
+    <>
+      {heading ? (
+        <li role="presentation" className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
+          {heading}
+        </li>
+      ) : null}
+      <li
+        id={id}
+        role="option"
+        aria-selected={active}
+        onPointerMove={onHover}
+        onClick={onChoose}
+        className={`flex cursor-default items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13.5px] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
+      >
+        <span aria-hidden className="text-muted">
+          {o.icon}
+        </span>
+        <span className="min-w-0 flex-1 truncate">
+          {o.id === "custom" ? (
+            <>
+              {target ? "Edit: " : "Write: "}
+              <span className="font-medium">{o.label}</span>
+            </>
+          ) : o.id === "custom-page" ? (
+            <>
+              Write a page: <span className="font-medium">{o.label}</span>
+            </>
+          ) : (
+            o.label
+          )}
+        </span>
+        {o.menu || (o.page && o.id !== "custom-page") ? <ChevronRight size={14} aria-hidden className="text-faint" /> : null}
+        {active ? <CornerDownLeft size={13} aria-hidden className="text-faint" /> : null}
+      </li>
+    </>
   );
 }

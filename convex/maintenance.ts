@@ -57,6 +57,9 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     () => ctx.db.query("pageInvites").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("documentLinks").withIndex("by_source", (q) => q.eq("sourceDocumentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("noteSubscriptions").withIndex("by_document_mode", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    // Its semantic-search chunks and their bookkeeping.
+    () => ctx.db.query("aiChunks").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("aiIndexState").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
   ] as never;
   for (const load of batches) {
     const rows = await load();
@@ -233,8 +236,8 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     await purgeDocument(ctx, root._id, budget);
     return false;
   }
-  // Folders, tags, and everyone's AI conversations here (with their messages).
-  for (const table of ["folders", "tags", "aiMessages", "aiConversations"] as const) {
+  // Folders, tags, everyone's AI conversations here (with their messages), and semantic search's rows.
+  for (const table of ["folders", "tags", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))

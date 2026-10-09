@@ -37,8 +37,8 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
   const ai = page.getByRole("dialog", { name: "AI Assistant" });
   await expect(ai.getByRole("combobox", { name: "Ask AI to write or edit" })).toBeFocused();
   await ai.getByRole("option", { name: "Fix spelling & grammar" }).click();
-  await expect(ai.getByRole("button", { name: "Replace" })).toBeVisible({ timeout: 60_000 });
-  await ai.getByRole("button", { name: "Replace" }).click();
+  await expect(ai.getByRole("button", { name: "Replace", exact: true })).toBeVisible({ timeout: 60_000 });
+  await ai.getByRole("button", { name: "Replace", exact: true }).click();
   await expect(ai).toHaveCount(0);
   await expect(body.locator("p.fb-paragraph").first()).toContainText(/went to the market yesterday and bought three apples/i);
 
@@ -49,7 +49,7 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
   await expect(ai.getByRole("combobox", { name: "Ask AI to write or edit" })).toBeFocused();
   await page.keyboard.type("A to-do list with exactly three items for a picnic, as Markdown '- [ ]' to-dos, nothing else");
   await page.keyboard.press("Enter");
-  await expect(ai.getByRole("button", { name: "Insert" })).toBeVisible({ timeout: 60_000 });
+  await expect(ai.getByRole("button", { name: "Insert", exact: true })).toBeVisible({ timeout: 60_000 });
   await page.keyboard.press("Enter"); // ⏎ accepts
   await expect(body.locator(".fb-todo")).toHaveCount(3);
 
@@ -58,11 +58,11 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter"); // an empty to-do turns back into a paragraph
   await page.keyboard.type("/summarize");
-  await page.getByRole("option", { name: /AI · Summarize note/ }).click();
-  await expect(ai.getByRole("button", { name: "Insert" })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("option", { name: /AI: Summarize page/ }).click();
+  await expect(ai.getByRole("button", { name: "Insert", exact: true })).toBeVisible({ timeout: 60_000 });
   await ai.getByRole("button", { name: "Shorter" }).click();
   await expect(ai.getByText("Shorter", { exact: true }).first()).toBeVisible();
-  await expect(ai.getByRole("button", { name: "Insert" })).toBeVisible({ timeout: 60_000 });
+  await expect(ai.getByRole("button", { name: "Insert", exact: true })).toBeVisible({ timeout: 60_000 });
   await ai.getByRole("button", { name: "Discard" }).click();
   await expect(ai).toHaveCount(0);
   await expect(body.locator(".fb-todo")).toHaveCount(3);
@@ -85,7 +85,7 @@ test("AI text streams in word by word, and Stop keeps what's written so far", as
   await expect.poll(async () => ((await live.textContent()) ?? "").length, { timeout: 30_000 }).toBeGreaterThan(early);
   // …and Stop keeps what was written.
   await ai.getByRole("button", { name: "Stop" }).click();
-  await expect(ai.getByRole("button", { name: "Insert" })).toBeVisible({ timeout: 30_000 });
+  await expect(ai.getByRole("button", { name: "Insert", exact: true })).toBeVisible({ timeout: 30_000 });
   const kept = (await ai.locator(".fb-ai-answer").first().textContent())!.length;
   expect(kept).toBeGreaterThan(20);
   expect(kept).toBeLessThan(6000);

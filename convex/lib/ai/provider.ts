@@ -69,10 +69,25 @@ export interface GenerateResult {
  */
 export type OnDelta = (textSoFar: string) => Promise<boolean>;
 
+/** What texts are embedded for: "document" text to index, or a "query" to search the index with. */
+export type EmbedTask = "document" | "query";
+
+export interface EmbedResult {
+  /** One unit-length vector per text, in order (EMBEDDING_DIMENSIONS each, lib/ai/retrieval.ts). */
+  vectors: number[][];
+  model: string;
+  /** Input tokens (estimated when the provider doesn't say). Embeddings are platform-paid, never credits. */
+  tokens: number;
+}
+
 export interface AiProvider {
   id: string;
   /** The models requests use (from the server's settings). */
   models(): { main: string; fast: string };
+  /** The model `embed` uses (stored on every chunk, so a model change re-embeds). */
+  embeddingModel(): string;
+  /** Turns texts into vectors for semantic search. Fails with a person-readable error like `generate`. */
+  embed(texts: string[], task: EmbedTask): Promise<EmbedResult>;
   /**
    * One request. Every answered call adds its token counts to `meter` (a reply that turned out unusable
    * was still billed). Fails with a person-readable error when the provider can't be reached.

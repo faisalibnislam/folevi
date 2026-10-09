@@ -26,7 +26,7 @@ import { ReaderLabels } from "./lib/linkLabels";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { capabilities as modelCapabilities, provider } from "./lib/ai/provider";
 import { vAiAction } from "./lib/aiActions";
-import { NEW_CHAT_TITLE, bestBlock, citingSentences, cleanTitle, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext } from "./lib/ai/chat";
+import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext } from "./lib/ai/chat";
 import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, type AnswerSink, type Settled } from "./ai";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -551,7 +551,7 @@ export const setTitle = internalMutation({
 
 /** For each cited note the person can read: the block that best matches what the answer said about it. */
 export const locate = internalQuery({
-  args: { items: v.array(v.object({ noteId: v.string(), said: v.string() })) },
+  args: { items: v.array(v.object({ noteId: v.string(), said: v.string(), blockIds: v.optional(v.array(v.string())) })) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const out: { noteId: string; blockId: string; quote: string }[] = [];
@@ -560,7 +560,9 @@ export const locate = internalQuery({
       if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
       // Link labels as this person may see them: a quote never shows a title they can't.
       const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
-      const hit = bestBlock(blocks.map((b) => ({ id: b.id, text: blockSearchText(b) })), item.said);
+      const texts = blocks.map((b) => ({ id: b.id, text: blockSearchText(b) }));
+      // Passages from semantic search: the block is one of theirs; otherwise the closest match in the note.
+      const hit = item.blockIds?.length ? passageBlock(texts, item.blockIds, item.said) : bestBlock(texts, item.said);
       if (hit) out.push({ noteId: item.noteId, ...hit });
     }
     return out;
@@ -638,7 +640,8 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ s
       },
     );
     const cited = out.notes.map((n, i) => ({ n: i + 1, noteId: n.id, title: n.title })).filter((c) => out.cited.has(c.n - 1));
-    const found = cited.length ? await ctx.runQuery(internal.aiChat.locate, { items: cited.map((c) => ({ noteId: c.noteId, said: citingSentences(out.answer, c.n) })) }) : [];
+    const passages = new Map(out.notes.map((n) => [n.id, n.blockIds]));
+    const found = cited.length ? await ctx.runQuery(internal.aiChat.locate, { items: cited.map((c) => ({ noteId: c.noteId, said: citingSentences(out.answer, c.n), blockIds: passages.get(c.noteId) })) }) : [];
     const citations = cited.map((c) => {
       const hit = found.find((f) => f.noteId === c.noteId);
       return hit ? { ...c, blockId: hit.blockId, quote: hit.quote } : c;

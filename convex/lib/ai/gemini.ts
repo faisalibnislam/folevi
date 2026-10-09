@@ -1,15 +1,19 @@
 // Google Gemini over fetch (server-side only: the key never reaches a browser). The provider adapter for
-// lib/ai/provider.ts. Settings: GEMINI_API_KEY, GEMINI_MODEL (main), GEMINI_FAST_MODEL (Flash-Lite).
+// lib/ai/provider.ts. Settings: GEMINI_API_KEY, GEMINI_MODEL (main), GEMINI_FAST_MODEL (Flash-Lite),
+// GEMINI_EMBEDDING_MODEL (semantic search).
 //
 // Privacy: prompts, note text and answers are never logged. Only the event, model, status and token
 // counts are.
 import { fail } from "../errors";
 import { tokensForChars, type CallUsage } from "../credits";
-import type { AiProvider, Content, GenerateRequest, GenerateResult, OnDelta, Part, ToolCall } from "./provider";
+import type { AiProvider, Content, EmbedResult, EmbedTask, GenerateRequest, GenerateResult, OnDelta, Part, ToolCall } from "./provider";
+import { EMBEDDING_DIMENSIONS, normalize } from "./retrieval";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 export const geminiModel = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
 export const geminiFastModel = () => process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
+/** Semantic search's embeddings (GEMINI_EMBEDDING_MODEL; lib/ai/capabilities.ts prices it). */
+export const geminiEmbeddingModel = () => process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
 
 type GeminiUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 type GeminiPart = { text?: string; thought?: boolean; functionCall?: { name?: string; args?: Record<string, unknown> } };
@@ -204,8 +208,69 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
   fail("maintenance", "The AI Assistant couldn't be reached. Try again shortly.");
 }
 
+/** Texts per batchEmbedContents request (Gemini's limit is 100). */
+const EMBED_BATCH = 100;
+/** A batch of embeddings answers well within this. */
+const EMBED_TIMEOUT_MS = 30_000;
+
+/**
+ * Embeddings for semantic search: gemini-embedding-001 at 768 dimensions (batchEmbedContents), each vector
+ * normalized (Google's truncated embeddings aren't). "document" texts are indexed, a "query" searches.
+ * Platform-paid: the caller rate-limits per account, nothing is charged to credits. No usage comes back,
+ * so tokens are estimated from the characters sent.
+ */
+async function embed(texts: string[], task: EmbedTask): Promise<EmbedResult> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) fail("maintenance", "The AI Assistant isn't set up on this server yet.");
+  const model = geminiEmbeddingModel();
+  const vectors: number[][] = [];
+  for (let i = 0; i < texts.length; i += EMBED_BATCH) {
+    const batch = texts.slice(i, i + EMBED_BATCH);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(`${ENDPOINT}/${model}:batchEmbedContents`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          requests: batch.map((text) => ({
+            model: `models/${model}`,
+            content: { parts: [{ text }] },
+            taskType: task === "query" ? "RETRIEVAL_QUERY" : "RETRIEVAL_DOCUMENT",
+            outputDimensionality: EMBEDDING_DIMENSIONS,
+          })),
+        }),
+      });
+    } catch {
+      console.warn(JSON.stringify({ event: "ai.embed_timeout", model }));
+      fail("maintenance", TOO_SLOW);
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res.ok) {
+      console.warn(JSON.stringify({ event: "ai.embed_error", model, status: res.status }));
+      if (res.status === 429) fail("rate_limited", "The AI is busy right now. Try again in a minute.");
+      fail("maintenance", "The AI Assistant couldn't be reached. Try again shortly.");
+    }
+    const data = (await res.json().catch(() => null)) as { embeddings?: { values?: unknown }[] } | null;
+    const got = (data?.embeddings ?? []).map((e) => (Array.isArray(e.values) ? (e.values as unknown[]).filter((x): x is number => typeof x === "number") : []));
+    if (got.length !== batch.length || got.some((v) => v.length !== EMBEDDING_DIMENSIONS)) {
+      console.warn(JSON.stringify({ event: "ai.embed_error", model, status: res.status, count: got.length }));
+      fail("maintenance", "The AI Assistant couldn't be reached. Try again shortly.");
+    }
+    vectors.push(...got.map(normalize));
+  }
+  const tokens = tokensForChars(texts.reduce((n, t) => n + t.length, 0));
+  console.log(JSON.stringify({ event: "ai.embed", model, task, count: texts.length, tokensIn: tokens }));
+  return { vectors, model, tokens };
+}
+
 export const geminiProvider: AiProvider = {
   id: "gemini",
   models: () => ({ main: geminiModel(), fast: geminiFastModel() }),
+  embeddingModel: geminiEmbeddingModel,
   generate,
+  embed,
 };

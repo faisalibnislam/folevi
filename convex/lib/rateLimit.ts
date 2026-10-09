@@ -29,6 +29,8 @@ export const DEFAULT_RATE_RULES = {
   ai: { limit: 150, windowMs: 60 * 60_000 },
   /** The AI budget on plans with higher fair-use limits (Workspace Business). */
   aiHigh: { limit: 300, windowMs: 60 * 60_000 },
+  /** Chunks embedded for semantic search per account (a Personal or a workspace); platform-paid. */
+  aiIndex: { limit: 4_000, windowMs: 60 * 60_000 },
   /** Support requests from the support page or the app, per client (hashed IP). */
   supportSubmit: { limit: 10, windowMs: 60 * 60_000 },
   /** Support requests and in-app replies per requester address. */

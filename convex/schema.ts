@@ -750,6 +750,67 @@ export default defineSchema({
     .index("by_profile", ["profileId"])
     .index("by_status_updated", ["status", "updatedAt"]),
 
+  /**
+   * Semantic search (convex/aiIndex.ts, docs/AI_ASSISTANT.md "Retrieval"): a note's text in chunks of about
+   * 1,000 characters, each with its embedding, for Pro, Pro AI and paid team workspaces only. Derived from
+   * the note (never a source of truth): rebuilt when it changes, removed when it's trashed, deleted or out
+   * of plan. Search always re-checks the person can open the note; the scope filter is never enough.
+   */
+  aiChunks: defineTable({
+    documentId: v.id("documents"),
+    ...scoped,
+    chunkIndex: v.number(),
+    text: v.string(),
+    /** The blocks the chunk's text came from, in order (citations open the note at them). */
+    blockIds: v.array(v.string()),
+    /** What was embedded (title, text and model); a chunk with the same hash keeps its embedding. */
+    contentHash: v.string(),
+    embedding: v.array(v.float64()),
+    embeddingModel: v.string(),
+    indexedAt: v.number(),
+  })
+    .index("by_document", ["documentId", "chunkIndex"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .vectorIndex("by_embedding", { vectorField: "embedding", dimensions: 768, filterFields: ["ownerProfileId", "workspaceId"] }),
+
+  /**
+   * Where each note's chunks are (convex/aiIndex.ts): the contentSeq they were built from, and whether an
+   * index job is waiting (`dueAt`), so edits schedule at most one job at a time.
+   */
+  aiIndexState: defineTable({
+    documentId: v.id("documents"),
+    ...scoped,
+    /** The note's contentSeq the chunks match (-1: none yet, or removed). */
+    indexedContentSeq: v.number(),
+    chunks: v.number(),
+    embeddingModel: v.optional(v.string()),
+    /** A job is scheduled for then; unset while none is. */
+    dueAt: v.optional(v.number()),
+    /** When the waiting job was first asked for (edits keep pushing it back, up to a limit). */
+    queuedAt: v.optional(v.number()),
+    /** Failed embedding attempts in a row (retried a few times, then left for the next edit). */
+    failures: v.optional(v.number()),
+    indexedAt: v.optional(v.number()),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** Semantic search per account (a Personal or a workspace): backfilling, ready, or removing its chunks. */
+  aiIndexScopes: defineTable({
+    ...scoped,
+    status: v.union(v.literal("backfilling"), v.literal("ready"), v.literal("removing"), v.literal("off")),
+    /** The backfill's place in the scope's notes. */
+    cursor: v.optional(v.union(v.string(), v.null())),
+    /** When the plan was last checked (the daily sweep). */
+    checkedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_status", ["status", "checkedAt"]),
+
   tasks: defineTable({
     blockId: v.string(),
     blockDocId: v.id("blocks"),

@@ -2,10 +2,12 @@
 //
 //   ai.ask:     answer a question from the person's own notes (optionally focused on one note), with the
 //               notes it drew on as sources. Retrieval: Gemini turns the question into search terms, the
-//               scope's full-text index (Personal or a workspace) finds notes, and only notes this person
+//               scope's full-text index (Personal or a workspace) finds notes, semantic search adds
+//               passages where the plan includes it (aiIndex.hybridSearch), and only notes this person
 //               can read are used.
-//   ai.write:   writing help: rewrite a selection (improve, fix, shorten, …), or write from a note (summary,
-//               continuation, outline, action items, title) or from an instruction.
+//   ai.write:   writing help (lib/ai/writing.ts): rewrite a selection (improve, fix, a tone, translate, turn
+//               into a list…), write about it, write from a note (summary, continuation, outline, action
+//               items, title), from an instruction, or generate a whole page or template.
 //   ai.flowchart: a flowchart block from a description, or the current flowchart changed as asked (strict
 //               JSON, sanitised before it's returned; the client lays it out).
 //
@@ -33,6 +35,9 @@ import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope, type ScopeArg } 
 import { FLOWCHART_SYSTEM, flowchartForPrompt, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
 import { ACT_SYSTEM, checkPlan, type AiAction } from "./lib/aiActions";
 import { provider, type GenerateRequest, type OnDelta } from "./lib/ai/provider";
+import { dedupePassages, fitToBudget, reciprocalRankFusion } from "./lib/ai/retrieval";
+import { hybridSearch } from "./aiIndex";
+import { finishWriting, needsInstruction, needsSelection, readsNote, taskSpec, usesFlashLite, writingInputChars, writingRequest, writingTask } from "./lib/ai/writing";
 
 export const MAX_QUESTION = 2000;
 const MAX_TEXT = 24_000;
@@ -291,6 +296,10 @@ export interface SourceNote {
   id: string;
   title: string;
   text: string;
+  /** The text is passages of the note (semantic search's chunks): the blocks they came from, best first. */
+  blockIds?: string[];
+  /** Nothing matched the search: this is just one of the most recent notes. */
+  recent?: boolean;
 }
 
 /** A note as Markdown, if this person can read it (the note being worked on). */
@@ -306,9 +315,31 @@ export const noteText = internalQuery({
   },
 });
 
-/** Notes matching the search terms that this person can read (best first), falling back to recent notes. */
+/** Vector matches below this cosine similarity are left out (unrelated text still has a nearest neighbour). */
+const MIN_VECTOR_SCORE = 0.55;
+/** Passages (chunks) used per note, best first. */
+const PASSAGES_PER_NOTE = 3;
+/** Tokens of note text a question's sources may take in all (the estimate in answerPlan allows for it). */
+const SOURCES_TOKENS = 12_000;
+
+/**
+ * Notes for a question that this person can read, best first: the scope's full-text index (`queries`)
+ * merged by reciprocal rank fusion with semantic search's chunk matches (`hits`, from aiIndex.hybridSearch,
+ * only where the plan includes it). Every note is checked here, whatever matched it: in this scope, not
+ * in Trash, archived or a template, in `folderId` when given, and readable by this person (documentAccess),
+ * so the vector index's scope filter is never the only check. A note matched by chunks brings those
+ * passages (and their blocks, for citations); otherwise its text. Duplicates are dropped and the whole is
+ * fitted to a token budget. When nothing matches, the most recent notes are returned, marked `recent`.
+ */
 export const gather = internalQuery({
-  args: { scope: vScopeArg, queries: v.array(v.string()), exclude: v.optional(v.string()), limit: v.number(), folderId: v.optional(v.string()) },
+  args: {
+    scope: vScopeArg,
+    queries: v.array(v.string()),
+    exclude: v.optional(v.string()),
+    limit: v.number(),
+    folderId: v.optional(v.string()),
+    hits: v.optional(v.array(v.object({ chunkId: v.id("aiChunks"), score: v.number() }))),
+  },
   handler: async (ctx, args): Promise<SourceNote[]> => {
     const profile = await requireProfile(ctx);
     const { scope } = await resolveScope(ctx, profile, args.scope);
@@ -320,7 +351,9 @@ export const gather = internalQuery({
           .unique()
       : null;
     if (args.folderId && (!folder || !inScope(folder, scope) || folder.deletedAt)) fail("not_found", "Folder not found.");
-    const score = new Map<string, { doc: Doc<"documents">; hits: number; rank: number }>();
+    const docs = new Map<string, Doc<"documents"> | null>();
+    // Keyword half: notes matching more of the queries first, then the order the index found them in.
+    const score = new Map<string, { hits: number; rank: number }>();
     let rank = 0;
     for (const q of args.queries.slice(0, 4)) {
       const text = q.trim().slice(0, 200);
@@ -334,37 +367,70 @@ export const gather = internalQuery({
         })
         .take(12);
       for (const d of found) {
+        docs.set(d._id, d);
         const cur = score.get(d._id);
         if (cur) cur.hits++;
-        else score.set(d._id, { doc: d, hits: 1, rank: rank++ });
+        else score.set(d._id, { hits: 1, rank: rank++ });
       }
     }
-    let ranked = [...score.values()].sort((a, b) => b.hits - a.hits || a.rank - b.rank).map((x) => x.doc);
-    if (!ranked.length) {
-      ranked = folder
-        ? (await ctx.db
-            .query("documents")
-            .withIndex("by_folder", (q) => q.eq("folderId", folder._id))
-            .take(200))
-            .filter((d) => !d.inTrash)
-            .sort((a, b) => b.updatedAt - a.updatedAt)
-            .slice(0, 12)
-        : await (
-            scope.kind === "personal"
-              ? ctx.db.query("documents").withIndex("by_owner_trash", (q) => q.eq("ownerProfileId", scope.profileId).eq("inTrash", false))
-              : ctx.db.query("documents").withIndex("by_workspace_trash", (q) => q.eq("workspaceId", scope.workspaceId).eq("inTrash", false))
-          )
-            .order("desc")
-            .take(10);
+    const keyword = [...score.entries()].sort(([, a], [, b]) => b.hits - a.hits || a.rank - b.rank).map(([id]) => id);
+    // Vector half: chunks close enough to the question, grouped by note (a note ranks by its best chunk).
+    const passages = new Map<string, { chunk: Doc<"aiChunks">; score: number }[]>();
+    const semantic: string[] = [];
+    for (const h of [...(args.hits ?? [])].sort((a, b) => b.score - a.score)) {
+      if (h.score < MIN_VECTOR_SCORE) continue;
+      const chunk = await ctx.db.get(h.chunkId);
+      if (!chunk || !inScope(chunk, scope)) continue;
+      const list = passages.get(chunk.documentId);
+      if (list) list.push({ chunk, score: h.score });
+      else {
+        passages.set(chunk.documentId, [{ chunk, score: h.score }]);
+        semantic.push(chunk.documentId);
+      }
     }
+    const fused = reciprocalRankFusion([keyword, semantic]);
     const out: SourceNote[] = [];
-    for (const d of ranked) {
+    for (const id of fused) {
+      if (out.length >= args.limit) break;
+      if (!docs.has(id)) docs.set(id, await ctx.db.get(id as Id<"documents">));
+      const d = docs.get(id);
+      // Checked per note, whatever matched it.
+      if (!d || !inScope(d, scope) || d.inTrash || d.deletedAt !== undefined || d.archivedAt || d.kind === "template" || d.publicId === args.exclude) continue;
+      if (folder && d.folderId !== folder._id) continue;
+      if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+      const title = d.title || "Untitled";
+      const chunks = (passages.get(id) ?? []).slice(0, PASSAGES_PER_NOTE);
+      if (chunks.length) {
+        const ordered = [...chunks].sort((a, b) => a.chunk.chunkIndex - b.chunk.chunkIndex);
+        out.push({ id: d.publicId, title, text: ordered.map((c) => c.chunk.text).join("\n\n…\n\n").slice(0, NOTE_CHARS), blockIds: [...new Set(chunks.flatMap((c) => c.chunk.blockIds))] });
+      } else {
+        out.push({ id: d.publicId, title, text: d.searchText.slice(0, NOTE_CHARS) });
+      }
+    }
+    if (out.length) return fitToBudget(dedupePassages(out), SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
+    // Nothing matched: the most recent notes (the folder's, when asked from one), marked as such.
+    const recent = folder
+      ? (await ctx.db
+          .query("documents")
+          .withIndex("by_folder", (q) => q.eq("folderId", folder._id))
+          .take(200))
+          .filter((d) => !d.inTrash)
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .slice(0, 12)
+      : await (
+          scope.kind === "personal"
+            ? ctx.db.query("documents").withIndex("by_owner_trash", (q) => q.eq("ownerProfileId", scope.profileId).eq("inTrash", false))
+            : ctx.db.query("documents").withIndex("by_workspace_trash", (q) => q.eq("workspaceId", scope.workspaceId).eq("inTrash", false))
+        )
+          .order("desc")
+          .take(10);
+    for (const d of recent) {
       if (out.length >= args.limit) break;
       if (d.publicId === args.exclude || d.archivedAt || d.kind === "template") continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      out.push({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, NOTE_CHARS) });
+      out.push({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, NOTE_CHARS), recent: true });
     }
-    return out;
+    return fitToBudget(out, SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
   },
 });
 
@@ -479,7 +545,8 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
     act = parseAct(raw);
     queries = parseQueries(raw, question);
     const seen = new Set(notes.map((n) => n.id));
-    for (const n of await ctx.runQuery(internal.ai.gather, { scope: input.scope, queries, exclude: input.documentIds[0], limit: 8, folderId: input.folderId })) if (!seen.has(n.id)) notes.push(n);
+    // Keyword and (where the plan includes it) semantic search, checked note by note (aiIndex.hybridSearch).
+    for (const n of await hybridSearch(ctx, { scope: input.scope, question, queries, exclude: input.documentIds[0], limit: 8, folderId: input.folderId })) if (!seen.has(n.id)) notes.push(n);
     await sink?.phase?.("reading");
   }
 
@@ -489,7 +556,7 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
     // Asked from a folder, notes elsewhere may be the ones to move into it: look beyond it too.
     if (input.folderId) {
       const seen = new Set(notes.map((n) => n.id));
-      for (const n of await ctx.runQuery(internal.ai.gather, { scope: input.scope, queries, exclude: input.documentIds[0], limit: 8 })) if (!seen.has(n.id)) notes.push(n);
+      for (const n of await hybridSearch(ctx, { scope: input.scope, question, queries, exclude: input.documentIds[0], limit: 8 })) if (!seen.has(n.id)) notes.push(n);
     }
     const here = input.folderId ? folders.find((f) => f.id === input.folderId) : undefined;
     const convo = history.map((t) => `${t.role === "user" ? "Person" : "Assistant"}: ${t.text}`).join("\n");
@@ -520,12 +587,15 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
   }
 
   await sink?.phase?.("writing");
-  const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
+  const sources = notes.map((n, i) => `[${i + 1}] ${n.title}${n.blockIds ? " (passages)" : ""}\n${n.text}`).join("\n\n---\n\n");
   const convo = history.map((t) => `${t.role === "user" ? "Person" : "Assistant"}: ${t.text}`).join("\n");
   const persona = input.chat ? PERSONA.replace(PERSONA_FORMAT, CHAT_FORMAT) : PERSONA;
+  // "Not found" honesty: when the search matched nothing, the model is told so rather than left to guess.
+  const unmatched = !input.notesOnly && !input.documentIds.length && notes.every((n) => n.recent);
+  const found = !notes.length ? "(no notes found)" : unmatched ? `(No note matched the question. These are only the most recent notes and may be unrelated.)\n\n${sources}` : sources;
   const raw = await streamInto(sink, {
-    system: `${persona} Answer questions using the person's notes below. Cite the notes you use with bracketed numbers like [1] or [2][3] right after the sentence they support. If the notes don't contain the answer, say so plainly in one sentence, then offer a short general answer clearly labelled as not from their notes.${input.chat ? ` ${FOLLOW_UP_RULE}` : ""}`,
-    prompt: `<notes>\n${sources || "(no notes found)"}\n</notes>\n\n${convo ? `<conversation>\n${convo}\n</conversation>\n\n` : ""}Question: ${question}`,
+    system: `${persona} Answer questions using the person's notes below. Cite the notes you use with bracketed numbers like [1] or [2][3] right after the sentence they support. Only say something is in their notes when a note below says it. If the notes don't contain the answer, say so plainly in one sentence, then offer a short general answer clearly labelled as not from their notes.${input.chat ? ` ${FOLLOW_UP_RULE}` : ""}`,
+    prompt: `<notes>\n${found}\n</notes>\n\n${convo ? `<conversation>\n${convo}\n</conversation>\n\n` : ""}Question: ${question}`,
     temperature: 0.3,
     maxOutputTokens: input.chat ? 2304 : 2048,
   }, meter);
@@ -581,38 +651,13 @@ export const ask = action({
   },
 });
 
-const TASKS = {
-  // Rewrite a selection.
-  improve: "Improve the writing of the text: clearer, smoother, same meaning and roughly the same length. Keep its structure (lists stay lists).",
-  fix: "Fix spelling, grammar and punctuation only. Change nothing else.",
-  shorter: "Make the text noticeably shorter while keeping every key point.",
-  longer: "Expand the text with helpful detail and examples, in the same voice.",
-  simplify: "Rewrite the text in plain, simple language anyone can follow.",
-  professional: "Rewrite the text in a clear, professional tone.",
-  casual: "Rewrite the text in a friendly, casual tone.",
-  translate: "Translate the text into {language}. Keep formatting.",
-  explain: "Explain what the text means, briefly, for someone new to the topic.",
-  summarizeText: "Summarize the text in a few bullet points.",
-  refine: "Revise the text as the person asks. Keep everything they didn't ask to change.",
-  // Write from the note.
-  summarize: "Write a short summary of the note: one sentence overview, then 3-6 bullet points of the key points.",
-  continue: "Continue writing the note from where it ends, matching its voice, format and language. Write 1-3 paragraphs (or continue the list). Do not repeat what is already there.",
-  outline: "Write a clear outline for the note's topic as nested '-' bullets, building on what the note already has.",
-  actions: "List the action items, decisions and follow-ups in the note as '- [ ]' to-dos. If there are none, suggest a few sensible next steps as to-dos.",
-  title: "Suggest one short, specific title for the note. Reply with the title only, no quotes or punctuation at the end.",
-  brainstorm: "Brainstorm 8-10 fresh, varied ideas related to the note's topic as a '-' bullet list.",
-  // Write from an instruction.
-  draft: "Write what the person asks for.",
-} as const;
-type Task = keyof typeof TASKS;
-const SELECTION_TASKS = new Set<Task>(["improve", "fix", "shorter", "longer", "simplify", "professional", "casual", "translate", "explain", "summarizeText", "refine"]);
-/** Short rewrites Flash-Lite does as well as Flash, for a fraction of the credits. */
-const SHORT_REWRITES = new Set<Task>(["improve", "shorter", "simplify", "professional", "casual"]);
-const SHORT_TEXT = 1_500;
-/** Cheap tasks go to Flash-Lite: a title, fixing spelling, and short rewrites. Ask AI never does. */
-const usesFlashLite = (task: Task, text: string) => task === "title" || task === "fix" || (SHORT_REWRITES.has(task) && text.length <= SHORT_TEXT);
-
-/** Writing help. Returns Markdown to insert or to replace the selection with. */
+/**
+ * Writing help (lib/ai/writing.ts has every task): rewrite a selection (improve, fix, shorter, a tone,
+ * translate, turn into a list, table or checklist, or as asked), write about it (explain, summarize,
+ * continue, action items), write from the note (summary, continuation, outline, action items, title,
+ * ideas), write as asked, or generate a whole page or template (its title comes back separately).
+ * Returns Markdown to preview, then insert or replace the selection with; nothing here changes the note.
+ */
 export const write = action({
   args: {
     scope: vScopeArg,
@@ -624,42 +669,24 @@ export const write = action({
     /** Write the text into this stream as it's generated (startStream). */
     streamId: v.optional(v.id("aiStreams")),
   },
-  handler: async (ctx, args): Promise<{ text: string }> => {
+  handler: async (ctx, args): Promise<{ text: string; title?: string }> => {
     await requireIdentity(ctx);
-    if (!(args.task in TASKS)) fail("invalid_argument", "Unknown AI action.");
-    const task = args.task as Task;
+    const task = writingTask(args.task);
+    if (!task) fail("invalid_argument", "Unknown AI action.");
     const text = (args.text ?? "").slice(0, MAX_TEXT);
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
-    if (SELECTION_TASKS.has(task) && !text.trim()) fail("invalid_argument", "Select some text first.");
-    if ((task === "draft" || task === "refine") && !instruction) fail("invalid_argument", "Tell the AI what to write.");
+    if (needsSelection(task) && !text.trim()) fail("invalid_argument", "Select some text first.");
+    if (needsInstruction(task) && !instruction) fail("invalid_argument", task === "page" || task === "template" ? "Describe what to write first." : "Tell the AI what to write.");
     const fast = usesFlashLite(task, text);
-    const readsNote = Boolean(args.documentId && !SELECTION_TASKS.has(task));
-    const maxOutputTokens = task === "title" ? 60 : 3072;
+    const readsThisNote = Boolean(args.documentId && readsNote(task));
     // Writing help works on one note (or text from it), so that note's scope decides.
-    const plan: PlannedCall[] = [{ fast, inputChars: PERSONA.length + 400 + text.length + instruction.length + (readsNote ? FOCUS_CHARS : 0), maxOutputTokens }];
+    const plan: PlannedCall[] = [{ fast, inputChars: writingInputChars(task, text, instruction, readsThisNote ? FOCUS_CHARS : 0), maxOutputTokens: taskSpec(task).maxOutputTokens }];
     const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan });
     return await metered(ctx, holdId, async (meter) => {
       if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
-
-      const note = readsNote ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! }) : null;
-      const language = (args.language ?? "English").replace(/[^\p{L}\p{M} ()-]/gu, "").slice(0, 40) || "English";
-      const job = TASKS[task].replace("{language}", language);
-      const parts = [
-        note ? `<note title="${note.title.replace(/"/g, "'")}">\n${note.text}\n</note>` : "",
-        text && SELECTION_TASKS.has(task) ? `<text>\n${text}\n</text>` : "",
-        text && !SELECTION_TASKS.has(task) ? `<selected>\n${text}\n</selected>` : "",
-        instruction ? `Request: ${instruction}` : "",
-        `Task: ${job}`,
-        SELECTION_TASKS.has(task) && task !== "explain" && task !== "summarizeText" ? "Reply with the rewritten text only. No preamble, no quotes." : "Reply with the content only. No preamble.",
-      ].filter(Boolean);
-      const out = await streamed(ctx, args.streamId, {
-        system: PERSONA,
-        prompt: parts.join("\n\n"),
-        fast,
-        temperature: task === "fix" ? 0.1 : task === "brainstorm" || task === "draft" ? 0.9 : 0.5,
-        maxOutputTokens,
-      }, meter);
-      return { text: task === "title" ? out.split("\n")[0]!.replace(/^#+\s*/, "").replace(/^["'“”]+|["'“”.]+$/g, "").trim() : out };
+      const note = readsThisNote ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! }) : null;
+      const out = await streamed(ctx, args.streamId, writingRequest({ task, note, text, instruction, language: args.language }, fast), meter);
+      return finishWriting(task, out);
     });
   },
 });

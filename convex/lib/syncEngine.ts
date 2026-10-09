@@ -32,6 +32,7 @@ import { mentionedIds, notify } from "./notify";
 import { ReaderLabels, titleIsShared } from "./linkLabels";
 import { copyCollectionsInto } from "./collections";
 import { internal } from "../_generated/api";
+import { queueIndex } from "./ai/indexing";
 
 export const MAX_BATCH = 100;
 
@@ -873,6 +874,8 @@ export class SyncEngine {
         ...(versionDue ? { versionDueAt: Date.now() + AUTO_VERSION_MS } : {}),
       });
       if (versionDue) await this.ctx.scheduler.runAfter(AUTO_VERSION_MS, internal.documents.autoVersion, { documentId: fresh._id });
+      // Semantic search re-reads the note a little later (one job per burst of edits; eligible plans only).
+      await queueIndex(this.ctx, fresh);
       for (const rowId of changedBlocks) {
         if (this.plainNewRows.has(rowId)) continue;
         const row = await this.ctx.db.get(rowId);

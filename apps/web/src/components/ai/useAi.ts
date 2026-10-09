@@ -1,28 +1,50 @@
 "use client";
 
-import { useAction, useQuery } from "convex/react";
-import { useCallback } from "react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { createContext, useCallback, useContext } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import type { Id } from "@/lib/convex/api";
 
 export type AiTask =
-  | "improve" | "fix" | "shorter" | "longer" | "simplify" | "professional" | "casual" | "translate" | "explain" | "summarizeText"
-  | "summarize" | "continue" | "outline" | "actions" | "title" | "brainstorm" | "draft" | "refine";
+  | "improve" | "fix" | "shorter" | "longer" | "simplify"
+  | "professional" | "casual" | "friendly" | "confident" | "direct" | "academic"
+  | "translate" | "toList" | "toTable" | "toChecklist" | "refine"
+  | "explain" | "summarizeText" | "continueText" | "actionItemsText"
+  | "summarize" | "continue" | "outline" | "actions" | "title" | "brainstorm" | "draft"
+  | "page" | "template";
 
-/** Selection rewrites (the "AI" menu in the formatting toolbar). */
-export const SELECTION_ACTIONS: { task: AiTask; label: string }[] = [
-  { task: "improve", label: "Improve writing" },
-  { task: "fix", label: "Fix spelling & grammar" },
-  { task: "shorter", label: "Make shorter" },
-  { task: "longer", label: "Make longer" },
-  { task: "simplify", label: "Simplify language" },
-  { task: "professional", label: "Sound professional" },
-  { task: "casual", label: "Sound casual" },
-  { task: "translate", label: "Translate…" },
-  { task: "explain", label: "Explain" },
-  { task: "summarizeText", label: "Summarize" },
+/** How a selection action groups in the composer: edits, tones (a submenu), "turn into", and reading it. */
+export type SelectionGroup = "edit" | "tone" | "turn" | "use";
+
+/** Every selection action (the inline composer's menu, and result labels in the AI panel). */
+export const SELECTION_ACTIONS: { task: AiTask; label: string; group: SelectionGroup }[] = [
+  { task: "improve", label: "Improve writing", group: "edit" },
+  { task: "fix", label: "Fix spelling & grammar", group: "edit" },
+  { task: "shorter", label: "Make shorter", group: "edit" },
+  { task: "longer", label: "Make longer", group: "edit" },
+  { task: "simplify", label: "Simplify language", group: "edit" },
+  { task: "translate", label: "Translate…", group: "edit" },
+  { task: "professional", label: "Professional", group: "tone" },
+  { task: "casual", label: "Casual", group: "tone" },
+  { task: "friendly", label: "Friendly", group: "tone" },
+  { task: "confident", label: "Confident", group: "tone" },
+  { task: "direct", label: "Direct", group: "tone" },
+  { task: "academic", label: "Academic", group: "tone" },
+  { task: "toList", label: "Turn into a list", group: "turn" },
+  { task: "toTable", label: "Turn into a table", group: "turn" },
+  { task: "toChecklist", label: "Turn into a checklist", group: "turn" },
+  { task: "summarizeText", label: "Summarize", group: "use" },
+  { task: "explain", label: "Explain", group: "use" },
+  { task: "continueText", label: "Continue writing", group: "use" },
+  { task: "actionItemsText", label: "Extract action items", group: "use" },
 ];
+
+/** Tasks whose result stands in for the selected text (so Replace is offered, with a preview of the changes). */
+export const REWRITE_TASKS: ReadonlySet<AiTask> = new Set<AiTask>([
+  ...SELECTION_ACTIONS.filter((a) => a.group === "edit" || a.group === "tone" || a.group === "turn").map((a) => a.task),
+  "refine",
+]);
 
 export interface AskTurn {
   role: "user" | "assistant";
@@ -55,12 +77,28 @@ export interface NoteHome {
 }
 
 /**
+ * The note an editor is showing, for the AI inside it (the slash menu, the selection toolbar, ⌘J): where
+ * it lives (so AI follows its plan, not the current context's), its title, and a way to set the title (a
+ * page generated into an empty note names it).
+ */
+export interface NoteAi {
+  home: NoteHome | null;
+  title?: string;
+  setTitle?: (title: string) => void;
+}
+export const NoteAiContext = createContext<NoteAi | null>(null);
+export const useNoteAi = () => useContext(NoteAiContext);
+
+/**
  * AI where you are: the current context (Personal or a team workspace), or `note`'s home (a note may be
  * open from elsewhere: shared from someone's Personal or a workspace you're a guest in). Core hides AI. The
  * server decides again on every request.
  */
-export function useAiAccess(note?: NoteHome | null): AiAccess {
+export function useAiAccess(asked?: NoteHome | null): AiAccess {
   const { profile, context: current, workspaces, scope } = useAppState();
+  // Inside a note's editor, the note being edited (unless the caller names one).
+  const open = useContext(NoteAiContext);
+  const note = asked === undefined ? open?.home : asked;
   const p = profile as { aiEnabled?: boolean; entitlements?: { ai: boolean; plan?: string } };
   const setting = p.aiEnabled !== false;
   const personalEntitled = p.entitlements ? p.entitlements.ai : true;
@@ -110,16 +148,22 @@ export function useAi() {
     [askAction, scope],
   );
   const write = useCallback(
-    (task: AiTask, opts: { documentId?: string; text?: string; instruction?: string; language?: string; streamId?: Id<"aiStreams"> } = {}) =>
+    (task: AiTask, opts: { documentId?: string; text?: string; instruction?: string; language?: string; streamId?: Id<"aiStreams"> } = {}): Promise<{ text: string; title?: string }> =>
       writeAction({ scope, task, ...opts }),
     [writeAction, scope],
+  );
+  const saveDraftMutation = useMutation(api.aiWriting.saveDraft);
+  /** Saves a previewed page as a new note or template where you are (Markdown becomes real blocks). */
+  const saveDraft = useCallback(
+    (kind: "note" | "template", title: string, markdown: string) => saveDraftMutation({ scope, kind, title, markdown }),
+    [saveDraftMutation, scope],
   );
   /** A flowchart draft (nodes and connectors, no positions) from a description, or the current chart changed. */
   const flowchart = useCallback(
     (mode: "create" | "update", instruction: string, current?: string) => flowchartAction({ scope, mode, instruction, current }),
     [flowchartAction, scope],
   );
-  return { ask, write, flowchart };
+  return { ask, write, flowchart, saveDraft };
 }
 
 /** Events between the editor's menus and the note's AI panel. */
@@ -139,6 +183,8 @@ export interface InlineAiOpen {
   target: { from: number; to: number; text: string } | null;
   task?: AiTask;
   language?: string;
+  /** Opens ready for a prompt: "draft" writes at the cursor, "page" writes a whole page (title and all). */
+  mode?: "draft" | "page";
 }
 export function openInlineAi(editorDom: Element, detail: InlineAiOpen): void {
   editorDom.dispatchEvent(new CustomEvent<InlineAiOpen>(INLINE_AI_EVENT, { detail }));

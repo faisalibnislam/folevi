@@ -28,6 +28,9 @@ import { MoveToFolderDialog } from "./MoveToFolderDialog";
 import { SelectionBar, type SelectionAction } from "./SelectionBar";
 import { useCardSelection } from "./useCardSelection";
 import { useNoteActions } from "./noteActions";
+import { useAiEnabled } from "@/components/ai/useAi";
+import { AiGenerateDialog } from "@/components/ai/AiGenerateDialog";
+import { AiIcon } from "@/components/ai/AiIcon";
 
 /** Marks a page with edits on this device the server hasn't confirmed yet. */
 function UnsyncedMarker({ className = "" }: { className?: string }) {
@@ -129,6 +132,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     { initialNumItems: PAGE_SIZE },
   );
   const builtIns = useQuery(api.settings.builtInTemplates, view === "templates" ? {} : "skip");
+  // Templates can be generated with AI (where AI is on and included).
+  const aiOn = useAiEnabled();
+  const [generating, setGenerating] = useState(false);
   const createDocument = useCreateDocument();
   const emptyTrash = useMutation(api.documents.emptyTrash);
   const toast = useToast();
@@ -334,11 +340,17 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               Empty Trash
             </Button>
           ) : null}
+          {view === "templates" && aiOn && online ? (
+            <Button size="sm" variant="secondary" onClick={() => setGenerating(true)}>
+              <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Generate with AI
+            </Button>
+          ) : null}
           {view === "templates" ? (
             <Button size="sm" variant="primary" onClick={() => void createDocument({ folderId: null, kind: "template" })}>
               <Plus size={14} aria-hidden /> New template
             </Button>
           ) : null}
+          {view === "templates" && aiOn ? <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" /> : null}
         </div>
 
         {view === "templates" && builtIns?.length ? (

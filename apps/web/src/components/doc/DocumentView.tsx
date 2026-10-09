@@ -57,7 +57,7 @@ import { useCoverImage } from "@/lib/app/coverImage";
 import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { BlockThread, useNoteNotifyItems } from "./Comments";
-import { AI_OPEN_EVENT, AI_RUN_EVENT, useAi, useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
+import { AI_OPEN_EVENT, AI_RUN_EVENT, NoteAiContext, useAi, useAiEnabled, type AiRunDetail, type NoteAi } from "@/components/ai/useAi";
 import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
@@ -455,6 +455,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
   // AI follows the note's own scope (your Personal: your Personal plan; a team: its workspace plan).
   const aiOn = useAiEnabled(meta?.document);
+  // The editor's AI (slash commands, ⌘J, the selection toolbar) follows this note too, and a page it writes
+  // into an empty note can name it.
+  const noteDoc = meta?.document;
+  const noteAi = useMemo<NoteAi>(
+    () => ({ home: noteDoc ?? null, title: noteDoc?.title ?? "", setTitle: (title) => engine?.updateDocument(documentId, { title }, noteDoc?.revision ?? null) }),
+    [noteDoc, engine, documentId],
+  );
   // AI in a note is always about this note: its tools open in the sidebar.
   const openAi = useCallback(() => {
     setInspectorTab("ai");
@@ -787,25 +794,27 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 </Suspense>
               ) : null}
               {ready && engine ? (
-                <Editor
-                  ref={editorRef}
-                  documentId={documentId}
-                  engine={engine}
-                  accountKey={profile.id}
-                  editable={!readOnly}
-                  decorations={decorations}
-                  onFocusBlock={setFocusedBlock}
-                  onCommentBlock={(id) => openComments(id)}
-                  onEditorReady={setEditor}
-                  onExitTop={() => {
-                    // ↑ from the first line goes to the end of the title.
-                    const title = document.getElementById(`title-${documentId}`) as HTMLTextAreaElement | null;
-                    if (!title || title.readOnly) return false;
-                    title.focus();
-                    title.setSelectionRange(title.value.length, title.value.length);
-                    return true;
-                  }}
-                />
+                <NoteAiContext.Provider value={noteAi}>
+                  <Editor
+                    ref={editorRef}
+                    documentId={documentId}
+                    engine={engine}
+                    accountKey={profile.id}
+                    editable={!readOnly}
+                    decorations={decorations}
+                    onFocusBlock={setFocusedBlock}
+                    onCommentBlock={(id) => openComments(id)}
+                    onEditorReady={setEditor}
+                    onExitTop={() => {
+                      // ↑ from the first line goes to the end of the title.
+                      const title = document.getElementById(`title-${documentId}`) as HTMLTextAreaElement | null;
+                      if (!title || title.readOnly) return false;
+                      title.focus();
+                      title.setSelectionRange(title.value.length, title.value.length);
+                      return true;
+                    }}
+                  />
+                </NoteAiContext.Provider>
               ) : (
                 <div className="space-y-3 py-6" aria-busy aria-label="Loading document">
                   {[80, 95, 60, 88].map((w, i) => (

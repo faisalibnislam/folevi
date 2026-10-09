@@ -93,9 +93,11 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 /**
  * A copy for the local edits (one per keystroke pause): new top-level collections, with entities shared
  * with `prev` until one is changed (copy it first). A deep clone of a large account cost tens of
- * milliseconds per block.
+ * milliseconds per block. A draft (below) is changed in place instead.
  */
-const shallow = (prev: SyncState): SyncState => ({
+const shallow = (prev: SyncState): SyncState => (drafts.has(prev) ? prev : copyState(prev));
+
+const copyState = (prev: SyncState): SyncState => ({
   ...prev,
   blocks: { ...prev.blocks },
   pending: [...prev.pending],
@@ -104,6 +106,25 @@ const shallow = (prev: SyncState): SyncState => ({
   errors: [...prev.errors],
   uploads: [...prev.uploads],
 });
+
+/** States owned by a batch of local changes (see `draft`). */
+const drafts = new WeakSet<SyncState>();
+
+/**
+ * A private copy of `state` for a batch of local changes (one editor flush, a paste): `localUpsert`,
+ * `localDelete` and `localRestore` change it in place rather than copying the account's block map again for
+ * every block (a 200-block paste in a 25,000-block account took about a second). Nothing else may keep it
+ * until `settle` is called; from then on it's an ordinary state, copied before any change like the others.
+ */
+export function draft(state: SyncState): SyncState {
+  const copy = copyState(state);
+  drafts.add(copy);
+  return copy;
+}
+
+export function settle(state: SyncState): void {
+  drafts.delete(state);
+}
 
 function opBlockId(op: SyncOp): string | null {
   switch (op.kind) {
@@ -291,7 +312,9 @@ export function takeBatch(prev: SyncState, max = 100): SyncState {
 }
 
 export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
-  const state = clone(prev);
+  // Copied as it changes (each entity before it's written to), not as a whole: a deep copy of a large
+  // account cost tens of milliseconds for every answer from the server.
+  const state: SyncState = { ...prev, blocks: { ...prev.blocks }, pending: [...prev.pending], conflicts: [...prev.conflicts], errors: [...prev.errors] };
   const byId = new Map(results.map((r) => [r.opId, r]));
   const unanswered: SyncOp[] = [];
   for (const op of state.inflight) {
@@ -302,7 +325,8 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
     }
     const blockId = opBlockId(op);
     if (!blockId) continue;
-    const entity = state.blocks[blockId];
+    const held = state.blocks[blockId];
+    const entity = held ? (state.blocks[blockId] = { ...held }) : undefined;
     switch (result.status) {
       case "applied":
       case "duplicate": {
@@ -310,12 +334,9 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
         const oldRevision = entity.serverRevision;
         if (result.revision !== undefined) entity.serverRevision = result.revision;
         // Rebase queued ops that were written on top of this (now acknowledged) change.
-        for (const p of state.pending) {
-          if (opBlockId(p) !== blockId) continue;
-          if ((p.kind === "block.upsert" || p.kind === "block.delete") && p.baseRevision === oldRevision) {
-            p.baseRevision = entity.serverRevision;
-          }
-        }
+        state.pending = state.pending.map((p) =>
+          opBlockId(p) === blockId && (p.kind === "block.upsert" || p.kind === "block.delete") && p.baseRevision === oldRevision ? { ...p, baseRevision: entity.serverRevision } : p,
+        );
         const stillOutstanding =
           state.pending.some((p) => opBlockId(p) === blockId) ||
           state.inflight.some((p) => p !== op && opBlockId(p) === blockId && !byId.has(p.opId));

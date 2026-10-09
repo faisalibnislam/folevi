@@ -202,22 +202,59 @@ export function nodeToFlat(node: PMNode): FlatBlock | null {
   return { id, depth, type, schemaVersion: SCHEMA_VERSION, text: TEXT_NODES.has(type) ? pmInline(node) : [], props };
 }
 
-/** Editor document → canonical blocks, keeping ranks of blocks whose position didn't change. */
-export function docToBlocks(doc: PMNode, previous: ReadonlyMap<string, WireBlock>): WireBlock[] {
-  const flat: FlatBlock[] = [];
-  doc.forEach((node) => {
-    const f = nodeToFlat(node);
-    if (f) flat.push(f);
-  });
+/*
+ * A long note is saved about once a second while typing, and almost all of it is unchanged each time. Blocks
+ * are converted once per node (ProseMirror keeps an unchanged line's node between versions of the document),
+ * a converted block comes back as the same object while its place is the same (so comparing it with what was
+ * saved is one check), and tree positions are worked out again only when the lines or their nesting change.
+ * The results are the ones a full conversion gives. Nothing changes these objects: they're replaced.
+ */
+const flatOf = new WeakMap<PMNode, FlatBlock | null>();
+const wireOf = new WeakMap<FlatBlock, WireBlock>();
+let lastTree: { ids: string[]; depths: number[]; positions: Map<string, { parentId: string | null; rank: string }> } | null = null;
+
+/** Tree positions for the lines in order (see assignTreePositions), reusing the last ones while nothing they depend on changed. */
+function treePositions(flat: readonly FlatBlock[], previous: ReadonlyMap<string, WireBlock>): Map<string, { parentId: string | null; rank: string }> {
+  // Positions are kept exactly when every block still has the place they gave it: then working them out again
+  // gives the same.
+  const same =
+    lastTree !== null &&
+    lastTree.ids.length === flat.length &&
+    flat.every((f, i) => {
+      const prev = previous.get(f.id);
+      const pos = lastTree!.positions.get(f.id);
+      return lastTree!.ids[i] === f.id && lastTree!.depths[i] === f.depth && prev !== undefined && pos !== undefined && prev.parentId === pos.parentId && prev.rank === pos.rank;
+    });
+  if (same) return lastTree!.positions;
   const positions = assignTreePositions(
     flat.map((f) => {
       const prev = previous.get(f.id);
       return { id: f.id, depth: f.depth, rank: prev?.rank, parentId: prev?.parentId };
     }),
   );
+  lastTree = { ids: flat.map((f) => f.id), depths: flat.map((f) => f.depth), positions };
+  return positions;
+}
+
+/** Editor document → canonical blocks, keeping ranks of blocks whose position didn't change. */
+export function docToBlocks(doc: PMNode, previous: ReadonlyMap<string, WireBlock>): WireBlock[] {
+  const flat: FlatBlock[] = [];
+  doc.forEach((node) => {
+    let f = flatOf.get(node);
+    if (f === undefined) {
+      f = nodeToFlat(node);
+      flatOf.set(node, f);
+    }
+    if (f) flat.push(f);
+  });
+  const positions = treePositions(flat, previous);
   return flat.map((f) => {
     const pos = positions.get(f.id)!;
-    return { id: f.id, type: f.type, parentId: pos.parentId, rank: pos.rank, schemaVersion: f.schemaVersion, text: f.text, props: f.props };
+    const known = wireOf.get(f);
+    if (known && known.parentId === pos.parentId && known.rank === pos.rank) return known;
+    const block = { id: f.id, type: f.type, parentId: pos.parentId, rank: pos.rank, schemaVersion: f.schemaVersion, text: f.text, props: f.props };
+    wireOf.set(f, block);
+    return block;
   });
 }
 
@@ -226,8 +263,15 @@ export interface BlockDiff {
   deletes: string[];
 }
 
+/** Content keys of blocks already compared (blocks are never changed in place, only replaced). */
+const keyOf = new WeakMap<object, string>();
 export function contentKey(b: Pick<WireBlock, "type" | "text" | "props">): string {
-  return canonicalJson({ t: b.type, x: b.text, p: b.props });
+  let key = keyOf.get(b);
+  if (key === undefined) {
+    key = canonicalJson({ t: b.type, x: b.text, p: b.props });
+    keyOf.set(b, key);
+  }
+  return key;
 }
 
 /**
@@ -259,6 +303,8 @@ export function diffBlocks(previous: ReadonlyMap<string, WireBlock>, next: reado
   for (const b of next) {
     seen.add(b.id);
     const prev = previous.get(b.id);
+    // The block as it was saved, unchanged (see docToBlocks).
+    if (prev === b) continue;
     if (!prev) {
       upserts.push({ block: b, fields: ["content", "position"] });
       continue;
@@ -288,9 +334,11 @@ export function localChanges(doc: PMNode, shown: ReadonlyMap<string, WireBlock>,
   const next = docToBlocks(doc, shown);
   const diff = diffBlocks(shown, next, schema);
   const deleted = new Set(diff.deletes);
-  const deletes = flattenTree([...shown.values()])
-    .map((e) => e.block.id)
-    .filter((id) => deleted.has(id))
-    .reverse();
+  const deletes = !deleted.size
+    ? []
+    : flattenTree([...shown.values()])
+        .map((e) => e.block.id)
+        .filter((id) => deleted.has(id))
+        .reverse();
   return { next, upserts: diff.upserts, deletes };
 }

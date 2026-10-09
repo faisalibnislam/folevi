@@ -52,6 +52,16 @@ export const DB_VERSION = 3;
 /** Key of the single, account-wide sync state (older builds keyed one state per workspace id). */
 export const ACCOUNT_SYNC_KEY = "account";
 
+/**
+ * Each block of the sync state is a record of its own in `meta`, keyed `syncBlock:<block id>`, so a save
+ * writes only the blocks that changed (it used to copy the whole account every time); the `account` record
+ * holds the rest. They live in `meta` because a new store would need a database upgrade, which waits until
+ * every tab still running the previous version has closed. States saved before this hold their blocks in
+ * the `account` record, and are moved over on their first save.
+ */
+export const SYNC_BLOCK_PREFIX = "syncBlock:";
+export const syncBlockKeys = () => IDBKeyRange.bound(SYNC_BLOCK_PREFIX, `${SYNC_BLOCK_PREFIX}\uffff`);
+
 const dbs = new Map<string, Promise<IDBPDatabase<FoleviDB>>>();
 
 export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {

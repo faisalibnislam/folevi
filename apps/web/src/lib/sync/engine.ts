@@ -4,7 +4,7 @@ import type { ConvexReactClient } from "convex/react";
 import { ConvexError } from "convex/values";
 import { canonicalJson, flattenTree, randomNoteEmoji, sync, type ChangedField, type ConflictRecord, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
-import { ACCOUNT_SYNC_KEY, localDb } from "./db";
+import { ACCOUNT_SYNC_KEY, SYNC_BLOCK_PREFIX, localDb, syncBlockKeys } from "./db";
 
 export type EngineEvent =
   | { type: "state" }
@@ -62,12 +62,14 @@ export class SyncEngine {
    */
   static async open(client: ConvexReactClient, accountKey: string, scope: WireScope, deviceId: string, teamWorkspaceIds?: readonly string[]): Promise<SyncEngine> {
     const engine = new SyncEngine(client, accountKey, scope, deviceId);
-    const saved = await loadAccountState(accountKey);
-    if (saved) {
+    const loaded = await loadAccountState(accountKey);
+    if (loaded) {
+      const saved = loaded.state;
       // Anything in flight when the page closed may or may not have landed: resend (ops are idempotent), as
       // sent, so nothing typed now is merged into one the server may already hold.
       const inflight = saved.inflight.map((op) => (op.sent ? op : { ...op, sent: true }));
       engine.state = { ...sync.emptySyncState(), ...saved, pending: [...inflight, ...saved.pending], inflight: [] };
+      if (loaded.blocksStored) engine.savedBlocks = engine.state.blocks;
     }
     // This tab's own journal (a reload), and those left by tabs that have since closed.
     const journals = await readJournals(accountKey);
@@ -99,13 +101,27 @@ export class SyncEngine {
   private batching = 0;
   private batchDirty = false;
 
-  /** Runs several local changes (one editor flush) as a single save and a single update to listeners. */
+  /**
+   * Runs several local changes (one editor flush) as a single save and a single update to listeners. They're
+   * made on a private copy of the state (`sync.draft`), changed in place, so the account is copied once per
+   * batch rather than once per block.
+   */
   batch(fn: () => void) {
+    const outer = !this.batching;
+    const before = this.state;
+    if (outer) this.state = sync.draft(before);
+    const drafted = this.state;
     this.batching++;
     try {
       fn();
     } finally {
       this.batching--;
+      if (outer) {
+        sync.settle(drafted);
+        // Blocks may have been added to the draft's map after it was indexed by document.
+        this.byDocument = null;
+        if (!this.batchDirty) this.state = before;
+      }
       if (!this.batching && this.batchDirty) {
         this.batchDirty = false;
         this.commit(this.state);
@@ -203,12 +219,14 @@ export class SyncEngine {
   }
 
   /**
-   * Each save writes the whole account state, so commits that come in a burst (a document's rows arriving,
-   * a flush round, a paste) share one save a moment later instead of one each. Nothing waits on it longer
-   * than that: `persisted()` saves at once, and so does hiding or closing the page.
+   * Commits that come in a burst (a document's rows arriving, a flush round, a paste) share one save a moment
+   * later instead of one each. Nothing waits on it longer than that: `persisted()` saves at once, and so does
+   * hiding or closing the page.
    */
   private unsaved = false;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The blocks as the last save wrote them (each one a record of its own); null when every block must be written. */
+  private savedBlocks: SyncState["blocks"] | null = null;
 
   private writeState() {
     if (this.saveTimer !== null) {
@@ -218,12 +236,34 @@ export class SyncEngine {
     if (!this.unsaved) return;
     this.unsaved = false;
     const snapshot = this.state;
+    // Only the blocks that changed since the last save: the reducers replace an entity when they change it,
+    // so an unchanged one is the same object.
+    const saved = this.savedBlocks;
+    const changed: string[] = [];
+    const removed: string[] = [];
+    if (snapshot.blocks !== saved) {
+      for (const id in snapshot.blocks) if (!saved || saved[id] !== snapshot.blocks[id]) changed.push(id);
+      if (saved) for (const id in saved) if (!(id in snapshot.blocks)) removed.push(id);
+    }
+    this.savedBlocks = snapshot.blocks;
     this.persistChain = this.persistChain
       .then(async () => {
         const db = await localDb(this.accountKey);
-        await db.put("syncState", snapshot, ACCOUNT_SYNC_KEY);
+        const tx = db.transaction(["syncState", "meta"], "readwrite");
+        const meta = tx.objectStore("meta");
+        await Promise.all([
+          // The first save (or one after a failed save) writes every block, in place of whatever was there.
+          ...(saved ? [] : [meta.delete(syncBlockKeys())]),
+          ...changed.map((id) => meta.put(snapshot.blocks[id], SYNC_BLOCK_PREFIX + id)),
+          ...removed.map((id) => meta.delete(SYNC_BLOCK_PREFIX + id)),
+          tx.objectStore("syncState").put({ ...snapshot, blocks: {} }, ACCOUNT_SYNC_KEY),
+          tx.done,
+        ]);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        // Not saved: the next save writes every block again.
+        this.savedBlocks = null;
+      });
   }
 
   /** Resolves once everything committed so far is on disk. */
@@ -852,19 +892,31 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
  * either the old keys or the merged state, never neither. Legacy `document.create` ops are stamped
  * with the workspace they were queued in, preserving where they land.
  */
-async function loadAccountState(accountKey: string): Promise<SyncState | undefined> {
+async function loadAccountState(accountKey: string): Promise<{ state: SyncState; blocksStored: boolean } | undefined> {
   const db = await localDb(accountKey);
-  const tx = db.transaction("syncState", "readwrite");
-  const keys = (await tx.store.getAllKeys()).filter((k) => k !== ACCOUNT_SYNC_KEY);
-  let merged = await tx.store.get(ACCOUNT_SYNC_KEY);
+  const tx = db.transaction(["syncState", "meta"], "readwrite");
+  const store = tx.objectStore("syncState");
+  const keys = (await store.getAllKeys()).filter((k) => k !== ACCOUNT_SYNC_KEY);
+  let merged = await store.get(ACCOUNT_SYNC_KEY);
   for (const key of keys) {
-    const legacy = await tx.store.get(key);
+    const legacy = await store.get(key);
     if (legacy) merged = mergeSyncStates(merged, legacy, key);
-    await tx.store.delete(key);
+    await store.delete(key);
   }
-  if (keys.length && merged) await tx.store.put(merged, ACCOUNT_SYNC_KEY);
+  if (keys.length && merged) await store.put(merged, ACCOUNT_SYNC_KEY);
+  // The blocks, one record each (see SYNC_BLOCK_PREFIX). A state saved before that holds them itself: those
+  // are written out as records on the first save.
+  const ids = await tx.objectStore("meta").getAllKeys(syncBlockKeys());
+  const entities = (await tx.objectStore("meta").getAll(syncBlockKeys())) as SyncState["blocks"][string][];
   await tx.done;
-  return merged;
+  if (!merged) return undefined;
+  const inRecord = merged.blocks ?? {};
+  const blocks: SyncState["blocks"] = {};
+  ids.forEach((key, i) => {
+    blocks[String(key).slice(SYNC_BLOCK_PREFIX.length)] = entities[i]!;
+  });
+  Object.assign(blocks, inRecord);
+  return { state: { ...merged, blocks }, blocksStored: Object.keys(inRecord).length === 0 };
 }
 
 /**

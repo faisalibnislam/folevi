@@ -23,7 +23,8 @@ mac:
     - target: dir
       arch: arm64
   category: public.app-category.productivity
-  icon: build/icon.icns
+  # The Icon Composer icon: Liquid Glass on macOS 26 and later (electron-builder also makes the older .icns from it).
+  icon: build/Folevi.icon
   identity: "Apple Development: abumohammadfaisal@icloud.com (XS494CQ48W)"
   hardenedRuntime: true
   gatekeeperAssess: false

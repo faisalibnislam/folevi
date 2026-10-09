@@ -17,7 +17,7 @@
 //   apps/web/public/apple-icon.png                 180 px, full bleed (iOS rounds it)
 //   apps/web/public/icons/icon-192.png, -512.png   the round mark (install icons)
 //   apps/web/public/icons/icon-maskable-512.png    full bleed (Android masks it)
-//   apps/desktop/build/icon.icns                   Folevi for Mac's icon (a copy of Folevi.icns, below)
+//   apps/desktop/build/Folevi.icon                 Folevi for Mac's icon (a copy of the Icon Composer document)
 //   apps/desktop/assets/trayTemplate.png, @2x.png  the F alone (template) for the menu bar, 16 and 32 px tall
 //   apps/web/public/brand/email/folevi-logo@2x.png       the logo for emails (dark letters, light backgrounds)
 //   apps/web/public/brand/email/folevi-logo-dark@2x.png  logo-dark.svg, for dark mode
@@ -29,7 +29,7 @@
 //
 //   node packages/design-tokens/scripts/brand-icons.mjs               everything
 //   node packages/design-tokens/scripts/brand-icons.mjs --only=logos  just the email logos and the dark mark
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
@@ -169,12 +169,12 @@ if (glass) {
 }
 try {
   execFileSync("iconutil", ["-c", "icns", resolve(out, "macos.iconset"), "-o", resolve(out, "Folevi.icns")], { stdio: "ignore" });
-  // Folevi for Mac (Electron, apps/desktop) is packaged with it.
-  mkdirSync(resolve(desktop, "build"), { recursive: true });
-  copyFileSync(resolve(out, "Folevi.icns"), resolve(desktop, "build/icon.icns"));
 } catch {
-  console.warn("iconutil not available. Skipped Folevi.icns and apps/desktop/build/icon.icns (the .iconset has every size).");
+  console.warn("iconutil not available. Skipped Folevi.icns (the .iconset has every size).");
 }
+// Folevi for Mac (Electron, apps/desktop) is packaged with the Icon Composer document itself.
+rmSync(resolve(desktop, "build/Folevi.icon"), { recursive: true, force: true });
+cpSync(iconDoc, resolve(desktop, "build/Folevi.icon"), { recursive: true });
 
 // ---------------------------------------------------------------- Folevi for Mac's menu bar icon
 

@@ -8,6 +8,8 @@ node_modules/
 out/
 dist/
 build/
+# Folevi for Mac keeps its signing entitlements and icon in build/ (electron-builder's resources folder).
+!apps/desktop/build/
 .turbo/
 *.tsbuildinfo
 coverage/

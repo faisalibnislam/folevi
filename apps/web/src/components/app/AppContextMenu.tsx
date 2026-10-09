@@ -14,6 +14,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useAppRouter } from "@/lib/app/router";
 import { modKey } from "@/lib/hooks/useEngine";
+import { installTouchContextMenu } from "@/lib/touchContextMenu";
 import { useShell } from "./Shell";
 import { useCreateDocument } from "./useCreateDocument";
 
@@ -33,6 +34,9 @@ export function AppContextMenu() {
   const createDocument = useCreateDocument();
   const aiOn = useAiEnabled();
   const toast = useToast();
+
+  // Press and hold on iPhone and iPad opens these menus too (Safari there sends no right-click).
+  useEffect(() => installTouchContextMenu(), []);
 
   useEffect(() => {
     const copyText = (text: string, done: string) =>

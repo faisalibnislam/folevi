@@ -68,6 +68,7 @@ import { blockElements } from "./plugins";
 import { colorName, useNotePalette } from "./notePalette";
 import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
 import { keyLabel } from "@/lib/shortcuts";
+import { isLongPress } from "@/lib/touchContextMenu";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -214,7 +215,8 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
         else tr.setSelection(TextSelection.near(tr.doc.resolve(pos)));
         view.dispatch(tr.setMeta("addToHistory", false));
       }
-      if (!view.hasFocus()) view.focus();
+      // (Held on a touch screen: the keyboard stays down, the menu is what was asked for.)
+      if (!view.hasFocus() && !isLongPress(e)) view.focus();
       setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
     };
     const onKey = (e: KeyboardEvent) => {
@@ -917,7 +919,7 @@ function Panel({
                 {entry.icon}
               </span>
               <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-              {!isSub(entry) && entry.shortcut ? <span className="flex-none pl-3 text-xs text-faint">{keyLabel(entry.shortcut)}</span> : null}
+              {!isSub(entry) && entry.shortcut ? <span className="flex-none pl-3 text-xs text-faint pointer-coarse:hidden">{keyLabel(entry.shortcut)}</span> : null}
               {!isSub(entry) && entry.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="flex-none text-heading" /> : null}
               {isSub(entry) ? <ChevronRight size={14} aria-hidden className="flex-none text-faint" /> : null}
             </button>

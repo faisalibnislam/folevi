@@ -292,7 +292,7 @@ function MenuPanel({
               <span className="flex-1">{item.label}</span>
             )}
             {item.detail ? <span className="flex-none text-xs text-muted">{item.detail}</span> : null}
-            {item.shortcut ? <span className="text-xs text-faint">{keyLabel(item.shortcut)}</span> : null}
+            {item.shortcut ? <span className="text-xs text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
             {item.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="text-heading" /> : null}
           </button>
         ),

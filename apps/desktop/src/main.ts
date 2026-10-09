@@ -291,7 +291,8 @@ function buildMenu() {
       submenu: [
         { role: "reload" },
         { role: "forceReload" },
-        { role: "toggleDevTools" },
+        // (Not ⌥⌘I, the default: that shows and hides the page's inspector.)
+        { role: "toggleDevTools", accelerator: "Alt+Shift+Command+I" },
         { type: "separator" },
         { role: "resetZoom" },
         { role: "zoomIn" },

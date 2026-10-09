@@ -66,18 +66,36 @@ function useCurrentHeading(ids: string[]): string | null {
   const key = ids.join(",");
   useEffect(() => {
     const list = key ? key.split(",") : [];
+    // The headings' elements, found once and again only when the editor has redrawn one.
+    const elements = new Map<string, Element>();
+    const elementOf = (id: string) => {
+      const known = elements.get(id);
+      if (known?.isConnected) return known;
+      const el = document.querySelector(`[data-block-id="${CSS.escape(id)}"]`);
+      if (el) elements.set(id, el);
+      return el;
+    };
+    let frame = 0;
     const update = () => {
+      frame = 0;
       let found: string | null = list[0] ?? null;
       for (const id of list) {
-        const el = document.querySelector(`[data-block-id="${CSS.escape(id)}"]`);
+        const el = elementOf(id);
         if (!el) continue;
         if (el.getBoundingClientRect().top < window.innerHeight * 0.3) found = id;
       }
       setCurrent(found);
     };
+    // At most once a frame, however many scroll events come in.
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
     update();
-    window.addEventListener("scroll", update, true);
-    return () => window.removeEventListener("scroll", update, true);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [key]);
   return current;
 }

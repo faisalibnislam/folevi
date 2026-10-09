@@ -39,6 +39,7 @@ import { AiPanel } from "@/components/ai/AiPanel";
 import { useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
+import { useRadioGroup } from "@/lib/a11y/radioGroup";
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
 export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments";
@@ -105,7 +106,7 @@ export function Inspector({
             <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex-1 text-[18px]">
               {TABS.find((t) => t.id === tab)?.label}
             </h2>
-            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7">
+            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -117,7 +118,7 @@ export function Inspector({
             <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-[13.5px] font-semibold text-heading">
               Comments
             </h2>
-            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7">
+            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -152,7 +153,7 @@ export function Inspector({
             </button>
           ))}
         </div>
-          <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7">
+          <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
             <X size={15} aria-hidden />
           </IconButton>
         </div>
@@ -278,6 +279,10 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
     return () => clearTimeout(t);
   }, [mine]);
   const pendingStyle = mine && JSON.stringify(mine.style) !== savedKey && (!now || now - mine.at < 5000) ? mine.style : null;
+  // Each set of swatches is one Tab stop; the arrow keys move between its choices.
+  const styleGroup = useRadioGroup();
+  const sheetGroup = useRadioGroup();
+  const textGroup = useRadioGroup();
   if (!meta) return <p className="text-sm text-muted">Style is available once the document has synced.</p>;
   const style = pendingStyle ?? meta.document.style;
   const cover = meta.document.cover;
@@ -346,7 +351,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           onToggle={() => toggle("artwork")}
           disabled={disabled}
         >
-          <div role="radiogroup" aria-label="Note style" className="grid grid-cols-4 gap-2">
+          <div role="radiogroup" aria-label="Note style" ref={styleGroup.ref} onKeyDown={styleGroup.onKeyDown} className="grid grid-cols-4 gap-2">
             <Choice label="Plain" on={cover.kind !== "art" && !ownImage} onPick={() => setCover({ kind: "none" })}>
               <span className="grid h-full place-items-center text-[11px] text-[#55555c]" style={{ background: PLAIN_CSS }}>Plain</span>
             </Choice>
@@ -407,7 +412,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
       <fieldset disabled={disabled}>
         <legend className="ui-caps mb-1 px-1">Color</legend>
         <StyleRow label="Document color" swatch={<ColorDot css={sheetColor} />} open={open === "sheet"} onToggle={() => toggle("sheet")} disabled={disabled}>
-          <div role="radiogroup" aria-label="Document color" className="grid grid-cols-4 gap-2">
+          <div role="radiogroup" aria-label="Document color" ref={sheetGroup.ref} onKeyDown={sheetGroup.onKeyDown} className="grid grid-cols-4 gap-2">
             <Choice label="Auto (from the note style)" on={!style.sheet} onPick={() => set({ sheet: undefined })}>
               <span className="grid h-full place-items-center text-[11px]" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink-muted)" }}>Auto</span>
             </Choice>
@@ -419,7 +424,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           </div>
         </StyleRow>
         <StyleRow label="Text color" swatch={<ColorDot css={textColor} />} open={open === "text"} onToggle={() => toggle("text")} disabled={disabled}>
-          <div role="radiogroup" aria-label="Text color" className="grid grid-cols-4 gap-2">
+          <div role="radiogroup" aria-label="Text color" ref={textGroup.ref} onKeyDown={textGroup.onKeyDown} className="grid grid-cols-4 gap-2">
             <Choice label="Auto (from the note style)" on={!style.text} onPick={() => set({ text: undefined })}>
               <span className="grid h-full place-items-center text-[11px] font-semibold" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink)" }}>Auto</span>
             </Choice>

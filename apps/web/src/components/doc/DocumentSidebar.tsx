@@ -186,13 +186,18 @@ function useBlocks(documentId: string): WireBlock[] {
   return useMemo(() => flattenTree(blocks).map(({ block }) => block), [blocks]);
 }
 
+/** Smooth scrolling, unless the person asked for less motion. */
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
+
 function ContentsPanel({ documentId, title, onJump }: { documentId: string; title: string; onJump: (id: string) => void }) {
   return (
     <>
       <PanelTitle>Table of contents</PanelTitle>
       <button
         type="button"
-        onClick={() => (document.getElementById("doc-scroll") ?? document.getElementById("main"))?.scrollTo({ top: 0, behavior: "smooth" })}
+        onClick={() => (document.getElementById("doc-scroll") ?? document.getElementById("main"))?.scrollTo({ top: 0, behavior: scrollBehavior() })}
         className="mb-0.5 block w-full truncate rounded-[6px] bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] font-semibold text-heading transition-colors hover:bg-[var(--glass-hover)]"
       >
         {title || "Untitled"}
@@ -387,9 +392,15 @@ function FindPanel({ editor }: { editor: Editor | null }) {
   useEffect(() => inputRef.current?.focus(), []);
   useEffect(() => {
     if (!editor) return;
-    const bump = () => setVersion((v) => v + 1);
+    // Searched again a moment after typing stops, not on every key (a long note takes a while to search).
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setVersion((v) => v + 1), 150);
+    };
     editor.on("update", bump);
     return () => {
+      if (timer) clearTimeout(timer);
       editor.off("update", bump);
     };
   }, [editor]);
@@ -435,7 +446,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
     setIndex(next);
     const r = rangeOf(matches[next]!);
     const el = r?.startContainer instanceof Element ? r.startContainer : r?.startContainer.parentElement;
-    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   };
 
   return (

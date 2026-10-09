@@ -106,19 +106,30 @@ function marked(
   people: Record<string, ChangePerson> | undefined,
 ): React.ReactNode {
   if (!change || !isValidElement(el)) return el;
-  const element = el as ReactElement<{ style?: React.CSSProperties; title?: string }>;
+  // A component may not pass the marks on to what it draws: it's wrapped in a plain block that takes them.
+  const element = (typeof el.type === "string" ? el : <div key={el.key}>{el}</div>) as ReactElement<{
+    style?: React.CSSProperties;
+    title?: string;
+  }>;
   const who = change.author ? people?.[change.author] : undefined;
   const color = who ? `var(--color-${who.color})` : "var(--color-ink-muted)";
   const when = change.at
     ? new Date(change.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
     : null;
-  return cloneElement(element, {
-    "data-change": change.kind,
-    style: { ...element.props.style, ["--author" as string]: color },
-    title: [CHANGE_WORDS[change.kind], who ? `by ${who.name}` : null, when ? `· ${when}` : null]
-      .filter(Boolean)
-      .join(" "),
-  } as Partial<{ style: React.CSSProperties; title: string }>);
+  const words = [CHANGE_WORDS[change.kind], who ? `by ${who.name}` : null, when ? `· ${when}` : null]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <Fragment key={element.key}>
+      {/* What changed, for screen readers (the tint and the tooltip are for eyes and pointers). */}
+      <span className="sr-only">{`${words}:`}</span>
+      {cloneElement(element, {
+        "data-change": change.kind,
+        style: { ...element.props.style, ["--author" as string]: color },
+        title: words,
+      } as Partial<{ style: React.CSSProperties; title: string }>)}
+    </Fragment>
+  );
 }
 
 /** Server-rendered read-only document body (public share pages). Uses the editor stylesheet classes. */
@@ -159,9 +170,12 @@ export function ReadOnlyBlocks({
         ] as const) {
           if (typeof p[prop] === "string") fa[attr] = p[prop] as string;
         }
+        const change = changes?.get(block.id);
         if (block.type === "numbered") {
           counters.length = depth + 1;
+          // A removed item (version history) shows the number it had, without moving the ones after it on.
           counters[depth] = (counters[depth] ?? 0) + 1;
+          if (change?.kind === "removed") counters[depth]! -= 1;
         } else counters.length = depth;
         const rendered = ((): React.ReactNode => {
           switch (block.type) {
@@ -197,7 +211,7 @@ export function ReadOnlyBlocks({
                 <div
                   key={block.id}
                   className="fb fb-numbered"
-                  data-index={counters[depth]}
+                  data-index={change?.kind === "removed" ? counters[depth]! + 1 : counters[depth]}
                   style={style}
                   {...fa}
                 >
@@ -224,9 +238,10 @@ export function ReadOnlyBlocks({
                 </div>
               );
             case "toggle":
-              if (p.collapsed) hideBelow = depth;
+              // In version history everything shows: a change inside a closed toggle would otherwise be hidden.
+              if (p.collapsed && !changes) hideBelow = depth;
               return (
-                <details key={block.id} className="fb" style={style} {...fa} open={!p.collapsed}>
+                <details key={block.id} className="fb" style={style} {...fa} open={!p.collapsed || Boolean(changes)}>
                   <summary className="font-medium">
                     <BlockText block={block} change={changes?.get(block.id)} />
                   </summary>

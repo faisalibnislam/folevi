@@ -290,7 +290,16 @@ describe("sync protocol", () => {
     const child = para(ulid(), "child", "V", parent.id);
     await upsert(a, docId, parent, null);
     await upsert(a, docId, child, null);
-    const [del] = await a.as.mutation(api.sync.push, { scope: a.scope, deviceId: "device-test-1", ops: [{ opId: ulid(), kind: "block.delete", documentId: docId, blockId: parent.id, baseRevision: 1 }] });
+    // Clients delete each line they remove (the server keeps a nested line the delete doesn't name: someone
+    // else's, written since; tests/convex/sync-concurrent-edits.test.ts).
+    const [del] = await a.as.mutation(api.sync.push, {
+      scope: a.scope,
+      deviceId: "device-test-1",
+      ops: [
+        { opId: ulid(), kind: "block.delete", documentId: docId, blockId: parent.id, baseRevision: 1 },
+        { opId: ulid(), kind: "block.delete", documentId: docId, blockId: child.id, baseRevision: 1 },
+      ],
+    });
     expect(del!.status).toBe("applied");
     expect((await a.as.query(api.blocks.list, { documentId: docId }))!.blocks).toHaveLength(0);
     expect(await a.as.query(api.blocks.deleted, { documentId: docId })).toHaveLength(2);

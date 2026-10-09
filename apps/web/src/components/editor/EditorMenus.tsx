@@ -100,6 +100,8 @@ import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
 import { keyLabel, withKeyLabels } from "@/lib/shortcuts";
 import { webAddressIn } from "./autolink";
 import { setRangeHighlight } from "./blockHighlight";
+import { coarsePointer, useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 
 // Used now and then, so it loads when first opened rather than with every note.
 const AudioRecorder = lazy(() => import("./AudioRecorder").then((m) => ({ default: m.AudioRecorder })));
@@ -189,8 +191,10 @@ function Popover({
     if (!at || !ref.current) return;
     const h = ref.current.offsetHeight;
     const below = at.bottom + 6;
-    if (side.current === null) side.current = below + h > window.innerHeight - 8 && at.top - h - 6 >= 8 ? "above" : "below";
-    const top = side.current === "above" ? Math.max(8, at.top - h - 6) : Math.min(below, Math.max(8, window.innerHeight - h - 8));
+    // Above the on-screen keyboard, where there is one.
+    const bottom = visibleBottom();
+    if (side.current === null) side.current = below + h > bottom - 8 && at.top - h - 6 >= 8 ? "above" : "below";
+    const top = side.current === "above" ? Math.max(8, at.top - h - 6) : Math.min(below, Math.max(8, bottom - h - 8));
     setPos({ left: Math.max(8, Math.min(at.left, window.innerWidth - width - 8)), top });
   }, [at, width, children, ref]);
   if (!anchor) return null;
@@ -319,6 +323,34 @@ function inBlockField(e: Event): boolean {
 /** Top-level block index → its rendered element. */
 function blockDom(editor: Editor, index: number): HTMLElement | null {
   return blockElements(editor.view.dom as HTMLElement)[index] ?? null;
+}
+
+/**
+ * The first visible block whose box (give or take 2px) holds `y`, or -1. Blocks run down the page in order,
+ * so a binary search measures a handful of them instead of every line of a long note on each mouse move.
+ */
+function blockIndexAt(children: HTMLElement[], y: number): number {
+  let lo = 0;
+  let hi = children.length - 1;
+  let hit = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    // Blocks folded into a collapsed toggle have no box: measure the next visible one.
+    let at = mid;
+    while (at <= hi && children[at]!.classList.contains("fb-hidden")) at++;
+    if (at > hi) {
+      hi = mid - 1;
+      continue;
+    }
+    const r = children[at]!.getBoundingClientRect();
+    if (y < r.top - 2) hi = mid - 1;
+    else if (y > r.bottom + 2) lo = at + 1;
+    else {
+      hit = at;
+      hi = mid - 1;
+    }
+  }
+  return hit;
 }
 
 export function EditorMenus({
@@ -897,13 +929,18 @@ export function EditorMenus({
     };
   }, [editor]);
 
+  const emptyLabel = open?.kind === "page" ? "Type to search pages" : "No matches";
+  // How many results, once typing pauses (not on every key). The region stays mounted outside the list,
+  // so the first count is read too.
+  const resultsLive = useDebounced(menuShown ? (items.length ? `${items.length} result${items.length === 1 ? "" : "s"}` : emptyLabel) : "", 400);
+
   return (
     <>
+      <p className="sr-only" aria-live="polite">
+        {resultsLive}
+      </p>
       <Popover anchor={open ? anchor : null} label={menuLabel} role="presentation" scroll={false}>
-        <ListMenu items={items} active={active} setActive={setActive} onRun={run} listId={listId} label={menuLabel} emptyLabel={open?.kind === "page" ? "Type to search pages" : "No matches"} />
-        <p className="sr-only" aria-live="polite">
-          {open ? `${items.length} suggestion${items.length === 1 ? "" : "s"}` : ""}
-        </p>
+        <ListMenu items={items} active={active} setActive={setActive} onRun={run} listId={listId} label={menuLabel} emptyLabel={emptyLabel} />
       </Popover>
       <input
         ref={imageInput}
@@ -1213,8 +1250,15 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     const left = Math.min(Math.max(8, state.left - w / 2), window.innerWidth - w - 8);
+    // Above the on-screen keyboard, where there is one.
+    const bottom = visibleBottom();
+    const fitsAbove = state.top - h - 8 >= 8;
+    // On touch screens the system's own copy and paste menu sits above the selection, so the toolbar goes
+    // below it (clear of the selection handles), unless only above has room.
+    const below = coarsePointer() ? state.bottom + 16 : state.bottom + 8;
+    const above = coarsePointer() ? fitsAbove && below + h > bottom - 8 : fitsAbove;
     // A selection taller than the window (⌘A in a long note): the toolbar stays on screen.
-    const top = Math.min(state.top - h - 8 >= 8 ? state.top - h - 8 : state.bottom + 8, window.innerHeight - h - 8);
+    const top = Math.min(above ? state.top - h - 8 : below, bottom - h - 8);
     setPlaced({ left, top: Math.max(8, top) });
   }, [state, mode]);
 
@@ -1583,16 +1627,17 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   const justDragged = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
+  // Touch screens have no hover: the grip stays beside the line with the caret instead.
+  const coarse = useMediaQuery("(pointer: coarse)");
+  const pressingHandle = useRef(false);
 
   useEffect(() => {
+    if (coarse) return;
     const dom = editor.view.dom as HTMLElement;
     const onMove = (e: MouseEvent) => {
       if (menu || isDragging()) return;
       const children = blockElements(dom);
-      const idx = children.findIndex((c) => {
-        const r = c.getBoundingClientRect();
-        return e.clientY >= r.top - 2 && e.clientY <= r.bottom + 2 && !c.classList.contains("fb-hidden");
-      });
+      const idx = blockIndexAt(children, e.clientY);
       if (idx < 0) return;
       const line = handleLine(children[idx]!);
       setHover({ index: idx, top: line.top, left: blockIndentLeft(children[idx]!), height: line.height });
@@ -1600,9 +1645,45 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     const parent = dom.parentElement?.parentElement ?? dom;
     parent.addEventListener("mousemove", onMove);
     return () => parent.removeEventListener("mousemove", onMove);
-  }, [editor, menu]);
+  }, [editor, menu, coarse]);
+
+  // Touch: follows the caret's block as it moves, as the note changes (typing) and as the page scrolls.
+  useEffect(() => {
+    if (!coarse) return;
+    const dom = editor.view.dom as HTMLElement;
+    let frame = 0;
+    const place = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (menu || isDragging()) return;
+        if (!editor.isFocused && !pressingHandle.current) return setHover(null);
+        const idx = editor.state.selection.$head.index(0);
+        const el = blockElements(dom)[idx];
+        if (!el || el.classList.contains("fb-hidden")) return setHover(null);
+        const line = handleLine(el);
+        setHover({ index: idx, top: line.top, left: blockIndentLeft(el), height: line.height });
+      });
+    };
+    place();
+    editor.on("selectionUpdate", place);
+    editor.on("update", place);
+    editor.on("focus", place);
+    editor.on("blur", place);
+    window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    return () => {
+      cancelAnimationFrame(frame);
+      editor.off("selectionUpdate", place);
+      editor.off("update", place);
+      editor.off("focus", place);
+      editor.off("blur", place);
+      window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+    };
+  }, [editor, menu, coarse]);
 
   useEffect(() => {
+    if (coarse) return;
     const onScroll = () => setHover(null);
     window.addEventListener("scroll", onScroll, true);
     // Any change to the note can move or remove the hovered block: the handle reappears on the next move.
@@ -1612,7 +1693,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       window.removeEventListener("scroll", onScroll, true);
       editor.off("update", onUpdate);
     };
-  }, [editor]);
+  }, [editor, coarse]);
 
   // Announce block selections to screen readers.
   useEffect(() => {
@@ -1770,12 +1851,18 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
           className="ui-raised fixed z-30 flex items-center gap-px rounded-[8px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
           // Where there's no room beside the line (narrow windows, phones) only the grip shows, so the handle
           // never covers the start of the text (the grip's menu has Insert below).
-          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 >= 4 ? hover.left - 58 : Math.max(2, hover.left - 28) }}
+          // On touch screens only the grip shows too (Return adds a line there).
+          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 >= 4 && !coarse ? hover.left - 58 : Math.max(2, hover.left - 28) }}
           onMouseDown={(e) => e.preventDefault()}
+          onPointerDownCapture={() => {
+            // A tap here mustn't hide the grip (the editor can lose focus before the click lands).
+            pressingHandle.current = true;
+            window.setTimeout(() => (pressingHandle.current = false), 600);
+          }}
         >
           <button
             type="button"
-            hidden={hover.left - 58 < 4}
+            hidden={hover.left - 58 < 4 || coarse}
             aria-label="Insert block below"
             className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {
@@ -1792,7 +1879,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
           <button
             type="button"
             aria-label="Drag to move, click for block options, Shift-click to select several blocks"
-            className="grid h-6 w-6 cursor-grab touch-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing"
+            // A 44px target for a finger, reaching left of the grip so it never covers the text.
+            className="relative grid h-6 w-6 cursor-grab touch-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:-left-4 pointer-coarse:after:-right-1 pointer-coarse:after:content-['']"
             onPointerDown={(e) => {
               if (e.button !== 0 || e.shiftKey) return;
               e.preventDefault();

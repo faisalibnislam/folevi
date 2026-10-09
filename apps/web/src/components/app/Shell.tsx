@@ -9,6 +9,7 @@ import { useAppState } from "@/lib/app/state";
 import { TabsProvider, useViewTab } from "@/lib/app/tabs";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { IconButton } from "@/components/ui/Button";
 import { Sidebar } from "./Sidebar";
 import { RouteView } from "./RouteView";
@@ -139,18 +140,6 @@ export function useShell(): ShellValue {
   const ctx = useContext(ShellContext);
   if (!ctx) throw new Error("useShell outside Shell");
   return ctx;
-}
-
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    setMatches(mq.matches);
-    const on = () => setMatches(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, [query]);
-  return matches;
 }
 
 export function Shell() {

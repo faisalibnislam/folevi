@@ -11,6 +11,7 @@ import { hiddenIndices, neighbourIndex } from "./blockSelectionState";
 import { setBlockSelection } from "./blockSelection";
 import { sliceToText } from "./clipboardText";
 import { clipboardSerializer } from "./clipboardHtml";
+import { announce } from "@/lib/a11y/announce";
 
 /** Every top-level block has a unique id; depth is always valid. Runs after every transaction. */
 /** The empty line made for a composition that started over a selected block (see compositionend). */
@@ -146,6 +147,9 @@ export const BlockIdentity = Extension.create({
         },
         appendTransaction: (transactions, _old, state) => {
           if (!transactions.some((t) => t.docChanged)) return null;
+          // Typing and formatting inside lines can't add, copy or move a block: no need to walk the note, unless
+          // a line typed in has no id yet (a new note's first line).
+          if (transactions.every((t) => !t.docChanged || (onlyEditsText(t) && editsIdentifiedLines(t)))) return null;
           const tr = state.tr;
           const seen = new Set<string>();
           let pos = 0;
@@ -269,10 +273,19 @@ function commentLine(blockId: string, depth: number, list: boolean, s: CommentSu
 
 export const decorationsKey = new PluginKey<DecorationInputs>("foleviDecorations");
 
-/** Numbering, hidden blocks, selection, conflicts, presence and comment lines for the whole note. */
+/** The deeper shade of a person's colour, for small light text on it in light mode ("accent" is deep already). */
+export function personInk(color: string): string {
+  return color === "accent" ? "var(--color-accent)" : `var(--color-${color}-ink, var(--color-${color}))`;
+}
+
+/**
+ * Hidden blocks, selection, conflicts, presence and comment lines for the whole note. Numbering is drawn
+ * with CSS counters (editor.css) and "Show editors" with a stylesheet (authorSheet): ProseMirror's cost for
+ * decorations on top-level blocks grows with the number of lines times the number of decorations, which a
+ * long note feels on every key.
+ */
 function buildDecorations(doc: PMNode, inputs: DecorationInputs): DecorationSet {
   const decos: Decoration[] = [];
-  const counters: number[] = [];
   let hideBelow: number | null = null;
   let pos = 0;
   doc.forEach((node) => {
@@ -283,28 +296,14 @@ function buildDecorations(doc: PMNode, inputs: DecorationInputs): DecorationSet 
     const attrs: Record<string, string> = {};
     const classes: string[] = [];
     if (hideBelow !== null) classes.push("fb-hidden");
-    if (node.type.name === "numbered") {
-      counters.length = depth + 1;
-      counters[depth] = (counters[depth] ?? 0) + 1;
-      attrs["data-index"] = String(counters[depth]);
-    } else {
-      counters.length = depth;
-    }
     if (node.type.name === "toggle" && node.attrs.collapsed && hideBelow === null) hideBelow = depth;
     if (id && inputs.selectedBlocks.has(id)) classes.push("fb-selected");
     if (id && inputs.conflictBlocks.has(id)) classes.push("fb-conflict");
-    if (id && inputs.commentBlocks.has(id)) attrs["data-has-comments"] = "true";
     const who = id ? inputs.presence.find((p) => p.blockId === id) : undefined;
     if (who) {
       classes.push("fb-presence");
-      attrs.style = `--presence:var(--color-${who.color === "accent" ? "accent" : who.color})`;
+      attrs.style = `--presence:var(--color-${who.color});--presence-ink:${personInk(who.color)}`;
       attrs["data-presence"] = who.name;
-    }
-    const author = id ? inputs.authors?.get(id) : undefined;
-    if (author && !who) {
-      classes.push("fb-authored");
-      attrs.style = `--author:var(--color-${author.color})`;
-      attrs["data-author"] = author.label;
     }
     if (classes.length || Object.keys(attrs).length) decos.push(Decoration.node(pos, end, { ...attrs, class: classes.join(" ") }));
     const summary = id ? inputs.commentSummaries?.get(id) : undefined;
@@ -320,7 +319,7 @@ function buildDecorations(doc: PMNode, inputs: DecorationInputs): DecorationSet 
 
 /**
  * Whether a transaction changes only text inside lines (typing, marks): then the decorations just move
- * with it. Anything that adds, removes, reorders or retypes blocks rebuilds them (numbering, hiding).
+ * with it. Anything that adds, removes, reorders or retypes blocks rebuilds them (hiding, comment lines).
  */
 function onlyEditsText(tr: Transaction): boolean {
   return tr.steps.every((step, i) => {
@@ -339,12 +338,41 @@ function onlyEditsText(tr: Transaction): boolean {
   });
 }
 
+/** Whether every step of a transaction stays inside one line that already has an id. */
+function editsIdentifiedLines(tr: Transaction): boolean {
+  return tr.steps.every((step, i) => {
+    const { from, to } = step as unknown as { from: number; to: number };
+    const $from = tr.docs[i]!.resolve(from);
+    return $from.depth >= 1 && to <= $from.end(1) && Boolean($from.node(1).attrs.id);
+  });
+}
+
 const decoCacheKey = new PluginKey<DecorationSet>("foleviDecorationCache");
 
-/** Numbering, collapsed toggles, presence, comment markers, block selection and conflict markers. */
+/** Any text as a quoted CSS string (also an attribute value in a selector). */
+function cssString(text: string): string {
+  return `"${text.replace(/[\\"]|[^ -~\u00a0-\uffff]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `)}"`;
+}
+
+/**
+ * "Show editors" as one stylesheet: each line's colour and label, by block id (editor.css draws the bar and
+ * the hover label from them). Written when the marks change, so they cost nothing per keystroke.
+ */
+export function authorSheet(authors: DecorationInputs["authors"]): string {
+  if (!authors?.size) return "";
+  let css = "";
+  for (const [id, a] of authors) {
+    const color = /^[a-z0-9-]+$/i.test(a.color) ? a.color : "ink-muted";
+    css += `.fb-show-editors>[data-block-id=${cssString(id)}]{--author:var(--color-${color});--author-ink:${personInk(color)};--author-label:${cssString(a.label)};--author-radius:0}\n`;
+  }
+  return css;
+}
+
+/** Hidden blocks, presence, comment lines, block selection and conflict markers; "Show editors". */
 export const BlockDecorations = Extension.create({
   name: "blockDecorations",
   addProseMirrorPlugins() {
+    let line: { doc: PMNode; pos: number; label: string; set: DecorationSet } | null = null;
     return [
       new Plugin<DecorationInputs>({
         key: decorationsKey,
@@ -367,6 +395,43 @@ export const BlockDecorations = Extension.create({
         },
         props: {
           decorations: (state) => decoCacheKey.getState(state),
+        },
+      }),
+      // "Show editors": the colours and labels are a stylesheet; the line with the caret also says who in words
+      // for screen readers and keyboards (one decoration, where a mark on every line would slow typing).
+      new Plugin({
+        key: new PluginKey("foleviAuthorSheet"),
+        view: (editorView) => {
+          const style = document.createElement("style");
+          style.setAttribute("data-fb-author-styles", "");
+          document.head.appendChild(style);
+          let shown: DecorationInputs["authors"];
+          const update = (view: EditorView) => {
+            const authors = decorationsKey.getState(view.state)?.authors;
+            if (authors === shown) return;
+            shown = authors;
+            style.textContent = authorSheet(authors);
+          };
+          update(editorView);
+          return { update, destroy: () => style.remove() };
+        },
+        props: {
+          attributes: (state): Record<string, string> => (decorationsKey.getState(state)?.authors?.size ? { class: "fb-show-editors" } : {}),
+          decorations: (state) => {
+            const inputs = decorationsKey.getState(state);
+            const $from = state.selection.$from;
+            if (!inputs?.authors?.size || $from.depth < 1) return null;
+            const node = $from.node(1);
+            const id = node.attrs.id as string | null;
+            const author = id ? inputs.authors.get(id) : undefined;
+            if (!author || inputs.presence.some((p) => p.blockId === id)) return null;
+            const pos = $from.before(1);
+            if (line?.doc !== state.doc || line.pos !== pos || line.label !== author.label) {
+              const description = `Last edited by ${author.label.replace(" · ", ", ")}`;
+              line = { doc: state.doc, pos, label: author.label, set: DecorationSet.create(state.doc, [Decoration.node(pos, pos + node.nodeSize, { "aria-description": description })]) };
+            }
+            return line.set;
+          },
         },
       }),
     ];
@@ -722,10 +787,13 @@ export const BlockKeymap = Extension.create({
         if (cur.node.type.name === "todo") {
           const checked = !cur.node.attrs.checked;
           editor.view.dispatch(editor.state.tr.setNodeMarkup(cur.pos, undefined, { ...cur.node.attrs, checked, completedAt: checked ? Date.now() : null }));
+          announce(checked ? "Done" : "Not done");
           return true;
         }
         if (cur.node.type.name === "toggle") {
-          editor.view.dispatch(editor.state.tr.setNodeMarkup(cur.pos, undefined, { ...cur.node.attrs, collapsed: !cur.node.attrs.collapsed }));
+          const collapsed = !cur.node.attrs.collapsed;
+          editor.view.dispatch(editor.state.tr.setNodeMarkup(cur.pos, undefined, { ...cur.node.attrs, collapsed }));
+          announce(collapsed ? "Collapsed" : "Expanded");
           return true;
         }
         return false;

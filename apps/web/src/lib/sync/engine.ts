@@ -2,7 +2,7 @@
 
 import type { ConvexReactClient } from "convex/react";
 import { ConvexError } from "convex/values";
-import { randomNoteEmoji, sync, type ChangedField, type ConflictRecord, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
+import { canonicalJson, flattenTree, randomNoteEmoji, sync, type ChangedField, type ConflictRecord, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { ACCOUNT_SYNC_KEY, localDb } from "./db";
 
@@ -64,8 +64,10 @@ export class SyncEngine {
     const engine = new SyncEngine(client, accountKey, scope, deviceId);
     const saved = await loadAccountState(accountKey);
     if (saved) {
-      // Anything in flight when the page closed may or may not have landed: resend (ops are idempotent).
-      engine.state = { ...sync.emptySyncState(), ...saved, pending: [...saved.inflight, ...saved.pending], inflight: [] };
+      // Anything in flight when the page closed may or may not have landed: resend (ops are idempotent), as
+      // sent, so nothing typed now is merged into one the server may already hold.
+      const inflight = saved.inflight.map((op) => (op.sent ? op : { ...op, sent: true }));
+      engine.state = { ...sync.emptySyncState(), ...saved, pending: [...inflight, ...saved.pending], inflight: [] };
     }
     // This tab's own journal (a reload), and those left by tabs that have since closed.
     const journals = await readJournals(accountKey);
@@ -250,7 +252,11 @@ export class SyncEngine {
 
   // ------------------------------------------------------------------ local changes
 
-  upsertBlock(documentId: string, block: WireBlock, fields: ChangedField[]) {
+  /**
+   * `baseRevision`: the version the edit was made on, when the caller knows it's older than the one held (see
+   * `unshownRevision`).
+   */
+  upsertBlock(documentId: string, block: WireBlock, fields: ChangedField[], baseRevision?: number | null) {
     // A block with an open conflict keeps the person's own version in the conflict (that's what the editor
     // shows, and what "Keep mine" saves) until they choose: queuing it would overwrite the other version unseen.
     const at = this.openConflictIndex(block.id);
@@ -261,9 +267,19 @@ export class SyncEngine {
       this.commit({ ...this.state, conflicts });
       return;
     }
+    // Undo bringing back a block this device deleted, after "Edited elsewhere" had already brought it back
+    // with the other version: the copy is the person's own version, kept beside theirs, so the question of
+    // whether to keep the block is answered.
+    if (!this.state.blocks[block.id]) {
+      const key = contentOf(block);
+      const kept = this.state.conflicts.findIndex(
+        (c) => c.reason === "edited" && c.documentId === documentId && contentOf(c.client) === key && this.state.blocks[c.blockId]?.deleted === false,
+      );
+      if (kept >= 0) this.commit({ ...this.state, conflicts: this.state.conflicts.filter((_, i) => i !== kept) });
+    }
     // Blocks whose attachment is still uploading are held back until the upload finishes.
     const upload = this.state.uploads.find((u) => u.blockId === block.id && u.state !== "done");
-    this.commit(sync.localUpsert(this.state, { opId: ulid(), documentId, block, fields, blockedBy: upload?.uploadId }));
+    this.commit(sync.localUpsert(this.state, { opId: ulid(), documentId, block, fields, blockedBy: upload?.uploadId, baseRevision }));
     this.scheduleFlush();
   }
 
@@ -298,7 +314,7 @@ export class SyncEngine {
     return this.state.conflicts.findIndex((c) => c.blockId === blockId && c.reason !== "edited");
   }
 
-  deleteBlock(documentId: string, blockId: string) {
+  deleteBlock(documentId: string, blockId: string, baseRevision?: number | null) {
     // Deleting it again after "Edited elsewhere" brought it back: that question is answered.
     if (this.state.conflicts.some((c) => c.blockId === blockId && c.reason === "edited")) {
       this.commit({ ...this.state, conflicts: this.state.conflicts.filter((c) => !(c.blockId === blockId && c.reason === "edited")) });
@@ -311,7 +327,7 @@ export class SyncEngine {
       if (record.reason === "deleted" || this.state.blocks[blockId]?.deleted) return;
     }
     this.deletedHere.add(blockId);
-    this.commit(sync.localDelete(this.state, { opId: ulid(), documentId, blockId }));
+    this.commit(sync.localDelete(this.state, { opId: ulid(), documentId, blockId, baseRevision }));
     this.scheduleFlush();
   }
 
@@ -354,7 +370,8 @@ export class SyncEngine {
     const known = this.docRevisions.get(documentId);
     if (baseRevision !== null && known !== undefined && known > baseRevision) baseRevision = known;
     // Coalesce with a queued (not yet sent) update of the same document.
-    const idx = this.state.pending.findIndex((op) => op.kind === "document.update" && op.documentId === documentId);
+    // (Never with one that was sent already: a resend of it is answered as a replay of what it first carried.)
+    const idx = this.state.pending.findIndex((op) => op.kind === "document.update" && op.documentId === documentId && !op.sent);
     if (idx >= 0) {
       const prev = this.state.pending[idx] as Extract<SyncOp, { kind: "document.update" }>;
       const pending = [...this.state.pending];
@@ -370,7 +387,22 @@ export class SyncEngine {
   }
 
   resolveConflict(conflictId: string, choice: "theirs" | "mine" | "both", newRank?: string) {
-    const documentId = this.state.conflicts.find((c) => c.id === conflictId)?.documentId;
+    const record = this.state.conflicts.find((c) => c.id === conflictId);
+    const documentId = record?.documentId;
+    // "Delete anyway" takes what's nested under it too (lines written there meanwhile kept the first delete
+    // from going through): each is deleted first, deepest first, so the server sees them all asked for.
+    if (record?.reason === "edited" && choice === "mine") {
+      const live = this.documentBlocks(record.documentId);
+      const under = new Set([record.blockId]);
+      const nested: string[] = [];
+      for (const { block } of flattenTree(live)) {
+        if (block.parentId !== null && under.has(block.parentId)) {
+          under.add(block.id);
+          nested.push(block.id);
+        }
+      }
+      if (nested.length) this.batch(() => nested.reverse().forEach((id) => this.deleteBlock(record.documentId, id)));
+    }
     this.commit(
       sync.resolveConflict(this.state, {
         conflictId,
@@ -417,9 +449,31 @@ export class SyncEngine {
     }
     if (blocks !== next.blocks) next = { ...next, blocks };
     if (next !== this.state) {
+      for (const id of this.blockIdsOf(next.blocks, documentId)) {
+        if (next.blocks[id] !== this.state.blocks[id] && !this.unshown.has(id)) this.unshown.set(id, this.state.blocks[id]?.serverRevision ?? null);
+      }
       this.commit(next);
       this.emit({ type: "remote", documentId });
     }
+  }
+
+  /**
+   * Blocks a server row changed after the open editor last showed them (it can't take a change while text is
+   * being composed with an input method): the revision the editor's copy is based on. An edit the editor saves
+   * to one of these is based on that, so the server sees two edits and asks, instead of taking the newer
+   * version as seen and overwriting it.
+   */
+  private unshown = new Map<string, number | null>();
+
+  /** The revision the editor's copy of a block is based on, when it's older than the one held; else undefined. */
+  unshownRevision(blockId: string): number | null | undefined {
+    return this.unshown.get(blockId);
+  }
+
+  /** The editor shows the document as the engine holds it now. */
+  markShown(documentId: string) {
+    if (!this.unshown.size) return;
+    for (const id of this.blockIdsOf(this.state.blocks, documentId)) this.unshown.delete(id);
   }
 
   /**
@@ -540,7 +594,7 @@ export class SyncEngine {
         let results: (OpResult & { document?: unknown })[];
         try {
           results = (await withTimeout(
-            this.client.mutation(api.sync.push, { scope: this._scope, deviceId: this.deviceId, ops: batched.inflight as never }),
+            this.client.mutation(api.sync.push, { scope: this._scope, deviceId: this.deviceId, ops: batched.inflight.map(wireOp) as never }),
             45_000,
           )) as (OpResult & { document?: unknown })[];
         } catch (error) {
@@ -587,6 +641,15 @@ export class SyncEngine {
     }
   }
 }
+
+/** An op as the server takes it (without what only this device keeps about it). */
+function wireOp(op: SyncOp): SyncOp {
+  if (!("sent" in op)) return op;
+  const { sent: _sent, ...rest } = op;
+  return rest as SyncOp;
+}
+
+const contentOf = (b: Pick<WireBlock, "type" | "text" | "props">) => canonicalJson({ t: b.type, x: b.text, p: b.props });
 
 /** How long a commit may wait for others to share its save (see `writeState`). */
 const SAVE_DELAY = 100;

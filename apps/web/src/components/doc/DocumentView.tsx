@@ -45,7 +45,7 @@ import { ViewChrome, useShell } from "@/components/app/Shell";
 import { setBlockHighlight } from "@/components/editor/blockHighlight";
 import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
-import type { DecorationInputs } from "@/components/editor/plugins";
+import { personInk, type DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
 import { BlurredBackdrop } from "./BlurredBackdrop";
 import { NotePaletteProvider } from "@/components/editor/notePalette";
@@ -65,6 +65,7 @@ import { MoveToFolderDialog } from "@/components/views/MoveToFolderDialog";
 import { useNoteActions } from "@/components/views/noteActions";
 import { exportHtml, exportMarkdown, exportPdf } from "./export";
 import { PageDock } from "./PageDock";
+import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
 import "@/components/editor/flowchart/flowchart.css";
@@ -93,6 +94,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
   toggleSidebarRef.current = toggleSidebar;
+  // The page dock and its panels sit above the on-screen keyboard.
+  useKeyboardInset();
   const sidebarModeRef = useRef({ mode: docSidebarMode, set: setDocSidebarMode });
   sidebarModeRef.current = { mode: docSidebarMode, set: setDocSidebarMode };
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("format");
@@ -701,7 +704,15 @@ export function DocumentView({ documentId }: { documentId: string }) {
               onEnter={focusEditorStart}
               hasContent={Boolean(summary?.excerpt?.trim())}
             />
-            {conflictBlockIds.length ? <ConflictBanner documentId={documentId} /> : null}
+            {conflictBlockIds.length ? (
+              <ConflictBanner
+                documentId={documentId}
+                onResolvedAll={(blockId) => {
+                  editorRef.current?.focusBlock(blockId);
+                  if (!editorRef.current?.editor?.isFocused) editorRef.current?.editor?.commands.focus();
+                }}
+              />
+            ) : null}
             {showEditors && blockAuthors ? <EditorsBar authors={blockAuthors} onHide={() => setShowEditors(false)} /> : null}
             <div className="px-5 sm:px-16">
               {summary?.kind === "collectionRow" ? (
@@ -780,7 +791,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                   label="Document actions"
                   side="top"
                   align="end"
-                  triggerClassName="grid h-10 w-10 place-items-center rounded-[6px] text-ink transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  triggerClassName="grid h-10 w-10 place-items-center rounded-[6px] text-ink pointer-coarse:h-11 pointer-coarse:w-11 transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   trigger={<MoreHorizontal size={16} aria-hidden />}
                   items={actions}
                 />
@@ -798,7 +809,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 closeInspector();
               }
             }}
-            className="ui-pop absolute bottom-[84px] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-[14px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
+            className="ui-pop absolute bottom-[calc(84px+var(--kb-inset,0px))] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px-var(--kb-inset,0px)))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-[14px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
           >
             <Inspector
               documentId={documentId}
@@ -872,7 +883,13 @@ function PresenceAvatars({ people }: { people: { profileId: string; name: string
   return (
     <div className="mr-1 flex -space-x-1.5" aria-label={`Also here: ${people.map((p) => p.name).join(", ")}`} role="group">
       {people.slice(0, 4).map((p) => (
-        <span key={p.profileId} title={p.name} className="grid h-6 w-6 place-items-center rounded-full border-2 border-canvas text-[10px] font-semibold text-white" style={{ background: `var(--color-${p.color === "accent" ? "accent" : p.color})` }}>
+        // White initials on the deeper shade of their colour in light mode (the bright one is too pale for small text).
+        <span
+          key={p.profileId}
+          title={p.name}
+          className="grid h-6 w-6 place-items-center rounded-full border-2 border-canvas bg-(--who-ink) text-[10px] font-semibold text-white dark:bg-(--who)"
+          style={{ "--who": `var(--color-${p.color})`, "--who-ink": personInk(p.color) } as React.CSSProperties}
+        >
           {p.name.slice(0, 1).toUpperCase()}
         </span>
       ))}
@@ -1179,7 +1196,7 @@ function DocumentHeader({
   );
 }
 
-function ConflictBanner({ documentId }: { documentId: string }) {
+function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /** The last conflict was settled from here: focus goes back to its block. */ onResolvedAll: (blockId: string) => void }) {
   const { engine } = useAppState();
   const conflicts = useEngineSelector(engine, (s) => s.conflicts.filter((c) => c.documentId === documentId), sameItems);
   const [openId, setOpenId] = useState<string | null>(conflicts[0]?.id ?? null);
@@ -1187,20 +1204,37 @@ function ConflictBanner({ documentId }: { documentId: string }) {
   // The other version as it is now (it may have been edited again since the conflict began): what
   // "Keep theirs" keeps, and what "Keep mine" replaces.
   const live = useEngineSelector(engine, (s) => (shown ? s.blocks[shown.blockId] : undefined));
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusNext = useRef(false);
+  // After settling one of several, focus goes to the next one's heading (not lost to the page).
+  useEffect(() => {
+    if (!focusNext.current) return;
+    focusNext.current = false;
+    headingRef.current?.focus();
+  }, [shown?.id]);
   if (!shown || !engine) return null;
   const c = shown;
   const theirs = live && !live.deleted ? live.block : c.server;
   const text = (b: WireBlock | null) =>
     b ? (b.text.length ? b.text.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : n.type === "date" ? n.date : n.label)).join("") : `(${b.type} block)`) : "(deleted)";
+  const resolve = (choice: "mine" | "theirs" | "both", rank?: string) => {
+    const hadFocus = sectionRef.current?.contains(document.activeElement) ?? false;
+    engine.resolveConflict(c.id, choice, rank);
+    if (!hadFocus) return;
+    if (conflicts.length === 1) onResolvedAll(c.blockId);
+    else focusNext.current = true;
+  };
   const keepBoth = () => {
     const blocks = engine.documentBlocks(documentId);
     const server = blocks.find((b) => b.id === c.blockId) ?? c.server;
     const rank = server ? rankForPosition(blocks, server.parentId, server.id) : undefined;
-    engine.resolveConflict(c.id, "both", rank);
+    resolve("both", rank);
   };
+  // Not an alert: the sync status already announces conflicts.
   return (
-    <section role="alert" aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-[6px] bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
-      <h2 id={`conflict-${c.id}`} className="text-sm font-semibold text-plum-ink">
+    <section ref={sectionRef} aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-[6px] bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
+      <h2 ref={headingRef} id={`conflict-${c.id}`} tabIndex={-1} className="text-sm font-semibold text-plum-ink outline-none">
         {conflicts.length === 1 ? "This block was changed in two places" : `${conflicts.length} blocks were changed in two places`}
       </h2>
       <p className="mt-1 text-sm text-ink">Both versions are kept. Nothing is lost until you choose.</p>
@@ -1217,19 +1251,19 @@ function ConflictBanner({ documentId }: { documentId: string }) {
       <div className="mt-3 flex flex-wrap gap-2">
         {c.reason === "edited" ? (
           <>
-            <Button size="sm" variant="primary" onClick={() => engine.resolveConflict(c.id, "theirs")}>
+            <Button size="sm" variant="primary" onClick={() => resolve("theirs")}>
               Keep it
             </Button>
-            <Button size="sm" onClick={() => engine.resolveConflict(c.id, "mine")}>
+            <Button size="sm" onClick={() => resolve("mine")}>
               Delete anyway
             </Button>
           </>
         ) : (
           <>
-            <Button size="sm" variant="primary" onClick={() => engine.resolveConflict(c.id, "mine")}>
+            <Button size="sm" variant="primary" onClick={() => resolve("mine")}>
               Keep mine
             </Button>
-            <Button size="sm" onClick={() => engine.resolveConflict(c.id, "theirs")}>
+            <Button size="sm" onClick={() => resolve("theirs")}>
               Keep theirs
             </Button>
           </>

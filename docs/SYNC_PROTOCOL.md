@@ -49,7 +49,7 @@ offsets as identity. Inserting between two siblings uses `rankBetween(prev, next
 
 ```ts
 type SyncOp =
-  | { opId; kind: "block.upsert"; documentId; block: WireBlock; baseRevision: number | null; fields: ("content" | "position")[] }
+  | { opId; kind: "block.upsert"; documentId; block: WireBlock; baseRevision: number | null; fields: ("content" | "position" | "collapsed")[] }
   | { opId; kind: "block.delete"; documentId; blockId; baseRevision: number | null }
   | { opId; kind: "block.restore"; documentId; blockId }
   | { opId; kind: "document.create"; document: WireDocumentCreate }
@@ -125,10 +125,15 @@ For each operation, in order, inside one mutation per batch (max 100 ops):
      are still applied).
    - `position` changes are last-writer-wins. If the new parent is missing or deleted, the block is
      re-parented to the root at the end of the document and the result carries `normalized: true`.
+   - `collapsed` (a toggle opened or closed, and nothing else) writes only `props.collapsed`,
+     last-writer-wins, without bumping `contentRev`: it never conflicts with an edit of the text.
    - Otherwise apply, bump `revision`, and bump `contentRev` / `positionRev` as appropriate.
    - Updating a tombstoned block → `conflict` with `reason: "deleted"`.
-6. **Delete** sets `deletedAt` (tombstone) on the block and its descendants. Always `applied`; the
-   content stays recoverable from Trash/version history until the retention job removes it.
+6. **Delete** sets `deletedAt` (tombstone) on the block and its descendants, unless the block's
+   `contentRev > baseRevision`, or (for a delete with a `baseRevision`) a live descendant is not deleted
+   by the same batch with a base no older than its `contentRev`: then `conflict` (`reason: "content"`, `client: null`) and nothing is
+   deleted. Clients delete every block they remove, deepest first. The content of a deleted block stays
+   recoverable from Trash/version history until the retention job removes it.
 7. Every accepted change increments its scope's counter, stamps rows with `seq`, updates the task
    projection for `todo` blocks, updates the document search text, and records the op result in
    `syncOperations` (retained 30 days).
@@ -167,9 +172,12 @@ The client state is `{ entities, pending, inflight, conflicts, status }`, persis
 (IndexedDB on web, SQLite on Mac). Pure reducer functions:
 
 - `localUpsert / localDelete / localRestore`: apply optimistically, append an op to `pending`. An op
-  that is not in flight is **coalesced** with a later op on the same block (create+update → create,
-  update+update → one update with the union of `fields`, create+delete → both dropped).
-- `takeBatch`: moves up to 100 ops, in order, to `inflight`.
+  that was never sent is **coalesced** with a later op on the same block (create+update → create,
+  update+update → one update with the union of `fields`, create+delete → both dropped). An op that was
+  sent (`sent: true`, kept when a failed batch is queued again) never changes: a resend is answered as a
+  replay of its first copy.
+- `takeBatch`: moves up to 100 ops, in order, to `inflight`, marking them `sent`. A second upsert or
+  delete of a block already upserted in the batch waits for the next batch (it is rebased on the answer).
 - `applyResults`: `applied`/`duplicate` → record `revision` as the new base, drop the op;
   `conflict` → adopt the server version locally, store the client version in `conflicts`;
   `rejected` → drop the op, revert to the last acknowledged server state and surface the error.

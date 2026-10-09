@@ -8,6 +8,7 @@ import type { Editor } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import {
   Bold,
   CalendarDays,
@@ -732,16 +733,18 @@ function Panel({
     const h = el.offsetHeight;
     let left: number;
     let top: number;
+    // Above the on-screen keyboard, where there is one.
+    const bottom = visibleBottom();
     if (root) {
       left = anchor.left + w + margin > window.innerWidth ? anchor.left - w : anchor.left;
-      top = anchor.bottom + h + margin > window.innerHeight ? anchor.top - h : anchor.bottom;
+      top = anchor.bottom + h + margin > bottom ? anchor.top - h : anchor.bottom;
     } else {
       // Beside the parent row, its first item level with the row.
       left = anchor.right + w + margin > window.innerWidth ? anchor.left - w + 4 : anchor.right - 4;
       top = anchor.top - 6;
     }
     left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
-    top = Math.min(Math.max(margin, top), window.innerHeight - h - margin);
+    top = Math.min(Math.max(margin, top), bottom - h - margin);
     setPos({ left, top });
   }, [anchor, root]);
 

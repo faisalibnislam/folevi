@@ -112,6 +112,8 @@ describe("versions", () => {
     await editor.as.mutation(api.documents.nameVersion, { snapshotId: first.id!, name: "Kick-off" });
     const namedOnly = (await owner.as.query(api.documents.versions, { documentId, namedOnly: true })).versions;
     expect(namedOnly.map((v) => v.name)).toEqual(["Final draft", "Kick-off"]);
+    // Each is compared with the version saved just before it, listed or not.
+    expect(namedOnly.map((v) => v.previousId)).toEqual([first.id, null]);
     await owner.as.mutation(api.documents.nameVersion, { snapshotId: first.id!, name: "   " });
     list = (await owner.as.query(api.documents.versions, { documentId, namedOnly: true })).versions;
     expect(list.map((v) => v.name)).toEqual(["Final draft"]);
@@ -130,7 +132,7 @@ describe("versions", () => {
     expect(await lines()).toEqual(["Owner's line", "Second line"]);
     expect(undoVersionId).toBeTruthy();
     // The current version knows who removed the line the restore took out.
-    const now = await owner.as.query(api.documents.blockAuthors, { documentId });
+    const now = await owner.as.query(api.documents.blockAuthors, { documentId, since: undoVersionId! });
     expect(now.people[now.removed.find(([id]) => id === added.id)![1]]!.name).toBe("ver-restore-owner");
     await owner.as.mutation(api.documents.restoreSnapshot, { snapshotId: undoVersionId! });
     expect(await lines()).toEqual(["Owner's line", "Rewritten", "Added after"]);
@@ -178,5 +180,44 @@ describe("versions", () => {
     const left = (await owner.as.query(api.documents.versions, { documentId })).versions;
     expect(left.length).toBe(51);
     expect(left.some((v) => v.id === named.id && v.name === "Launch")).toBe(true);
+  });
+
+  test("restoring leaves lines that are already as they were alone: they keep who wrote them", async () => {
+    const t = setup();
+    const { owner, editor, workspaceId, documentId, b, revB } = await page(t, "ver-keepauthor");
+    const c = para(ulid(), "Editor's line", "X");
+    await push(editor, workspaceId, [upsert(documentId, c)]);
+    const version = await owner.as.mutation(api.documents.createSnapshot, { documentId, reason: "manual" });
+    await push(owner, workspaceId, [upsert(documentId, { ...b, text: [{ type: "text", text: "Rewritten" }] }, revB)]);
+    await owner.as.mutation(api.documents.restoreSnapshot, { snapshotId: version.id! });
+    const { authors, people } = await owner.as.query(api.documents.blockAuthors, { documentId });
+    const by = (id: string) => people[authors.find(([blockId]) => blockId === id)![1]]!.name;
+    expect(by(c.id)).toBe("ver-keepauthor-editor");
+    expect(by(b.id)).toBe("ver-keepauthor-owner");
+  });
+
+  test("version content lives in chunks, not on the version's row; older inline versions are moved there", async () => {
+    const t = setup();
+    const { owner, documentId } = await page(t, "ver-chunks");
+    const v = await owner.as.mutation(api.documents.createSnapshot, { documentId, reason: "manual" });
+    const rowOf = (id: string) => t.run(async (ctx) => (await ctx.db.query("documentSnapshots").withIndex("by_public_id", (q) => q.eq("publicId", id)).unique())!);
+    const row = await rowOf(v.id!);
+    expect(row.content ?? null).toBeNull();
+    expect(row.chunkCount).toBe(1);
+    // A version saved inline, as before.
+    const raw = (await owner.as.query(api.documents.snapshotContent, { snapshotId: v.id! }))!.content!;
+    const old = await t.run(async (ctx) => {
+      const { _id, _creationTime, ...rest } = row;
+      void _id;
+      void _creationTime;
+      const publicId = ulid();
+      await ctx.db.insert("documentSnapshots", { ...rest, publicId, chunkCount: undefined, content: JSON.stringify({ ...JSON.parse(raw), title: "Inline" }) });
+      return publicId;
+    });
+    await t.mutation(internal.migrations.chunkInlineSnapshots, {});
+    const moved = await rowOf(old);
+    expect(moved.content ?? null).toBeNull();
+    expect(moved.chunkCount).toBe(1);
+    expect(JSON.parse((await owner.as.query(api.documents.snapshotContent, { snapshotId: old }))!.content!).title).toBe("Inline");
   });
 });

@@ -249,6 +249,10 @@ export function storedContentKey(b: WireBlock, schema: Schema | null): string {
   return key;
 }
 
+function onlyCollapsed(a: WireBlock, b: WireBlock): boolean {
+  return contentKey(a) === contentKey({ ...b, props: { ...b.props, collapsed: a.props.collapsed } });
+}
+
 export function diffBlocks(previous: ReadonlyMap<string, WireBlock>, next: readonly WireBlock[], schema: Schema | null = null): BlockDiff {
   const upserts: BlockDiff["upserts"] = [];
   const seen = new Set<string>();
@@ -260,11 +264,33 @@ export function diffBlocks(previous: ReadonlyMap<string, WireBlock>, next: reado
       continue;
     }
     const fields: ChangedField[] = [];
-    if (storedContentKey(prev, schema) !== contentKey(b)) fields.push("content");
+    // A toggle opened or closed says so ("collapsed"): only that, it never conflicts with an edit of its text.
+    if (storedContentKey(prev, schema) !== contentKey(b)) {
+      const toggled = prev.type === "toggle" && b.type === "toggle" && Boolean(prev.props.collapsed) !== Boolean(b.props.collapsed);
+      if (!toggled || !onlyCollapsed(prev, b)) fields.push("content");
+      if (toggled) fields.push("collapsed");
+    }
     if (prev.parentId !== b.parentId || prev.rank !== b.rank) fields.push("position");
     if (fields.length) upserts.push({ block: b, fields });
   }
   const deletes: string[] = [];
   for (const id of previous.keys()) if (!seen.has(id)) deletes.push(id);
   return { upserts, deletes };
+}
+
+/**
+ * What the person changed: the editor's document against the blocks as the editor last showed them (never
+ * against newer ones it hasn't shown yet, which it would undo). Deletes come deepest first, so a parent's
+ * delete follows those of everything under it, even across batches: whatever is still under it when the
+ * server takes it is something this device never saw (and the server keeps it, asking first).
+ */
+export function localChanges(doc: PMNode, shown: ReadonlyMap<string, WireBlock>, schema: Schema | null = null): BlockDiff & { next: WireBlock[] } {
+  const next = docToBlocks(doc, shown);
+  const diff = diffBlocks(shown, next, schema);
+  const deleted = new Set(diff.deletes);
+  const deletes = flattenTree([...shown.values()])
+    .map((e) => e.block.id)
+    .filter((id) => deleted.has(id))
+    .reverse();
+  return { next, upserts: diff.upserts, deletes };
 }

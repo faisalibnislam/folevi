@@ -72,11 +72,11 @@ test("collections: inline names, typed filters (option and date pickers), persis
 
   // A board view stays selected across reloads.
   await pick(coll.getByRole("combobox", { name: "Add view" }), "Board");
-  await expect(coll.getByRole("tab", { name: "Board" })).toHaveAttribute("aria-selected", "true");
+  await expect(coll.getByRole("group", { name: "Views" }).getByRole("button", { name: "Board" })).toHaveAttribute("aria-pressed", "true");
   await page.reload();
   const again = page.getByRole("region", { name: "Collection Reading list" });
-  await expect(again.getByRole("tab", { name: "Board" })).toHaveAttribute("aria-selected", "true");
-  await again.getByRole("tab", { name: "Table" }).click();
+  await expect(again.getByRole("group", { name: "Views" }).getByRole("button", { name: "Board" })).toHaveAttribute("aria-pressed", "true");
+  await again.getByRole("group", { name: "Views" }).getByRole("button", { name: "Table" }).click();
   await expect(again.getByRole("textbox", { name: "Row name" })).toHaveValue("Dune");
 
   // Each row opens as its own page.

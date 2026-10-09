@@ -80,8 +80,12 @@ test("version history: name a version, see what changed and who changed it, rest
   await page.getByRole("button", { name: "Document actions" }).click();
   await page.getByRole("menuitem", { name: "Show editors" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Each line shows who last edited it." })).toContainText("History Keeper");
-  await expect(body.locator(".fb-authored").first()).toHaveAttribute("data-author", /History Keeper/);
+  // The marks are one stylesheet keyed by block id (a decoration on every line slowed typing in long notes).
+  await expect(body).toHaveClass(/fb-show-editors/);
+  const authorStyles = () => page.locator("style[data-fb-author-styles]").evaluate((el) => el.textContent ?? "");
+  await expect.poll(authorStyles).toContain("History Keeper");
   await page.getByRole("button", { name: "Hide editors" }).click();
-  await expect(body.locator(".fb-authored")).toHaveCount(0);
+  await expect(body).not.toHaveClass(/fb-show-editors/);
+  await expect.poll(authorStyles).not.toContain("History Keeper");
   await context.close();
 });

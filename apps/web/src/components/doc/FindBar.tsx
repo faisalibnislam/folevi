@@ -86,7 +86,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
             aria-expanded={showReplace}
             aria-controls={`${id}-replace`}
             onClick={() => setShowReplace((v) => !v)}
-            className="!h-8 !w-7"
+            className="!h-8 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11"
           >
             {showReplace ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
           </IconButton>
@@ -122,17 +122,17 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
           label="Match case"
           aria-pressed={state.caseSensitive}
           onClick={() => setFind(editor, { caseSensitive: !state.caseSensitive, index: 0 })}
-          className={`!h-8 !w-8 ${state.caseSensitive ? "!bg-heading !text-canvas" : ""}`}
+          className={`!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11 ${state.caseSensitive ? "!bg-heading !text-canvas" : ""}`}
         >
           <CaseSensitive size={16} aria-hidden />
         </IconButton>
-        <IconButton label="Previous match" shortcut="Shift+Enter" disabled={!count} onClick={() => step(-1)} className="!h-8 !w-8">
+        <IconButton label="Previous match" shortcut="Shift+Enter" disabled={!count} onClick={() => step(-1)} className="!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11">
           <ChevronUp size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Next match" shortcut="Enter" disabled={!count} onClick={() => step(1)} className="!h-8 !w-8">
+        <IconButton label="Next match" shortcut="Enter" disabled={!count} onClick={() => step(1)} className="!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11">
           <ChevronDown size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Close find" shortcut="Esc" onClick={close} className="!h-8 !w-8">
+        <IconButton label="Close find" shortcut="Esc" onClick={close} className="!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11">
           <X size={15} aria-hidden />
         </IconButton>
       </div>

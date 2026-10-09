@@ -4,9 +4,10 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import type { Editor } from "@tiptap/core";
+import type { Transaction } from "@tiptap/pm/state";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
-import { pageLinkStatusKey as key, type Status } from "./pageLinkStatus";
+import { pageLinkStatusKey as key, touchesPageLinks, type Status } from "./pageLinkStatus";
 
 function linkedIds(editor: Editor): string {
   const ids = new Set<string>();
@@ -21,7 +22,10 @@ export function PageLinkStatusWatcher({ editor }: { editor: Editor }) {
   const { engine } = useAppState();
   const [ids, setIds] = useState(() => linkedIds(editor));
   useEffect(() => {
-    const update = () => setIds(linkedIds(editor));
+    // The note is only walked again when an edit adds, removes or changes a link (not on every key).
+    const update = ({ transaction, appendedTransactions }: { transaction: Transaction; appendedTransactions: Transaction[] }) => {
+      if (touchesPageLinks(transaction) || appendedTransactions.some(touchesPageLinks)) setIds(linkedIds(editor));
+    };
     editor.on("update", update);
     return () => {
       editor.off("update", update);
@@ -42,7 +46,7 @@ export function PageLinkStatusWatcher({ editor }: { editor: Editor }) {
         else if (!info && !creating.has(id)) next[id] = "missing";
       }
     }
-    const now = key.getState(editor.state) ?? {};
+    const now = key.getState(editor.state)?.statuses ?? {};
     if (JSON.stringify(now) === JSON.stringify(next)) return;
     editor.view.dispatch(editor.state.tr.setMeta(key, next).setMeta("addToHistory", false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `list` is derived from `ids`

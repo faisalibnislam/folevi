@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { UndoRedo } from "@tiptap/extensions";
 import { TextSelection } from "@tiptap/pm/state";
@@ -11,6 +13,31 @@ import { blocksToDoc, diffBlocks, docToBlocks } from "@/components/editor/conver
 import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 
 const p = (text: string, depth = 0): JSONContent => ({ type: "paragraph", attrs: { depth }, content: text ? [{ type: "text", text }] : [] });
+const editorCss = readFileSync(join(__dirname, "../src/components/editor/editor.css"), "utf8");
+/** The numbers editor.css's counters show on the numbered lines (a small model of CSS counters on sibling lines). */
+function cssNumbers(dom: HTMLElement): string[] {
+  const rule = (selector: string) => {
+    const at = editorCss.indexOf(`${selector} { `);
+    return at < 0 ? "" : editorCss.slice(at + selector.length + 3, editorCss.indexOf("}", at));
+  };
+  const counters = new Map<string, number>();
+  const out: string[] = [];
+  for (const el of dom.children) {
+    const depth = el.getAttribute("data-depth");
+    if (depth === null) continue;
+    const numbered = el.classList.contains("fb-numbered");
+    const decl = rule(numbered ? `.ProseMirror.fb-editor > .fb-numbered[data-depth="${depth}"]` : `.ProseMirror.fb-editor > [data-depth="${depth}"]`);
+    const reset = /counter-reset: ([^;]+);/.exec(decl)?.[1];
+    if (reset && reset !== "none") for (const name of reset.split(" ")) counters.set(name, 0);
+    const inc = /counter-increment: ([^;]+);/.exec(decl)?.[1];
+    if (inc) counters.set(inc, (counters.get(inc) ?? 0) + 1);
+    if (numbered) {
+      const shown = /counter\((fb-n\d)\)/.exec(rule(`.ProseMirror.fb-editor > .fb-numbered[data-depth="${depth}"]::before`))?.[1];
+      out.push(String(shown ? counters.get(shown) : ""));
+    }
+  }
+  return out;
+}
 const make = (content: JSONContent[]) => new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS, BlockFormat, UndoRedo, BlockIdentity, BlockKeymap, MarkdownShortcuts, BlockDecorations], content: { type: "doc", content } });
 const lines = (e: Editor) => {
   const out: string[] = [];
@@ -78,7 +105,7 @@ describe("editor round three", () => {
 
   test("numbering stays right while typing and after structural edits", () => {
     const e = make([{ type: "numbered", attrs: { depth: 0 }, content: [{ type: "text", text: "a" }] }, { type: "numbered", attrs: { depth: 0 }, content: [{ type: "text", text: "b" }] }]);
-    const index = () => [...e.view.dom.querySelectorAll("[data-index]")].map((el) => el.getAttribute("data-index"));
+    const index = () => cssNumbers(e.view.dom);
     expect(index()).toEqual(["1", "2"]);
     e.commands.setTextSelection(2);
     type(e, "xyz");
@@ -86,6 +113,26 @@ describe("editor round three", () => {
     e.commands.setTextSelection(1);
     e.view.someProp("handleKeyDown", (f) => f(e.view, new KeyboardEvent("keydown", { key: "Enter" })));
     expect(index()).toEqual(["1", "2", "3"]);
+    // Numbering is CSS, not one decoration per line (those made every key slow in a long note).
+    expect(e.view.dom.querySelectorAll("[data-index]")).toHaveLength(0);
+    e.destroy();
+  });
+
+  test("typing in a line without an id (a new note's first line) gives it one; other typing leaves ids alone", () => {
+    const e = make([{ type: "paragraph", attrs: { id: null, depth: 0 }, content: [] }]);
+    e.commands.setTextSelection(1);
+    type(e, "h");
+    const id = e.state.doc.child(0).attrs.id;
+    expect(id).toBeTruthy();
+    type(e, "i");
+    expect(e.state.doc.child(0).attrs.id).toBe(id);
+    e.destroy();
+  });
+
+  test("numbers restart after another line at the same depth and count each nesting level apart", () => {
+    const n = (text: string, depth = 0): JSONContent => ({ type: "numbered", attrs: { depth }, content: [{ type: "text", text }] });
+    const e = make([n("a"), n("x", 1), n("y", 1), n("b"), p("break"), n("c"), p("child", 1), n("d"), n("z", 1)]);
+    expect(cssNumbers(e.view.dom)).toEqual(["1", "1", "2", "2", "1", "2", "1"]);
     e.destroy();
   });
 

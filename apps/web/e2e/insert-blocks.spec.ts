@@ -181,12 +181,12 @@ test.describe("Insert panel", () => {
     await panel.getByRole("button", { name: "Gallery" }).click();
     const gallery = page.getByRole("region", { name: "Collection Gallery" });
     await expect(gallery).toBeVisible({ timeout: 20_000 });
-    await expect(gallery.getByRole("tab", { name: /Gallery/ })).toHaveAttribute("aria-selected", "true");
+    await expect(gallery.getByRole("button", { name: /Gallery/ })).toHaveAttribute("aria-pressed", "true");
     await caretToEnd(page);
     await panel.getByRole("button", { name: "Kanban" }).click();
     const board = page.getByRole("region", { name: "Collection Kanban" });
     await expect(board).toBeVisible({ timeout: 20_000 });
-    await expect(board.getByRole("tab", { name: /Board/ })).toHaveAttribute("aria-selected", "true");
+    await expect(board.getByRole("button", { name: /Board/ })).toHaveAttribute("aria-pressed", "true");
     await waitForSaved(page);
 
     // Card: a nested page shown as a card (the new page opens to be titled).

@@ -79,21 +79,24 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
   const all = useQuery(api.documents.versions, { documentId });
   const named = useQuery(api.documents.versions, namedOnly ? { documentId, namedOnly: true } : "skip");
   const listed = namedOnly ? named : all;
-  const versions = useMemo(() => all?.versions ?? [], [all]);
-  const order = versions.findIndex((v) => v.id === selected);
-  const previousId = selected === CURRENT ? (versions[0]?.id ?? null) : (versions[order + 1]?.id ?? null);
-  const version = order >= 0 ? versions[order]! : null;
+  // (A named version can be older than the newest ones `all` holds: it's looked up in the named list too.)
+  const version = useMemo(
+    () => (selected === CURRENT ? null : (all?.versions.find((v) => v.id === selected) ?? named?.versions.find((v) => v.id === selected) ?? null)),
+    [selected, all, named],
+  );
+  // The version it's compared with: undefined until known, null for the first version.
+  const previousId: string | null | undefined = selected === CURRENT ? (all ? (all.versions[0]?.id ?? null) : undefined) : version?.previousId;
 
   const chosen = useQuery(api.documents.snapshotContent, selected !== CURRENT ? { snapshotId: selected } : "skip");
   const before = useQuery(api.documents.snapshotContent, showChanges && previousId ? { snapshotId: previousId } : "skip");
   const live = useDocumentBlocks(engine, documentId);
   // Compared with the same version the list says comes before (a new one may have just been saved).
-  const liveAuthors = useQuery(api.documents.blockAuthors, selected === CURRENT ? { documentId, ...(previousId ? { since: previousId } : {}) } : "skip");
+  const liveAuthors = useQuery(api.documents.blockAuthors, selected === CURRENT && previousId !== undefined ? { documentId, ...(previousId ? { since: previousId } : {}) } : "skip");
 
   const shown = useMemo(() => (selected === CURRENT ? { title, style, blocks: live } : parseVersion(chosen?.content)), [selected, title, style, live, chosen]);
   const unreadable = selected !== CURRENT && chosen !== undefined && !shown;
   // The version it's compared with: undefined while it loads, null when there's none (the first version).
-  const earlier = useMemo(() => (previousId ? (before === undefined ? undefined : (parseVersion(before?.content)?.blocks ?? null)) : null), [previousId, before]);
+  const earlier = useMemo(() => (previousId === undefined ? undefined : previousId ? (before === undefined ? undefined : (parseVersion(before?.content)?.blocks ?? null)) : null), [previousId, before]);
   const diff = useMemo(() => {
     if (!shown || !showChanges || earlier === undefined) return null;
     const authors = selected === CURRENT ? (liveAuthors?.authors ?? null) : (chosen?.authors ?? null);
@@ -156,7 +159,9 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
   // ↑ / ↓ move through the list too (Tab works as well: each version is a button).
   const items = useMemo(() => [CURRENT, ...(listed?.versions ?? []).map((v) => v.id)], [listed]);
   const onListKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (naming || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    // Only on the versions themselves: arrows in a version's menu (a portal, but React bubbles it here) move in the menu.
+    if (naming || e.defaultPrevented || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    if (!(e.target instanceof HTMLElement) || !e.target.id.startsWith("version-")) return;
     e.preventDefault();
     const i = Math.max(0, items.indexOf(selected));
     const next = items[Math.min(items.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)))]!;
@@ -169,6 +174,8 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
       ref={dialog}
       aria-label="Version history"
       onCancel={(e) => {
+        // (Escape in the restore confirmation closes just that: its cancel event bubbles up here too.)
+        if (e.target !== e.currentTarget) return;
         e.preventDefault();
         if (naming) setNaming(null);
         else onClose();
@@ -198,12 +205,12 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <main className="fb-page min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-surface-sunken)] px-3 py-6 sm:px-8" data-font={(shown?.style ?? style).font} data-width={(shown?.style ?? style).width}>
             {diff && diff.authors.length ? (
-              <p className="mx-auto mb-3 flex max-w-[calc(var(--editor-width)+8rem)] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Changes in this version by">
+              <div role="group" className="mx-auto mb-3 flex max-w-[calc(var(--editor-width)+8rem)] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Changes in this version by">
                 <span>Changes by</span>
                 {diff.authors.map((key) => (
                   <PersonChip key={key} person={people[key]} />
                 ))}
-              </p>
+              </div>
             ) : null}
             <article className="fb-sheet ui-sheet relative mx-auto px-6 pb-16 pt-10 sm:px-14" data-background={(shown?.style ?? style).background} {...sheet} style={{ ...sheet.style, maxWidth: "calc(var(--editor-width) + 8rem)" }}>
               {unreadable ? (

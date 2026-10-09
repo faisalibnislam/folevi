@@ -1,6 +1,6 @@
 // What changed between two versions of a page, for version history: which blocks were added, removed or
 // edited (and by whom), and inside an edited line, which words.
-import { plainText, type WireBlock } from "@folevi/editor-schema";
+import { plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 
 export interface TextPart {
   kind: "same" | "added" | "removed";
@@ -91,7 +91,27 @@ export function diffWords(before: string, after: string): TextPart[] {
   return out;
 }
 
-const shapeOf = (b: WireBlock) => JSON.stringify([b.type, b.props, b.text]);
+// Opening or closing a toggle isn't a change to the page.
+const shapeOf = (b: WireBlock) => {
+  const { collapsed: _open, ...props } = b.props as Record<string, unknown>;
+  return JSON.stringify([b.type, props, b.text]);
+};
+
+/** The words a block holds, wherever it keeps them (code, formulas and tables keep theirs in properties). */
+function wordsOf(b: WireBlock): string {
+  const p = b.props as Record<string, unknown>;
+  switch (b.type) {
+    case "code":
+      return String(p.code ?? "");
+    case "formula":
+      return String(p.latex ?? "");
+    case "table":
+      return ((p.rows as InlineNode[][][] | undefined) ?? []).map((row) => row.map((cell) => plainText(cell ?? [])).join(" | ")).join("\n");
+    default:
+      return plainText(b.text);
+  }
+}
+const KEEPS_WORDS_IN_PROPS = new Set(["code", "formula", "table"]);
 
 /**
  * Compares a version with the one before it (null for the first version: nothing is marked). `authors` says
@@ -118,9 +138,11 @@ export function diffVersions(previous: WireBlock[] | null, current: WireBlock[],
     }
     // A block that only moved isn't an edit (the order of the page shows it where it is now).
     if (shapeOf(old) === shapeOf(b)) continue;
-    const was = plainText(old.text);
-    const is = plainText(b.text);
-    changes.set(b.id, was === is ? { kind: "styled", author, at } : { kind: "edited", author, at, parts: diffWords(was, is) });
+    const was = wordsOf(old);
+    const is = wordsOf(b);
+    // (Word by word for lines of text; a changed code block, formula or table is marked edited as a whole.)
+    const parts = KEEPS_WORDS_IN_PROPS.has(b.type) || KEEPS_WORDS_IN_PROPS.has(old.type) ? undefined : diffWords(was, is);
+    changes.set(b.id, was === is ? { kind: "styled", author, at } : { kind: "edited", author, at, ...(parts ? { parts } : {}) });
     credit(author);
   }
   // Removed blocks keep their place (parent and rank), so they show where they were.

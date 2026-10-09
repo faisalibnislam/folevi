@@ -42,18 +42,24 @@
   content: attr(data-presence);
   position: absolute; right: -4px; top: -10px;
   font: 500 10px/1.4 var(--font-sans);
-  color: var(--color-canvas); background: var(--presence);
+  color: var(--color-canvas); background: var(--presence-ink, var(--presence));
   padding: 0 5px; border-radius: 4px; pointer-events: none;
 }
-/* "Show editors": each block carries a bar in the colour of whoever last changed it; hover says who and when. */
-.fb-editor > .fb.fb-authored { box-shadow: inset 3px 0 0 var(--author); border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.fb-editor > .fb.fb-authored:hover::after {
-  content: attr(data-author);
+/* "Show editors": each block carries a bar in the colour of whoever last changed it; hover says who and when.
+   The colour and label are variables from a stylesheet keyed by block id (authorSheet in plugins.ts); :where()
+   keeps anything else marking a line (presence, a conflict, a selection) on top. */
+:where(.fb-editor.fb-show-editors > .fb) { box-shadow: inset 3px 0 0 var(--author); }
+.fb-editor.fb-show-editors > .fb { border-top-left-radius: var(--author-radius, 6px); border-bottom-left-radius: var(--author-radius, 6px); }
+:where(.fb-editor.fb-show-editors > .fb:not(.is-empty, [data-decoration="focus"])):hover::after {
+  content: var(--author-label);
   position: absolute; right: -4px; top: -12px; z-index: 1;
   font: 500 10.5px/1.5 var(--font-sans);
-  color: var(--color-canvas); background: var(--author);
+  color: var(--color-canvas); background: var(--author-ink, var(--author));
   padding: 0 6px; border-radius: 4px; pointer-events: none; white-space: nowrap;
 }
+/* Small light text needs the deeper shade in light mode; in dark mode the canvas-dark text reads on the bright one. */
+:root[data-theme="dark"] .fb-editor > .fb.fb-presence::after { background: var(--presence); }
+:root[data-theme="dark"] :where(.fb-editor.fb-show-editors > .fb:not(.is-empty, [data-decoration="focus"])):hover::after { background: var(--author); }
 /* Version history: what changed since the version before, in the colour of who changed it. */
 .fb-editor > [data-change] { box-shadow: inset 3px 0 0 var(--author); border-radius: 0 2px 2px 0; }
 .fb-editor > [data-change="added"] { background: color-mix(in oklab, var(--author) 11%, transparent); }
@@ -69,6 +75,11 @@
   box-shadow: inset 0 -2px 0 var(--author, var(--color-accent)); border-radius: 2px;
 }
 .fb-diff-removed { color: var(--color-ink-muted); text-decoration: line-through; text-decoration-color: var(--author, var(--color-ink-muted)); }
+/* Screen readers don't announce <ins>/<del> on their own: say it, without showing it. */
+.fb-diff-added::before, .fb-diff-removed::before { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.fb-diff-added::before { content: " [added: "; }
+.fb-diff-removed::before { content: " [removed: "; }
+.fb-diff-added::after, .fb-diff-removed::after { content: "] "; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* The line a resolved comment was made on, while its thread is open from the Comments tab. */
 .fb-editor > .fb-block-highlight {
   border-radius: 6px;
@@ -148,6 +159,36 @@
   position: absolute; left: calc(var(--depth, 0) * 1.6em + var(--pad-extra, 0px)); width: 1.35em; text-align: right;
   color: var(--color-ink-muted); font-variant-numeric: tabular-nums; font-weight: 550;
 }
+/* In the editor the numbers are CSS counters, one per depth (fb-n0 to fb-n8, the deepest nesting): every line
+   restarts the count at its depth and deeper, and a numbered line counts at its depth. Numbering lines with
+   decorations made every key cost time for every line of a long note. Read-only views write data-index. */
+.ProseMirror.fb-editor > [data-depth="0"] { counter-reset: fb-n0 fb-n1 fb-n2 fb-n3 fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="1"] { counter-reset: fb-n1 fb-n2 fb-n3 fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="2"] { counter-reset: fb-n2 fb-n3 fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="3"] { counter-reset: fb-n3 fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="4"] { counter-reset: fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="5"] { counter-reset: fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="6"] { counter-reset: fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="7"] { counter-reset: fb-n7 fb-n8; }
+.ProseMirror.fb-editor > [data-depth="8"] { counter-reset: fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="0"] { counter-increment: fb-n0; counter-reset: fb-n1 fb-n2 fb-n3 fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="1"] { counter-increment: fb-n1; counter-reset: fb-n2 fb-n3 fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="2"] { counter-increment: fb-n2; counter-reset: fb-n3 fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="3"] { counter-increment: fb-n3; counter-reset: fb-n4 fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="4"] { counter-increment: fb-n4; counter-reset: fb-n5 fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="5"] { counter-increment: fb-n5; counter-reset: fb-n6 fb-n7 fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="6"] { counter-increment: fb-n6; counter-reset: fb-n7 fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="7"] { counter-increment: fb-n7; counter-reset: fb-n8; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="8"] { counter-increment: fb-n8; counter-reset: none; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="0"]::before { content: counter(fb-n0) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="1"]::before { content: counter(fb-n1) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="2"]::before { content: counter(fb-n2) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="3"]::before { content: counter(fb-n3) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="4"]::before { content: counter(fb-n4) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="5"]::before { content: counter(fb-n5) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="6"]::before { content: counter(fb-n6) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="7"]::before { content: counter(fb-n7) "."; }
+.ProseMirror.fb-editor > .fb-numbered[data-depth="8"]::before { content: counter(fb-n8) "."; }
 
 /* To-do */
 .fb-editor .fb-todo { display: flex; align-items: flex-start; gap: 0.55em; }

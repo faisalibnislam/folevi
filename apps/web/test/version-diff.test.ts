@@ -79,4 +79,14 @@ describe("diffVersions", () => {
     expect(diff.changes.get("a")).toMatchObject({ kind: "edited", author: null });
     expect(diff.authors).toEqual([]);
   });
+
+  test("opening a toggle isn't a change; code, formulas and tables that changed read as edited", () => {
+    const toggle = (collapsed: boolean) => block("t", "Details", { type: "toggle", props: { collapsed } });
+    const code = (text: string) => block("c", "", { type: "code", props: { language: "js", code: text } });
+    const table = (cell: string) => block("x", "", { type: "table", props: { rows: [[[{ type: "text", text: cell }]]] } });
+    const diff = diffVersions([toggle(true), code("a()"), table("one")], [toggle(false), code("b()"), table("two")], null, null);
+    expect(diff.changes.get("t")).toBeUndefined();
+    expect(diff.changes.get("c")).toEqual({ kind: "edited", author: null, at: null });
+    expect(diff.changes.get("x")).toEqual({ kind: "edited", author: null, at: null });
+  });
 });

@@ -28,6 +28,8 @@ interface Options {
 }
 
 const THRESHOLD = 4;
+/** A finger wobbles more than a mouse: below this a touch on the grip is a tap (it opens the block menu). */
+const TOUCH_THRESHOLD = 10;
 const EDGE = 64;
 
 let active = false;
@@ -102,6 +104,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   const dom = view.dom as HTMLElement;
   const startX = event.clientX;
   const startY = event.clientY;
+  const threshold = event.pointerType === "touch" ? TOUCH_THRESHOLD : THRESHOLD;
   const reduce = reducedMotion();
   const fontSize = parseFloat(getComputedStyle(dom).fontSize) || 16;
   const indent = fontSize * 1.6; // matches `calc(var(--depth) * 1.6em)` in editor.css
@@ -270,7 +273,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     px = e.clientX;
     py = e.clientY;
     if (!started) {
-      if (Math.hypot(px - startX, py - startY) < THRESHOLD) return;
+      if (Math.hypot(px - startX, py - startY) < threshold) return;
       start();
     }
     e.preventDefault();

@@ -55,9 +55,27 @@ function patchNode(tr: Transaction, pos: number, node: PMNode, want: PMNode): vo
 /**
  * A transaction turning the document into `blocks`, or null when they already match. Not added to history
  * and marked remote by the caller.
+ *
+ * `shown`: the blocks as the editor last showed them. A toggle opened or closed here and not saved (someone
+ * who can only read opens and closes toggles for themselves) stays as it is unless the change coming in
+ * opens or closes it.
  */
-export function remoteTransaction(state: EditorState, blocks: readonly WireBlock[]): Transaction | null {
+export function remoteTransaction(state: EditorState, incoming: readonly WireBlock[], shown?: ReadonlyMap<string, WireBlock>): Transaction | null {
   const { schema } = state;
+  const localCollapsed = new Map<string, boolean>();
+  if (shown) {
+    state.doc.forEach((n) => {
+      if (n.type.name === "toggle" && n.attrs.id) localCollapsed.set(n.attrs.id as string, Boolean(n.attrs.collapsed));
+    });
+  }
+  const blocks = incoming.map((b) => {
+    const mine = localCollapsed.get(b.id);
+    const before = shown?.get(b.id);
+    if (mine === undefined || b.type !== "toggle" || before?.type !== "toggle") return b;
+    const theirs = Boolean(b.props.collapsed);
+    if (theirs === mine || theirs !== Boolean(before.props.collapsed)) return b;
+    return { ...b, props: { ...b.props, collapsed: mine } };
+  });
   const desired = flattenTree(blocks);
   // Attributes only this device knows (an upload still in progress) carry over to the new version.
   const uploads = new Map<string, unknown>();

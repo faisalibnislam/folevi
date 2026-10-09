@@ -213,13 +213,12 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
         ) : (
           <h3 className="mr-2 text-sm font-semibold text-heading">{data.name}</h3>
         )}
-        <div role="tablist" aria-label="Views" className="flex flex-wrap gap-1">
+        <div role="group" aria-label="Views" className="flex flex-wrap gap-1">
           {data.views.map((v) => (
             <button
               key={v.id}
-              role="tab"
               type="button"
-              aria-selected={v.id === view.id}
+              aria-pressed={v.id === view.id}
               onClick={() => setViewId(v.id)}
               className={`inline-flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-xs ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
             >
@@ -580,7 +579,7 @@ function TableCollection({ data, rows, visible, canEdit }: { data: CollectionDat
               ))}
               {canEdit ? (
                 <td className="border-b border-line text-center">
-                  <button type="button" aria-label={`Delete ${row.title || "row"}`} onClick={() => setConfirm(row)} className="text-faint opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100">
+                  <button type="button" aria-label={`Delete ${row.title || "row"}`} onClick={() => setConfirm(row)} className="text-faint opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 pointer-coarse:inline-grid pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:place-items-center pointer-coarse:opacity-100">
                     <Trash2 size={13} aria-hidden />
                   </button>
                 </td>

@@ -1,6 +1,6 @@
 import { Extension, type Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
-import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { hiddenIndices } from "./blockSelectionState";
 
@@ -21,9 +21,14 @@ export interface FindState {
   matches: FindMatch[];
 }
 
-export const findKey = new PluginKey<FindState>("foleviFind");
+/** The plugin also keeps the painted matches, so an update that doesn't change them doesn't repaint them. */
+interface FindPluginState extends FindState {
+  decorations: DecorationSet;
+}
 
-const EMPTY: FindState = { query: "", caseSensitive: false, index: 0, matches: [] };
+export const findKey = new PluginKey<FindPluginState>("foleviFind");
+
+const EMPTY: FindPluginState = { query: "", caseSensitive: false, index: 0, matches: [], decorations: DecorationSet.empty };
 
 /** Lower-cased text, with where each of its characters came from in the original (one past the end at the end). */
 function foldCase(raw: string): { text: string; rawAt: number[] } {
@@ -41,14 +46,14 @@ function foldCase(raw: string): { text: string; rawAt: number[] } {
   return { text, rawAt };
 }
 
-/** Every occurrence of `query` in the note's text, in document order (at most MAX_MATCHES). */
-export function findMatches(doc: PMNode, query: string, caseSensitive: boolean): FindMatch[] {
+/** Every occurrence of `query` in the note's text (or in the blocks between `from` and `to`), in document order (at most MAX_MATCHES). */
+export function findMatches(doc: PMNode, query: string, caseSensitive: boolean, from = 0, to = doc.content.size): FindMatch[] {
   if (!query) return [];
   // Folded the same way as the text, a character at a time (lower-casing "ΟΔΟΣ" whole gives a final "ς",
   // which the text's "σ" wouldn't match).
   const needle = caseSensitive ? query : foldCase(query).text;
   const out: FindMatch[] = [];
-  doc.descendants((node, pos) => {
+  doc.nodesBetween(from, to, (node, pos) => {
     if (out.length >= MAX_MATCHES) return false;
     if (!node.isTextblock) return true;
     const raw = node.textBetween(0, node.content.size, undefined, OBJECT);
@@ -67,6 +72,54 @@ export function findMatches(doc: PMNode, query: string, caseSensitive: boolean):
 }
 
 /**
+ * The matches after an edit: the blocks it touched are searched again and every other match moves with the
+ * text, so typing in a long note doesn't search all of it on each key. A full search when that's simpler.
+ */
+function updateMatches(prev: FindState, tr: Transaction): FindMatch[] {
+  const { doc, mapping } = tr;
+  if (prev.matches.length >= MAX_MATCHES) return findMatches(doc, prev.query, prev.caseSensitive);
+  // What each step replaced, in the final document, widened to whole top-level blocks.
+  const ranges: [number, number][] = [];
+  mapping.maps.forEach((map, i) => {
+    const rest = mapping.slice(i + 1);
+    map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      const $a = doc.resolve(Math.min(rest.map(newStart, -1), doc.content.size));
+      const $b = doc.resolve(Math.min(rest.map(newEnd, 1), doc.content.size));
+      const first = Math.max(0, $a.index(0) - ($a.depth === 0 ? 1 : 0));
+      const last = Math.min(doc.childCount - 1, $b.index(0));
+      if (last < first) return;
+      ranges.push([$a.posAtIndex(first, 0), $b.posAtIndex(last, 0) + doc.child(last).nodeSize]);
+    });
+  });
+  // Marks and block attributes don't move or change text.
+  if (!ranges.length) return prev.matches;
+  ranges.sort((x, y) => x[0] - y[0]);
+  const merged: [number, number][] = [];
+  for (const r of ranges) {
+    const top = merged[merged.length - 1];
+    if (top && r[0] <= top[1]) top[1] = Math.max(top[1], r[1]);
+    else merged.push([r[0], r[1]]);
+  }
+  if (merged.reduce((n, [a, b]) => n + b - a, 0) > doc.content.size / 2) return findMatches(doc, prev.query, prev.caseSensitive);
+  const out: FindMatch[] = [];
+  for (const m of prev.matches) {
+    const from = mapping.map(m.from, 1);
+    const to = mapping.map(m.to, -1);
+    if (from < to && !merged.some(([a, b]) => from < b && to > a)) out.push({ from, to });
+  }
+  for (const [a, b] of merged) out.push(...findMatches(doc, prev.query, prev.caseSensitive, a, b));
+  return out.sort((x, y) => x.from - y.from).slice(0, MAX_MATCHES);
+}
+
+function paint(doc: PMNode, matches: FindMatch[], index: number): DecorationSet {
+  if (!matches.length) return DecorationSet.empty;
+  return DecorationSet.create(
+    doc,
+    matches.map((m, i) => Decoration.inline(m.from, m.to, { class: i === index ? "fb-find-match fb-find-current" : "fb-find-match" })),
+  );
+}
+
+/**
  * Find & replace inside the note. The plugin holds the query and the current match and paints every
  * match (and the current one more strongly) with decorations; it never changes the document itself.
  * Replacing goes through ordinary editor transactions, so it syncs like typing and ⌘Z undoes it.
@@ -75,28 +128,27 @@ export const FindReplace = Extension.create({
   name: "findReplace",
   addProseMirrorPlugins() {
     return [
-      new Plugin<FindState>({
+      new Plugin<FindPluginState>({
         key: findKey,
         state: {
           init: () => EMPTY,
           apply: (tr, prev) => {
             const meta = tr.getMeta(findKey) as Partial<Pick<FindState, "query" | "caseSensitive" | "index">> | undefined;
-            if (!meta && !tr.docChanged) return prev;
+            if (!meta && (!tr.docChanged || !prev.query)) return prev;
             const next = { ...prev, ...meta };
-            const matches = meta?.query !== undefined || meta?.caseSensitive !== undefined || tr.docChanged ? findMatches(tr.doc, next.query, next.caseSensitive) : prev.matches;
+            const matches =
+              meta?.query !== undefined || meta?.caseSensitive !== undefined
+                ? findMatches(tr.doc, next.query, next.caseSensitive)
+                : tr.docChanged && next.query
+                  ? updateMatches(prev, tr)
+                  : prev.matches;
             const index = matches.length ? ((next.index % matches.length) + matches.length) % matches.length : 0;
-            return { ...next, matches, index };
+            const decorations = matches === prev.matches && index === prev.index ? prev.decorations : paint(tr.doc, matches, index);
+            return { ...next, matches, index, decorations };
           },
         },
         props: {
-          decorations: (state) => {
-            const s = findKey.getState(state);
-            if (!s?.matches.length) return null;
-            return DecorationSet.create(
-              state.doc,
-              s.matches.map((m, i) => Decoration.inline(m.from, m.to, { class: i === s.index ? "fb-find-match fb-find-current" : "fb-find-match" })),
-            );
-          },
+          decorations: (state) => findKey.getState(state)?.decorations ?? null,
         },
       }),
     ];

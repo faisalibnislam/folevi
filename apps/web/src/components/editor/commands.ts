@@ -6,6 +6,7 @@ import { closeHistory } from "@tiptap/pm/history";
 import { LIMITS, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { TEXT_NODES } from "./convert";
 import { blockSelectionRange } from "./blockSelectionState";
+import { announce } from "@/lib/a11y/announce";
 
 export interface BlockRef {
   node: PMNode;
@@ -288,6 +289,7 @@ export function moveBlock(editor: Editor, dir: -1 | 1): boolean {
   openAncestors(tr, tr.doc.resolve(Math.min(max, newStart)).index(0));
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
   endHistoryGroup(editor);
+  announce(dir < 0 ? "Moved up" : "Moved down");
   return true;
 }
 

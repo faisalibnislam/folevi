@@ -1131,7 +1131,8 @@ export const dailyDates = query({
 
 // ---------------------------------------------------------------- snapshots / version history
 
-const MAX_INLINE_SNAPSHOT = 700_000;
+/** Version content is stored in chunks of at most this many characters: at 4 bytes a character at most, under the 1 MiB a row may hold. */
+const SNAPSHOT_CHUNK = 250_000;
 const MAX_VERSION_NAME = 80;
 
 /**
@@ -1160,6 +1161,8 @@ async function snapshotText(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnap
     .map((c) => c.data)
     .join("");
 }
+
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 function versionName(raw: string | undefined): string | undefined {
   const name = (raw ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_VERSION_NAME);
@@ -1249,16 +1252,17 @@ async function snapshot(
     .map(([id]) => id);
   const stored: VersionContent = { title: doc.title, icon: doc.icon ?? null, style: doc.style, blocks, authors, removed };
   const content = JSON.stringify(stored);
-  const inline = content.length > MAX_INLINE_SNAPSHOT ? undefined : content;
-  const chunks = inline ? [] : (content.match(new RegExp(`[\\s\\S]{1,${MAX_INLINE_SNAPSHOT}}`, "g")) ?? []);
+  // Always in snapshotChunks, never on the version's own row: listing versions reads whole rows, and
+  // hundreds of versions of a long page held inline would pass the 16 MiB a query may read.
+  // (By whole characters: a chunk never ends in half of one.)
+  const chunks = content.match(new RegExp(`[\\s\\S]{1,${SNAPSHOT_CHUNK}}`, "gu")) ?? [""];
   const publicId = ulid();
   const snapshotId = await insertScoped(ctx, "documentSnapshots", scopeOfRow(doc), {
     documentId: doc._id,
     publicId,
     reason,
     title: doc.title,
-    content: inline,
-    chunkCount: chunks.length || undefined,
+    chunkCount: chunks.length,
     blockCount: blocks.length,
     sizeBytes: content.length,
     contentSeq: doc.contentSeq,
@@ -1325,11 +1329,23 @@ export const versions = query({
           .order("desc")
           .take(200);
     const people = new People(ctx);
+    // The version each one is compared with: the one saved just before it (a named version's isn't listed).
+    const previous = async (i: number) => {
+      if (!args.namedOnly && i + 1 < rows.length) return rows[i + 1]!.publicId;
+      const r = rows[i]!;
+      const before = await ctx.db
+        .query("documentSnapshots")
+        .withIndex("by_document", (q) => q.eq("documentId", doc._id).lt("createdAt", r.createdAt))
+        .order("desc")
+        .first();
+      return before?.publicId ?? null;
+    };
     const out = [];
-    for (const r of rows) {
+    for (const [i, r] of rows.entries()) {
       const editors = r.editors ?? [r.createdBy];
       out.push({
         id: r.publicId,
+        previousId: await previous(i),
         reason: r.reason,
         name: r.name ?? null,
         title: r.title,
@@ -1388,7 +1404,7 @@ export const snapshotContent = query({
 
 /**
  * Who last changed each block of the page as it is now (the "Show editors" view, and the current version),
- * and who deleted what since the version it's compared with (`since`, else the latest version).
+ * and with `since` (a version), who deleted what since that version.
  */
 export const blockAuthors = query({
   args: { documentId: v.string(), since: v.optional(v.string()) },
@@ -1398,23 +1414,16 @@ export const blockAuthors = query({
     // Lists of [block id, person key, time], not objects keyed by block (at most 1024 fields per object).
     const authors: [string, string, number][] = [];
     for (const r of await liveBlocks(ctx, doc._id)) authors.push([r.blockId, (await people.get(r.updatedBy)).key, r.updatedAt]);
-    // And who deleted what since that version (the current version's removed lines).
-    const chosen = args.since
+    // And, for version history, who deleted what since the version it's compared with (the current version's
+    // removed lines). "Show editors" doesn't ask, so its keystroke-by-keystroke updates stay light.
+    const latest = args.since
       ? await ctx.db
           .query("documentSnapshots")
           .withIndex("by_public_id", (q) => q.eq("publicId", args.since!))
           .unique()
       : null;
-    const latest =
-      chosen && chosen.documentId === doc._id
-        ? chosen
-        : await ctx.db
-            .query("documentSnapshots")
-            .withIndex("by_document", (q) => q.eq("documentId", doc._id))
-            .order("desc")
-            .first();
     const removed: [string, string, number][] = [];
-    if (latest) {
+    if (latest && latest.documentId === doc._id) {
       const gone = await ctx.db
         .query("blocks")
         .withIndex("by_document_deleted", (q) => q.eq("documentId", doc._id).gte("deletedAt", latest.createdAt))
@@ -1458,6 +1467,8 @@ export const copyVersion = mutation({
       cover: doc.cover,
       blocks: cloneBlocks(parsed.blocks),
     });
+    // Its databases are its own, as with Duplicate: rows edited in the copy don't change the original.
+    await copyCollectionsInto(ctx, copy);
     return await new Placement(ctx, profile).summary(new IdResolver(ctx), copy);
   },
 });
@@ -1484,6 +1495,11 @@ export const restoreSnapshot = mutation({
     for (const b of parsed.blocks) {
       const existing = byId.get(b.id);
       if (existing) {
+        // Lines that are already as they were stay untouched: they keep who wrote them ("Show editors"), and
+        // edits made offline to them don't come back as conflicts.
+        const sameContent = existing.type === b.type && sameJson(existing.text, b.text) && sameJson(existing.props, b.props);
+        const samePlace = existing.deletedAt === undefined && existing.parentId === b.parentId && existing.rank === b.rank;
+        if (sameContent && samePlace) continue;
         const revision = existing.revision + 1;
         await ctx.db.patch(existing._id, {
           parentId: b.parentId,
@@ -1494,8 +1510,8 @@ export const restoreSnapshot = mutation({
           props: b.props,
           deletedAt: undefined,
           revision,
-          contentRev: revision,
-          positionRev: revision,
+          ...(sameContent ? {} : { contentRev: revision }),
+          ...(samePlace ? {} : { positionRev: revision }),
           seq,
           updatedAt: now,
           updatedBy: profile._id,

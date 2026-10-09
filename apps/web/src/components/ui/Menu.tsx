@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 import { keyLabel } from "@/lib/shortcuts";
+import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 
 export interface MenuItem {
   label: string;
@@ -190,14 +191,16 @@ function MenuPanel({
       const margin = 8;
       const w = fullWidth ? a.width : menu.offsetWidth;
       const h = menu.offsetHeight;
-      const below = window.innerHeight - a.bottom - gap - margin;
+      // Above the on-screen keyboard, where there is one.
+      const bottom = visibleBottom();
+      const below = bottom - a.bottom - gap - margin;
       const above = a.top - gap - margin;
       const up = side === "top" ? !(above < h && below > above) : below < h && above > below;
       let left = align === "end" ? a.right - w : a.left;
       left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
       let top = up ? a.top - gap - h : a.bottom + gap;
-      top = Math.min(Math.max(margin, top), window.innerHeight - h - margin);
-      setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: window.innerHeight - margin * 2, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
+      top = Math.min(Math.max(margin, top), bottom - h - margin);
+      setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: bottom - margin * 2, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
     };
     try {
       if (menuRef.current && !menuRef.current.matches(":popover-open")) menuRef.current.showPopover();
@@ -207,9 +210,11 @@ function MenuPanel({
     place();
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
     return () => {
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
     };
   }, [host, align, side, fullWidth]);
 

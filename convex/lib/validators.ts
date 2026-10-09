@@ -169,7 +169,7 @@ export const vSyncOp = v.union(
     documentId: v.string(),
     block: vWireBlock,
     baseRevision: v.union(v.number(), v.null()),
-    fields: v.array(v.union(v.literal("content"), v.literal("position"))),
+    fields: v.array(v.union(v.literal("content"), v.literal("position"), v.literal("collapsed"))),
   }),
   v.object({
     opId: v.string(),

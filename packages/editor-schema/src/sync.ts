@@ -4,9 +4,18 @@
 import type { WireBlock, WireDocumentCreate, WireDocumentPatch } from "./types";
 import { canonicalJson } from "./parse";
 
-export type ChangedField = "content" | "position";
+/**
+ * What an upsert changes. "collapsed" is a toggle opened or closed, and nothing else: it's taken last-writer-wins,
+ * so it never conflicts with someone editing the toggle's text (and a text edit never undoes it).
+ */
+export type ChangedField = "content" | "position" | "collapsed";
 
-export type SyncOp =
+/**
+ * `sent`: the op has gone to the server at least once (it may have landed even if no answer came back). Its
+ * content never changes after that: the server answers a resend of the same op id as a replay of what it got
+ * the first time, so anything merged into it later would be dropped.
+ */
+export type SyncOp = (
   | {
       opId: string;
       kind: "block.upsert";
@@ -19,7 +28,8 @@ export type SyncOp =
   | { opId: string; kind: "block.delete"; documentId: string; blockId: string; baseRevision: number | null }
   | { opId: string; kind: "block.restore"; documentId: string; blockId: string }
   | { opId: string; kind: "document.create"; document: WireDocumentCreate }
-  | { opId: string; kind: "document.update"; documentId: string; patch: WireDocumentPatch; baseRevision: number | null };
+  | { opId: string; kind: "document.update"; documentId: string; patch: WireDocumentPatch; baseRevision: number | null }
+) & { sent?: boolean };
 
 export type OpStatus = "applied" | "duplicate" | "conflict" | "rejected";
 
@@ -107,9 +117,18 @@ function opBlockId(op: SyncOp): string | null {
   }
 }
 
+/** The ops on a block that may already be on the server: in flight, or sent and queued again. */
+function sentTouches(state: SyncState, blockId: string): boolean {
+  return state.inflight.some((op) => opBlockId(op) === blockId) || state.pending.some((op) => op.sent && opBlockId(op) === blockId);
+}
+
+/**
+ * `baseRevision`: the version the edit was made on, when that's older than what this device holds (an editor
+ * that hadn't shown a newer server version yet). Without it, the edit is based on the latest one held.
+ */
 export function localUpsert(
   prev: SyncState,
-  input: { opId: string; documentId: string; block: WireBlock; fields: ChangedField[]; blockedBy?: string },
+  input: { opId: string; documentId: string; block: WireBlock; fields: ChangedField[]; blockedBy?: string; baseRevision?: number | null },
 ): SyncState {
   const state = shallow(prev);
   const block = clone(input.block);
@@ -119,7 +138,7 @@ export function localUpsert(
   state.blocks[block.id] = { documentId: input.documentId, block, serverRevision, deleted: false };
 
   // Coalesce with the latest not-yet-sent upsert for the same block, provided nothing touching this
-  // block (a delete/restore) sits after it in the queue.
+  // block (a delete/restore) sits after it in the queue. One that was sent already stays as it went.
   let lastIdx = -1;
   for (let i = state.pending.length - 1; i >= 0; i--) {
     if (opBlockId(state.pending[i]!) === block.id) {
@@ -128,7 +147,7 @@ export function localUpsert(
     }
   }
   const last = lastIdx >= 0 ? state.pending[lastIdx]! : null;
-  if (last && last.kind === "block.upsert" && !input.blockedBy) {
+  if (last && last.kind === "block.upsert" && !last.sent && !input.blockedBy) {
     const fields = [...new Set<ChangedField>([...last.fields, ...input.fields])].sort() as ChangedField[];
     state.pending[lastIdx] = { ...last, block, fields };
     return state;
@@ -138,7 +157,7 @@ export function localUpsert(
     kind: "block.upsert",
     documentId: input.documentId,
     block,
-    baseRevision: serverRevision,
+    baseRevision: input.baseRevision !== undefined ? input.baseRevision : serverRevision,
     fields: [...input.fields].sort() as ChangedField[],
   };
   if (input.blockedBy) op.blockedBy = input.blockedBy;
@@ -146,12 +165,11 @@ export function localUpsert(
   return state;
 }
 
-export function localDelete(prev: SyncState, input: { opId: string; documentId: string; blockId: string }): SyncState {
+export function localDelete(prev: SyncState, input: { opId: string; documentId: string; blockId: string; baseRevision?: number | null }): SyncState {
   const state = shallow(prev);
   if (!state.blocks[input.blockId]) return state;
   const entity = (state.blocks[input.blockId] = { ...state.blocks[input.blockId]! });
-  const inflightTouches = state.inflight.some((op) => opBlockId(op) === input.blockId);
-  if (entity.serverRevision === null && !inflightTouches) {
+  if (entity.serverRevision === null && !sentTouches(state, input.blockId)) {
     // Never reached the server: forget it entirely.
     state.pending = state.pending.filter((op) => opBlockId(op) !== input.blockId);
     state.uploads = state.uploads.filter((u) => u.blockId !== input.blockId);
@@ -161,13 +179,14 @@ export function localDelete(prev: SyncState, input: { opId: string; documentId: 
   entity.deleted = true;
   // Edits to it that haven't been sent yet go with it: sent first, they'd make the server see the delete
   // as based on an older version than its own edit, and refuse it as a conflict with ourselves.
-  state.pending = state.pending.filter((op) => !(op.kind === "block.upsert" && op.block.id === input.blockId));
+  // (One that was sent may have landed: it stays, and the delete is based on it once it's answered.)
+  state.pending = state.pending.filter((op) => !(op.kind === "block.upsert" && op.block.id === input.blockId && !op.sent));
   state.pending.push({
     opId: input.opId,
     kind: "block.delete",
     documentId: input.documentId,
     blockId: input.blockId,
-    baseRevision: entity.serverRevision,
+    baseRevision: input.baseRevision !== undefined ? input.baseRevision : entity.serverRevision,
   });
   return state;
 }
@@ -179,7 +198,7 @@ export function localRestore(prev: SyncState, input: { opId: string; documentId:
   entity.deleted = false;
   const lastIdx = state.pending.length - 1;
   const last = state.pending[lastIdx];
-  if (last && last.kind === "block.delete" && last.blockId === input.blockId) {
+  if (last && last.kind === "block.delete" && last.blockId === input.blockId && !last.sent) {
     // Delete never sent: cancel it instead of sending delete+restore.
     state.pending.pop();
     return state;
@@ -199,6 +218,11 @@ export function setConnection(prev: SyncState, connection: "online" | "offline")
  * at the top level, and the note would lose its nesting. (Typing in a line, then making a new line above it
  * and tabbing the first under it, queues the child's edit first.) So an upsert waits for its parent's
  * create in the same batch, and stays back with it when that create is held (an upload, a full batch).
+ *
+ * A second change to a block (or page) that already has an upsert (or update) in the batch waits for the next
+ * one: it was written on top of the first, and only once the first is answered can it be based on the revision
+ * that produced (sent together, the server would see it as based on an older version, a conflict with ourselves).
+ * Ops taken are marked `sent`.
  */
 export function takeBatch(prev: SyncState, max = 100): SyncState {
   if (prev.inflight.length || prev.connection === "offline" || prev.authRequired) return prev;
@@ -208,6 +232,8 @@ export function takeBatch(prev: SyncState, max = 100): SyncState {
   const unsentNew = new Set(state.pending.flatMap((op) => (op.kind === "block.upsert" && state.blocks[op.block.id]?.serverRevision == null ? [op.block.id] : [])));
   const created = new Set<string>();
   const blocked = new Set<string>();
+  const advanced = new Set<string>();
+  const entityKey = (op: SyncOp) => (op.kind === "document.update" ? `document:${op.documentId}` : opBlockId(op));
   const take: SyncOp[] = [];
   const keep: SyncOp[] = [];
   const hold = (op: SyncOp) => {
@@ -232,6 +258,11 @@ export function takeBatch(prev: SyncState, max = 100): SyncState {
         hold(op);
         continue;
       }
+      const key = entityKey(op);
+      if (key !== null && advanced.has(key) && op.kind !== "block.restore") {
+        hold(op);
+        continue;
+      }
       if (parentUnsent || (bid !== null && waiting.has(bid))) {
         // After its parent (and so are later ops on the same block, to keep their order).
         if (bid) waiting.add(bid);
@@ -242,9 +273,10 @@ export function takeBatch(prev: SyncState, max = 100): SyncState {
         hold(op);
         continue;
       }
-      take.push(op);
+      take.push(op.sent ? op : { ...op, sent: true });
       moved = true;
       if (op.kind === "block.upsert" && unsentNew.has(op.block.id)) created.add(op.block.id);
+      if (key !== null && (op.kind === "block.upsert" || op.kind === "document.update")) advanced.add(key);
     }
     if (!moved) {
       for (const op of later) hold(op);
@@ -287,6 +319,23 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
         const stillOutstanding =
           state.pending.some((p) => opBlockId(p) === blockId) ||
           state.inflight.some((p) => p !== op && opBlockId(p) === blockId && !byId.has(p.opId));
+        // A replay answered with something other than what the op carried: the server kept an earlier copy of
+        // this op id (its content changed after it was first sent, as older builds allowed) or the block changed
+        // since. What this device has is queued again, based on the version the op was written on, so the
+        // server applies it or asks (never quietly keeps the other text).
+        if (
+          result.status === "duplicate" &&
+          op.kind === "block.upsert" &&
+          op.fields.includes("content") &&
+          result.block &&
+          !result.deleted &&
+          !stillOutstanding &&
+          !entity.deleted &&
+          !sameWrittenContent(result.block, op.block)
+        ) {
+          state.pending.push({ opId: `${op.opId}-again`, kind: "block.upsert", documentId: op.documentId, block: clone(entity.block), baseRevision: op.baseRevision, fields: op.fields });
+          break;
+        }
         if (!stillOutstanding && result.block) {
           const b = clone(result.block);
           delete b.revision;
@@ -299,6 +348,12 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
         const c = result.conflict;
         // The most recent local content is what the person would want to keep.
         const latestLocal = entity?.block ?? (op.kind === "block.upsert" ? op.block : null);
+        // What the person did to it after this op (queued behind it) decides the question: deleted since, it's
+        // "deleted here, changed elsewhere"; a delete they took back is an ordinary edit; a move they made stays.
+        const later = state.pending.filter((p) => opBlockId(p) === blockId);
+        const deletedSince = Boolean(entity?.deleted) && later.some((p) => p.kind === "block.delete");
+        const restoredSince = op.kind === "block.delete" && !entity?.deleted && later.some((p) => p.kind === "block.restore");
+        const movedSince = later.some((p) => p.kind === "block.upsert" && p.fields.includes("position"));
         state.pending = state.pending.filter((p) => opBlockId(p) !== blockId);
         if (c?.server) {
           const server = clone(c.server);
@@ -311,14 +366,20 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
             deleted: c.reason === "deleted",
           };
         }
+        // Deleted on both sides: nothing to ask.
+        if (deletedSince && c?.reason === "deleted") break;
         if (latestLocal) {
+          let reason: ConflictRecord["reason"] = op.kind === "block.delete" && c?.reason === "content" ? "edited" : (c?.reason ?? "content");
+          if (deletedSince && op.kind === "block.upsert") reason = "edited";
+          if (restoredSince && reason === "edited") reason = "content";
           state.conflicts.push({
             id: op.opId,
             documentId: (op as { documentId: string }).documentId,
             blockId,
-            reason: op.kind === "block.delete" && c?.reason === "content" ? "edited" : (c?.reason ?? "content"),
+            reason,
             server: c?.server ? stripRevision(c.server) : null,
             client: stripRevision(latestLocal),
+            ...(movedSince ? { moved: true } : {}),
           });
         }
         break;
@@ -349,6 +410,31 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
 
 function hasOutstandingExcept(state: SyncState, blockId: string, opId: string): boolean {
   return [...state.pending, ...state.inflight].some((op) => op.opId !== opId && opBlockId(op) === blockId);
+}
+
+/**
+ * Same content as written, ignoring the labels of links to other pages: those are served as each reader may
+ * see them (the current title, or a neutral label), not as stored.
+ */
+function sameWrittenContent(a: WireBlock, b: WireBlock): boolean {
+  const unlabel = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(unlabel);
+    if (!value || typeof value !== "object") return value;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) if (!(k === "label" && (value as { type?: unknown }).type === "pageLink")) out[k] = unlabel(v);
+    return out;
+  };
+  const written = (block: WireBlock) => {
+    const props = { ...(block.props as Record<string, unknown>) };
+    // (A toggle's open or closed state is merged on its own, last writer wins: not text that could be lost.)
+    delete props.collapsed;
+    if (block.type === "page") {
+      delete props.titleCache;
+      delete props.iconCache;
+    }
+    return canonicalJson({ t: block.type, x: unlabel(block.text), p: unlabel(props) });
+  };
+  return written(a) === written(b);
 }
 
 function stripRevision(b: WireBlock): WireBlock {

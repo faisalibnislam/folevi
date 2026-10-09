@@ -4,6 +4,8 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from 
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup } from "./commands";
+import { announce } from "@/lib/a11y/announce";
+import { keyLabel } from "@/lib/shortcuts";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -160,6 +162,8 @@ function Frame({
     <NodeViewWrapper
       className={`fb-atom ${selected ? "fb-atom-selected" : ""}`}
       data-drag-handle=""
+      // A label is only read with a role (an image's own <figure> is inside).
+      role="group"
       aria-label={label}
     >
       {children}
@@ -422,11 +426,37 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const focusCell = (r: number, c: number) =>
     requestAnimationFrame(() => tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${r}:${c}"]`)?.focus());
   // Tab / Shift+Tab move between cells, Enter / ↓ go down a row (Enter adds one at the end), ↑ goes up,
-  // Escape returns to the note with the table selected.
+  // Escape returns to the note with the table selected. ⌥⇧ and an arrow move the row or column, ⌘⇧⌫
+  // deletes the row (the note never sees keys from a cell, so these don't move or delete the whole table).
   const onCellKey = (e: React.KeyboardEvent<HTMLTableElement>) => {
     const at = (e.target as HTMLElement).dataset.cell;
-    if (!at || e.metaKey || e.ctrlKey || e.altKey || e.nativeEvent.isComposing || e.keyCode === 229) return;
+    if (!at || e.nativeEvent.isComposing || e.keyCode === 229) return;
     const [r, c] = at.split(":").map(Number) as [number, number];
+    const mod = e.metaKey || e.ctrlKey;
+    if (e.altKey && e.shiftKey && !mod && e.key.startsWith("Arrow")) {
+      e.preventDefault();
+      const dir = e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 1;
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        if (r + dir < 0 || r + dir >= rows.length) return;
+        moveRow(r, dir);
+        focusCell(r + dir, c);
+        announce(dir < 0 ? "Row moved up" : "Row moved down");
+      } else {
+        if (c + dir < 0 || c + dir >= width) return;
+        moveCol(c, dir);
+        focusCell(r, c + dir);
+        announce(dir < 0 ? "Column moved left" : "Column moved right");
+      }
+      return;
+    }
+    if (mod && e.shiftKey && !e.altKey && e.key === "Backspace") {
+      e.preventDefault();
+      if (rows.length <= 1) return;
+      removeRow(r);
+      announce(`Row ${r + 1} deleted`);
+      return;
+    }
+    if (mod || e.altKey) return;
     if (e.key === "Tab") {
       // Cell to cell, row by row; Tab in the last cell adds a row.
       e.preventDefault();
@@ -505,7 +535,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                         disabled={c === 0}
                         onClick={() => moveCol(c, -1)}
                         aria-label={`Move column ${c + 1} left`}
-                        title="Move column left"
+                        title={`Move column left (${keyLabel("⌥⇧←")})`}
                       >
                         <ArrowLeft size={12} aria-hidden />
                       </button>
@@ -515,7 +545,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                         disabled={c === width - 1}
                         onClick={() => moveCol(c, 1)}
                         aria-label={`Move column ${c + 1} right`}
-                        title="Move column right"
+                        title={`Move column right (${keyLabel("⌥⇧→")})`}
                       >
                         <ArrowRight size={12} aria-hidden />
                       </button>
@@ -588,7 +618,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                         disabled={r === 0}
                         onClick={() => moveRow(r, -1)}
                         aria-label={`Move row ${r + 1} up`}
-                        title="Move row up"
+                        title={`Move row up (${keyLabel("⌥⇧↑")})`}
                       >
                         <ArrowUp size={12} aria-hidden />
                       </button>
@@ -598,7 +628,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                         disabled={r === rows.length - 1}
                         onClick={() => moveRow(r, 1)}
                         aria-label={`Move row ${r + 1} down`}
-                        title="Move row down"
+                        title={`Move row down (${keyLabel("⌥⇧↓")})`}
                       >
                         <ArrowDown size={12} aria-hidden />
                       </button>
@@ -608,7 +638,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                         disabled={rows.length <= 1}
                         onClick={() => removeRow(r)}
                         aria-label={`Delete row ${r + 1}`}
-                        title="Delete row"
+                        title={`Delete row (${keyLabel("⌘⇧⌫")})`}
                       >
                         <Minus size={12} aria-hidden />
                       </button>

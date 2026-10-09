@@ -6,10 +6,11 @@ import { useState } from "react";
 import { Copy, Globe, Lock, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Dialog } from "@/components/ui/Dialog";
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
+import { useRadioGroup } from "@/lib/a11y/radioGroup";
 
 /** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
 export function ShareDialog({ open, onClose, documentId, title, personal = false }: { open: boolean; onClose: () => void; documentId: string; title: string; personal?: boolean }) {
@@ -25,6 +26,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const [role, setRole] = useState<"viewer" | "commenter" | "editor">("viewer");
   const [linkForm, setLinkForm] = useState({ expires: "", password: "" });
   const [freshLink, setFreshLink] = useState<string | null>(null);
+  const accessGroup = useRadioGroup();
   // Managers: access mode, public links, anyone's grants. Sharers (members who can edit): add people and
   // change what they added. The server checks both again.
   const canManage = data?.canManage === true;
@@ -53,7 +55,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 <span>This page is in a Personal space: only its owner and the people added below can open it.</span>
               </p>
             ) : (
-              <div role="radiogroup" aria-label="Access" className="grid gap-2 sm:grid-cols-2">
+              <div role="radiogroup" aria-label="Access" ref={accessGroup.ref} onKeyDown={accessGroup.onKeyDown} className="grid gap-2 sm:grid-cols-2">
                 {(
                   [
                     ["workspace", "Workspace", "Everyone in this workspace, by their role", <Users key="u" size={16} />],
@@ -136,9 +138,9 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   </span>
                   <span className="text-xs text-muted">{p.role === "editor" ? "Can edit" : p.role === "commenter" ? "Can comment" : "Can view"}</span>
                   {p.canChange ? (
-                    <button type="button" aria-label={`Remove ${p.displayName}`} onClick={() => void run(revoke({ documentId, profileId: p.profileId }))} className="text-faint hover:text-danger">
+                    <IconButton label={`Remove ${p.displayName}`} onClick={() => void run(revoke({ documentId, profileId: p.profileId }))} className="hover:text-danger">
                       <Trash2 size={14} aria-hidden />
-                    </button>
+                    </IconButton>
                   ) : null}
                 </li>
               ))}

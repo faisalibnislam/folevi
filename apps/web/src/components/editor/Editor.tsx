@@ -3,14 +3,14 @@
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { LIMITS, ulid } from "@folevi/editor-schema";
+import { LIMITS, ulid, type WireBlock } from "@folevi/editor-schema";
 import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { enqueueUpload } from "@/lib/sync/uploads";
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
-import { blocksToDoc, diffBlocks, docToBlocks } from "./convert";
+import { blocksToDoc, docToBlocks, localChanges } from "./convert";
 import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "./paste";
 import { remoteTransaction } from "./remoteApply";
 import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
@@ -62,8 +62,15 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   // Nothing is ever flushed until the editor shows the document's real content (prevents an empty,
   // not-yet-loaded editor from being mistaken for "the person deleted everything").
   const hydrated = useRef(false);
-
-  const engineBlocksMap = useCallback(() => new Map(engine.documentBlocks(documentId).map((b) => [b.id, b])), [engine, documentId]);
+  // The blocks as the editor last showed them (after its own last save, or the last remote change it took in).
+  // Local edits are what differs from these, never what differs from the engine: the engine may already hold a
+  // remote change the editor hasn't shown yet (one waiting for an input method to finish composing), and
+  // comparing with it would save the older text over it, or delete a block someone just added.
+  const shown = useRef<Map<string, WireBlock>>(new Map());
+  const showEngine = useCallback(() => {
+    shown.current = new Map(engine.documentBlocks(documentId).map((b) => [b.id, b]));
+    engine.markShown(documentId);
+  }, [engine, documentId]);
 
   // Fractional ranks grow when blocks are repeatedly inserted between the same neighbours. When one gets
   // long, ask the server to re-space that sibling list once our own queued changes have synced.
@@ -97,23 +104,23 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       if (!editor || !dirty.current || !hydrated.current) return;
       dirty.current = false;
       engine.setEditing(documentId, false);
-      const previous = engineBlocksMap();
-      const next = docToBlocks(editor.state.doc, previous);
-      const diff = diffBlocks(previous, next, editor.schema);
+      const { next, upserts, deletes } = localChanges(editor.state.doc, shown.current, editor.schema);
       // One save for the whole flush. Changes go first, in document order (parents before the blocks nested
-      // under them), then deletes: a block moved out from under a deleted parent must move before the delete,
-      // which takes the parent's subtree with it on the server.
+      // under them), then deletes: a block moved out from under a deleted parent must move before the delete.
+      // Each is based on the version the editor showed (older than the engine's when a remote change to it is
+      // still waiting to be shown).
       engine.batch(() => {
-        for (const u of diff.upserts) {
+        for (const u of upserts) {
           // A block that comes back after this device deleted it (undo) is restored, not re-created.
           if (engine.isBlockDeleted(documentId, u.block.id)) engine.restoreBlock(documentId, u.block.id);
-          engine.upsertBlock(documentId, u.block, u.fields);
+          engine.upsertBlock(documentId, u.block, u.fields, engine.unshownRevision(u.block.id));
           if (u.fields.includes("position") && u.block.rank.length > LIMITS.maxRankLength / 2) rebalanceParents.current.add(u.block.parentId);
         }
-        for (const d of diff.deletes) engine.deleteBlock(documentId, d);
+        for (const d of deletes) engine.deleteBlock(documentId, d, engine.unshownRevision(d));
       });
+      shown.current = new Map(next.map((b) => [b.id, b]));
     },
-    [engine, documentId, engineBlocksMap],
+    [engine, documentId],
   );
 
   const editor = useEditor({
@@ -182,7 +189,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         return true;
       },
     },
-    onCreate: () => {
+    onCreate: ({ editor: ed }) => {
+      // What it opened with (the engine's blocks as they were then).
+      shown.current = new Map(docToBlocks(ed.state.doc, new Map(engine.documentBlocks(documentId).map((b) => [b.id, b]))).map((b) => [b.id, b]));
+      engine.markShown(documentId);
       hydrated.current = true;
     },
     onUpdate: ({ editor: ed, transaction }) => {
@@ -231,11 +241,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       return;
     }
     flushLocal(ed);
-    const tr = remoteTransaction(ed.state, engine.documentBlocks(documentId));
-    if (!tr) return;
-    tr.setMeta("remote", true).setMeta("addToHistory", false);
-    ed.view.dispatch(tr);
-  }, [engine, documentId, flushLocal]);
+    const tr = remoteTransaction(ed.state, engine.documentBlocks(documentId), shown.current);
+    if (tr) ed.view.dispatch(tr.setMeta("remote", true).setMeta("addToHistory", false));
+    showEngine();
+  }, [engine, documentId, flushLocal, showEngine]);
   const applyFromEngineRef = useRef(applyFromEngine);
   applyFromEngineRef.current = applyFromEngine;
 
@@ -262,6 +271,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
             .setMeta("remote", true)
             .setMeta("addToHistory", false),
         );
+        // The file's id is the engine's as well: not an edit of the editor's own.
+        const before = shown.current.get(e.blockId);
+        if (before) shown.current.set(e.blockId, { ...before, props: { ...before.props, fileId: e.fileId } });
       }
     });
   }, [engine, documentId]);

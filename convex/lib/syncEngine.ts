@@ -78,6 +78,7 @@ export class SyncEngine {
   async applyAll(routing: ScopeArg | null, ops: SyncOp[]): Promise<ServerOpResult[]> {
     if (ops.length > MAX_BATCH) fail("limit_exceeded", `At most ${MAX_BATCH} operations per batch.`);
     this.routing = routing ? await this.memberScope(routing) : null;
+    for (const op of ops) if (op.kind === "block.delete") this.batchDeletes.set(op.blockId, op.baseRevision ?? null);
     const results: ServerOpResult[] = [];
     for (const op of ops) {
       results.push(await this.applyOne(op));
@@ -290,6 +291,8 @@ export class SyncEngine {
    * clears it, so later block ops see the change.
    */
   private blockDocs = new Map<string, Doc<"documents">>();
+  /** The blocks this batch deletes, with the revision each delete is based on (see deleteBlock). */
+  private batchDeletes = new Map<string, number | null>();
   /** Blocks this batch created: nothing (tasks, backlinks) can be indexed for them yet. */
   private newRows = new Set<string>();
   /** Of those, the ones that need no task and no backlinks at all. */
@@ -426,17 +429,33 @@ export class SyncEngine {
     const wantsContent = op.fields.includes("content") && contentChanged;
     const wantsPosition = op.fields.includes("position") && positionChanged;
     const contentConflict = wantsContent && existing.contentRev > op.baseRevision;
+    // A toggle opened or closed: last writer wins, without touching `contentRev`, so it never conflicts with an
+    // edit of the toggle's text (in either order).
+    const collapsed = Boolean((incoming.props as { collapsed?: unknown }).collapsed);
+    const wantsCollapse =
+      op.fields.includes("collapsed") &&
+      existing.type === "toggle" &&
+      incoming.type === "toggle" &&
+      Boolean((existing.props as { collapsed?: unknown }).collapsed) !== collapsed;
 
-    if (!wantsContent && !wantsPosition) {
+    if (!wantsContent && !wantsPosition && !wantsCollapse) {
       return { opId: op.opId, status: "applied", revision: existing.revision, block: toWireBlock(existing), deleted: false };
     }
     const revision = existing.revision + 1;
     const patch: Partial<Doc<"blocks">> = { revision, seq, updatedAt: now, updatedBy: this.profile._id };
+    let keptCollapse = false;
     if (wantsContent && !contentConflict) {
       patch.type = incoming.type;
       patch.schemaVersion = incoming.schemaVersion;
       patch.text = incoming.text;
       patch.props = incoming.props;
+      // A text edit from a device that hadn't seen the toggle opened or closed since (it doesn't say "collapsed")
+      // leaves that as it is. (One that changed nothing since its base is taken whole: older clients send
+      // opening and closing as a content change.)
+      if (keepsCollapse(existing, incoming, op)) {
+        patch.props = { ...(incoming.props as Record<string, unknown>), collapsed: Boolean((existing.props as { collapsed?: unknown }).collapsed) };
+        keptCollapse = true;
+      }
       patch.contentRev = revision;
     }
     if (wantsPosition) {
@@ -444,7 +463,8 @@ export class SyncEngine {
       patch.rank = incoming.rank;
       patch.positionRev = revision;
     }
-    if (contentConflict && !wantsPosition) {
+    if (wantsCollapse) patch.props = { ...((patch.props ?? existing.props) as Record<string, unknown>), collapsed };
+    if (contentConflict && !wantsPosition && !wantsCollapse) {
       return {
         opId: op.opId,
         status: "conflict",
@@ -467,7 +487,8 @@ export class SyncEngine {
         conflict: { reason: "content", server: toWireBlock(row), client: incoming },
       };
     }
-    return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: false, normalized: normalized || undefined };
+    // (Not quite as sent when the toggle kept its state: the client re-reads it.)
+    return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: false, normalized: normalized || keptCollapse || undefined };
   }
 
   /**
@@ -530,12 +551,25 @@ export class SyncEngine {
     if (op.baseRevision !== null && op.baseRevision !== undefined && row.contentRev > op.baseRevision) {
       return { opId: op.opId, status: "conflict", revision: row.revision, block: toWireBlock(row), conflict: { reason: "content", server: toWireBlock(row), client: null } };
     }
+    // The same for what's nested under it. Clients delete every line they remove themselves (deepest first, or
+    // in the same batch), so a line still there that this batch doesn't delete as the version it was based on
+    // is one the device never saw: written or moved in by someone else since, or edited after it looked.
+    // (A delete based on no version, like the check above, takes everything under it.)
+    const descendants = await this.subtree(doc, row.blockId);
+    const unseen = op.baseRevision !== null && op.baseRevision !== undefined && descendants.some((c) => {
+      if (c.deletedAt !== undefined) return false;
+      const base = this.batchDeletes.get(c.blockId);
+      return base === undefined || (base !== null && c.contentRev > base);
+    });
+    if (unseen) {
+      return { opId: op.opId, status: "conflict", revision: row.revision, block: toWireBlock(row), conflict: { reason: "content", server: toWireBlock(row), client: null } };
+    }
     const seq = await this.seq.for(scopeOfRow(doc));
     const now = Date.now();
     const revision = row.revision + 1;
     await this.ctx.db.patch(row._id, { deletedAt: now, revision, positionRev: revision, seq, updatedAt: now, updatedBy: this.profile._id });
     this.touch(doc, row._id);
-    for (const child of await this.subtree(doc, row.blockId)) {
+    for (const child of descendants) {
       if (child.deletedAt !== undefined) continue;
       await this.ctx.db.patch(child._id, { deletedAt: now, revision: child.revision + 1, seq, updatedAt: now, updatedBy: this.profile._id });
       this.touch(doc, child._id);
@@ -829,7 +863,8 @@ export class SyncEngine {
       const seq = await this.seq.for(scopeOfRow(fresh));
       // The first edit after a version schedules the next one (documents.autoVersion), so a long stretch of
       // editing still gets a version every few minutes, whichever app made it and whether or not it stays open.
-      const versionDue = fresh.versionDueAt === undefined;
+      // (A due time long past means that run never happened, e.g. it failed: schedule again rather than never.)
+      const versionDue = fresh.versionDueAt === undefined || fresh.versionDueAt < Date.now() - AUTO_VERSION_MS;
       await this.ctx.db.patch(fresh._id, {
         updatedAt: Date.now(),
         lastEditedBy: this.profile._id,
@@ -859,6 +894,12 @@ export class SyncEngine {
 const BULK_DERIVED = 20;
 /** However long someone keeps typing, the page gets a version at least this often (documents.autoVersion). */
 export const AUTO_VERSION_MS = 10 * 60_000;
+
+function keepsCollapse(existing: Doc<"blocks">, incoming: WireBlock, op: Extract<SyncOp, { kind: "block.upsert" }>): boolean {
+  if (existing.type !== "toggle" || incoming.type !== "toggle" || op.fields.includes("collapsed")) return false;
+  const was = Boolean((existing.props as { collapsed?: unknown }).collapsed);
+  return was !== Boolean((incoming.props as { collapsed?: unknown }).collapsed) && op.baseRevision !== null && existing.revision > op.baseRevision;
+}
 
 /** Whether a block links to a page (a page card, or page links in its text or table cells). */
 function hasLinkTargets(row: Doc<"blocks">): boolean {
@@ -1001,7 +1042,9 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
     }
     if (!Object.keys(patch).length) continue;
     const seq = await seqs.for(scopeOfRow(row));
-    await ctx.db.patch(row._id, { ...patch, revision: row.revision + 1, seq, updatedAt: Date.now(), updatedBy: actor });
+    // Who wrote the line stays as it was: a new label isn't an edit by whoever renamed the page (version
+    // history credits lines to `updatedBy`, and the check above trusts it as the line's writer).
+    await ctx.db.patch(row._id, { ...patch, revision: row.revision + 1, seq });
     touchedDocs.add(row.documentId);
   }
   for (const id of touchedDocs) {

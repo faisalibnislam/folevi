@@ -5,7 +5,7 @@ import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 import { ALL_MARKS, ALL_NODES } from "@/components/editor/extensions";
 import { BlockIdentity } from "@/components/editor/plugins";
 import { blocksToDoc, diffBlocks, docToBlocks } from "@/components/editor/convert";
-import { FindReplace, findState, replaceAll, replaceCurrent, setFind } from "@/components/editor/findReplace";
+import { FindReplace, findMatches, findState, replaceAll, replaceCurrent, setFind } from "@/components/editor/findReplace";
 
 const para = (id: string, text: string, rank: string): WireBlock => ({ id, type: "paragraph", parentId: null, rank, schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text }], props: {} });
 const blocks = [para("b1", "The cat sat. The CAT ran.", "a"), para("b2", "No felines here", "b"), para("b3", "cat", "c")];
@@ -68,6 +68,39 @@ describe("find & replace", () => {
     expect(replaceCurrent(editor, "x")).toBe(false);
     expect(replaceAll(editor, "x")).toBe(0);
     expect(texts(editor)[0]).toBe("The cat sat. The CAT ran.");
+    editor.destroy();
+  });
+
+  test("matches follow edits (only the touched blocks are searched again) and agree with a full search", () => {
+    const editor = makeEditor();
+    setFind(editor, { query: "cat" }, false);
+    const agree = () => expect(findState(editor).matches).toEqual(findMatches(editor.state.doc, "cat", false));
+    const at = (text: string) => {
+      let pos = -1;
+      editor.state.doc.descendants((n, p) => {
+        if (pos < 0 && n.isText && n.text!.includes(text)) pos = p + n.text!.indexOf(text);
+      });
+      return pos;
+    };
+    editor.commands.insertContentAt(at("No"), "a cat and ");
+    agree();
+    editor.commands.insertContentAt(at("sat"), "x");
+    agree();
+    // Splitting a word that matched, and joining it back.
+    editor.commands.insertContentAt(at("AT ran") + 1, "-");
+    agree();
+    editor.commands.deleteRange({ from: at("-"), to: at("-") + 1 });
+    agree();
+    // Across blocks, a new block, and undo.
+    editor.commands.deleteRange({ from: at("ran."), to: at("felines") });
+    agree();
+    editor.commands.insertContentAt(0, { type: "paragraph", content: [{ type: "text", text: "cat cat" }] });
+    agree();
+    editor.commands.undo();
+    agree();
+    editor.commands.undo();
+    agree();
+    expect(findState(editor).matches.length).toBeGreaterThan(0);
     editor.destroy();
   });
 });

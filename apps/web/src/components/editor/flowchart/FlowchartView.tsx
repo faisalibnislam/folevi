@@ -109,7 +109,8 @@ export function FlowchartView(props: ReactNodeViewProps) {
   return <FlowchartEditor {...props} />;
 }
 
-const NodeItem = memo(function NodeItem({ node, selected, hideText, onFocusNode }: { node: FlowNode; selected: boolean; hideText: boolean; onFocusNode: (id: string) => void }) {
+// Tab reaches each shape and focusing one selects it; its name says where it is ("Start: Begin, shape 2 of 7").
+const NodeItem = memo(function NodeItem({ node, selected, hideText, onFocusNode, position }: { node: FlowNode; selected: boolean; hideText: boolean; onFocusNode: (id: string) => void; position: string }) {
   return (
     <g
       className="fc-node"
@@ -120,7 +121,7 @@ const NodeItem = memo(function NodeItem({ node, selected, hideText, onFocusNode 
       tabIndex={0}
       role="button"
       aria-pressed={selected}
-      aria-label={nodeAriaLabel(node)}
+      aria-label={`${nodeAriaLabel(node)}, ${position}`}
       onFocus={() => onFocusNode(node.id)}
     >
       <FlowNodeShape node={node} hideText={hideText} />
@@ -880,8 +881,8 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
                 ))}
               </g>
               <g>
-                {doc.nodes.map((n) => (
-                  <NodeItem key={n.id} node={n} selected={sel.nodes.includes(n.id)} hideText={editing?.kind === "node" && editing.id === n.id} onFocusNode={onFocusNode} />
+                {doc.nodes.map((n, i) => (
+                  <NodeItem key={n.id} node={n} selected={sel.nodes.includes(n.id)} hideText={editing?.kind === "node" && editing.id === n.id} onFocusNode={onFocusNode} position={`shape ${i + 1} of ${nodeCount}`} />
                 ))}
               </g>
               <g aria-hidden>

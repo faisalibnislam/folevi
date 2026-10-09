@@ -102,6 +102,8 @@ export const Numbered = textBlock("numbered", "div", { index: { default: 1, rend
 export const Quote = textBlock("quote", "blockquote", {}, [{ tag: "blockquote" }]);
 
 /** Checklist/task block. The checkbox is a real, labelled control inside a light DOM node view. */
+let todoSeq = 0;
+
 export const Todo = Node.create({
   name: "todo",
   group: "block",
@@ -136,6 +138,7 @@ export const Todo = Node.create({
       meta.contentEditable = "false";
       const content = document.createElement("div");
       content.className = "fb-content";
+      content.id = `fb-todo-${++todoSeq}`;
       dom.append(box, content, meta);
       const render = () => {
         dom.dataset.blockId = current.attrs.id ?? "";
@@ -144,7 +147,14 @@ export const Todo = Node.create({
         dom.dataset.checked = current.attrs.checked ? "true" : "false";
         applyBlockFormat(dom, current.attrs);
         box.setAttribute("aria-checked", current.attrs.checked ? "true" : "false");
-        box.setAttribute("aria-label", current.attrs.checked ? "Mark as not done" : "Mark as done");
+        // Named by the task's own text (aria-checked says whether it's done); an empty one is "To-do".
+        if (current.content.size) {
+          box.setAttribute("aria-labelledby", content.id);
+          box.removeAttribute("aria-label");
+        } else {
+          box.removeAttribute("aria-labelledby");
+          box.setAttribute("aria-label", "To-do");
+        }
         const parts: string[] = [];
         if (current.attrs.dueDate) parts.push(`${current.attrs.dueDate}${current.attrs.dueTime ? ` ${current.attrs.dueTime}` : ""}`);
         if (current.attrs.priority && current.attrs.priority !== "none") parts.push(`${current.attrs.priority} priority`);

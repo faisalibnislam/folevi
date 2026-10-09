@@ -64,7 +64,8 @@ export const rebalance = mutation({
     const now = Date.now();
     for (const [i, s] of siblings.entries()) {
       const revision = s.revision + 1;
-      await ctx.db.patch(s._id, { rank: ranks[i]!, revision, positionRev: revision, seq, updatedAt: now, updatedBy: profile._id });
+      // Same order, new rank strings: nobody edited these lines, so who last did stays as it was.
+      await ctx.db.patch(s._id, { rank: ranks[i]!, revision, positionRev: revision, seq });
     }
     await ctx.db.patch(doc._id, { seq, contentSeq: doc.contentSeq + 1, updatedAt: now });
     return { rebalanced: siblings.length };

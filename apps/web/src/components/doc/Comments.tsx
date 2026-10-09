@@ -330,13 +330,13 @@ export function CommentThreadCard({
         </div>
         {siblings.length > 1 && at >= 0 ? (
           <div className="mr-1 flex items-center text-[11.5px] text-muted" role="group" aria-label="Threads on this block">
-            <IconButton label="Previous thread" className="!h-6 !w-6" disabled={at === 0} onClick={() => onSelectThread?.(siblings[at - 1]!.id)}>
+            <IconButton label="Previous thread" className="!h-6 !w-6 pointer-coarse:!h-11 pointer-coarse:!w-11" disabled={at === 0} onClick={() => onSelectThread?.(siblings[at - 1]!.id)}>
               <ChevronLeft size={13} aria-hidden />
             </IconButton>
             <span aria-live="polite">
               {at + 1} of {siblings.length}
             </span>
-            <IconButton label="Next thread" className="!h-6 !w-6" disabled={at === siblings.length - 1} onClick={() => onSelectThread?.(siblings[at + 1]!.id)}>
+            <IconButton label="Next thread" className="!h-6 !w-6 pointer-coarse:!h-11 pointer-coarse:!w-11" disabled={at === siblings.length - 1} onClick={() => onSelectThread?.(siblings[at + 1]!.id)}>
               <ChevronRight size={13} aria-hidden />
             </IconButton>
           </div>
@@ -353,7 +353,7 @@ export function CommentThreadCard({
           <IconButton
             label={resolved ? "Reopen thread" : "Resolve thread"}
             aria-pressed={resolved}
-            className="!h-7 !w-7"
+            className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11"
             onClick={() => {
               actions.setResolved({ threadId: thread.id, resolved: !resolved }).catch(fail);
               if (!resolved) toast.show("Thread resolved");
@@ -363,7 +363,7 @@ export function CommentThreadCard({
           </IconButton>
         ) : null}
         {embedded ? null : (
-          <IconButton label="Close comments" className="!h-7 !w-7" onClick={onClose}>
+          <IconButton label="Close comments" className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11" onClick={onClose}>
             <X size={15} aria-hidden />
           </IconButton>
         )}
@@ -447,7 +447,7 @@ export function CommentThreadCard({
               Enter to send, Shift+Enter for a new line. Type @ to mention someone who can see this page.
             </span>
           </div>
-          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!h-7 !w-7 !rounded-full">
+          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11 !rounded-full">
             <ArrowUp size={14} aria-hidden />
           </IconButton>
         </form>

@@ -26,6 +26,27 @@ export const backfillDocumentPreviews = internalMutation({
   },
 });
 
+/**
+ * Moves version content held on the version's own row into snapshotChunks (where versions are stored now),
+ * so listing a page's versions reads a few small rows rather than every version's text. Pages of 10: an
+ * inline version can be up to 700 KB.
+ */
+export const chunkInlineSnapshots = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("documentSnapshots").paginate({ numItems: 10, cursor: args.cursor ?? null });
+    let moved = 0;
+    for (const s of page.page) {
+      if (s.content === undefined) continue;
+      await ctx.db.insert("snapshotChunks", { snapshotId: s._id, index: 0, data: s.content });
+      await ctx.db.patch(s._id, { content: undefined, chunkCount: 1 });
+      moved++;
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.chunkInlineSnapshots, { cursor: page.continueCursor });
+    return { moved, done: page.isDone };
+  },
+});
+
 /** Gives every note without an icon a random emoji (notes always have an icon now). */
 export const backfillNoteIcons = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },

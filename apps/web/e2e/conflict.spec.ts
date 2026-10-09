@@ -36,7 +36,7 @@ test("same-block edits on two devices produce a visible conflict; Keep both lose
 
   // Device 2 reconnects → typed conflict, both versions shown.
   await other.setOffline(false);
-  const banner = mac.getByRole("alert").filter({ hasText: "changed in two places" });
+  const banner = mac.getByRole("region").filter({ hasText: "changed in two places" });
   await expect(banner).toBeVisible({ timeout: 20_000 });
   await expect(banner).toContainText("Hello from the web");
   await expect(banner).toContainText("Hello from the second device");

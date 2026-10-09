@@ -39,7 +39,7 @@ test("the introduction shows once: a starter fills the box, and it's gone everyw
   await context.close();
 });
 
-test("opened first in a note: note starters; Got it dismisses it for the AI page too; the note's empty states", async ({ browser }) => {
+test("a note's Foli panel has no introduction card, just its empty states; the AI page still introduces Foli", async ({ browser }) => {
   test.setTimeout(150_000);
   const { page, context } = await newPerson(browser, "Note Intro");
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -50,12 +50,11 @@ test("opened first in a note: note starters; Got it dismisses it for the AI page
   await waitForSaved(page);
 
   await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli" }).click();
-  const card = page.getByRole("region", { name: "Meet Foli" });
-  await expect(card).toBeVisible({ timeout: 30_000 });
-  for (const s of ["Summarize this note", "List the action items", "What's still unclear here?"]) await expect(card.getByRole("button", { name: s })).toBeVisible();
+  const modes = page.getByRole("group", { name: "What Foli should do" });
+  await expect(modes).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("region", { name: "Meet Foli" })).toHaveCount(0);
 
   // Ask, before anything is asked: questions that fit this note.
-  const modes = page.getByRole("group", { name: "What Foli should do" });
   await modes.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ask Foli about this note" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Who is mentioned, and why?" })).toBeVisible();
@@ -63,12 +62,9 @@ test("opened first in a note: note starters; Got it dismisses it for the AI page
   await modes.getByRole("button", { name: "Study", exact: true }).click();
   await expect(page.getByRole("region", { name: "Study", exact: true }).getByText("Nothing to study yet")).toBeVisible();
 
-  await card.getByRole("button", { name: "Got it" }).click();
-  await expect(card).toHaveCount(0);
-  await page.waitForTimeout(1_500);
+  // Opening the note panel doesn't count as having seen the introduction.
   await page.goto(`${APP}/ai`);
-  await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("region", { name: "Meet Foli" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Meet Foli" })).toBeVisible({ timeout: 30_000 });
   await context.close();
 });
 

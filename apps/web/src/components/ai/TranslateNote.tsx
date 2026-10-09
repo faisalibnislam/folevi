@@ -92,7 +92,7 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
             </option>
           ))}
         </Select>
-        <div className="ui-seg ui-well text-[12px]" role="group" aria-label="Where the translation goes">
+        <div className="ui-seg ui-well w-full basis-full text-[12px]" role="group" aria-label="Where the translation goes">
           <button type="button" aria-pressed={how === "note"} onClick={() => setOutput("note")}>
             New note
           </button>

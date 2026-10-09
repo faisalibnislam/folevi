@@ -310,9 +310,7 @@ export function ChatThread({
             <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
             {mode !== "ask" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
           </>
-        ) : (
-          <p className="text-[13.5px] text-muted">{modeLine}</p>
-        )}
+        ) : null}
         <p className="mb-2.5 mt-5 flex items-center gap-2 text-[12.5px] font-medium text-muted">
           <AiIcon size={13} aria-hidden /> Try asking
         </p>
@@ -418,7 +416,7 @@ export function ChatThread({
             />
             {/* How Foli helps on the left, attach and send on the right, all inside the box. */}
             <div className="flex items-center gap-2 px-2.5 pb-2.5">
-                <div className="ui-seg ui-well flex-none" role="group" aria-label="How Foli helps">
+                <div className={`ui-seg ui-well min-w-0 shrink ${variant === "panel" ? "[&>*]:px-1.5" : ""}`} role="group" aria-label="How Foli helps">
                   <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")} title="Answers from your notes">
                     Chat
                   </button>
@@ -431,7 +429,7 @@ export function ChatThread({
                     </button>
                   ) : null}
                 </div>
-              <div className="ml-auto flex items-center gap-1.5">
+              <div className="ml-auto flex flex-none items-center gap-1.5">
                 {attachAvailable ? <AttachControl noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
                 <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-8 w-8 flex-none place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-30">
                   <ArrowUp size={16} aria-hidden />
@@ -439,10 +437,8 @@ export function ChatThread({
               </div>
             </div>
           </div>
-          {/* The floating chat says where requests go in its Meet Foli intro; elsewhere this line says it too. */}
           <p className="mt-2 px-1 text-[11px] text-faint">
             Foli is AI and can make mistakes.
-            {variant !== "floating" ? " Questions and the notes they need go to Google Gemini." : ""}
             {footNotes.length ? ` ${footNotes.join(" ")}` : ""}
           </p>
         </div>

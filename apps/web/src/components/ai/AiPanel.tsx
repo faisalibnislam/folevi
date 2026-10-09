@@ -23,7 +23,6 @@ import { aiDiff } from "./aiDiff";
 import { AiDiffLegend, AiDiffView } from "./AiDiffView";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { ChatThread } from "./chat/ChatThread";
-import { AI_INTRO, AiIntro } from "./AiIntro";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
@@ -208,14 +207,6 @@ export function AiPanel({
   // Said once when a result is ready (the streaming text isn't announced word by word).
   const announce = useDoneAnnouncement(Boolean(busy), error ? "" : "Done. The result is below.");
 
-  /** A starter from the first-time introduction: summarize, the action items, or a question about the note. */
-  const starter = (s: string) => {
-    const [summary, actions] = AI_INTRO.note.starters;
-    if (s === summary) return void doWrite({ task: "summarize", placement: { kind: "cursor" } });
-    if (s === actions && !readOnly) return void doWrite({ task: "actions", placement: { kind: "cursor" } });
-    setMode("ask");
-    void doAsk(s === actions ? "What are the action items in this note?" : "What's still unclear or open in this note?");
-  };
 
   const modes = (
     <div className="ui-seg ui-well mb-2" role="group" aria-label="What Foli should do">
@@ -234,14 +225,11 @@ export function AiPanel({
     </div>
   );
 
-  // The first time: what the AI does in a note, where requests go, and starters for this note.
-  const intro = <AiIntro place="note" documentId={documentId} onStarter={starter} className="mb-3" />;
 
   // Agent: a conversation about this note that can propose changes (previewed, approved, undoable).
   if (mode === "agent") {
     return (
       <div className="text-sm">
-        {intro}
         {modes}
         <div className="flex h-[min(70vh,640px)] flex-col">
           <ChatThread conversationId={agentConversation} onConversation={setAgentConversation} initialContext={agentContext} variant="panel" initialMode="agent" autoFocus />
@@ -254,7 +242,6 @@ export function AiPanel({
   if (mode === "study") {
     return (
       <div className="text-sm">
-        {intro}
         {modes}
         <StudyMode
           editor={editor}
@@ -273,7 +260,6 @@ export function AiPanel({
     <div className="space-y-4 text-sm">
       {/* Prompt */}
       <section aria-label="Ask Foli">
-        {intro}
         {modes}
         <div className="relative rounded-[10px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
@@ -525,13 +511,12 @@ export function AiPanel({
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 px-1 text-[11.5px] text-faint">Works on the selected text, or the whole note.</p>
           </section>
           <TranslateNote documentId={documentId} editor={editor} readOnly={readOnly} disabled={Boolean(busy)} />
         </>
       ) : null}
 
-      <p className="px-1 text-[11px] leading-snug text-faint">Foli can make mistakes, so check what it writes. Your request and the notes it needs are sent to Google Gemini.</p>
+      <p className="px-1 text-[11px] leading-snug text-faint">Foli is AI and can make mistakes.</p>
     </div>
   );
 }

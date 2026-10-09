@@ -163,11 +163,10 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
   };
 }
 
-// The picture card: a faint wash of ink over the raised surface, so paper shapes inside it read in both themes.
-const PICTURE =
-  "grid h-14 w-full place-items-center overflow-hidden rounded-[9px] bg-[color-mix(in_oklab,var(--color-ink)_4%,var(--color-surface-raised))] shadow-[0_0_0_1px_var(--color-line)] transition-[box-shadow,transform] duration-150";
-const PICTURE_LIVE =
-  "group-hover:-translate-y-px group-hover:shadow-[0_0_0_1px_var(--color-line-strong),0_6px_14px_-8px_rgb(0_0_0/0.35)] group-active:translate-y-0 group-active:scale-[0.97] group-active:shadow-[0_0_0_1px_var(--color-line-strong)]";
+// The picture card: the same soft fill as the Format panel's buttons (bg-sunken/80, accent wash on hover), so the
+// two tools read as one set on any note style, light or dark.
+const PICTURE = "grid h-14 w-full place-items-center overflow-hidden rounded-[6px] bg-sunken/80 transition-[background-color,transform] duration-150";
+const PICTURE_LIVE = "group-hover:bg-accent-soft/70 group-active:scale-[0.97]";
 
 function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | null; disabled: boolean }) {
   const handlers = useInsertDrag(editor, disabled, tile.action);

@@ -31,6 +31,7 @@ import { fail } from "./errors";
 import { mentionedIds, notify } from "./notify";
 import { ReaderLabels, titleIsShared } from "./linkLabels";
 import { copyCollectionsInto } from "./collections";
+import { FileCopies } from "./fileCopies";
 import { internal } from "../_generated/api";
 import { queueIndex } from "./ai/indexing";
 
@@ -694,6 +695,8 @@ export class SyncEngine {
     }
     let blocks: WireBlock[] = [];
     let templateKey: string | undefined;
+    // A note from a template owns its files, so deleting the template for good leaves its images in place.
+    const files = new FileCopies(this.ctx, this.profile);
     if (input.templateId) {
       if (input.templateId.startsWith("builtin:")) {
         const key = input.templateId.slice(8);
@@ -706,7 +709,7 @@ export class SyncEngine {
         const template = await getDocumentByPublicId(this.ctx, input.templateId);
         if (!template || template.kind !== "template" || template.inTrash) fail("not_found", "That template is no longer available.");
         if (!accessAtLeast(await documentAccess(this.ctx, this.profile, template), "read")) fail("not_found", "That template is no longer available.");
-        blocks = cloneBlocks((await liveBlocks(this.ctx, template._id)).map(toWireBlock));
+        blocks = await files.blocks(cloneBlocks((await liveBlocks(this.ctx, template._id)).map(toWireBlock)));
         templateKey = template.publicId;
       }
     }
@@ -720,13 +723,14 @@ export class SyncEngine {
       parentDocumentId,
       folderId,
       style: input.style ? checkedStyle(input.style) : undefined,
-      cover: input.cover ? await this.checkedCover(input.cover, scope) : undefined,
+      cover: input.cover ? await files.cover(await this.checkedCover(input.cover, scope)) : undefined,
       dailyDate: input.kind === "daily" ? (input.dailyDate ?? undefined) : undefined,
       dailyOwnerId: input.kind === "daily" ? this.profile._id : undefined,
       templateKey,
       accessMode,
       blocks,
     });
+    await files.commit(doc);
     // A page from one of your templates: its collections are its own, not the template's.
     if (templateKey && !templateKey.startsWith("builtin:")) await copyCollectionsInto(this.ctx, doc);
     return { opId: op.opId, status: "applied", revision: doc.revision, document: await this.summary(doc) };

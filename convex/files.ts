@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -478,6 +478,36 @@ export const byPublicId = internalQuery({
       .query("files")
       .withIndex("by_public_id", (q) => q.eq("publicId", args.fileId))
       .unique(),
+});
+
+// ---------------------------------------------------------------- copies (lib/fileCopies.ts)
+
+/**
+ * Gives a copied note's file its own bytes: until this runs the copy's row shares the original's blob.
+ * Copies the blob, then points the row at it (a row that's gone or changed meanwhile keeps nothing).
+ */
+export const copyBlob = internalAction({
+  args: { fileId: v.id("files"), from: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const blob = await ctx.storage.get(args.from);
+    if (!blob) return null;
+    const to = await ctx.storage.store(blob);
+    const kept = await ctx.runMutation(internal.files.swapBlob, { fileId: args.fileId, from: args.from, to });
+    if (!kept) await ctx.storage.delete(to);
+    return null;
+  },
+});
+
+export const swapBlob = internalMutation({
+  args: { fileId: v.id("files"), from: v.id("_storage"), to: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const file = await ctx.db.get(args.fileId);
+    if (!file || file.storageId !== args.from) return false;
+    await ctx.db.patch(file._id, { storageId: args.to });
+    // The original was purged meanwhile: its bytes stayed for this copy, and nothing needs them now.
+    if (!(await isStorageReferenced(ctx, args.from))) await ctx.storage.delete(args.from);
+    return true;
+  },
 });
 
 // ---------------------------------------------------------------- orphan cleanup (cron)

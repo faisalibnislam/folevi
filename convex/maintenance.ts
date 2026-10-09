@@ -17,6 +17,7 @@ import { subscriptionOf } from "./lib/billing";
 import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope } from "./lib/scope";
 import { bumpSeq, deleteSeq } from "./lib/seq";
 import { dropNoteGraph } from "./lib/ai/graphStore";
+import { deleteFileBlob } from "./lib/fileCopies";
 
 const BUDGET = 400;
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -122,7 +123,7 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     .withIndex("by_document", (q) => q.eq("documentId", docId))
     .take(50);
   for (const f of files) {
-    await ctx.storage.delete(f.storageId);
+    await deleteFileBlob(ctx, f);
     if (hasValidScope(f)) await releaseFileStorage(ctx, f, scopeOfRow(f));
     await bump(ctx, "storage_bytes", -f.size);
     await ctx.db.delete(f._id);
@@ -195,7 +196,7 @@ async function purgePersonal(ctx: MutationCtx, profileId: Id<"profiles">, budget
     .withIndex("by_owner", (q) => q.eq("ownerProfileId", profileId))
     .take(100);
   for (const f of files) {
-    await ctx.storage.delete(f.storageId);
+    await deleteFileBlob(ctx, f);
     await bump(ctx, "storage_bytes", -f.size);
     await ctx.db.delete(f._id);
   }
@@ -273,7 +274,7 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     .take(100);
   for (const f of files) {
-    await ctx.storage.delete(f.storageId);
+    await deleteFileBlob(ctx, f);
     await ctx.db.delete(f._id);
   }
   if (files.length) return false;

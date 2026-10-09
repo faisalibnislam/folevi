@@ -29,6 +29,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { SeqAllocator, nextSeq } from "./lib/seq";
 import { copyCollectionsInto } from "./lib/collections";
+import { FileCopies } from "./lib/fileCopies";
 import { inScope, insertScoped, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { vDocumentKind } from "./lib/validators";
 import { People } from "./lib/authors";
@@ -1141,7 +1142,9 @@ export const duplicate = mutation({
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
     // A copy stays in the page's scope, so it needs the right to add pages there (a guest can't).
     const { scope } = await requireRowScope(ctx, profile, doc, "edit", "Document not found.");
-    const blocks = cloneBlocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
+    // The copy owns its files, so deleting the original for good leaves its images in place.
+    const files = new FileCopies(ctx, profile);
+    const blocks = await files.blocks(cloneBlocks((await liveBlocks(ctx, doc._id)).map(toWireBlock)));
     const copy = await createDocument(ctx, {
       scope,
       actor: profile,
@@ -1151,9 +1154,10 @@ export const duplicate = mutation({
       folderId: doc.folderId,
       parentDocumentId: args.asTemplate ? undefined : doc.parentDocumentId,
       style: doc.style,
-      cover: doc.cover,
+      cover: await files.cover(doc.cover),
       blocks,
     });
+    await files.commit(copy);
     await copyCollectionsInto(ctx, copy);
     return await new Placement(ctx, profile).summary(new IdResolver(ctx), copy);
   },
@@ -1513,6 +1517,7 @@ export const copyVersion = mutation({
     const raw = await snapshotText(ctx, snap);
     if (!raw) fail("not_found", "Version content is unavailable.");
     const parsed = JSON.parse(raw) as VersionContent;
+    const files = new FileCopies(ctx, profile);
     const copy = await createDocument(ctx, {
       scope,
       actor: profile,
@@ -1522,10 +1527,11 @@ export const copyVersion = mutation({
       folderId: doc.folderId,
       parentDocumentId: doc.parentDocumentId,
       style: parsed.style ?? doc.style,
-      cover: doc.cover,
-      blocks: cloneBlocks(parsed.blocks),
+      cover: await files.cover(doc.cover),
+      blocks: await files.blocks(cloneBlocks(parsed.blocks)),
     });
-    // Its databases are its own, as with Duplicate: rows edited in the copy don't change the original.
+    // Its files and databases are its own, as with Duplicate: rows edited in the copy don't change the original.
+    await files.commit(copy);
     await copyCollectionsInto(ctx, copy);
     return await new Placement(ctx, profile).summary(new IdResolver(ctx), copy);
   },

@@ -28,6 +28,7 @@ import { notifyInvite, wantsInApp } from "./lib/notify";
 import { claimIdentityImage, deleteIdentityImage, identityImageUrl, workspaceLabel } from "./lib/identityImages";
 import { personalScope } from "./lib/scope";
 import { nextSeq } from "./lib/seq";
+import { aiPrefsOf, aiPrefsPatch, vAiPrefsPatch } from "./lib/ai/prefs";
 import { createDocument, specsToWireBlocks } from "./lib/create";
 import { BUILT_IN_TEMPLATES } from "./lib/templates";
 import { builtInTemplateEnabled } from "./lib/syncEngine";
@@ -56,6 +57,7 @@ export function publicProfile(p: Doc<"profiles">) {
     displayName: p.displayName,
     appearance: p.appearance,
     aiEnabled: p.aiEnabled !== false,
+    aiPrefs: aiPrefsOf(p),
     locale: p.locale,
     timeZone: p.timeZone,
     onboardingStep: p.onboardingStep,
@@ -302,6 +304,8 @@ export const updateProfile = mutation({
     displayName: v.optional(v.string()),
     appearance: v.optional(vAppearance),
     aiEnabled: v.optional(v.boolean()),
+    /** Settings > AI (lib/ai/prefs.ts): only the settings given change. */
+    aiPrefs: v.optional(vAiPrefsPatch),
     timeZone: v.optional(v.string()),
     notificationPrefs: v.optional(vNotificationPrefs),
   },
@@ -316,6 +320,7 @@ export const updateProfile = mutation({
     }
     if (args.appearance) patch.appearance = args.appearance;
     if (args.aiEnabled !== undefined) patch.aiEnabled = args.aiEnabled;
+    if (args.aiPrefs) Object.assign(patch, aiPrefsPatch(args.aiPrefs));
     if (args.timeZone) {
       if (!isValidTimeZone(args.timeZone)) fail("invalid_argument", "Unknown time zone.");
       patch.timeZone = args.timeZone;

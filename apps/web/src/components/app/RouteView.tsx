@@ -11,6 +11,7 @@ import { InviteView } from "@/components/views/InviteView";
 import { ShareInviteView } from "@/components/views/ShareInviteView";
 import { FoldersIndex, TagsIndex } from "@/components/views/OrganizeIndex";
 import { HomeDashboard } from "@/components/views/HomeDashboard";
+import { AiView } from "@/components/views/AiView";
 import { ViewChrome } from "./Shell";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 
@@ -79,6 +80,8 @@ function Routes() {
           <DocumentView key={route.id} documentId={route.id} />
         </Suspense>
       );
+    case "ai":
+      return <AiView id={route.id} />;
     case "tasks":
       return <TasksView view={route.view} />;
     case "calendar":

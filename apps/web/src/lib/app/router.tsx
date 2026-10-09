@@ -11,6 +11,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, type Anchor
 export type Route =
   | { name: "documents" }
   | { name: "doc"; id: string }
+  /** The AI page: the conversation list and one conversation (or a new one). */
+  | { name: "ai"; id: string | null }
   | { name: "tasks"; view: "inbox" | "today" | "upcoming" | "all" | "completed" | "mine" }
   | { name: "calendar"; month: string | null }
   | { name: "daily"; date: string | null }
@@ -25,7 +27,7 @@ export type Route =
   | { name: "notes" }
   | { name: "tags" }
   | { name: "tag"; id: string }
-  | { name: "settings"; section: "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" }
+  | { name: "settings"; section: "account" | "ai" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" }
   | { name: "help" }
   | { name: "onboarding" }
   /** The Mac app's Quick Add window (apps/desktop). */
@@ -35,7 +37,7 @@ export type Route =
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
-const SETTINGS = ["account", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "sync", "data", "desktop"] as const;
+const SETTINGS = ["account", "ai", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "sync", "data", "desktop"] as const;
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -47,6 +49,8 @@ export function parseRoute(pathname: string): Route {
       return { name: "notes" };
     case "d":
       return a ? { name: "doc", id: a } : { name: "not_found" };
+    case "ai":
+      return { name: "ai", id: a && /^[0-9A-Za-z]{1,64}$/.test(a) ? a : null };
     case "tasks":
       return { name: "tasks", view: (TASK_VIEWS as readonly string[]).includes(a ?? "") ? (a as (typeof TASK_VIEWS)[number]) : "today" };
     case "calendar":

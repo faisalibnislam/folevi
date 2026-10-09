@@ -13,8 +13,10 @@ export function useTypewriter(target: string, active: boolean): { text: string; 
   const [shown, setShown] = useState(0);
   const targetRef = useRef(target);
   targetRef.current = target;
+  // A new reply (empty) starts over; a reply that ended a little shorter than what was shown (trailing
+  // spaces trimmed) just stops there.
   useEffect(() => {
-    if (target.length < shown) setShown(0);
+    if (target.length < shown) setShown(target.length);
   }, [target, shown]);
   useEffect(() => {
     if (!active) {

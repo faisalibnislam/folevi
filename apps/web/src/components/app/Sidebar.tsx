@@ -40,11 +40,14 @@ import { openNextInNewTab } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useNoteActions } from "@/components/views/noteActions";
 import { draggedNoteIds, isNoteDrag } from "@/lib/app/noteDrag";
+import { AiIcon } from "@/components/ai/AiIcon";
+import { useAiEnabled } from "@/components/ai/useAi";
 
 function isActive(route: Route, href: string): boolean {
   const map: Record<string, (r: Route) => boolean> = {
     "/documents": (r) => r.name === "documents",
     "/notes": (r) => r.name === "notes",
+    "/ai": (r) => r.name === "ai",
     "/tasks/today": (r) => r.name === "tasks",
     "/shared": (r) => r.name === "shared",
     "/templates": (r) => r.name === "templates",
@@ -370,6 +373,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   const [folderDialog, setFolderDialog] = useState(false);
   const [starredOpen, setStarredOpen] = useLocalStorage("folevi:sidebar-starred-open", true);
+  // The AI page, where AI is included and on (never on Core).
+  const aiOn = useAiEnabled();
 
   const folders = org?.folders ?? [];
   const roots = folders.filter((f) => !f.parentFolderId);
@@ -387,12 +392,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="flex-none space-y-2 px-2.5 pt-1">
         <SidebarSearch />
-        {/* Ask AI lives in the floating chat button (bottom right). */}
+        {/* Ask AI lives in the floating chat button (bottom right) and on the AI page. */}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
         <div className="mt-3 space-y-0.5">
           <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
+          {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} mono />} label="AI" onNavigate={onNavigate} /> : null}
           <div className="group/starred relative">
             <NavItem href="/starred" icon={<Star size={16} />} label="Starred" onNavigate={onNavigate} />
             {starred?.page.length ? (

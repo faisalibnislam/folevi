@@ -3,6 +3,7 @@ export const APP_ROUTE_HEADS = new Set([
   "documents",
   "notes",
   "d",
+  "ai",
   "tasks",
   "calendar",
   "daily",

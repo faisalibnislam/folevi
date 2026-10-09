@@ -18,6 +18,7 @@ import { CommandPalette } from "./CommandPalette";
 import { QuickAddTask } from "./QuickAddTask";
 import { AppContextMenu } from "./AppContextMenu";
 import { AskAiChat } from "@/components/ai/AskAiChat";
+import { AI_FOCUS_EVENT } from "@/components/ai/chat/ChatThread";
 import { useAiAccess } from "@/components/ai/useAi";
 import { SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
@@ -235,6 +236,8 @@ export function Shell() {
       } else if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j" && aiOnRef.current) {
         e.preventDefault();
         if (noteAi.current) noteAi.current({ view: "note" });
+        // On the AI page, ⌘J goes to its box.
+        else if (window.location.pathname.startsWith("/ai")) window.dispatchEvent(new Event(AI_FOCUS_EVENT));
         else setAskOpen({});
       } else if (mod && e.altKey && e.code === "KeyT") {
         e.preventDefault();

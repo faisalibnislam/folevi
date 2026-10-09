@@ -233,7 +233,8 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     await purgeDocument(ctx, root._id, budget);
     return false;
   }
-  for (const table of ["folders", "tags"] as const) {
+  // Folders, tags, and everyone's AI conversations here (with their messages).
+  for (const table of ["folders", "tags", "aiMessages", "aiConversations"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -337,6 +338,9 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiCreditPeriods").withIndex("by_account_period", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditPacks").withIndex("by_account_expires", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditHolds").withIndex("by_account", (q) => q.eq("profileId", profileId)).take(200),
+    // Their AI conversations in workspaces (the ones in their Personal went with it above).
+    () => ctx.db.query("aiMessages").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
   for (const load of personalBatches) {
     const rows = await load();

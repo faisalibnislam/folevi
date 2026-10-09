@@ -7,6 +7,7 @@ crons.interval("deletion jobs", { minutes: 5 }, internal.maintenance.runDeletion
 crons.interval("task reminders", { minutes: 1 }, internal.tasks.processReminders, {});
 crons.interval("presence cleanup", { minutes: 10 }, internal.presence.cleanup, {});
 crons.interval("ai stream cleanup", { minutes: 60 }, internal.ai.sweepStreams, {});
+crons.interval("ai chat cleanup", { minutes: 60 }, internal.aiChat.sweep, {});
 crons.interval("expired plans", { minutes: 60 }, internal.billing.settleExpiredPlans, {});
 crons.daily("trash retention", { hourUTC: 3, minuteUTC: 0 }, internal.maintenance.purgeExpiredTrash, {});
 crons.daily("tombstone retention", { hourUTC: 3, minuteUTC: 20 }, internal.maintenance.purgeTombstones, {});

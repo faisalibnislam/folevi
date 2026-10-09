@@ -68,7 +68,6 @@ test("the Mac app: seamless window, Settings > Desktop app, New Note from the me
     const space = page.locator(".ui-traffic-space").first();
     await expect(space).toBeVisible();
     expect((await space.boundingBox())!.width).toBe(60);
-    await page.screenshot({ path: test.info().outputPath("desktop-main.png") });
     // The window buttons sit in that space, and follow it when the sidebar is hidden (into the tab strip).
     const buttons = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w: { getSize(): number[] }) => w.getSize()[0]! > 600)?.getWindowButtonPosition());
     const expected = async () => {
@@ -102,7 +101,6 @@ test("the Mac app: seamless window, Settings > Desktop app, New Note from the me
     await clickMenu(app, "File", "Quick Add Task…");
     const quick = app.windows().find(isQuickAdd)!;
     await expect(quick.getByRole("heading", { name: "Quick add task" })).toBeVisible({ timeout: 30_000 });
-    await quick.screenshot({ path: test.info().outputPath("desktop-quick-add.png") });
     await quick.getByPlaceholder("What needs doing?").fill("Call the printer");
     await quick.keyboard.press("Enter");
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w: { isVisible(): boolean }) => w.isVisible()).length)).toBe(1);

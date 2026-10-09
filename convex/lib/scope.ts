@@ -53,6 +53,8 @@ export const SCOPED_TABLES = [
   "files",
   "uploadIntents",
   "syncOperations",
+  "aiConversations",
+  "aiMessages",
 ] as const satisfies readonly TableNames[];
 export type ScopedTable = (typeof SCOPED_TABLES)[number];
 
@@ -122,6 +124,8 @@ const WORKSPACE_INDEX: Record<ScopedTable, string> = {
   files: "by_workspace",
   uploadIntents: "by_workspace",
   syncOperations: "by_workspace",
+  aiConversations: "by_workspace",
+  aiMessages: "by_workspace",
 };
 const OWNER_INDEX: Record<ScopedTable, string> = {
   folders: "by_owner",
@@ -145,6 +149,8 @@ const OWNER_INDEX: Record<ScopedTable, string> = {
   files: "by_owner",
   uploadIntents: "by_owner",
   syncOperations: "by_owner",
+  aiConversations: "by_owner",
+  aiMessages: "by_owner",
 };
 
 export type AnyScopedRow = ScopedRow & { _id: Id<ScopedTable>; _creationTime: number };

@@ -26,31 +26,17 @@ import { subscriptionOf, workspaceSubscriptionOf } from "./billing";
 import { DAY_MS, PACK_VALID_MONTHS, PLAN_CATALOG, TIER_NAMES, TRIAL_DAYS, addMonthsUtc, monthStartUtc, planName, type PlanTier } from "./plans";
 import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
+import { priceOf } from "./ai/capabilities";
 
 type Ctx = QueryCtx | MutationCtx;
 
 // ---------------------------------------------------------------------------------------------------
-// Gemini prices (the one place they live)
+// Prices: they live with the model registry (lib/ai/capabilities.ts), re-exported here
 // ---------------------------------------------------------------------------------------------------
 
-/**
- * What Google charges per token, in nano-dollars (1e-9 USD), at the January 2027 list prices (paid tier,
- * prompts up to 200k tokens). Thinking tokens are billed as output. Update these, with the date, when
- * Google's prices change; credits follow automatically.
- *
- *   gemini-3.8-flash:          $1.50 per 1M input tokens, $7.50 per 1M output tokens
- *   gemini-flash-lite-latest:  $0.30 per 1M input tokens, $2.50 per 1M output tokens
- *
- * A model not listed here is priced as Flash (the dearer of the two).
- */
-export const GEMINI_PRICES = {
-  flash: { inputNanoPerToken: 1_500, outputNanoPerToken: 7_500 },
-  flashLite: { inputNanoPerToken: 300, outputNanoPerToken: 2_500 },
-} as const;
+export { GEMINI_PRICES, priceOf } from "./ai/capabilities";
 /** One credit, in nano-dollars ($0.01). */
 export const CREDIT_NANO_USD = 10_000_000;
-
-export const priceOf = (model: string) => (/lite/i.test(model) ? GEMINI_PRICES.flashLite : GEMINI_PRICES.flash);
 
 /** Token counts from one Gemini call (its usageMetadata), or an estimate when none came back. */
 export interface CallUsage {

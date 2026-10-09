@@ -91,7 +91,7 @@ export function AccountSection() {
 }
 
 /** Turns the AI assistant on or off for this person (the server enforces it). */
-function AiSettingCard() {
+export function AiSettingCard() {
   // Your own setting and Personal plan. Core has no AI, so there's nothing to turn on.
   const { setting: on, personalCore: core } = useAiAccess();
   const update = useMutation(api.users.updateProfile);

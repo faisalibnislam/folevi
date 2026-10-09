@@ -17,6 +17,8 @@ import {
   vWorkspacePlanId,
   vWorkspaceRole,
 } from "./lib/validators";
+import { vAiAction } from "./lib/aiActions";
+import { vAiContext } from "./lib/ai/chat";
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
@@ -49,6 +51,18 @@ export default defineSchema({
     appearance: vAppearance,
     /** The AI assistant (Google Gemini). Unset = on; false = off, and the server refuses AI requests. */
     aiEnabled: v.optional(v.boolean()),
+    /**
+     * AI settings (lib/ai/prefs.ts; unset = the default). History (on): conversations are kept until
+     * deleted; off, a conversation lasts only while its chat is open. The rest are for later milestones
+     * of docs/AI_ASSISTANT.md: memory (on), suggestions (on), reading attachments (on), web research (on),
+     * digests (off).
+     */
+    aiHistory: v.optional(v.boolean()),
+    aiMemory: v.optional(v.boolean()),
+    aiSuggestions: v.optional(v.boolean()),
+    aiAttachments: v.optional(v.boolean()),
+    aiWebResearch: v.optional(v.boolean()),
+    aiDigests: v.optional(v.boolean()),
     locale: v.string(),
     timeZone: v.string(),
     /** Where onboarding is (convex/lib/onboarding.ts ONBOARDING_STEPS). "workspace" is the first step. */
@@ -662,6 +676,79 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_created", ["createdAt"]),
+
+  /**
+   * AI conversations (convex/aiChat.ts): private to the person who started them (`profileId`), in the
+   * scope they were started in. Deleted with the account, the workspace, or by the person. With history
+   * off (profiles.aiHistory) a conversation is `ephemeral`: deleted when its chat closes, and swept after
+   * a day.
+   */
+  aiConversations: defineTable({
+    publicId: v.string(),
+    ...scoped,
+    profileId: v.id("profiles"),
+    title: v.string(),
+    /** The title was written (from the first exchange, or renamed); unset while it's still "New chat". */
+    titled: v.optional(v.boolean()),
+    pinned: v.boolean(),
+    /** What the conversation is about: notes, a folder, or the whole scope (public ids). */
+    context: vAiContext,
+    model: v.optional(v.string()),
+    sharedWith: v.union(v.literal("none"), v.literal("workspace")),
+    ephemeral: v.optional(v.boolean()),
+    /** The title and messages, lowercased and capped, for the conversation list's search. */
+    searchText: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastMessageAt: v.number(),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_profile_place", ["profileId", "workspaceId", "pinned", "lastMessageAt"])
+    .index("by_ephemeral_updated", ["ephemeral", "updatedAt"])
+    .searchIndex("search", { searchField: "searchText", filterFields: ["profileId", "workspaceId"] }),
+
+  /**
+   * Messages in an AI conversation. An assistant message is written as the answer streams (status
+   * "streaming", throttled), then settled ("done", "stopped" or "error"). Citations point at notes (and a
+   * block when one matched); proposed changes are applied only when the person applies them.
+   */
+  aiMessages: defineTable({
+    ...scoped,
+    conversationId: v.id("aiConversations"),
+    profileId: v.id("profiles"),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
+    text: v.string(),
+    citations: v.optional(
+      v.array(v.object({ n: v.number(), noteId: v.string(), title: v.string(), blockId: v.optional(v.string()), quote: v.optional(v.string()) })),
+    ),
+    actions: v.optional(v.array(vAiAction)),
+    /** What became of the proposed changes. */
+    actionsOutcome: v.optional(
+      v.union(
+        v.object({ kind: v.literal("dismissed") }),
+        v.object({ kind: v.literal("applied"), folders: v.array(v.object({ id: v.string(), name: v.string() })), notes: v.array(v.object({ id: v.string(), title: v.string() })), moved: v.number() }),
+      ),
+    ),
+    /** Tool calls and their results (later milestones), results truncated. */
+    toolCalls: v.optional(v.array(v.object({ name: v.string(), args: v.string(), result: v.optional(v.string()) }))),
+    attachments: v.optional(v.array(v.id("files"))),
+    /** Short follow-up questions offered under an answer. */
+    suggestions: v.optional(v.array(v.string())),
+    status: v.union(v.literal("streaming"), v.literal("done"), v.literal("stopped"), v.literal("error")),
+    /** What the assistant is doing while it works ("searching", "reading", "writing"). */
+    phase: v.optional(v.string()),
+    error: v.optional(v.object({ code: v.string(), message: v.string(), action: v.optional(v.string()), reason: v.optional(v.string()) })),
+    usage: v.optional(v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() })),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_profile", ["profileId"])
+    .index("by_status_updated", ["status", "updatedAt"]),
 
   tasks: defineTable({
     blockId: v.string(),

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plus, RefreshCw, ShieldCheck, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plus, RefreshCw, ShieldCheck, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
 import { NewWorkspaceDialog } from "@/components/app/NewWorkspaceDialog";
 import { Button } from "@/components/ui/Button";
 import { AccountSection } from "./settings/AccountSection";
+import { AiSection } from "./settings/AiSection";
 import { SecuritySection } from "./settings/SecuritySection";
 import { DevicesSection } from "./settings/DevicesSection";
 import { AppearanceSection } from "./settings/AppearanceSection";
@@ -23,11 +24,12 @@ import { DesktopSection } from "./settings/DesktopSection";
 import { Card } from "./settings/Card";
 import { desktop } from "@/lib/desktop";
 
-type Section = "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop";
+type Section = "account" | "ai" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
   { id: "account", label: "Account", icon: UserRound },
+  { id: "ai", label: "AI", icon: Sparkles },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
   { id: "security", label: "Security", icon: ShieldCheck },
   { id: "devices", label: "Devices", icon: MonitorSmartphone },
@@ -104,6 +106,7 @@ export function SettingsView({ section }: { section: Section }) {
         <div className="min-w-0 space-y-5">
           <h2 className="ui-display text-[34px] leading-tight">{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
           {section === "account" ? <AccountSection /> : null}
+          {section === "ai" ? <AiSection /> : null}
           {section === "billing" ? <BillingSection /> : null}
           {section === "security" ? <SecuritySection /> : null}
           {section === "devices" ? <DevicesSection /> : null}

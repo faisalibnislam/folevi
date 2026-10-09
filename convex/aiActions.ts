@@ -11,7 +11,7 @@ import { inScope, insertScoped, vScopeArg, type Scope } from "./lib/scope";
 import { randomFolderColor } from "./lib/folderColors";
 import { createDocument } from "./lib/create";
 import { SyncEngine } from "./lib/syncEngine";
-import { MAX_ACTIONS, MAX_NOTE_MARKDOWN } from "./lib/aiActions";
+import { MAX_ACTIONS, MAX_NOTE_MARKDOWN, vAiAction } from "./lib/aiActions";
 import type { QueryCtx } from "./_generated/server";
 
 async function scopeFolders(ctx: QueryCtx, scope: Scope): Promise<Doc<"folders">[]> {
@@ -33,15 +33,9 @@ export const folders = internalQuery({
   },
 });
 
-const vAction = v.union(
-  v.object({ type: v.literal("createFolder"), name: v.string() }),
-  v.object({ type: v.literal("createNote"), title: v.string(), markdown: v.string(), folderId: v.optional(v.string()), folderName: v.optional(v.string()) }),
-  v.object({ type: v.literal("moveNote"), noteId: v.string(), noteTitle: v.string(), folderId: v.optional(v.string()), folderName: v.optional(v.string()) }),
-);
-
 /** Applies a checked plan. Returns what was made and moved, for links in the chat. */
 export const apply = mutation({
-  args: { scope: vScopeArg, actions: v.array(vAction) },
+  args: { scope: vScopeArg, actions: v.array(vAiAction) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);

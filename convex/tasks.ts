@@ -357,7 +357,7 @@ export const moveToDocument = mutation({
 /** Reminders sent per run; a full batch schedules the next one right away. */
 const REMINDER_BATCH = 200;
 
-/** Creates in-app notifications for due reminders (the Mac app also schedules local notifications). */
+/** Creates in-app notifications for due reminders (the Mac app also shows them as Mac notifications). */
 export const processReminders = internalMutation({
   args: {},
   handler: async (ctx) => {

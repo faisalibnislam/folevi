@@ -64,7 +64,7 @@ export default function FeaturesPage() {
               <LinkCard
                 href="/mac"
                 title="Mac app"
-                body="A native Mac app with menus, windows and shortcuts, and your notes stored on the Mac. Coming soon."
+                body="Folevi in its own Mac window, with Quick Add from any app, a menu bar icon and Mac notifications. Coming soon."
                 cover={<FeatureCover picture={{ width: 1000, node: <MacCover /> }} />}
                 headingLevel="h2"
               />

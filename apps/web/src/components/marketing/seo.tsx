@@ -148,7 +148,7 @@ export function softwareLd(): Record<string, unknown> {
     applicationCategory: "ProductivityApplication",
     operatingSystem: "Web",
     description:
-      "A calm writing and notes workspace with block documents, nested pages, tasks, offline editing and real-time sync. It runs on the web, and a native Mac app is coming soon.",
+      "A calm writing and notes workspace with block documents, nested pages, tasks, offline editing and real-time sync. It runs on the web, and a Mac app is coming soon.",
     // The Personal plans, one offer per price, from the plan catalog (team plans cost the same per member).
     offers: PLAN_ORDER.flatMap((tier) => {
       const plan = PLANS[tier];

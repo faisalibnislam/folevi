@@ -1292,7 +1292,7 @@ export const autoVersion = internalMutation({
   },
 });
 
-/** The version list as older clients read it (the Mac app). The web app uses `versions`. */
+/** The version list as older clients read it (the archived Swift Mac app). The web app uses `versions`. */
 export const snapshots = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {

@@ -205,7 +205,7 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
  *   style:      `noteStyle` ("plain" or an ONBOARDING_NOTE_STYLES art id) styles their Welcome page
  *   appearance: `appearance`
  *   ai:         `aiEnabled` turns the AI Assistant on or off
- * Older clients (the Mac app) send "workspace" (with an ignored `workspaceName`), "appearance" and
+ * Older clients (the archived Swift Mac app) send "workspace" (with an ignored `workspaceName`), "appearance" and
  * "welcome" only; those keep working.
  */
 export const completeOnboardingStep = mutation({

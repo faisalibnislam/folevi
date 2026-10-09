@@ -131,11 +131,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Folevi keyboard shortcuts for new documents and windows, search, the sidebar and inspector, headings, checklists, moving blocks and text formatting.",
     legacyAnchor: "shortcuts",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-09",
     body: () => (
       <>
         <p>
-          These shortcuts are for the Mac app (coming soon). On the web, most work the same way; shortcuts your browser reserves for itself (such as <code>⌘N</code> for a new browser window) are left to the browser.
+          These shortcuts work in Folevi for Mac (coming soon). On the web, most work the same way; shortcuts your browser reserves for itself (such as <code>⌘N</code> for a new browser window) are left to the browser, so use <code>⌥⌘N</code> for a new note there. Quick Add from any app (<code>⌥Space</code>) is only in the Mac app.
         </p>
         <div className="mk-card p-5 sm:p-6">
           <ShortcutTable caption="Folevi keyboard shortcuts" />
@@ -217,7 +217,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     body: () => (
       <>
         <p>
-          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; on the Mac, in a local database. You can keep writing with no connection at all.
+          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; Folevi for Mac keeps them the same way, on your Mac. You can keep writing with no connection at all.
         </p>
         <h2 id="statuses">Sync statuses</h2>
         <p>Each page shows one of these statuses:</p>

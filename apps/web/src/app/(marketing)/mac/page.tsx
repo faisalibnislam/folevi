@@ -8,9 +8,9 @@ import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
-  title: "Mac notes app: native and offline (coming soon)",
+  title: "Folevi for Mac: notes, Quick Add and offline (coming soon)",
   description:
-    "A native Mac app for Folevi, with real menus, keyboard shortcuts, windows and offline editing. Requires macOS 15 or later. Coming soon.",
+    "Folevi for Mac is the full Folevi app in its own window, plus Quick Add from any app, a menu bar icon, Mac notifications and offline editing. Requires macOS 13 or later on Apple silicon. Coming soon.",
   path: "/mac",
 });
 
@@ -18,12 +18,12 @@ const features: Array<{ icon: IconName; title: string; body: string }> = [
   {
     icon: "keyboard",
     title: "Keyboard first",
-    body: "Every command is in the menu bar with its shortcut. Create, search, move blocks and change headings without leaving the keys.",
+    body: "Press ⌘N for a new note from anywhere in the app, and use the same shortcuts as on the web to search, move blocks and change headings without leaving the keys.",
   },
   {
     icon: "offline",
     title: "Offline by design",
-    body: "Your notes are stored on your Mac. Write on a train or a plane; changes sync when you reconnect, and the toolbar always shows whether you’re Saved, Offline or Syncing.",
+    body: "Your notes are kept on your Mac, as they are in the browser. Write on a train or a plane; changes sync when you reconnect, and the menu bar icon shows whether everything is saved.",
   },
   {
     icon: "window",
@@ -31,9 +31,9 @@ const features: Array<{ icon: IconName; title: string; body: string }> = [
     body: "Open pages in separate windows with ⇧⌘N, put them side by side, and use full screen and Spaces the way you already do.",
   },
   {
-    icon: "eye",
-    title: "Quick Look",
-    body: "Press Space on an attached file to preview it with Quick Look, without opening another app.",
+    icon: "mail",
+    title: "Notifications and a Dock badge",
+    body: "Comments, mentions and reminders arrive as Mac notifications while Folevi is in the background, and the Dock icon shows how many are unread.",
   },
   {
     icon: "finder",
@@ -42,8 +42,8 @@ const features: Array<{ icon: IconName; title: string; body: string }> = [
   },
   {
     icon: "sparkle",
-    title: "Quick Add from the menu bar",
-    body: "Catch a thought from anywhere with Quick Add in the menu bar. It lands in Drafts, ready to be shaped later.",
+    title: "Quick Add from any app",
+    body: "Press ⌥Space in any app, or pick Quick Add in the menu bar, to add a task without switching to Folevi. You can change the shortcut in Settings.",
   },
 ];
 
@@ -57,10 +57,10 @@ export default function MacPage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-end lg:gap-16">
             <div>
               <Eyebrow>Folevi for Mac</Eyebrow>
-              <h1 className="mk-display mt-4 max-w-[15ch] text-[44px] sm:text-[60px] lg:text-[68px]">Folevi as a native Mac app.</h1>
+              <h1 className="mk-display mt-4 max-w-[15ch] text-[44px] sm:text-[60px] lg:text-[68px]">Folevi, in a window of its own.</h1>
               <p className="mk-lede mt-6 max-w-[50ch]">
-                The Mac app has the menus, windows and keyboard shortcuts you expect. Notes are stored on your Mac, so writing
-                never waits for the network.
+                Folevi for Mac is the same app as the web, with every feature, plus Quick Add from any app, a menu bar icon and
+                Mac notifications. Notes are kept on your Mac, so writing never waits for the network.
               </p>
             </div>
             <div className="mk-card p-6 sm:p-7">
@@ -77,28 +77,28 @@ export default function MacPage() {
                   Open the web app
                 </ButtonLink>
               </div>
-              <p className="mt-5 text-[13px] text-muted">Requires macOS 15 or later.</p>
+              <p className="mt-5 text-[13px] text-muted">Requires macOS 13 or later on a Mac with Apple silicon.</p>
             </div>
           </div>
 
         </HeaderCard>
         <Card as="div" inner="p-3 sm:p-5">
           <div className="mk-stage p-3 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
-            <MacMenuBar initial="View" />
+            <MacMenuBar initial="File" />
             <AppWindow
               art={art}
               note={READING_NOTE}
               sidebar="main"
               chrome="mac"
               active={null}
-              label="The Folevi Mac app: the sidebar with Home, Drafts, Tasks and folders, and a note called Reading list open in a tab."
+              label="Folevi for Mac: the sidebar with Home, Drafts, Tasks and folders, and a note called Reading list open in a tab."
               className="mt-4 h-[420px] sm:mt-6 sm:h-[560px]"
             />
           </div>
         </Card>
 
         <Card aria-labelledby="why-title">
-          <SectionHeading id="why-title" eyebrow="Why native" title="It should feel like it came with your Mac." />
+          <SectionHeading id="why-title" eyebrow="What it adds" title="Everything on the web, plus a few things for the Mac." />
           <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
               <li key={feature.title} className="mk-card p-6 sm:p-7">
@@ -115,15 +115,15 @@ export default function MacPage() {
         <Card aria-labelledby="glass-title">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="relative">
-              <SectionHeading id="glass-title" eyebrow="Designed for macOS 26" title="Liquid Glass where it belongs. Solid everywhere else." />
+              <SectionHeading id="glass-title" eyebrow="On your Mac" title="A clean window, and Folevi in the menu bar." />
               <div className="mt-6 space-y-4 text-[17px] leading-relaxed text-muted">
                 <p>
-                  On macOS 26, toolbars, the sidebar and popovers use Liquid Glass, so Folevi sits naturally next to the
-                  rest of your apps. Your writing stays on a calm, solid page. Glass is for chrome, never for text.
+                  The window has no title bar. The close, minimize and full screen buttons sit at the top of the sidebar,
+                  so the page gets the whole window.
                 </p>
                 <p>
-                  On macOS 15, the same app uses the standard materials of that release. Every feature works the same;
-                  only the finish changes.
+                  The menu bar icon has Quick Add, a new note, your recent notes and whether everything is saved. Folevi
+                  can open at login without a window, so Quick Add is ready when you need it.
                 </p>
               </div>
             </div>
@@ -131,8 +131,8 @@ export default function MacPage() {
               <h3 className="mk-caps">System requirements</h3>
               <dl className="mk-card mt-4 px-5 text-[15px]">
                 {[
-                  ["macOS", "macOS 15 or later"],
-                  ["Best on", "macOS 26, with Liquid Glass"],
+                  ["macOS", "macOS 13 or later"],
+                  ["Mac", "Apple silicon (M1 or later)"],
                   ["Account", "A Folevi account"],
                   ["Availability", "Coming soon. We’ll email your account when it’s ready"],
                 ].map(([term, detail], index) => (
@@ -152,7 +152,7 @@ export default function MacPage() {
               id="keys-title"
               eyebrow="Keyboard"
               title="Hands stay on the keys."
-              lede="The shortcuts below are the ones in the menus today. You’ll find the full list, including the web equivalents, in the documentation."
+              lede="Most of these work on the web too. ⌘N, ⇧⌘N and ⌥Space are the Mac app’s own; on the web, ⌥⌘N makes a new note."
               className="lg:sticky lg:top-12 lg:self-start"
             />
             <div className="mk-card p-5 sm:p-7">

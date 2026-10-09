@@ -42,7 +42,7 @@ const artUrl = (id: string | undefined) => {
 };
 export const coverArtThumbUrl = (id: string) => `/covers/${resolveArt(id)?.id ?? id}-thumb.webp`;
 
-// The "Accent" page accent renders ember (docs/DESIGN_SYSTEM.md); the Mac app uses the same rule.
+// The "Accent" page accent renders ember (docs/DESIGN_SYSTEM.md); the Mac app loads the web, so it matches.
 export const accentVar = (a: DocumentStyle["accent"]) => (a === "accent" ? "var(--color-ember)" : `var(--color-${a})`);
 export const softVar = (a: DocumentStyle["accent"]) => (a === "accent" ? "var(--color-ember-soft)" : `var(--color-${a}-soft)`);
 

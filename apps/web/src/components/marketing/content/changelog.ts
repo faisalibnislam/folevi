@@ -14,6 +14,25 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.4",
+    name: "Folevi for Mac runs the web app",
+    date: "2026-10-09",
+    label: "9 October 2026",
+    intro: "Folevi for Mac now runs the same app as the web, so every feature reaches the Mac the day it ships. It isn't available to download yet.",
+    groups: [
+      {
+        title: "Folevi for Mac",
+        items: [
+          "Quick Add from any app with ⌥Space (you can change the shortcut)",
+          "A menu bar icon with Quick Add, a new note, recent notes and the save state",
+          "Mac notifications for comments, mentions and reminders, and the unread count on the Dock icon",
+          "A window with no title bar, ⌘N for a new note, and opening at login",
+          "Requires macOS 13 or later on Apple silicon",
+        ],
+      },
+    ],
+  },
+  {
     version: "0.3",
     name: "New plans and AI credits",
     date: "2026-09-30",

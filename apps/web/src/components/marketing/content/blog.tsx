@@ -75,7 +75,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="device-first">Where an edit goes first</h2>
         <p>
-          When you type in a Folevi page, the change goes into a queue on your device before anything is sent. On the web the queue lives in your browser’s storage. In the Mac app, which is coming soon, it lives in a local database. The editor never waits for the network, so typing on a slow train connection feels the same as typing at your desk.
+          When you type in a Folevi page, the change goes into a queue on your device before anything is sent. On the web the queue lives in your browser’s storage, and Folevi for Mac, which is coming soon, keeps it the same way. The editor never waits for the network, so typing on a slow train connection feels the same as typing at your desk.
         </p>
         <p>
           The queue is durable. If you reload the tab, close the browser or restart the computer, the waiting edits are still there, and Folevi sends them the next time it can.

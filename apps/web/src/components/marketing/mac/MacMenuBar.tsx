@@ -9,7 +9,7 @@ import { MAC_MENUS } from "./shortcuts";
  * An illustration of the Mac app's menu bar. Menus open on click; ←/→ move between them and Escape
  * closes. The items are descriptive (they show real shortcuts), not commands, so they're a plain list.
  */
-export function MacMenuBar({ initial = "Block" }: { initial?: string }) {
+export function MacMenuBar({ initial = "File" }: { initial?: string }) {
   const baseId = useId();
   const [open, setOpen] = useState<string | null>(initial);
   // The initially open menu is only a desktop illustration; on phones it would cover the screenshot.

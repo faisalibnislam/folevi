@@ -210,7 +210,7 @@ export const FEATURES: Feature[] = [
         title: "Saved on your device first",
         body: (
           <p>
-            Every edit goes into a queue on your device first: in the browser’s storage on the web, and in a local database in the Mac app (coming soon). Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
+            Every edit goes into a queue on your device first: in the browser’s storage, on the web and in Folevi for Mac (coming soon). Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
           </p>
         ),
       },
@@ -391,7 +391,7 @@ export const FEATURES: Feature[] = [
         title: "Sharing and export",
         body: (
           <p>
-            Recordings play on public links with the same player. Markdown and HTML exports include the audio files, and the HTML export plays them. The Mac app doesn’t play recordings yet; it keeps them untouched in your notes.
+            Recordings play on public links with the same player. Markdown and HTML exports include the audio files, and the HTML export plays them. Folevi for Mac (coming soon) records and plays them the same way as the web.
           </p>
         ),
       },
@@ -877,7 +877,7 @@ export const FEATURES: Feature[] = [
       {
         id: "where",
         title: "Where flowcharts work",
-        body: <p>Flowcharts are drawn and edited on the web for now. The Mac app keeps them intact, and shared pages show them read-only.</p>,
+        body: <p>Flowcharts are drawn and edited on the web and in Folevi for Mac (coming soon), and shared pages show them read-only.</p>,
       },
     ],
     faq: [

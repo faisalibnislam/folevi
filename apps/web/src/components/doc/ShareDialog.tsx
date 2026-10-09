@@ -204,6 +204,10 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
                   onSubmit={async (e) => {
                     e.preventDefault();
+                    if (linkForm.password && linkForm.password.length < 5) {
+                      toast.show("Use a password of at least 5 characters.", { tone: "error" });
+                      return;
+                    }
                     try {
                       const r = await createLink({
                         documentId,
@@ -228,8 +232,8 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     </span>
                   </div>
                   <label className="text-xs">
-                    Password (optional, 8+ characters)
-                    <input type="password" autoComplete="new-password" minLength={8} value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="mt-1 block h-9 w-full ui-input rounded-[6px] px-2" />
+                    Password
+                    <input type="password" autoComplete="new-password" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="mt-1 block h-9 w-full ui-input rounded-[6px] px-2" />
                   </label>
                   <Button type="submit" className="self-end">
                     Create link

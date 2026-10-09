@@ -560,7 +560,9 @@ export const createPublicLink = mutation({
     let passwordHash: string | undefined;
     let passwordSalt: string | undefined;
     if (args.password) {
-      if (args.password.length < 8 || args.password.length > 200) fail("invalid_argument", "Use a password of at least 8 characters.");
+      // A page link's password: 5 characters at least (account passwords need 8); wrong guesses are rate limited.
+      if (args.password.length < 5) fail("invalid_argument", "Use a password of at least 5 characters.");
+      if (args.password.length > 200) fail("invalid_argument", "Use a password of up to 200 characters.");
       const h = await hashSharePassword(args.password);
       passwordHash = h.hash;
       passwordSalt = h.salt;

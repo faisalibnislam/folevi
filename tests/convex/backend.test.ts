@@ -447,6 +447,10 @@ describe("public links", () => {
     await a.as.mutation(api.sharing.revokePublicLink, { linkId: id });
     expect((await open()).status).toBe("not_found");
 
+    // A link's password needs 5 characters (account passwords need 8).
+    await expect(a.as.mutation(api.sharing.createPublicLink, { documentId: docId, password: "abcd" })).rejects.toThrow(/at least 5 characters/);
+    const short = await a.as.mutation(api.sharing.createPublicLink, { documentId: docId, password: "abcde" });
+    await a.as.mutation(api.sharing.revokePublicLink, { linkId: short.id });
     const expiring = await a.as.mutation(api.sharing.createPublicLink, { documentId: docId, expiresAt: Date.now() + 60_000, password: "correct horse" });
     const openE = (pw?: string) => t.mutation(api.sharing.openPublicLink, { token: expiring.token, password: pw, serverSecret: secret, clientKey: "client-2" });
     expect((await openE()).status).toBe("password_required");

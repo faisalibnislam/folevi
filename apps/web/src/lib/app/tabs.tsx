@@ -37,9 +37,16 @@ interface TabsValue {
   move: (id: string, to: number) => void;
   /** Files the open page under its top-level page's tab (nested pages never get a tab of their own). */
   place: (documentId: string, root: { id: string; title: string }, pageTitle?: string) => void;
+  /**
+   * The notes to keep ready (the most recently shown open tabs, not the one on screen): the shell keeps their
+   * details loaded, so switching to them shows the note at once.
+   */
+  warm: string[];
 }
 
 const MAX_TABS = 12;
+/** Notes kept ready to show at once (their details and page tree stay loaded): the most recently used tabs. */
+const WARM_TABS = 5;
 
 // Opening a page from inside a note (a nested page, a page link, a breadcrumb) replaces the current tab;
 // opening one from anywhere else (Home, lists, search, "+", New document) opens a new tab. Callers that
@@ -72,6 +79,11 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
 
   const docId = route.name === "doc" ? route.id : null;
   const query = search.toString();
+  // The pages shown most recently, newest first (this session).
+  const [recent, setRecent] = useState<string[]>([]);
+  useEffect(() => {
+    if (docId) setRecent((cur) => (cur[0] === docId ? cur : [docId, ...cur.filter((x) => x !== docId)].slice(0, 2 * WARM_TABS)));
+  }, [docId]);
   const previousDoc = useRef<string | null>(null);
   useEffect(() => {
     const from = previousDoc.current;
@@ -173,7 +185,14 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     setViewState((prev) => (prev && prev.path === next.path && prev.title === next.title ? prev : next));
   }, []);
 
-  const value = useMemo(() => ({ tabs, view, setView, homeHref, close, closeMany, move, place }), [tabs, view, setView, homeHref, close, closeMany, move, place]);
+  // Switching tabs shows the note at once: the recent tabs' details are already here, and their blocks are
+  // on this device (the note catches up with the server once it's showing).
+  const warmKey = (() => {
+    const open = new Set(tabs.map(tabPage));
+    return [...recent, ...tabs.map(tabPage)].filter((id, i, all) => id !== docId && open.has(id) && all.indexOf(id) === i).slice(0, WARM_TABS).join(",");
+  })();
+  const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
+  const value = useMemo(() => ({ tabs, view, setView, homeHref, close, closeMany, move, place, warm }), [tabs, view, setView, homeHref, close, closeMany, move, place, warm]);
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }
 

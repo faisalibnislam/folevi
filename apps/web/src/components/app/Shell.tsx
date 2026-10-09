@@ -6,7 +6,7 @@ import { PanelLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
-import { TabsProvider, useViewTab } from "@/lib/app/tabs";
+import { TabsProvider, useTabs, useViewTab } from "@/lib/app/tabs";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
@@ -345,6 +345,7 @@ export function Shell() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppContextMenu />
       <DesktopBridge />
+      <WarmNotes />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
       {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} /> : null}
@@ -405,4 +406,22 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
       {overlay}
     </div>
   );
+}
+
+/** Keeps the recent tabs' note details and page tree loaded, so switching to one needs no round trip. */
+function WarmNotes() {
+  const { warm } = useTabs();
+  return (
+    <>
+      {warm.map((id) => (
+        <WarmNote key={id} documentId={id} />
+      ))}
+    </>
+  );
+}
+
+function WarmNote({ documentId }: { documentId: string }) {
+  useQuery(api.documents.get, { documentId });
+  useQuery(api.documents.pageTree, { documentId });
+  return null;
 }

@@ -37,7 +37,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useAppState } from "@/lib/app/state";
 import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scope";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { sameItems, useEngineSelector } from "@/lib/hooks/useEngine";
+import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { localDb } from "@/lib/sync/db";
 import { Button } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -99,7 +100,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
   useKeyboardInset();
   const sidebarModeRef = useRef({ mode: docSidebarMode, set: setDocSidebarMode });
   sidebarModeRef.current = { mode: docSidebarMode, set: setDocSidebarMode };
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("format");
+  // The tools panel (right sidebar) keeps what it showed and its width from note to note.
+  const [inspectorTab, setInspectorTab] = useLocalStorage<InspectorTab>("folevi:inspector-tab", "format");
+  const [panelWidth, setPanelWidth] = useLocalStorage<number>("folevi:inspector-width", PANEL_DEFAULT);
+  const panelOverlays = useMediaQuery("(max-width: 1199px)");
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
   const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
   // A thread to open inside the Comments panel (on the whole note or a deleted block).
@@ -450,7 +454,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // AI turned off while its panel is open: show another tool instead.
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
-  }, [aiOn, inspectorTab]);
+  }, [aiOn, inspectorTab, setInspectorTab]);
   useEffect(() => {
     if (!aiOn) return;
     const onRun = (e: Event) => {
@@ -468,7 +472,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       window.removeEventListener(AI_RUN_EVENT, onRun);
       window.removeEventListener(AI_OPEN_EVENT, onOpen);
     };
-  }, [setInspectorOpen, aiOn]);
+  }, [setInspectorOpen, setInspectorTab, aiOn]);
 
   // ⌘F finds in the note and ⌘⌥F replaces, while focus is in the note (or nowhere in particular);
   // anywhere else the browser's own find still works.
@@ -580,7 +584,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // Mount the editor only once the engine holds this document's blocks (server, local cache, or a new page).
   // A page created on this device (not from a template) is known to be empty, so it can open immediately.
   const freshLocalPage = Boolean(pendingCreate) && pendingCreate?.kind === "document.create" && !pendingCreate.document.templateId;
-  const readyNow = Boolean(engine) && (reconciled || (cacheLoaded && server === undefined) || freshLocalPage || (Boolean(pendingCreate) && !online));
+  // A note this device already holds (opened before, or synced here) shows at once from that copy, and catches
+  // up when the server's arrives: switching tabs never waits on the network.
+  const heldHere = Boolean(engine) && !pendingCreate && engine!.documentBlocks(documentId).length > 0;
+  const readyNow = Boolean(engine) && (reconciled || heldHere || (cacheLoaded && server === undefined) || freshLocalPage || (Boolean(pendingCreate) && !online));
   // Once mounted, the editor stays mounted: remounting would drop focus and unflushed keystrokes while
   // the page's queries settle (e.g. metadata arriving before its block list right after creation).
   if (readyNow) everReady.current = true;
@@ -803,7 +810,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
             </div>
           }
         />
-        {inspectorOpen ? (
+        {/* On a phone the tools are a sheet above the dock; elsewhere they're the right sidebar (below). */}
+        {inspectorOpen && drawerMode ? (
           <div
             ref={inspectorRef}
             id="document-inspector"
@@ -824,8 +832,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
               focusThreadId={focusThreadId}
               onOpenThread={(t) => {
                 if (!t.blockId) return;
-                // The panel floats over the note: step aside so the thread under its block is visible.
-                setInspectorOpen(false);
+                // On a phone the panel covers the note: it steps aside so the thread under its block shows.
+                if (drawerMode) setInspectorOpen(false);
                 editorRef.current?.focusBlock(t.blockId);
                 setOpenThread({ blockId: t.blockId, threadId: t.id });
               }}
@@ -840,6 +848,46 @@ export function DocumentView({ documentId }: { documentId: string }) {
           </div>
         ) : null}
         </div>
+        {/* The tools (AI, Insert, Format, Style) as a right sidebar: the note makes room for it on wide windows,
+            and it slides over the note's edge on narrower ones. It stays open across notes until closed. */}
+        {inspectorOpen && !drawerMode ? (
+          <RightPanel width={panelWidth} onWidth={setPanelWidth} overlay={panelOverlays}>
+            <div
+              ref={inspectorRef}
+              id="document-inspector"
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && !e.defaultPrevented) {
+                  e.preventDefault();
+                  closeInspector();
+                }
+              }}
+              className="flex h-full min-h-0 flex-col [&>div]:min-h-0 [&>div]:flex-1"
+            >
+              <Inspector
+                documentId={documentId}
+                editor={editor}
+                meta={meta ?? null}
+                tab={inspectorTab}
+                onTab={setInspectorTab}
+                focusThreadId={focusThreadId}
+                onOpenThread={(t) => {
+                  if (!t.blockId) return;
+                  // On a phone the panel covers the note: it steps aside so the thread under its block shows.
+                  if (drawerMode) setInspectorOpen(false);
+                  editorRef.current?.focusBlock(t.blockId);
+                  setOpenThread({ blockId: t.blockId, threadId: t.id });
+                }}
+                onClose={closeInspector}
+                onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
+                actions={actions}
+                readOnly={readOnly}
+                hideTabs
+                aiRun={aiRun}
+                onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
+              />
+            </div>
+          </RightPanel>
+        ) : null}
       </div>
       {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
@@ -858,6 +906,62 @@ export function DocumentView({ documentId }: { documentId: string }) {
       ) : null}
     </ViewChrome>
     </NotePaletteProvider>
+  );
+}
+
+const PANEL_MIN = 280;
+const PANEL_MAX = 520;
+const PANEL_DEFAULT = 340;
+
+/**
+ * The right sidebar the page tools open in. On wide windows the note makes room for it; on narrower ones it
+ * slides over the note's right edge. Its inner edge resizes it (drag, or ← / → on it).
+ */
+function RightPanel({ width, onWidth, overlay, children }: { width: number; onWidth: (w: number) => void; overlay: boolean; children: React.ReactNode }) {
+  const panel = useRef<HTMLElement>(null);
+  const w = Math.min(PANEL_MAX, Math.max(PANEL_MIN, Number.isFinite(width) ? width : PANEL_DEFAULT));
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    let next = w;
+    const move = (ev: PointerEvent) => {
+      next = Math.min(PANEL_MAX, Math.max(PANEL_MIN, w + (startX - ev.clientX)));
+      if (panel.current) panel.current.style.width = `${next}px`;
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      if (next !== w) onWidth(next);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  return (
+    <aside
+      ref={panel}
+      aria-label="Page tools"
+      style={{ width: w }}
+      className={`ui-pop flex min-h-0 flex-none flex-col overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none ${overlay ? "absolute inset-y-0 right-0 z-30 max-w-[calc(100%-24px)]" : "relative ml-2 h-full"}`}
+    >
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize the tools panel"
+        aria-valuemin={PANEL_MIN}
+        aria-valuemax={PANEL_MAX}
+        aria-valuenow={w}
+        tabIndex={0}
+        onPointerDown={startResize}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") onWidth(Math.min(PANEL_MAX, w + 16));
+          if (e.key === "ArrowRight") onWidth(Math.max(PANEL_MIN, w - 16));
+        }}
+        className="absolute inset-y-3 left-0 z-10 w-1.5 cursor-col-resize rounded-full outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
+      />
+      {children}
+    </aside>
   );
 }
 

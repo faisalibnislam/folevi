@@ -182,19 +182,31 @@ test.describe("documents", () => {
     await context.close();
   });
 
-  test("page tools live in a bottom dock: each opens a floating panel; Escape returns focus; no side panel", async ({ browser }) => {
+  test("page tools live in a bottom dock: each opens in a right sidebar the note makes room for; Escape returns focus", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Dock Tester");
     await newPage(page, "Dock");
     const dock = page.getByRole("toolbar", { name: "Page tools" });
     for (const name of ["Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
     const noteWidth = (await page.locator("#doc-scroll").boundingBox())!.width;
-    // Style opens as a floating card (here from the keyboard); the note keeps its full width.
+    // Style opens in the right sidebar (here from the keyboard); the note makes room for it.
     await dock.getByRole("button", { name: "Style", exact: true }).focus();
     await page.keyboard.press("Enter");
     const panel = page.locator("#document-inspector");
     await expect(panel.getByRole("heading", { name: "Style" })).toBeVisible();
     await expect(dock.getByRole("button", { name: "Style", exact: true })).toHaveAttribute("aria-pressed", "true");
-    expect((await page.locator("#doc-scroll").boundingBox())!.width).toBe(noteWidth);
+    const sidebar = page.getByRole("complementary", { name: "Page tools" });
+    const noteNow = (await page.locator("#doc-scroll").boundingBox())!;
+    const sideBox = (await sidebar.boundingBox())!;
+    expect(noteNow.width).toBeLessThan(noteWidth - 250);
+    expect(sideBox.x).toBeGreaterThanOrEqual(noteNow.x + noteNow.width);
+    // Its inner edge resizes it.
+    await sidebar.getByRole("separator", { name: "Resize the tools panel" }).focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeGreaterThan(sideBox.width);
+    await panel.getByRole("button", { name: "Close panel" }).first().click();
+    await expect(panel).toBeHidden();
+    await dock.getByRole("button", { name: "Style", exact: true }).click();
+    await expect(panel.getByRole("heading", { name: "Style" })).toBeVisible();
     // Focus moves in; Escape closes it and returns focus to the dock button that opened it.
     await expect(panel.locator(":focus")).toHaveCount(1);
     await page.keyboard.press("Escape");

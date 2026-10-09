@@ -317,6 +317,22 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
  * The top of either sidebar (app navigation or a note's tools): the Folevi logo (goes Home), save state,
  * notifications and the sidebar menu. It's the same row in both, so it never jumps when you switch.
  */
+/** "Search or jump to…" (⌘K): the same box at the top of the app's sidebar and of a note's own sidebar. */
+export function SidebarSearch() {
+  const { openPalette } = useShell();
+  return (
+    <button
+      type="button"
+      onClick={openPalette}
+      className="ui-well flex h-9 w-full items-center gap-2 rounded-[6px] pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
+    >
+      <Search size={14} aria-hidden />
+      <span className="flex-1">Search or jump to…</span>
+      <Kbd>{modKey()}K</Kbd>
+    </button>
+  );
+}
+
 export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
   const { drawerMode } = useShell();
   const { route } = useAppRouter();
@@ -344,7 +360,6 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { scope, canEdit, today } = useAppState();
-  const { openPalette } = useShell();
   const org = useQuery(api.organization.sidebar, { scope });
   const counts = useQuery(api.tasks.counts, { scope, today });
   const drafts = useQuery(api.organization.draftCount, { scope });
@@ -371,15 +386,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <SidebarTopBar onNavigate={onNavigate} />
 
       <div className="flex-none space-y-2 px-2.5 pt-1">
-        <button
-          type="button"
-          onClick={openPalette}
-          className="ui-well flex h-9 w-full items-center gap-2 rounded-[6px] pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
-        >
-          <Search size={14} aria-hidden />
-          <span className="flex-1">Search or jump to…</span>
-          <Kbd>{modKey()}K</Kbd>
-        </button>
+        <SidebarSearch />
         {/* Ask AI lives in the floating chat button (bottom right). */}
       </div>
 

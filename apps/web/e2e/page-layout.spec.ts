@@ -8,6 +8,10 @@ test("pages open in tabs with their own sidebar; the sidebar can switch to folde
   await expect(tabs.getByRole("link", { name: "Welcome to Folevi" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "Folio" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Table of contents" })).toBeVisible();
+  // Search everywhere is at the top of the page sidebar too.
+  await page.getByRole("button", { name: /Search or jump to/ }).click();
+  await expect(page.getByRole("dialog", { name: /Search|Command/ })).toBeVisible();
+  await page.keyboard.press("Escape");
 
   // Tasks and Find work on the page's own content.
   await page.getByRole("tab", { name: "Tasks in this page" }).click();

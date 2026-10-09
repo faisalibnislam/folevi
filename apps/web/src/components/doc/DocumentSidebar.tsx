@@ -13,7 +13,7 @@ import { useDocumentBlocks, useLocalStorage } from "@/lib/hooks/useEngine";
 import { IconButton } from "@/components/ui/Button";
 import { Outline } from "./Outline";
 import { WorkspaceMenu } from "@/components/app/WorkspaceMenu";
-import { SidebarTopBar } from "@/components/app/Sidebar";
+import { SidebarSearch, SidebarTopBar } from "@/components/app/Sidebar";
 
 export type DocSidebarTab = "contents" | "comments" | "tasks" | "attachments" | "find";
 
@@ -92,7 +92,12 @@ export function DocumentSidebar({
         <SidebarTopBar />
       )}
 
-      <div className="flex-none px-3 pb-3 pt-1">
+      {/* Search everywhere (⌘K), as in the app's sidebar. */}
+      <div className="flex-none px-3 pb-2 pt-1">
+        <SidebarSearch />
+      </div>
+
+      <div className="flex-none px-3 pb-3">
         {/* The note's name and where it lives, in a translucent card. */}
         <div className="rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--glass-border)]">
           <div className="min-w-0">

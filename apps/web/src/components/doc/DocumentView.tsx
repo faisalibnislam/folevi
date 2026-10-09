@@ -40,6 +40,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useAppState } from "@/lib/app/state";
 import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scope";
 import { AppLink, useAppRouter } from "@/lib/app/router";
+import { NoteSuggestions } from "./NoteSuggestions";
 import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { localDb } from "@/lib/sync/db";
@@ -829,6 +830,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
               )}
             </div>
           </article>
+          {/* Quiet suggestions (open questions, action items, related notes), found without a model call. */}
+          {aiOn && meta ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
           <Backlinks documentId={documentId} />
           {openThread && threads ? (
             <BlockThread

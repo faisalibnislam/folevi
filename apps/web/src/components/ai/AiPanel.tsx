@@ -3,7 +3,10 @@
 import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowUp, Check, Copy, CornerDownLeft, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUp, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, X } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/lib/convex/api";
+import { useAppRouter } from "@/lib/app/router";
 import { AppLink } from "@/lib/app/router";
 import { useShell } from "@/components/app/Shell";
 import { Select } from "@/components/ui/Select";
@@ -11,7 +14,10 @@ import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, type AiPlacement } from "./insert";
 import { markdownToPlain } from "./plainText";
-import { REWRITE_TASKS, SELECTION_ACTIONS, useAi, type AiRunDetail, type AiTask } from "./useAi";
+import { AI_TOOLS, REWRITE_TASKS, SELECTION_ACTIONS, TOOL_TASKS, useAi, type AiRunDetail, type AiTask } from "./useAi";
+import { StudyMode } from "./StudyMode";
+import { TranslateNote } from "./TranslateNote";
+import { TOOL_ICONS } from "./toolIcons";
 import { AI_LANGUAGES } from "./languages";
 import { aiDiff } from "./aiDiff";
 import { AiDiffLegend, AiDiffView } from "./AiDiffView";
@@ -25,9 +31,14 @@ const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "outline", label: "Outline", icon: <ListTree size={15} /> },
   { task: "brainstorm", label: "Brainstorm ideas", icon: <Lightbulb size={15} /> },
   { task: "title", label: "Suggest a title", icon: <Type size={15} /> },
+  { task: "meetingSummary", label: "Meeting summary", icon: <Users size={15} /> },
+  { task: "flashcards", label: "Flashcards", icon: TOOL_ICONS.flashcards },
+  { task: "quiz", label: "Quiz", icon: TOOL_ICONS.quiz },
 ];
+/** "Think it through": the decision and brainstorming frameworks. */
+const THINK = AI_TOOLS.filter((t) => t.group === "decide" || t.group === "ideas");
 
-const labelFor = (task: AiTask) => (task === "refine" ? "Revised" : null) ?? SELECTION_ACTIONS.find((a) => a.task === task)?.label.replace("…", "") ?? NOTE_ACTIONS.find((a) => a.task === task)?.label ?? (task === "draft" ? "Written for you" : "Answer");
+const labelFor = (task: AiTask) => (task === "refine" ? "Revised" : null) ?? AI_TOOLS.find((a) => a.task === task)?.label ?? SELECTION_ACTIONS.find((a) => a.task === task)?.label.replace("…", "") ?? NOTE_ACTIONS.find((a) => a.task === task)?.label ?? (task === "draft" ? "Written for you" : "Answer");
 
 type Result =
   | { kind: "write"; task: AiTask; text: string; placement: AiPlacement; request: Request }
@@ -58,10 +69,12 @@ export function AiPanel({
   run: (AiRunDetail & { id: number }) | null;
   onTitle: (title: string) => void;
 }) {
-  const { ask, write } = useAi();
+  const { ask, write, saveDraft } = useAi();
+  const { navigate } = useAppRouter();
+  const meta = useQuery(api.documents.get, { documentId });
   const stream = useAiStream();
   const { openAsk } = useShell();
-  const [mode, setMode] = useState<"write" | "ask" | "agent">("write");
+  const [mode, setMode] = useState<"write" | "ask" | "agent" | "study">("write");
   /** The Agent tab's conversation (about this note), once it has one. */
   const [agentConversation, setAgentConversation] = useState<string | null>(null);
   // The Agent tab is about the note it's open on (one object while the note stays, so the chat keeps it).
@@ -71,6 +84,7 @@ export function AiPanel({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<AiProblem | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const people = useQuery(api.comments.mentionable, result?.kind === "write" && result.task === "meetingSummary" ? { documentId } : "skip");
   const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastRun = useRef<number | null>(null);
@@ -140,9 +154,11 @@ export function AiPanel({
 
   const apply = (placement: AiPlacement) => {
     if (!editor || !result) return;
-    if (!insertAiMarkdown(editor, result.text, placement)) {
+    // A meeting summary's "@Owner" becomes a mention (and the to-do's assignee) when they can be mentioned here.
+    const opts = { people: result.kind === "write" && result.task === "meetingSummary" ? people : undefined };
+    if (!insertAiMarkdown(editor, result.text, placement, opts)) {
       // The selection changed since it was sent: don't overwrite anything, put the result below instead.
-      insertAiMarkdown(editor, result.text, { kind: "cursor" });
+      insertAiMarkdown(editor, result.text, { kind: "cursor" }, opts);
       setNotice("The selected text changed, so the result was inserted below it.");
     }
     setResult(null);
@@ -162,6 +178,29 @@ export function AiPanel({
     void navigator.clipboard.writeText(markdownToPlain(result.text)).then(() => setNotice("Copied"));
   };
 
+  /** Runs a tool on the selected text (the result goes below it), or on the whole note. */
+  const runTool = (task: AiTask) => {
+    const sel = selectionText();
+    void doWrite({ task, text: sel?.text, placement: sel ? { kind: "below", at: sel.to } : { kind: "cursor" } });
+  };
+
+  /** Saves a tool's result as a new note ("Meeting summary: Weekly sync") and opens it. */
+  const saveAsNote = async () => {
+    if (!result || result.kind !== "write" || busy) return;
+    const title = meta?.document.title?.trim();
+    setBusy("Saving");
+    setError(null);
+    try {
+      const { id } = await saveDraft("note", title ? `${labelFor(result.task)}: ${title}` : labelFor(result.task), result.text);
+      setResult(null);
+      navigate(`/d/${id}`);
+    } catch (e) {
+      setError(aiProblem(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const modes = (
     <div className="ui-seg ui-well mb-2" role="group" aria-label="What the AI should do">
       <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
@@ -172,6 +211,9 @@ export function AiPanel({
       </button>
       <button type="button" aria-pressed={mode === "agent"} onClick={() => setMode("agent")} title="Can propose changes to this note and your others. Nothing changes until you approve.">
         Agent
+      </button>
+      <button type="button" aria-pressed={mode === "study"} onClick={() => setMode("study")} title="Study this note's flashcards and quiz">
+        Study
       </button>
     </div>
   );
@@ -184,6 +226,24 @@ export function AiPanel({
         <div className="flex h-[min(70vh,640px)] flex-col">
           <ChatThread conversationId={agentConversation} onConversation={setAgentConversation} initialContext={agentContext} variant="panel" initialMode="agent" autoFocus />
         </div>
+      </div>
+    );
+  }
+
+  // Study: the note's flashcards and quiz; making more goes through the usual preview (in Write).
+  if (mode === "study") {
+    return (
+      <div className="text-sm">
+        {modes}
+        <StudyMode
+          editor={editor}
+          canMake={!readOnly}
+          busy={Boolean(busy)}
+          onMake={(task) => {
+            setMode("write");
+            runTool(task);
+          }}
+        />
       </div>
     );
   }
@@ -241,8 +301,8 @@ export function AiPanel({
               <button
                 key={a.task}
                 type="button"
-                disabled={Boolean(busy) || (readOnly && a.task !== "summarize")}
-                onClick={() => void doWrite({ task: a.task, placement: a.task === "summarize" ? { kind: "cursor" } : a.task === "continue" ? { kind: "end" } : { kind: "cursor" } })}
+                disabled={Boolean(busy) || (readOnly && a.task !== "summarize" && !TOOL_TASKS.has(a.task))}
+                onClick={() => (TOOL_TASKS.has(a.task) ? runTool(a.task) : void doWrite({ task: a.task, placement: a.task === "summarize" ? { kind: "cursor" } : a.task === "continue" ? { kind: "end" } : { kind: "cursor" } }))}
                 className="flex h-10 items-center gap-2 rounded-[8px] bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
               >
                 <span aria-hidden className="text-muted">
@@ -339,6 +399,18 @@ export function AiPanel({
                   <CornerDownLeft size={14} aria-hidden /> Insert below
                 </button>
               </>
+            ) : result.kind === "write" && TOOL_TASKS.has(result.task) ? (
+              <>
+                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+                  <CornerDownLeft size={14} aria-hidden /> {result.placement.kind === "below" ? "Insert below" : "Insert into note"}
+                </button>
+                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "end" })} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                  <ArrowDownToLine size={14} aria-hidden /> Append
+                </button>
+                <button type="button" onClick={() => void saveAsNote()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                  <FilePlus2 size={14} aria-hidden /> Create note
+                </button>
+              </>
             ) : (
               <button type="button" disabled={readOnly} onClick={() => apply(result.kind === "write" && result.placement.kind === "end" ? { kind: "end" } : { kind: "cursor" })} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
                 <CornerDownLeft size={14} aria-hidden /> {result.kind === "write" && result.placement.kind === "end" ? "Add to the end" : "Insert into note"}
@@ -362,7 +434,8 @@ export function AiPanel({
                 <button
                   key={r}
                   type="button"
-                  onClick={() => void doWrite({ task: "refine", text: result.text, instruction: r, placement: result.placement })}
+                  // A tool runs again with the request (its result keeps its shape); anything else is revised.
+                  onClick={() => void doWrite(TOOL_TASKS.has(result.task) ? { ...result.request, instruction: r } : { task: "refine", text: result.text, instruction: r, placement: result.placement })}
                   className="rounded-full bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"
                 >
                   {r}
@@ -371,6 +444,35 @@ export function AiPanel({
             </div>
           ) : null}
         </section>
+      ) : null}
+
+      {/* Decision and brainstorming frameworks, then translating the whole note */}
+      {mode === "write" ? (
+        <>
+          <section aria-labelledby={`${uid}-think`}>
+            <h3 id={`${uid}-think`} className="ui-caps mb-2 px-1">
+              Think it through
+            </h3>
+            <div className="grid grid-cols-2 gap-1.5">
+              {THINK.map((a) => (
+                <button
+                  key={a.task}
+                  type="button"
+                  disabled={Boolean(busy)}
+                  onClick={() => runTool(a.task)}
+                  className="flex h-9 items-center gap-2 rounded-[8px] bg-[var(--glass-hover)] px-2.5 text-left text-[12.5px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+                >
+                  <span aria-hidden className="text-muted">
+                    {TOOL_ICONS[a.task]}
+                  </span>
+                  <span className="min-w-0 truncate">{a.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 px-1 text-[11.5px] text-faint">Works on the selected text, or the whole note.</p>
+          </section>
+          <TranslateNote documentId={documentId} editor={editor} readOnly={readOnly} disabled={Boolean(busy)} />
+        </>
       ) : null}
 
       <p className="px-1 text-[11px] leading-snug text-faint">AI can make mistakes, so check what it writes. Your request and the notes it needs are sent to Google Gemini.</p>

@@ -1,31 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, CornerDownLeft, ListTree, X } from "lucide-react";
+import { Check, Copy, CornerDownLeft, ListTree, Users, X } from "lucide-react";
 import { AiIcon } from "./AiIcon";
 import { AiMarkdown } from "./AiMarkdown";
 import { AiProblemNotice, type AiProblem } from "./AiCredits";
 import { markdownToPlain } from "./plainText";
 
-/** What a transcription shows: the transcript, or its summary. */
-export type TranscriptView = "transcript" | "summary";
+/** What a transcription shows: the transcript, its summary, or a meeting summary of it. */
+export type TranscriptView = "transcript" | "summary" | "meeting";
 
 /**
  * A recording's transcript under its audio block, before anything goes into the note (the writing
- * assistant's preview style): the transcript (and its summary, once asked for), then Insert below,
- * Summarize, Copy and Discard. Nothing in the note changes until Insert below.
+ * assistant's preview style): the transcript (and its summary or meeting summary, once asked for), then
+ * Insert below, Summarize, Meeting summary, Copy and Discard. Nothing in the note changes until Insert below.
  */
 export function TranscriptPreview({
   working,
   transcript,
   summary,
   summarizing,
+  meeting = null,
+  meetingBusy = false,
   view,
   onView,
   problem,
   canInsert,
   onInsert,
   onSummarize,
+  onMeeting,
   onDiscard,
 }: {
   /** Transcribing (nothing to show yet). */
@@ -33,6 +36,9 @@ export function TranscriptPreview({
   transcript: string;
   summary: string | null;
   summarizing: boolean;
+  /** A meeting summary of the transcript (decisions, action items as to-dos…), once asked for. */
+  meeting?: string | null;
+  meetingBusy?: boolean;
   view: TranscriptView;
   onView: (view: TranscriptView) => void;
   problem: AiProblem | null;
@@ -40,12 +46,15 @@ export function TranscriptPreview({
   canInsert: boolean;
   onInsert: () => void;
   onSummarize: () => void;
+  /** Asks for a meeting summary (the button shows when given). */
+  onMeeting?: () => void;
   onDiscard: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const shown = view === "summary" && summary ? summary : transcript;
+  const written = view === "summary" ? summary : view === "meeting" ? meeting : null;
+  const shown = written ?? transcript;
   const copy = () => {
-    void navigator.clipboard?.writeText(view === "summary" && summary ? markdownToPlain(summary) : transcript).then(() => {
+    void navigator.clipboard?.writeText(written ? markdownToPlain(written) : transcript).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
@@ -67,19 +76,26 @@ export function TranscriptPreview({
         <div className="max-h-[min(46vh,380px)] overflow-y-auto border-b border-line/60 px-4 pb-2.5 pt-3">
           <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
             <AiIcon size={12} aria-hidden className="text-[#7c6cf0]" />
-            <span className="min-w-0 flex-1 truncate">{summary ? "Transcription" : "Transcript"}</span>
-            {summary ? (
+            <span className="min-w-0 flex-1 truncate">{summary || meeting ? "Transcription" : "Transcript"}</span>
+            {summary || meeting ? (
               <div className="ui-seg ui-well text-[11.5px]" role="group" aria-label="Show">
                 <button type="button" aria-pressed={view === "transcript"} onClick={() => onView("transcript")}>
                   Transcript
                 </button>
-                <button type="button" aria-pressed={view === "summary"} onClick={() => onView("summary")}>
-                  Summary
-                </button>
+                {summary ? (
+                  <button type="button" aria-pressed={view === "summary"} onClick={() => onView("summary")}>
+                    Summary
+                  </button>
+                ) : null}
+                {meeting ? (
+                  <button type="button" aria-pressed={view === "meeting"} onClick={() => onView("meeting")}>
+                    Meeting
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
-          {view === "summary" && summary ? <AiMarkdown markdown={summary} /> : <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.6]">{shown}</p>}
+          {written ? <AiMarkdown markdown={written} /> : <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.6]">{shown}</p>}
         </div>
       ) : null}
       {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "mx-3 my-2.5 rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 my-2.5 w-auto"} /> : null}
@@ -93,6 +109,11 @@ export function TranscriptPreview({
           {transcript && !summary ? (
             <button type="button" disabled={summarizing} onClick={onSummarize} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
               <ListTree size={14} aria-hidden /> {summarizing ? "Summarizing…" : "Summarize"}
+            </button>
+          ) : null}
+          {transcript && !meeting && onMeeting ? (
+            <button type="button" disabled={meetingBusy} onClick={onMeeting} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <Users size={14} aria-hidden /> {meetingBusy ? "Summarizing the meeting…" : "Meeting summary"}
             </button>
           ) : null}
           {transcript ? (

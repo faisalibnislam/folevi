@@ -1,6 +1,6 @@
 // A person's AI settings (Settings > AI). Each one is stored on their profile (unset = the default) and
-// enforced on the server wherever the feature runs. Some belong to later milestones of
-// docs/AI_ASSISTANT.md and are stored now so the switch is there when the feature lands.
+// enforced on the server wherever the feature runs (memory: convex/aiMemory.ts, suggestions:
+// convex/aiSuggestions.ts, digests: convex/aiDigest.ts).
 import { v } from "convex/values";
 import type { Doc } from "../../_generated/dataModel";
 

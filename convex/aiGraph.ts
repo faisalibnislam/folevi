@@ -239,12 +239,12 @@ async function fullGraph(ctx: QueryCtx, profile: Doc<"profiles">, scope: Scope):
 }
 
 /** A note that may be shown: live, not a template, and one the person can open. */
-async function openable(reader: PageReader, doc: Doc<"documents">): Promise<boolean> {
+export async function openable(reader: PageReader, doc: Doc<"documents">): Promise<boolean> {
   return !doc.inTrash && doc.deletedAt === undefined && doc.kind !== "template" && (await reader.canOpen(doc));
 }
 
 /** The note asked about, when the person can read it, with a reader for the notes around it. */
-async function noteFor(ctx: QueryCtx, profile: Doc<"profiles">, documentId: string) {
+export async function noteFor(ctx: QueryCtx, profile: Doc<"profiles">, documentId: string) {
   const doc = await getDocumentByPublicId(ctx, documentId);
   if (!doc || !hasValidScope(doc) || doc.deletedAt !== undefined) return null;
   if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
@@ -253,11 +253,11 @@ async function noteFor(ctx: QueryCtx, profile: Doc<"profiles">, documentId: stri
   return { profile, doc, scope, reader, ...(await fullGraph(ctx, profile, scope)) };
 }
 
-type NoteRef = { id: string; title: string; icon: string | null };
-const refOf = (d: Doc<"documents">): NoteRef => ({ id: d.publicId, title: d.title, icon: d.icon ?? null });
+export type NoteRef = { id: string; title: string; icon: string | null };
+export const refOf = (d: Doc<"documents">): NoteRef => ({ id: d.publicId, title: d.title, icon: d.icon ?? null });
 
 /** The notes this one links to and the ones linking here (explicit `[[` links). */
-async function linkedNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise<Map<Id<"documents">, { out: boolean; in: boolean; doc: Doc<"documents"> }>> {
+export async function linkedNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise<Map<Id<"documents">, { out: boolean; in: boolean; doc: Doc<"documents"> }>> {
   const out = new Map<Id<"documents">, { out: boolean; in: boolean; doc: Doc<"documents"> }>();
   const targets = new Set<string>();
   for (const l of await ctx.db
@@ -285,7 +285,7 @@ async function linkedNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise<Map<Id
 }
 
 /** Other notes that mention this note's entities, with the names they share. */
-async function sharedEntityNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise<Map<Id<"documents">, string[]>> {
+export async function sharedEntityNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise<Map<Id<"documents">, string[]>> {
   const out = new Map<Id<"documents">, string[]>();
   const mentions = await ctx.db
     .query("aiMentions")
@@ -306,7 +306,7 @@ async function sharedEntityNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise<
 }
 
 /** Relations found in this note or pointing at it, note to note. */
-async function noteRelations(ctx: QueryCtx, doc: Doc<"documents">): Promise<Doc<"aiRelations">[]> {
+export async function noteRelations(ctx: QueryCtx, doc: Doc<"documents">): Promise<Doc<"aiRelations">[]> {
   const from = await ctx.db
     .query("aiRelations")
     .withIndex("by_source", (q) => q.eq("sourceDocumentId", doc._id))

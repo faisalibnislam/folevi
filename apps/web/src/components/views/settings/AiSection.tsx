@@ -9,11 +9,13 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { useAiAccess } from "@/components/ai/useAi";
 import { Card } from "./Card";
 import { AiSettingCard } from "./AccountSection";
+import { AiMemoryCard } from "./AiMemory";
+import { AiDigestCard } from "./AiDigest";
 
 type PrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests";
 type Prefs = Record<PrefKey, boolean>;
 
-/** What each setting does, in a sentence. "soon" marks the ones whose feature hasn't arrived yet. */
+/** What each setting does, in a sentence. "soon" marks one whose feature hasn't arrived yet. */
 const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: string; soon?: boolean }[] = [
   {
     key: "history",
@@ -25,18 +27,16 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "memory",
     label: "Memory",
-    body: "Let the assistant remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers.",
+    body: "Let the assistant remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers below.",
     on: "Memory turned on",
     off: "Memory turned off",
-    soon: true,
   },
   {
     key: "suggestions",
     label: "Suggestions",
-    body: "Quiet hints while you work, such as related notes, possible duplicates or open questions.",
+    body: "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to AI.",
     on: "Suggestions turned on",
     off: "Suggestions turned off",
-    soon: true,
   },
   {
     key: "attachments",
@@ -55,10 +55,9 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "digests",
     label: "Digests",
-    body: "A regular summary of what changed in your notes, saved as a note for you. It uses your AI credits.",
+    body: "A daily or weekly summary of what changed in your notes, saved as a note in your Inbox. It uses your AI credits and is never emailed.",
     on: "Digests turned on",
     off: "Digests turned off",
-    soon: true,
   },
 ];
 
@@ -87,10 +86,13 @@ export function AiSection() {
   const { profile } = useAppState();
   const { personalCore: core } = useAiAccess();
   const update = useMutation(api.users.updateProfile);
+  const saveDigest = useMutation(api.aiDigest.save);
   const toast = useToast();
   const prefs: Prefs = { ...DEFAULTS, ...((profile as { aiPrefs?: Partial<Prefs> }).aiPrefs ?? {}) };
   const set = (item: (typeof SETTINGS)[number], next: boolean) => {
-    void update({ aiPrefs: { [item.key]: next } }).then(
+    // Digests also schedule (or stop) the next one on the server.
+    const saved = item.key === "digests" ? saveDigest({ enabled: next }) : update({ aiPrefs: { [item.key]: next } });
+    void saved.then(
       () => toast.show(next ? item.on : item.off),
       (e) => toast.show(errorMessage(e), { tone: "error" }),
     );
@@ -101,13 +103,15 @@ export function AiSection() {
       <Card title="Conversations">
         <PrefRow item={SETTINGS[0]!} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
       </Card>
-      <Card title="How the assistant works for you" description="These are saved now and apply as each feature arrives.">
+      <Card title="How the assistant works for you" description="The server checks each of these wherever the feature runs.">
         <div className="divide-y divide-line/70">
           {SETTINGS.slice(1).map((item) => (
             <PrefRow key={item.key} item={item} checked={prefs[item.key]} disabled={core} onChange={(next) => set(item, next)} />
           ))}
         </div>
       </Card>
+      <AiMemoryCard />
+      <AiDigestCard />
     </>
   );
 }

@@ -377,7 +377,7 @@ export async function readForAgent(ctx: ActionCtx, messageId: Id<"aiMessages">, 
     if (!read) fail("unsupported_file", notText(f));
     return { file, content: untrusted("file", { id: f.fileId, name: f.name }, read.text), ...(read.cut ? { truncated: `Only the first ${TEXT_CHARS.toLocaleString("en-US")} characters are shown.` } : {}), ...sheet };
   }
-  const res = await provider().generate({ system: READER_SYSTEM, prompt: READ_PROMPT[f.kind]!, attachments: [{ inlineData: { mimeType: f.mimeType, data: toBase64(bytes) } }], temperature: 0, maxOutputTokens: 8_192 }, meter);
+  const res = await provider().generate({ system: READER_SYSTEM, prompt: READ_PROMPT[f.kind]!, attachments: [{ inlineData: { mimeType: f.mimeType, data: toBase64(bytes) } }], temperature: 0, maxOutputTokens: 8_192, noMemory: true }, meter);
   return { file, content: untrusted("file", { id: f.fileId, name: f.name }, res.text) };
 }
 
@@ -436,7 +436,7 @@ export const transcribe = action({
       holdId,
       async (meter) => {
         const bytes = await bytesOf(ctx, f);
-        const res = await provider().generate({ system: TRANSCRIBE_SYSTEM, prompt: TRANSCRIBE_PROMPT, attachments: [{ inlineData: { mimeType: f.mimeType, data: toBase64(bytes) } }], temperature: 0, maxOutputTokens: TRANSCRIPT_TOKENS }, meter);
+        const res = await provider().generate({ system: TRANSCRIBE_SYSTEM, prompt: TRANSCRIBE_PROMPT, attachments: [{ inlineData: { mimeType: f.mimeType, data: toBase64(bytes) } }], temperature: 0, maxOutputTokens: TRANSCRIPT_TOKENS, noMemory: true }, meter);
         return cleanTranscript(res.text);
       },
       async (c) => {

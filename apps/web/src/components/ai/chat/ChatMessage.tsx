@@ -14,6 +14,7 @@ import { phaseLabel, stepLines, storedProblem, type AgentStep } from "./chatText
 import { AttachmentChips, type AttachmentInfo, type PendingFile } from "./Attachments";
 import { ResearchFooter, ResearchProgress, type ResearchHandlers } from "./ResearchCard";
 import { SearchSuggestions } from "./SearchSuggestions";
+import { MessageMemory } from "./SaveMemoryCard";
 
 export type ChatMessageData = NonNullable<FunctionReturnType<typeof api.aiChat.get>>["messages"][number];
 export type Citation = ChatMessageData["citations"][number];
@@ -290,6 +291,7 @@ export function AssistantMessage({
         {message.text ? <AiMarkdown markdown={message.text} cited={cited} onCite={citeBy} onNavigate={onOpen} /> : <p className="text-[13.5px] text-muted">Stopped before it said anything.</p>}
         {message.agent?.run && run ? <AgentRunCard run={message.agent.run} activity={run.activity} onApprove={run.onApprove} onDiscard={run.onDiscard} onUndo={run.onUndo} onOpen={onOpen} /> : null}
         {message.actions ? <ActionsCard actions={message.actions as AiAction[]} outcome={outcome} onApply={onApply} onDismiss={onDismiss} onOpen={onOpen} /> : null}
+        {message.memory && message.memory.status !== "dismissed" ? <MessageMemory messageId={message.id} memory={message.memory} /> : null}
         {message.citations.length || message.webCitations.length ? <Sources citations={message.citations} webCitations={message.webCitations} onCite={onCite} /> : null}
         <SearchSuggestions entryPoints={message.searchEntryPoints} />
         <div className="-mb-1 mt-2 flex flex-wrap items-center gap-0.5">

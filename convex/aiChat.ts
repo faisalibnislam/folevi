@@ -32,6 +32,7 @@ import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, type Answe
 import { attachmentChips, claimAttachments, deleteConversationFiles, sweepUnsentAttachments, type AttachmentChip } from "./lib/ai/attachmentFiles";
 import { answerWithFiles, filesPlan, type FileForModel } from "./aiAttachments";
 import { domainOf, entryPointsToShow, extractUrls, resolveLink } from "./lib/ai/web";
+import { hideRemember, vMemoryKind } from "./lib/ai/memory";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -164,6 +165,8 @@ function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiRuns">, 
     attachments: (m.attachments ?? []).flatMap((id) => files.get(id) ?? []),
     /** An agent's answer: the steps it took, and the changes it proposed (aiAgent.ts). */
     agent: m.agent ? { steps: m.agent.steps, run: run ? wireRun(run) : null } : null,
+    /** A preference the answer offers to remember (Save or Not now; aiMemory.ts). */
+    memory: m.memory ? { kind: m.memory.kind, text: m.memory.text, status: m.memory.status } : null,
     createdAt: m.createdAt,
   };
 }
@@ -576,6 +579,7 @@ export const finishMessage = internalMutation({
     searchEntryPoints: v.optional(v.array(v.string())),
     actions: v.optional(v.array(vAiAction)),
     suggestions: v.optional(v.array(v.string())),
+    memory: v.optional(v.object({ kind: vMemoryKind, text: v.string() })),
     error: v.optional(vError),
     usage: v.optional(v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() })),
   },
@@ -595,6 +599,8 @@ export const finishMessage = internalMutation({
       ...(args.searchEntryPoints?.length ? { searchEntryPoints: entryPointsToShow(args.searchEntryPoints) } : {}),
       ...(args.actions?.length ? { actions: args.actions } : {}),
       ...(args.suggestions?.length && !stopped ? { suggestions: args.suggestions } : {}),
+      // Only offered: nothing is remembered until the person clicks Save.
+      ...(args.memory && !stopped ? { memory: { ...args.memory, status: "proposed" as const } } : {}),
       ...(args.error && !stopped ? { error: args.error } : {}),
       ...(args.usage ? { usage: args.usage } : {}),
       updatedAt: now,
@@ -704,7 +710,7 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
     finish: async (text) => void (await ctx.runMutation(internal.aiChat.writeMessage, { messageId, text })),
     fail: async () => {},
     phase: async (phase) => void (await ctx.runMutation(internal.aiChat.writeMessage, { messageId, phase })),
-    shown: hideFollowUps,
+    shown: (text) => hideFollowUps(hideRemember(text)),
   };
   let cost: Settled | undefined;
   try {
@@ -714,7 +720,7 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
       async (meter) => {
         const out = withFiles
           ? await answerWithFiles(ctx, { question: turn.question, history: turn.history, documentIds, files: files.files, sink }, meter)
-          : await answerFromNotes(ctx, { scope: turn.scope, question: turn.question, history: turn.history, documentIds, notesOnly, folderId, sink, chat: true, ...(withWeb ? { web: { search: web, urls } } : {}) }, meter);
+          : await answerFromNotes(ctx, { scope: turn.scope, question: turn.question, history: turn.history, documentIds, notesOnly, folderId, sink, chat: true, remember: prefs.memory, ...(withWeb ? { web: { search: web, urls } } : {}) }, meter);
         if (nameIt && out.answer) {
           let title = "";
           try {
@@ -755,7 +761,7 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
           return { n: w.n, url, title: w.title.slice(0, 200), domain: (url === w.url ? w.domain : domainOf(url)) || w.domain };
         }),
     );
-    await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "done", text: out.answer, citations, webCitations, ...("searchEntryPoint" in out && out.searchEntryPoint ? { searchEntryPoints: [out.searchEntryPoint] } : {}), actions: out.actions, suggestions: out.suggestions, usage: cost });
+    await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "done", text: out.answer, citations, webCitations, ...("searchEntryPoint" in out && out.searchEntryPoint ? { searchEntryPoints: [out.searchEntryPoint] } : {}), actions: out.actions, suggestions: out.suggestions, ...("memory" in out && out.memory ? { memory: out.memory } : {}), usage: cost });
     return { status: "done" };
   } catch (e) {
     const error = storedError(e);

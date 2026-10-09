@@ -40,7 +40,7 @@ export function TranscribeButton({ onClick, busy }: { onClick: () => void; busy:
   );
 }
 
-type State = { phase: "idle" } | { phase: "working" } | { phase: "ready"; transcript: string; summary: string | null; view: TranscriptView } | { phase: "error"; problem: AiProblem };
+type State = { phase: "idle" } | { phase: "working" } | { phase: "ready"; transcript: string; summary: string | null; meeting: string | null; view: TranscriptView } | { phase: "error"; problem: AiProblem };
 
 /**
  * An audio block's transcription: Transcribe (the button), and the preview under the block while there's
@@ -53,6 +53,7 @@ export function useTranscription({ fileId, editor, getPos, node, editable }: { f
   const write = useAction(api.ai.write);
   const [state, setState] = useState<State>({ phase: "idle" });
   const [summarizing, setSummarizing] = useState(false);
+  const [meetingBusy, setMeetingBusy] = useState(false);
   const [problem, setProblem] = useState<AiProblem | null>(null);
   const documentId = note?.home?.id;
 
@@ -62,7 +63,7 @@ export function useTranscription({ fileId, editor, getPos, node, editable }: { f
     setState({ phase: "working" });
     try {
       const { text } = await transcribe({ scope, documentId, fileId });
-      setState({ phase: "ready", transcript: text, summary: null, view: "transcript" });
+      setState({ phase: "ready", transcript: text, summary: null, meeting: null, view: "transcript" });
     } catch (e) {
       setState({ phase: "error", problem: aiProblem(e) });
     }
@@ -82,12 +83,29 @@ export function useTranscription({ fileId, editor, getPos, node, editable }: { f
     }
   };
 
+  // A meeting summary of the transcript (lib/ai/writing.ts "meetingSummary"): decisions, action items as to-dos…
+  const meetingSummary = async () => {
+    if (state.phase !== "ready" || !documentId) return;
+    setMeetingBusy(true);
+    setProblem(null);
+    try {
+      const { text } = await write({ scope, task: "meetingSummary", documentId, text: state.transcript });
+      setState((s) => (s.phase === "ready" ? { ...s, meeting: text, view: "meeting" } : s));
+    } catch (e) {
+      setProblem(aiProblem(e));
+    } finally {
+      setMeetingBusy(false);
+    }
+  };
+  // Owners named in a meeting summary become mentions (and to-do assignees) when they can be mentioned here.
+  const people = useQuery(api.comments.mentionable, state.phase === "ready" && state.meeting && documentId ? { documentId } : "skip");
+
   const insert = () => {
     if (state.phase !== "ready" || !editor.isEditable) return;
     const at = getPos();
     if (typeof at !== "number") return;
-    const text = state.view === "summary" && state.summary ? state.summary : state.transcript;
-    insertAiMarkdown(editor, text, { kind: "after", pos: at + node.nodeSize, depth: Number(node.attrs.depth ?? 0) });
+    const text = state.view === "summary" && state.summary ? state.summary : state.view === "meeting" && state.meeting ? state.meeting : state.transcript;
+    insertAiMarkdown(editor, text, { kind: "after", pos: at + node.nodeSize, depth: Number(node.attrs.depth ?? 0) }, { people: state.view === "meeting" ? people : undefined });
     setState({ phase: "idle" });
   };
 
@@ -98,12 +116,15 @@ export function useTranscription({ fileId, editor, getPos, node, editable }: { f
         transcript={state.phase === "ready" ? state.transcript : ""}
         summary={state.phase === "ready" ? state.summary : null}
         summarizing={summarizing}
+        meeting={state.phase === "ready" ? state.meeting : null}
+        meetingBusy={meetingBusy}
         view={state.phase === "ready" ? state.view : "transcript"}
         onView={(view) => setState((s) => (s.phase === "ready" ? { ...s, view } : s))}
         problem={state.phase === "error" ? state.problem : problem}
         canInsert={editable}
         onInsert={insert}
         onSummarize={() => void summarize()}
+        onMeeting={() => void meetingSummary()}
         onDiscard={() => {
           setState({ phase: "idle" });
           setProblem(null);

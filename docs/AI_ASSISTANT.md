@@ -135,6 +135,77 @@ removed with it. A graph view page shows notes and entities the person can open.
 - Digests: opt-in daily or weekly summaries generated on a schedule within the person's credits, delivered as a
   note in their Inbox and an in-app notification.
 
+As built (milestone 8, part A: `convex/aiMemory.ts`, `convex/aiSuggestions.ts`, `convex/aiDigest.ts`, and
+`convex/lib/ai/{memory,suggestions,digest}.ts`):
+
+- Memory (`aiMemories`, scoped): entries of kind tone, language, length, term or instruction (200 characters
+  each, 40 per place), private to the person. One in their Personal applies everywhere they use AI; one in a
+  workspace only there. They only come from the person: Settings > AI (add, edit, delete, clear all), or Save
+  on an offer under a chat answer. While memory is on, a chat answer may end with a `[[remember]]` line (JSON
+  kind and text); it's taken out of the answer and stored on the message as an offer (`aiMessages.memory`,
+  status proposed, saved or dismissed). Nothing is remembered until `aiMemory.saveProposal`; "Not now" is
+  `dismissProposal`.
+- Injection: `metered` (convex/ai.ts) reads the preferences for the request's credit hold
+  (`aiMemory.forHold`: the person, and the workspace the request runs in) and carries them on the meter; the
+  provider layer (`lib/ai/provider.ts`) appends them to the system prompt of every call made with it, labelled
+  as the person's preferences, at most 1,600 characters. So chat, the agent, writing, research, study tools
+  and digests all get them, background jobs too. Left out: quick fast JSON calls (search terms) and calls that
+  copy a file's content (`noMemory`: reading attachments, transcription).
+- Memory off: `forHold` returns nothing, chats aren't told they may offer one, Save is refused. Entries stay
+  (listed with a note that memory is off, and deletable one by one or all at once) until the person deletes
+  them. They're deleted with the account (Personal purge and `by_profile`) and with a workspace.
+- Suggestions (`aiSuggestions.forNote`, no model call): open questions (a line ending in "?" with no answer
+  below: the next line is missing, a heading, a divider or another question; struck-through or "resolved"
+  lines skipped) and action items ("TODO", "Action:", "Next step:", "Follow-up:", "@name will", "need to",
+  not already to-dos), at most 3 and 5, on any plan with AI; related notes not linked yet and likely duplicates
+  from the graph, at most 3 and 2, on plans with the graph. Every note shown is one the person can open. They
+  show as a quiet "Suggestions" row of chips under the note, above backlinks: the chip opens the line or the
+  note, and (with edit access) links the other note at the end of this one or turns the line into an
+  unchecked to-do (leaving out "TODO:"), each one undo step in the editor; Dismiss is remembered per person,
+  note and key (`aiSuggestionDismissals`, deleted with the note, account or workspace). Suggestions off, AI
+  off, or a Core scope: nothing is computed or shown.
+- Digests (`aiDigests`, one row per person): off by default. Turning them on in Settings > AI
+  (`aiDigest.save`) sets daily or weekly, the hour and weekday in the person's time zone (`profiles.timeZone`,
+  clock changes included), and whether it's about their Personal or a workspace where they can add pages.
+  A cron every 15 minutes (`aiDigest.due`) moves each due digest on to its next time first, then starts a job.
+  The job checks digests and AI are still on, access, and that the plan has AI (Core: skipped before anything
+  is read or sent), reads what changed since the last digest as the person (up to 12 edited notes, 900
+  characters each; 15 new and 15 due tasks, theirs in a workspace; 12 comments by others; only what they can
+  open), skips quietly when nothing changed (due tasks alone don't count), then holds credits
+  (`ai.holdFor`, as `begin` does), makes one call (at most 1,200 output tokens) and settles. The digest is a
+  note under their Inbox page there (restricted in a workspace), with links to the notes it covered and a card
+  for it in the Inbox, plus an in-app notification. A skip (no AI on the plan, out of credits, no longer able
+  to add pages there, the model failed) is told once per reason in the bell. Note content is never emailed.
+  Digests or AI off: `due` clears the schedule and nothing runs.
+
+### Study, meetings, translation, frameworks (`convex/lib/ai/studyTools.ts`, `convex/lib/ai/translate.ts`, `convex/aiStudy.ts`)
+
+As built (milestone 8, part B):
+
+- Meeting summary, flashcards, quiz, and the "Think it through" frameworks (pros and cons, decision matrix,
+  SWOT, risks and mitigations, pre-mortem, mind map, "How might we", SCAMPER, six thinking hats) are writing
+  tasks of kind `about`: the selected text, or the whole note when nothing is selected. Same `ai.write`, same
+  gates and credits, same preview (Insert below, Insert above, Append, Create note). Offered in the inline
+  composer ("Meetings and study", "Think it through"), as "/" items ("AI: Meeting summary"…), in the note's AI
+  panel, and (meeting summary) in a recording's transcript preview.
+- Meeting summaries, flashcards and quizzes answer in JSON, checked field by field and turned into Markdown on
+  the server: action items are always to-dos, "@Owner:" first and "(due YYYY-MM-DD)" only for a real date;
+  inserting turns "@Name" into a mention (and the to-do's assignee) when that person can be mentioned in the
+  note. Frameworks answer in Markdown: tables are made well formed, the decision matrix's weighted totals are
+  worked out on the server, a pre-mortem's last section becomes to-dos. Every result is capped at 20,000
+  characters.
+- Flashcards and quiz questions are stored in the note as toggles (the question is the toggle, the answer, or
+  the lettered options and "Answer: B. why", inside it). The AI panel's Study tab reads them from the note as
+  it is: flip, Know it or Again, progress; a quiz with right or wrong, the explanation and a score. Study
+  progress is kept for the session only (nothing is stored), so there's no table to sweep or share.
+- Whole-note translation (`aiStudy.translateNote`): each text block and table cell is a segment, with
+  mentions, dates, page links and inline code as placeholders and link targets as stand-ins; code blocks and
+  other blocks never go to the model. Chunks of about 6,000 characters (at most 14 calls, notes up to 60,000
+  characters), all held up front. A segment that comes back wrong keeps its text. "New note" makes
+  "Title (Language)" beside the original; "Replace text" previews it, saves a version first
+  (`aiStudy.versionBeforeReplace`, reason `ai_run`, "Before AI changes"), then swaps each block's text in the
+  editor as one undo step.
+
 ### Settings (AI section)
 
 AI on or off (existing), conversation history, memory, proactive suggestions, attachment reading, web research,

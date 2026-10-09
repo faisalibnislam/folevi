@@ -266,33 +266,7 @@ export const quickAdd = mutation({
     const scopeArg: ScopeArg = workspace ? { kind: "workspace", workspaceId: workspace.publicId } : { kind: "personal" };
     const title = args.title.trim().slice(0, 500);
     if (!title) fail("invalid_argument", "Write the task first.");
-    const engine = new SyncEngine(ctx, profile, args.deviceId ?? "server");
-    let docPublicId = args.documentId;
-    if (!docPublicId) {
-      docPublicId = inboxDocumentId(profile._id, scopeIdKey(scopeArg));
-      let existing = await getDocumentByPublicId(ctx, docPublicId);
-      // Someone else's page can't have this id, but never write into one that isn't in this scope.
-      if (existing && !inScope(existing, scope)) fail("conflict", "Could not find your Inbox.");
-      if (!existing && scope.kind === "personal") {
-        // Inboxes made before Personal stopped being a workspace have an id keyed by that workspace.
-        const legacy = await legacyPersonalInbox(ctx, scope.profileId);
-        if (legacy) {
-          existing = legacy;
-          docPublicId = legacy.publicId;
-        }
-      }
-      if (existing?.inTrash) await setTrashState(ctx, existing, profile._id, false, undefined);
-      else if (!existing) {
-        const [r] = await engine.applyAll(scopeArg, [
-          {
-            opId: ulid(),
-            kind: "document.create",
-            document: { id: docPublicId, parentDocumentId: null, folderId: null, kind: "document", title: "Inbox", icon: "📥" },
-          },
-        ]);
-        if (r?.status === "conflict" && r.document) docPublicId = r.document.id;
-      }
-    }
+    const docPublicId = args.documentId ?? (await ensureInbox(ctx, profile, scope, scopeArg, args.deviceId ?? "server"));
     const doc = await getDocumentByPublicId(ctx, docPublicId);
     if (!doc) fail("not_found", "Document not found.");
     const roots = (await liveBlocks(ctx, doc._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));
@@ -318,6 +292,37 @@ export const quickAdd = mutation({
     return { blockId: block.id, documentId: doc.publicId };
   },
 });
+
+/**
+ * The person's Inbox page in a scope (created if needed, brought back if it was in Trash), as its public
+ * id. Quick Add puts tasks there; AI digests (convex/aiDigest.ts) put their notes under it.
+ */
+export async function ensureInbox(ctx: MutationCtx, profile: Doc<"profiles">, scope: Scope, scopeArg: ScopeArg, deviceId = "server"): Promise<string> {
+  let docPublicId = inboxDocumentId(profile._id, scopeIdKey(scopeArg));
+  let existing = await getDocumentByPublicId(ctx, docPublicId);
+  // Someone else's page can't have this id, but never write into one that isn't in this scope.
+  if (existing && !inScope(existing, scope)) fail("conflict", "Could not find your Inbox.");
+  if (!existing && scope.kind === "personal") {
+    // Inboxes made before Personal stopped being a workspace have an id keyed by that workspace.
+    const legacy = await legacyPersonalInbox(ctx, scope.profileId);
+    if (legacy) {
+      existing = legacy;
+      docPublicId = legacy.publicId;
+    }
+  }
+  if (existing?.inTrash) await setTrashState(ctx, existing, profile._id, false, undefined);
+  else if (!existing) {
+    const [r] = await new SyncEngine(ctx, profile, deviceId).applyAll(scopeArg, [
+      {
+        opId: ulid(),
+        kind: "document.create",
+        document: { id: docPublicId, parentDocumentId: null, folderId: null, kind: "document", title: "Inbox", icon: "📥" },
+      },
+    ]);
+    if (r?.status === "conflict" && r.document) docPublicId = r.document.id;
+  }
+  return docPublicId;
+}
 
 /**
  * The Inbox page someone made in their Personal back when it was a workspace (its deterministic id was

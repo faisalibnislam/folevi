@@ -39,7 +39,10 @@ import { aiDiff } from "./aiDiff";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, noteIsEmpty, type AiPlacement } from "./insert";
 import { markdownToPlain } from "./plainText";
-import { REWRITE_TASKS, SELECTION_ACTIONS, useAi, useNoteAi, type AiTask } from "./useAi";
+import { AI_TOOLS, REWRITE_TASKS, SELECTION_ACTIONS, TOOL_TASKS, useAi, useNoteAi, type AiTask } from "./useAi";
+import { TOOL_ICONS } from "./toolIcons";
+import { useQuery } from "convex/react";
+import { api } from "@/lib/convex/api";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { useAppRouter } from "@/lib/app/router";
 import { useToast } from "@/components/ui/Toast";
@@ -67,6 +70,8 @@ interface Suggestion {
   /** Switches to writing a whole page from a description. */
   page?: boolean;
   group?: string;
+  /** More words it's found by. */
+  keywords?: string;
 }
 
 const SELECTION_ICONS: Partial<Record<AiTask, React.ReactNode>> = {
@@ -83,7 +88,7 @@ const SELECTION_ICONS: Partial<Record<AiTask, React.ReactNode>> = {
   continueText: <PenLine size={15} />,
   actionItemsText: <ListChecks size={15} />,
 };
-const GROUP_TITLE: Record<string, string> = { edit: "Edit", turn: "Turn into", use: "Use the text", write: "Write with AI" };
+const GROUP_TITLE: Record<string, string> = { edit: "Edit", turn: "Turn into", use: "Use the text", write: "Write with AI", study: "Meetings and study", think: "Think it through" };
 
 const selection = (group: "edit" | "turn" | "use"): Suggestion[] =>
   SELECTION_ACTIONS.filter((a) => a.group === group && a.task !== "translate").map((a) => ({ id: a.task, label: a.label, icon: SELECTION_ICONS[a.task] ?? <Wand2 size={15} />, task: a.task, group }));
@@ -94,6 +99,8 @@ const EDIT: Suggestion[] = [
   ...selection("turn"),
   ...selection("use"),
 ];
+/** Meeting summary, flashcards, quiz and the frameworks: on the selected text, or the whole note. */
+const TOOLS: Suggestion[] = AI_TOOLS.map((t) => ({ id: t.task, label: t.label, icon: TOOL_ICONS[t.task] ?? <Wand2 size={15} />, task: t.task, group: t.group === "meeting" || t.group === "study" ? "study" : "think", keywords: t.keywords }));
 const WRITE: Suggestion[] = [
   { id: "continue", label: "Continue writing", icon: <PenLine size={15} />, task: "continue", group: "write" },
   { id: "summarize", label: "Summarize this page", icon: <FileText size={15} />, task: "summarize", group: "write" },
@@ -111,7 +118,7 @@ export function taskLabel(task: AiTask, language?: string): string {
   const tone = TONES.find((t) => t.task === task);
   if (tone) return `Tone: ${tone.label}`;
   if (task === "page") return "Page";
-  return [...EDIT, ...WRITE].find((s) => s.task === task)?.label ?? "Writing";
+  return [...EDIT, ...WRITE, ...TOOLS].find((s) => s.task === task)?.label ?? "Writing";
 }
 
 /** Results that read better whole than as changes: little of the text stays (a translation, a table). */
@@ -165,8 +172,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     const typed = input.trim();
     if (pageMode) return typed ? [{ id: "custom-page", label: typed, icon: <FilePlus2 size={15} />, page: true }] : [];
     if (request.mode === "draft") return typed ? [{ id: "custom", label: typed, icon: <AiIcon size={15} /> }] : [];
-    const base = target ? EDIT : WRITE;
-    const matches = base.filter((s) => !q || s.label.toLowerCase().includes(q));
+    const base = [...(target ? EDIT : WRITE), ...TOOLS];
+    const matches = base.filter((s) => !q || s.label.toLowerCase().includes(q) || Boolean(s.keywords?.includes(q)));
     if (!typed) return matches;
     const custom: Suggestion[] = [{ id: "custom", label: typed, icon: <AiIcon size={15} /> }];
     if (!target) custom.push({ id: "custom-page", label: typed, icon: <FilePlus2 size={15} />, page: true });
@@ -283,6 +290,10 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
   const result = phase.kind === "result" ? phase : null;
   const replaceable = Boolean(result && target && REWRITE_TASKS.has(result.last.task));
   const isPage = result?.last.task === "page";
+  /** A meeting summary, flashcards, a quiz or a framework: inserted or saved as a note, never replacing. */
+  const isTool = Boolean(result && TOOL_TASKS.has(result.last.task));
+  // People a meeting summary's "@Owner" can become a mention of (and a to-do's assignee).
+  const people = useQuery(api.comments.mentionable, result?.last.task === "meetingSummary" ? { documentId } : "skip");
   const diff = useMemo(() => (result && target && replaceable ? aiDiff(target.text, result.text) : null), [result, target, replaceable]);
 
   /** Puts the result into the note (one undo step) and closes. */
@@ -296,9 +307,10 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     else placement = target ? { kind: "below", at: target.to } : { kind: "cursor" };
     // A page written into an empty note names it, when it has no title yet.
     const nameIt = isPage && result.title && noteIsEmpty(editor) && !noteAi?.title?.trim();
-    if (!insertAiMarkdown(editor, result.text, placement)) {
+    const opts = { people: result.last.task === "meetingSummary" ? people : undefined };
+    if (!insertAiMarkdown(editor, result.text, placement, opts)) {
       // The selected text changed since it was sent: overwrite nothing, put the result below it instead.
-      insertAiMarkdown(editor, result.text, { kind: "below", at: Math.min(target?.to ?? 0, editor.state.doc.content.size) });
+      insertAiMarkdown(editor, result.text, { kind: "below", at: Math.min(target?.to ?? 0, editor.state.doc.content.size) }, opts);
       toast.show("The selected text changed, so the result went below it.");
     }
     if (nameIt) noteAi?.setTitle?.(result.title!);
@@ -311,7 +323,9 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     setSaving(true);
     setError(null);
     try {
-      const { id } = await saveDraft(kind, result.title || result.last.instruction || "", result.text);
+      // A tool's result is named for what it is and the note it came from ("Meeting summary: Weekly sync").
+      const toolTitle = isTool ? (noteAi?.title?.trim() ? `${taskLabel(result.last.task)}: ${noteAi.title.trim()}` : taskLabel(result.last.task)) : "";
+      const { id } = await saveDraft(kind, toolTitle || result.title || result.last.instruction || "", result.text);
       onClose();
       if (kind === "note") navigate(`/d/${id}`);
       else toast.show("Saved to Templates", { action: { label: "Open", onClick: () => navigate(`/d/${id}`) } });
@@ -334,6 +348,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
   const refine = (instruction: string) => {
     if (!result || !instruction.trim()) return;
     if (isPage) return void run({ task: "page", instruction: `${result.last.instruction ?? ""}\n\nChange it: ${instruction.trim()}` }, instruction.trim());
+    // A tool runs again on the same text with the request, so its result keeps its shape (cards stay cards).
+    if (isTool) return void run({ ...result.last, instruction: instruction.trim() }, `${taskLabel(result.last.task)}: ${instruction.trim()}`);
     void run({ task: "refine", text: result.text, instruction: instruction.trim() }, instruction.trim());
   };
 
@@ -542,6 +558,11 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
             <button type="button" onClick={() => accept("end")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
               <ArrowDownToLine size={14} aria-hidden /> Append to note
             </button>
+            {isTool ? (
+              <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <FilePlus2 size={14} aria-hidden /> Create note
+              </button>
+            ) : null}
             {isPage ? (
               <>
                 <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">

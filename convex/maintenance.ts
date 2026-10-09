@@ -62,6 +62,8 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     // Its semantic-search chunks and their bookkeeping.
     () => ctx.db.query("aiChunks").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("aiIndexState").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    // Suggestions people dismissed on it.
+    () => ctx.db.query("aiSuggestionDismissals").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
   ] as never;
   for (const load of batches) {
     const rows = await load();
@@ -241,8 +243,9 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     await purgeDocument(ctx, root._id, budget);
     return false;
   }
-  // Folders, tags, everyone's AI conversations here (with their messages), semantic search's and the graph's rows.
-  for (const table of ["folders", "tags", "aiRuns", "aiResearch", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState"] as const) {
+  // Folders, tags, everyone's AI conversations here (with their messages), semantic search's and the graph's
+  // rows, memory kept for this workspace and dismissed suggestions.
+  for (const table of ["folders", "tags", "aiRuns", "aiResearch", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState", "aiMemories", "aiSuggestionDismissals"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -250,6 +253,13 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     for (const r of rows) await ctx.db.delete(r._id);
     if (rows.length) return false;
   }
+  // Digests about this workspace stop (their notes went with it).
+  const digests = await ctx.db
+    .query("aiDigests")
+    .withIndex("by_context", (q) => q.eq("contextWorkspaceId", workspaceId))
+    .take(200);
+  for (const d of digests) await ctx.db.delete(d._id);
+  if (digests.length === 200) return false;
   for (const table of ["workspaceMembers", "workspaceInvites"] as const) {
     const rows = await ctx.db
       .query(table)
@@ -351,6 +361,10 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiResearch").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiMessages").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200),
+    // Their memory in workspaces (the entries for everywhere went with their Personal), dismissed suggestions and digest schedule.
+    () => ctx.db.query("aiMemories").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("aiSuggestionDismissals").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("aiDigests").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
   // Files they uploaded into AI chats in workspaces (the ones in their Personal went with it above).
   const chats = await ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200);

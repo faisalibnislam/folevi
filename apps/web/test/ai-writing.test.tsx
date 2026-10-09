@@ -181,7 +181,7 @@ describe("the inline composer", () => {
     const r = rangeOf(e, 0);
     const { host, root, onClose } = await mount(e, { id: 1, target: { ...r, text: "i has went to the market" } });
     // The menu groups, the tone and language lists.
-    expect([...host.querySelectorAll('[role="presentation"]')].map((h) => h.textContent)).toEqual(["Edit", "Turn into", "Use the text"]);
+    expect([...host.querySelectorAll('[role="presentation"]')].map((h) => h.textContent)).toEqual(["Edit", "Turn into", "Use the text", "Meetings and study", "Think it through"]);
     expect(option(host, "Change tone…")).toBeTruthy();
     reply.text = "I went to the market.";
     await act(async () => option(host, "Fix spelling & grammar")!.click());

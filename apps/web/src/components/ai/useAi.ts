@@ -12,7 +12,10 @@ export type AiTask =
   | "translate" | "toList" | "toTable" | "toChecklist" | "refine"
   | "explain" | "summarizeText" | "continueText" | "actionItemsText"
   | "summarize" | "continue" | "outline" | "actions" | "title" | "brainstorm" | "draft"
-  | "page" | "template";
+  | "page" | "template"
+  | "meetingSummary" | "flashcards" | "quiz"
+  | "prosCons" | "decisionMatrix" | "swot" | "risks" | "premortem"
+  | "mindMap" | "howMightWe" | "scamper" | "sixHats";
 
 /** How a selection action groups in the composer: edits, tones (a submenu), "turn into", and reading it. */
 export type SelectionGroup = "edit" | "tone" | "turn" | "use";
@@ -45,6 +48,38 @@ export const REWRITE_TASKS: ReadonlySet<AiTask> = new Set<AiTask>([
   ...SELECTION_ACTIONS.filter((a) => a.group === "edit" || a.group === "tone" || a.group === "turn").map((a) => a.task),
   "refine",
 ]);
+
+/** How the milestone 8 tools group: meetings, study, deciding and coming up with ideas ("Think it through"). */
+export type ToolGroup = "meeting" | "study" | "decide" | "ideas";
+
+/**
+ * The tools that work on the selected text, or the whole note when nothing is selected (the inline
+ * composer, the "/" menu and the AI panel). Their results are inserted (never replacing anything) or saved
+ * as a new note.
+ */
+export const AI_TOOLS: { task: AiTask; label: string; group: ToolGroup; keywords: string }[] = [
+  { task: "meetingSummary", label: "Meeting summary", group: "meeting", keywords: "meeting summary minutes notes decisions action items attendees transcript" },
+  { task: "flashcards", label: "Flashcards", group: "study", keywords: "flashcards cards study learn revise memorize" },
+  { task: "quiz", label: "Quiz", group: "study", keywords: "quiz test questions multiple choice study" },
+  { task: "prosCons", label: "Pros and cons", group: "decide", keywords: "pros cons decide decision weigh" },
+  { task: "decisionMatrix", label: "Decision matrix", group: "decide", keywords: "decision matrix weighted criteria options compare table" },
+  { task: "swot", label: "SWOT analysis", group: "decide", keywords: "swot strengths weaknesses opportunities threats" },
+  { task: "risks", label: "Risks and mitigations", group: "decide", keywords: "risks mitigations risk register plan" },
+  { task: "premortem", label: "Pre-mortem", group: "decide", keywords: "premortem pre-mortem failure plan risks" },
+  { task: "mindMap", label: "Mind map", group: "ideas", keywords: "mind map ideas branches brainstorm" },
+  { task: "howMightWe", label: "How might we", group: "ideas", keywords: "how might we hmw questions problem reframe brainstorm" },
+  { task: "scamper", label: "SCAMPER", group: "ideas", keywords: "scamper substitute combine adapt modify eliminate reverse brainstorm" },
+  { task: "sixHats", label: "Six thinking hats", group: "ideas", keywords: "six thinking hats de bono perspectives" },
+];
+/** The tools' tasks. */
+export const TOOL_TASKS: ReadonlySet<AiTask> = new Set(AI_TOOLS.map((t) => t.task));
+/** The tools as "/" menu items ("AI: Meeting summary"), each running on the whole note. */
+export const AI_TOOL_SLASH_ITEMS = AI_TOOLS.map((t) => ({
+  id: `ai-${t.task}`,
+  label: `AI: ${t.label}`,
+  keywords: `ai ${t.keywords}${t.group === "decide" || t.group === "ideas" ? " think it through framework" : ""}`,
+  task: t.task,
+}));
 
 export interface AskTurn {
   role: "user" | "assistant";
@@ -142,6 +177,8 @@ export function useAi() {
   const askAction = useAction(api.ai.ask);
   const writeAction = useAction(api.ai.write);
   const flowchartAction = useAction(api.ai.flowchart);
+  const translateAction = useAction(api.aiStudy.translateNote);
+  const versionMutation = useMutation(api.aiStudy.versionBeforeReplace);
   const ask = useCallback(
     (question: string, opts: { documentId?: string; range?: "note" | "all"; folderId?: string; history?: AskTurn[]; streamId?: Id<"aiStreams"> } = {}) =>
       askAction({ scope, question, documentId: opts.documentId, range: opts.range, folderId: opts.folderId, history: opts.history, streamId: opts.streamId }),
@@ -163,7 +200,14 @@ export function useAi() {
     (mode: "create" | "update", instruction: string, current?: string) => flowchartAction({ scope, mode, instruction, current }),
     [flowchartAction, scope],
   );
-  return { ask, write, flowchart, saveDraft };
+  /** Translates a whole note: into a new note (made on the server), or as new text for its blocks. */
+  const translateNote = useCallback(
+    (documentId: string, language: string, output: "note" | "replace") => translateAction({ scope, documentId, language, output }),
+    [translateAction, scope],
+  );
+  /** Saves a version of a note before its text is replaced (shows as "Before AI changes"). */
+  const versionBeforeReplace = useCallback((documentId: string) => versionMutation({ documentId }), [versionMutation]);
+  return { ask, write, flowchart, saveDraft, translateNote, versionBeforeReplace };
 }
 
 /** Events between the editor's menus and the note's AI panel. */

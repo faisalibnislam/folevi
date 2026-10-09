@@ -10,7 +10,7 @@ import { action, httpAction, internalMutation, internalQuery, mutation, query } 
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
+import { getDocumentByPublicId, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import {
   ensureSubscription,
@@ -130,8 +130,9 @@ export const credits = query({
   args: { scope: vScopeArg, documentId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
+    // A brand-new page that hasn't reached the server yet counts as being where the person is.
     let scope: Scope;
-    if (args.documentId) scope = scopeOfRow((await requireDocument(ctx, profile, args.documentId, "read")).doc);
+    if (args.documentId && (await getDocumentByPublicId(ctx, args.documentId))) scope = scopeOfRow((await requireDocument(ctx, profile, args.documentId, "read")).doc);
     else scope = (await resolveScope(ctx, profile, args.scope)).scope;
     return await creditSummary(ctx, profile, scope);
   },

@@ -21,7 +21,7 @@
 // needs. Prompts, note text and answers are never logged or stored. Only the event, model, status and
 // token counts are.
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query, type ActionCtx } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown } from "@folevi/editor-schema";
@@ -38,7 +38,8 @@ import { provider, type GenerateRequest, type OnDelta } from "./lib/ai/provider"
 import { dedupePassages, fitToBudget, reciprocalRankFusion } from "./lib/ai/retrieval";
 import { hybridSearch } from "./aiIndex";
 import { PAGE_CHARS, WEB_RULE, webBlock, webForQuestion, type WebSource } from "./lib/ai/web";
-import { finishWriting, needsInstruction, needsSelection, readsNote, taskSpec, usesFlashLite, writingInputChars, writingRequest, writingTask } from "./lib/ai/writing";
+import { REMEMBER_RULE, setMeterMemory, takeRemember, type MemoryKind } from "./lib/ai/memory";
+import { finishWriting, needsInstruction, needsSelection, readsNoteWith, taskSpec, textOrNote, usesFlashLite, writingInputChars, writingRequest, writingTask } from "./lib/ai/writing";
 
 export const MAX_QUESTION = 2000;
 const MAX_TEXT = 24_000;
@@ -245,18 +246,27 @@ export const begin = internalMutation({
       const home = scopeOfRow((await requireDocument(ctx, profile, id, "read")).doc);
       if (!sameScope(home, target)) also.push(home);
     }
-    // Nothing from a Core Personal or a Core workspace is ever sent to AI, whoever asks.
-    for (const s of [target, ...also]) {
-      const blocked = s ? await aiBlockedIn(ctx, profile._id, s) : null;
-      if (blocked) fail("forbidden", blocked, { reason: "ai_not_included" });
-    }
-    const access = await aiAccountFor(ctx, profile, target);
-    if (!access.allowed) fail("forbidden", access.message ?? "The AI Assistant isn't available here.", { reason: "ai_not_included" });
-    await consume(ctx, access.account.rateRule, access.account.rateSubject);
-    const estimate = estimateCredits((args.plan ?? []) as PlannedCall[], models());
-    return { holdId: await holdCredits(ctx, access.account, target, estimate) };
+    return { holdId: await holdFor(ctx, profile, target, (args.plan ?? []) as PlannedCall[], also) };
   },
 });
+
+/**
+ * The checks every AI request in `target` passes before anything is sent (also reading content from
+ * `also`), then a hold on its estimate: nothing from a Core scope, the account whose credits pay, the hourly
+ * limit, and enough credits (`out_of_credits` otherwise). Shared by `begin` (as the signed-in person) and
+ * background jobs that act for someone (digests, convex/aiDigest.ts).
+ */
+export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target: Scope, plan: PlannedCall[], also: Scope[] = []): Promise<Id<"aiCreditHolds">> {
+  // Nothing from a Core Personal or a Core workspace is ever sent to AI, whoever asks.
+  for (const s of [target, ...also]) {
+    const blocked = await aiBlockedIn(ctx, profile._id, s);
+    if (blocked) fail("forbidden", blocked, { reason: "ai_not_included" });
+  }
+  const access = await aiAccountFor(ctx, profile, target);
+  if (!access.allowed) fail("forbidden", access.message ?? "The AI Assistant isn't available here.", { reason: "ai_not_included" });
+  await consume(ctx, access.account.rateRule, access.account.rateSubject);
+  return await holdCredits(ctx, access.account, target, estimateCredits(plan, models()));
+}
 
 /** Ends a request: releases its hold and charges what its Gemini calls really cost. */
 export const settle = internalMutation({
@@ -264,7 +274,10 @@ export const settle = internalMutation({
   handler: async (ctx, args) => await settleHold(ctx, args.holdId, args.calls),
 });
 
-type SettleCtx = { runMutation: (ref: typeof internal.ai.settle, args: { holdId: Id<"aiCreditHolds">; calls: CallUsage[] }) => Promise<unknown> };
+type SettleCtx = {
+  runMutation: (ref: typeof internal.ai.settle, args: { holdId: Id<"aiCreditHolds">; calls: CallUsage[] }) => Promise<unknown>;
+  runQuery: (ref: typeof internal.aiMemory.forHold, args: { holdId: Id<"aiCreditHolds"> }) => Promise<string | null>;
+};
 
 /** What a settled request cost: credits charged and tokens used. */
 export interface Settled {
@@ -275,11 +288,19 @@ export interface Settled {
 
 /**
  * Runs a request's work, then settles its credits from the calls it made, however it ends. `onSettled`
- * hears what it cost (an AI chat stores it on the answer).
+ * hears what it cost (an AI chat stores it on the answer). The person's saved preferences (memory, when
+ * it's on) ride on the meter, so every call the work makes gets them (lib/ai/memory.ts).
  */
 export async function metered<T>(ctx: SettleCtx, holdId: Id<"aiCreditHolds">, work: (meter: CallUsage[]) => Promise<T>, onSettled?: (cost: Settled) => Promise<void>): Promise<T> {
   const meter: CallUsage[] = [];
   try {
+    let memory: string | null = null;
+    try {
+      memory = await ctx.runQuery(internal.aiMemory.forHold, { holdId });
+    } catch {
+      /* answered without preferences */
+    }
+    setMeterMemory(meter, memory);
     return await work(meter);
   } finally {
     const r = (await ctx.runMutation(internal.ai.settle, { holdId, calls: meter })) as { credits: number } | null;
@@ -517,6 +538,8 @@ export interface AnswerInput {
   chat?: boolean;
   /** The web too (lib/ai/web.ts): a grounded search (the Web toggle) and pages linked in the question. */
   web?: { search: boolean; urls: string[] };
+  /** A chat with memory on: the answer may offer to remember a preference (lib/ai/memory.ts). */
+  remember?: boolean;
 }
 
 export interface AnswerOutput {
@@ -532,6 +555,8 @@ export interface AnswerOutput {
   web?: WebSource[];
   /** Google's Search Suggestions chip for the web search (shown with the answer, as Google requires). */
   searchEntryPoint?: string;
+  /** A preference the answer offers to remember (saved only if the person approves). */
+  memory?: { kind: MemoryKind; text: string } | null;
 }
 
 const CHAT_FORMAT = "Format with Markdown: short paragraphs, '-' bullets, '1.' lists, '- [ ]' for to-dos, '##' headings only when the text is long, a table when comparing things, and fenced code blocks (with the language) for code. No HTML.";
@@ -627,14 +652,16 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
     ? `Answer questions using the person's notes and the web sources below. Notes and web sources share one numbering: cite what you use with bracketed numbers like [1] or [2][3] right after the sentence they support, and make clear which points come from the web. Only say something is in their notes when a note below says it. If neither contains the answer, say so plainly. ${WEB_RULE}`
     : "Answer questions using the person's notes below. Cite the notes you use with bracketed numbers like [1] or [2][3] right after the sentence they support. Only say something is in their notes when a note below says it. If the notes don't contain the answer, say so plainly in one sentence, then offer a short general answer clearly labelled as not from their notes.";
   const raw = await streamInto(sink, {
-    system: `${persona} ${rules}${input.chat ? ` ${FOLLOW_UP_RULE}` : ""}`,
+    system: `${persona} ${rules}${input.chat ? ` ${FOLLOW_UP_RULE}` : ""}${input.chat && input.remember ? ` ${REMEMBER_RULE}` : ""}`,
     prompt: `<notes>\n${found}\n</notes>\n\n${webPart}${convo ? `<conversation>\n${convo}\n</conversation>\n\n` : ""}Question: ${question}`,
     temperature: 0.3,
     maxOutputTokens: input.chat ? 2304 : 2048,
   }, meter);
-  const { answer, suggestions } = input.chat ? splitFollowUps(raw) : { answer: raw, suggestions: [] };
+  // A proposed memory is taken out first (only when asked for one), then the follow-ups.
+  const proposal = input.chat && input.remember ? takeRemember(raw) : { text: raw, memory: null };
+  const { answer, suggestions } = input.chat ? splitFollowUps(proposal.text) : { answer: raw, suggestions: [] };
   const cited = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1]) - 1));
-  return { answer, notes, cited, suggestions, ...(withWeb ? { web } : {}), ...(searchEntryPoint ? { searchEntryPoint } : {}) };
+  return { answer, notes, cited, suggestions, ...(withWeb ? { web } : {}), ...(searchEntryPoint ? { searchEntryPoint } : {}), ...(proposal.memory ? { memory: proposal.memory } : {}) };
 }
 
 /**
@@ -688,7 +715,10 @@ export const ask = action({
  * Writing help (lib/ai/writing.ts has every task): rewrite a selection (improve, fix, shorter, a tone,
  * translate, turn into a list, table or checklist, or as asked), write about it (explain, summarize,
  * continue, action items), write from the note (summary, continuation, outline, action items, title,
- * ideas), write as asked, or generate a whole page or template (its title comes back separately).
+ * ideas), write as asked, or generate a whole page or template (its title comes back separately). The
+ * milestone 8 tools (a meeting summary, flashcards, a quiz, the decision and brainstorming frameworks) work
+ * on the selection, or the whole note when nothing is selected; the ones that answer in JSON aren't
+ * streamed raw, the stream gets their finished Markdown.
  * Returns Markdown to preview, then insert or replace the selection with; nothing here changes the note.
  */
 export const write = action({
@@ -708,18 +738,27 @@ export const write = action({
     if (!task) fail("invalid_argument", "Unknown AI action.");
     const text = (args.text ?? "").slice(0, MAX_TEXT);
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
-    if (needsSelection(task) && !text.trim()) fail("invalid_argument", "Select some text first.");
+    if ((needsSelection(task) || (textOrNote(task) && !args.documentId)) && !text.trim()) fail("invalid_argument", "Select some text first.");
     if (needsInstruction(task) && !instruction) fail("invalid_argument", task === "page" || task === "template" ? "Describe what to write first." : "Tell the AI what to write.");
     const fast = usesFlashLite(task, text);
-    const readsThisNote = Boolean(args.documentId && readsNote(task));
+    const readsThisNote = Boolean(args.documentId && readsNoteWith(task, text));
+    const json = Boolean(taskSpec(task).json);
     // Writing help works on one note (or text from it), so that note's scope decides.
     const plan: PlannedCall[] = [{ fast, inputChars: writingInputChars(task, text, instruction, readsThisNote ? FOCUS_CHARS : 0), maxOutputTokens: taskSpec(task).maxOutputTokens }];
     const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan });
     return await metered(ctx, holdId, async (meter) => {
       if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
       const note = readsThisNote ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! }) : null;
-      const out = await streamed(ctx, args.streamId, writingRequest({ task, note, text, instruction, language: args.language }, fast), meter);
-      return finishWriting(task, out);
+      const out = await streamed(ctx, json ? undefined : args.streamId, writingRequest({ task, note, text, instruction, language: args.language }, fast), meter);
+      if (!json || !args.streamId) return finishWriting(task, out);
+      try {
+        const done = finishWriting(task, out);
+        await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: done.text, status: "done" });
+        return done;
+      } catch (e) {
+        await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: "", status: "error" });
+        throw e;
+      }
     });
   },
 });

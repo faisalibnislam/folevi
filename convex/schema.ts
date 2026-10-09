@@ -21,6 +21,7 @@ import { vAiAction } from "./lib/aiActions";
 import { vAiContext } from "./lib/ai/chat";
 import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
 import { vReportSource, vResearchStep } from "./lib/ai/research";
+import { vMemoryKind } from "./lib/ai/memory";
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
@@ -55,9 +56,8 @@ export default defineSchema({
     aiEnabled: v.optional(v.boolean()),
     /**
      * AI settings (lib/ai/prefs.ts; unset = the default). History (on): conversations are kept until
-     * deleted; off, a conversation lasts only while its chat is open. The rest are for later milestones
-     * of docs/AI_ASSISTANT.md: memory (on), suggestions (on), reading attachments (on), web research (on),
-     * digests (off).
+     * deleted; off, a conversation lasts only while its chat is open. The rest: memory (on), suggestions
+     * (on), reading attachments (on), web research (on), digests (off).
      */
     aiHistory: v.optional(v.boolean()),
     aiMemory: v.optional(v.boolean()),
@@ -752,6 +752,8 @@ export default defineSchema({
     usage: v.optional(v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() })),
     /** An agent run's answer (convex/aiAgent.ts): the steps it took, and its proposed changes (aiRuns). */
     agent: v.optional(v.object({ steps: v.array(v.object({ tool: v.string(), count: v.number(), ok: v.boolean() })), runId: v.optional(v.id("aiRuns")) })),
+    /** A preference the answer offers to remember (lib/ai/memory.ts): saved only when the person clicks Save. */
+    memory: v.optional(v.object({ kind: vMemoryKind, text: v.string(), status: v.union(v.literal("proposed"), v.literal("saved"), v.literal("dismissed")) })),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -953,6 +955,68 @@ export default defineSchema({
     .index("by_document", ["documentId"])
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * Memory (convex/aiMemory.ts, lib/ai/memory.ts): preferences a person approved, added to their AI prompts
+   * while Settings > AI "Memory" is on. Private to `profileId`. An entry in their Personal applies
+   * everywhere they use AI; one in a workspace only there. Only ever written by the person (Settings, or
+   * Save on a chat's suggestion). Deleted by them, or with the account or the workspace.
+   */
+  aiMemories: defineTable({
+    ...scoped,
+    profileId: v.id("profiles"),
+    kind: vMemoryKind,
+    text: v.string(),
+    source: v.union(v.literal("settings"), v.literal("chat")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_profile", ["profileId", "ownerProfileId", "workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_workspace", ["workspaceId"]),
+
+  /**
+   * Suggestions a person dismissed on a note (convex/aiSuggestions.ts), by suggestion key, so they don't
+   * come back. Scoped like the note; deleted with it, the account or the workspace.
+   */
+  aiSuggestionDismissals: defineTable({
+    ...scoped,
+    profileId: v.id("profiles"),
+    documentId: v.id("documents"),
+    key: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_profile_document", ["profileId", "documentId", "key"])
+    .index("by_document", ["documentId"])
+    .index("by_profile", ["profileId"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_workspace", ["workspaceId"]),
+
+  /**
+   * A person's AI digest schedule (convex/aiDigest.ts): daily or weekly at an hour of their day, about
+   * their Personal or a workspace they're in (`contextWorkspaceId`). `nextAt` is when it's next due (unset
+   * while digests are off). Each digest is a note in their Inbox there, plus an in-app notification.
+   */
+  aiDigests: defineTable({
+    profileId: v.id("profiles"),
+    frequency: v.union(v.literal("daily"), v.literal("weekly")),
+    /** Hour of the day (0 to 23) in the person's time zone. */
+    hour: v.number(),
+    /** Day of the week for weekly ones (0 Sunday to 6 Saturday). */
+    weekday: v.number(),
+    contextWorkspaceId: v.optional(v.id("workspaces")),
+    nextAt: v.optional(v.number()),
+    /** Until when the last digest covered (the next one starts there). */
+    lastAt: v.optional(v.number()),
+    lastDocumentId: v.optional(v.id("documents")),
+    /** Why the last one was skipped (told once per reason, not every time). */
+    lastSkip: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_next", ["nextAt"])
+    .index("by_context", ["contextWorkspaceId"]),
 
   tasks: defineTable({
     blockId: v.string(),

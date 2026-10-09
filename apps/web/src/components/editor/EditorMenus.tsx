@@ -90,7 +90,7 @@ import { blockElements, type TriggerState } from "./plugins";
 import { UnsplashDialog, unsplashCredit } from "./UnsplashDialog";
 import { colorName, useNotePalette } from "./notePalette";
 import { useShowInTopLayer } from "@/components/ui/topLayer";
-import { INLINE_AI_EVENT, openInlineAi, useAiEnabled, type InlineAiOpen } from "@/components/ai/useAi";
+import { AI_TOOL_SLASH_ITEMS, INLINE_AI_EVENT, openInlineAi, useAiEnabled, type InlineAiOpen } from "@/components/ai/useAi";
 import { InlineAi, type InlineAiRequest } from "@/components/ai/InlineAi";
 import { newFormulaAttrs } from "./FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
@@ -734,6 +734,14 @@ export function EditorMenus({
             hint: id === "ai" ? "⌘J" : undefined,
             icon: <AiIcon size={15} className="text-[#7c6cf0]" />,
             run: () => openInlineAi(editor.view.dom, { target: null, ...(open as Partial<InlineAiOpen> | undefined) }),
+          }))
+        : []),
+      // The meeting, study and "Think it through" tools, on the whole note (useAi.ts AI_TOOLS).
+      ...(aiOn
+        ? AI_TOOL_SLASH_ITEMS.map(({ task, ...item }) => ({
+            ...item,
+            icon: <AiIcon size={15} className="text-[#7c6cf0]" />,
+            run: () => openInlineAi(editor.view.dom, { target: null, task }),
           }))
         : []),
       { id: "pagebreak", label: "Page break", keywords: "page break print pdf new sheet", icon: <SeparatorHorizontal size={15} />, run: () => void insertBlockAfterCurrent(editor, "pageBreak") },

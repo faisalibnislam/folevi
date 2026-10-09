@@ -6,6 +6,7 @@ import { flattenTree, markdownToBlocks, ulid } from "@folevi/editor-schema";
 import { blockToNode } from "@/components/editor/convert";
 import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup, normalizeDepths } from "@/components/editor/commands";
+import { linkPeople, type MentionablePerson } from "./people";
 
 /**
  * Where AI-written text goes: replacing a range (a selection), after the block at the cursor, above or
@@ -26,9 +27,14 @@ function cursorAt(tr: Transaction, pos: number) {
   tr.setSelection(TextSelection.near(tr.doc.resolve(p), -1));
 }
 
-function nodesFor(editor: Editor, markdown: string, baseDepth: number) {
+/** Options for inserting: people "@Name" can turn into mentions of (a meeting summary's owners). */
+export interface InsertOptions {
+  people?: readonly MentionablePerson[];
+}
+
+function nodesFor(editor: Editor, markdown: string, baseDepth: number, opts: InsertOptions = {}) {
   const { blocks } = markdownToBlocks(markdown.trim(), { titleFromHeading: false });
-  return flattenTree(blocks).map(({ block, depth }) => editor.schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
+  return flattenTree(linkPeople(blocks, opts.people)).map(({ block, depth }) => editor.schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
 }
 
 /** Sends the change as its own undo step: one ⌘Z takes all of it back, and typing after it undoes separately. */
@@ -44,7 +50,7 @@ function commit(editor: Editor, tr: Transaction) {
  * one-paragraph result replacing a selection inside one block stays inline, keeping the rest of that block.
  * Returns false when a selection to replace has changed since it was sent (nothing is changed then).
  */
-export function insertAiMarkdown(editor: Editor, markdown: string, placement: AiPlacement): boolean {
+export function insertAiMarkdown(editor: Editor, markdown: string, placement: AiPlacement, opts: InsertOptions = {}): boolean {
   const { state } = editor;
   if (placement.kind === "replace") {
     const { from, to, original } = placement;
@@ -52,7 +58,7 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
     const $from = state.doc.resolve(from);
     const $to = state.doc.resolve(to);
     const depth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
-    const nodes = nodesFor(editor, markdown, depth);
+    const nodes = nodesFor(editor, markdown, depth, opts);
     const tr = state.tr;
     if ($from.sameParent($to) && $from.parent.isTextblock && nodes.length === 1 && nodes[0]!.type.name === "paragraph") {
       tr.replaceWith(from, to, nodes[0]!.content);
@@ -72,7 +78,7 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
     return true;
   }
   if (placement.kind === "after") {
-    const nodes = nodesFor(editor, markdown, placement.depth);
+    const nodes = nodesFor(editor, markdown, placement.depth, opts);
     if (!nodes.length) return true;
     const pos = Math.max(0, Math.min(placement.pos, state.doc.content.size));
     const tr = state.tr.insert(pos, nodes);
@@ -83,9 +89,9 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
   if (placement.kind === "above" || placement.kind === "below") {
     // Next to the top-level block holding `at` (the text the result is about), at that block's depth.
     const $at = state.doc.resolve(Math.max(0, Math.min(placement.at, state.doc.content.size)));
-    if ($at.depth < 1) return insertAiMarkdown(editor, markdown, { kind: "end" });
+    if ($at.depth < 1) return insertAiMarkdown(editor, markdown, { kind: "end" }, opts);
     const block = $at.node(1);
-    const nodes = nodesFor(editor, markdown, Number(block.attrs.depth ?? 0));
+    const nodes = nodesFor(editor, markdown, Number(block.attrs.depth ?? 0), opts);
     if (!nodes.length) return true;
     const size = nodes.reduce((n, x) => n + x.nodeSize, 0);
     const tr = state.tr;
@@ -99,7 +105,7 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
   const $sel = state.selection.$from;
   const atEnd = placement.kind === "end" || $sel.depth < 1;
   const depth = !atEnd ? Number($sel.node(1).attrs.depth ?? 0) : 0;
-  const nodes = nodesFor(editor, markdown, depth);
+  const nodes = nodesFor(editor, markdown, depth, opts);
   if (!nodes.length) return true;
   const size = nodes.reduce((n, x) => n + x.nodeSize, 0);
   if (atEnd) {

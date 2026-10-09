@@ -4,6 +4,7 @@
 import type { CallUsage } from "../credits";
 import { capabilitiesOf, type ModelCapabilities } from "./capabilities";
 import { geminiProvider } from "./gemini";
+import { withMemory } from "./memory";
 
 /** One piece of a message: text, a file sent inline (base64), or a file the provider already holds. */
 export type Part =
@@ -59,6 +60,11 @@ export interface GenerateRequest {
    * its results go back to a tool loop as a tool result. The adapter drops the search when both are set.
    */
   searchGrounding?: boolean;
+  /**
+   * Leave out the person's saved preferences (lib/ai/memory.ts): calls that copy content out of a file
+   * (reading, transcribing) must not be shaped by them.
+   */
+  noMemory?: boolean;
 }
 
 /** A web page a grounded answer drew on (Google's link to it, and its title, often the site's domain). */
@@ -135,9 +141,15 @@ export interface AiProvider {
   generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDelta): Promise<GenerateResult>;
 }
 
+/**
+ * The provider with the memory layer: a call made with a request's meter gets the person's preferences
+ * added to its system prompt (lib/ai/memory.ts withMemory), whichever feature makes it.
+ */
+const active: AiProvider = { ...geminiProvider, generate: (req, meter, onDelta) => geminiProvider.generate(withMemory(req, meter), meter, onDelta) };
+
 /** The provider requests go to. */
 export function provider(): AiProvider {
-  return geminiProvider;
+  return active;
 }
 
 /** What the model a request would use can do. */

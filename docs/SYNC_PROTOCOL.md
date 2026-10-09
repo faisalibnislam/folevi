@@ -1,9 +1,10 @@
 # Folevi sync protocol (v1)
 
 This document is normative. The TypeScript implementation lives in
-`packages/editor-schema/src/sync.ts` (client reducer) and `convex/sync.ts` (server). The Swift
-implementation lives in `apps/macos/Folevi/Sync/`. Both clients run the same golden scenarios in
-`packages/editor-schema/fixtures/sync-scenarios.json`.
+`packages/editor-schema/src/sync.ts` (client reducer) and `convex/sync.ts` (server). The reducer runs the
+golden scenarios in `packages/editor-schema/fixtures/sync-scenarios.json`. Folevi for Mac is the web app in
+Electron (`docs/DESKTOP.md`), so the web client is the only one; the retired native Swift client is archived
+on the tag `native-mac-archive`.
 
 ## Goals and non-goals
 
@@ -19,7 +20,7 @@ implementation lives in `apps/macos/Folevi/Sync/`. Both clients run the same gol
 
 | Thing | Format | Created by |
 | --- | --- | --- |
-| Device ID | 26-char ULID, stored once per install (IndexedDB `meta.deviceId` on web, Keychain-independent `UserDefaults` value on Mac; it is not a secret) | client |
+| Device ID | 26-char ULID, stored once per install (IndexedDB `meta.deviceId`; it is not a secret) | client |
 | Operation ID (`opId`) | ULID, unique per operation, doubles as the idempotency key | client |
 | Block ID | ULID, stable for the life of the block (survives moves, edits, restore) | client |
 | Document ID | ULID ("public id"), stable across clients; Convex `_id` is never exposed as identity | client or server |
@@ -40,7 +41,7 @@ cover changes are last-writer-wins (they are small, visible, and captured by ver
 ## Ordering
 
 Siblings are ordered by `(rank, id)`. Ranks are base-62 fractional index strings
-(`packages/editor-schema/src/rank.ts`, mirrored in Swift `Domain/Rank.swift`). Clients never use array
+(`packages/editor-schema/src/rank.ts`). Clients never use array
 offsets as identity. Inserting between two siblings uses `rankBetween(prev, next)`. When a rank exceeds
 `LIMITS.maxRankLength`, the server rebalances the sibling list inside a single mutation
 (`blocks.rebalance`) and bumps `positionRev` for every rewritten block.
@@ -169,7 +170,7 @@ turns someone's concurrent edit of that block into a conflict.
 ## Client rules (`packages/editor-schema/src/sync.ts`)
 
 The client state is `{ entities, pending, inflight, conflicts, status }`, persisted after every change
-(IndexedDB on web, SQLite on Mac). Pure reducer functions:
+(IndexedDB). Pure reducer functions:
 
 - `localUpsert / localDelete / localRestore`: apply optimistically, append an op to `pending`. An op
   that was never sent is **coalesced** with a later op on the same block (create+update → create,
@@ -199,7 +200,7 @@ The client state is `{ entities, pending, inflight, conflicts, status }`, persis
 
 ## Reconnect pipeline
 
-1. Refresh credentials (web: `/api/auth/token`; Mac: `CredentialsManager`). On failure → status
+1. Refresh credentials (`/api/auth/token`). On failure → status
    `Error` with a sign-in prompt; ops stay pending.
 2. Re-establish subscriptions (Convex client does this automatically; web re-subscribes on its own).
 3. Pull changes since the stored cursor (`sync.pull`, paginated by `seq`) and feed each row through
@@ -214,8 +215,8 @@ and returns the rows you can read (documents and blocks, including tombstones) w
 ordered by `seq`, plus `nextCursor`, `hasMore` and `head`. Because each accepted mutation reads and
 writes its scope's counter, Convex's serializable transactions guarantee sequence numbers are assigned in
 commit order; a cursor can never skip a committed change. Pages shared with you from someone else's
-Personal aren't in your Personal feed (they're in theirs); open them by id. The Mac app subscribes to
-`sync.head({ scope })` (just the scope's counter) and pulls when it advances.
+Personal aren't in your Personal feed (they're in theirs); open them by id. `sync.head({ scope })` returns just the scope's counter,
+for a client that wants to pull only when it advances.
 
 ## Attachments
 
@@ -236,7 +237,7 @@ snapshot when the document `contentSeq` has not changed since the previous one.
 `fixtures/sync-scenarios.json` covers: create offline, edit offline, reorder offline, delete/restore
 offline, duplicate delivery, reconnect after token expiry, server rejection, same-block conflict, and
 attachment upload interruption. Each scenario is a list of steps with scripted server results and the
-expected client state; the TypeScript and Swift reducers must produce identical canonical JSON.
+expected client state; the reducer must produce identical canonical JSON.
 
 ## Logging
 

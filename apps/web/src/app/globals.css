@@ -181,6 +181,21 @@
 :root[data-theme="dark"] { --cover-art-tint: rgb(0 0 0 / 0.18); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cover-art-tint: rgb(0 0 0 / 0.18); } }
 
+/* The Mac app (apps/desktop): no title bar. The window's buttons sit at the start of the app's top bar (a
+   space is kept for them), and the top bars' empty parts move the window, as a title bar would. */
+.ui-traffic-space, .ui-desktop-only { display: none; }
+:root[data-desktop="mac"] .ui-desktop-only { display: block; }
+:root[data-desktop="mac"] .ui-browser-only { display: none; }
+:root[data-desktop="mac"] .ui-traffic-space { display: block; flex: none; align-self: stretch; width: 60px; }
+:root[data-desktop="mac"] .ui-drag { -webkit-app-region: drag; }
+:root[data-desktop="mac"] .ui-drag :is(a, button, input, textarea, select, [role="button"], [role="tab"], [role="combobox"], [tabindex]) { -webkit-app-region: no-drag; }
+/* The margin above the panels moves the window too; outside the app's frame (sign in, onboarding) a taller strip. */
+:root[data-desktop="mac"] body::before { content: ""; position: fixed; inset: 0 0 auto; height: 8px; z-index: 2147483647; -webkit-app-region: drag; }
+:root[data-desktop="mac"]:not(:has(.ui-canvas)) body::before { height: 36px; }
+/* The Quick Add window is the form alone: no page around it. */
+:root[data-desktop="mac"]:has(.ui-desktop-quick-add) body::before { display: none; }
+.ui-desktop-quick-add { min-height: 100vh; }
+
 @layer components {
   /* Canvas: a soft, neutral ambient light behind the floating glass panels. On a note, the note's own style
      image shows through instead (Shell's ambient layer), so notes carry the colour and the chrome stays neutral. */

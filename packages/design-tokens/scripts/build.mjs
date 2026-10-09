@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generates CSS custom properties, a TypeScript module, and Swift tokens from src/tokens.json.
+// Generates CSS custom properties and a TypeScript module from src/tokens.json.
 // `--check` fails when generated files are stale (used in CI).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -104,150 +104,9 @@ export type DocumentAccent = (typeof documentAccents)[number];
 `;
 }
 
-function hexToRgb(hex) {
-  const m = hex.match(/^#([0-9a-f]{6})$/i);
-  if (m) {
-    const n = parseInt(m[1], 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1];
-  }
-  const r = hex.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-  if (r) return [Number(r[1]), Number(r[2]), Number(r[3]), Number(r[4])];
-  throw new Error(`Unsupported color ${hex}`);
-}
-
-function shadowLines() {
-  const fmt = (n) => (n / 255).toFixed(4);
-  const names = Object.keys(tokens.shadow.light);
-  return names
-    .map((name) => {
-      const light = tokens.shadow.light[name];
-      const dark = tokens.shadow.dark[name];
-      const n = Math.max(light.length, dark.length);
-      const layers = [];
-      // Layers pair up by index; a theme with fewer layers uses a transparent layer.
-      for (let i = 0; i < n; i++) {
-        const l = light[i] ?? [0, 0, 0, 0, "rgba(0, 0, 0, 0)"];
-        const d = dark[i] ?? [0, 0, 0, 0, "rgba(0, 0, 0, 0)"];
-        const [lr, lg, lb, la] = hexToRgb(l[4]);
-        const [dr, dg, db, da] = hexToRgb(d[4]);
-        layers.push(`        FoleviShadowLayer(x: ${l[0]}, y: ${l[1]}, blur: ${l[2]}, spread: ${l[3]}, color: Color(nsColor: .folevi(
-            light: (${fmt(lr)}, ${fmt(lg)}, ${fmt(lb)}, ${la}),
-            dark: (${fmt(dr)}, ${fmt(dg)}, ${fmt(db)}, ${da}),
-            name: "folevi.shadow.${name}.${i}"
-        )), inset: ${Boolean(l[5] || d[5])}),`);
-      }
-      return `    static let ${name}: [FoleviShadowLayer] = [\n${layers.join("\n")}\n    ]`;
-    })
-    .join("\n");
-}
-
-function buildSwift() {
-  const fmt = (n) => (n / 255).toFixed(4);
-  const dynamicColors = (light, dark, prefix) =>
-    Object.keys(light)
-      .map((name) => {
-        const [lr, lg, lb, la] = hexToRgb(light[name]);
-        const [dr, dg, db, da] = hexToRgb(dark[name]);
-        return `    static let ${name} = Color(nsColor: .folevi(
-        light: (${fmt(lr)}, ${fmt(lg)}, ${fmt(lb)}, ${la}),
-        dark: (${fmt(dr)}, ${fmt(dg)}, ${fmt(db)}, ${da}),
-        name: "${prefix}.${name}"
-    ))`;
-      })
-      .join("\n");
-  // The Mac app is all product, so the neutral chrome replaces the marketing palette where it differs.
-  const colorLines = dynamicColors(
-    { ...tokens.color.light, ...stripMeta(tokens.chrome.light) },
-    { ...tokens.color.dark, ...stripMeta(tokens.chrome.dark) },
-    "folevi",
-  );
-  const glassLines = dynamicColors(stripMeta(tokens.glass.light), stripMeta(tokens.glass.dark), "folevi.glass");
-  const num = (obj) =>
-    Object.entries(obj)
-      .map(([k, v]) => `    static let ${/^\d/.test(k) ? `s${k.replace(".", "_")}` : k}: CGFloat = ${v}`)
-      .join("\n");
-  return `// ${HEADER}
-import AppKit
-import SwiftUI
-
-extension NSColor {
-    /// A dynamic color that resolves against the current appearance, including increased-contrast variants.
-    static func folevi(
-        light: (CGFloat, CGFloat, CGFloat, CGFloat),
-        dark: (CGFloat, CGFloat, CGFloat, CGFloat),
-        name: String
-    ) -> NSColor {
-        NSColor(name: NSColor.Name(name)) { appearance in
-            let isDark = appearance.bestMatch(from: [.darkAqua, .vibrantDark, .accessibilityHighContrastDarkAqua]) != nil
-            let c = isDark ? dark : light
-            return NSColor(srgbRed: c.0, green: c.1, blue: c.2, alpha: c.3)
-        }
-    }
-}
-
-/// Colors: \`tokens.color\` with the neutral product chrome (\`tokens.chrome\`) applied.
-enum FoleviColor {
-${colorLines}
-}
-
-/// Translucent glass layers (\`tokens.glass\`), as the web's --glass-* variables.
-enum FoleviGlass {
-${glassLines}
-}
-
-/// One layer of a token shadow. SwiftUI draws outer layers with \`.shadow\`; spread and inset
-/// highlights are approximated by the components (inset → a 1pt top stroke).
-struct FoleviShadowLayer {
-    let x: CGFloat
-    let y: CGFloat
-    let blur: CGFloat
-    let spread: CGFloat
-    let color: Color
-    let inset: Bool
-}
-
-enum FoleviShadow {
-${shadowLines()}
-}
-
-enum FoleviFontFamily {
-${Object.entries(tokens.font.family).map(([k, v]) => `    static let ${k} = "${v}"`).join("\n")}
-}
-
-enum FoleviFontSize {
-${num(tokens.font.size)}
-}
-
-/// Letter spacing as a fraction of the font size (multiply by the point size for \`.tracking\`).
-enum FoleviTracking {
-${num(tokens.font.tracking)}
-}
-
-enum FoleviSpace {
-${num(tokens.space)}
-}
-
-enum FoleviRadius {
-${num(tokens.radius)}
-}
-
-enum FoleviLayout {
-${num(tokens.layout)}
-}
-
-enum FoleviMotion {
-    static let fast: Double = ${tokens.motion.fast / 1000}
-    static let base: Double = ${tokens.motion.base / 1000}
-    static let slow: Double = ${tokens.motion.slow / 1000}
-    static let page: Double = ${tokens.motion.page / 1000}
-}
-`;
-}
-
 const outputs = [
   [resolve(root, "generated/tokens.css"), buildCss()],
   [resolve(root, "generated/tokens.ts"), buildTs()],
-  [resolve(repo, "apps/macos/Folevi/DesignSystem/Generated/FoleviTokens.swift"), buildSwift()],
 ];
 
 let stale = false;

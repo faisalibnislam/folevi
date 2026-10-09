@@ -1,8 +1,0 @@
-// Release configuration: production (the same public URLs the web app ships).
-#include "Shared.xcconfig"
-
-// The web app: sign-in (/connect) and /api/auth.
-FOLEVI_APP_URL = https:/$()/app.folevi.com
-CONVEX_URL = https:/$()/fastidious-clownfish-123.convex.cloud
-
-INFOPLIST_PREPROCESSOR_DEFINITIONS =

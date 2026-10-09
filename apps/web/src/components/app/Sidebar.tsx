@@ -321,16 +321,20 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
   const { drawerMode } = useShell();
   const { route } = useAppRouter();
   return (
-    <div className="flex h-[52px] flex-none items-center gap-1 px-3">
+    <div className="ui-drag flex h-[52px] flex-none items-center gap-1 px-3">
+      {/* In the Mac app, the window's buttons sit here. */}
+      {drawerMode ? null : <span aria-hidden className="ui-traffic-space" />}
       <AppLink
         href="/documents"
         onClick={onNavigate}
         aria-label="Folevi"
         title="Go to Home"
-        className="flex min-w-0 flex-1 items-center gap-2 rounded-[6px] px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="ui-browser-only flex min-w-0 flex-1 items-center gap-2 rounded-[6px] px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <FoleviLogo height={26} title={null} className="flex-none" />
       </AppLink>
+      {/* (The Mac app shows its window buttons where the logo is; the space between moves the window.) */}
+      <span aria-hidden className="ui-desktop-only flex-1 self-stretch" />
       {drawerMode ? null : <SyncStatus align="start" documentId={route.name === "doc" ? route.id : undefined} />}
       <NotificationsButton />
       {drawerMode ? null : <SidebarMenu />}

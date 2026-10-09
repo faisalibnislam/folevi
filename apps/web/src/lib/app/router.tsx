@@ -25,15 +25,17 @@ export type Route =
   | { name: "notes" }
   | { name: "tags" }
   | { name: "tag"; id: string }
-  | { name: "settings"; section: "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" }
+  | { name: "settings"; section: "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" }
   | { name: "help" }
   | { name: "onboarding" }
+  /** The Mac app's Quick Add window (apps/desktop). */
+  | { name: "quick-add" }
   | { name: "invite"; token: string }
   | { name: "share-invite"; token: string }
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
-const SETTINGS = ["account", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "sync", "data"] as const;
+const SETTINGS = ["account", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "sync", "data", "desktop"] as const;
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -58,6 +60,7 @@ export function parseRoute(pathname: string): Route {
     case "trash":
     case "help":
     case "onboarding":
+    case "quick-add":
       return { name: head };
     // Drafts was called Unsorted; old /unsorted links keep working.
     case "drafts":

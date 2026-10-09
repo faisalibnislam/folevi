@@ -1,5 +1,6 @@
 // Fractional ranks: base-62 strings ordered by plain byte comparison. Never end with "0".
-// Mirrored exactly by apps/macos/Folevi/Domain/Rank.swift (see fixtures/ranks.json).
+// Golden cases in fixtures/ranks.json. (The retired native Swift Mac app mirrored this; Folevi for Mac is now
+// the web app in Electron, so this is the only implementation.)
 export const RANK_DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const BASE = RANK_DIGITS.length;
 

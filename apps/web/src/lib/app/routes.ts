@@ -18,6 +18,7 @@ export const APP_ROUTE_HEADS = new Set([
   "settings",
   "help",
   "onboarding",
+  "quick-add",
   "invite",
   "share-invite",
 ]);

@@ -1,5 +1,5 @@
 {
-  "$description": "Canonical Folevi block schema. Source of truth for generated TypeScript (src/generated/schema.ts), Swift (apps/macos/Folevi/Domain/Generated/BlockSchema.swift) and JSON Schema (generated/folevi-blocks.schema.json). Bump schemaVersion and add a migration in src/migrations.ts for any breaking change. Blocks marked \"webOnly\" are left out of the Swift types until the native apps draw them; native clients keep them verbatim as unknown blocks.",
+  "$description": "Canonical Folevi block schema. Source of truth for generated TypeScript (src/generated/schema.ts) and JSON Schema (generated/folevi-blocks.schema.json). Bump schemaVersion and add a migration in src/migrations.ts for any breaking change. Blocks marked \"webOnly\" were never in the retired native Swift app (tag native-mac-archive), so the shared golden fixture (fixtures/document-golden.json) leaves them out; their own tests cover them. Folevi for Mac is now the web app in Electron (apps/desktop).",
   "schemaVersion": 1,
   "enums": {
     "HeadingLevel": { "type": "int", "values": [1, 2, 3] },

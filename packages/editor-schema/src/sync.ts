@@ -1,5 +1,5 @@
-// Client sync reducer. Pure and deterministic so the Swift port (apps/macos/Folevi/Sync/SyncReducer.swift)
-// can be verified against the same golden scenarios (fixtures/sync-scenarios.json).
+// Client sync reducer. Pure and deterministic, verified against golden scenarios (fixtures/sync-scenarios.json).
+// (A Swift port in the retired native Mac app ran the same scenarios; Folevi for Mac is now the web app in Electron.)
 // See docs/SYNC_PROTOCOL.md for the normative rules.
 import type { WireBlock, WireDocumentCreate, WireDocumentPatch } from "./types";
 import { canonicalJson } from "./parse";

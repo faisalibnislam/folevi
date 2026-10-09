@@ -3,17 +3,17 @@
 ## Overview
 
 ```
- Browser (folevi.com, app.folevi.com)            Mac (Folevi.app)
+ Browser (folevi.com, app.folevi.com)            Mac (Folevi.app, apps/desktop)
  ┌───────────────────────────────┐               ┌──────────────────────────────┐
- │ Next.js 16 on Vercel           │               │ SwiftUI + AppKit             │
- │  • marketing (static)          │               │  • NSTextView block editor   │
- │  • product shell (1 catch-all) │               │  • SQLite store (actor)      │
- │  • admin console               │               │  • Sync reducer (Swift port) │
- │  • /api/auth/* → Convex proxy  │               │  • sign-in: pending (PKCE)   │
- │ IndexedDB: op log + cache      │               │  • Convex Swift client       │
- └──────────────┬────────────────┘               └──────────────┬───────────────┘
-                │ WebSocket (queries, mutations)                 │
-                ▼                                                 ▼
+ │ Next.js 16 on Vercel           │               │ Electron shell that loads    │
+ │  • marketing (static)          │◀── same ──────│ app.folevi.com               │
+ │  • product shell (1 catch-all) │    web app    │  • Quick Add (⌥Space)        │
+ │  • admin console               │               │  • menu bar icon, Dock badge │
+ │  • /api/auth/* → Convex proxy  │               │  • Mac notifications         │
+ │ IndexedDB: op log + cache      │               │  • window.foleviDesktop      │
+ └──────────────┬────────────────┘               └──────────────────────────────┘
+                │ WebSocket (queries, mutations)
+                ▼
           ┌──────────────────────────── Convex ─────────────────────────────┐
           │ auth.ts: Better Auth (component) · auth.config: own issuer only  │
           │ lib/auth.ts: every read/write authorized server-side             │
@@ -73,9 +73,9 @@ safe for the service worker to keep a copy for offline boot.
   Identity emails are captured in the development mailbox (`devMailbox` table, `/dev/mailbox`,
   `/api/dev/mailbox`, guarded by `FOLEVI_DEV_MAILBOX_SECRET`) and refused when `FOLEVI_ENV=production`;
   `scripts/check-prod-env.mjs` fails a production build if the secret is set.
-- Mac: the native app still contains code for the previous provider and **cannot sign in right now**.
-  It will move to Authorization Code + PKCE against Folevi's own accounts after the web app is
-  finalized (`docs/MACOS.md`).
+- Mac: Folevi for Mac is the web app in Electron and signs in exactly like the web (`docs/DESKTOP.md`).
+  The browser sign-in endpoints for native apps (Authorization Code + PKCE, `convex/lib/nativeAuth.ts`)
+  stay on the server, unused since the native Swift app was retired.
 
 ## Data model (convex/schema.ts)
 
@@ -113,15 +113,14 @@ function lacks an authorization call.
 
 ## Editing and sync
 
-Both clients edit a local copy and send idempotent operations (`docs/SYNC_PROTOCOL.md`):
+The client edits a local copy and sends idempotent operations (`docs/SYNC_PROTOCOL.md`):
 
 - **Web:** Tiptap/ProseMirror with a custom flat schema (one node per block type with `id` + `depth`).
   `components/editor/convert.ts` maps editor ⇄ canonical blocks (keeping ranks stable via
   `assignTreePositions`), and `diffBlocks` turns edits into `block.upsert`/`block.delete` ops. The web
   sync engine (`lib/sync/engine.ts`) wraps the shared reducer from `@folevi/editor-schema`, persists every
   change to IndexedDB before sending, and reconciles subscriptions.
-- **Mac:** a native NSTextView-per-block editor feeding a Swift port of the same reducer and a durable
-  SQLite op log; it pulls by workspace sequence (`sync.pullJson`) and pushes with `sync.pushJson`.
+- **Mac:** Folevi for Mac runs the web client above unchanged, in Electron (`docs/DESKTOP.md`).
 - The server (`convex/lib/syncEngine.ts`) enforces the protocol: idempotency by `opId`, content
   conflicts by `contentRev` vs `baseRevision`, last-writer-wins positions, tombstones, parent
   normalization, and post-batch bookkeeping (search text, task projection, backlinks, mentions).

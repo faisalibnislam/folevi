@@ -5,8 +5,6 @@ The single source of truth is `packages/editor-schema/spec/folevi-blocks.v1.json
 
 - `packages/editor-schema/src/generated/schema.ts`: TypeScript types, enum value lists, limits, the spec
   used by the runtime validator
-- `apps/macos/Folevi/Domain/Generated/BlockSchema.swift`: Swift `Codable` types, including a
-  `BlockContent` enum with an `.unknown(type:props:)` case
 - `packages/editor-schema/generated/folevi-blocks.schema.json`: JSON Schema for documentation/tools
 
 CI runs the generator with `--check` and fails if any output is stale.
@@ -49,7 +47,7 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | collection | no | `collectionId`, `viewId?` |
 | formula | no | `latex` (≤ `LIMITS.maxFormulaLength`; rendered with KaTeX, `trust: false`) |
 | whiteboard | no | `data` (JSON `{ v: 1, strokes: [{ points: [[x, y]…] \| d, color, width, opacity? }] }`, ≤ `LIMITS.maxWhiteboardDataLength`; x in 0–1000, y in 0–`height`), `height` (logical units, `minWhiteboardHeight`–`maxWhiteboardHeight`) |
-| flowchart | no | `data` (JSON `{ v: 1, nodes: [{ id, shape, x, y, w, h, text?, color? }], edges: [{ id, from, to, fromSide?, toSide?, label?, style?, arrow? }] }`, ≤ `LIMITS.maxFlowchartDataLength`; shapes process/decision/terminator/io/circle/note/text, colours neutral/accent/blue/green/yellow/pink/purple, sides top/right/bottom/left, style solid/dashed, arrow end/both/none; see `src/flowchart.ts`), `height` (canvas height, `minFlowchartHeight`–`maxFlowchartHeight`). **Web only** (`"webOnly"` in the spec): left out of the Swift types, so native clients keep it verbatim as an unknown block. |
+| flowchart | no | `data` (JSON `{ v: 1, nodes: [{ id, shape, x, y, w, h, text?, color? }], edges: [{ id, from, to, fromSide?, toSide?, label?, style?, arrow? }] }`, ≤ `LIMITS.maxFlowchartDataLength`; shapes process/decision/terminator/io/circle/note/text, colours neutral/accent/blue/green/yellow/pink/purple, sides top/right/bottom/left, style solid/dashed, arrow end/both/none; see `src/flowchart.ts`), `height` (canvas height, `minFlowchartHeight`–`maxFlowchartHeight`). Marked `"webOnly"` in the spec: the retired native Swift app never drew it, so the shared golden document fixture leaves it out (`flowchart.test.ts` covers it). |
 
 Mermaid diagrams are `code` blocks with `language: "mermaid"`; editors render a live SVG preview.
 
@@ -76,13 +74,14 @@ its own.
 prototype format) → 1 is implemented as the template. To change the schema:
 
 1. Bump `schemaVersion` in the spec and edit the definitions.
-2. Add `migrations[N]` in `src/migrations.ts`, and the equivalent Swift migration.
-3. `pnpm schema:gen`, add fixtures for the new shapes, run both test suites.
+2. Add `migrations[N]` in `src/migrations.ts`.
+3. `pnpm schema:gen`, add fixtures for the new shapes, run the tests.
 
-## Golden fixtures (shared by TypeScript and Swift)
+## Golden fixtures
 
 - `fixtures/document-golden.json`: every v1 block type plus an unknown `timeline` (schema v2) block;
-  both clients must round-trip it to identical canonical (sorted-key) JSON.
+  it must round-trip to identical canonical (sorted-key) JSON. (The retired native Swift app ran these
+  fixtures too; Folevi for Mac is now the web app in Electron, `docs/DESKTOP.md`.)
 - `fixtures/ranks.json`: `rankBetween` cases and an evenly spread sequence.
 - `fixtures/sync-scenarios.json`: the nine offline/sync scenarios from `SYNC_PROTOCOL.md`, with the
   expected final canonical reducer state.
@@ -97,7 +96,7 @@ past `LIMITS.maxRankLength` (`blocks.rebalance`).
 
 - Web (Tiptap): one ProseMirror node per block type with `id` and `depth` attributes; the code block node
   is named `codeBlock` inside the editor (the inline mark is `code`). See `apps/web/src/components/editor/convert.ts`.
-- Mac: SwiftUI rows with an `NSTextView` per text block; see `docs/MACOS.md`.
+- Folevi for Mac uses the web editor (`docs/DESKTOP.md`).
 
 ## Import / export
 

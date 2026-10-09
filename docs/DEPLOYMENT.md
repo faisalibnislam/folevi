@@ -57,8 +57,8 @@ Mailtrap sending token and webhook signing secret with hidden input. Existing va
 
 1. Import the GitHub repository. Root directory: `apps/web`. Framework: Next.js. Keep "Include files outside
    the Root Directory" on (the build installs and deploys from the repository root). Vercel deploys only the
-   web app (the native macOS app in this monorepo, `apps/macos`, ships through Xcode), and the `ignoreCommand` in
-   `apps/web/vercel.json` skips builds for commits that change only them (or docs). `apps/web/vercel.json`
+   web app (Folevi for Mac, `apps/desktop`, is built on the Mac with `pnpm release`), and the `ignoreCommand` in
+   `apps/web/vercel.json` skips builds for commits that change only it (or docs). `apps/web/vercel.json`
    sets install and build commands; the build runs `scripts/check-prod-env.mjs`, then
    `npx convex deploy --cmd 'pnpm --filter @folevi/web build'`, which deploys the backend first and injects
    `NEXT_PUBLIC_CONVEX_URL` for the matching deployment (preview builds get a per-branch backend).
@@ -124,7 +124,7 @@ check any time (`done: true, ok: true`).
 ## 7. First release checklist
 
 1. `pnpm install && pnpm exec vitest run && pnpm --filter @folevi/web build` locally.
-2. Push to `main`; CI (lint, typecheck, unit, Convex, e2e, macOS, secret scan, audit) must pass.
+2. Push to `main`; CI (lint, typecheck, unit, Convex, e2e, Mac shell, secret scan, audit) must pass.
 3. Vercel production deploy runs automatically (or promote a verified preview).
 4. Verify: `curl -I https://folevi.com` (HSTS, CSP), `https://app.folevi.com/signin` shows Folevi's own
    sign-in page, `https://app.folevi.com/dev/mailbox` returns 404, sign up with a real address →
@@ -140,12 +140,14 @@ check any time (`done: true, ok: true`).
    `production`). Without the secret the job logs "skipping" and succeeds. To record one by hand:
    `npx convex run --deployment <prod-deployment> admin:recordDeployment '{"environment":"production","commitSha":"…","commitMessage":"…","source":"manual"}'`.
 
-## Mac app distribution
+## Folevi for Mac
 
-**Not distributed yet.** The app signs in through the browser (Authorization Code + PKCE against
-Folevi's own accounts, `docs/AUTH_DECISION.md`). To ship it: set the production values in
-`apps/macos/Config/Release.xcconfig`, archive with a Developer ID certificate, notarize
-(`xcrun notarytool`), staple, and distribute the DMG. See `docs/MACOS.md`.
+Folevi for Mac (`apps/desktop`) loads `app.folevi.com`, so a web deploy updates it too; the shell itself only
+changes when its own code does. It is built and installed on the owner's Mac with `pnpm release` (personal
+Apple Development signature, not notarized), so it isn't distributed. Sharing it would need a Developer ID
+certificate, notarization and an update channel. See `docs/DESKTOP.md`. The browser sign-in endpoints for
+native apps (Authorization Code + PKCE, `convex/lib/nativeAuth.ts`) remain on the server, unused by the shell,
+which signs in like the web.
 
 ## Backups and restore
 

@@ -103,7 +103,7 @@ export const tokens = {
     }
   },
   "chrome": {
-    "$description": "Neutral app chrome: inside the product the interface is white/grey (light) or near-black (dark) so colour comes from the notes. The web applies these under :root[data-chrome=\"neutral\"] (the marketing site keeps `color`); the Mac app is all product, so its FoleviColor uses them.",
+    "$description": "Neutral app chrome: inside the product the interface is white/grey (light) or near-black (dark) so colour comes from the notes. The web applies these under :root[data-chrome=\"neutral\"] (the marketing site keeps `color`).",
     "light": {
       "canvas": "#FFFFFF",
       "sidebar": "#FFFFFF",
@@ -150,7 +150,7 @@ export const tokens = {
     }
   },
   "glass": {
-    "$description": "Glass: translucent, frosted chrome over an ambient canvas (docs/DESIGN_SYSTEM.md → Glass). CSS: --glass-*; Swift: FoleviGlass.",
+    "$description": "Glass: translucent, frosted chrome over an ambient canvas (docs/DESIGN_SYSTEM.md → Glass). CSS: --glass-*.",
     "light": {
       "canvas": "#EEEEF1",
       "lightA": "rgba(255, 255, 255, 0.95)",

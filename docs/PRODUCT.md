@@ -1,8 +1,8 @@
 # Product
 
 Folevi is a calm writing and notes workspace: block documents that grow into nested pages, tasks and a
-calendar drawn from those documents, offline editing that syncs honestly, and a native Mac app that
-shares one account and one data model with the web.
+calendar drawn from those documents, offline editing that syncs honestly, on the web and on the Mac (Folevi for Mac is the
+web app in a window of its own).
 
 This page describes what exists in this repository today, what has been verified, and what has not.
 
@@ -18,7 +18,7 @@ This page describes what exists in this repository today, what has been verified
 | Email (Mailtrap) | **Live.** All eleven templates (confirmation, password reset, new device, deletion, invites, mentions, comments, digest, shares, access changes) are rendered in the repository with the app's look and sent through Mailtrap, the only provider (`docs/EMAIL_OPERATIONS.md`). |
 | AI Assistant (Gemini) | **Live.** Server-side only (`convex/ai.ts`); the key is a Convex environment variable. |
 | Payments (Polar) | **Not configured.** Personal and Team plans, the trial, AI credits, seats and limits work; paid plans and credit packs can't be bought until the Polar variables are set and the plan migration has run (`docs/BILLING.md`). |
-| Native Mac app (`apps/macos`) | Built and unit-tested against the local backend, brought up to the web's current design on 2026-09-28; signs in through the browser (Authorization Code + PKCE). **Not distributed** (ad-hoc signed, not notarized); the marketing page says “Coming soon”. Work is paused while the web is finished (`docs/MACOS.md`). |
+| Folevi for Mac (`apps/desktop`) | **Local use only.** An Electron shell that loads `app.folevi.com`, so it matches the web exactly; it adds Quick Add (⌥Space), a menu bar icon, open at login, Mac notifications and the Dock badge. Signed with a personal Apple Development certificate, not notarized, not distributed (`docs/DESKTOP.md`). The earlier native Swift app is archived on the tag `native-mac-archive`. |
 
 iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 
@@ -28,8 +28,8 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Block editor with paragraphs, three heading levels, bulleted/numbered/to-do lists, toggles, quotes,
   callouts, code, dividers, images (including Unsplash, when configured), files, bookmarks, tables, cards,
   page links, collections, mentions, TeX formulas, Mermaid diagrams, whiteboards and flowcharts (a canvas of
-  shapes and connectors with auto-layout, AI create/update and Mermaid conversion; web only for now, and the
-  Mac keeps them intact). Unknown future block types are preserved, never dropped.
+  shapes and connectors with auto-layout, AI create/update and Mermaid
+  conversion). Unknown future block types are preserved, never dropped.
 - Markdown shortcuts, a `/` menu, `[[` page links, `@` mentions, nesting with Tab, block moves with
   ⌥⇧↑/↓ and drag handles, undo/redo, paste normalization (HTML and Markdown).
 - Per-page styling: 57 note styles (artwork that also colours text, highlights and blocks) or your own
@@ -97,17 +97,17 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Public links: off by default, optional expiry and password, `noindex`, revocable at once.
 
 ### Sync and offline
-- Every edit is written to a durable local queue first (IndexedDB on the web, SQLite on the Mac) and
+- Every edit is written to a durable local queue first (IndexedDB, on the web and in Folevi for Mac) and
   sent as idempotent operations. The status says **Saved** only after the server has acknowledged every
   change, including edits still being typed (`docs/SYNC_PROTOCOL.md`).
-- Offline editing on both clients; queued edits survive reloads and restarts. On the web, opening
+- Offline editing; queued edits survive reloads and restarts. On the web, opening
   Folevi with no connection shows the last-known folio from this device (after one online visit).
 - Two devices editing the same block produce a visible conflict with Keep mine / Keep theirs /
   Keep both. Nothing is lost silently.
 
 ### Import and export
-- Markdown import with a report of anything that couldn't be mapped; Markdown, HTML and ZIP export on
-  the web; Markdown, HTML and PDF export on the Mac.
+- Markdown import with a report of anything that couldn't be mapped; Markdown, HTML and ZIP export
+  (the same in Folevi for Mac).
 
 ### Account and security
 - Built-in accounts: email and password only, confirmed email, and optional authenticator-app two-step
@@ -126,13 +126,12 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
   development mailbox, real sign-up → confirmation email → sign-in, password reset by email, turning on
   two-step verification, the admin console, and the AI Assistant.
 - **CI** (every push to `main`): lint, typecheck, unit and integration tests, the web build, a secret
-  scan of the full history, dependency audit, the Mac build and tests, and two Playwright suites (local
+  scan of the full history, dependency audit, the Mac shell's typecheck and tests, and two Playwright suites (local
   backend, and a production build for the service worker and headers).
 - Convex integration: 107 tests (tenant isolation, sync protocol, sharing, deletion cascades, admin RBAC,
   optional two-step verification, session revocation, static invariants). Web unit: 64 tests.
 - Playwright: about 80 tests, including axe WCAG 2.2 AA checks in light and dark, offline and
   durable-queue behaviour, the two-device conflict flow, and the account flows.
-- Mac: 68 unit tests (including the shared golden fixtures for ranks, documents and sync scenarios).
 
 ## Not verified / known limitations
 
@@ -145,16 +144,13 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
   (`docs/BILLING.md`, owner checklist).
 - **Account model:** production runs the new model (Personal is not a workspace, workspace plans, members
   vs guests; migrated and verified 2026-09-29). A few clean-up migrations are left to run and the
-  `workspaces.kind` field to delete afterwards (`docs/ACCOUNT_MODEL_PLAN.md` §3b). The Mac app still
-  expects the old model until its catch-up (paused).
+  `workspaces.kind` field to delete afterwards (`docs/ACCOUNT_MODEL_PLAN.md` §3b).
 - **Accounts:** no breached-password check yet and no passkeys; no social sign-in by design
   (`docs/AUTH_DECISION.md`). Account email changes are handled by support, not self-service.
 - **Collaboration is block-granular**, not character-level: concurrent edits to the same block become a
   conflict the person resolves, rather than merging automatically.
-- **Mac app**: arm64 only, ad-hoc signed and not notarized. Collections are read-only; no `@mention`
-  picker, image resizing, code highlighting or sharing UI; several library actions need a connection.
-  Changes to the web after 2026-09-28 (such as optional two-step verification) haven't reached it yet.
-  Details in `docs/MACOS.md`.
+- **Folevi for Mac**: arm64 only, signed for the owner's Mac and not notarized, so it can't be shared yet.
+  It needs one online visit before it works offline (the site's service worker). Details in `docs/DESKTOP.md`.
 - **Browser coverage**: automated tests run in Chromium; Safari and Firefox are on the manual checklist.
 - **No public status dashboard** yet (the Status page says so).
 
@@ -165,8 +161,6 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
    (`docs/EMAIL_OPERATIONS.md` §9).
 3. Polar on production (sandbox first), then run the plan migration, so plans and credit packs can be
    bought (`docs/BILLING.md`).
-4. Mac: catch up with the web (Personal as its own scope, workspace plans, guests), then distribution (Developer ID signing, notarization, universal build
-   once the Convex Swift client ships an x86_64 slice, testing on macOS 15).
+4. Folevi for Mac distribution: Developer ID signing, notarization, a universal build and updates.
 5. Character-level merging for concurrent edits to the same block.
-6. Mac parity: collection editing, mention picker, sharing UI, code highlighting.
-7. iOS client from the shared Swift layers (`docs/FUTURE_IOS.md`).
+6. iOS client (`docs/FUTURE_IOS.md`).

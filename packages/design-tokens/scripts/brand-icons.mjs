@@ -5,7 +5,6 @@
 //   logo.svg      the mark and the "Folevi" letterforms (2021 x 512)
 //   logo-dark.svg the same for dark mode: a black F on a white disc, and white letters
 //   app-icon.svg  the F on a black square, edge to edge, for the macOS and iOS icons
-//   ai-icon.svg   the AI mark (eight petals, violet → coral), for every AI entry point
 //
 // The macOS / iOS icon gets Apple's Liquid Glass treatment as an Icon Composer document (Folevi.icon):
 // a black background and the F as a glass layer (specular highlights, translucency, shadow), which the
@@ -18,11 +17,8 @@
 //   apps/web/public/apple-icon.png                 180 px, full bleed (iOS rounds it)
 //   apps/web/public/icons/icon-192.png, -512.png   the round mark (install icons)
 //   apps/web/public/icons/icon-maskable-512.png    full bleed (Android masks it)
-//   apps/macos/Folevi/Resources/AppIcon.icon       the Mac app's icon (Icon Composer; Xcode compiles it)
-//   apps/macos/…/Assets.xcassets/FoleviMark.imageset       the mark for the Mac app's UI
-//   apps/macos/…/Assets.xcassets/FoleviMenuBar.imageset    the F alone (template) for the menu bar
-//   apps/macos/…/Assets.xcassets/FoleviWordmark.imageset   the logo's letters (template), for FoleviLogo
-//   apps/macos/…/Assets.xcassets/FoleviAI.imageset         the AI mark (AiIcon in Swift; the web draws it inline)
+//   apps/desktop/build/icon.icns                   Folevi for Mac's icon (a copy of Folevi.icns, below)
+//   apps/desktop/assets/trayTemplate.png, @2x.png  the F alone (template) for the menu bar, 16 and 32 px tall
 //   apps/web/public/brand/email/folevi-logo@2x.png       the logo for emails (dark letters, light backgrounds)
 //   apps/web/public/brand/email/folevi-logo-dark@2x.png  logo-dark.svg, for dark mode
 //   packages/design-tokens/brand/app-icon/
@@ -33,7 +29,7 @@
 //
 //   node packages/design-tokens/scripts/brand-icons.mjs               everything
 //   node packages/design-tokens/scripts/brand-icons.mjs --only=logos  just the email logos and the dark mark
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
@@ -44,8 +40,7 @@ const brand = resolve(here, "../brand");
 const out = resolve(brand, "app-icon");
 const repo = resolve(here, "../../..");
 const web = resolve(repo, "apps/web/public");
-const macResources = resolve(repo, "apps/macos/Folevi/Resources");
-const macAssets = resolve(macResources, "Assets.xcassets");
+const desktop = resolve(repo, "apps/desktop");
 // sharp ships with Next (apps/web); borrow it rather than adding a second copy.
 const fromWeb = createRequire(resolve(repo, "apps/web/package.json"));
 const sharp = createRequire(fromWeb.resolve("next/package.json"))("sharp");
@@ -130,10 +125,6 @@ writeFileSync(
     "supported-platforms": { squares: "shared" },
   }),
 );
-// The Mac app builds its icon from it (Xcode's actool also writes the flat icns older macOS uses).
-rmSync(resolve(macResources, "AppIcon.icon"), { recursive: true, force: true });
-cpSync(iconDoc, resolve(macResources, "AppIcon.icon"), { recursive: true });
-rmSync(resolve(macAssets, "AppIcon.appiconset"), { recursive: true, force: true });
 
 /** macOS without Icon Composer: the artwork as an 824 px rounded tile on the 1024 canvas, with a shadow. */
 async function flatMacIcon(px) {
@@ -178,52 +169,22 @@ if (glass) {
 }
 try {
   execFileSync("iconutil", ["-c", "icns", resolve(out, "macos.iconset"), "-o", resolve(out, "Folevi.icns")], { stdio: "ignore" });
+  // Folevi for Mac (Electron, apps/desktop) is packaged with it.
+  mkdirSync(resolve(desktop, "build"), { recursive: true });
+  copyFileSync(resolve(out, "Folevi.icns"), resolve(desktop, "build/icon.icns"));
 } catch {
-  console.warn("iconutil not available. Skipped Folevi.icns (the .iconset has every size).");
+  console.warn("iconutil not available. Skipped Folevi.icns and apps/desktop/build/icon.icns (the .iconset has every size).");
 }
 
-// ---------------------------------------------------------------- the Mac app's UI
+// ---------------------------------------------------------------- Folevi for Mac's menu bar icon
 
-/** Writes an asset-catalog image set (`template` sets are tinted by the system). */
-function imageSet(name, files, template = false) {
-  const dir = resolve(macAssets, `${name}.imageset`);
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(
-    resolve(dir, "Contents.json"),
-    json({
-      images: files.map(([filename, scale]) => ({ filename, idiom: "universal", scale })),
-      info: { author: "xcode", version: 1 },
-      ...(template ? { properties: { "template-rendering-intent": "template" } } : {}),
-    }),
-  );
-  return dir;
-}
-const markSet = imageSet("FoleviMark", [["folevi-mark.png", "1x"], ["folevi-mark@2x.png", "2x"]]);
-await save(render(favicon, 128), resolve(markSet, "folevi-mark.png"));
-await save(render(favicon, 256), resolve(markSet, "folevi-mark@2x.png"));
-
-// The F alone for the menu bar, as a template the system tints; 16 pt, trimmed to the glyph's bounds.
+// The F alone, trimmed to the glyph's bounds, black on transparent. Electron treats files named
+// *Template.png as template images (the system tints them); the @2x file is picked up for Retina.
 const glyphSvg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="150 90 260 340"><path d="${glyphPath}" fill="#000"/></svg>`);
-const menuSet = imageSet("FoleviMenuBar", [["folevi-menubar.png", "1x"], ["folevi-menubar@2x.png", "2x"]], true);
-for (const [file, h] of [["folevi-menubar.png", 16], ["folevi-menubar@2x.png", 32]]) {
-  await save(sharp(glyphSvg, { density: 300 }).resize({ height: h, width: Math.round((h * 260) / 340) }), resolve(menuSet, file));
+mkdirSync(resolve(desktop, "assets"), { recursive: true });
+for (const [file, h] of [["trayTemplate.png", 16], ["trayTemplate@2x.png", 32]]) {
+  await save(sharp(glyphSvg, { density: 300 }).resize({ height: h, width: Math.round((h * 260) / 340) }), resolve(desktop, "assets", file));
 }
-
-// The logo's letters alone, on the logo's 2021 x 512 canvas (the mark's disc left empty), as a template
-// image so the Mac tints it with the text colour. The mark is drawn beside it (FoleviLogo in Swift).
-const letters = logoSvg.match(/<path d="[^"]+" fill="black"\/>/g) ?? [];
-if (letters.length < 6) throw new Error("logo.svg: expected the six black letter paths.");
-const lettersSvg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="2021" height="512" viewBox="0 0 2021 512">${letters.join("")}</svg>`);
-const wordSet = imageSet("FoleviWordmark", [1, 2, 3].map((n) => [`folevi-wordmark@${n}x.png`, `${n}x`]), true);
-for (const [scale, h] of [[1, 26], [2, 52], [3, 78]]) {
-  await save(sharp(lettersSvg, { density: 300 }).resize(Math.round((h * 2021) / 512), h), resolve(wordSet, `folevi-wordmark@${scale}x.png`));
-}
-
-// The AI mark, in colour (not a template): 32 pt base, sharp up to 3x.
-const aiSet = imageSet("FoleviAI", [1, 2, 3].map((n) => [`folevi-ai@${n}x.png`, `${n}x`]));
-const aiSvg = readFileSync(resolve(brand, "source/ai-icon.svg"));
-for (const n of [1, 2, 3]) await save(sharp(aiSvg, { density: 144 * n }).resize(32 * n, 32 * n), resolve(aiSet, `folevi-ai@${n}x.png`));
 
 // ---------------------------------------------------------------- the web app
 

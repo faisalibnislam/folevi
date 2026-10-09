@@ -30,7 +30,8 @@ export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onC
   );
 }
 
-function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc?: string }) {
+/** The form itself: in the dialog above, and alone in the Mac app's Quick Add window (`onAdded` says where it went). */
+export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void }) {
   const { scope, today, deviceId } = useAppState();
   const quickAdd = useMutation(api.tasks.quickAdd);
   const { navigate } = useAppRouter();
@@ -70,7 +71,9 @@ function QuickAddForm({ onClose, currentDoc }: { onClose: () => void; currentDoc
             deviceId: deviceId ?? undefined,
           });
           onClose();
-          toast.show(effective ? `Task added to ${effective.title || "Untitled"}` : "Task added to Inbox", { tone: "success", action: { label: "Open", onClick: () => navigate(`/d/${r.documentId}`) } });
+          const where = effective ? effective.title || "Untitled" : "Inbox";
+          if (onAdded) onAdded({ documentId: r.documentId, where });
+          else toast.show(`Task added to ${where}`, { tone: "success", action: { label: "Open", onClick: () => navigate(`/d/${r.documentId}`) } });
         } catch (err) {
           setError(errorMessage(err));
         } finally {

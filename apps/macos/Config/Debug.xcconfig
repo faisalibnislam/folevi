@@ -1,9 +1,0 @@
-// Debug configuration: the local web app (pnpm dev) and local Convex backend.
-#include "Shared.xcconfig"
-
-// The web app: sign-in (/connect) and /api/auth.
-FOLEVI_APP_URL = http:/$()/app.localhost:3000
-CONVEX_URL = http:/$()/127.0.0.1:3210
-
-// Allow plain http to localhost (and *.localhost) / 127.0.0.1 (ATS exception) in Debug only.
-INFOPLIST_PREPROCESSOR_DEFINITIONS = FOLEVI_LOCAL_ATS=1

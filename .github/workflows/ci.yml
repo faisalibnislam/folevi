@@ -182,19 +182,27 @@ jobs:
           ARGS=$(node -e 'const m=(process.env.COMMIT_MESSAGE||"").split("\n")[0].slice(0,200); process.stdout.write(JSON.stringify({environment:process.env.FOLEVI_DEPLOY_ENVIRONMENT,commitSha:process.env.GITHUB_SHA,commitMessage:m,source:"github-actions"}))')
           npx convex run admin:recordDeployment "$ARGS"
 
-  macos:
-    name: macOS app build & tests
-    runs-on: macos-15
-    timeout-minutes: 40
+  desktop:
+    name: Folevi for Mac (Electron shell) typecheck & tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/desktop
     steps:
       - uses: actions/checkout@v4
-      - uses: maxim-lobanov/setup-xcode@v1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          xcode-version: latest-stable
-      - name: Build and test
-        run: |
-          xcodebuild -project apps/macos/Folevi.xcodeproj -scheme Folevi -destination 'platform=macOS' \
-            -only-testing:FoleviTests CODE_SIGNING_ALLOWED=NO build test | tail -60
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+      # apps/desktop is outside the pnpm workspace (its own lockfile). Its tests need no Electron binary.
+      - run: pnpm install --ignore-workspace --frozen-lockfile
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      - run: pnpm typecheck
+      - run: pnpm test
 
   security:
     name: Secret scan & dependency audit

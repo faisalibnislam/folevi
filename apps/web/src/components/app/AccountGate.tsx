@@ -13,6 +13,7 @@ import { errorMessage } from "@/components/ui/Toast";
 import { SignOutButton, signOutNow } from "@/components/auth/SignOut";
 import { Shell } from "./Shell";
 import { DeviceLimitScreen } from "./DeviceLimit";
+import { DesktopQuickAdd } from "./DesktopQuickAdd";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -156,7 +157,9 @@ export function AccountGate() {
     case "ready":
       return (
         <AppStateProvider profile={me.profile}>
-          {me.profile.onboardingStep !== "done" || route.name === "onboarding" ? (
+          {route.name === "quick-add" && me.profile.onboardingStep === "done" ? (
+            <DesktopQuickAdd />
+          ) : me.profile.onboardingStep !== "done" || route.name === "onboarding" ? (
             <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
               <Onboarding />
             </Suspense>

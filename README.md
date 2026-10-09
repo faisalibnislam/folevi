@@ -2,7 +2,7 @@
 
 A quieter place for ideas that keep growing. Folevi is a calm writing and notes workspace with block
 documents, nested pages, tasks, calendar, collections, comments, offline editing and sync. It runs on the web
-today, with a fully native Mac app coming soon. Each person has their own Personal; teams share
+and on the Mac (Folevi for Mac: the web app in a window of its own). Each person has their own Personal; teams share
 workspaces with their own plans, seats and billing (`docs/ACCOUNT_MODEL_PLAN.md`).
 
 | Surface | Where | Stack |
@@ -10,19 +10,19 @@ workspaces with their own plans, seats and billing (`docs/ACCOUNT_MODEL_PLAN.md`
 | Marketing site | `folevi.com` → `apps/web/src/app/(marketing)` | Next.js 16 (App Router) |
 | Product web app (PWA) | `app.folevi.com` → `apps/web/src/app/(app)` | Next.js, React 19, Tiptap/ProseMirror |
 | Admin console | `app.folevi.com/admin` → `apps/web/src/app/admin` | Next.js |
-| Native Mac app | `apps/macos` | Swift 6, SwiftUI + AppKit, Convex Swift client, SQLite |
+| Folevi for Mac | `apps/desktop` (loads `app.folevi.com`) | Electron shell: Quick Add, menu bar icon, notifications |
 | Backend | `convex/` | Convex (queries, mutations, actions, crons, HTTP) |
 | Identity | Built-in accounts: Better Auth inside Convex (email + password, verified email, optional authenticator-app 2FA) | `convex/auth.ts`, `convex/betterAuth` |
 | Transactional email | Mailtrap (templates rendered in the repo) | `packages/email` |
 
-Shared packages: `packages/editor-schema` (canonical block schema → TypeScript, Swift, JSON Schema;
+Shared packages: `packages/editor-schema` (canonical block schema → TypeScript, JSON Schema;
 fractional ranks; tree/Markdown/HTML/search/task helpers; the sync reducer), `packages/design-tokens`
-(tokens → CSS + Swift), `packages/email` (email manifest, compiled HTML + text templates, rendering, validation, Mailtrap sender,
+(tokens → CSS + TypeScript), `packages/email` (email manifest, compiled HTML + text templates, rendering, validation, Mailtrap sender,
 webhook verification), `packages/config` (lint config).
 
 ## Quick start (local, no third-party accounts needed)
 
-Requirements: Node 24 (`.nvmrc`), pnpm 10 (`corepack enable`), Xcode 26+ for the Mac app.
+Requirements: Node 24 (`.nvmrc`), pnpm 10 (`corepack enable`).
 
 ```bash
 pnpm install
@@ -59,15 +59,14 @@ Make yourself a platform super admin (local): create an account and sign in once
 npx convex run admin:bootstrapSuperAdmin '{"email":"you@example.com"}'
 ```
 
-### Mac app
+### Folevi for Mac
 
 ```bash
-script/build_and_run_macos.sh
+cd apps/desktop && pnpm install --ignore-workspace && pnpm dev
 ```
 
-Builds `apps/macos/build/Folevi.app` and launches it. It signs in through the browser (Authorization Code
-+ PKCE against Folevi's own accounts). It isn't distributed yet, and it still expects the old account model
-(Personal as a workspace) until its catch-up with the web. See `docs/MACOS.md`.
+Opens the local web app (http://app.localhost:3000) in the Electron shell; `pnpm release` builds, signs and
+installs it in /Applications. The shell is outside the pnpm workspace. See `docs/DESKTOP.md`.
 
 ## Tests
 
@@ -92,7 +91,7 @@ cd apps/web && E2E_NO_SERVER=1 npx playwright test
 ```
 
 (The Playwright suite expects the local backend and web dev server from Quick start to be running.)
-See `docs/TESTING.md` for what each suite covers, and the Mac tests in `docs/MACOS.md`.
+See `docs/TESTING.md` for what each suite covers, and `docs/DESKTOP.md` for the Mac app's.
 
 ## Documentation
 
@@ -108,5 +107,5 @@ See `docs/TESTING.md` for what each suite covers, and the Mac tests in `docs/MAC
 - `docs/EMAIL_DECISION.md`, `docs/EMAIL_OPERATIONS.md`: email via Mailtrap (identity, security, product), templates and operations
 - `docs/DEPLOYMENT.md`: Vercel, Convex (including accounts), Mailtrap, DNS, environments, backups, incidents
 - `docs/TESTING.md`: test suites and manual QA checklists
-- `docs/MACOS.md`: native app architecture and build
+- `docs/DESKTOP.md`: Folevi for Mac (the Electron shell), its bridge to the web app, build and release
 - `docs/FUTURE_IOS.md`: how an iOS client would be added (intentionally not built)

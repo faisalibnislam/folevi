@@ -1,0 +1,37 @@
+# Folevi for Mac. Built for this Mac only: signed with the personal Apple Development certificate (no
+# notarization, so it isn't for sharing). `pnpm release` builds, signs, puts it in /Applications and opens it.
+appId: com.folevi.mac
+productName: Folevi
+copyright: Copyright © 2026 Folevi
+directories:
+  output: release
+  buildResources: build
+# The shell has no runtime packages: nothing from node_modules goes in (in the monorepo, electron-builder
+# would otherwise pick up the root's packages).
+files:
+  - dist/**
+  - "!dist/**/*.test.js"
+  - assets/**
+  - package.json
+  - "!**/node_modules/**"
+npmRebuild: false
+# English only (Chromium ships dozens of interface languages; the app's own text is English).
+electronLanguages:
+  - en
+mac:
+  target:
+    - target: dir
+      arch: arm64
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  identity: "Apple Development: abumohammadfaisal@icloud.com (XS494CQ48W)"
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  minimumSystemVersion: "13.0"
+  extendInfo:
+    NSMicrophoneUsageDescription: Folevi uses the microphone when you record audio into a note.
+    LSApplicationCategoryType: public.app-category.productivity
+    NSUserNotificationAlertStyle: alert

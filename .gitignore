@@ -21,14 +21,11 @@ blob-report/
 !.env.example
 .convex/
 
-# macOS / Xcode
+# macOS
 .DS_Store
-apps/macos/build/
-apps/macos/DerivedData/
 *.xcuserstate
 xcuserdata/
 *.xcscmblueprint
-apps/macos/Folevi.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration/
 
 # misc
 *.log

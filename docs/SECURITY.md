@@ -44,8 +44,8 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   exists (`requireActiveSession` in `convex/lib/auth.ts`). Revoking a session in Settings → Security,
   “sign out other devices”, a password change or reset, or an admin suspension ends it on its next
   request, and open live queries fail at once.
-- Mac: signs in through the browser with Authorization Code + PKCE against Folevi's own accounts, as a
-  device of its own (`docs/MACOS.md`; not distributed yet).
+- Mac: Folevi for Mac is the web app in a sandboxed Electron window and signs in like the web; its own
+  hardening (origin-checked bridge, navigation and permission limits) is in `docs/DESKTOP.md`.
 - New-device security email on sign-in from a new session.
 - Development tools: identity emails outside production are captured in a development mailbox guarded
   by `FOLEVI_DEV_MAILBOX_SECRET`; it refuses to work when `FOLEVI_ENV=production`, and the production
@@ -204,7 +204,7 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 - Account email changes are handled by support, not self-service.
 - Passwords are not yet checked against known breach lists; there are no passkeys (see
   `docs/AUTH_DECISION.md`, known gaps).
-- The native Mac app isn't distributed and still expects the old account model (Personal as a workspace).
+- Folevi for Mac (Electron) is signed for the owner's Mac only and not notarized, so it isn't distributed.
 - A guest of a page sees, in that page's excerpt and preview, the titles of unrestricted pages in the same
   Personal or workspace it links to, even ones they can't open (the page's own link blocks show them "Page
   you can't open"); a visitor of its public link sees those titles in its links. Restricted pages' titles

@@ -61,12 +61,31 @@ export async function pickDate(scope: Locator, date: string) {
 }
 
 /** Latest identity email of a kind for an address, from the development mailbox (non-production only). */
+/**
+ * The development backend writes links for app.localhost:3000. Run against a second dev server (another
+ * port, while 3000 is busy), a link opens on that server instead, and so does where it returns to.
+ */
+function onThisServer(raw: string): string {
+  const app = new URL(APP);
+  const link = new URL(raw);
+  if (link.hostname === app.hostname) link.port = app.port;
+  for (const key of ["callbackURL", "redirectTo"]) {
+    const inner = link.searchParams.get(key);
+    if (inner && /^https?:/.test(inner)) {
+      const u = new URL(inner);
+      if (u.hostname === app.hostname) u.port = app.port;
+      link.searchParams.set(key, u.toString());
+    }
+  }
+  return link.toString();
+}
+
 export async function mailboxLink(request: APIRequestContext, email: string, key: "auth_verify_email" | "auth_password_reset"): Promise<string> {
   for (let i = 0; i < 40; i++) {
     const res = await request.get(`${APP}/api/dev/mailbox?to=${encodeURIComponent(email)}`);
     const { messages } = (await res.json()) as { messages: { key: string; actionUrl: string }[] };
     const hit = messages.find((m) => m.key === key);
-    if (hit) return hit.actionUrl;
+    if (hit) return onThisServer(hit.actionUrl);
     await new Promise((r) => setTimeout(r, 250));
   }
   throw new Error(`no ${key} email for ${email}`);
@@ -84,8 +103,7 @@ export async function signUp(page: Page, opts: { email: string; name: string; pa
 
 /** Opens the emailed confirmation link; the person is signed in and lands in the app. */
 export async function confirmEmail(page: Page, email: string) {
-  const link = await mailboxLink(page.context().request, email, "auth_verify_email");
-  await page.goto(link);
+  await page.goto(await mailboxLink(page.context().request, email, "auth_verify_email"));
   await page.waitForURL((url) => url.host.startsWith("app.") && !/^\/(signin|signup|verify-email|two-factor|api)/.test(url.pathname), { timeout: 20_000 });
 }
 

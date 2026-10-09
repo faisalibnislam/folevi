@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plus, RefreshCw, ShieldCheck, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plus, RefreshCw, ShieldCheck, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -19,9 +19,11 @@ import { GuestsSection } from "./settings/GuestsSection";
 import { WorkspaceBillingSection } from "./settings/WorkspaceBillingSection";
 import { SyncSection } from "./settings/SyncSection";
 import { DataSection } from "./settings/DataSection";
+import { DesktopSection } from "./settings/DesktopSection";
 import { Card } from "./settings/Card";
+import { desktop } from "@/lib/desktop";
 
-type Section = "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data";
+type Section = "account" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
@@ -33,6 +35,7 @@ const YOU: Item[] = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "sync", label: "Offline & sync", icon: RefreshCw },
   { id: "data", label: "Import & export", icon: ArrowDownUp },
+  { id: "desktop", label: "Desktop app", icon: AppWindowMac },
 ];
 /**
  * The current team workspace's settings, only when a workspace is open. Personal has none of these.
@@ -55,7 +58,9 @@ export function SettingsView({ section }: { section: Section }) {
   const { workspace } = useAppState();
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
-  const groups = [{ label: "You", items: YOU }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
+  // Desktop app: only in the Mac app (or when opened by its address).
+  const you = YOU.filter((i) => i.id !== "desktop" || desktop() !== null || section === "desktop");
+  const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
   // A workspace section opened in Personal (a bookmark, or right after leaving a workspace).
@@ -117,6 +122,7 @@ export function SettingsView({ section }: { section: Section }) {
           {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
           {section === "sync" ? <SyncSection /> : null}
           {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
+          {section === "desktop" ? <DesktopSection /> : null}
         </div>
       </div>
     </ViewChrome>

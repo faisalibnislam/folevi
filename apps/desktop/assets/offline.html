@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Folevi</title>
+<style>
+  :root { color-scheme: light dark; --bg: #fff; --ink: #1c1c1e; --muted: #6b6b70; --btn: #1c1c1e; --btn-ink: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0e0e0f; --ink: #ededee; --muted: #9a9aa0; --btn: #ededee; --btn-ink: #0e0e0f; } }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; display: grid; place-items: center; -webkit-app-region: drag; }
+  main { max-width: 360px; padding: 24px; text-align: center; }
+  h1 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+  p { color: var(--muted); margin: 0 0 18px; }
+  button { -webkit-app-region: no-drag; font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 8px 16px; background: var(--btn); color: var(--btn-ink); cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Folevi can't connect</h1>
+  <p>Check your internet connection. Notes you wrote on this Mac are safe and sync when Folevi is back online.</p>
+  <button type="button" id="retry">Try again</button>
+</main>
+<script>
+  const target = new URLSearchParams(location.search).get("url") || "";
+  const go = () => { if (/^https?:\/\//.test(target)) location.href = target; else history.back(); };
+  document.getElementById("retry").addEventListener("click", go);
+  addEventListener("online", go);
+</script>
+</body>
+</html>

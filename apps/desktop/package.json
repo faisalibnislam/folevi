@@ -1,0 +1,29 @@
+{
+  "name": "@folevi/desktop",
+  "productName": "Folevi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Folevi for Mac: the web app in a window of its own, with Quick Add, a menu bar icon and notifications.",
+  "main": "dist/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "pnpm build && electron .",
+    "dev": "pnpm build && FOLEVI_URL=http://app.localhost:3000 electron .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "package": "pnpm build && electron-builder --mac dir --arm64",
+    "install-app": "node scripts/install-app.mjs",
+    "release": "pnpm package && pnpm install-app"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.6",
+    "electron": "44.4.5",
+    "electron-builder": "26.16.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron"]
+  }
+}

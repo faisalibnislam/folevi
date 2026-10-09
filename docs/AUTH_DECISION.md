@@ -3,8 +3,8 @@
 - **Status:** accepted, 25 Sept 2026. Replaces the earlier Auth0 integration (Universal Login, Post-Login
   and Custom Email Provider Actions, Management API), which has been removed together with `infra/auth0`.
 - **Scope:** sign-up, sign-in, email confirmation, password reset, two-step verification, sessions and
-  the admin identity actions for the web app and backend, and sign-in for the native Mac app (see
-  "Native apps").
+  the admin identity actions for the web app and backend, and browser sign-in endpoints for native apps
+  (see "Native apps").
 - **Versions:** `better-auth` 1.6.33, `@convex-dev/better-auth` 0.12.5 (local-install component).
 - **Code:** `convex/auth.ts` (all configuration), `convex/betterAuth/` (component schema and adapter),
   `convex/http.ts` (route registration), `convex/auth.config.ts` (the one trusted issuer),
@@ -68,7 +68,9 @@ Alternatives: keeping Auth0 (rejected for the reasons above) and writing the acc
 
 ## Native apps
 
-Folevi for Mac (and later iOS) signs in with **Authorization Code + PKCE** (RFC 7636), the pattern
+Folevi for Mac is now the web app in Electron and signs in like the web (`docs/DESKTOP.md`); these
+endpoints were built for the retired native Swift app (tag `native-mac-archive`) and stay for a future
+native client (iOS). Native apps sign in with **Authorization Code + PKCE** (RFC 7636), the pattern
 RFC 8252 recommends for native apps. `convex/lib/nativeAuth.ts` adds two endpoints to Better Auth, and
 Better Auth's `bearer` plugin lets the app present its session token as `Authorization: Bearer …`.
 

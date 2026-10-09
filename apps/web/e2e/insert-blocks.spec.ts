@@ -31,17 +31,28 @@ test.describe("Insert panel", () => {
     await newPage(page, "Insert blocks");
     const panel = await openInsert(page);
 
-    // Craft-style list: rows with a label and a drag grip, grouped into sections.
-    for (const label of ["Text", "Page", "Card", "File attachment", "Image", "Image from Unsplash", "Code block", "TeX formula", "Mermaid diagram", "Whiteboard"]) {
-      await expect(panel.getByRole("button", { name: label, exact: true })).toBeVisible();
+    // Craft-style tiles: a picture and a label, grouped into sections (an item can sit in two sections).
+    const tilesIn: Record<string, string[]> = {
+      Suggested: ["Text", "Page", "Card", "To-do", "Table", "Image"],
+      Blocks: ["Heading 1", "Bulleted list", "Code block", "TeX formula", "Mermaid diagram", "Flowchart", "Whiteboard", "Date"],
+      Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording"],
+      Collections: ["Table", "Gallery", "Kanban"],
+      "Nested content": ["Page", "Card"],
+      Separators: ["Divider, extra light", "Divider, strong", "Page break"],
+    };
+    for (const [section, labels] of Object.entries(tilesIn)) {
+      const group = panel.getByRole("group", { name: section, exact: true });
+      await expect(group.getByRole("heading", { name: section, exact: true })).toBeVisible();
+      for (const label of labels) await expect(group.getByRole("button", { name: label, exact: true })).toBeVisible();
     }
-    for (const title of ["Collections", "Insert line", "Insert page break", "Insert table"]) {
-      await expect(panel.getByRole("heading", { name: title })).toBeVisible();
-    }
+    await expect(panel.getByRole("heading", { name: "Quick table", exact: true })).toBeVisible();
     // Search narrows the list.
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("mermaid");
     await expect(panel.getByRole("button", { name: "Mermaid diagram" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Whiteboard" })).toHaveCount(0);
+    await expect(panel.getByRole("group", { name: "Suggested", exact: true })).toHaveCount(0);
+    await panel.getByRole("textbox", { name: "Search blocks" }).fill("zzzz");
+    await expect(panel.getByText("No matches", { exact: true })).toBeVisible();
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("");
 
     // Four divider styles.
@@ -108,7 +119,7 @@ test.describe("Insert panel", () => {
     await page.mouse.up();
     await expect(canvas.locator("path")).toHaveCount(1);
 
-    // Unsplash row: opens the picker (search results, or an honest "not set up" message).
+    // Unsplash tile: opens the picker (search results, or an honest "not set up" message).
     await panel.getByRole("button", { name: "Image from Unsplash" }).click();
     const unsplash = page.getByRole("dialog", { name: "Image from Unsplash" });
     await expect(unsplash.getByText(/Unsplash isn’t set up for this Folevi server yet|Photos from/)).toBeVisible({ timeout: 20_000 });
@@ -143,15 +154,15 @@ test.describe("Insert panel", () => {
     await context.close();
   });
 
-  test("rows drag into the page; gallery, kanban and card pages insert", async ({ browser }) => {
+  test("tiles drag into the page; gallery, kanban and card pages insert", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Insert Rows Tester");
     await newPage(page, "Insert rows");
     const panel = await openInsert(page);
 
-    // Drag the Whiteboard row above the first block.
-    const row = panel.getByRole("button", { name: "Whiteboard" });
-    await row.scrollIntoViewIfNeeded();
-    const r = (await row.boundingBox())!;
+    // Drag the Whiteboard tile above the first block.
+    const tile = panel.getByRole("button", { name: "Whiteboard" });
+    await tile.scrollIntoViewIfNeeded();
+    const r = (await tile.boundingBox())!;
     const first = (await page.locator(".fb-editor > .fb").first().boundingBox())!;
     await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
     await page.mouse.down();
@@ -160,7 +171,7 @@ test.describe("Insert panel", () => {
     await page.mouse.up();
     await expect(page.locator(".fb-editor > :first-child .fb-whiteboard")).toHaveCount(1);
 
-    // The panel (rows, line tiles, table picker) and the whiteboard toolbar pass axe in light and dark.
+    // The panel (tiles, table picker) and the whiteboard toolbar pass axe in light and dark.
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await page.evaluate((t) => (document.documentElement.dataset.theme = t), scheme);
@@ -192,7 +203,7 @@ test.describe("Insert panel", () => {
     // Card: a nested page shown as a card (the new page opens to be titled).
     const url = page.url().replace(/\?.*$/, "");
     await caretToEnd(page);
-    await panel.getByRole("button", { name: "Card" }).click();
+    await panel.getByRole("group", { name: "Nested content", exact: true }).getByRole("button", { name: "Card", exact: true }).click();
     await page.waitForURL((u) => u.toString().replace(/\?.*$/, "") !== url);
     await page.getByRole("textbox", { name: "Title" }).fill("Card child");
     await waitForSaved(page);

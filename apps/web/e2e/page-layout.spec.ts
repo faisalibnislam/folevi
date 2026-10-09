@@ -52,7 +52,7 @@ test("a nested page opens inside the note's tab; a new page opens its own tab; n
   // a tab of their own, and the tab reads "Note › Page".
   await openTool(page, "Insert");
   await page.getByRole("textbox", { name: "Document body" }).locator("p").first().click();
-  await page.getByRole("button", { name: "Page", exact: true }).click();
+  await page.getByRole("group", { name: "Nested content", exact: true }).getByRole("button", { name: "Page", exact: true }).click();
   await page.waitForURL(/\?new=1/);
   await expect(tabs.getByRole("button", { name: /^Close / })).toHaveCount(before);
   await page.getByRole("textbox", { name: "Title" }).fill("Inner page");

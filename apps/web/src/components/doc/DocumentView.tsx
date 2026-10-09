@@ -18,6 +18,7 @@ import {
   History,
   LayoutTemplate,
   Info,
+  Lock,
   MoreHorizontal,
   Printer,
   Search,
@@ -56,6 +57,7 @@ import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { BlockThread, useNoteNotifyItems } from "./Comments";
 import { AI_OPEN_EVENT, AI_RUN_EVENT, useAi, useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
+import { AiPanel } from "@/components/ai/AiPanel";
 import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
@@ -91,7 +93,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
-  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode } = useShell();
+  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, openNoteAi, aiNoteSlot } = useShell();
   const sidebarOpenRef = useRef(sidebarOpen);
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
@@ -447,32 +449,28 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [setInspectorOpen, inspectorTab]);
 
   // AI: a selection rewrite from the editor's toolbar, or "ask AI to write" from the slash menu, opens the
-  // AI panel (and runs the rewrite there).
+  // AI chat on this note's tools (its "This note" view, where the rewrite runs).
   const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
   // AI follows the note's own scope (your Personal: your Personal plan; a team: its workspace plan).
   const aiOn = useAiEnabled(meta?.document);
-  // AI turned off while its panel is open: show another tool instead.
+  // (A tools panel last left on AI, before AI moved to the chat, shows Insert.)
   useEffect(() => {
-    if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
-  }, [aiOn, inspectorTab, setInspectorTab]);
+    if (inspectorTab === "ai") setInspectorTab("insert");
+  }, [inspectorTab, setInspectorTab]);
   useEffect(() => {
     if (!aiOn) return;
     const onRun = (e: Event) => {
       setAiRun({ ...(e as CustomEvent<AiRunDetail>).detail, id: Date.now() });
-      setInspectorTab("ai");
-      setInspectorOpen(true);
+      openNoteAi();
     };
-    const onOpen = () => {
-      setInspectorTab("ai");
-      setInspectorOpen(true);
-    };
+    const onOpen = () => openNoteAi();
     window.addEventListener(AI_RUN_EVENT, onRun);
     window.addEventListener(AI_OPEN_EVENT, onOpen);
     return () => {
       window.removeEventListener(AI_RUN_EVENT, onRun);
       window.removeEventListener(AI_OPEN_EVENT, onOpen);
     };
-  }, [setInspectorOpen, setInspectorTab, aiOn]);
+  }, [openNoteAi, aiOn]);
 
   // ⌘F finds in the note and ⌘⌥F replaces, while focus is in the note (or nowhere in particular);
   // anywhere else the browser's own find still works.
@@ -599,6 +597,27 @@ export function DocumentView({ documentId }: { documentId: string }) {
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
   const pageTitle = summary?.title || localTitle || "Untitled";
+  const canShare = actions.some((a) => a !== "separator" && a.label === "Share…");
+  const pageGroup = (side: "top" | "bottom") => (
+    <div role="group" aria-label="Page" className="flex items-center gap-1">
+      <PresenceAvatars people={presence ?? []} />
+      {meta && canShare && side === "bottom" ? (
+        <button type="button" onClick={() => setShareOpen(true)} className="ui-glass inline-flex h-8 items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-medium text-heading shadow-[var(--glass-edge)] transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
+          <Lock size={13} aria-hidden /> Share
+        </button>
+      ) : null}
+      {summary ? (
+        <MenuButton
+          label="Document actions"
+          side={side}
+          align="end"
+          triggerClassName={side === "bottom" ? "ui-glass grid h-8 w-8 place-items-center rounded-[8px] text-heading shadow-[var(--glass-edge)] transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 pointer-coarse:w-11" : "grid h-10 w-10 place-items-center rounded-[6px] text-ink pointer-coarse:h-11 pointer-coarse:w-11 transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"}
+          trigger={<MoreHorizontal size={16} aria-hidden />}
+          items={actions}
+        />
+      ) : null}
+    </div>
+  );
 
   return (
     <NotePaletteProvider colors={styleColorsOf(summary?.cover ?? DEFAULT_COVER, coverPalette)} active={sheetAttrs["data-palette"] !== undefined}>
@@ -675,7 +694,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           )
         : null}
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind. */}
-      <div className="flex h-full min-h-0">
+      <div className="relative flex h-full min-h-0">
         <div ref={noteRef} className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
@@ -684,7 +703,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <div
           id="doc-scroll"
           ref={setScrollEl}
-          className={`fb-page relative h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
+          className={`fb-page relative h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8 sm:pt-14`}
           data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
           data-font={style.font}
           data-width={style.width}
@@ -780,36 +799,29 @@ export function DocumentView({ documentId }: { documentId: string }) {
             />
           ) : null}
         </div>
-        <PageDock
-          ai={aiOn}
-          tab={inspectorTab}
-          open={inspectorOpen}
-          onPick={(t) => {
-            if (inspectorOpen && inspectorTab === t) closeInspector();
-            else {
-              setInspectorTab(t);
-              setInspectorOpen(true);
-            }
-          }}
-          buttonRef={(t, el) => {
-            dockButtons.current[t] = el;
-          }}
-          extra={
-            <div role="group" aria-label="Page" className="flex items-center gap-0.5">
-              <PresenceAvatars people={presence ?? []} />
-              {summary ? (
-                <MenuButton
-                  label="Document actions"
-                  side="top"
-                  align="end"
-                  triggerClassName="grid h-10 w-10 place-items-center rounded-[6px] text-ink pointer-coarse:h-11 pointer-coarse:w-11 transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                  trigger={<MoreHorizontal size={16} aria-hidden />}
-                  items={actions}
-                />
-              ) : null}
-            </div>
-          }
-        />
+        {/* The note's people, Share and its "…" menu: at its top right (on a phone, in the dock). */}
+        {drawerMode ? (
+          <PageDock
+            ai={false}
+            tab={inspectorTab === "ai" ? "insert" : inspectorTab}
+            open={inspectorOpen}
+            onPick={(t) => {
+              if (inspectorOpen && inspectorTab === t) closeInspector();
+              else {
+                setInspectorTab(t);
+                setInspectorOpen(true);
+              }
+            }}
+            buttonRef={(t, el) => {
+              dockButtons.current[t] = el;
+            }}
+            extra={pageGroup("top")}
+          />
+        ) : (
+          <div className="pointer-events-none absolute right-3 top-3 z-20 flex justify-end sm:right-4 sm:top-4">
+            <div className="pointer-events-auto">{pageGroup("bottom")}</div>
+          </div>
+        )}
         {/* On a phone the tools are a sheet above the dock; elsewhere they're the right sidebar (below). */}
         {inspectorOpen && drawerMode ? (
           <div
@@ -827,7 +839,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               documentId={documentId}
               editor={editor}
               meta={meta ?? null}
-              tab={inspectorTab}
+              tab={inspectorTab === "ai" ? "insert" : inspectorTab}
               onTab={setInspectorTab}
               focusThreadId={focusThreadId}
               onOpenThread={(t) => {
@@ -842,8 +854,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
               actions={actions}
               readOnly={readOnly}
               hideTabs
-              aiRun={aiRun}
-              onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
             />
           </div>
         ) : null}
@@ -864,10 +874,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
               className="flex h-full min-h-0 flex-col [&>div]:min-h-0 [&>div]:flex-1"
             >
               <Inspector
+                bare={!panelOverlays}
                 documentId={documentId}
                 editor={editor}
                 meta={meta ?? null}
-                tab={inspectorTab}
+                tab={inspectorTab === "ai" ? "insert" : inspectorTab}
                 onTab={setInspectorTab}
                 focusThreadId={focusThreadId}
                 onOpenThread={(t) => {
@@ -881,14 +892,16 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
                 actions={actions}
                 readOnly={readOnly}
-                hideTabs
-                aiRun={aiRun}
-                onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
               />
             </div>
           </RightPanel>
         ) : null}
       </div>
+      {/* The note's AI tools live in the AI chat's "This note" view. */}
+      {/* (Only once the server knows the note: its credits and context are looked up by its id.) */}
+      {aiOn && aiNoteSlot && meta
+        ? createPortal(<AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)} />, aiNoteSlot)
+        : null}
       {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
       {meta && !readOnly ? (
@@ -920,6 +933,14 @@ const PANEL_DEFAULT = 340;
 function RightPanel({ width, onWidth, overlay, children }: { width: number; onWidth: (w: number) => void; overlay: boolean; children: React.ReactNode }) {
   const panel = useRef<HTMLElement>(null);
   const w = Math.min(PANEL_MAX, Math.max(PANEL_MIN, Number.isFinite(width) ? width : PANEL_DEFAULT));
+  // The floating AI button and chat keep clear of it.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--tools-panel", `${w + 8}px`);
+    return () => {
+      root.style.removeProperty("--tools-panel");
+    };
+  }, [w]);
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
     const startX = e.clientX;
@@ -943,7 +964,8 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
       ref={panel}
       aria-label="Page tools"
       style={{ width: w }}
-      className={`ui-pop flex min-h-0 flex-none flex-col overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none ${overlay ? "absolute inset-y-0 right-0 z-30 max-w-[calc(100%-24px)]" : "relative ml-2 h-full"}`}
+      // Like the left sidebar: straight on the canvas, no card. Over the note (narrower windows) it needs a ground.
+      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute inset-y-0 right-0 z-30 max-w-[calc(100%-24px)] overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
     >
       <div
         role="separator"
@@ -958,7 +980,7 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
           if (e.key === "ArrowLeft") onWidth(Math.min(PANEL_MAX, w + 16));
           if (e.key === "ArrowRight") onWidth(Math.max(PANEL_MIN, w - 16));
         }}
-        className="absolute inset-y-3 left-0 z-10 w-1.5 cursor-col-resize rounded-full outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
+        className="absolute inset-y-3 -left-[3px] z-10 w-1 cursor-col-resize rounded-full outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
       />
       {children}
     </aside>

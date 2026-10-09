@@ -12,7 +12,7 @@ test("a page break cuts the sheet into pages, and Unbreak page joins them", asyn
   await page.keyboard.press("Enter");
   const panel = await openTool(page, "Insert");
   await panel.getByRole("button", { name: "Page break" }).click();
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Insert", exact: true }).click();
+  await openTool(page, "Insert");
   await page.locator(".fb-editor p").last().click();
   await page.keyboard.type("Second page text");
   await waitForSaved(page);

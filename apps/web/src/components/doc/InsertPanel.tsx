@@ -1,46 +1,18 @@
 "use client";
 
-// Inspector → Insert: a searchable list of everything that can go into a page (after Craft's Insert
-// tab). Every row inserts below the current block on click, or where it's dropped when dragged into
-// the page. Below the list: divider styles, a page break and a table-size picker.
+// Inspector → Insert: a searchable grid of picture tiles for everything that can go into a page (after
+// Craft's Insert tool), grouped into sections. Every tile inserts below the current block on click (or
+// Enter / Space), or where it's dropped when dragged into the page. Last: a table-size picker.
 import type { Editor } from "@tiptap/react";
 import { useId, useRef, useState } from "react";
-import {
-  CalendarDays,
-  CheckSquare,
-  ChevronRight,
-  Code2,
-  Columns3,
-  FileText,
-  GripVertical,
-  Heading1,
-  Heading2,
-  Heading3,
-  Image as ImageIcon,
-  ImagePlus,
-  LayoutGrid,
-  Network,
-  Link as LinkIcon,
-  List,
-  ListOrdered,
-  Mic,
-  Paperclip,
-  PenTool,
-  Quote,
-  Search,
-  Sigma,
-  SquareStack,
-  StickyNote,
-  Table2,
-  Text,
-  Workflow,
-} from "lucide-react";
+import { Search } from "lucide-react";
 import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT } from "@folevi/editor-schema";
 import { emptyTableRows, focusInsideBlock, insertBlockAfterCurrent, insertBlockAt } from "@/components/editor/commands";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
 import { beginPointerDrag } from "@/components/editor/blockDrag";
 import { newFormulaAttrs } from "@/components/editor/FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "@/components/editor/insertCatalog";
+import { InsertPreview, type PreviewKind } from "./insertPreviews";
 
 /** What an insert does: a plain block (optionally with text), or a special flow run by the editor. */
 export interface InsertAction {
@@ -52,45 +24,94 @@ export interface InsertAction {
 }
 
 interface InsertItem extends InsertAction {
-  icon: React.ReactNode;
+  preview: PreviewKind;
   keywords?: string;
 }
 
-const i16 = { size: 16, "aria-hidden": true } as const;
-
 const MAIN: InsertItem[] = [
-  { label: "Text", type: "paragraph", icon: <Text {...i16} />, keywords: "paragraph plain" },
-  { label: "Page", special: "page", icon: <FileText {...i16} />, keywords: "nested subpage child link" },
-  { label: "Card", special: "card", icon: <SquareStack {...i16} />, keywords: "page nested subpage child" },
-  { label: "File attachment", special: "file", icon: <Paperclip {...i16} />, keywords: "file attachment upload pdf document" },
-  { label: "Image", special: "image", icon: <ImageIcon {...i16} />, keywords: "picture photo upload" },
-  { label: "Audio recording", special: "record", icon: <Mic {...i16} />, keywords: "audio record recording voice memo microphone mic sound" },
-  { label: "Image from Unsplash", special: "unsplash", icon: <ImagePlus {...i16} />, keywords: "picture photo stock unsplash search" },
-  { label: "Code block", type: "code", attrs: () => ({ language: "plaintext" }), icon: <Code2 {...i16} />, keywords: "code snippet programming" },
-  { label: "TeX formula", type: "formula", attrs: () => newFormulaAttrs(), icon: <Sigma {...i16} />, keywords: "formula math latex tex equation katex" },
-  { label: "Mermaid diagram", type: "code", attrs: () => ({ language: "mermaid" }), text: MERMAID_SAMPLE, icon: <Workflow {...i16} />, keywords: "mermaid diagram flowchart chart graph" },
-  { label: "Flowchart", type: "flowchart", attrs: () => ({ data: "", height: FLOWCHART_DEFAULT_HEIGHT }), icon: <Network {...i16} />, keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro" },
-  { label: "Whiteboard", type: "whiteboard", attrs: () => ({ data: "", height: WHITEBOARD_DEFAULT_HEIGHT }), icon: <PenTool {...i16} />, keywords: "drawing sketch draw pen canvas" },
+  { label: "Text", type: "paragraph", preview: "text", keywords: "paragraph plain" },
+  { label: "Page", special: "page", preview: "page", keywords: "nested subpage child link" },
+  { label: "Card", special: "card", preview: "card", keywords: "page nested subpage child" },
+  { label: "File attachment", special: "file", preview: "file", keywords: "file attachment upload pdf document" },
+  { label: "Image", special: "image", preview: "image", keywords: "picture photo upload" },
+  { label: "Audio recording", special: "record", preview: "audio", keywords: "audio record recording voice memo microphone mic sound" },
+  { label: "Image from Unsplash", special: "unsplash", preview: "unsplash", keywords: "picture photo stock unsplash search" },
+  { label: "Code block", type: "code", attrs: () => ({ language: "plaintext" }), preview: "code", keywords: "code snippet programming" },
+  { label: "TeX formula", type: "formula", attrs: () => newFormulaAttrs(), preview: "formula", keywords: "formula math latex tex equation katex" },
+  { label: "Mermaid diagram", type: "code", attrs: () => ({ language: "mermaid" }), text: MERMAID_SAMPLE, preview: "mermaid", keywords: "mermaid diagram flowchart chart graph" },
+  { label: "Flowchart", type: "flowchart", attrs: () => ({ data: "", height: FLOWCHART_DEFAULT_HEIGHT }), preview: "flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro" },
+  { label: "Whiteboard", type: "whiteboard", attrs: () => ({ data: "", height: WHITEBOARD_DEFAULT_HEIGHT }), preview: "whiteboard", keywords: "drawing sketch draw pen canvas" },
 ];
 
 const COLLECTIONS: InsertItem[] = [
-  { label: "Table", special: "collection", icon: <Table2 {...i16} />, keywords: "collection database table rows" },
-  { label: "Gallery", special: "gallery", icon: <LayoutGrid {...i16} />, keywords: "collection database cards grid" },
-  { label: "Kanban", special: "board", icon: <Columns3 {...i16} />, keywords: "collection database board columns" },
+  { label: "Table", special: "collection", preview: "table", keywords: "collection database table rows" },
+  { label: "Gallery", special: "gallery", preview: "gallery", keywords: "collection database cards grid" },
+  { label: "Kanban", special: "board", preview: "kanban", keywords: "collection database board columns" },
 ];
 
 const MORE: InsertItem[] = [
-  { label: "Heading 1", type: "heading", attrs: () => ({ level: 1 }), icon: <Heading1 {...i16} />, keywords: "title h1" },
-  { label: "Heading 2", type: "heading", attrs: () => ({ level: 2 }), icon: <Heading2 {...i16} />, keywords: "subtitle h2" },
-  { label: "Heading 3", type: "heading", attrs: () => ({ level: 3 }), icon: <Heading3 {...i16} />, keywords: "h3" },
-  { label: "To-do", type: "todo", attrs: () => ({ checked: false }), icon: <CheckSquare {...i16} />, keywords: "todo task checkbox checklist" },
-  { label: "Bulleted list", type: "bulleted", icon: <List {...i16} />, keywords: "bullets unordered" },
-  { label: "Numbered list", type: "numbered", icon: <ListOrdered {...i16} />, keywords: "numbers ordered" },
-  { label: "Toggle", type: "toggle", attrs: () => ({ collapsed: false }), icon: <ChevronRight {...i16} />, keywords: "collapse disclosure details" },
-  { label: "Quote", type: "quote", icon: <Quote {...i16} />, keywords: "blockquote citation" },
-  { label: "Callout", type: "callout", attrs: () => ({ tone: "note" }), icon: <StickyNote {...i16} />, keywords: "note tip info warning" },
-  { label: "Bookmark", special: "bookmark", icon: <LinkIcon {...i16} />, keywords: "web link url embed" },
-  { label: "Date", special: "pickDate", icon: <CalendarDays {...i16} />, keywords: "day calendar mention today" },
+  { label: "Heading 1", type: "heading", attrs: () => ({ level: 1 }), preview: "h1", keywords: "title h1" },
+  { label: "Heading 2", type: "heading", attrs: () => ({ level: 2 }), preview: "h2", keywords: "subtitle h2" },
+  { label: "Heading 3", type: "heading", attrs: () => ({ level: 3 }), preview: "h3", keywords: "h3" },
+  { label: "To-do", type: "todo", attrs: () => ({ checked: false }), preview: "todo", keywords: "todo task checkbox checklist" },
+  { label: "Bulleted list", type: "bulleted", preview: "bulleted", keywords: "bullets unordered" },
+  { label: "Numbered list", type: "numbered", preview: "numbered", keywords: "numbers ordered" },
+  { label: "Toggle", type: "toggle", attrs: () => ({ collapsed: false }), preview: "toggle", keywords: "collapse disclosure details" },
+  { label: "Quote", type: "quote", preview: "quote", keywords: "blockquote citation" },
+  { label: "Callout", type: "callout", attrs: () => ({ tone: "note" }), preview: "callout", keywords: "note tip info warning" },
+  { label: "Bookmark", special: "bookmark", preview: "bookmark", keywords: "web link url embed" },
+  { label: "Date", special: "pickDate", preview: "date", keywords: "day calendar mention today" },
+];
+
+/** One tile: what it inserts, its picture, and the words search looks at. */
+interface Tile {
+  key: string;
+  label: string;
+  /** Accessible name when it should say more than the label (the divider styles). */
+  name?: string;
+  action: InsertAction;
+  picture: React.ReactNode;
+  keywords: string;
+}
+
+const ITEMS = new Map([...MAIN, ...MORE, ...COLLECTIONS].map((i) => [i.label, i]));
+
+const tiles = (section: string, labels: string[]): Tile[] =>
+  labels.map((label) => {
+    const item = ITEMS.get(label);
+    if (!item) throw new Error(`Insert: no item called ${label}`);
+    return { key: `${section}:${label}`, label, action: item, picture: <InsertPreview kind={item.preview} />, keywords: `${label} ${item.keywords ?? ""}` };
+  });
+
+const SEPARATORS: Tile[] = [
+  ...DIVIDER_STYLES.map(({ style, label }) => {
+    const name = `Divider, ${label.toLowerCase()}`;
+    return {
+      key: `separators:${style}`,
+      label,
+      name,
+      action: { label: name, type: "divider", attrs: () => ({ style }) },
+      picture: (
+        <span className="block w-full px-3">
+          <span className="fb-line-preview" data-style={style} />
+        </span>
+      ),
+      keywords: `${label} line divider separator rule`,
+    };
+  }),
+  { key: "separators:pageBreak", label: "Page break", action: { label: "Page break", type: "pageBreak" }, picture: <InsertPreview kind="pageBreak" />, keywords: "page break print pdf separator" },
+];
+
+const SECTIONS: { title: string; tiles: Tile[] }[] = [
+  { title: "Suggested", tiles: tiles("suggested", ["Text", "Page", "Card", "To-do", "Table", "Image"]) },
+  {
+    title: "Blocks",
+    tiles: tiles("blocks", ["Heading 1", "Heading 2", "Heading 3", "Bulleted list", "Numbered list", "Toggle", "Quote", "Callout", "Code block", "TeX formula", "Mermaid diagram", "Flowchart", "Whiteboard", "Bookmark", "Date"]),
+  },
+  { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording"]) },
+  { title: "Collections", tiles: tiles("collections", ["Table", "Gallery", "Kanban"]) },
+  { title: "Nested content", tiles: tiles("nested", ["Page", "Card"]) },
+  { title: "Separators", tiles: SEPARATORS },
 ];
 
 // Words starting with what's typed ("tab" finds Table, not "database"); a query with spaces matches as a phrase.
@@ -142,42 +163,28 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
   };
 }
 
-function InsertRow({ item, editor, disabled }: { item: InsertItem; editor: Editor | null; disabled: boolean }) {
-  const handlers = useInsertDrag(editor, disabled, item);
+// The picture card: a faint wash of ink over the raised surface, so paper shapes inside it read in both themes.
+const PICTURE =
+  "grid h-14 w-full place-items-center overflow-hidden rounded-[9px] bg-[color-mix(in_oklab,var(--color-ink)_4%,var(--color-surface-raised))] shadow-[0_0_0_1px_var(--color-line)] transition-[box-shadow,transform] duration-150";
+const PICTURE_LIVE =
+  "group-hover:-translate-y-px group-hover:shadow-[0_0_0_1px_var(--color-line-strong),0_6px_14px_-8px_rgb(0_0_0/0.35)] group-active:translate-y-0 group-active:scale-[0.97] group-active:shadow-[0_0_0_1px_var(--color-line-strong)]";
+
+function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | null; disabled: boolean }) {
+  const handlers = useInsertDrag(editor, disabled, tile.action);
   return (
     <button
       type="button"
       disabled={disabled}
-      aria-label={item.label}
-      title={`${item.label}: click to insert below the current block, or drag into the page`}
+      aria-label={tile.name ?? tile.label}
+      title={tile.label}
       {...handlers}
-      className="fb-insert-row group ui-raised"
+      className={`group flex min-w-0 touch-none select-none flex-col items-center gap-1.5 rounded-[10px] p-0.5 disabled:opacity-45 ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
-      <span className="fb-insert-row-icon" aria-hidden>
-        {item.icon}
+      <span className={`${PICTURE} ${disabled ? "" : PICTURE_LIVE}`} aria-hidden>
+        {tile.picture}
       </span>
-      <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-      <GripVertical size={14} aria-hidden className="fb-insert-grip" />
-    </button>
-  );
-}
-
-function DividerTile({ style, label, editor, disabled }: { style: string; label: string; editor: Editor | null; disabled: boolean }) {
-  const handlers = useInsertDrag(editor, disabled, { label: `Divider, ${label.toLowerCase()}`, type: "divider", attrs: () => ({ style }) });
-  return (
-    <button type="button" disabled={disabled} aria-label={`Divider, ${label.toLowerCase()}`} title={`${label} line`} {...handlers} className="fb-insert-tile ui-raised">
-      <span className="fb-line-preview" data-style={style} aria-hidden />
-    </button>
-  );
-}
-
-function PageBreakTile({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
-  const handlers = useInsertDrag(editor, disabled, { label: "Page break", type: "pageBreak" });
-  return (
-    <button type="button" disabled={disabled} aria-label="Page break" title="Page break: starts a new page when printed" {...handlers} className="fb-insert-tile fb-insert-tile-wide ui-raised">
-      <span className="fb-pagebreak-preview" aria-hidden>
-        <span />
-        <span />
+      <span className={`line-clamp-2 w-full break-words px-0.5 text-center text-[11.5px] font-medium leading-tight text-muted ${disabled ? "" : "group-hover:text-ink"}`}>
+        {tile.label}
       </span>
     </button>
   );
@@ -205,14 +212,14 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
   };
   return (
     <div>
-      <p id={hintId} className="px-1 text-[12.5px] leading-snug text-muted">
-        Insert a table with the highlighted number of rows and columns.
+      <p id={hintId} className="mb-2 px-1 text-[12px] leading-snug text-muted">
+        Pick a size, then click to add the table.
       </p>
       <div
         role="group"
         aria-label="Table size"
         aria-describedby={hintId}
-        className="fb-table-picker ui-raised"
+        className="grid grid-cols-8 gap-1 rounded-[9px] bg-[color-mix(in_oklab,var(--color-ink)_4%,var(--color-surface-raised))] p-2.5 shadow-[0_0_0_1px_var(--color-line)]"
         onPointerLeave={() => setHover(null)}
         onFocus={() => setFocused(true)}
         onBlur={(e) => {
@@ -257,24 +264,20 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
           }),
         )}
       </div>
-      <p className="mt-1.5 px-1 text-center text-[12.5px] font-medium tabular-nums text-muted" aria-live="polite">
+      <p className="mt-1.5 px-1 text-center text-[11.5px] font-medium tabular-nums text-muted" aria-live="polite">
         {active ? `${active.r} × ${active.c}` : " "}
       </p>
     </div>
   );
 }
 
-function Section({ title, children }: { title?: string; children: React.ReactNode }) {
-  const id = useId();
+/** A titled group of tiles (or the table picker); search hides it when nothing in it matches. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-5 first:mt-3" aria-labelledby={title ? id : undefined}>
-      {title ? (
-        <h3 id={id} className="mb-2 px-1 text-[13.5px] font-semibold text-heading">
-          {title}
-        </h3>
-      ) : null}
+    <div role="group" aria-label={title} className="mt-5">
+      <h3 className="ui-caps mb-2 px-1">{title}</h3>
       {children}
-    </section>
+    </div>
   );
 }
 
@@ -282,23 +285,8 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
   const d = disabled || !editor;
   const [q, setQ] = useState("");
   const query = q.trim().toLowerCase();
-  const filter = (items: InsertItem[]) => items.filter((i) => matches(query, `${i.label} ${i.keywords ?? ""}`));
-  const main = filter(MAIN);
-  const collections = filter(COLLECTIONS);
-  const more = filter(MORE);
-  const showLines = matches(query, "insert line divider separator rule extra light regular strong");
-  const showBreak = matches(query, "insert page break print pdf");
-  const showTable = matches(query, "insert table grid rows columns");
-  const nothing = !main.length && !collections.length && !more.length && !showLines && !showBreak && !showTable;
-  const list = (items: InsertItem[]) => (
-    <ul className="grid gap-1.5">
-      {items.map((item) => (
-        <li key={item.label}>
-          <InsertRow item={item} editor={editor} disabled={d} />
-        </li>
-      ))}
-    </ul>
-  );
+  const sections = SECTIONS.map((s) => ({ ...s, tiles: s.tiles.filter((t) => matches(query, t.keywords)) })).filter((s) => s.tiles.length);
+  const showTable = matches(query, "table grid rows columns size");
   return (
     <div>
       <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
@@ -306,29 +294,26 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
         <Search size={14} aria-hidden />
         <input data-autofocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
       </label>
-      {main.length ? <Section>{list(main)}</Section> : null}
-      {collections.length ? <Section title="Collections">{list(collections)}</Section> : null}
-      {showLines ? (
-        <Section title="Insert line">
-          <div className="grid grid-cols-2 gap-1.5">
-            {DIVIDER_STYLES.map((s) => (
-              <DividerTile key={s.style} style={s.style} label={s.label} editor={editor} disabled={d} />
+      {sections.map((s) => (
+        <Section key={s.title} title={s.title}>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-x-2 gap-y-3">
+            {s.tiles.map((t) => (
+              <TileButton key={t.key} tile={t} editor={editor} disabled={d} />
             ))}
           </div>
         </Section>
-      ) : null}
-      {showBreak ? (
-        <Section title="Insert page break">
-          <PageBreakTile editor={editor} disabled={d} />
-        </Section>
-      ) : null}
+      ))}
       {showTable ? (
-        <Section title="Insert table">
+        <Section title="Quick table">
           <TableSizePicker editor={editor} disabled={d} />
         </Section>
       ) : null}
-      {more.length ? <Section title="Text and blocks">{list(more)}</Section> : null}
-      {nothing ? <p className="mt-6 text-center text-sm text-muted">No blocks match “{q}”.</p> : null}
+      {!sections.length && !showTable ? (
+        <div className="mt-8 px-2 text-center">
+          <p className="text-[13px] font-medium text-ink">No matches</p>
+          <p className="mt-1 text-[12px] text-muted">Nothing called “{q.trim()}”. Try another word.</p>
+        </div>
+      ) : null}
     </div>
   );
 }

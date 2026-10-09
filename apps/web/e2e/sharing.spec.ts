@@ -40,7 +40,7 @@ test("share a page with another person, comment, and publish a revocable public 
   await guest.page.getByRole("link", { name: /Project Atlas Brief/ }).click();
   await expect(guest.page.getByText("View only")).toBeVisible();
   // The guest's sidebar shows folders: the page's "…" menu opens its Comments tab.
-  await guest.page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Document actions" }).click();
+  await guest.page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
   await guest.page.getByRole("menuitem", { name: "Comments", exact: true }).click();
   await expect(guest.page.getByRole("tab", { name: /^Comments/ })).toHaveAttribute("aria-selected", "true");
   await guest.page.getByLabel(/Comment on this document/).fill("Can we add a budget section?");

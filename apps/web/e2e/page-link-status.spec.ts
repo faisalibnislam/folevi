@@ -25,7 +25,7 @@ test("a [[ link to a page in Trash is crossed out, and comes back when it's rest
   await link.click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}$/);
   const target = page.url().replace(/^https?:\/\/[^/]+/, "");
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Document actions" }).click();
+  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
   await page.getByRole("menuitem", { name: "Move to Trash" }).click();
   await expect(page.getByText("Moved to Trash")).toBeVisible();
   await page.goto(source);
@@ -33,7 +33,7 @@ test("a [[ link to a page in Trash is crossed out, and comes back when it's rest
   await expect(page.locator(".fb-editor a[data-page-link]")).toHaveAttribute("title", "This page is in Trash");
   // Restored: a normal link again.
   await page.goto(target);
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Document actions" }).click();
+  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
   await page.getByRole("menuitem", { name: "Restore from Trash" }).click();
   await expect(page.getByText("Restored")).toBeVisible();
   await page.goto(source);

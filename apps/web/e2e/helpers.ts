@@ -242,17 +242,19 @@ export function seedDemo(email: string, counts: { notes: number; folders: number
 
 /** Opens a page tool (Insert, Format, Style, Info) from the dock at the bottom of the note; returns its panel. */
 export async function openTool(page: Page, name: "Insert" | "Format" | "Style" | "Info") {
-  const button = page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name, exact: true });
-  if ((await button.getAttribute("aria-pressed")) !== "true") await button.click();
-  const panel = page.getByRole("region", { name, exact: true });
+  // The page tools are the right sidebar (shown from the tab strip's right end), one tab each.
+  const toggle = page.getByRole("button", { name: /^(Show|Hide) page tools/ });
+  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
+  const tab = page.getByRole("complementary", { name: "Page tools" }).getByRole("tab", { name, exact: true });
+  if ((await tab.getAttribute("aria-selected")) !== "true") await tab.click();
+  const panel = page.getByRole("tabpanel", { name, exact: true });
   await expect(panel).toBeVisible();
   return panel;
 }
 
-/** Opens a page's Share dialog (Share lives in the page's "…" menu in the dock). */
+/** Opens a page's Share dialog (the Share button at the note's top right). */
 export async function openShare(page: Page) {
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Share…" }).click();
+  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Share", exact: true }).click();
 }
 
 /** Chooses an option in one of Folevi's dropdowns (the custom Select: a combobox with a listbox). */

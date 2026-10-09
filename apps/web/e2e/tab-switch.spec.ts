@@ -26,6 +26,6 @@ test("switching tabs shows the note at once, without a loading placeholder", asy
     await tabs.getByRole("link", { name }).click();
     await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(title);
     await expect(page.locator(".ProseMirror > *").first()).toBeVisible();
-    expect(await page.evaluate(() => ((window as unknown as { __watch: boolean }).__watch = false, (window as unknown as { __placeholder: boolean }).__placeholder))).toBe(false);
+    expect(await page.evaluate(() => ((window as unknown as { __watch: boolean }).__watch = false, (window as unknown as { __placeholder: boolean }).__placeholder)), `placeholder while switching to ${String(title)}`).toBe(false);
   }
 });

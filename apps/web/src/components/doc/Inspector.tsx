@@ -35,8 +35,6 @@ import { MovePageDialog } from "./MovePageDialog";
 import { InsertPanel } from "./InsertPanel";
 import { FormatPanel } from "./FormatPanel";
 import { BlurredBackdrop } from "./BlurredBackdrop";
-import { AiPanel } from "@/components/ai/AiPanel";
-import { useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
@@ -45,8 +43,8 @@ import { useRadioGroup } from "@/lib/a11y/radioGroup";
 export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments";
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
-const TABS: { id: Exclude<InspectorTab, "comments">; label: string }[] = [
-  { id: "ai", label: "AI" },
+// AI is the floating chat (its "This note" view has the note's AI tools), not a tab here.
+const TABS: { id: Exclude<InspectorTab, "comments" | "ai">; label: string }[] = [
   { id: "insert", label: "Insert" },
   { id: "format", label: "Format" },
   { id: "style", label: "Style" },
@@ -66,8 +64,7 @@ export function Inspector({
   actions,
   readOnly,
   hideTabs,
-  aiRun = null,
-  onAiTitle,
+  bare = false,
 }: {
   documentId: string;
   editor: Editor | null;
@@ -86,21 +83,18 @@ export function Inspector({
   readOnly: boolean;
   /** Floating panel opened from the icon rail: the rail picks the tab, so only its name is shown. */
   hideTabs?: boolean;
-  /** A rewrite of the selected text, requested from the editor's toolbar (AI tab). */
-  aiRun?: (AiRunDetail & { id: number }) | null;
-  /** The AI's suggested title was accepted. */
-  onAiTitle?: (title: string) => void;
+  /** Straight on the canvas (the right sidebar on wide windows): its tabs line up with the top of the note. */
+  bare?: boolean;
 }) {
   const baseId = useId();
-  const aiOn = useAiEnabled(meta?.document);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments">>("format");
+  const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments" | "ai">>("format");
   useEffect(() => {
-    if (tab !== "comments") setLastTab(tab);
+    if (tab !== "comments" && tab !== "ai") setLastTab(tab);
   }, [tab]);
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-none px-3 pt-2.5">
+      <div className={`flex-none px-3 ${bare ? "pt-0" : "pt-2.5"}`}>
         {hideTabs && tab !== "comments" ? (
           <div className="flex h-9 items-center gap-1 px-1">
             <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex-1 text-[18px]">
@@ -123,44 +117,43 @@ export function Inspector({
             </IconButton>
           </div>
         ) : (
-        <div className="flex h-9 items-center gap-1 border-b border-line/70">
-        <div role="tablist" aria-label="Inspector" className="flex flex-1 items-center gap-0.5">
-          {TABS.filter((t) => aiOn || t.id !== "ai").map((t, i) => (
-            <button
-              key={t.id}
-              ref={(el) => {
-                tabRefs.current[i] = el;
-              }}
-              role="tab"
-              type="button"
-              id={`${baseId}-tab-${t.id}`}
-              aria-selected={tab === t.id}
-              aria-controls={`${baseId}-panel`}
-              tabIndex={tab === t.id ? 0 : -1}
-              onClick={() => onTab(t.id)}
-              onKeyDown={(e) => {
-                const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-                if (!dir) return;
-                e.preventDefault();
-                const next = (i + dir + TABS.length) % TABS.length;
-                onTab(TABS[next]!.id);
-                tabRefs.current[next]?.focus();
-              }}
-              className={`relative h-9 rounded-[6px] px-2 text-[13px] transition-colors hover:text-heading ${tab === t.id ? "font-semibold text-heading" : "text-muted"}`}
-            >
-              {t.label}
-              {tab === t.id ? <span aria-hidden className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-heading" /> : null}
-            </button>
-          ))}
-        </div>
-          <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
+        <div className="flex items-center gap-1.5">
+          {/* The same segmented control as the page sidebar's tools, on the left. */}
+          <div role="tablist" aria-label="Inspector" className="ui-seg ui-well min-w-0 flex-1">
+            {TABS.map((t, i) => (
+              <button
+                key={t.id}
+                ref={(el) => {
+                  tabRefs.current[i] = el;
+                }}
+                role="tab"
+                type="button"
+                id={`${baseId}-tab-${t.id}`}
+                aria-selected={tab === t.id}
+                aria-controls={`${baseId}-panel`}
+                tabIndex={tab === t.id ? 0 : -1}
+                onClick={() => onTab(t.id)}
+                onKeyDown={(e) => {
+                  const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+                  if (!dir) return;
+                  e.preventDefault();
+                  const next = (i + dir + TABS.length) % TABS.length;
+                  onTab(TABS[next]!.id);
+                  tabRefs.current[next]?.focus();
+                }}
+                className="!min-h-8 min-w-0 flex-1 truncate !px-1.5 text-[13px]"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <IconButton label="Close panel" onClick={onClose} className="!h-8 !w-8 flex-none pointer-coarse:!h-11 pointer-coarse:!w-11">
             <X size={15} aria-hidden />
           </IconButton>
         </div>
         )}
       </div>
       <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
-        {tab === "ai" && aiOn ? <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} /> : null}
         {tab === "insert" ? <InsertPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "format" ? <FormatPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}

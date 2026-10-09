@@ -23,12 +23,11 @@ test("comments tab lists, jumps and manages threads", async ({ browser }) => {
   await expect(link).toHaveAttribute("href", "https://example.com/guide");
   await expect(link).toHaveAttribute("target", "_blank");
   await page.keyboard.press("Escape");
-  // Dock: no Comments, Share or Info; the "…" menu has Share and Info.
-  const dock = page.getByRole("toolbar", { name: "Page tools" });
-  await expect(dock.getByRole("button", { name: /^Comments/ })).toHaveCount(0);
-  await expect(dock.getByRole("button", { name: "Share" })).toHaveCount(0);
-  await expect(dock.getByRole("button", { name: "Info" })).toHaveCount(0);
-  await dock.getByRole("button", { name: "Document actions" }).click();
+  // The note's top right: Share and the "…" menu (which has Share and Info too); no Comments button.
+  const pageGroup = page.getByRole("group", { name: "Page" });
+  await expect(pageGroup.getByRole("button", { name: /^Comments/ })).toHaveCount(0);
+  await expect(pageGroup.getByRole("button", { name: "Share", exact: true })).toBeVisible();
+  await pageGroup.getByRole("button", { name: "Document actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Share…" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Info" })).toBeVisible();
   await page.keyboard.press("Escape");

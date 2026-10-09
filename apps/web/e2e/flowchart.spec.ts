@@ -131,9 +131,6 @@ test.describe("Flowchart", () => {
     await panel.getByRole("button", { name: "Mermaid diagram" }).click();
     const card = page.locator(".fb-editor pre.fb-code-mermaid");
     await expect(card.locator("img.fb-mermaid-svg")).toBeVisible({ timeout: 30_000 });
-    // Close the Insert panel (it floats above the bottom bar, over the page).
-    await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Insert" }).click();
-    await expect(panel).toBeHidden();
     // Caret elsewhere: the source is folded away.
     await page.locator(".fb-editor > p.fb").first().click();
     await expect(card.locator("code")).toBeHidden();

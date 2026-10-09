@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ChevronRight, FileText, Folder, Hash, House, LayoutList, Plus, X, XCircle } from "lucide-react";
+import { ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ChevronRight, FileText, Folder, Hash, House, LayoutList, PanelRight, Plus, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabPage, useTabs } from "@/lib/app/tabs";
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { ContextMenu } from "@/components/ui/Menu";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
@@ -22,7 +22,7 @@ const ARROW = "grid h-8 w-6 flex-none place-items-center rounded-[6px] text-mute
  * page. Pages open in tabs; closing the current tab moves to its neighbour.
  */
 export function TabStrip() {
-  const { sidebarOpen } = useShell();
+  const { sidebarOpen, inspectorOpen, setInspectorOpen } = useShell();
   const { route, pathname } = useAppRouter();
   const { tabs, close, closeMany, move, view } = useTabs();
   // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
@@ -282,6 +282,12 @@ export function TabStrip() {
       <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="flex-none">
         <Plus size={14} aria-hidden /> New note
       </Button>
+      {/* On a note: shows or hides its tools (Insert, Format, Style, Info) in the right sidebar. */}
+      {docId ? (
+        <IconButton label={inspectorOpen ? "Hide page tools" : "Show page tools"} shortcut="⌥⌘I" aria-pressed={inspectorOpen} onMouseDown={(e) => e.preventDefault()} onClick={() => setInspectorOpen(!inspectorOpen)} className="flex-none">
+          <PanelRight size={16} aria-hidden />
+        </IconButton>
+      ) : null}
     </div>
   );
 }

@@ -52,6 +52,10 @@ interface ShellValue {
   setAmbient: (css: string | null, tone?: "deep" | "light" | null) => void;
   /** Opens Ask AI (⌘J), optionally with a question typed in, or about one folder's notes. */
   openAsk: (question?: string, folder?: { id: string; name: string }) => void;
+  /** Opens the AI chat on the open note's own tools (summarize, rewrite, continue…). */
+  openNoteAi: () => void;
+  /** Where the open note puts its AI tools: inside the chat's "This note" view (null while it's not there). */
+  aiNoteSlot: HTMLElement | null;
 }
 
 const ShellContext = createContext<ShellValue | null>(null);
@@ -171,7 +175,8 @@ export function Shell() {
       delete root.dataset.ambient;
     };
   }, [ambientTone]);
-  const [askOpen, setAskOpen] = useState<{ q?: string; folder?: { id: string; name: string } } | null>(null);
+  const [askOpen, setAskOpen] = useState<{ q?: string; folder?: { id: string; name: string }; note?: boolean } | null>(null);
+  const [aiNoteSlot, setAiNoteSlot] = useState<HTMLElement | null>(null);
   const ai = useAiAccess();
   const aiOn = ai.on;
   const aiOnRef = useRef(aiOn);
@@ -264,8 +269,10 @@ export function Shell() {
       },
       setAmbient,
       openAsk: (q, folder) => setAskOpen({ q, folder }),
+      openNoteAi: () => setAskOpen({ note: true }),
+      aiNoteSlot,
     }),
-    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient],
+    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient, aiNoteSlot],
   );
 
   // Dragging moves the panel's edge directly and saves the width once, on release: saving on every move
@@ -348,7 +355,7 @@ export function Shell() {
       <WarmNotes />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
-      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} /> : null}
+      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} noteFirst={askOpen?.note || (!askOpen?.q && !askOpen?.folder)} onNoteSlot={setAiNoteSlot} onClose={() => setAskOpen(null)} /> : null}
     </ShellContext.Provider>
     </TabsProvider>
   );

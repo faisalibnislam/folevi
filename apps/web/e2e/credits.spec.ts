@@ -34,7 +34,7 @@ async function expectNoAi(page: Page) {
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Some words to select");
-  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "AI" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "AI Assistant", exact: true })).toHaveCount(0);
   await page.keyboard.press("Shift+Home");
   const formatting = page.getByRole("toolbar", { name: "Text formatting" });
   await expect(formatting).toBeVisible();
@@ -55,7 +55,7 @@ async function expectNoAi(page: Page) {
 test("Core hides every AI entry point in Personal, and the AI setting says it isn't included", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Core Writer");
   // The trial includes AI.
-  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "AI" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "AI Assistant", exact: true })).toBeVisible();
   await page.goto(`${APP}/documents`);
   await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
 

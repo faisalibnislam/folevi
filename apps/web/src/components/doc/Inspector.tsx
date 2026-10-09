@@ -38,12 +38,16 @@ import { BlurredBackdrop } from "./BlurredBackdrop";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
+import { useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
+import { AiPanel } from "@/components/ai/AiPanel";
+import { Conversation } from "@/components/ai/AskAiChat";
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
 export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments";
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
-// AI is the floating chat (its "This note" view has the note's AI tools), not a tab here.
+// The tools the sidebar shows by name (AI opens from the floating bar, so it has no tab of its own).
+const TITLES: Partial<Record<InspectorTab, string>> = { ai: "AI", insert: "Insert", format: "Format", style: "Style", info: "Info" };
 const TABS: { id: Exclude<InspectorTab, "comments" | "ai">; label: string }[] = [
   { id: "insert", label: "Insert" },
   { id: "format", label: "Format" },
@@ -65,6 +69,11 @@ export function Inspector({
   readOnly,
   hideTabs,
   bare = false,
+  aiRun = null,
+  aiView = "note",
+  onAiView,
+  aiQuestion,
+  onAiTitle,
 }: {
   documentId: string;
   editor: Editor | null;
@@ -85,8 +94,18 @@ export function Inspector({
   hideTabs?: boolean;
   /** Straight on the canvas (the right sidebar on wide windows): its tabs line up with the top of the note. */
   bare?: boolean;
+  /** A rewrite of the selected text, requested from the editor's toolbar (runs in AI → This note). */
+  aiRun?: (AiRunDetail & { id: number }) | null;
+  /** AI shows this note's tools or the chat with all notes. */
+  aiView?: "note" | "all";
+  onAiView?: (view: "note" | "all") => void;
+  /** A question to start the all-notes chat with (Ask AI from the palette or a selection). */
+  aiQuestion?: { text: string; at: number };
+  /** The AI's suggested title was accepted. */
+  onAiTitle?: (title: string) => void;
 }) {
   const baseId = useId();
+  const aiOn = useAiEnabled(meta?.document);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [lastTab, setLastTab] = useState<Exclude<InspectorTab, "comments" | "ai">>("format");
   useEffect(() => {
@@ -98,7 +117,7 @@ export function Inspector({
         {hideTabs && tab !== "comments" ? (
           <div className="flex h-9 items-center gap-1 px-1">
             <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex-1 text-[18px]">
-              {TABS.find((t) => t.id === tab)?.label}
+              {TITLES[tab]}
             </h2>
             <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
               <X size={15} aria-hidden />
@@ -154,6 +173,7 @@ export function Inspector({
         )}
       </div>
       <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
+        {tab === "ai" && aiOn ? <NoteAi documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} view={aiView} onView={(v) => onAiView?.(v)} question={aiQuestion} onTitle={(t) => onAiTitle?.(t)} /> : null}
         {tab === "insert" ? <InsertPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "format" ? <FormatPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}
@@ -683,6 +703,49 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           ))}
         </ul>
       </section>
+    </div>
+  );
+}
+
+/**
+ * AI in the note's sidebar: this note's tools (summarize, continue, rewrite the selection, suggest a title) or the
+ * chat with all your notes. Both stay mounted, so switching keeps the conversation and the latest result.
+ */
+function NoteAi({
+  documentId,
+  editor,
+  readOnly,
+  run,
+  view,
+  onView,
+  question,
+  onTitle,
+}: {
+  documentId: string;
+  editor: Editor | null;
+  readOnly: boolean;
+  run: (AiRunDetail & { id: number }) | null;
+  view: "note" | "all";
+  onView: (view: "note" | "all") => void;
+  question?: { text: string; at: number };
+  onTitle: (title: string) => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div role="group" aria-label="Ask about" className="ui-seg ui-well mb-3 flex-none">
+        <button type="button" aria-pressed={view === "note"} onClick={() => onView("note")} className="flex-1">
+          This note
+        </button>
+        <button type="button" aria-pressed={view === "all"} onClick={() => onView("all")} className="flex-1">
+          All notes
+        </button>
+      </div>
+      <div hidden={view !== "note"}>
+        <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={run} onTitle={onTitle} />
+      </div>
+      <div hidden={view !== "all"} className="-mx-3 -mb-4 flex min-h-[420px] flex-1 flex-col">
+        <Conversation open={view === "all"} initial={question?.text} onNavigate={() => undefined} />
+      </div>
     </div>
   );
 }

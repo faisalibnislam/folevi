@@ -56,7 +56,6 @@ import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { BlockThread, useNoteNotifyItems } from "./Comments";
 import { AI_OPEN_EVENT, AI_RUN_EVENT, useAi, useAiEnabled, type AiRunDetail } from "@/components/ai/useAi";
-import { AiPanel } from "@/components/ai/AiPanel";
 import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
@@ -92,7 +91,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
-  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, openNoteAi, aiNoteSlot } = useShell();
+  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, setNoteAi } = useShell();
   const sidebarOpenRef = useRef(sidebarOpen);
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
@@ -447,29 +446,45 @@ export function DocumentView({ documentId }: { documentId: string }) {
     });
   }, [setInspectorOpen, inspectorTab]);
 
-  // AI: a selection rewrite from the editor's toolbar, or "ask AI to write" from the slash menu, opens the
-  // AI chat on this note's tools (its "This note" view, where the rewrite runs).
+  // AI on a note lives in its right sidebar (the "AI" tool): this note's tools, or the chat with all notes. A
+  // selection rewrite from the editor's toolbar, "ask AI to write" from the slash menu, ⌘J and Ask AI open it.
   const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
   // AI follows the note's own scope (your Personal: your Personal plan; a team: its workspace plan).
   const aiOn = useAiEnabled(meta?.document);
-  // (A tools panel last left on AI, before AI moved to the chat, shows Insert.)
+  const [aiView, setAiView] = useState<"note" | "all">("note");
+  const [aiQuestion, setAiQuestion] = useState<{ text: string; at: number } | undefined>(undefined);
+  const openAi = useCallback(
+    (view: "note" | "all", question?: string) => {
+      setAiView(view);
+      if (question) setAiQuestion({ text: question, at: Date.now() });
+      setInspectorTab("ai");
+      setInspectorOpen(true);
+    },
+    [setInspectorTab, setInspectorOpen],
+  );
+  // AI turned off while its tool is open: show another one instead.
   useEffect(() => {
-    if (inspectorTab === "ai") setInspectorTab("insert");
-  }, [inspectorTab, setInspectorTab]);
+    if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
+  }, [aiOn, inspectorTab, setInspectorTab]);
+  useEffect(() => {
+    if (!aiOn) return;
+    setNoteAi(({ view, question }) => openAi(view, question));
+    return () => setNoteAi(null);
+  }, [aiOn, setNoteAi, openAi]);
   useEffect(() => {
     if (!aiOn) return;
     const onRun = (e: Event) => {
       setAiRun({ ...(e as CustomEvent<AiRunDetail>).detail, id: Date.now() });
-      openNoteAi();
+      openAi("note");
     };
-    const onOpen = () => openNoteAi();
+    const onOpen = () => openAi("note");
     window.addEventListener(AI_RUN_EVENT, onRun);
     window.addEventListener(AI_OPEN_EVENT, onOpen);
     return () => {
       window.removeEventListener(AI_RUN_EVENT, onRun);
       window.removeEventListener(AI_OPEN_EVENT, onOpen);
     };
-  }, [openNoteAi, aiOn]);
+  }, [openAi, aiOn]);
 
   // ⌘F finds in the note and ⌘⌥F replaces, while focus is in the note (or nowhere in particular);
   // anywhere else the browser's own find still works.
@@ -796,13 +811,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
         <PageDock
           ai={aiOn}
-          tab={inspectorTab === "ai" ? "insert" : inspectorTab}
+          tab={inspectorTab}
           open={inspectorOpen}
           onPick={(t) => {
-            if (t === "ai") {
-              openNoteAi();
-              return;
-            }
+            if (t === "ai") setAiView("note");
             if (inspectorOpen && inspectorTab === t) closeInspector();
             else {
               setInspectorTab(t);
@@ -831,7 +843,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               documentId={documentId}
               editor={editor}
               meta={meta ?? null}
-              tab={inspectorTab === "ai" ? "insert" : inspectorTab}
+              tab={inspectorTab}
               onTab={setInspectorTab}
               focusThreadId={focusThreadId}
               onOpenThread={(t) => {
@@ -842,6 +854,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 setOpenThread({ blockId: t.blockId, threadId: t.id });
               }}
               onClose={closeInspector}
+              aiRun={aiRun}
+              aiView={aiView}
+              onAiView={setAiView}
+              aiQuestion={aiQuestion}
+              onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
               onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
               actions={actions}
               readOnly={readOnly}
@@ -871,7 +888,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 documentId={documentId}
                 editor={editor}
                 meta={meta ?? null}
-                tab={inspectorTab === "ai" ? "insert" : inspectorTab}
+                tab={inspectorTab}
                 onTab={setInspectorTab}
                 focusThreadId={focusThreadId}
                 onOpenThread={(t) => {
@@ -882,6 +899,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
                   setOpenThread({ blockId: t.blockId, threadId: t.id });
                 }}
                 onClose={closeInspector}
+                aiRun={aiRun}
+                aiView={aiView}
+                onAiView={setAiView}
+                aiQuestion={aiQuestion}
+                onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
                 onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
                 actions={actions}
                 readOnly={readOnly}
@@ -890,11 +912,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
           </RightPanel>
         ) : null}
       </div>
-      {/* The note's AI tools live in the AI chat's "This note" view. */}
-      {/* (Only once the server knows the note: its credits and context are looked up by its id.) */}
-      {aiOn && aiNoteSlot && meta
-        ? createPortal(<AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)} />, aiNoteSlot)
-        : null}
       {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
       {meta && !readOnly ? (

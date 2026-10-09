@@ -52,10 +52,8 @@ interface ShellValue {
   setAmbient: (css: string | null, tone?: "deep" | "light" | null) => void;
   /** Opens Ask AI (⌘J), optionally with a question typed in, or about one folder's notes. */
   openAsk: (question?: string, folder?: { id: string; name: string }) => void;
-  /** Opens the AI chat on the open note's own tools (summarize, rewrite, continue…). */
-  openNoteAi: () => void;
-  /** Where the open note puts its AI tools: inside the chat's "This note" view (null while it's not there). */
-  aiNoteSlot: HTMLElement | null;
+  /** The open note takes AI requests (⌘J, Ask AI, the palette) into its AI sidebar; null when it leaves. */
+  setNoteAi: (open: ((request: { view: "note" | "all"; question?: string }) => void) | null) => void;
 }
 
 const ShellContext = createContext<ShellValue | null>(null);
@@ -175,8 +173,12 @@ export function Shell() {
       delete root.dataset.ambient;
     };
   }, [ambientTone]);
-  const [askOpen, setAskOpen] = useState<{ q?: string; folder?: { id: string; name: string }; note?: boolean } | null>(null);
-  const [aiNoteSlot, setAiNoteSlot] = useState<HTMLElement | null>(null);
+  const [askOpen, setAskOpen] = useState<{ q?: string; folder?: { id: string; name: string } } | null>(null);
+  // On a note, AI opens in its right sidebar (DocumentView registers here); elsewhere, the floating chat.
+  const noteAi = useRef<((request: { view: "note" | "all"; question?: string }) => void) | null>(null);
+  const setNoteAi = useCallback((open: ((request: { view: "note" | "all"; question?: string }) => void) | null) => {
+    noteAi.current = open;
+  }, []);
   const ai = useAiAccess();
   const aiOn = ai.on;
   const aiOnRef = useRef(aiOn);
@@ -232,7 +234,8 @@ export function Shell() {
         setQuickAddOpen(true);
       } else if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j" && aiOnRef.current) {
         e.preventDefault();
-        setAskOpen({});
+        if (noteAi.current) noteAi.current({ view: "note" });
+        else setAskOpen({});
       } else if (mod && e.altKey && e.code === "KeyT") {
         e.preventDefault();
         navigate("/tasks/today");
@@ -268,11 +271,10 @@ export function Shell() {
         } else setCollapsed(false);
       },
       setAmbient,
-      openAsk: (q, folder) => setAskOpen({ q, folder }),
-      openNoteAi: () => setAskOpen({ note: true }),
-      aiNoteSlot,
+      openAsk: (q, folder) => (noteAi.current && !folder ? noteAi.current({ view: "all", question: q }) : setAskOpen({ q, folder })),
+      setNoteAi,
     }),
-    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient, aiNoteSlot],
+    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient, setNoteAi],
   );
 
   // Dragging moves the panel's edge directly and saves the width once, on release: saving on every move
@@ -355,7 +357,7 @@ export function Shell() {
       <WarmNotes />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
-      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} noteFirst={askOpen?.note || (!askOpen?.q && !askOpen?.folder)} onNoteSlot={setAiNoteSlot} onClose={() => setAskOpen(null)} /> : null}
+      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} /> : null}
     </ShellContext.Provider>
     </TabsProvider>
   );

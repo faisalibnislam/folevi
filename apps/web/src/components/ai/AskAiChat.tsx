@@ -57,8 +57,6 @@ export function AskAiChat({
   onClose,
   initial,
   folder,
-  noteFirst = false,
-  onNoteSlot,
 }: {
   open: boolean;
   onOpen: () => void;
@@ -66,20 +64,11 @@ export function AskAiChat({
   initial?: string;
   /** Only this folder's notes. */
   folder?: { id: string; name: string };
-  /** On a note, open on its own tools ("This note") rather than the chat with all notes. */
-  noteFirst?: boolean;
-  /** Where the open note puts its AI tools (DocumentView portals them in). */
-  onNoteSlot?: (el: HTMLElement | null) => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const { route } = useAppRouter();
-  // On a note the chat has two views: the note's own tools (summarize, rewrite…) and the chat with all notes.
+  // On a note, AI lives in the note's right sidebar (its "AI" tool), so the floating button stays off notes.
   const onNote = route.name === "doc";
-  const [view, setView] = useState<"note" | "all">("note");
-  useEffect(() => {
-    if (open) setView(noteFirst ? "note" : "all");
-  }, [open, noteFirst]);
-  const showNote = onNote && view === "note";
   const launcherRef = useRef<HTMLButtonElement>(null);
   const uid = useId();
   useEffect(() => setMounted(true), []);
@@ -104,32 +93,18 @@ export function AskAiChat({
               close();
             }
           }}
-          className={`ui-pop fixed ${onNote ? "bottom-9" : "bottom-[104px]"} right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-[18px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
+          className={`ui-pop fixed bottom-[104px] right-9 z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-[18px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
         >
           <header className="flex flex-none items-center gap-2.5 border-b border-line/70 px-4 py-3">
             <AiIcon size={20} aria-hidden className="flex-none" />
-            <h2 id={`${uid}-title`} className={onNote ? "sr-only" : "flex-1 text-[14.5px] font-semibold text-heading"}>
+            <h2 id={`${uid}-title`} className="flex-1 text-[14.5px] font-semibold text-heading">
               Ask AI
             </h2>
-            {onNote ? (
-              <div role="group" aria-label="Show" className="ui-seg flex-1 bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
-                <button type="button" aria-pressed={view === "note"} onClick={() => setView("note")}>
-                  This note
-                </button>
-                <button type="button" aria-pressed={view === "all"} onClick={() => setView("all")}>
-                  All notes
-                </button>
-              </div>
-            ) : null}
             <button type="button" aria-label="Close chat" onClick={close} className="grid h-8 w-8 place-items-center rounded-[8px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
               <X size={16} aria-hidden />
             </button>
           </header>
-          {/* Both stay mounted: switching views (or closing) keeps the conversation and the note's result. */}
-          <div ref={onNoteSlot} hidden={!showNote} className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3" />
-          <div hidden={showNote} className="flex min-h-0 flex-1 flex-col">
-            <Conversation open={open && !showNote} initial={initial} folder={folder} onNavigate={close} />
-          </div>
+          <Conversation open={open} initial={initial} folder={folder} onNavigate={close} />
       </section>
       {/* On a note the floating bar's AI button opens it; elsewhere this floating button does. */}
       {onNote ? null : (
@@ -151,7 +126,8 @@ export function AskAiChat({
   );
 }
 
-function Conversation({ open, initial, folder, onNavigate }: { open: boolean; initial?: string; folder?: { id: string; name: string }; onNavigate: () => void }) {
+/** The chat with your notes (questions, cited answers, proposed changes): in the floating chat, and in a note's AI sidebar. */
+export function Conversation({ open, initial, folder, onNavigate }: { open: boolean; initial?: string; folder?: { id: string; name: string }; onNavigate: () => void }) {
   const { ask } = useAi();
   const stream = useAiStream();
   const { navigate } = useAppRouter();

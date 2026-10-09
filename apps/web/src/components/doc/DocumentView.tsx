@@ -18,7 +18,6 @@ import {
   History,
   LayoutTemplate,
   Info,
-  Lock,
   MoreHorizontal,
   Printer,
   Search,
@@ -597,21 +596,15 @@ export function DocumentView({ documentId }: { documentId: string }) {
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
   const pageTitle = summary?.title || localTitle || "Untitled";
-  const canShare = actions.some((a) => a !== "separator" && a.label === "Share…");
-  const pageGroup = (side: "top" | "bottom") => (
-    <div role="group" aria-label="Page" className="flex items-center gap-1">
+  const pageGroup = (
+    <div role="group" aria-label="Page" className="flex items-center gap-0.5">
       <PresenceAvatars people={presence ?? []} />
-      {meta && canShare && side === "bottom" ? (
-        <button type="button" onClick={() => setShareOpen(true)} className="ui-glass inline-flex h-8 items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-medium text-heading shadow-[var(--glass-edge)] transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
-          <Lock size={13} aria-hidden /> Share
-        </button>
-      ) : null}
       {summary ? (
         <MenuButton
           label="Document actions"
-          side={side}
+          side="top"
           align="end"
-          triggerClassName={side === "bottom" ? "ui-glass grid h-8 w-8 place-items-center rounded-[8px] text-heading shadow-[var(--glass-edge)] transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 pointer-coarse:w-11" : "grid h-10 w-10 place-items-center rounded-[6px] text-ink pointer-coarse:h-11 pointer-coarse:w-11 transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"}
+          triggerClassName="grid h-10 w-10 place-items-center rounded-[6px] text-ink pointer-coarse:h-11 pointer-coarse:w-11 transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           trigger={<MoreHorizontal size={16} aria-hidden />}
           items={actions}
         />
@@ -703,7 +696,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <div
           id="doc-scroll"
           ref={setScrollEl}
-          className={`fb-page relative h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8 sm:pt-14`}
+          className={`fb-page relative h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
           data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
           data-font={style.font}
           data-width={style.width}
@@ -799,29 +792,28 @@ export function DocumentView({ documentId }: { documentId: string }) {
             />
           ) : null}
         </div>
-        {/* The note's people, Share and its "…" menu: at its top right (on a phone, in the dock). */}
-        {drawerMode ? (
-          <PageDock
-            ai={false}
-            tab={inspectorTab === "ai" ? "insert" : inspectorTab}
-            open={inspectorOpen}
-            onPick={(t) => {
-              if (inspectorOpen && inspectorTab === t) closeInspector();
-              else {
-                setInspectorTab(t);
-                setInspectorOpen(true);
-              }
-            }}
-            buttonRef={(t, el) => {
-              dockButtons.current[t] = el;
-            }}
-            extra={pageGroup("top")}
-          />
-        ) : (
-          <div className="pointer-events-none absolute right-3 top-3 z-20 flex justify-end sm:right-4 sm:top-4">
-            <div className="pointer-events-auto">{pageGroup("bottom")}</div>
-          </div>
-        )}
+        {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
+            in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
+        <PageDock
+          ai={aiOn}
+          tab={inspectorTab === "ai" ? "insert" : inspectorTab}
+          open={inspectorOpen}
+          onPick={(t) => {
+            if (t === "ai") {
+              openNoteAi();
+              return;
+            }
+            if (inspectorOpen && inspectorTab === t) closeInspector();
+            else {
+              setInspectorTab(t);
+              setInspectorOpen(true);
+            }
+          }}
+          buttonRef={(t, el) => {
+            dockButtons.current[t] = el;
+          }}
+          extra={pageGroup}
+        />
         {/* On a phone the tools are a sheet above the dock; elsewhere they're the right sidebar (below). */}
         {inspectorOpen && drawerMode ? (
           <div
@@ -875,6 +867,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             >
               <Inspector
                 bare={!panelOverlays}
+                hideTabs
                 documentId={documentId}
                 editor={editor}
                 meta={meta ?? null}

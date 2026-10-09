@@ -12,9 +12,9 @@ const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
 ];
 
 /**
- * The page tools, docked at the bottom of the note: AI, Insert, Format and Style (Info is in the "…" menu). Each opens its panel
- * floating just above the dock, centred on it (pressing it again, Escape or × closes it), so the note
- * keeps the full width. ⌘⌥I toggles the last panel.
+ * The floating bar at the bottom of the note: AI (the assistant on this note), Insert, Format and Style, then the
+ * note's own actions. A tool opens in the right sidebar (a sheet above the bar on a phone); pressing it again,
+ * Escape or × closes it. ⌘⌥I toggles the last tool.
  */
 export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { tab: InspectorTab; open: boolean; onPick: (t: InspectorTab) => void; buttonRef: (t: InspectorTab, el: HTMLButtonElement | null) => void; /** The page's own actions (comments, share, more), after a divider. */ extra?: React.ReactNode; /** Show the AI tool (off when the person turned the assistant off). */ ai?: boolean }) {
   return (
@@ -43,12 +43,7 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
           </button>
         );
       })}
-      {extra ? (
-        <>
-          <span aria-hidden className="mx-1 h-6 w-px bg-line" />
-          {extra}
-        </>
-      ) : null}
+      {extra}
     </div>
   );
 }

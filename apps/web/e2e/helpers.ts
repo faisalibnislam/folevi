@@ -242,19 +242,23 @@ export function seedDemo(email: string, counts: { notes: number; folders: number
 
 /** Opens a page tool (Insert, Format, Style, Info) from the dock at the bottom of the note; returns its panel. */
 export async function openTool(page: Page, name: "Insert" | "Format" | "Style" | "Info") {
-  // The page tools are the right sidebar (shown from the tab strip's right end), one tab each.
-  const toggle = page.getByRole("button", { name: /^(Show|Hide) page tools/ });
-  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
-  const tab = page.getByRole("complementary", { name: "Page tools" }).getByRole("tab", { name, exact: true });
-  if ((await tab.getAttribute("aria-selected")) !== "true") await tab.click();
-  const panel = page.getByRole("tabpanel", { name, exact: true });
+  // Insert, Format and Style are on the floating bar; Info is in the page's "…" menu. Each opens in the right sidebar.
+  if (name === "Info") {
+    await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
+    await page.getByRole("menuitem", { name: "Info" }).click();
+  } else {
+    const button = page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name, exact: true });
+    if ((await button.getAttribute("aria-pressed")) !== "true") await button.click();
+  }
+  const panel = page.getByRole("region", { name, exact: true });
   await expect(panel).toBeVisible();
   return panel;
 }
 
-/** Opens a page's Share dialog (the Share button at the note's top right). */
+/** Opens a page's Share dialog (Share is in the page's "…" menu on the floating bar). */
 export async function openShare(page: Page) {
-  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Share", exact: true }).click();
+  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
+  await page.getByRole("menuitem", { name: "Share…" }).click();
 }
 
 /** Chooses an option in one of Folevi's dropdowns (the custom Select: a combobox with a listbox). */

@@ -86,8 +86,8 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
   // The Welcome page wears the chosen style; AI is off (no AI in the page tools).
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveAttribute("style", /\/covers\/art-39/);
-  await expect(page.getByRole("button", { name: /^(Show|Hide) page tools/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "AI Assistant", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Style", exact: true })).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "AI", exact: true })).toHaveCount(0);
 
   // The starter pages exist.
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");

@@ -182,21 +182,20 @@ test.describe("documents", () => {
     await context.close();
   });
 
-  test("page tools live in a right sidebar the note makes room for, with tabs; Share and the page menu at the note's top right", async ({ browser }) => {
+  test("the floating bar opens each tool in a right sidebar the note makes room for; the page menu is on the bar", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Dock Tester");
     await newPage(page, "Dock");
-    const toggle = page.getByRole("button", { name: /^(Show|Hide) page tools/ });
+    const dock = page.getByRole("toolbar", { name: "Page tools" });
     const sidebar = page.getByRole("complementary", { name: "Page tools" });
-    // No dock on a wide window: the tab strip's right end shows the tools.
-    await expect(page.getByRole("toolbar", { name: "Page tools" })).toHaveCount(0);
+    for (const name of ["AI", "Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
     const noteWidth = (await page.locator("#doc-scroll").boundingBox())!.width;
-    await toggle.focus();
+    // Style opens in the right sidebar (here from the keyboard), which shows the tool's name and a close button.
+    await dock.getByRole("button", { name: "Style", exact: true }).focus();
     await page.keyboard.press("Enter");
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    for (const name of ["Insert", "Format", "Style", "Info"]) await expect(sidebar.getByRole("tab", { name, exact: true })).toBeVisible();
-    await expect(sidebar.getByRole("tab", { name: "AI" })).toHaveCount(0);
-    await sidebar.getByRole("tab", { name: "Style", exact: true }).click();
-    await expect(page.getByRole("tabpanel", { name: "Style" })).toBeVisible();
+    const panel = page.locator("#document-inspector");
+    await expect(panel.getByRole("heading", { name: "Style" })).toBeVisible();
+    await expect(dock.getByRole("button", { name: "Style", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(sidebar.getByRole("tab")).toHaveCount(0);
     // The note makes room for it.
     const noteNow = (await page.locator("#doc-scroll").boundingBox())!;
     const sideBox = (await sidebar.boundingBox())!;
@@ -206,29 +205,27 @@ test.describe("documents", () => {
     await sidebar.getByRole("separator", { name: "Resize the tools panel" }).focus();
     await page.keyboard.press("ArrowLeft");
     await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeGreaterThan(sideBox.width);
-    // Escape closes it and returns focus to the button that opened it.
-    await sidebar.getByRole("tab", { name: "Style", exact: true }).focus();
+    // Escape closes it and returns focus to the bar button that opened it.
+    await panel.getByRole("button", { name: "Close panel" }).focus();
     await page.keyboard.press("Escape");
-    await expect(sidebar).toHaveCount(0);
-    await expect(toggle).toBeFocused();
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
-    // It stays open from note to note, on the tool last shown; its close button closes it.
-    await toggle.click();
+    await expect(panel).toBeHidden();
+    await expect(dock.getByRole("button", { name: "Style", exact: true })).toBeFocused();
+    // Another tool switches it; pressing it again closes it. It stays open from note to note.
+    await dock.getByRole("button", { name: "Format", exact: true }).click();
+    await expect(panel.getByRole("heading", { name: "Format" })).toBeVisible();
     await newPage(page, "Second");
-    await expect(page.getByRole("tabpanel", { name: "Style" })).toBeVisible();
-    await sidebar.getByRole("button", { name: "Close panel" }).click();
-    await expect(sidebar).toHaveCount(0);
-    // Info (like Share) is also in the page's "…" menu, and opens in the sidebar.
-    const icons = page.getByRole("group", { name: "Page" });
-    await expect(icons.getByRole("button", { name: "Share", exact: true })).toBeVisible();
+    await expect(page.locator("#document-inspector").getByRole("heading", { name: "Format" })).toBeVisible();
+    await dock.getByRole("button", { name: "Format", exact: true }).click();
+    await expect(panel).toBeHidden();
+    // The "…" menu is on the bar (Share and Info are in it); Info opens in the sidebar.
+    const icons = dock.getByRole("group", { name: "Page" });
+    await expect(icons.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
     await icons.getByRole("button", { name: "Document actions" }).click();
     await page.getByRole("menuitem", { name: "Info" }).click();
-    await expect(page.getByRole("tabpanel", { name: "Info" })).toBeVisible();
-    // Share and the menu sit at the note's top right; the save state sits in the page's sidebar.
-    const noteBox = (await page.locator("#doc-scroll").boundingBox())!;
-    const iconsBox = (await icons.boundingBox())!;
-    expect(iconsBox.y).toBeLessThan(noteBox.y + 60);
-    expect(iconsBox.x + iconsBox.width).toBeLessThanOrEqual(noteBox.x + noteBox.width);
+    await expect(panel.getByRole("heading", { name: "Info" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    // The save state sits in the page's sidebar, not on the bar.
     await expect(page.getByTestId("sync-status")).toHaveCount(1);
     await expect(icons.getByTestId("sync-status")).toHaveCount(0);
     // Phone width: the dock stays, icons only.

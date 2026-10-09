@@ -104,7 +104,7 @@ export function AskAiChat({
               close();
             }
           }}
-          className={`ui-pop fixed bottom-[104px] right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-[18px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
+          className={`ui-pop fixed ${onNote ? "bottom-9" : "bottom-[104px]"} right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-[18px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
         >
           <header className="flex flex-none items-center gap-2.5 border-b border-line/70 px-4 py-3">
             <AiIcon size={20} aria-hidden className="flex-none" />
@@ -131,6 +131,8 @@ export function AskAiChat({
             <Conversation open={open && !showNote} initial={initial} folder={folder} onNavigate={close} />
           </div>
       </section>
+      {/* On a note the floating bar's AI button opens it; elsewhere this floating button does. */}
+      {onNote ? null : (
       <button
         ref={launcherRef}
         type="button"
@@ -143,6 +145,7 @@ export function AskAiChat({
         {open ? <X size={18} aria-hidden /> : <AiIcon size={17} />}
         <span>AI Assistant</span>
       </button>
+      )}
     </div>,
     document.body,
   );

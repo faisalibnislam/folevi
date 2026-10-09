@@ -4,9 +4,10 @@ import { newPerson } from "./helpers";
 test("turning the AI Assistant off hides every AI entry point; turning it on brings them back", async ({ browser }) => {
   const { page } = await newPerson(browser, "AI Switcher");
   const nav = page.getByRole("navigation", { name: "Folio" });
-  // On by default: the floating chat button offers AI, on notes too (not the sidebar).
+  // On by default: the note's floating bar and (elsewhere) the floating chat button offer AI (not the sidebar).
+  const dock = page.getByRole("toolbar", { name: "Page tools" });
   const launcher = page.getByRole("button", { name: "AI Assistant", exact: true });
-  await expect(launcher).toBeVisible();
+  await expect(dock.getByRole("button", { name: "AI" })).toBeVisible();
   await page.goto("/documents");
   await expect(launcher).toBeVisible();
   await expect(nav.getByRole("button", { name: /Ask AI/ })).toHaveCount(0);
@@ -28,12 +29,12 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await page.goto("/documents");
   await expect(page.getByRole("button", { name: "Catch me up" })).toHaveCount(0);
 
-  // A note: no AI button, none in the selection toolbar or the slash menu; ⌘J does nothing.
+  // A note: no AI in the floating bar, the selection toolbar or the slash menu; ⌘J does nothing.
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Some words to select");
-  await expect(launcher).toHaveCount(0);
+  await expect(dock.getByRole("button", { name: "AI" })).toHaveCount(0);
   await page.keyboard.press("Shift+Home");
   await expect(page.getByRole("toolbar", { name: "Text formatting" })).toBeVisible();
   await expect(page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: "Ask AI" })).toHaveCount(0);

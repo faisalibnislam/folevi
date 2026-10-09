@@ -120,6 +120,8 @@ export function DocumentSidebar({
         </div>
       </div>
 
+      <PageTree documentId={documentId} onNavigate={onNavigate} />
+
       <div className="flex-none px-3">
         <div role="tablist" aria-label="Page tools" className="ui-seg ui-well">
           {TABS.map((t, i) => (
@@ -522,5 +524,39 @@ function FindPanel({ editor }: { editor: Editor | null }) {
         </ul>
       ) : null}
     </>
+  );
+}
+
+/**
+ * The note and its nested pages as a small tree, the open one marked: one click moves between them (in the
+ * same tab). Only for a note that has nested pages.
+ */
+function PageTree({ documentId, onNavigate }: { documentId: string; onNavigate?: () => void }) {
+  const tree = useQuery(api.documents.pageTree, { documentId });
+  if (!tree || tree.pages.length < 2) return null;
+  return (
+    <nav aria-label="Pages in this note" className="flex-none px-3 pb-3">
+      <h2 className="ui-caps px-1 pb-1">Pages</h2>
+      <ul className="max-h-[32vh] space-y-px overflow-y-auto">
+        {tree.pages.map((p) => {
+          const here = p.id === documentId;
+          return (
+            <li key={p.id}>
+              <AppLink
+                href={`/d/${p.id}`}
+                onClick={onNavigate}
+                aria-current={here ? "page" : undefined}
+                className={`flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] pr-2 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-10 ${here ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"}`}
+                style={{ paddingLeft: `${0.5 + p.depth * 0.85}rem` }}
+              >
+                <FileText size={13} aria-hidden className="flex-none opacity-60" />
+                <span className="truncate">{p.title || "Untitled"}</span>
+              </AppLink>
+            </li>
+          );
+        })}
+        {tree.truncated ? <li className="px-2 py-1 text-xs text-muted">More pages than fit here. Open a page to see its own.</li> : null}
+      </ul>
+    </nav>
   );
 }

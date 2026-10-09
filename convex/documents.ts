@@ -346,7 +346,15 @@ export const get = query({
     // or home-folder names. Nobody gets a parent they can't open (withExtras → Placement).
     const [extras] = await withExtras(ctx, profile, ids, [doc]);
     const document = inItsScope ? extras! : { ...extras!, folderId: null, tags: [], homeFolder: null };
-    const folder = inItsScope && doc.folderId ? await ctx.db.get(doc.folderId) : null;
+    // A nested page lives where its top-level note does (its own folder is never set).
+    let top = doc;
+    for (let i = 0; top.parentDocumentId && i < 12; i++) {
+      const parent = await ctx.db.get(top.parentDocumentId);
+      if (!parent) break;
+      top = parent;
+    }
+    const folderId = doc.folderId ?? top.folderId;
+    const folder = inItsScope && folderId ? await ctx.db.get(folderId) : null;
     const lastEditor = await ctx.db.get(doc.lastEditedBy);
     const creator = await ctx.db.get(doc.createdBy);
     return {
@@ -396,6 +404,49 @@ export const children = query({
     const out: DocumentSummary[] = [];
     for (const k of readable) out.push(await place.summary(ids, k));
     return out;
+  },
+});
+
+/** At most this many pages in a note's page tree (the sidebar lists them all, so it stays small). */
+const PAGE_TREE_LIMIT = 300;
+
+/**
+ * A note and all its nested pages, for the page tree in a note's sidebar: the top-level note this page
+ * belongs to (the highest parent this person can open, without skipping one they can't) and every page
+ * under it they can open, parents before children, in the order they were made.
+ */
+export const pageTree = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    // (A page made on this device may not have reached the server yet: no tree until it has.)
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
+    const reader = await PageReader.forScope(ctx, profile, scopeOfRow(doc));
+    let root = doc;
+    for (let i = 0; root.parentDocumentId && i < 12; i++) {
+      const parent = await ctx.db.get(root.parentDocumentId);
+      if (!parent || parent.inTrash || !(await reader.filter([parent])).length) break;
+      root = parent;
+    }
+    const pages: { id: string; title: string; parentId: string | null; depth: number }[] = [];
+    let truncated = false;
+    const walk = async (page: Doc<"documents">, parentId: string | null, depth: number): Promise<void> => {
+      if (pages.length >= PAGE_TREE_LIMIT) {
+        truncated = true;
+        return;
+      }
+      pages.push({ id: page.publicId, title: page.title, parentId, depth });
+      if (depth >= 8) return;
+      const kids = await ctx.db
+        .query("documents")
+        .withIndex("by_parent", (q) => q.eq("parentDocumentId", page._id))
+        .take(100);
+      const readable = await reader.filter(kids.filter((k) => !k.inTrash && k.kind !== "collectionRow"));
+      for (const k of readable.sort((a, b) => a._creationTime - b._creationTime)) await walk(k, page.publicId, depth + 1);
+    };
+    await walk(root, null, 0);
+    return { rootId: root.publicId, pages, truncated };
   },
 });
 

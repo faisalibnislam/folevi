@@ -49,16 +49,26 @@ test("a nested page opens inside the note's tab; a new page opens its own tab; n
   await expect(page.getByRole("group", { name: "History" })).toHaveCount(0);
 
   // A page added inside this note (Insert → Page) opens inside the note's tab: nested pages never get
-  // a tab of their own, and the tab keeps the note's name.
+  // a tab of their own, and the tab reads "Note › Page".
   await openTool(page, "Insert");
   await page.getByRole("textbox", { name: "Document body" }).locator("p").first().click();
   await page.getByRole("button", { name: "Page", exact: true }).click();
   await page.waitForURL(/\?new=1/);
   await expect(tabs.getByRole("button", { name: /^Close / })).toHaveCount(before);
   await page.getByRole("textbox", { name: "Title" }).fill("Inner page");
-  await expect(tabs.getByRole("link", { name: "Welcome to Folevi" })).toHaveAttribute("aria-current", "page");
-  await expect(tabs.getByRole("link", { name: /Inner page/ })).toHaveCount(0);
+  await expect(tabs.getByRole("link", { name: "Welcome to Folevi › Inner page" })).toHaveAttribute("aria-current", "page");
+  // The page says where it is, the sidebar lists the note's pages, and the way back is one click.
+  const path = page.getByRole("navigation", { name: "Page path" });
+  await expect(path).toContainText("Welcome to Folevi");
+  await expect(path).toContainText("Inner page");
+  const pages = page.getByRole("navigation", { name: "Pages in this note" });
+  await expect(pages.getByRole("link", { name: "Inner page" })).toHaveAttribute("aria-current", "page");
+  await expect(pages.getByRole("link", { name: "Welcome to Folevi" })).toBeVisible();
   const inner = page.url().split("?")[0]!;
+  await path.getByRole("link", { name: "Back to Welcome to Folevi" }).click();
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");
+  await expect(tabs.getByRole("link", { name: "Welcome to Folevi" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Page path" })).toHaveCount(0);
 
   // "+" starts a new page in a new tab.
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -68,6 +78,6 @@ test("a nested page opens inside the note's tab; a new page opens its own tab; n
   // Opening the nested page from elsewhere goes back to the note's tab rather than adding one.
   await page.goto(inner);
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Inner page");
-  await expect(tabs.getByRole("link", { name: "Welcome to Folevi" })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("link", { name: "Welcome to Folevi › Inner page" })).toHaveAttribute("aria-current", "page");
   await expect(tabs.getByRole("button", { name: /^Close / })).toHaveCount(before + 1);
 });

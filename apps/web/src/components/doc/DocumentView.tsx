@@ -8,6 +8,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import {
   Archive,
   ArchiveRestore,
+  ArrowLeft,
   ChevronRight,
   Copy,
   FileCode,
@@ -685,6 +686,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             background: blurredBackdrop ? "transparent" : (pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)"),
           }}
         >
+          {meta?.breadcrumbs.length ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
           <article
             ref={setSheetEl}
             className="fb-sheet ui-sheet relative mx-auto animate-[folio-settle_240ms_var(--ease-folio)]"
@@ -898,6 +900,36 @@ function PresenceAvatars({ people }: { people: { profileId: string; name: string
 }
 
 
+
+/**
+ * Where a nested page sits, above its sheet: back to the page it's in, then the way down from the top-level
+ * note. Each step opens in the same tab.
+ */
+function NestedPath({ crumbs, title }: { crumbs: { id: string; title: string }[]; title: string }) {
+  const parent = crumbs[crumbs.length - 1]!;
+  return (
+    <nav aria-label="Page path" className="relative mx-auto -mt-5 mb-2.5" style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}>
+      <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-[8px] p-0.5 text-[12.5px]">
+        <li className="flex-none">
+          <AppLink href={`/d/${parent.id}`} aria-label={`Back to ${parent.title || "Untitled"}`} title={`Back to ${parent.title || "Untitled"}`} className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+            <ArrowLeft size={13} aria-hidden />
+          </AppLink>
+        </li>
+        {crumbs.map((c) => (
+          <li key={c.id} className="flex min-w-0 items-center gap-0.5">
+            <AppLink href={`/d/${c.id}`} className="max-w-[14rem] truncate rounded-[6px] px-1.5 py-0.5 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+              {c.title || "Untitled"}
+            </AppLink>
+            <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
+          </li>
+        ))}
+        <li aria-current="page" className="min-w-0 truncate px-1.5 py-0.5 font-semibold text-heading">
+          {title}
+        </li>
+      </ol>
+    </nav>
+  );
+}
 
 function DocumentHeader({
   documentId,

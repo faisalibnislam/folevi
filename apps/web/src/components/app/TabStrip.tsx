@@ -27,7 +27,8 @@ export function TabStrip() {
   const { tabs, close, closeMany, move, view } = useTabs();
   // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
   // its title arrived, or renamed elsewhere, would keep the old one).
-  const live = useQuery(api.documents.titles, tabs.length ? { documentIds: tabs.map((t) => t.id) } : "skip");
+  // Each tab's note, and the nested page it shows (titles change elsewhere too).
+  const live = useQuery(api.documents.titles, tabs.length ? { documentIds: [...new Set(tabs.flatMap((t) => (t.at && t.at !== t.id ? [t.id, t.at] : [t.id])))] } : "skip");
   // The tab menu (right-click): close this tab, those to its right or left, or all of them.
   const [tabMenu, setTabMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const createDocument = useCreateDocument();
@@ -190,7 +191,10 @@ export function TabStrip() {
         ) : null}
         {tabs.map((t) => {
           const active = tabPage(t) === docId;
-          const label = live?.[t.id]?.title || t.title || "Untitled";
+          const note = live?.[t.id]?.title || t.title || "Untitled";
+          // Showing a nested page: "Note › Page" (the page's name keeps more room than the note's).
+          const nested = t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
+          const label = nested !== null ? `${note} › ${nested || "Untitled"}` : note;
           return (
             <div
               key={t.id}
@@ -229,9 +233,17 @@ export function TabStrip() {
                 setTabMenu({ id: t.id, at: { x: r.left + 8, y: r.bottom + 4 } });
               }}
             >
-              <AppLink href={`/d/${tabPage(t)}`} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label}>
+              <AppLink href={`/d/${tabPage(t)}`} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label} aria-label={label}>
                 <FileText size={14} aria-hidden className="flex-none opacity-70" />
-                <span className="truncate">{label}</span>
+                {nested !== null ? (
+                  <span className="flex min-w-0 items-center gap-1">
+                    <span className="min-w-[2.5rem] max-w-[45%] shrink truncate font-normal text-muted">{note}</span>
+                    <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
+                    <span className="min-w-0 truncate">{nested || "Untitled"}</span>
+                  </span>
+                ) : (
+                  <span className="truncate">{label}</span>
+                )}
               </AppLink>
               <button
                 type="button"

@@ -13,6 +13,8 @@ export interface DocTab {
   id: string;
   at?: string;
   title: string;
+  /** The nested page's own title, while the tab shows one ("Note › Page"). */
+  atTitle?: string;
 }
 
 /** The page a tab is showing. */
@@ -34,7 +36,7 @@ interface TabsValue {
   /** Moves a tab to another place in the strip (dragging it, or ⌥⇧← / ⌥⇧→ on it). */
   move: (id: string, to: number) => void;
   /** Files the open page under its top-level page's tab (nested pages never get a tab of their own). */
-  place: (documentId: string, root: { id: string; title: string }) => void;
+  place: (documentId: string, root: { id: string; title: string }, pageTitle?: string) => void;
 }
 
 const MAX_TABS = 12;
@@ -82,7 +84,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     if (docId) {
       const open = tabs.findIndex((t) => t.id === docId || tabPage(t) === docId);
       if (open !== -1) {
-        if (tabPage(tabs[open]!) !== docId) setTabs((cur) => cur.map((t) => (t.id === tabs[open]!.id ? { ...t, at: docId } : t)));
+        if (tabPage(tabs[open]!) !== docId) setTabs((cur) => cur.map((t) => (t.id === tabs[open]!.id ? { ...t, at: docId, atTitle: undefined } : t)));
         return;
       }
       const at = from ? tabs.findIndex((t) => tabPage(t) === from) : -1;
@@ -146,20 +148,21 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   );
 
   const place = useCallback(
-    (documentId: string, root: { id: string; title: string }) => {
+    (documentId: string, root: { id: string; title: string }, pageTitle?: string) => {
       const i = tabs.findIndex((t) => tabPage(t) === documentId);
       if (i === -1) return;
       const t = tabs[i]!;
+      const atTitle = documentId === root.id ? undefined : pageTitle || undefined;
       if (t.id === root.id) {
-        if (t.title !== root.title) setTabs((cur) => cur.map((x) => (x.id === t.id ? { ...x, title: root.title } : x)));
+        if (t.title !== root.title || t.atTitle !== atTitle) setTabs((cur) => cur.map((x) => (x.id === t.id ? { ...x, title: root.title, atTitle } : x)));
         return;
       }
       const j = tabs.findIndex((x) => x.id === root.id);
       if (j !== -1) {
         // The note already has a tab: show this page there and drop the extra one.
-        setTabs((cur) => cur.filter((x) => x.id !== t.id).map((x) => (x.id === root.id ? { ...x, at: documentId, title: root.title } : x)));
+        setTabs((cur) => cur.filter((x) => x.id !== t.id).map((x) => (x.id === root.id ? { ...x, at: documentId, title: root.title, atTitle } : x)));
       } else {
-        setTabs((cur) => cur.map((x) => (x.id === t.id ? { id: root.id, at: documentId, title: root.title } : x)));
+        setTabs((cur) => cur.map((x) => (x.id === t.id ? { id: root.id, at: documentId, title: root.title, atTitle } : x)));
       }
     },
     [tabs, setTabs],
@@ -207,6 +210,6 @@ export function useDocTab(documentId: string, title: string, root: { id: string;
   useEffect(() => {
     if (rootId === undefined || !place) return;
     if (rootId === documentId && !rootTitle) return;
-    place(documentId, { id: rootId, title: rootTitle });
-  }, [place, documentId, rootId, rootTitle]);
+    place(documentId, { id: rootId, title: rootTitle }, title || "Untitled");
+  }, [place, documentId, rootId, rootTitle, title]);
 }

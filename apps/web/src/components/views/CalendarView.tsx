@@ -91,7 +91,7 @@ export function CalendarView({ month }: { month: string | null }) {
       tabTitle="Calendar"
       actions={
         <>
-          <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-[6px] p-0.5 text-xs">
+          <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-[10px] p-1 text-xs">
             {(["month", "agenda"] as const).map((m) => (
               <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`h-7 rounded-[6px] px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
                 {m}

@@ -32,7 +32,7 @@ const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "outline", label: "Outline", icon: <ListTree size={15} /> },
   { task: "brainstorm", label: "Brainstorm", icon: <Lightbulb size={15} /> },
   { task: "title", label: "Title", icon: <Type size={15} /> },
-  { task: "meetingSummary", label: "Meeting summary", icon: <Users size={15} /> },
+  { task: "meetingSummary", label: "Meeting", icon: <Users size={15} /> },
   { task: "flashcards", label: "Flashcards", icon: TOOL_ICONS.flashcards },
   { task: "quiz", label: "Quiz", icon: TOOL_ICONS.quiz },
 ];
@@ -40,6 +40,22 @@ const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
 const ASK_NOTE = ["Sum up this note in three lines", "Who is mentioned, and why?", "What should happen next?"];
 /** "Think it through": the decision and brainstorming frameworks. */
 const THINK = AI_TOOLS.filter((t) => t.group === "decide" || t.group === "ideas");
+const THINK_GROUPS = [
+  { group: "decide", label: "Decide" },
+  { group: "ideas", label: "Explore ideas" },
+] as const;
+/** One line on what each framework gives you (full names, never cut off). */
+const THINK_HINTS: Partial<Record<AiTask, string>> = {
+  prosCons: "Both sides, side by side",
+  decisionMatrix: "Score options against what matters",
+  swot: "Strengths, weaknesses, opportunities, threats",
+  risks: "What could go wrong, and what to do",
+  premortem: "Imagine it failed, then find out why",
+  mindMap: "Branch out from the main idea",
+  howMightWe: "Turn problems into questions",
+  scamper: "Seven prompts to change an idea",
+  sixHats: "Look at it from six angles",
+};
 
 const labelFor = (task: AiTask) => (task === "refine" ? "Revised" : null) ?? AI_TOOLS.find((a) => a.task === task)?.label ?? SELECTION_ACTIONS.find((a) => a.task === task)?.label.replace("…", "") ?? NOTE_ACTIONS.find((a) => a.task === task)?.label ?? (task === "draft" ? "Written for you" : "Answer");
 
@@ -261,7 +277,7 @@ export function AiPanel({
       {/* Prompt */}
       <section aria-label="Ask Foli">
         {modes}
-        <div className="relative rounded-[10px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
+        <div className="relative rounded-[14px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
             {mode === "write" ? "Tell Foli what to write" : "Ask about this note and your other notes"}
           </label>
@@ -491,26 +507,37 @@ export function AiPanel({
       {/* Decision and brainstorming frameworks, then translating the whole note */}
       {mode === "write" ? (
         <>
-          <section aria-labelledby={`${uid}-think`}>
-            <h3 id={`${uid}-think`} className="ui-caps mb-2 px-1">
+          <section aria-labelledby={`${uid}-think`} className="space-y-3">
+            <h3 id={`${uid}-think`} className="ui-caps px-1">
               Think it through
             </h3>
-            <div className="grid grid-cols-2 gap-1.5">
-              {THINK.map((a) => (
-                <button
-                  key={a.task}
-                  type="button"
-                  disabled={Boolean(busy)}
-                  onClick={() => runTool(a.task)}
-                  className="flex h-9 items-center gap-2 rounded-[10px] bg-[var(--glass-hover)] px-2.5 text-left text-[12.5px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
-                >
-                  <span aria-hidden className="text-muted">
-                    {TOOL_ICONS[a.task]}
-                  </span>
-                  <span className="min-w-0 truncate">{a.label}</span>
-                </button>
-              ))}
-            </div>
+            {THINK_GROUPS.map((g) => (
+              <div key={g.group} role="group" aria-label={g.label}>
+                <p className="mb-1.5 px-1 text-[12px] font-medium text-muted">{g.label}</p>
+                <ul className="space-y-1">
+                  {THINK.filter((a) => a.group === g.group).map((a) => (
+                    <li key={a.task}>
+                      <button
+                        type="button"
+                        disabled={Boolean(busy)}
+                        onClick={() => runTool(a.task)}
+                        aria-label={a.label}
+                        aria-describedby={`${uid}-hint-${a.task}`}
+                        className="flex w-full items-start gap-2.5 rounded-[10px] bg-[var(--glass-hover)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+                      >
+                        <span aria-hidden className="mt-0.5 flex-none text-muted">
+                          {TOOL_ICONS[a.task]}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[13px] leading-snug text-ink">{a.label}</span>
+                          <span id={`${uid}-hint-${a.task}`} className="block text-[11.5px] leading-snug text-muted">{THINK_HINTS[a.task]}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </section>
           <TranslateNote documentId={documentId} editor={editor} readOnly={readOnly} disabled={Boolean(busy)} />
         </>

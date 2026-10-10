@@ -329,7 +329,7 @@ export function SidebarSearch() {
     <button
       type="button"
       onClick={openPalette}
-      className="ui-well flex h-9 w-full items-center gap-2 rounded-[6px] pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
+      className="ui-well flex h-9 w-full items-center gap-2 rounded-[10px] pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
     >
       <Search size={14} aria-hidden />
       <span className="flex-1">Search or jump to…</span>

@@ -78,7 +78,7 @@ export function FoldersPageReplica({ className }: { className?: string }) {
                   Name <ChevronDown size={12} className="text-muted" />
                 </span>
               </span>
-              <span className="mk-app-well flex flex-none rounded-[6px] p-0.5">
+              <span className="mk-app-well flex flex-none rounded-[10px] p-1">
                 <span className="grid h-7 w-8 place-items-center rounded-[4px] bg-(--color-surface-raised) text-(--color-heading) shadow-[var(--shadow-control)]">
                   <LayoutGrid size={14} />
                 </span>

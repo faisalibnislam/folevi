@@ -350,7 +350,7 @@ export function Shell() {
         ) : null}
         {/* While the modal drawer is open, the page behind it is inert (not focusable, hidden from AT). */}
         {/* The content panel. A note brings its own panel (its page on its backdrop), so it sits straight on the canvas. */}
-        <div className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-[14px]"}`} inert={isNarrow && drawerOpen}>
+        <div className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-[18px]"}`} inert={isNarrow && drawerOpen}>
           {/* The tab strip floats over the view: content scrolls behind it (views pad their top to clear it). */}
           {!isNarrow ? <TabStrip /> : null}
           <RouteView />
@@ -409,10 +409,10 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   // Phones keep it pinned: it holds the only way to open the navigation drawer.
   const inFlow = route.name !== "doc" && !drawerMode;
   // Room for the floating tab strip (desktop); list views scroll underneath it.
-  const clear = drawerMode ? "" : "pt-[60px] [scroll-padding-top:64px]";
+  const clear = drawerMode ? "" : "pt-[56px] [scroll-padding-top:60px]";
   return (
     <div className={`relative flex min-h-0 flex-1 flex-col ${tint ? "ui-view-tint" : ""}`} style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}>
-      {inFlow ? null : <div className={drawerMode ? "" : "pt-[60px]"}>{bar}</div>}
+      {inFlow ? null : <div className={drawerMode ? "" : "pt-[56px]"}>{bar}</div>}
       <main id="main" tabIndex={-1} className={`min-h-0 flex-1 overflow-y-auto outline-none ${inFlow ? clear : ""}`}>
         {inFlow ? bar : null}
         {children}

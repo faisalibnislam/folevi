@@ -248,7 +248,8 @@
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    border-radius: 14px;
+    /* The page panel is the outer frame (18); the note inside it is 14, so the inner corner is never rounder. */
+    border-radius: 18px;
     box-shadow: var(--glass-edge), var(--glass-shadow);
   }
 }
@@ -277,7 +278,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 6px;
+  border-radius: 10px;
   font-weight: 550;
   letter-spacing: -0.005em;
   white-space: nowrap;
@@ -345,7 +346,7 @@
   min-width: 1.7em;
   height: 1.6em;
   padding: 0 0.4em;
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--color-surface-raised);
   color: var(--color-ink-muted);
   box-shadow: 0 0 0 1px var(--color-line), 0 1px 0 var(--color-line-strong);
@@ -545,9 +546,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 30px;
+  height: 36px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: 10px;
   font-size: 12.5px;
   white-space: nowrap;
   color: var(--color-ink-muted);
@@ -1042,8 +1043,8 @@
   .mk-hero-cover { min-height: 300px; padding: 96px 40px 30px; }
   .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
   .mk-hero-body { padding: 26px 40px 88px; }
-  .mk-hero-actions { padding-inline: 40px; border-radius: 18px; }
-  .mk-hero-note { border-radius: 18px; }
+  .mk-hero-actions { padding-inline: 40px; border-radius: 14px; }
+  .mk-hero-note { border-radius: 14px; }
   .mk-hero-swatch { width: 36px; height: 36px; }
 }
 @media (min-width: 1024px) {

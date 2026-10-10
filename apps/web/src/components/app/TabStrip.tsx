@@ -15,7 +15,7 @@ import { SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 import { BackForward } from "./BackForward";
 
-const ARROW = "grid h-8 w-6 flex-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+const ARROW = "grid h-9 w-6 flex-none place-items-center rounded-[10px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 
 /** A view's tab name until the view names it (the same names as the sidebar). */
@@ -193,14 +193,14 @@ export function TabStrip() {
   };
   const fade = 28;
   const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${fade}px, #000 calc(100% - ${fade}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
-  const tabBase = "group relative flex h-8 items-center gap-2 rounded-[6px] px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
+  const tabBase = "group relative flex h-9 items-center gap-2 rounded-[10px] px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
   // Every tab is an outlined rounded rectangle. Closed tabs sit back (a light grey fill, quiet text); the
   // open one comes forward: white, a firm dark outline, a soft shadow and bold text.
   const tabOn = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
   const tabOff = "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 
   return (
-    <div className="ui-drag ui-glass ui-glass-sidebar absolute inset-x-2 top-2 z-30 flex h-11 items-center gap-1.5 rounded-[14px] px-1.5">
+    <div className="ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-[14px] px-1">
       {/* While the sidebar is hidden, its menu waits here; otherwise it sits in the sidebar. */}
       {!sidebarOpen ? (
         <>
@@ -330,7 +330,7 @@ export function TabStrip() {
       })() : null}
       <div className="flex-1" />
       {/* Always here: a new note opens in its own tab (in the open folder, else in Drafts). */}
-      <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="flex-none">
+      <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="h-9 flex-none rounded-[10px]">
         <Plus size={14} aria-hidden /> New note
       </Button>
     </div>

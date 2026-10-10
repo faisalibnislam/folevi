@@ -104,7 +104,7 @@ export function CalendarPicture() {
             <p className="mk-display text-[22px] text-(--color-heading)">Calendar</p>
             <p className="text-[12.5px] text-muted">October 2026</p>
           </div>
-          <span className="flex rounded-[6px] bg-(--color-surface-sunken) p-0.5 text-[12px]">
+          <span className="flex rounded-[10px] bg-(--color-surface-sunken) p-1 text-[12px]">
             <span className="rounded-[4px] bg-(--color-surface-raised) px-2.5 py-1 font-medium text-(--color-heading) shadow-(--shadow-control)">Month</span>
             <span className="px-2.5 py-1 text-muted">Agenda</span>
           </span>

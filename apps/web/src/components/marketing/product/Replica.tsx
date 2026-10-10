@@ -134,7 +134,7 @@ export function AppWindow({
   return (
     <div role="img" aria-label={label} className={cx("mk-app", className)} style={{ ["--app-art" as string]: artThumb(art) }}>
       <div aria-hidden="true" className="mk-app-ambient" />
-      <div aria-hidden="true" className="flex h-full gap-2 p-1.5 sm:p-2">
+      <div aria-hidden="true" className="flex h-full gap-2 p-1">
         {sidebar === "page" ? <PageSidebar note={note} chrome={chrome} /> : sidebar === "main" ? <MainSidebar chrome={chrome} /> : null}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <TabStrip title={note.title} chrome={sidebar === "none" ? chrome : "web"} />
@@ -176,7 +176,7 @@ function SidebarTop({ chrome }: { chrome: "web" | "mac" }) {
 function Account() {
   return (
     <div className="mt-auto flex flex-none items-center gap-2.5 px-2 pb-1 pt-2">
-      <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">A</span>
+      <span className="grid size-7 flex-none place-items-center rounded-[10px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">A</span>
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block truncate text-[12.5px] font-semibold text-(--color-heading)">Ada Example</span>
         <span className="block truncate text-[11px] text-muted">Personal</span>
@@ -195,9 +195,9 @@ export function PageSidebar({ note, chrome = "web" }: { note: NoteContent; chrom
         <p className="truncate text-[13px] font-semibold text-(--color-heading)">{note.title}</p>
         <p className="mt-0.5 truncate text-[11px] text-muted">In {note.folder}</p>
       </div>
-      <div className="mk-app-well mx-1 mt-2.5 flex gap-0.5 rounded-[6px] p-[3px]">
+      <div className="mk-app-well mx-1 mt-2.5 flex gap-0.5 rounded-[10px] p-1">
         {tools.map((Tool, i) => (
-          <span key={i} className={cx("grid h-7 flex-1 place-items-center rounded-[4px] text-muted", i === 0 && "mk-app-row-on")}>
+          <span key={i} className={cx("grid h-7 flex-1 place-items-center rounded-[6px] text-muted", i === 0 && "mk-app-row-on")}>
             <Tool size={14} />
           </span>
         ))}
@@ -307,12 +307,12 @@ export function MainSidebar({
 /** The tab strip across the top: Up, Home, one tab per open page, and New note. */
 export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "web" | "mac" }) {
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1.5">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1">
       {chrome === "mac" ? <TrafficLights /> : null}
-      <span className="grid size-8 flex-none place-items-center text-muted md:hidden">
+      <span className="grid size-9 flex-none place-items-center rounded-[10px] text-muted md:hidden">
         <PanelLeft size={15} />
       </span>
-      <span className="hidden size-8 flex-none place-items-center text-muted md:grid">
+      <span className="hidden size-9 flex-none place-items-center rounded-[10px] text-muted md:grid">
         <ArrowUp size={15} />
       </span>
       <span className="h-5 w-px flex-none bg-(--color-line-strong) opacity-60" />
@@ -329,7 +329,7 @@ export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "w
         <span className="truncate">Reading list</span>
       </span>
       <span className="flex-1" />
-      <span className="mk-btn mk-btn-primary h-8 flex-none gap-1.5 px-2.5 text-[12.5px] sm:px-3">
+      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-[10px] px-2.5 text-[12.5px] sm:px-3">
         <Plus size={14} />
         <span className="hidden sm:inline">New note</span>
       </span>
@@ -340,11 +340,11 @@ export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "w
 /** The tab strip while a list is open (Drafts, or the Folders page): a list view shows as the current tab. */
 export function ListTabs({ view }: { view: "Drafts" | "Folders" }) {
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1.5">
-      <span className="grid size-8 flex-none place-items-center text-muted md:hidden">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1">
+      <span className="grid size-9 flex-none place-items-center rounded-[10px] text-muted md:hidden">
         <PanelLeft size={15} />
       </span>
-      <span className="hidden size-8 flex-none place-items-center text-muted md:grid">
+      <span className="hidden size-9 flex-none place-items-center rounded-[10px] text-muted md:grid">
         <ArrowUp size={15} />
       </span>
       <span className="h-5 w-px flex-none bg-(--color-line-strong) opacity-60" />
@@ -359,7 +359,7 @@ export function ListTabs({ view }: { view: "Drafts" | "Folders" }) {
         <span className="truncate">Lisbon in April</span>
       </span>
       <span className="flex-1" />
-      <span className="mk-btn mk-btn-primary h-8 flex-none gap-1.5 px-2.5 text-[12.5px] sm:px-3">
+      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-[10px] px-2.5 text-[12.5px] sm:px-3">
         <Plus size={14} />
         <span className="hidden sm:inline">New note</span>
       </span>

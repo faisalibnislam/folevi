@@ -140,7 +140,7 @@ function SyncPicture() {
         <span className="mx-auto mb-2 block h-1 w-5 rounded-[4px] bg-(--color-line-strong)" />
         <span className="block truncate text-[9.5px] font-semibold text-(--color-heading)">Seed library</span>
         <MiniLines widths={["92%", "68%"]} />
-        <span className="mk-mini-arrive mt-1.5 block truncate rounded-[4px] text-[8.5px] text-ink">Print seed labels</span>
+        <span className="mk-mini-arrive mt-1.5 block truncate rounded-[6px] text-[8.5px] text-ink">Print seed labels</span>
       </div>
     </div>
   );

@@ -83,7 +83,7 @@ test("the AI panel: study mode's empty state, the frameworks and translation, al
   for (const name of ["Pros and cons", "Decision matrix", "SWOT analysis", "Risks and mitigations", "Pre-mortem", "Mind map", "How might we", "SCAMPER", "Six thinking hats"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }
-  await page.getByRole("button", { name: "Meeting summary", exact: true }).click();
+  await page.getByRole("button", { name: "Meeting", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: /isn.t set up/i })).toBeVisible({ timeout: 30_000 });
 
   // Translate the whole note, in place: refused before anything changes.

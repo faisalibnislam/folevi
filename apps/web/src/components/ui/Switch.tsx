@@ -15,7 +15,7 @@ export function Switch({ checked, onChange, label, describedBy, disabled }: { ch
         checked ? "bg-heading" : "bg-[color-mix(in_oklab,var(--color-ink)_22%,transparent)]"
       }`}
     >
-      <span aria-hidden className={`inline-block h-5 w-5 rounded-[6px] shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-150 ${checked ? "translate-x-[18px] bg-canvas" : "translate-x-[2px] bg-white"}`} />
+      <span aria-hidden className={`inline-block h-5 w-5 rounded-[4px] shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-150 ${checked ? "translate-x-[18px] bg-canvas" : "translate-x-[2px] bg-white"}`} />
     </button>
   );
 }

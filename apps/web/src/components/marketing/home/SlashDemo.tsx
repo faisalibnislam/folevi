@@ -210,7 +210,7 @@ export function SlashDemo() {
                 )}
               </p>
               {items.length ? (
-                <ul className={cx("mk-app-pop absolute left-0 z-10 w-[250px] rounded-[14px] p-1.5 text-[13px]", above ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]")}>
+                <ul className={cx("mk-app-pop absolute left-0 z-10 w-[250px] rounded-[10px] p-1 text-[13px]", above ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]")}>
                   {items.map((item, i) => (
                     <li key={item.label} className={cx("flex items-center gap-2.5 rounded-[6px] px-2 py-1.5", i === s.active ? "mk-app-row-on text-(--color-heading)" : "text-ink")}>
                       <span className="grid size-6 flex-none place-items-center rounded-[6px] bg-(--color-surface) text-(--color-heading) shadow-(--shadow-control)">{item.icon}</span>

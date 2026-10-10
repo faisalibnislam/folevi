@@ -312,7 +312,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               <option value="manual">Manual order</option>
             </Select>
           </label>
-          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-[6px] p-0.5">
+          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-[10px] p-1">
             {(
               [
                 ["grid", "Grid", <LayoutGrid key="g" size={15} />],

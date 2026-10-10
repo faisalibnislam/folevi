@@ -100,11 +100,11 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
             Replace text
           </button>
         </div>
+        <p className="basis-full px-1 text-[11.5px] text-faint">{how === "note" ? `Makes a copy titled "… (${language})" next to this note.` : "Shows the translation first. A version of the note is saved before anything changes."}</p>
         <button type="button" disabled={Boolean(busy) || disabled} onClick={() => void translate()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
           <Languages size={14} aria-hidden /> Translate
         </button>
       </div>
-      <p className="px-1 text-[11.5px] text-faint">{how === "note" ? `Makes a copy titled "… (${language})" next to this note.` : "Shows the translation first. A version of the note is saved before anything changes."}</p>
       <div aria-live="polite" className="space-y-2 empty:hidden">
         {busy ? (
           <p className="flex items-center gap-2 rounded-[10px] bg-[var(--glass-hover)] px-3 py-3 text-muted">

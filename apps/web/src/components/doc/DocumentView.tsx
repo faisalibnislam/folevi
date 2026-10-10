@@ -737,8 +737,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
           )
         : null}
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
-          Inset like the tab strip above it (inset-x-2), so the page lines up with it. */}
-      <div className="relative flex h-full min-h-0 sm:px-2 sm:pb-2">
+          Inset like the tab strip above it (inset-x-1), so the page lines up with it. */}
+      <div className="relative flex h-full min-h-0 sm:px-1 sm:pb-1">
         <div ref={noteRef} className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
@@ -1011,8 +1011,8 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
       aria-label="Page tools"
       style={{ width: w }}
       // Like the left sidebar: straight on the canvas, no card. Over the note (narrower windows) it needs a ground.
-      // As an overlay it stops above the floating bar (0.5rem inset + 1.25rem, 3.25rem tall, 0.75rem gap), 0.75rem in from the page's edge.
-      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.75rem+var(--kb-inset,0px))] right-5 top-3 z-30 max-w-[calc(100%-52px)] overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
+      // As an overlay it stops above the floating bar (0.25rem inset + 1.25rem, 3.25rem tall, 0.75rem gap), 0.75rem in from the page's edge.
+      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
     >
       <div
         role="separator"

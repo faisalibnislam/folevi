@@ -115,7 +115,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
   const formattable = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"].includes(type ?? "");
   const blockOff = d || !formattable;
   const textStyle = type === "paragraph" ? (fmt.textStyle ?? "body") : null;
-  const seg = "flex rounded-[6px] bg-sunken/80 p-0.5";
+  const seg = "flex rounded-[10px] bg-sunken/80 p-1";
   const segBtn = (on: boolean) =>
     `grid h-9 flex-1 place-items-center rounded-[6px] text-[13px] transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
   const toggleList = (t: string, attrs: Record<string, unknown> = {}) => (type === t ? turnInto(editor, "paragraph") : turnInto(editor, t, attrs));
@@ -226,7 +226,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             <span aria-hidden className="h-4 w-[3px] rounded-[6px] bg-current" /> Focus
           </button>
           <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "block"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" })} className={`h-10 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.decoration === "block" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
-            <span className="rounded-[6px] bg-line/80 px-3 py-1">Block</span>
+            <span className="rounded-[6px] bg-[var(--glass-active)] px-3 py-1 shadow-[inset_0_0_0_1px_var(--glass-border)]">Block</span>
           </button>
         </div>
       </section>

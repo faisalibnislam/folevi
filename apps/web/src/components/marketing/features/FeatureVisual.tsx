@@ -216,7 +216,7 @@ function SyncStatuses() {
       className="mk-card mx-auto max-w-[640px] overflow-hidden"
     >
       <div aria-hidden="true">
-        <div className="flex h-11 items-center gap-2 border-b mk-hair px-4">
+        <div className="flex h-12 items-center gap-2 border-b mk-hair px-4">
           <FileText size={14} className="flex-none text-muted" />
           <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-(--color-heading)">Train notes</p>
           <StatusPill status="Offline" detail="3 waiting" />

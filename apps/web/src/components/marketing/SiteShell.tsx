@@ -110,7 +110,7 @@ function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: str
       </nav>
 
       {/* Where the app shows the account: signing in, and the way in for new people. */}
-      <div className="flex-none space-y-3.5 px-2.5 pb-0 pt-2">
+      <div className="flex-none space-y-3.5 px-2.5 pb-3 pt-2">
         <a href={signInUrl} className="mk-btn mk-btn-secondary h-10 w-full text-[14px]">
           <LogIn size={15} aria-hidden className="flex-none" />
           Sign in
@@ -207,12 +207,12 @@ function useSiteTabs(pathname: string) {
 
 // The app's tab strip tabs (components/app/TabStrip.tsx): the open one comes forward, the others sit back.
 const TAB =
-  "group relative flex h-8 min-w-0 items-center gap-2 rounded-[6px] px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus";
+  "group relative flex h-9 min-w-0 items-center gap-2 rounded-[10px] px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus";
 const TAB_ON = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
 // Quiet tabs use a slightly stronger text than the app's muted grey: on Home they sit over the note's artwork.
 const TAB_OFF = "bg-[var(--glass-hover)] text-ink/65 hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 const ICON_BTN =
-  "grid size-8 flex-none place-items-center rounded-[6px] text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus";
+  "grid size-9 flex-none place-items-center rounded-[10px] text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus";
 
 /**
  * The bar over the page panel, as the app's tab strip draws it: Up (to the page's section), then the tabs
@@ -261,7 +261,7 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
   };
 
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1.5">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1">
       {up ? (
         <Link href={up} aria-label={`Up to ${upLabel}`} title={`Up to ${upLabel}`} className={ICON_BTN}>
           <ArrowUp size={15} aria-hidden />
@@ -307,10 +307,10 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
         })}
       </nav>
       <span className="flex-1" />
-      <a href={signInUrl} className="mk-btn mk-btn-secondary h-8 min-w-[92px] flex-none gap-1.5 px-5 text-[13px]">
+      <a href={signInUrl} className="mk-btn mk-btn-secondary h-9 min-w-[92px] flex-none gap-1.5 rounded-[10px] px-5 text-[13px]">
         Sign in
       </a>
-      <a href={signUpUrl} className="mk-btn mk-btn-primary h-8 min-w-[92px] flex-none gap-1.5 px-5 text-[13px]">
+      <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 min-w-[92px] flex-none gap-1.5 rounded-[10px] px-5 text-[13px]">
         Sign up
       </a>
     </div>

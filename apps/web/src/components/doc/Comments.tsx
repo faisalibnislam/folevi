@@ -790,7 +790,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
       <NoteNotifications documentId={documentId} />
       {data.canComment ? (
         <form
-          className="ui-input rounded-[10px] px-3 py-2"
+          className="ui-input rounded-[14px] pb-1 pl-3 pr-1 pt-2"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
@@ -808,7 +808,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
             people={everyone}
             describedBy="comment-hint"
             placeholder="Comment on the whole note"
-            className="block w-full resize-none bg-transparent text-[13.5px] leading-snug outline-none placeholder:text-faint"
+            className="block w-full resize-none pr-2 bg-transparent text-[13.5px] leading-snug outline-none placeholder:text-faint"
             onSubmitShortcut={submit}
           />
           <div className="mt-1.5 flex items-center justify-between gap-2">

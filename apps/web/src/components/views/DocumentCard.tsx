@@ -75,7 +75,7 @@ function useFitLines() {
  * pale gap.
  */
 export const NOTE_CARD_LINK =
-  "block aspect-[25/27] rounded-l-[min(0.8cqw,18px)] rounded-r-[min(4.6cqw,18px)] shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+  "block aspect-[25/27] rounded-l-[4px] rounded-r-[14px] shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 /** Aspect ratio of a note card (a portrait notebook), for placeholders that stand in for one. */
 export const NOTE_CARD_ASPECT = "aspect-[25/27]";
@@ -128,11 +128,11 @@ export function NoteCardFace({
   return (
     <div className="relative h-full w-full [container-type:inline-size]">
       {/* the page block, peeking out past the cover's open edge and bottom */}
-      <span aria-hidden className="absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-[min(0.8cqw,18px)] rounded-r-[min(4.6cqw,18px)] bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
+      <span aria-hidden className="absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-[4px] rounded-r-[14px] bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
       {/* the cover */}
       <div
         {...sheet}
-        className="fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-[min(0.8cqw,18px)] rounded-r-[min(4.6cqw,18px)] bg-surface text-ink"
+        className="fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-[4px] rounded-r-[14px] bg-surface text-ink"
       >
       {/* the spine, in the note's style */}
       <div aria-hidden className="relative w-[6%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
@@ -152,7 +152,7 @@ export function NoteCardFace({
           {extra}
           <span className="min-w-0 flex-1 truncate text-muted">{time}</span>
           {showFolder ? (
-            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-[min(1.5cqw,18px)] px-[3cqw] font-semibold text-heading ${chip}`}>
+            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-[4px] px-[3cqw] font-semibold text-heading ${chip}`}>
               {folder ? <FolderGlyph color={folder.color} className="h-[4.4cqw] w-auto" /> : <PencilLine aria-hidden className="h-[3.8cqw] w-[3.8cqw] flex-none" strokeWidth={2} />}
               <span className="truncate">
                 {folder ? (
@@ -169,9 +169,9 @@ export function NoteCardFace({
         </div>
       </div>
       {/* A 1px, 5% black outline drawn above the spine and cover so it runs round the whole cover. */}
-      <span aria-hidden className="pointer-events-none absolute inset-0 z-10 rounded-l-[min(0.8cqw,18px)] rounded-r-[min(4.6cqw,18px)] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
+      <span aria-hidden className="pointer-events-none absolute inset-0 z-10 rounded-l-[4px] rounded-r-[14px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
       {starred ? (
-        <span className={`absolute right-0 top-0 grid h-[12cqw] w-[12cqw] place-items-center rounded-bl-[min(2cqw,18px)] text-heading ${chip}`}>
+        <span className={`absolute right-0 top-0 grid h-[12cqw] w-[12cqw] place-items-center rounded-bl-[6px] text-heading ${chip}`}>
           <Star className="h-[5.6cqw] w-[5.6cqw] fill-current" aria-label="Starred" />
         </span>
       ) : null}

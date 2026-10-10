@@ -89,7 +89,8 @@ export function LinkCard({
   const Heading = headingLevel;
   return (
     <div id={id} className={cx("mk-card group relative flex h-full scroll-mt-24 flex-col transition-shadow duration-150 hover:shadow-(--shadow-pop)", cover ? "overflow-hidden" : "p-5 sm:p-6", className)}>
-      {cover ? <div className="border-b mk-hair">{cover}</div> : null}
+      {/* The card clips the cover to its own corners, so the cover's stage needs none. */}
+      {cover ? <div className="border-b mk-hair [&>.mk-stage]:rounded-none">{cover}</div> : null}
       <div className={cx("flex flex-1 flex-col", cover ? "p-5 sm:p-6" : undefined)}>
         {icon ? <span className="mb-4">{icon}</span> : null}
         <Heading className="mk-h3 text-[16.5px] leading-snug">

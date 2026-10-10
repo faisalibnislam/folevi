@@ -211,8 +211,8 @@ export function FlowchartDemo() {
       className="mx-auto max-w-[760px]"
     >
       <div className="mk-card overflow-hidden">
-        <div className="flex items-center gap-2 border-b mk-hair px-4 py-2.5 text-[12px] font-medium text-muted">
-          <span className="rounded-[4px] bg-(--glass-hover) px-1.5 leading-5 text-ink">Flowchart</span>
+        <div className="flex items-center gap-2 border-b mk-hair px-4 py-3 text-[12px] font-medium text-muted">
+          <span className="rounded-[6px] bg-(--glass-hover) px-1.5 leading-5 text-ink">Flowchart</span>
           <span className="flex-1" />
           <span>Tidy up</span>
           <span className="inline-flex items-center gap-1 rounded-[6px] bg-(--glass-hover) px-2 py-0.5 text-(--color-heading)">
@@ -222,7 +222,7 @@ export function FlowchartDemo() {
         <div className="grid items-start md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="mk-app-pop m-3 overflow-hidden rounded-[14px] text-[13.5px] md:m-5">
             {chart ? (
-              <div className="flex gap-1 px-2.5 pt-2 text-[12px] font-[550]" role="group" aria-label="What the AI should do">
+              <div className="flex gap-1 px-2 pt-2 text-[12px] font-[550]" role="group" aria-label="What the AI should do">
                 {(["update", "create"] as const).map((m) => (
                   <button
                     key={m}
@@ -239,7 +239,7 @@ export function FlowchartDemo() {
                 ))}
               </div>
             ) : null}
-            <form onSubmit={submit} className="flex items-start gap-2 p-2.5">
+            <form onSubmit={submit} className="flex items-start gap-2 p-2">
               <AiIcon size={15} className="mt-[3px] flex-none text-[#7c6cf0]" />
               <label htmlFor="fc-demo-input" className="sr-only">
                 {mode === "create" ? "Describe the process" : "What should change?"}

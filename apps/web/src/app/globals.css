@@ -233,7 +233,7 @@
     justify-content: center;
     gap: 0.45rem;
     white-space: nowrap;
-    border-radius: 6px;
+    border-radius: 10px;
     font-weight: 550;
     letter-spacing: -0.005em;
     user-select: none;
@@ -321,11 +321,12 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ui-view-tint { --view-tint-amount: 16%; } }
 
   /* Segmented control (track + raised thumb). The active item carries data-active. */
-  .ui-seg { display: flex; gap: 2px; padding: 3px; border-radius: 6px; }
+  /* Segmented control: outer corner = inner corner + padding (10 = 6 + 4). */
+  .ui-seg { display: flex; gap: 2px; padding: 4px; border-radius: 10px; }
   .ui-seg > * {
     flex: 1;
     display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
-    min-height: 28px; padding: 0 0.6rem; border-radius: 4px;
+    min-height: 28px; padding: 0 0.6rem; border-radius: 6px;
     font-size: 12.5px; font-weight: 550; color: var(--color-ink-muted);
     transition: background-color 180ms var(--motion-easing), box-shadow 180ms var(--motion-easing), color 180ms;
   }
@@ -340,7 +341,7 @@
   /* Keycap */
   .ui-kbd {
     display: inline-flex; align-items: center; justify-content: center; min-width: 1.35rem; height: 1.25rem; padding: 0 0.3rem;
-    border-radius: 6px; font: 550 10.5px/1 var(--font-sans); color: var(--color-ink-muted);
+    border-radius: 4px; font: 550 10.5px/1 var(--font-sans); color: var(--color-ink-muted);
     background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line), 0 1px 0 var(--color-line-strong);
   }
 

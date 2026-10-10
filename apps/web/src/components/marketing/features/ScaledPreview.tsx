@@ -59,7 +59,8 @@ export function ScaledPreview({
           ref={inner}
           inert
           data-demo-still=""
-          className="pointer-events-none absolute left-0 origin-top-left select-none"
+          // A preview fills its card edge to edge: the card's corners clip it, so its stage has none of its own.
+          className="pointer-events-none absolute left-0 origin-top-left select-none [&>.mk-stage]:rounded-none"
           style={{
             width,
             top: fit?.top ?? 0,

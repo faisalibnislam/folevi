@@ -420,7 +420,8 @@ export function ChatThread({
               className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
             />
             {/* How Foli helps on the left, attach and send on the right, all inside the box. */}
-            <div className="flex items-center gap-2 px-2.5 pb-2.5">
+            {/* 4px from the box's edge: the switch and Send are 10px-cornered inside its 14px corners. */}
+            <div className="flex items-center gap-2 px-1 pb-1">
                 <div className={`ui-seg ui-well min-w-0 shrink ${variant === "panel" ? "[&>*]:px-1.5" : ""}`} role="group" aria-label="How Foli helps">
                   <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")} title="Answers from your notes">
                     Chat
@@ -436,7 +437,7 @@ export function ChatThread({
                 </div>
               <div className="ml-auto flex flex-none items-center gap-1.5">
                 {attachAvailable ? <AttachControl noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
-                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-8 w-8 flex-none place-items-center rounded-[6px] bg-heading text-canvas transition-opacity disabled:opacity-30">
+                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-[10px] bg-heading text-canvas transition-opacity disabled:opacity-30">
                   <ArrowUp size={16} aria-hidden />
                 </button>
               </div>

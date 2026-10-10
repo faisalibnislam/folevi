@@ -41,7 +41,7 @@ export function UsageMeter({ label, pct, invert = false }: { label: string; pct:
   const alarm = invert ? shown < 10 : shown > 90;
   return (
     <div className="mt-2.5 h-2 overflow-hidden rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(shown)}>
-      <div className={`h-full rounded-[6px] ${alarm ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(shown, 1.5)}%` }} />
+      <div className={`h-full rounded-[4px] ${alarm ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(shown, 1.5)}%` }} />
     </div>
   );
 }

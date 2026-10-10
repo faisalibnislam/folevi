@@ -3,7 +3,7 @@
 import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowDownToLine, ArrowUp, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUp, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, Wand2, X } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
@@ -24,6 +24,7 @@ import { AiDiffLegend, AiDiffView } from "./AiDiffView";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { ChatThread } from "./chat/ChatThread";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
+import { asksToChange } from "./editIntent";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -99,6 +100,15 @@ export function AiPanel({
   // The Agent tab is about the note it's open on (one object while the note stays, so the chat keeps it).
   const agentContext = useMemo(() => ({ kind: "note" as const, ids: [documentId] }), [documentId]);
   useEffect(() => setAgentConversation(null), [documentId]);
+  /** A request to change the note, handed to the Agent tab (it edits the note's blocks in place). */
+  const [handoff, setHandoff] = useState<string | null>(null);
+  useEffect(() => setHandoff(null), [documentId]);
+  const fixInNote = (request: string) => {
+    setResult(null);
+    setAgentConversation(null);
+    setHandoff(request);
+    setMode("agent");
+  };
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<AiProblem | null>(null);
@@ -152,6 +162,7 @@ export function AiPanel({
   useEffect(() => {
     if (!run || lastRun.current === run.id) return;
     lastRun.current = run.id;
+    if (run.fix) return fixInNote(run.fix);
     void doWrite({ task: run.task, text: run.text, language: run.language, placement: { kind: "replace", from: run.from, to: run.to, original: run.text } });
   }, [run]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -168,6 +179,13 @@ export function AiPanel({
     if (!text || busy) return;
     if (mode === "ask") return void doAsk(text);
     const sel = selectionText();
+    if (asksToChange(text) && !readOnly) {
+      setPrompt("");
+      // "Make this shorter" on a selection: a revision of it, shown as changes, that replaces it.
+      if (sel) return void doWrite({ task: "refine", instruction: text, text: sel.text, placement: { kind: "replace", from: sel.from, to: sel.to, original: sel.text } });
+      // "Fix the headings" on the note: the agent edits the note's own blocks, never a copy at the cursor.
+      return fixInNote(text);
+    }
     void doWrite({ task: "draft", instruction: text, text: sel?.text, placement: { kind: "cursor" } });
   };
 
@@ -248,7 +266,7 @@ export function AiPanel({
       <div className="text-sm">
         {modes}
         <div className="flex h-[min(70vh,640px)] flex-col">
-          <ChatThread conversationId={agentConversation} onConversation={setAgentConversation} initialContext={agentContext} variant="panel" initialMode="agent" autoFocus />
+          <ChatThread conversationId={agentConversation} onConversation={setAgentConversation} initialContext={agentContext} variant="panel" initialMode="agent" autoFocus autoSend={handoff ?? undefined} />
         </div>
       </div>
     );
@@ -308,7 +326,7 @@ export function AiPanel({
           </button>
         </div>
         <p className="mt-1.5 px-1 text-[11.5px] text-faint">
-          {mode === "write" ? "Uses this note (and any selected text) as context. ↵ to send." : "Answers from this note and your other notes, with sources."}
+          {mode === "write" ? "Write something new, or ask for a change (fix, shorten, reorganise) and Foli edits the note. ↵ to send." : "Answers from this note and your other notes, with sources."}
         </p>
         {/* Writing uses the note's own scope; asking searches where you are. */}
         <AiCreditsNote documentId={mode === "write" ? documentId : undefined} className="mt-2" />
@@ -457,6 +475,16 @@ export function AiPanel({
                 </button>
                 <button type="button" onClick={() => void saveAsNote()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
                   <FilePlus2 size={14} aria-hidden /> Create note
+                </button>
+              </>
+            ) : result.kind === "ask" && asksToChange(result.question) && !readOnly ? (
+              // A request to change this note: the agent makes the change in place (reviewed first, undoable).
+              <>
+                <button type="button" onClick={() => fixInNote(result.question)} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+                  <Wand2 size={14} aria-hidden /> Fix in note
+                </button>
+                <button type="button" onClick={() => apply({ kind: "cursor" })} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                  <CornerDownLeft size={14} aria-hidden /> Insert
                 </button>
               </>
             ) : (

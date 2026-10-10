@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
-import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, RotateCcw } from "lucide-react";
+import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, RotateCcw, Wand2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { MenuButton } from "@/components/ui/Menu";
 import { AiMarkdown, StreamingText } from "../AiMarkdown";
@@ -242,6 +242,7 @@ export function AssistantMessage({
   onApply,
   onDismiss,
   onOpen,
+  onFix,
   run,
   research,
   readOnly,
@@ -258,6 +259,8 @@ export function AssistantMessage({
   onApply: () => void;
   onDismiss: () => void;
   onOpen: (href: string) => void;
+  /** An answer to a request to change the note: hand it to the agent to make the change in place. */
+  onFix?: () => void;
   /** An agent's answer: acting on its run. */
   run?: RunHandlers;
   /** A deep research report: its job (steps, Cancel, Save as note). */
@@ -349,6 +352,14 @@ export function AssistantMessage({
         {message.memory && message.memory.status !== "dismissed" && !readOnly ? <MessageMemory messageId={message.id} memory={message.memory} /> : null}
         {message.citations.length || message.webCitations.length ? <Sources citations={message.citations} webCitations={message.webCitations} onCite={onCite} /> : null}
         <SearchSuggestions entryPoints={message.searchEntryPoints} />
+        {onFix && !readOnly ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" disabled={busy} onClick={onFix} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-heading px-3 text-[13px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40">
+              <Wand2 size={14} aria-hidden /> Fix in note
+            </button>
+            <span className="text-[12px] text-muted">Changes the note itself. You review them first, and can undo.</span>
+          </div>
+        ) : null}
         <div className="-mb-1 mt-2 flex flex-wrap items-center gap-0.5">
           {message.text ? <CopyButton text={markdownToPlain(message.text)} /> : null}
           {last && !readOnly ? (

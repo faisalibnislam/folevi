@@ -23,3 +23,20 @@ test("the chat's Agent mode sends a request and says plainly when the assistant 
   await expect(page.getByRole("heading", { name: "Proposed changes" })).toHaveCount(0);
   await context.close();
 });
+
+// A request to change the note (in Write, or from Ask's "Fix in note") goes to the agent, which edits the
+// note's own blocks in place, instead of a corrected copy being written at the cursor.
+test("asking Foli to fix the note hands it to the agent, not a draft at the cursor", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { page, context } = await newPerson(browser, "Fix Person");
+  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli", exact: true }).click();
+  const panel = page.locator("#document-inspector");
+  const modes = panel.getByRole("group", { name: "What Foli should do" });
+  await expect(modes.getByRole("button", { name: "Write" })).toHaveAttribute("aria-pressed", "true");
+  await panel.getByRole("textbox", { name: "Tell Foli what to write" }).fill("The section numbers are all messed up. Please fix.");
+  await panel.getByRole("button", { name: "Write", exact: true }).last().click();
+  // The Agent tab opens with the request sent.
+  await expect(modes.getByRole("button", { name: "Agent" })).toHaveAttribute("aria-pressed", "true");
+  await expect(panel.getByText("The section numbers are all messed up. Please fix.").first()).toBeVisible({ timeout: 20_000 });
+  await context.close();
+});

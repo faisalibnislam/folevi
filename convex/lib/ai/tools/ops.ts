@@ -22,7 +22,7 @@ export const MAX_OPS = 20;
 /** Markdown one operation may write. */
 export const MAX_OP_MARKDOWN = 20_000;
 /** Block edits one update_note may make. */
-export const MAX_EDITS = 20;
+export const MAX_EDITS = 40;
 /** Items one checklist or task list may hold. */
 export const MAX_ITEMS = 50;
 /** Notes one merge may fold into another. */

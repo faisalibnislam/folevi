@@ -221,6 +221,8 @@ export interface AiRunDetail {
   from: number;
   to: number;
   language?: string;
+  /** A request to change the whole note ("fix the headings"): the panel hands it to the agent instead. */
+  fix?: string;
 }
 export const AI_OPEN_EVENT = "folevi:ai-open";
 

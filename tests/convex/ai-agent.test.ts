@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { calculate } from "../../convex/lib/ai/tools/calculate";
+import { MAX_EDITS } from "../../convex/lib/ai/tools/ops";
 import { checkArgs } from "../../convex/lib/ai/tools/schema";
 import { untrusted } from "../../convex/lib/ai/tools/untrusted";
 import { duplicatePairs, noteSimilarity } from "../../convex/lib/ai/tools/similarity";
@@ -92,7 +93,7 @@ describe("tools", () => {
     expect(checkArgs(rename.parameters, { noteId: "N1", title: "   " })).toEqual({ ok: false, error: "title can't be empty." });
     const update = TOOLS.find((t) => t.name === "update_note")!;
     expect(checkArgs(update.parameters, { noteId: "N1", edits: [{ action: "explode" }] })).toMatchObject({ ok: false, error: "edits[0].action must be one of: replace, insert, delete." });
-    expect(checkArgs(update.parameters, { noteId: "N1", edits: Array.from({ length: 21 }, () => ({ action: "delete", blockId: "b" })) })).toMatchObject({ ok: false });
+    expect(checkArgs(update.parameters, { noteId: "N1", edits: Array.from({ length: MAX_EDITS + 1 }, () => ({ action: "delete", blockId: "b" })) })).toMatchObject({ ok: false });
     const tasks = TOOLS.find((t) => t.name === "create_tasks")!;
     expect(checkArgs(tasks.parameters, { tasks: [{ title: "Pay rent", dueDate: "2026-11-01" }] })).toEqual({ ok: true, value: { tasks: [{ title: "Pay rent", dueDate: "2026-11-01" }] } });
   });

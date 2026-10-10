@@ -21,6 +21,7 @@ import { WebToggle } from "./WebToggle";
 import { AttachControl, AttachmentChips, AttachmentProblems, useChatAttachments, type PendingFile } from "./Attachments";
 import type { ResearchHandlers } from "./ResearchCard";
 import { useChatMode } from "./mode";
+import { asksToChange, FIX_IN_NOTE } from "../editIntent";
 import { AiAnnouncer, useDoneAnnouncement } from "../announce";
 
 export const SUGGESTIONS = ["What am I working on this week?", "Summarize my notes about travel", "Which tasks are still open?", "What ideas have I written down recently?"];
@@ -56,6 +57,7 @@ export function ChatThread({
   variant,
   autoFocus,
   initialMode,
+  autoSend,
 }: {
   conversationId: string | null;
   onConversation: (id: string) => void;
@@ -70,6 +72,8 @@ export function ChatThread({
   autoFocus?: boolean;
   /** Start in Agent mode (the note's AI sidebar does). */
   initialMode?: ChatMode;
+  /** Sent as soon as the thread opens (the note panel hands an edit request to the agent this way). */
+  autoSend?: string;
 }) {
   const { scope } = useAppState();
   const { navigate } = useAppRouter();
@@ -190,7 +194,7 @@ export function ChatThread({
     }
   };
 
-  const send = (text: string) => {
+  const send = (text: string, as: ChatMode = mode) => {
     const q = text.trim();
     if (!q || working || attachments.uploading) return;
     let id = conversationId;
@@ -206,9 +210,26 @@ export function ChatThread({
     attachments.clear();
     const target = id;
     const args = { scope: conversation?.scope ?? scope, conversationId: target, text: q, context: isNew ? newContext : undefined, ...(fileIds.length ? { attachments: fileIds } : {}) };
-    if (mode === "research") void run(() => researchStart(args));
-    else if (mode === "agent") void run(() => agentSend(args));
+    if (as === "research") void run(() => researchStart(args));
+    else if (as === "agent") void run(() => agentSend(args));
     else void run(() => sendAction({ ...args, ...(webOn ? { web: true } : {}) }));
+  };
+
+  // A request handed over by the note panel: sent once, when the thread opens.
+  const autoSent = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoSend || autoSent.current === autoSend || conversationId) return;
+    autoSent.current = autoSend;
+    send(autoSend);
+  });
+
+  /**
+   * "Fix in note": an answer to a request to change the note becomes the agent's job. It edits the note's
+   * own blocks in place (previewed, approved, one Undo) instead of the answer being pasted in as a copy.
+   */
+  const fixInNote = () => {
+    setMode("agent", { remember: false });
+    send(FIX_IN_NOTE, "agent");
   };
 
   const changeContext = (next: ChatContext) => {
@@ -359,7 +380,10 @@ export function ChatThread({
                   else if (m.agent) void run(() => agentRegenerate({ conversationId }));
                   else void run(() => regenerateAction({ conversationId, ...(webOn || m.webCitations.length ? { web: true } : {}) }));
                 }}
-                onSuggestion={send}
+                onSuggestion={(text) => send(text)}
+                onFix={
+                  i === messages.length - 1 && !m.agent && !jobFor(m.id) && m.status === "done" && contextNotes.length && asksToChange(messages[i - 1]?.role === "user" ? messages[i - 1]!.text : "") ? fixInNote : undefined
+                }
                 onApply={() => void apply(m.id, (m.actions ?? []) as AiAction[])}
                 onDismiss={() => void setOutcome({ messageId: m.id, outcome: { kind: "dismissed" } })}
                 onOpen={open}

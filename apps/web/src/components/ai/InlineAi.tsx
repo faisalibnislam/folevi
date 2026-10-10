@@ -39,7 +39,8 @@ import { aiDiff } from "./aiDiff";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, noteIsEmpty, type AiPlacement } from "./insert";
 import { markdownToPlain } from "./plainText";
-import { AI_TOOLS, REWRITE_TASKS, SELECTION_ACTIONS, TOOL_TASKS, useAi, useNoteAi, type AiTask } from "./useAi";
+import { AI_RUN_EVENT, AI_TOOLS, REWRITE_TASKS, SELECTION_ACTIONS, TOOL_TASKS, useAi, useNoteAi, type AiRunDetail, type AiTask } from "./useAi";
+import { asksToChange } from "./editIntent";
 import { TOOL_ICONS } from "./toolIcons";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
@@ -229,6 +230,12 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     }
     if (s.id === "custom") {
       const instruction = s.label;
+      // "Fix the headings" with nothing selected changes the note itself: the Foli panel's agent does that
+      // in place (reviewed first, undoable) rather than writing a corrected copy at the cursor.
+      if (!target && asksToChange(instruction)) {
+        window.dispatchEvent(new CustomEvent<AiRunDetail>(AI_RUN_EVENT, { detail: { task: "refine", text: "", from: 0, to: 0, fix: instruction } }));
+        return close();
+      }
       return void run(target ? { task: "refine", text: target.text, instruction } : { task: "draft", instruction }, instruction);
     }
     const language = s.id.startsWith("lang-") ? s.label : undefined;

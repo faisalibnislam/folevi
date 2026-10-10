@@ -76,6 +76,7 @@ const AGENT_SYSTEM = [
   "Read before you change: search or list to find notes, get_note to read one (its lines start with block ids in brackets, which update_note uses). Use ids exactly as tools return them; never invent ids.",
   "Write tools (create_note, update_note, append_to_note, rename_note, move_note, create_folder, add_tags, create_checklist, create_tasks, merge_notes) only propose a change. Nothing happens until the person reviews and approves it, so never say a change has been made.",
   "Propose only what the person asked for. Prefer an existing folder over a new one. Keep edits small and targeted: replace or insert the blocks that need it rather than rewriting a whole note.",
+  "When the person asks to fix, correct, clean up, reorganise, renumber, rename, reformat, shorten or rewrite a note (\"this note\" is the one in context), change that note in place with update_note: replace, insert or delete its own blocks. Never append a corrected copy, a plan or a new outline to the end, and never make a new note, unless they ask for one. If an earlier answer in this conversation listed the changes, make those changes.",
   "Use calculate for any arithmetic.",
   "When you use search_web or read_web_page, say which points come from the web and link the pages as Markdown links.",
   UNTRUSTED_RULE,

@@ -29,7 +29,7 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "memory",
     label: "Memory",
-    body: "Let the assistant remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers below.",
+    body: "Let Foli remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers below.",
     on: "Memory turned on",
     off: "Memory turned off",
   },
@@ -43,14 +43,14 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "attachments",
     label: "Read attachments",
-    body: "Let the assistant read files you add to a question, such as PDFs, images, text and spreadsheets, and transcribe recordings when you ask. Files are only read when you send them.",
+    body: "Let Foli read files you add to a question, such as PDFs, images, text and spreadsheets, and transcribe recordings when you ask. Files are only read when you send them.",
     on: "Attachments turned on",
     off: "Attachments turned off",
   },
   {
     key: "webResearch",
     label: "Web research",
-    body: "Let the assistant search the web and read pages you link when you ask it to, with links to what it found. This also turns on Research. Searches go through Google Search.",
+    body: "Let Foli search the web and read pages you link when you ask it to, with links to what it found. This also turns on Research. Searches go through Google Search.",
     on: "Web research turned on",
     off: "Web research turned off",
   },
@@ -68,8 +68,8 @@ const DEFAULTS: Prefs = { history: true, memory: true, suggestions: true, attach
 function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS)[number]; checked: boolean; disabled: boolean; onChange: (next: boolean) => void }) {
   const descId = useId();
   return (
-    <div className="flex max-w-xl items-start justify-between gap-6 py-3 first:pt-0 last:pb-0">
-      <div className="min-w-0">
+    <div className="flex items-start justify-between gap-6 py-3.5 first:pt-0 last:pb-0">
+      <div className="min-w-0 max-w-prose">
         <p className="flex items-center gap-2 text-sm font-medium text-heading">
           {item.label}
           {item.soon ? <span className="rounded-full bg-[var(--glass-hover)] px-2 py-0.5 text-[11px] font-medium text-muted shadow-[inset_0_0_0_1px_var(--glass-border)]">Coming soon</span> : null}
@@ -78,7 +78,9 @@ function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS
           {item.body}
         </p>
       </div>
-      <Switch checked={checked} disabled={disabled} label={item.label} describedBy={descId} onChange={onChange} />
+      <span className="mt-0.5 flex-none">
+        <Switch checked={checked} disabled={disabled} label={item.label} describedBy={descId} onChange={onChange} />
+      </span>
     </div>
   );
 }
@@ -106,7 +108,7 @@ export function AiSection() {
       <Card title="Conversations">
         <PrefRow item={SETTINGS[0]!} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
       </Card>
-      <Card title="How the assistant works for you" description="The server checks each of these wherever the feature runs.">
+      <Card title="How Foli works for you" description="The server checks each of these wherever the feature runs.">
         <div className="divide-y divide-line/70">
           {SETTINGS.slice(1).map((item) => (
             <PrefRow key={item.key} item={item} checked={prefs[item.key]} disabled={core} onChange={(next) => set(item, next)} />

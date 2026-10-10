@@ -4,13 +4,13 @@ import { useId, useState } from "react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/lib/convex/api";
-import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
+import { Select } from "@/components/ui/Select";
 import { creditDate } from "@/components/ai/AiCredits";
 import { Card } from "./Card";
 
-// The usage card in Settings > AI (billing.aiUsage): the credits that apply where you're working (your
-// Personal credits, or your seat in a paid workspace), what's used and left this period, when they reset,
+// The usage card in Settings > AI (billing.aiUsage): your Personal credits, or your seat in a paid workspace
+// (picked here), what's used and left this period, when they reset,
 // and what they went on, by feature and by day. The day chart is drawn here (SVG) with a table for
 // screen readers.
 
@@ -148,18 +148,44 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
       </section>
       <section aria-label="Credits by day this period">
         <p className="ui-caps mb-2">By day</p>
-        <UsageChart days={usage.days} />
+        {usage.days.some((d) => d.credits > 0) ? (
+          <UsageChart days={usage.days} />
+        ) : (
+          <p className="text-[12.5px] text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>
+        )}
+        {usage.untrackedDays > 0 ? <p className="mt-2 text-[12px] text-faint">{credits(usage.untrackedDays)} used before daily tracking started aren&apos;t in the chart.</p> : null}
       </section>
     </div>
   );
 }
 
-/** Settings > AI: what Foli has used where you're working now (Personal, or your workspace seat). */
+/**
+ * Settings > AI: what Foli has used. Personal first (the same credits as Plan & billing); a seat in a paid
+ * workspace has credits of its own, so it can be picked here too.
+ */
 export function AiUsageCard() {
-  const { scope } = useAppState();
-  const usage = useQuery(api.billing.aiUsage, { scope });
+  const accounts = useQuery(api.billing.creditAccounts, {});
+  const [which, setWhich] = useState<string>("personal");
+  const seats = accounts?.accounts.filter((a) => a.kind === "seat" && a.workspaceId) ?? [];
+  const pick = seats.find((a) => a.workspaceId === which) ? which : "personal";
+  const usage = useQuery(api.billing.aiUsage, { scope: pick === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: pick } });
   return (
-    <Card title="Usage" description={usage ? (usage.account === "seat" ? `AI credits for your seat in ${usage.place} (${usage.plan}).` : `Your Personal AI credits (${usage.plan}). They're also used in free workspaces and on pages shared with you.`) : undefined}>
+    <Card
+      title="Usage"
+      description={usage ? (usage.account === "seat" ? `AI credits for your seat in ${usage.place} (${usage.plan}). Seats have their own credits.` : `Your Personal AI credits (${usage.plan}), the same as in Plan & billing. They're also used in free workspaces and on pages shared with you.`) : undefined}
+    >
+      {seats.length ? (
+        <div className="mb-4">
+          <Select value={pick} onChange={(e) => setWhich(e.target.value)} aria-label="Credits for" className="w-56">
+            <option value="personal">Personal</option>
+            {seats.map((a) => (
+              <option key={a.workspaceId} value={a.workspaceId!}>
+                {`${a.name} (your seat)`}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : null}
       {usage ? <UsageSummary usage={usage} /> : <p className="text-sm text-muted">Loading your usage…</p>}
     </Card>
   );

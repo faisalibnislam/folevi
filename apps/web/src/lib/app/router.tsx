@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import { historyNavServerSnapshot, historyNavSnapshot, pushEntry, replaceEntry, startHistoryNav, subscribeHistoryNav } from "./historyNav";
 
 /**
  * Client-side routing for the product shell. Every product URL is rendered by one catch-all route, and
@@ -97,6 +98,10 @@ export interface RouterValue {
   search: URLSearchParams;
   navigate: (href: string, opts?: { replace?: boolean }) => void;
   back: () => void;
+  /** Back and Forward inside the app (lib/app/historyNav.ts): whether there's a page each way. */
+  forward?: () => void;
+  canBack?: boolean;
+  canForward?: boolean;
 }
 
 const RouterContext = createContext<RouterValue | null>(null);
@@ -105,16 +110,19 @@ export function AppRouterProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/documents";
   // When the offline shell is served for a different URL, re-sync the router with the address bar.
   useEffect(() => {
+    startHistoryNav();
     if (typeof window !== "undefined" && window.location.pathname !== pathname) {
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${window.location.hash}`);
+      replaceEntry(`${window.location.pathname}${window.location.search}${window.location.hash}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const nav = useSyncExternalStore(subscribeHistoryNav, historyNavSnapshot, historyNavServerSnapshot);
   const searchParams = useSearchParams();
   const route = useMemo(() => parseRoute(pathname), [pathname]);
   const navigate = useCallback((href: string, opts?: { replace?: boolean }) => {
-    if (opts?.replace) window.history.replaceState(null, "", href);
-    else window.history.pushState(null, "", href);
+    startHistoryNav();
+    if (opts?.replace) replaceEntry(href);
+    else pushEntry(href);
     // Move focus to the main region for screen-reader users after navigation.
     // Only when focus was lost (e.g. the focused element was removed). Never steal it from the new view.
     requestAnimationFrame(() => {
@@ -123,8 +131,11 @@ export function AppRouterProvider({ children }: { children: ReactNode }) {
     });
   }, []);
   const back = useCallback(() => window.history.back(), []);
+  const forward = useCallback(() => window.history.forward(), []);
+  const canBack = nav.at > 0;
+  const canForward = nav.at < nav.top;
   const search = useMemo(() => new URLSearchParams(searchParams?.toString() ?? ""), [searchParams]);
-  const value = useMemo(() => ({ route, pathname, search, navigate, back }), [route, pathname, search, navigate, back]);
+  const value = useMemo(() => ({ route, pathname, search, navigate, back, forward, canBack, canForward }), [route, pathname, search, navigate, back, forward, canBack, canForward]);
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }
 

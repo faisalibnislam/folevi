@@ -8,8 +8,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { ViewChrome } from "@/components/app/Shell";
 import { useAiAccess } from "@/components/ai/useAi";
-import { AI_FOCUS_EVENT, ChatThread } from "@/components/ai/chat/ChatThread";
-import { AiIntro } from "@/components/ai/AiIntro";
+import { ChatThread } from "@/components/ai/chat/ChatThread";
 import { AiUnavailable } from "@/components/ai/AiUnavailable";
 import { ConversationList } from "@/components/ai/chat/ConversationList";
 import { ResearchList } from "@/components/ai/chat/ResearchList";
@@ -63,7 +62,6 @@ export function AiView({ id }: { id: string | null }) {
   const narrow = useMediaQuery("(max-width: 767px)");
   const ai = useAiAccess();
   const [listOpen, setListOpen] = useState(false);
-  const [starter, setStarter] = useState<string | undefined>(undefined);
   const data = useQuery(api.aiChat.get, id && ai.on ? { conversationId: id } : "skip");
   // Not yours: maybe one a member shared with the workspace (read-only, aiSharing.get).
   const shared = useQuery(api.aiSharing.get, id && ai.on && data === null ? { conversationId: id } : "skip");
@@ -123,19 +121,6 @@ export function AiView({ id }: { id: string | null }) {
             ) : null}
             {actions.dialog}
           </div>
-          {/* The first time: what the AI does and where requests go; a starter fills the box. */}
-          {id ? null : (
-            <div className="flex-none px-4 sm:px-8">
-              <AiIntro
-                place={ai.context === "workspace" ? "workspace" : "personal"}
-                className="mx-auto max-w-3xl"
-                onStarter={(s) => {
-                  setStarter(s);
-                  requestAnimationFrame(() => window.dispatchEvent(new Event(AI_FOCUS_EVENT)));
-                }}
-              />
-            </div>
-          )}
           {data === null && shared ? (
             <SharedThread data={shared} onOpen={navigate} onCite={(c) => navigate(citationHref(c))} />
           ) : data === null && shared === undefined ? (
@@ -145,7 +130,6 @@ export function AiView({ id }: { id: string | null }) {
               key={threadKey}
               variant="page"
               conversationId={id}
-              initialDraft={starter}
               autoFocus
               onConversation={(next) => {
                 created.current = next;

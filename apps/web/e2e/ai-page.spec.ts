@@ -9,7 +9,7 @@ test("the AI page lists conversations and keeps a question even when the assista
   await page.goto(`${APP}/documents`);
   await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Work with Foli", exact: true }).click();
   await page.waitForURL(/\/ai(\/|$)/);
-  await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Conversations" })).toBeVisible();
   const box = page.getByPlaceholder("Ask anything about your notes…");
   await box.fill("What am I working on this week?");

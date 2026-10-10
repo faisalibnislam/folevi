@@ -53,7 +53,7 @@ describe("the memory list", () => {
   test("lists entries, adds one, edits and deletes", async () => {
     const h = handlers();
     const { host } = render(<MemoryList on max={40} items={[memory("m1", "language", "Use British spelling"), memory("m2", "term", "Atlas is the rebrand", { id: "W1", name: "Studio" })]} workspaces={[{ id: "W1", name: "Studio" }]} {...h} />);
-    const list = host.querySelector('ul[aria-label="What the assistant remembers"]')!;
+    const list = host.querySelector('ul[aria-label="What Foli remembers"]')!;
     expect([...list.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["LanguageUse British spelling", "TermAtlas is the rebrandOnly in Studio"]);
     expect(host.textContent).not.toContain("Memory is off");
 

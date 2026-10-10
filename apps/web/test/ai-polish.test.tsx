@@ -9,7 +9,7 @@ import { Editor, type JSONContent } from "@tiptap/core";
 import { blocksToMarkdown, markdownToBlocks, flattenTree, plainText } from "@folevi/editor-schema";
 
 const state = vi.hoisted(() => ({
-  profile: { id: "me", aiEnabled: true, aiIntroSeen: false, entitlements: { ai: true, plan: "pro_ai" } } as Record<string, unknown>,
+  profile: { id: "me", aiEnabled: true, entitlements: { ai: true, plan: "pro_ai" } } as Record<string, unknown>,
   mutations: [] as unknown[],
 }));
 vi.mock("convex/react", () => ({
@@ -36,7 +36,7 @@ vi.mock("@/components/editor/richRender", () => ({
   renderLatex: vi.fn(),
 }));
 
-const { AI_INTRO, AiIntro } = await import("@/components/ai/AiIntro");
+const { AI_INTRO, AiIntroBody } = await import("@/components/ai/AiIntro");
 const { AiUnavailable, aiUnavailableCopy } = await import("@/components/ai/AiUnavailable");
 const { RelatedList } = await import("@/components/doc/RelatedPanel");
 const { GraphCanvas, nodeLabel, ALWAYS_LABELLED } = await import("@/components/views/GraphView");
@@ -64,7 +64,7 @@ afterEach(() => {
   roots = [];
   document.body.innerHTML = "";
   state.mutations = [];
-  state.profile = { id: "me", aiEnabled: true, aiIntroSeen: false, entitlements: { ai: true, plan: "pro_ai" } };
+  state.profile = { id: "me", aiEnabled: true, entitlements: { ai: true, plan: "pro_ai" } };
   try {
     localStorage.clear();
   } catch {
@@ -82,55 +82,14 @@ function render(node: React.ReactNode) {
 }
 const button = (host: HTMLElement, name: string) => [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === name);
 
-describe("Foli's first-time introduction", () => {
-  test("shows once with what it does, where data goes and credits; dismissing hides it and is saved", () => {
-    const onStarter = vi.fn();
-    const { host } = render(createElement(AiIntro, { place: "note", onStarter }));
-    const card = host.querySelector('[data-testid="ai-intro"]')!;
-    expect(card.textContent).toContain("Meet Foli");
-    expect(card.textContent).toContain("never changes a note without showing you the change first");
-    expect(card.textContent).toContain("Google Gemini");
-    expect(card.textContent).toContain("AI credits");
-    for (const s of AI_INTRO.note.starters) expect(button(host, s)).toBeTruthy();
-    act(() => button(host, "Got it")!.click());
-    expect(host.querySelector('[data-testid="ai-intro"]')).toBeNull();
-    expect(state.mutations).toEqual([{ seen: true }]);
-
-    // Once the server has it, no surface shows it again.
-    state.profile = { ...state.profile, aiIntroSeen: true };
-    const again = render(createElement(AiIntro, { place: "personal", onStarter }));
-    expect(again.host.querySelector('[data-testid="ai-intro"]')).toBeNull();
-  });
-
-  test("a starter prompt goes to the surface and counts as seen; the close button dismisses too", () => {
-    const onStarter = vi.fn();
-    const { host } = render(createElement(AiIntro, { place: "folder", onStarter }));
-    act(() => button(host, AI_INTRO.folder.starters[1]!)!.click());
-    expect(onStarter).toHaveBeenCalledWith(AI_INTRO.folder.starters[1]);
-    expect(state.mutations).toEqual([{ seen: true }]);
-    expect(host.querySelector('[data-testid="ai-intro"]')).toBeNull();
-
-    const other = render(createElement(AiIntro, { place: "workspace" }));
-    expect(other.host.textContent).not.toContain("Try one");
-    act(() => (other.host.querySelector('[aria-label="Dismiss the introduction"]') as HTMLButtonElement).click());
-    expect(other.host.querySelector('[data-testid="ai-intro"]')).toBeNull();
-  });
-
-  test("not shown while AI is off or not on the plan", () => {
-    state.profile = { ...state.profile, aiEnabled: false };
-    expect(render(createElement(AiIntro, { place: "note" })).host.textContent).toBe("");
-    state.profile = { ...state.profile, aiEnabled: true, entitlements: { ai: false, plan: "core" } };
-    expect(render(createElement(AiIntro, { place: "note" })).host.textContent).toBe("");
-  });
-
-  test("every place has two or three starters that fit it", () => {
-    for (const place of ["note", "folder", "personal", "workspace"] as const) {
-      expect(AI_INTRO[place].starters.length).toBeGreaterThanOrEqual(2);
-      expect(AI_INTRO[place].starters.length).toBeLessThanOrEqual(3);
-      expect(AI_INTRO[place].lead).toContain("Foli");
-    }
-    expect(AI_INTRO.note.starters.join(" ")).toMatch(/note/);
-    expect(AI_INTRO.folder.starters.join(" ")).toMatch(/folder/);
+describe("Meet Foli", () => {
+  test("says what Foli does here, that it shows changes first, where requests go and the credits left", () => {
+    const { host } = render(createElement(AiIntroBody, { place: "note", credits: 42 }));
+    expect(host.textContent).toContain(AI_INTRO.note.lead);
+    expect(host.textContent).toContain("never changes a note without showing you the change first");
+    expect(host.textContent).toContain("Google Gemini");
+    expect(host.textContent).toContain("you have 42 AI credits left");
+    for (const place of ["note", "folder", "personal", "workspace"] as const) expect(AI_INTRO[place].lead).toContain("Foli");
   });
 });
 

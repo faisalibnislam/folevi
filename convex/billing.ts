@@ -164,7 +164,7 @@ export const aiUsage = query({
       trialing: a.trialing,
       canBuy: a.canBuy,
       ...balance,
-      ...usageBreakdown(row, a.period, now),
+      ...usageBreakdown(row, a.period, now, balance.used),
     };
   },
 });

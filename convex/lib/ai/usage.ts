@@ -58,13 +58,18 @@ export type UsageBreakdown = {
   days: { day: string; credits: number }[];
   /** All credits charged this period (monthly and extra). */
   total: number;
+  /** Credits used this period that aren't in the day chart (charged before days were recorded). */
+  untrackedDays: number;
 };
 
 /** A period row's credits by feature and by day, every day of the period so far listed. */
-export function usageBreakdown(row: Pick<Doc<"aiCreditPeriods">, "features" | "days"> | null, period: { start: number; end: number }, now: number): UsageBreakdown {
-  const byFeature = row?.features ?? {};
+export function usageBreakdown(row: Pick<Doc<"aiCreditPeriods">, "features" | "days"> | null, period: { start: number; end: number }, now: number, used = 0): UsageBreakdown {
+  const byFeature = { ...(row?.features ?? {}) };
   const byDay = row?.days ?? {};
-  const features = AI_FEATURES.map((f) => ({ feature: f, label: FEATURE_LABELS[f], credits: byFeature[f] ?? 0 })).filter((f) => f.feature !== "other" || f.credits > 0);
+  // Credits charged before features were recorded still count, so the rows add up to what was used.
+  const tracked = Object.values(byFeature).reduce((n, c) => n + (c ?? 0), 0);
+  if (used > tracked) byFeature.other = (byFeature.other ?? 0) + (used - tracked);
+  const features = AI_FEATURES.map((f) => ({ feature: f, label: f === "other" && used > tracked ? "Other or earlier" : FEATURE_LABELS[f], credits: byFeature[f] ?? 0 })).filter((f) => f.feature !== "other" || f.credits > 0);
   const days: { day: string; credits: number }[] = [];
   const last = dayKey(Math.min(now, period.end - 1));
   for (let t = Date.parse(`${dayKey(period.start)}T00:00:00Z`), i = 0; i < MAX_DAYS; t += 86_400_000, i++) {
@@ -72,5 +77,6 @@ export function usageBreakdown(row: Pick<Doc<"aiCreditPeriods">, "features" | "d
     days.push({ day, credits: byDay[day] ?? 0 });
     if (day >= last) break;
   }
-  return { features, days, total: features.reduce((n, f) => n + f.credits, 0) };
+  const inDays = days.reduce((n, d) => n + d.credits, 0);
+  return { features, days, total: features.reduce((n, f) => n + f.credits, 0), untrackedDays: Math.max(0, used - inDays) };
 }

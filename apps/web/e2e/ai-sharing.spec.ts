@@ -80,7 +80,7 @@ test("a conversation shared with the workspace shows under Shared with you, read
   const usage = owner.page.getByRole("region", { name: "Usage" });
   await expect(usage).toBeVisible({ timeout: 30_000 });
   await expect(usage.getByText("Used this period")).toBeVisible();
-  await expect(usage.getByRole("img", { name: /Credits used per day|No credits used yet/ })).toBeVisible();
+  await expect(usage.getByRole("img", { name: /Credits used per day/ }).or(usage.getByText(/No credits used yet this period|Nothing to show by day yet/))).toBeVisible();
   await expect(owner.page.getByRole("button", { name: "Export all conversations" })).toBeVisible();
 
   await owner.context.close();

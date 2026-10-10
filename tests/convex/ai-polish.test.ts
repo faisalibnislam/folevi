@@ -1,5 +1,4 @@
-// Milestone 9 part B (docs/AI_ASSISTANT.md): Foli's first-time introduction is dismissed once per person
-// on the server, a meeting summary saved as a new note gets real mentions (resolved on the server for the
+// Milestone 9 part B (docs/AI_ASSISTANT.md): a meeting summary saved as a new note gets real mentions (resolved on the server for the
 // people who can be mentioned there), and the agent can offer to remember a preference like a chat answer.
 // Gemini is a stubbed `fetch`.
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -14,35 +13,6 @@ afterEach(() => {
   delete process.env.GEMINI_API_KEY;
 });
 
-const me = async (p: Person) => {
-  const r = await p.as.query(api.users.me, {});
-  if (r.state !== "ready") throw new Error(r.state);
-  return r.profile;
-};
-
-describe("the first-time introduction", () => {
-  test("not seen at first; dismissing it sticks for the person (only them), and it can be brought back", async () => {
-    const t = setup();
-    const a = await person(t, "intro-a@example.com");
-    const b = await person(t, "intro-b@example.com");
-    expect((await me(a)).aiIntroSeen).toBe(false);
-    await a.as.mutation(api.users.setAiIntroSeen, { seen: true });
-    expect((await me(a)).aiIntroSeen).toBe(true);
-    expect((await me(b)).aiIntroSeen).toBe(false);
-    // Dismissing again keeps the first time.
-    const first = await t.run(async (ctx) => (await ctx.db.query("profiles").collect()).find((p) => p.email === "intro-a@example.com")!.aiIntroDismissedAt);
-    await a.as.mutation(api.users.setAiIntroSeen, { seen: true });
-    const again = await t.run(async (ctx) => (await ctx.db.query("profiles").collect()).find((p) => p.email === "intro-a@example.com")!.aiIntroDismissedAt);
-    expect(again).toBe(first);
-    await a.as.mutation(api.users.setAiIntroSeen, { seen: false });
-    expect((await me(a)).aiIntroSeen).toBe(false);
-  });
-
-  test("signed out: refused", async () => {
-    const t = setup();
-    await expect(t.mutation(api.users.setAiIntroSeen, { seen: true })).rejects.toThrow();
-  });
-});
 
 describe("a meeting summary saved as a new note", () => {
   const SUMMARY = "## Action items\n\n- [ ] @Ana: Book the hall (due 2026-11-02)\n- [ ] @Zed: Nobody by that name\n- [ ] Plain line with no one";

@@ -67,6 +67,7 @@ export default defineSchema({
     aiWebResearch: v.optional(v.boolean()),
     aiDigests: v.optional(v.boolean()),
     /** When the person dismissed the AI's first-time introduction (unset = not yet; components/ai/AiIntro.tsx). */
+    /** No longer written (the Meet Foli card was dismissable once); kept for rows that have it. */
     aiIntroDismissedAt: v.optional(v.number()),
     locale: v.string(),
     timeZone: v.string(),

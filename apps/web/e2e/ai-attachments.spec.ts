@@ -13,7 +13,7 @@ test("a file attached in the chat shows as a chip and stays on the message; a Wo
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Attach Person");
   await page.goto(`${APP}/ai`);
-  await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Attach files", exact: true })).toBeVisible();
   const picker = page.locator('input[type="file"]');
 

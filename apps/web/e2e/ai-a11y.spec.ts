@@ -43,7 +43,7 @@ test("every Foli surface has no serious accessibility violations, light and dark
 
     // The AI page, new chat (the first-time introduction is on it until dismissed).
     await page.goto(`${APP}/ai`);
-    await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible({ timeout: 30_000 });
     problems.push(...(await scan(page, `${scheme} /ai`)));
 
     // The floating chat, from Home (a note's sidebar lists its pages, and AI lives in the note's own panel).

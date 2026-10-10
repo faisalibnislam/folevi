@@ -99,8 +99,8 @@ export function AiSettingCard() {
   const descId = useId();
   return (
     <Card title="Foli">
-      <div className="flex max-w-xl items-start justify-between gap-6">
-        <p id={descId} className="text-sm text-muted">
+      <div className="flex items-start justify-between gap-6">
+        <p id={descId} className="max-w-prose text-sm text-muted">
           {core ? (
             <>
               <span className="font-medium text-heading">Not included in Core.</span> Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli.{" "}

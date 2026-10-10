@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAppRouter } from "./router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
+import { cameFromHistory } from "./historyNav";
 
 /**
  * An open note in the tab strip. A tab is a top-level page (`id`); its nested pages open inside it, and
@@ -15,10 +16,26 @@ export interface DocTab {
   title: string;
   /** The nested page's own title, while the tab shows one ("Note › Page"). */
   atTitle?: string;
+  /**
+   * A view's tab (Foli, Graph, Drafts, a folder, Tasks…) instead of a note's: its route kind and the path it
+   * shows now. Its id is `view:` and the view's key (one per view; one per folder or tag).
+   */
+  view?: { kind: string; path: string };
 }
 
-/** The page a tab is showing. */
-export const tabPage = (t: DocTab) => t.at ?? t.id;
+/** The page a tab is showing (a note's id; a view's path). */
+export const tabPage = (t: DocTab) => t.view?.path ?? t.at ?? t.id;
+/** Where a tab goes. */
+export const tabHref = (t: DocTab) => (t.view ? t.view.path : `/d/${tabPage(t)}`);
+
+/** Views that get no tab of their own: Home is always the first tab; the rest aren't places you work in. */
+const NO_VIEW_TAB = new Set(["documents", "doc", "onboarding", "quick-add", "invite", "share-invite", "not_found"]);
+/** A view's tab key: one tab per view (it follows you inside it, like Foli's conversations), one per folder or tag. */
+function viewKey(route: { name: string; id?: string | null }): string | null {
+  if (NO_VIEW_TAB.has(route.name)) return null;
+  if ((route.name === "folder" || route.name === "tag") && route.id) return `view:${route.name}:${route.id}`;
+  return `view:${route.name}`;
+}
 
 interface TabsValue {
   tabs: DocTab[];
@@ -91,7 +108,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     // "Open in a new tab" is for the next move to another page, not any update of this one (the address
     // losing "?new=1" used to take it, and the following new note then replaced the current tab).
     const moved = docId !== from;
-    const newTab = moved && nextInNewTab;
+    // Back or Forward to a page whose tab was closed brings that tab back rather than taking over this one.
+    const newTab = moved && (nextInNewTab || cameFromHistory());
     if (moved) nextInNewTab = false;
     if (docId) {
       const open = tabs.findIndex((t) => t.id === docId || tabPage(t) === docId);
@@ -116,8 +134,23 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     } else if (!["settings", "onboarding", "invite", "share-invite", "not_found", "help"].includes(route.name)) {
       const href = `${pathname}${query ? `?${query}` : ""}`;
       if (href !== homeHref) setHomeHref(href);
+      // Every view you open gets its own tab, which stays until you close it (it follows you inside the view).
+      const key = viewKey(route as { name: string; id?: string | null });
+      if (key) {
+        const kind = route.name;
+        setTabs((cur) => {
+          const i = cur.findIndex((t) => t.id === key);
+          if (i !== -1) return cur[i]!.view?.path === pathname ? cur : cur.map((t) => (t.id === key ? { ...t, view: { kind, path: pathname } } : t));
+          let next: DocTab[] = [...cur, { id: key, title: "", view: { kind, path: pathname } }];
+          while (next.length > MAX_TABS) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== key));
+          return next;
+        });
+      }
     }
   }, [docId, route.name, pathname, query]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Whether a tab is the one on screen (a note's page, or a view at its path).
+  const isShown = useCallback((t: DocTab) => (t.view ? t.view.path === pathname : tabPage(t) === docId), [pathname, docId]);
 
   const close = useCallback(
     (id: string) => {
@@ -125,12 +158,12 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       if (i === -1) return;
       const next = tabs.filter((t) => t.id !== id);
       setTabs((cur) => cur.filter((t) => t.id !== id));
-      if (docId && tabPage(tabs[i]!) === docId) {
+      if (isShown(tabs[i]!)) {
         const neighbor = next[i] ?? next[i - 1];
-        navigate(neighbor ? `/d/${tabPage(neighbor)}` : homeHref);
+        navigate(neighbor ? tabHref(neighbor) : "/documents");
       }
     },
-    [tabs, setTabs, docId, navigate, homeHref],
+    [tabs, setTabs, isShown, navigate],
   );
   const closeMany = useCallback(
     (ids: string[], then?: string) => {
@@ -138,12 +171,12 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       if (!gone.size) return;
       const next = tabs.filter((t) => !gone.has(t.id));
       setTabs((cur) => cur.filter((t) => !gone.has(t.id)));
-      if (docId && tabs.some((t) => gone.has(t.id) && tabPage(t) === docId)) {
+      if (tabs.some((t) => gone.has(t.id) && isShown(t))) {
         const stay = next.find((t) => t.id === then);
-        navigate(stay ? `/d/${tabPage(stay)}` : homeHref);
+        navigate(stay ? tabHref(stay) : "/documents");
       }
     },
-    [tabs, setTabs, docId, navigate, homeHref],
+    [tabs, setTabs, isShown, navigate],
   );
 
   const move = useCallback(
@@ -181,15 +214,21 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   );
 
   const [view, setViewState] = useState<{ path: string; title: string } | null>(null);
-  const setView = useCallback((next: { path: string; title: string }) => {
-    setViewState((prev) => (prev && prev.path === next.path && prev.title === next.title ? prev : next));
-  }, []);
+  const setView = useCallback(
+    (next: { path: string; title: string }) => {
+      setViewState((prev) => (prev && prev.path === next.path && prev.title === next.title ? prev : next));
+      // The view's tab takes its name.
+      setTabs((cur) => (cur.some((t) => t.view?.path === next.path && t.title !== next.title) ? cur.map((t) => (t.view?.path === next.path ? { ...t, title: next.title } : t)) : cur));
+    },
+    [setTabs],
+  );
 
   // Switching tabs shows the note at once: the recent tabs' details are already here, and their blocks are
   // on this device (the note catches up with the server once it's showing).
   const warmKey = (() => {
-    const open = new Set(tabs.map(tabPage));
-    return [...recent, ...tabs.map(tabPage)].filter((id, i, all) => id !== docId && open.has(id) && all.indexOf(id) === i).slice(0, WARM_TABS).join(",");
+    const notes = tabs.filter((t) => !t.view);
+    const open = new Set(notes.map(tabPage));
+    return [...recent, ...notes.map(tabPage)].filter((id, i, all) => id !== docId && open.has(id) && all.indexOf(id) === i).slice(0, WARM_TABS).join(",");
   })();
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
   const value = useMemo(() => ({ tabs, view, setView, homeHref, close, closeMany, move, place, warm }), [tabs, view, setView, homeHref, close, closeMany, move, place, warm]);

@@ -112,7 +112,7 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
           href={`/ai/${row.id}`}
           onClick={onNavigate}
           aria-current={active ? "page" : undefined}
-          className={`${ROW_LINK} pr-9 ${rowTone(active)}`}
+          className={`${ROW_LINK} pr-2.5 group-focus-within/conv:pr-9 group-hover/conv:pr-9 pointer-coarse:pr-9 ${rowTone(active)}`}
         >
           <span className="min-w-0 flex-1 truncate">{row.title}</span>
           {row.shared ? (

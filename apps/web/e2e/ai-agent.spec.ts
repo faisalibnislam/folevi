@@ -8,7 +8,7 @@ test("the chat's Agent mode sends a request and says plainly when the assistant 
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Agent Person");
   await page.goto(`${APP}/ai`);
-  await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible();
   const modes = page.getByRole("group", { name: "How Foli helps" });
   await expect(modes.getByRole("button", { name: "Chat", exact: true })).toHaveAttribute("aria-pressed", "true");
   await modes.getByRole("button", { name: "Agent", exact: true }).click();

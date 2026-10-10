@@ -1,9 +1,10 @@
 "use client";
 
+import { replaceEntry } from "@/lib/app/historyNav";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { Check, CreditCard, HardDrive, Users } from "lucide-react";
+import { CreditCard, HardDrive, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import type { Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +14,7 @@ import { TIER_NAMES, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, billedQuantity, form
 import { Card } from "./Card";
 import { CreditLines, Tile, UsageMeter, formatBytes, plural } from "./BillingSection";
 import { BuyCreditsDialog } from "./BuyCreditsDialog";
+import { PlanRow, PlanRows } from "./PlanRow";
 
 // Billing dates are UTC, like the server and Polar, so a renewal and a credit reset never read a day apart.
 const dateOnly = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -45,7 +47,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
     const q = new URLSearchParams(window.location.search).get("checkout");
     if (q === "success") toast.show("Thanks. The workspace plan is being activated. It can take a moment.", { tone: "success" });
     if (q === "canceled") toast.show("Checkout canceled. Nothing was charged.");
-    if (q) window.history.replaceState(null, "", window.location.pathname);
+    if (q) replaceEntry(window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data) return <p className="text-sm text-muted">Loading the workspace plan…</p>;
@@ -212,7 +214,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             <span className="whitespace-nowrap rounded-full bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <PlanRows>
           {WORKSPACE_PLAN_ORDER.map((tier) => {
             const card = WORKSPACE_PLANS[tier];
             const cardPlan = workspacePlanId(tier, interval);
@@ -223,26 +225,18 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             const highlight = tier === "pro_ai";
             const label = sameTier ? `Switch to ${interval === "year" ? "yearly" : "monthly"}` : !e.paid || rank(tier) > rank(plan.tier) ? `Upgrade to ${card.name}` : `Change to ${card.name}`;
             return (
-              <section key={tier} aria-label={`${card.name} plan`} className={`flex flex-col rounded-[14px] p-5 ${highlight ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}>
-                <div className="flex items-center gap-2">
-                  <h4 className="ui-display text-[19px]">{card.name}</h4>
-                  {isCurrent ? <span className="ml-auto rounded-full bg-heading px-2 py-0.5 text-[11px] font-semibold text-canvas">Current</span> : null}
-                </div>
-                <p className="mt-2">
-                  <span className="text-[30px] font-semibold tracking-tight text-heading">{formatPrice(price)}</span>
-                  <span className="text-sm text-muted">{` / ${per(interval)}`}</span>
-                </p>
-                <p className="min-h-[36px] text-[12.5px] text-muted">{!paid ? "Nobody is billed" : `Per member. ${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(seatChargeCents(price, data.seats))}/${per(interval)}`}</p>
-                <p className="mt-2 text-[13px] text-ink">{card.blurb}</p>
-                <ul className="mt-3 flex-1 space-y-1.5 text-[13px]">
-                  {card.features.map((f) => (
-                    <li key={f} className="flex gap-2">
-                      <Check size={15} aria-hidden className="mt-0.5 flex-none text-[#2f9e62]" /> {f}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4">
-                  {isCurrent ? (
+              <PlanRow
+                key={tier}
+                name={card.name}
+                current={isCurrent}
+                highlight={highlight}
+                price={formatPrice(price)}
+                per={per(interval)}
+                note={!paid ? "Nobody is billed" : `Per member. ${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(seatChargeCents(price, data.seats))}/${per(interval)}`}
+                blurb={card.blurb}
+                features={card.features}
+                action={
+                  isCurrent ? (
                     <Button disabled className="w-full">
                       Current plan
                     </Button>
@@ -260,12 +254,12 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                     <Button disabled className="w-full">
                       Coming soon
                     </Button>
-                  )}
-                </div>
-              </section>
+                  )
+                }
+              />
             );
           })}
-        </div>
+        </PlanRows>
         <p className="mt-3 text-[12.5px] text-faint">
           {polarLive || data.checkoutAvailable
             ? "Payments are handled by Polar, which works out any tax. Adding or removing members changes the seats, prorated."

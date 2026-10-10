@@ -130,7 +130,7 @@ export function MemoryList({
     <div className="max-w-xl space-y-4">
       {on ? null : (
         <p role="status" className="rounded-[8px] bg-sunken px-3 py-2 text-sm text-muted">
-          Memory is off. Nothing here is used, and the assistant won&apos;t offer to remember anything. What&apos;s saved stays until you delete it.
+          Memory is off. Nothing here is used, and Foli won&apos;t offer to remember anything. What&apos;s saved stays until you delete it.
         </p>
       )}
       {on ? (
@@ -161,7 +161,7 @@ export function MemoryList({
         </form>
       ) : null}
       {items.length ? (
-        <ul id={listId} aria-label="What the assistant remembers" className="divide-y divide-line/70">
+        <ul id={listId} aria-label="What Foli remembers" className="divide-y divide-line/70">
           {items.map((item) => (
             <Row key={item.id} item={item} onUpdate={onUpdate} onRemove={onRemove} />
           ))}
@@ -178,7 +178,7 @@ export function MemoryList({
         open={confirming}
         onClose={() => setConfirming(false)}
         title="Clear memory?"
-        description="Everything the assistant remembers about you is deleted, everywhere. This can't be undone."
+        description="Everything Foli remembers about you is deleted, everywhere. This can't be undone."
         size="sm"
         footer={
           <>
@@ -214,7 +214,7 @@ export function AiMemoryCard() {
       },
     );
   return (
-    <Card title="Memory" description="What the assistant remembers about how you like it to write. It only keeps what you add here or save from a chat.">
+    <Card title="Memory" description="What Foli remembers about how you like it to write. It only keeps what you add here or save from a chat.">
       {memory ? (
         <MemoryList
           on={memory.on}

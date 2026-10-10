@@ -41,12 +41,12 @@ test("pages open in tabs with their own sidebar; the sidebar can switch to folde
   await expect(page.getByRole("tab", { name: "Find in page" })).toHaveAttribute("aria-selected", "true");
 });
 
-test("a nested page opens inside the note's tab; a new page opens its own tab; no back/forward pills", async ({ browser }) => {
+test("a nested page opens inside the note's tab; a new page opens its own tab; Back and Forward sit before the tabs", async ({ browser }) => {
   const { page } = await newPerson(browser, "Nested Tabs");
   const tabs = page.getByRole("navigation", { name: "Open pages" });
   await expect(tabs.getByRole("link", { name: "Welcome to Folevi" })).toHaveAttribute("aria-current", "page");
   const before = await tabs.getByRole("button", { name: /^Close / }).count();
-  await expect(page.getByRole("group", { name: "History" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "History" }).getByRole("button", { name: "Back" })).toBeVisible();
 
   // A page added inside this note (Insert → Page) opens inside the note's tab: nested pages never get
   // a tab of their own, and the tab reads "Note › Page".

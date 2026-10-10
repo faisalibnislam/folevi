@@ -64,7 +64,7 @@ test("a new note on a folder page starts in that folder; the tab strip shows the
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Soup");
   await waitForSaved(page);
-  await page.getByRole("button", { name: "Up to Recipes" }).click();
+  await page.getByRole("group", { name: "History" }).getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("main").getByText("Soup")).toBeVisible();
 });
 

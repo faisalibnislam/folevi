@@ -282,16 +282,21 @@ export function ChatThread({
     attachAvailable && attachments.files.length ? "Attached files go to Google Gemini too." : "",
     conversation?.ephemeral ? "History is off: this conversation is deleted when you close it." : "",
   ].filter(Boolean);
-  const introCredits = useAiCredits({ skip: variant !== "floating" || !empty });
+  const introCredits = useAiCredits({ skip: variant === "panel" || !empty });
 
   let intro: ReactNode = null;
   if (empty && !loading) {
     intro = page ? (
-      <div className="mx-auto flex max-w-xl flex-col items-center pt-[12vh] text-center">
+      // Meet Foli: what it does, that it shows changes first, where requests go and what they cost.
+      <div className="mx-auto max-w-2xl pt-[8vh]">
         <AiIcon size={28} aria-hidden />
-        <h2 className="ui-display mt-4 text-[28px] leading-tight text-heading">What can I help you with?</h2>
-        <p className="mt-2 text-[14px] text-muted">{mode === "research" ? "Ask a question and it researches the web and your notes, then writes a report with sources. It takes a few minutes." : mode === "agent" ? "Ask it to organize, edit or create notes. It shows every change first, and nothing happens until you approve." : "Ask about your notes, get a summary, or have it draft something. Answers link to the notes they come from."}</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <h2 className="ui-display mt-4 text-[28px] leading-tight text-heading">Meet Foli</h2>
+        <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
+        {mode !== "ask" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
+        <p className="mb-2.5 mt-6 flex items-center gap-2 text-[12.5px] font-medium text-muted">
+          <AiIcon size={13} aria-hidden /> Try asking
+        </p>
+        <div className="flex flex-wrap gap-2">
           {suggestions.map((s) => (
             <button key={s} type="button" onClick={() => send(s)} className="rounded-full bg-[var(--glass-hover)] px-3.5 py-2 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}

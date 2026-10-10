@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ChevronRight, FileText, Folder, Hash, House, LayoutList, Plus, X, XCircle } from "lucide-react";
+import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileText, Files, Folder, Hash, House, Inbox, LayoutList, LayoutTemplate, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { tabPage, useTabs } from "@/lib/app/tabs";
+import { tabHref, tabPage, useTabs } from "@/lib/app/tabs";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { Button } from "@/components/ui/Button";
 import { ContextMenu } from "@/components/ui/Menu";
 import { useQuery } from "convex/react";
@@ -12,10 +13,74 @@ import { useShell } from "./Shell";
 import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
-import { UpButton } from "./UpButton";
+import { BackForward } from "./BackForward";
 
 const ARROW = "grid h-8 w-6 flex-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
+
+/** A view's tab name until the view names it (the same names as the sidebar). */
+const VIEW_NAMES: Record<string, string> = {
+  ai: "Foli",
+  graph: "Graph",
+  starred: "Starred",
+  unsorted: "Drafts",
+  notes: "All notes",
+  tasks: "Tasks",
+  calendar: "Calendar",
+  daily: "Daily note",
+  shared: "Shared with Me",
+  templates: "Templates",
+  archive: "Archive",
+  trash: "Trash",
+  folders: "Folders",
+  folder: "Folder",
+  tags: "Tags",
+  tag: "Tag",
+  settings: "Settings",
+  help: "Help",
+};
+
+/** A view's tab icon (the sidebar's). */
+function ViewIcon({ kind }: { kind: string }) {
+  const c = "flex-none opacity-70";
+  switch (kind) {
+    case "ai":
+      return <AiIcon size={14} />;
+    case "graph":
+      return <Waypoints size={14} aria-hidden className={c} />;
+    case "starred":
+      return <Star size={14} aria-hidden className={c} />;
+    case "unsorted":
+      return <Inbox size={14} aria-hidden className={c} />;
+    case "notes":
+      return <Files size={14} aria-hidden className={c} />;
+    case "tasks":
+      return <CheckSquare size={14} aria-hidden className={c} />;
+    case "calendar":
+    case "daily":
+      return <Calendar size={14} aria-hidden className={c} />;
+    case "shared":
+      return <Share2 size={14} aria-hidden className={c} />;
+    case "templates":
+      return <LayoutTemplate size={14} aria-hidden className={c} />;
+    case "archive":
+      return <Archive size={14} aria-hidden className={c} />;
+    case "trash":
+      return <Trash2 size={14} aria-hidden className={c} />;
+    case "folder":
+    case "folders":
+      return <Folder size={14} aria-hidden className={c} />;
+    case "tag":
+    case "tags":
+      return <Hash size={14} aria-hidden className={c} />;
+    case "settings":
+      return <Settings size={14} aria-hidden className={c} />;
+    case "help":
+      return <CircleHelp size={14} aria-hidden className={c} />;
+    default:
+      return <LayoutList size={14} aria-hidden className={c} />;
+  }
+}
 
 /**
  * Top strip: sidebar controls, then a Home tab (the last list view you were on) and one tab per open
@@ -24,19 +89,19 @@ const ARROW = "grid h-8 w-6 flex-none place-items-center rounded-[6px] text-mute
 export function TabStrip() {
   const { sidebarOpen } = useShell();
   const { route, pathname } = useAppRouter();
-  const { tabs, close, closeMany, move, view } = useTabs();
+  const { tabs, close, closeMany, move } = useTabs();
   // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
   // its title arrived, or renamed elsewhere, would keep the old one).
   // Each tab's note, and the nested page it shows (titles change elsewhere too).
-  const live = useQuery(api.documents.titles, tabs.length ? { documentIds: [...new Set(tabs.flatMap((t) => (t.at && t.at !== t.id ? [t.id, t.at] : [t.id])))] } : "skip");
+  const noteTabs = tabs.filter((t) => !t.view);
+  const live = useQuery(api.documents.titles, noteTabs.length ? { documentIds: [...new Set(noteTabs.flatMap((t) => (t.at && t.at !== t.id ? [t.id, t.at] : [t.id])))] } : "skip");
   // The tab menu (right-click): close this tab, those to its right or left, or all of them.
   const [tabMenu, setTabMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const createDocument = useCreateDocument();
   const docId = route.name === "doc" ? route.id : null;
-  // The first tab is always Home (the dashboard); other list views don't take it over. While one is open it
-  // gets a tab of its own next to Home (named by the view itself, for this path only, so it's never stale).
+  // The first tab is always Home (the dashboard); every other view (Foli, Graph, Drafts, a folder…) gets a tab
+  // of its own that stays until it's closed, like a note's.
   const onHome = route.name === "documents";
-  const viewTab = !docId && !onHome ? (view?.path === pathname ? view.title : null) : null;
   const inFolder = route.name === "folder";
 
   // Keep the open tab in view when there are more tabs than fit.
@@ -147,8 +212,8 @@ export function TabStrip() {
         </>
       ) : null}
 
-      {/* Up a level (parent page, folder, …), then a divider before the tab arrows and tabs. */}
-      <UpButton />
+      {/* Back and Forward, like a browser's, then a divider before the tab arrows and tabs. */}
+      <BackForward />
       <span aria-hidden className="h-5 w-px flex-none bg-black/10" />
 
       {overflow.start || overflow.end ? (
@@ -175,25 +240,11 @@ export function TabStrip() {
           <House size={14} aria-hidden className="flex-none" />
           <span>Home</span>
         </AppLink>
-        {/* Any other list view (a folder, Drafts, Trash…) shows as the current tab while it's open. */}
-        {viewTab ? (
-          // The page you're on (not a link: it would only lead here); the sidebar and Up move between views.
-          <span aria-current="page" title={viewTab} className={`${tabBase} min-w-0 max-w-[240px] flex-none cursor-default ${tabOn}`}>
-            {route.name === "folder" || route.name === "folders" ? (
-              <Folder size={14} aria-hidden className="flex-none" />
-            ) : route.name === "tag" || route.name === "tags" ? (
-              <Hash size={14} aria-hidden className="flex-none" />
-            ) : (
-              <LayoutList size={14} aria-hidden className="flex-none" />
-            )}
-            <span className="truncate">{viewTab}</span>
-          </span>
-        ) : null}
         {tabs.map((t) => {
-          const active = tabPage(t) === docId;
-          const note = live?.[t.id]?.title || t.title || "Untitled";
+          const active = t.view ? t.view.path === pathname : tabPage(t) === docId;
+          const note = t.view ? t.title || VIEW_NAMES[t.view.kind] || "Page" : live?.[t.id]?.title || t.title || "Untitled";
           // Showing a nested page: "Note › Page" (the page's name keeps more room than the note's).
-          const nested = t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
+          const nested = !t.view && t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
           const label = nested !== null ? `${note} › ${nested || "Untitled"}` : note;
           return (
             <div
@@ -233,8 +284,8 @@ export function TabStrip() {
                 setTabMenu({ id: t.id, at: { x: r.left + 8, y: r.bottom + 4 } });
               }}
             >
-              <AppLink href={`/d/${tabPage(t)}`} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label} aria-label={label}>
-                <FileText size={14} aria-hidden className="flex-none opacity-70" />
+              <AppLink href={tabHref(t)} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label} aria-label={label}>
+                {t.view ? <ViewIcon kind={t.view.kind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
                 {nested !== null ? (
                   <span className="flex min-w-0 items-center gap-1">
                     <span className="min-w-[2.5rem] max-w-[45%] shrink truncate font-normal text-muted">{note}</span>

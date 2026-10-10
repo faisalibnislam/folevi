@@ -1,40 +1,32 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson, waitForSaved } from "./helpers";
 
-// Foli's first-time introduction and the empty states (docs/AI_ASSISTANT.md milestone 9): a small card in
+// Meet Foli and the empty states (docs/AI_ASSISTANT.md milestone 9). Was: a small card in
 // whichever AI surface someone opens first, with starters that fit the place; dismissing it (or using a
 // starter) is remembered on the server, so no other surface shows it again, even after a reload. With AI
 // turned off there's no card, and the AI page says how to turn it on. Every surface has an empty state.
 
-test("the introduction shows once: a starter fills the box, and it's gone everywhere after", async ({ browser }) => {
+test("the AI page and the floating chat open on Meet Foli: what it does, where requests go, credits, and things to try", async ({ browser }) => {
   test.setTimeout(150_000);
   const { page, context } = await newPerson(browser, "Intro Person");
   await page.goto(`${APP}/ai`);
-  const card = page.getByRole("region", { name: "Meet Foli" });
-  await expect(card).toBeVisible({ timeout: 30_000 });
-  await expect(card).toContainText("never changes a note without showing you the change first");
-  await expect(card).toContainText("Google Gemini");
-  await expect(card).toContainText("AI credits");
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible({ timeout: 30_000 });
+  await expect(main).toContainText("never changes a note without showing you the change first");
+  await expect(main).toContainText("Google Gemini");
+  await expect(main).toContainText("AI credits");
+  await expect(main.getByText("Try asking")).toBeVisible();
   // Empty /ai: the conversation list says what goes there.
   await expect(page.getByText("Your conversations will show up here.")).toBeVisible();
-
-  // A starter goes into the box (nothing is sent), and the card is gone.
-  await card.getByRole("button", { name: "What did I work on this week?" }).click();
-  await expect(card).toHaveCount(0);
-  const box = page.getByRole("textbox", { name: /Ask a question/ });
-  await expect(box).toHaveValue("What did I work on this week?");
-  await expect(box).toBeFocused();
-
-  // Remembered on the server: not after a reload, not in the floating chat, not in a note's AI panel.
-  // (The card hides at once; give the dismissal a moment to reach the server before reloading.)
-  await page.waitForTimeout(1_500);
+  // Still there after a reload (it's the welcome of an empty chat, not a one-time card).
   await page.reload();
-  await expect(page.getByRole("heading", { name: "What can I help you with?" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("region", { name: "Meet Foli" })).toHaveCount(0);
+  await expect(main.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible({ timeout: 30_000 });
+
   await page.goto(`${APP}/documents`);
   await page.getByRole("button", { name: "Ask Foli" }).click();
-  await expect(page.getByRole("dialog", { name: "Foli" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Meet Foli" })).toHaveCount(0);
+  const chat = page.getByRole("dialog", { name: "Foli" });
+  await expect(chat.getByRole("heading", { name: "Meet Foli" })).toBeVisible();
+  await expect(chat).toContainText("Foli is AI and can make mistakes.");
   await page.keyboard.press("Escape");
   await context.close();
 });
@@ -64,7 +56,7 @@ test("a note's Foli panel has no introduction card, just its empty states; the A
 
   // Opening the note panel doesn't count as having seen the introduction.
   await page.goto(`${APP}/ai`);
-  await expect(page.getByRole("region", { name: "Meet Foli" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible({ timeout: 30_000 });
   await context.close();
 });
 
@@ -78,13 +70,13 @@ test("with AI off there's no card, and the AI page and the note's panel say how 
   await page.goto(`${APP}/ai`);
   await expect(page.getByRole("heading", { name: "Foli is turned off" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("link", { name: "Open AI settings" })).toHaveAttribute("href", /\/settings\/ai$/);
-  await expect(page.getByRole("region", { name: "Meet Foli" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toHaveCount(0);
 
-  // On again: the introduction was never dismissed, so it's there.
+  // On again: Foli introduces itself.
   await page.goto(`${APP}/settings/ai`);
   await page.getByRole("switch", { name: "Foli" }).click();
   await expect(page.getByText("Foli turned on")).toBeVisible();
   await page.goto(`${APP}/ai`);
-  await expect(page.getByRole("region", { name: "Meet Foli" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible({ timeout: 30_000 });
   await context.close();
 });

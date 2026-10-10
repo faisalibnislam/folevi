@@ -25,7 +25,7 @@ test("memory in Settings > AI: add, edit and delete", async ({ browser }) => {
   await card.getByRole("textbox", { name: "What to remember" }).fill("Use British spelling");
   await card.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByText("Remembered")).toBeVisible();
-  const list = card.getByRole("list", { name: "What the assistant remembers" });
+  const list = card.getByRole("list", { name: "What Foli remembers" });
   await expect(list.getByRole("listitem")).toHaveText(["LanguageUse British spelling"]);
 
   await list.getByRole("button", { name: 'Edit "Use British spelling"' }).click();

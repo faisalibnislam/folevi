@@ -644,7 +644,9 @@ export const post = internalMutation({
       for (const m of messages.slice(at + 1)) await ctx.db.delete(m._id);
     }
     const messageId = await insertScoped(ctx, "aiMessages", scopeOfRow(c), { conversationId: c._id, profileId: profile._id, role: "assistant", text: "", status: "streaming", phase: "thinking", ...(args.agent ? { agent: { steps: [] } } : {}), createdAt: now, updatedAt: now });
-    await ctx.db.patch(c._id, { updatedAt: now, lastMessageAt: now, ...(text ? { searchText: appendSearch(c, text) } : {}) });
+    // Named from the first question straight away (even if the answer fails); a good answer renames it better.
+    const named = args.mode === "send" && text && !c.titled && !c.ephemeral && c.title === NEW_CHAT_TITLE ? { title: titleFromQuestion(text) } : {};
+    await ctx.db.patch(c._id, { updatedAt: now, lastMessageAt: now, ...named, ...(text ? { searchText: appendSearch(c, text) } : {}) });
     return { messageId };
   },
 });

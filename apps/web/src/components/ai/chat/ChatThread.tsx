@@ -298,7 +298,7 @@ export function ChatThread({
         </p>
         <div className="flex flex-wrap gap-2">
           {suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => send(s)} className="rounded-full bg-[var(--glass-hover)] px-3.5 py-2 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => send(s)} className="rounded-[8px] bg-[var(--glass-hover)] px-3.5 py-2 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}
@@ -321,7 +321,7 @@ export function ChatThread({
         </p>
         <div className="flex flex-col items-start gap-2">
           {suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => send(s)} className="rounded-full bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => send(s)} className="rounded-[8px] bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}

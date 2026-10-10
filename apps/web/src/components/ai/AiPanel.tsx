@@ -333,7 +333,7 @@ export function AiPanel({
               </h3>
               <div className="flex flex-col items-start gap-1.5">
                 {ASK_NOTE.map((q) => (
-                  <button key={q} type="button" onClick={() => void doAsk(q)} className="rounded-full bg-[var(--glass-hover)] px-2.5 py-1 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                  <button key={q} type="button" onClick={() => void doAsk(q)} className="rounded-[8px] bg-[var(--glass-hover)] px-2.5 py-1 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
                     {q}
                   </button>
                 ))}

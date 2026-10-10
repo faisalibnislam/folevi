@@ -29,7 +29,7 @@ test("a file attached in the chat shows as a chip and stays on the message; a Wo
   await expect(composer.getByText("ferry.txt")).toBeVisible();
   // Uploaded: the chip's spinner is gone and the question can be sent.
   await expect(composer.getByText("Uploading")).toHaveCount(0, { timeout: 20_000 });
-  await page.getByPlaceholder("Ask anything about your notes…").fill("When does the ferry leave?");
+  await page.getByPlaceholder("Ask anything, or ask Foli to tidy or organize…").fill("When does the ferry leave?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page.getByText("When does the ferry leave?").first()).toBeVisible();
   await expect(page.getByText(/isn.t set up|couldn.t|try again/i).first()).toBeVisible({ timeout: 30_000 });

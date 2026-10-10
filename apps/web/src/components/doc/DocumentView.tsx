@@ -1522,29 +1522,30 @@ function Backlinks({ documentId }: { documentId: string }) {
   const data = useQuery(api.documents.backlinks, { documentId });
   if (!data || (!data.linked.length && !data.unlinked.length)) return null;
   return (
-    <section aria-labelledby="backlinks-title" className="mx-auto mt-8 max-w-[calc(var(--editor-width)+8rem)] px-5 sm:px-16">
-      <h2 id="backlinks-title" className="text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">
+    // A frosted card under the note (like Suggestions), so it reads on any theme's background.
+    <section aria-labelledby="backlinks-title" className="ui-pop mx-auto mt-4 max-w-[calc(var(--editor-width)+8rem)] p-2">
+      <h2 id="backlinks-title" className="ui-caps px-1.5 pb-1 pt-1">
         Linked from
       </h2>
       <ul className="mt-2 space-y-1">
         {data.linked.map((l) => (
           <li key={l.id}>
-            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1 hover:bg-surface">
+            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1.5 text-ink hover:bg-[var(--glass-hover)]">
               <FileText size={14} aria-hidden className="flex-none text-muted" />
               <span className="font-medium">{l.title || "Untitled"}</span>
               <span className="truncate text-xs text-muted">{l.excerpt}</span>
             </AppLink>
           </li>
         ))}
-        {!data.linked.length ? <li className="px-2 text-sm text-muted">No pages link here yet.</li> : null}
+        {!data.linked.length ? <li className="px-2 py-1 text-sm text-muted">No pages link here yet.</li> : null}
       </ul>
       {data.unlinked.length ? (
         <>
-          <h3 className="mt-4 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">Unlinked mentions</h3>
+          <h3 className="ui-caps mt-3 px-1.5 pb-1">Unlinked mentions</h3>
           <ul className="mt-2 space-y-1">
             {data.unlinked.map((l) => (
               <li key={l.id}>
-                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1 hover:bg-surface">
+                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1.5 text-ink hover:bg-[var(--glass-hover)]">
                   <FileText size={14} aria-hidden className="flex-none text-muted" />
                   <span className="font-medium">{l.title || "Untitled"}</span>
                 </AppLink>

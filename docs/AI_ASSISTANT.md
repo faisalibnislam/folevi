@@ -238,8 +238,13 @@ As built (milestone 9, part B). The assistant is called Foli in the interface.
 - Study reads only toggles the AI made as cards or quiz questions: the generator writes
   `<details data-study="card|quiz">`, which becomes the toggle's `study` prop (editor-schema `StudyKind`,
   round-tripped through Markdown). "Use all toggles" reads every toggle, for the session.
-- The chat's mode (Chat, Agent, Research) is remembered per person on the device (localStorage, read and
-  written in try/catch); the note's Agent tab keeps its own.
+- Chat and the agent are one mode. A message that asks to change notes (fix, reorganise, rename, shorten,
+  move, tag, make notes or tasks, merge: `apps/web/src/components/ai/editIntent.ts`) goes to the agent; a
+  question gets the quick answer with sources. An answer to a change request that went to Chat offers
+  "Make these changes", which hands it to the agent in the same conversation. In a note, Write sends such
+  requests to the panel's Ask tab, and with text selected it revises the selection instead. The chat's mode
+  (Chat or Research) is remembered per person on the device (localStorage, read and written in try/catch);
+  an old "agent" pick reads as Chat.
 - A meeting summary saved as a new note (`aiWriting.saveDraft` with `people`) turns "@Name" into mentions
   on the server, of the scope's members (only the owner in Personal); the linking is shared with the editor
   (editor-schema `linkPeople`).

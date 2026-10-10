@@ -1,6 +1,6 @@
-// Whether a request to Foli asks to change the note (fix, reorganise, rename, shorten…) rather than to
-// answer a question or write something new. Such requests go to the agent, which edits the note's own
-// blocks in place (previewed, approved, one Undo) instead of adding a corrected copy at the end.
+// How Foli handles a message in Chat: a question gets the quick answer from your notes (one model call,
+// with sources); a request to change notes goes to the agent, which proposes the changes (edits to a
+// note's own blocks, moves, tags, new notes…), previewed and applied only on approval, with one Undo.
 
 /** Verbs and phrases that ask for the note itself to change. */
 const CHANGE =
@@ -18,5 +18,18 @@ export function asksToChange(text: string): boolean {
   return CHANGE.test(t) || (SYMPTOM.test(t) && REQUEST.test(t));
 }
 
-/** What the person says when they ask the agent to make an answer's changes ("Fix in note"). */
+/** Requests to organise notes: move or file them, tag them, make notes, folders, checklists or tasks, merge. */
+const ORGANIZE =
+  /\b((move|put|file) (it|this|these|them|my|the|all|every)\b.{0,60}\b(into|in|to|under)\b|(tag|label) (it|this|these|them|my|the|all)\b|add (a |the )?tags?\b|(create|make|start) (a |an |new )*(note|page|folder|checklist|to-?do list|task list)s?\b|(create|make|add) (tasks|to-?dos)\b|merge (these|the|my|them|those)\b|link (it|this|these|them) to\b)/;
+
+/** Whether a message should go to the agent (a change to notes) rather than get a quick answer. */
+export function wantsAgent(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (!t) return false;
+  if (asksToChange(t)) return true;
+  if (QUESTION.test(t) && !REQUEST.test(t)) return false;
+  return ORGANIZE.test(t);
+}
+
+/** What the person says when they ask the agent to make an answer's changes ("Make these changes"). */
 export const FIX_IN_NOTE = "Make these changes in the note itself.";

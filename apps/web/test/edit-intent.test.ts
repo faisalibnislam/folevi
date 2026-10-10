@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { asksToChange } from "@/components/ai/editIntent";
+import { asksToChange, wantsAgent } from "@/components/ai/editIntent";
 
 describe("requests to change the note", () => {
   test("fixes, reorganising and rewriting are changes to the note", () => {
@@ -29,5 +29,12 @@ describe("requests to change the note", () => {
       "Is the numbering wrong?",
       "",
     ]) expect(asksToChange(t), t).toBe(false);
+  });
+});
+
+describe("which messages go to the agent", () => {
+  test("changes and organising go to the agent; questions get the quick answer", () => {
+    for (const t of ["Put my travel notes in a Travel folder", "Tag these notes as research", "Make a checklist from this note", "Create a note with the launch plan", "Merge these two notes", "Fix the headings"]) expect(wantsAgent(t), t).toBe(true);
+    for (const t of ["What did we decide about pricing?", "Which notes mention the launch?", "Summarize my week", "Brainstorm names for the product"]) expect(wantsAgent(t), t).toBe(false);
   });
 });

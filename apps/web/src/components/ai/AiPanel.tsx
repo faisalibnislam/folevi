@@ -3,12 +3,10 @@
 import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowDownToLine, ArrowUp, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, Wand2, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUp, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, X } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
-import { AppLink } from "@/lib/app/router";
-import { useShell } from "@/components/app/Shell";
 import { Select } from "@/components/ui/Select";
 import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
@@ -37,8 +35,6 @@ const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "flashcards", label: "Flashcards", icon: TOOL_ICONS.flashcards },
   { task: "quiz", label: "Quiz", icon: TOOL_ICONS.quiz },
 ];
-/** Questions about this note, offered in Ask while nothing has been asked yet. */
-const ASK_NOTE = ["Sum up this note in three lines", "Who is mentioned, and why?", "What should happen next?"];
 /** "Think it through": the decision and brainstorming frameworks. */
 const THINK = AI_TOOLS.filter((t) => t.group === "decide" || t.group === "ideas");
 const THINK_GROUPS = [
@@ -60,9 +56,7 @@ const THINK_HINTS: Partial<Record<AiTask, string>> = {
 
 const labelFor = (task: AiTask) => (task === "refine" ? "Revised" : null) ?? AI_TOOLS.find((a) => a.task === task)?.label ?? SELECTION_ACTIONS.find((a) => a.task === task)?.label.replace("…", "") ?? NOTE_ACTIONS.find((a) => a.task === task)?.label ?? (task === "draft" ? "Written for you" : "Answer");
 
-type Result =
-  | { kind: "write"; task: AiTask; text: string; placement: AiPlacement; request: Request }
-  | { kind: "ask"; question: string; text: string; sources: { id: string; title: string }[] };
+type Result = { kind: "write"; task: AiTask; text: string; placement: AiPlacement; request: Request };
 interface Request {
   task: AiTask;
   text?: string;
@@ -89,25 +83,24 @@ export function AiPanel({
   run: (AiRunDetail & { id: number }) | null;
   onTitle: (title: string) => void;
 }) {
-  const { ask, write, saveDraft } = useAi();
+  const { write, saveDraft } = useAi();
   const { navigate } = useAppRouter();
   const meta = useQuery(api.documents.get, { documentId });
   const stream = useAiStream();
-  const { openAsk } = useShell();
-  const [mode, setMode] = useState<"write" | "ask" | "agent" | "study">("write");
-  /** The Agent tab's conversation (about this note), once it has one. */
-  const [agentConversation, setAgentConversation] = useState<string | null>(null);
-  // The Agent tab is about the note it's open on (one object while the note stays, so the chat keeps it).
-  const agentContext = useMemo(() => ({ kind: "note" as const, ids: [documentId] }), [documentId]);
-  useEffect(() => setAgentConversation(null), [documentId]);
-  /** A request to change the note, handed to the Agent tab (it edits the note's blocks in place). */
+  const [mode, setMode] = useState<"write" | "ask" | "study">("write");
+  /** The Ask tab's conversation (about this note), once it has one. */
+  const [chatConversation, setChatConversation] = useState<string | null>(null);
+  // Ask is about the note it's open on (one object while the note stays, so the chat keeps it).
+  const noteContext = useMemo(() => ({ kind: "note" as const, ids: [documentId] }), [documentId]);
+  useEffect(() => setChatConversation(null), [documentId]);
+  /** A request to change the note, handed to Ask (the agent there edits the note's blocks in place). */
   const [handoff, setHandoff] = useState<string | null>(null);
   useEffect(() => setHandoff(null), [documentId]);
   const fixInNote = (request: string) => {
     setResult(null);
-    setAgentConversation(null);
+    setChatConversation(null);
     setHandoff(request);
-    setMode("agent");
+    setMode("ask");
   };
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -128,23 +121,6 @@ export function AiPanel({
       const { text } = await write(req.task, { documentId, text: req.text, instruction: req.instruction, language: req.language, streamId });
       await stream.finish(text);
       if (text.trim()) setResult({ kind: "write", task: req.task, text, placement: req.placement, request: req });
-    } catch (e) {
-      setError(aiProblem(e));
-    } finally {
-      stream.end();
-      setBusy(null);
-    }
-  };
-
-  const doAsk = async (question: string) => {
-    setBusy("Reading your notes");
-    setError(null);
-    setNotice(null);
-    try {
-      const streamId = await stream.begin().catch(() => undefined);
-      const { answer, sources } = await ask(question, { documentId, streamId });
-      await stream.finish(answer);
-      if (answer.trim()) setResult({ kind: "ask", question, text: answer, sources });
     } catch (e) {
       setError(aiProblem(e));
     } finally {
@@ -177,7 +153,6 @@ export function AiPanel({
   const submit = () => {
     const text = prompt.trim();
     if (!text || busy) return;
-    if (mode === "ask") return void doAsk(text);
     const sel = selectionText();
     if (asksToChange(text) && !readOnly) {
       setPrompt("");
@@ -250,9 +225,6 @@ export function AiPanel({
       <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")}>
         Ask
       </button>
-      <button type="button" aria-pressed={mode === "agent"} onClick={() => setMode("agent")} title="Can propose changes to this note and your others. Nothing changes until you approve.">
-        Agent
-      </button>
       <button type="button" aria-pressed={mode === "study"} onClick={() => setMode("study")} title="Study this note's flashcards and quiz">
         Study
       </button>
@@ -260,13 +232,14 @@ export function AiPanel({
   );
 
 
-  // Agent: a conversation about this note that can propose changes (previewed, approved, undoable).
-  if (mode === "agent") {
+  // Ask: a conversation about this note. Questions get answers with sources; requests to change the note go
+  // to the agent, which proposes the changes (previewed, approved, one Undo).
+  if (mode === "ask") {
     return (
       <div className="text-sm">
         {modes}
         <div className="flex h-[min(70vh,640px)] flex-col">
-          <ChatThread conversationId={agentConversation} onConversation={setAgentConversation} initialContext={agentContext} variant="panel" initialMode="agent" autoFocus autoSend={handoff ?? undefined} />
+          <ChatThread conversationId={chatConversation} onConversation={setChatConversation} initialContext={noteContext} variant="panel" autoFocus autoSend={handoff ?? undefined} onInsert={editor && !readOnly ? (md) => void insertAiMarkdown(editor, md, { kind: "cursor" }) : undefined} />
         </div>
       </div>
     );
@@ -297,7 +270,7 @@ export function AiPanel({
         {modes}
         <div className="relative rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
-            {mode === "write" ? "Tell Foli what to write" : "Ask about this note and your other notes"}
+            Tell Foli what to write
           </label>
           <textarea
             id={`${uid}-prompt`}
@@ -312,12 +285,12 @@ export function AiPanel({
                 submit();
               }
             }}
-            placeholder={mode === "write" ? "Write a friendly intro paragraph…" : "What did we decide about…?"}
+            placeholder="Write a friendly intro paragraph…"
             className="block w-full resize-none bg-transparent px-3 pb-9 pt-2.5 text-[13.5px] text-ink outline-none placeholder:text-faint"
           />
           <button
             type="button"
-            aria-label={mode === "write" ? "Write" : "Ask"}
+            aria-label="Write"
             disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)}
             onClick={submit}
             className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-30"
@@ -326,10 +299,9 @@ export function AiPanel({
           </button>
         </div>
         <p className="mt-1.5 px-1 text-[11.5px] text-faint">
-          {mode === "write" ? "Write something new, or ask for a change (fix, shorten, reorganise) and Foli edits the note. ↵ to send." : "Answers from this note and your other notes, with sources."}
+          Write something new, or ask for a change (fix, shorten, reorganise) and Foli edits the note. ↵ to send.
         </p>
-        {/* Writing uses the note's own scope; asking searches where you are. */}
-        <AiCreditsNote documentId={mode === "write" ? documentId : undefined} className="mt-2" />
+        <AiCreditsNote documentId={documentId} className="mt-2" />
       </section>
 
       {/* Quick actions */}
@@ -357,28 +329,7 @@ export function AiPanel({
             ))}
           </div>
         </section>
-      ) : (
-        <>
-          {/* Nothing asked yet: questions that fit this note. */}
-          {!result && !busy ? (
-            <section aria-labelledby={`${uid}-ask`}>
-              <h3 id={`${uid}-ask`} className="ui-caps mb-2 px-1">
-                Ask Foli about this note
-              </h3>
-              <div className="flex flex-col items-start gap-1.5">
-                {ASK_NOTE.map((q) => (
-                  <button key={q} type="button" onClick={() => void doAsk(q)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
-          <button type="button" onClick={() => openAsk(prompt)} className="px-1 text-[12.5px] text-muted underline-offset-2 hover:text-heading hover:underline">
-            Open the full Foli chat (⌘J)
-          </button>
-        </>
-      )}
+      ) : null}
 
       {/* Status (the streaming text isn't a live region: the announcer says when it's done) */}
       <AiAnnouncer text={announce} />
@@ -412,7 +363,7 @@ export function AiPanel({
       {result && !busy ? (
         <section aria-label="AI result" className="rounded-panel bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
           <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
-            <AiIcon size={13} aria-hidden /> {result.kind === "ask" ? result.question : labelFor(result.task)}
+            <AiIcon size={13} aria-hidden /> {labelFor(result.task)}
             {result.kind === "write" && result.task === "translate" ? (
               <Select
                 aria-label="Language"
@@ -441,16 +392,6 @@ export function AiPanel({
               <AiMarkdown markdown={result.text} />
             </div>
           )}
-          {result.kind === "ask" && result.sources.length ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {result.sources.map((s, i) => (
-                <AppLink key={s.id} href={`/d/${s.id}`} className="inline-flex max-w-full items-center gap-1 rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[11.5px] text-ink hover:text-heading">
-                  <span className="font-semibold text-muted">{i + 1}</span>
-                  <span className="truncate">{s.title}</span>
-                </AppLink>
-              ))}
-            </div>
-          ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {result.kind === "write" && result.task === "title" ? (
               <button type="button" disabled={readOnly} onClick={() => (onTitle(result.text), setResult(null))} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
@@ -475,16 +416,6 @@ export function AiPanel({
                 </button>
                 <button type="button" onClick={() => void saveAsNote()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
                   <FilePlus2 size={14} aria-hidden /> Create note
-                </button>
-              </>
-            ) : result.kind === "ask" && asksToChange(result.question) && !readOnly ? (
-              // A request to change this note: the agent makes the change in place (reviewed first, undoable).
-              <>
-                <button type="button" onClick={() => fixInNote(result.question)} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
-                  <Wand2 size={14} aria-hidden /> Fix in note
-                </button>
-                <button type="button" onClick={() => apply({ kind: "cursor" })} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
-                  <CornerDownLeft size={14} aria-hidden /> Insert
                 </button>
               </>
             ) : (

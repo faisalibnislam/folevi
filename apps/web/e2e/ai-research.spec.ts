@@ -47,8 +47,8 @@ test("the Web switch sends, Research starts and fails plainly without a key, and
   await expect(page.getByText("Web research turned off")).toBeVisible();
   await page.goto(`${APP}/ai`);
   await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible();
-  await expect(modes.getByRole("button", { name: "Agent", exact: true })).toBeVisible();
-  await expect(modes.getByRole("button", { name: "Research", exact: true })).toHaveCount(0);
+  // Without the web there's only Chat, so there's no mode switch at all.
+  await expect(page.getByRole("group", { name: "How Foli helps" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Web", exact: true })).toHaveCount(0);
   await context.close();
 });

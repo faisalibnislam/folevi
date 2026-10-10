@@ -61,7 +61,7 @@ test("every Foli surface has no serious accessibility violations, light and dark
     await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Harbour plans", { timeout: 30_000 });
     await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli" }).click();
     const modes = page.getByRole("group", { name: "What Foli should do" });
-    for (const mode of ["Write", "Ask", "Agent", "Study"]) {
+    for (const mode of ["Write", "Ask", "Study"]) {
       await modes.getByRole("button", { name: mode, exact: true }).click();
       await expect(modes.getByRole("button", { name: mode, exact: true })).toHaveAttribute("aria-pressed", "true");
       problems.push(...(await scan(page, `${scheme} note AI ${mode}`)));
@@ -146,7 +146,7 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
   await launcher.focus();
   await page.keyboard.press("Enter");
   const chat = page.getByRole("dialog", { name: "Foli" });
-  await expect(chat.getByRole("textbox", { name: /Ask a question/ })).toBeFocused();
+  await expect(chat.getByRole("textbox", { name: /Ask about your notes/ })).toBeFocused();
   // The messages aren't a live region (that would read every streamed word); one polite status says when an answer is ready.
   expect(await chat.locator('[aria-live="polite"]').evaluateAll((els) => els.filter((e) => e.textContent && e.textContent.length > 200).length)).toBe(0);
   await expect(chat.locator('[role="status"][aria-live="polite"][aria-atomic="true"]')).toHaveCount(1);
@@ -194,7 +194,7 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
   await modes.getByRole("button", { name: "Ask", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(modes.getByRole("button", { name: "Ask", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Who is mentioned, and why?" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Summarize this" })).toBeVisible();
   await page.getByRole("button", { name: "Close panel" }).first().click();
   expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
   await context.close();

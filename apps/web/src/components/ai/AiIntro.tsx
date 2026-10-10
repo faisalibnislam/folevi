@@ -18,10 +18,10 @@ export const AI_INTRO: Record<AiIntroPlace, { lead: string }> = {
     lead: "Here Foli answers from the notes in this folder, with links to the notes it used.",
   },
   personal: {
-    lead: "Ask Foli about your notes, or for a summary or a first draft. Answers link to the notes they come from. In Agent mode, Foli can tidy up and edit notes for you.",
+    lead: "Ask Foli about your notes, or for a summary or a first draft. Answers link to the notes they come from. Ask it to tidy up or edit notes, and it shows the changes for you to approve first.",
   },
   workspace: {
-    lead: "Ask Foli about this workspace's notes. Answers only use notes you can open, and link to them. In Agent mode, Foli can tidy up and edit notes for you.",
+    lead: "Ask Foli about this workspace's notes. Answers only use notes you can open, and link to them. Ask it to tidy up or edit notes, and it shows the changes for you to approve first.",
   },
 };
 

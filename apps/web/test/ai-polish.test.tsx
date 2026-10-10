@@ -286,7 +286,8 @@ describe("the chat remembers its mode", () => {
       "div",
       null,
       createElement("span", { "data-mode": mode }, mode),
-      createElement("button", { type: "button", onClick: () => (setMode("agent"), force((n) => n + 1)) }, "agent"),
+      createElement("button", { type: "button", onClick: () => (setMode("research"), force((n) => n + 1)) }, "research"),
+      createElement("button", { type: "button", onClick: () => setMode("agent") }, "agent"),
       createElement("button", { type: "button", onClick: () => setMode("ask", { remember: false }) }, "quiet"),
     );
   }
@@ -294,17 +295,22 @@ describe("the chat remembers its mode", () => {
   test("a pick is remembered per person and read back on the next visit; a fixed mode isn't", () => {
     const first = render(createElement(ModeProbe));
     expect(first.host.querySelector("span")!.textContent).toBe("ask");
-    act(() => button(first.host, "agent")!.click());
-    expect(readChatMode("me")).toBe("agent");
+    act(() => button(first.host, "research")!.click());
+    expect(readChatMode("me")).toBe("research");
     expect(readChatMode("someone-else")).toBeNull();
     const next = render(createElement(ModeProbe));
-    expect(next.host.querySelector("span")!.textContent).toBe("agent");
+    expect(next.host.querySelector("span")!.textContent).toBe("research");
     act(() => button(next.host, "quiet")!.click());
-    expect(readChatMode("me")).toBe("agent");
-    // The note's Agent tab sets its own mode and doesn't change what's remembered.
+    expect(readChatMode("me")).toBe("research");
+    // Agent is part of Chat: picking it, or an old remembered "agent", reads as Chat.
+    act(() => button(next.host, "agent")!.click());
+    expect(next.host.querySelector("span")!.textContent).toBe("ask");
+    localStorage.setItem("folevi:ai-mode:me", "agent");
+    expect(render(createElement(ModeProbe)).host.querySelector("span")!.textContent).toBe("ask");
+    // A surface that sets its own mode doesn't change what's remembered.
     localStorage.clear();
     const fixed = render(createElement(ModeProbe, { fixed: "ask" }));
-    act(() => button(fixed.host, "agent")!.click());
+    act(() => button(fixed.host, "research")!.click());
     expect(readChatMode("me")).toBeNull();
   });
 
@@ -317,8 +323,8 @@ describe("the chat remembers its mode", () => {
     });
     const { host } = render(createElement(ModeProbe));
     expect(host.querySelector("span")!.textContent).toBe("ask");
-    act(() => button(host, "agent")!.click());
-    expect(host.querySelector("span")!.textContent).toBe("agent");
+    act(() => button(host, "research")!.click());
+    expect(host.querySelector("span")!.textContent).toBe("research");
     spy.mockRestore();
     set.mockRestore();
   });

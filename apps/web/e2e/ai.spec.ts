@@ -11,7 +11,7 @@ test("Ask AI answers from your notes, with sources", async ({ browser }) => {
   await page.keyboard.press("Meta+j");
   const dialog = page.getByRole("dialog", { name: "Foli" });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("textbox", { name: /Ask a question/ }).fill("When is the coastal weekend trip and how do we get there?");
+  await dialog.getByRole("textbox", { name: /Ask about your notes/ }).fill("When is the coastal weekend trip and how do we get there?");
   await page.keyboard.press("Enter");
   // An answer, citing the trip note as a source.
   const source = dialog.getByRole("button", { name: /Trip Sketch: Coastal Weekend/ });

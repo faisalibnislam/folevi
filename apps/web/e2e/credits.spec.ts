@@ -119,7 +119,7 @@ test("out of credits: the panel says so, with Upgrade, and the request is refuse
   await expect(note.getByRole("link", { name: "Upgrade" })).toBeVisible();
 
   // Asking anyway: the server refuses (no Gemini call) and the panel shows its message with Upgrade.
-  await chat.getByRole("textbox", { name: /Ask a question/ }).fill("What am I working on this week?");
+  await chat.getByRole("textbox", { name: /Ask about your notes/ }).fill("What am I working on this week?");
   await page.keyboard.press("Enter");
   const problem = chat.getByTestId("ai-credits-problem");
   await expect(problem).toContainText("You've used the AI credits in your trial.", { timeout: 30_000 });

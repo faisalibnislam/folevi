@@ -21,20 +21,21 @@ import { WebToggle } from "./WebToggle";
 import { AttachControl, AttachmentChips, AttachmentProblems, useChatAttachments, type PendingFile } from "./Attachments";
 import type { ResearchHandlers } from "./ResearchCard";
 import { useChatMode } from "./mode";
-import { asksToChange, FIX_IN_NOTE } from "../editIntent";
+import { asksToChange, FIX_IN_NOTE, wantsAgent } from "../editIntent";
 import { AiAnnouncer, useDoneAnnouncement } from "../announce";
 
-export const SUGGESTIONS = ["What am I working on this week?", "Summarize my notes about travel", "Which tasks are still open?", "What ideas have I written down recently?"];
+// Chat answers questions and makes changes, so its suggestions show both.
+export const SUGGESTIONS = ["What am I working on this week?", "Which tasks are still open?", "Put my notes about travel in a Travel folder", "Tag my recent notes by topic"];
 const FOLDER_SUGGESTIONS = ["Summarize this folder", "What are the open questions here?", "What decisions have been made?", "What should I do next?"];
-const NOTE_SUGGESTIONS = ["Summarize this", "What are the action items?", "What questions are still open?", "Explain it simply"];
-const AGENT_SUGGESTIONS = ["Put my notes about travel in a Travel folder", "Turn the open questions in my notes into tasks", "Find notes that look like duplicates", "Tag my recent notes by topic"];
-const AGENT_NOTE_SUGGESTIONS = ["Turn the action items into tasks with dates", "Tidy up the headings", "Add a short summary at the top", "Suggest a better title"];
+const NOTE_SUGGESTIONS = ["Summarize this", "What questions are still open?", "Tidy up the headings", "Turn the action items into tasks with dates"];
 const RESEARCH_SUGGESTIONS = ["Compare the best note-taking methods", "What changed in remote work rules this year?", "How do heat pumps compare with gas boilers?", "What are good habits for deep work?"];
 
 /**
- * Chat ("ask") answers from your notes (and the web with the Web switch); Agent can also propose changes to
- * them (nothing changes until you approve); Research writes a cited report from the web and your notes,
- * in the background. Research and the Web switch show only when web research is on in Settings.
+ * Chat answers from your notes (and the web with the Web switch), and when a message asks to change notes
+ * (editIntent.ts) it goes to the agent, which proposes the changes (nothing changes until you approve,
+ * one Undo). Research writes a cited report from the web and your notes, in the background. Research and
+ * the Web switch show only when web research is on in Settings. ("agent" stays a mode for links and
+ * older saved picks; it behaves as Chat.)
  */
 export type ChatMode = "ask" | "agent" | "research";
 const IDLE: RunActivity = { busy: null, error: null };
@@ -58,6 +59,7 @@ export function ChatThread({
   autoFocus,
   initialMode,
   autoSend,
+  onInsert,
 }: {
   conversationId: string | null;
   onConversation: (id: string) => void;
@@ -70,10 +72,12 @@ export function ChatThread({
   onNavigate?: () => void;
   variant: "page" | "floating" | "panel";
   autoFocus?: boolean;
-  /** Start in Agent mode (the note's AI sidebar does). */
+  /** The mode to start in ("agent" reads as Chat, which sends change requests to the agent). */
   initialMode?: ChatMode;
   /** Sent as soon as the thread opens (the note panel hands an edit request to the agent this way). */
   autoSend?: string;
+  /** In a note's Foli panel: answers can be put into the note. */
+  onInsert?: (markdown: string) => void;
 }) {
   const { scope } = useAppState();
   const { navigate } = useAppRouter();
@@ -210,8 +214,9 @@ export function ChatThread({
     attachments.clear();
     const target = id;
     const args = { scope: conversation?.scope ?? scope, conversationId: target, text: q, context: isNew ? newContext : undefined, ...(fileIds.length ? { attachments: fileIds } : {}) };
+    // A request to change notes goes to the agent; a question gets the quick answer.
     if (as === "research") void run(() => researchStart(args));
-    else if (as === "agent") void run(() => agentSend(args));
+    else if (as === "agent" || wantsAgent(q)) void run(() => agentSend(args));
     else void run(() => sendAction({ ...args, ...(webOn ? { web: true } : {}) }));
   };
 
@@ -227,10 +232,7 @@ export function ChatThread({
    * "Fix in note": an answer to a request to change the note becomes the agent's job. It edits the note's
    * own blocks in place (previewed, approved, one Undo) instead of the answer being pasted in as a copy.
    */
-  const fixInNote = () => {
-    setMode("agent", { remember: false });
-    send(FIX_IN_NOTE, "agent");
-  };
+  const fixInNote = () => send(FIX_IN_NOTE, "agent");
 
   const changeContext = (next: ChatContext) => {
     if (!conversation || !conversationId) return setNewContext(next);
@@ -291,11 +293,11 @@ export function ChatThread({
 
   const empty = !messages.length && !showPending;
   const aboutNotes = context.kind === "note" || context.kind === "notes";
-  const suggestions = mode === "research" ? RESEARCH_SUGGESTIONS : mode === "agent" ? (aboutNotes ? AGENT_NOTE_SUGGESTIONS : AGENT_SUGGESTIONS) : context.kind === "folder" ? FOLDER_SUGGESTIONS : aboutNotes ? NOTE_SUGGESTIONS : SUGGESTIONS;
+  const suggestions = mode === "research" ? RESEARCH_SUGGESTIONS : context.kind === "folder" ? FOLDER_SUGGESTIONS : aboutNotes ? NOTE_SUGGESTIONS : SUGGESTIONS;
   const page = variant === "page";
   const loading = Boolean(conversationId && data === undefined);
 
-  const modeLine = mode === "research" ? "Research searches the web and your notes, then writes a report with sources. It takes a few minutes." : mode === "agent" ? "The agent can read your notes and propose changes: new notes, edits, folders, tags and tasks. Nothing changes until you approve it." : context.kind === "folder" ? "Answers come from the notes in this folder, with links to the notes used." : context.kind === "workspace" ? "Answers come from your notes, with links to the notes used." : "Answers come from the notes below, with links to what they used.";
+  const modeLine = mode === "research" ? "Research searches the web and your notes, then writes a report with sources. It takes a few minutes." : context.kind === "folder" ? "Answers come from the notes in this folder, with links to the notes used." : context.kind === "workspace" ? "Answers come from your notes, with links to the notes used." : "Answers come from the notes below, with links to what they used.";
   const introPlace: AiIntroPlace = context.kind === "folder" ? "folder" : ai.context === "workspace" ? "workspace" : "personal";
 
   const footNotes = [
@@ -313,7 +315,7 @@ export function ChatThread({
         <AiIcon size={28} aria-hidden />
         <h2 className="ui-display mt-4 text-[28px] leading-tight text-heading">Meet Foli</h2>
         <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
-        {mode !== "ask" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
+        {mode === "research" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
         <p className="mb-2.5 mt-6 flex items-center gap-2 text-[12.5px] font-medium text-muted">
           <AiIcon size={13} aria-hidden /> Try asking
         </p>
@@ -334,7 +336,7 @@ export function ChatThread({
               <AiIcon size={16} aria-hidden /> Meet Foli
             </h3>
             <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
-            {mode !== "ask" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
+            {mode === "research" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
           </>
         ) : null}
         <p className="mb-2.5 mt-5 flex items-center gap-2 text-[12.5px] font-medium text-muted">
@@ -364,7 +366,7 @@ export function ChatThread({
           {intro}
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <UserMessage key={m.id} text={m.text} attachments={m.attachments} disabled={working} onEdit={i === lastUser && conversationId ? (text) => void run(() => (mode === "agent" ? agentEdit({ conversationId, messageId: m.id, text }) : editAction({ conversationId, messageId: m.id, text, ...(webOn ? { web: true } : {}) }))) : undefined} />
+              <UserMessage key={m.id} text={m.text} attachments={m.attachments} disabled={working} onEdit={i === lastUser && conversationId ? (text) => void run(() => (wantsAgent(text) ? agentEdit({ conversationId, messageId: m.id, text }) : editAction({ conversationId, messageId: m.id, text, ...(webOn ? { web: true } : {}) }))) : undefined} />
             ) : m.role === "assistant" ? (
               <AssistantMessage
                 key={m.id}
@@ -381,6 +383,7 @@ export function ChatThread({
                   else void run(() => regenerateAction({ conversationId, ...(webOn || m.webCitations.length ? { web: true } : {}) }));
                 }}
                 onSuggestion={(text) => send(text)}
+                onInsert={onInsert}
                 onFix={
                   i === messages.length - 1 && !m.agent && !jobFor(m.id) && m.status === "done" && contextNotes.length && asksToChange(messages[i - 1]?.role === "user" ? messages[i - 1]!.text : "") ? fixInNote : undefined
                 }
@@ -425,7 +428,7 @@ export function ChatThread({
           <div className="relative w-full rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
             {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className="px-3 pt-2.5" /> : null}
             <label htmlFor={`${uid}-q`} className="sr-only">
-              {mode === "research" ? "What should Foli research?" : mode === "agent" ? "Tell Foli what to change in your notes" : "Ask a question about your notes"}
+              {mode === "research" ? "What should Foli research?" : "Ask about your notes, or ask Foli to change them"}
             </label>
             <textarea
               id={`${uid}-q`}
@@ -440,25 +443,23 @@ export function ChatThread({
                 }
               }}
               maxLength={4000}
-              placeholder={mode === "research" ? "What should I research?" : mode === "agent" ? "Ask Foli to organize, edit or create notes…" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything about your notes…"}
+              placeholder={mode === "research" ? "What should I research?" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli to tidy or organize…"}
               className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
             />
             {/* How Foli helps on the left, attach and send on the right, all inside the box. */}
             {/* 4px from the box's edge: the switch and Send are 10px-cornered inside its 14px corners. */}
             <div className="flex items-center gap-2 px-1 pb-1">
-                <div className={`ui-seg ui-well min-w-0 shrink ${variant === "panel" ? "[&>*]:px-1.5" : ""}`} role="group" aria-label="How Foli helps">
-                  <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")} title="Answers from your notes">
-                    Chat
-                  </button>
-                  <button type="button" aria-pressed={mode === "agent"} onClick={() => setMode("agent")} title="Can propose changes to your notes. Nothing changes until you approve.">
-                    Agent
-                  </button>
-                  {webAvailable ? (
+                {/* Chat answers and makes changes; Research (when the web is on) writes a report. */}
+                {webAvailable ? (
+                  <div className={`ui-seg ui-well min-w-0 shrink ${variant === "panel" ? "[&>*]:px-1.5" : ""}`} role="group" aria-label="How Foli helps">
+                    <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")} title="Answers from your notes, and changes them when you ask (you approve first)">
+                      Chat
+                    </button>
                     <button type="button" aria-pressed={mode === "research"} onClick={() => setMode("research")} title="Researches the web and your notes, then writes a report with sources">
                       Research
                     </button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               <div className="ml-auto flex flex-none items-center gap-1.5">
                 {attachAvailable ? <AttachControl noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
                 <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">

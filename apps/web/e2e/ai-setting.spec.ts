@@ -15,7 +15,7 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await launcher.click();
   const chat = page.getByRole("dialog", { name: "Foli" });
   await expect(chat).toBeVisible();
-  await expect(chat.getByRole("textbox", { name: /Ask a question/ })).toBeFocused();
+  await expect(chat.getByRole("textbox", { name: /Ask about your notes/ })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(chat).toHaveCount(0);
   await expect(launcher).toBeFocused();

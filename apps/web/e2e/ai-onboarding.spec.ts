@@ -46,10 +46,10 @@ test("a note's Foli panel has no introduction card, just its empty states; the A
   await expect(modes).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Meet Foli" })).toHaveCount(0);
 
-  // Ask, before anything is asked: questions that fit this note.
+  // Ask, before anything is asked: questions and changes that fit this note.
   await modes.getByRole("button", { name: "Ask", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Ask Foli about this note" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Who is mentioned, and why?" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Summarize this" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tidy up the headings" })).toBeVisible();
   // Study, with nothing made yet.
   await modes.getByRole("button", { name: "Study", exact: true }).click();
   await expect(page.getByRole("region", { name: "Study", exact: true }).getByText("Nothing to study yet")).toBeVisible();

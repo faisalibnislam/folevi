@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
-import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, RotateCcw, Wand2 } from "lucide-react";
+import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, RotateCcw, Wand2, CornerDownLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { MenuButton } from "@/components/ui/Menu";
 import { AiMarkdown, StreamingText } from "../AiMarkdown";
@@ -243,6 +243,7 @@ export function AssistantMessage({
   onDismiss,
   onOpen,
   onFix,
+  onInsert,
   run,
   research,
   readOnly,
@@ -261,6 +262,8 @@ export function AssistantMessage({
   onOpen: (href: string) => void;
   /** An answer to a request to change the note: hand it to the agent to make the change in place. */
   onFix?: () => void;
+  /** In a note's Foli panel: put the answer into the note at the cursor. */
+  onInsert?: (markdown: string) => void;
   /** An agent's answer: acting on its run. */
   run?: RunHandlers;
   /** A deep research report: its job (steps, Cancel, Save as note). */
@@ -355,13 +358,18 @@ export function AssistantMessage({
         {onFix && !readOnly ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" disabled={busy} onClick={onFix} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-heading px-3 text-[13px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40">
-              <Wand2 size={14} aria-hidden /> Fix in note
+              <Wand2 size={14} aria-hidden /> Make these changes
             </button>
-            <span className="text-[12px] text-muted">Changes the note itself. You review them first, and can undo.</span>
+            <span className="text-[12px] text-muted">In the note itself. You review them first, and can undo.</span>
           </div>
         ) : null}
         <div className="-mb-1 mt-2 flex flex-wrap items-center gap-0.5">
           {message.text ? <CopyButton text={markdownToPlain(message.text)} /> : null}
+          {onInsert && message.text && !message.agent && !readOnly ? (
+            <button type="button" onClick={() => onInsert(message.text)} className={ROW_BUTTON}>
+              <CornerDownLeft size={12} aria-hidden /> Insert into note
+            </button>
+          ) : null}
           {last && !readOnly ? (
             <button type="button" disabled={busy} onClick={onRegenerate} className={ROW_BUTTON}>
               <RotateCcw size={12} aria-hidden /> Regenerate

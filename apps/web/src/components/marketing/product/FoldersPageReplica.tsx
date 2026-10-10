@@ -59,7 +59,7 @@ export function FoldersPageReplica({ className }: { className?: string }) {
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <ListTabs view="Folders" />
-          <div className="mk-app-content min-h-0 flex-1 rounded-[12px] px-3 pb-6 pt-3 sm:px-6 sm:pb-8 sm:pt-4">
+          <div className="mk-app-content min-h-0 flex-1 rounded-[14px] px-3 pb-6 pt-3 sm:px-6 sm:pb-8 sm:pt-4">
             <div className="flex justify-end">
               <span className="mk-btn mk-btn-primary h-8 gap-1.5 px-3 text-[12.5px]">
                 <FolderPlus size={14} /> New folder
@@ -79,7 +79,7 @@ export function FoldersPageReplica({ className }: { className?: string }) {
                 </span>
               </span>
               <span className="mk-app-well flex flex-none rounded-[6px] p-0.5">
-                <span className="grid h-7 w-8 place-items-center rounded-[5px] bg-(--color-surface-raised) text-(--color-heading) shadow-[var(--shadow-control)]">
+                <span className="grid h-7 w-8 place-items-center rounded-[4px] bg-(--color-surface-raised) text-(--color-heading) shadow-[var(--shadow-control)]">
                   <LayoutGrid size={14} />
                 </span>
                 <span className="grid h-7 w-8 place-items-center text-muted">

@@ -16,7 +16,7 @@ import type { ChatContext } from "./chat/chatText";
 
 /** The launcher's shadow: soft black at 10%. */
 const SHADOW = "shadow-[0_8px_24px_rgb(0_0_0/0.1),0_2px_6px_rgb(0_0_0/0.1),inset_0_0_0_1px_rgb(255_255_255/0.12)]";
-const HEADER_BUTTON = "grid h-8 w-8 place-items-center rounded-[8px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading";
+const HEADER_BUTTON = "grid h-8 w-8 place-items-center rounded-[6px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading";
 
 /**
  * Ask AI (⌘J): a chat with your notes that pops out from a floating button in the bottom-right corner.

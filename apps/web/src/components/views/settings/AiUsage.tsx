@@ -138,8 +138,8 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
           {usage.features.map((f) => (
             <li key={f.feature} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3 text-[13px]">
               <span className="truncate text-ink">{f.label}</span>
-              <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-[var(--glass-hover)]">
-                <span className="block h-full rounded-full bg-[color-mix(in_oklab,var(--color-heading)_55%,transparent)]" style={{ width: `${(f.credits / most) * 100}%` }} />
+              <span aria-hidden className="h-1.5 overflow-hidden rounded-[4px] bg-[var(--glass-hover)]">
+                <span className="block h-full rounded-[6px] bg-[color-mix(in_oklab,var(--color-heading)_55%,transparent)]" style={{ width: `${(f.credits / most) * 100}%` }} />
               </span>
               <span className="tabular-nums text-muted">{f.credits.toLocaleString()}</span>
             </li>

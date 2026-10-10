@@ -64,7 +64,7 @@ export function CommentBody({ body, links = true }: { body: BodyNode[]; links?: 
     <>
       {body.map((n, i) =>
         n.type === "mention" ? (
-          <span key={i} className="rounded-[5px] bg-accent-soft px-1 font-medium text-heading">
+          <span key={i} className="rounded-[4px] bg-accent-soft px-1 font-medium text-heading">
             @{n.label}
           </span>
         ) : n.type === "text" ? (
@@ -447,7 +447,7 @@ export function CommentThreadCard({
               Enter to send, Shift+Enter for a new line. Type @ to mention someone who can see this page.
             </span>
           </div>
-          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11 !rounded-full">
+          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11 !rounded-[6px]">
             <ArrowUp size={14} aria-hidden />
           </IconButton>
         </form>
@@ -865,7 +865,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                   />
                 ) : null}
                 {confirmDelete === t.id ? (
-                  <div role="alert" className="mb-1 flex items-center gap-2 rounded-[8px] bg-danger-soft/40 px-2.5 py-2 text-[12.5px]">
+                  <div role="alert" className="mb-1 flex items-center gap-2 rounded-[10px] bg-danger-soft/40 px-2.5 py-2 text-[12.5px]">
                     <span className="flex-1">Delete this thread and its {t.comments.length === 1 ? "comment" : `${t.comments.length} comments`}?</span>
                     <Button size="sm" variant="quiet" onClick={() => setConfirmDelete(null)}>
                       Cancel
@@ -898,7 +898,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                     <span className="min-w-0 flex-1 truncate text-[12.5px]">
                       <span className="font-semibold text-heading">{first.authorName}</span> <span className="text-faint">· {formatRelative(t.lastActivityAt)}</span>
                     </span>
-                    {t.unread ? <span className="h-2 w-2 flex-none rounded-full bg-coral" aria-label="Unread" role="img" /> : null}
+                    {t.unread ? <span className="h-2 w-2 flex-none rounded-[4px] bg-coral" aria-label="Unread" role="img" /> : null}
                   </span>
                   <span className={`mt-1 line-clamp-2 block whitespace-pre-wrap text-[13px] leading-snug ${first.deleted ? "italic text-faint" : "text-ink"}`}>
                     {first.deleted ? "Comment deleted" : <CommentBody body={first.body} links={false} />}

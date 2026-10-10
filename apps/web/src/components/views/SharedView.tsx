@@ -24,7 +24,7 @@ export function SharedView() {
             <p className="mt-2 text-sm text-muted">Pages people share with you directly, from their Personal or from any workspace, show up here.</p>
           </div>
         ) : (
-          <ul className="mt-6 divide-y divide-line overflow-hidden ui-card rounded-[8px]">
+          <ul className="mt-6 divide-y divide-line overflow-hidden ui-card rounded-[10px]">
             {docs.map((d) => (
               <li key={d.id}>
                 <AppLink href={`/d/${d.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-surface">

@@ -61,7 +61,7 @@
 :root[data-theme="dark"] .fb-editor > .fb.fb-presence::after { background: var(--presence); }
 :root[data-theme="dark"] :where(.fb-editor.fb-show-editors > .fb:not(.is-empty, [data-decoration="focus"])):hover::after { background: var(--author); }
 /* Version history: what changed since the version before, in the colour of who changed it. */
-.fb-editor > [data-change] { box-shadow: inset 3px 0 0 var(--author); border-radius: 0 2px 2px 0; }
+.fb-editor > [data-change] { box-shadow: inset 3px 0 0 var(--author); border-radius: 0 4px 4px 0; }
 .fb-editor > [data-change="added"] { background: color-mix(in oklab, var(--author) 11%, transparent); }
 .fb-editor > [data-change="styled"] { background: color-mix(in oklab, var(--author) 6%, transparent); }
 .fb-editor > [data-change="removed"] {
@@ -72,7 +72,7 @@
 .fb-diff-added {
   text-decoration: none; color: inherit;
   background: color-mix(in oklab, var(--author, var(--color-accent)) 16%, transparent);
-  box-shadow: inset 0 -2px 0 var(--author, var(--color-accent)); border-radius: 2px;
+  box-shadow: inset 0 -2px 0 var(--author, var(--color-accent)); border-radius: 4px;
 }
 .fb-diff-removed { color: var(--color-ink-muted); text-decoration: line-through; text-decoration-color: var(--author, var(--color-ink-muted)); }
 /* Screen readers don't announce <ins>/<del> on their own: say it, without showing it. */
@@ -90,7 +90,7 @@
 /* A [[ page link whose page is in Trash or gone. */
 .fb-editor .fb-page-link-gone, .fb-editor .fb-page-link-gone .fb-page-link { color: var(--color-ink-muted); text-decoration: line-through; }
 /* The text a link is being added to, while focus is in the link field. */
-.fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: 2px; }
+.fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: 4px; }
 /* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */
 .fb-editor > .fb-comment-line {
   padding: 0 2px 4px calc(var(--depth, 0) * 1.6em + var(--pad-list, 0px) + var(--pad-extra, 0px));
@@ -99,7 +99,7 @@
 }
 .fb-comment-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  height: 22px; padding: 0 8px 0 3px; border-radius: 999px;
+  height: 22px; padding: 0 8px 0 3px; border-radius: 6px;
   font: 500 12px/1 var(--font-sans); letter-spacing: 0;
   color: color-mix(in oklab, var(--doc-accent-ink, var(--color-ink)) 55%, var(--color-ink-muted));
   background: transparent; cursor: pointer;
@@ -109,12 +109,12 @@
 .fb-comment-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .fb-comment-faces { display: inline-flex; }
 .fb-comment-faces > * {
-  display: grid; place-items: center; width: 16px; height: 16px; margin-left: -4px; border-radius: 999px; object-fit: cover;
+  display: grid; place-items: center; width: 16px; height: 16px; margin-left: -4px; border-radius: 6px; object-fit: cover;
   font-size: 9px; font-weight: 650; background: var(--doc-accent-soft); color: var(--doc-accent-ink, var(--color-heading));
   box-shadow: 0 0 0 1.5px var(--color-surface);
 }
 .fb-comment-faces > :first-child { margin-left: 0; }
-.fb-comment-unread { width: 6px; height: 6px; border-radius: 999px; background: var(--doc-accent); }
+.fb-comment-unread { width: 6px; height: 6px; border-radius: 4px; background: var(--doc-accent); }
 @media (prefers-reduced-motion: reduce) { .fb-comment-chip { transition: none; } }
 
 .fb-editor p.is-empty::before,
@@ -149,11 +149,11 @@
 .fb-editor .fb-bulleted::before {
   content: "";
   position: absolute; left: calc(var(--depth, 0) * 1.6em + 0.55em + var(--pad-extra, 0px)); top: 0.8em;
-  width: 0.36em; height: 0.36em; border-radius: 50%;
+  width: 0.36em; height: 0.36em; border-radius: 6px;
   background: color-mix(in oklab, var(--doc-accent) 85%, var(--color-heading));
 }
 .fb-editor .fb-bulleted[data-depth="1"]::before, .fb-editor .fb-bulleted[data-depth="4"]::before { background: transparent; border: 1.5px solid color-mix(in oklab, var(--doc-accent) 85%, var(--color-heading)); }
-.fb-editor .fb-bulleted[data-depth="2"]::before, .fb-editor .fb-bulleted[data-depth="5"]::before { border-radius: 1px; }
+.fb-editor .fb-bulleted[data-depth="2"]::before, .fb-editor .fb-bulleted[data-depth="5"]::before { border-radius: 4px; }
 .fb-editor .fb-numbered::before {
   content: attr(data-index) ".";
   position: absolute; left: calc(var(--depth, 0) * 1.6em + var(--pad-extra, 0px)); width: 1.35em; text-align: right;
@@ -228,19 +228,19 @@
 /* Toggle */
 .fb-editor .fb-toggle { display: flex; align-items: flex-start; gap: 0.35em; }
 .fb-editor .fb-toggle > .fb-content { flex: 1; min-width: 0; font-weight: 500; }
-.fb-disclosure { flex: none; width: 24px; height: 24px; margin: calc(0.8em - 12px) -2px 0 -4px; border-radius: 999px; color: var(--color-ink-muted); display: grid; place-items: center; }
+.fb-disclosure { flex: none; width: 24px; height: 24px; margin: calc(0.8em - 12px) -2px 0 -4px; border-radius: 6px; color: var(--color-ink-muted); display: grid; place-items: center; }
 .fb-disclosure::before { content: ""; border-left: 0.42em solid currentColor; border-top: 0.3em solid transparent; border-bottom: 0.3em solid transparent; transition: transform 160ms var(--motion-easing); transform: rotate(90deg); }
 .fb-toggle[data-collapsed="true"] .fb-disclosure::before { transform: rotate(0deg); }
 .fb-disclosure:hover { background: var(--color-surface-sunken); color: var(--color-ink); }
 
 /* Quote & callout */
 .fb-editor .fb-quote { padding-left: calc(var(--depth, 0) * 1.6em + 1.05em + var(--pad-extra, 0px)); margin: 0.35em 0; color: color-mix(in oklab, var(--color-heading) 80%, var(--color-ink)); font-style: italic; }
-.fb-editor .fb-quote::before { content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em + 2px); top: 0.3em; bottom: 0.3em; width: 3px; border-radius: 999px; background: var(--doc-accent); }
+.fb-editor .fb-quote::before { content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em + 2px); top: 0.3em; bottom: 0.3em; width: 3px; border-radius: 6px; background: var(--doc-accent); }
 .fb-page[data-font="serif"] .fb-editor .fb-quote { font-size: 1.08em; }
 .fb-editor .fb-callout {
   display: flex; gap: 0.6em; align-items: flex-start;
   margin: 0.5em 0 0.5em calc(var(--depth, 0) * 1.6em); padding: 0.8em 1em;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--color-surface-sunken);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 6%, transparent);
 }
@@ -283,7 +283,7 @@
 .fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: 6px; outline-offset: 3px; }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { outline: 2px solid var(--doc-accent); }
 /* Flowcharts and whiteboards have rounder boxes (14px): the outline follows them. */
-.fb-atom.fb-flowchart, .fb-atom.fb-whiteboard { border-radius: 17px; }
+.fb-atom.fb-flowchart, .fb-atom.fb-whiteboard { border-radius: 18px; }
 
 /* Inline */
 .fb-link { color: var(--color-accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--color-accent) 35%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
@@ -308,7 +308,7 @@
 .fb-color-marigold { color: var(--color-marigold-ink); }
 .fb-color-plum { color: var(--color-plum-ink); }
 .fb-color-coral { color: var(--color-coral-ink); }
-mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { color: inherit; border-radius: 3px; padding: 0 1px; }
+mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { color: inherit; border-radius: 4px; padding: 0 1px; }
 .fb-hl-yellow { background: var(--color-highlight-yellow); }
 .fb-hl-green { background: var(--color-highlight-green); }
 .fb-hl-blue { background: var(--color-highlight-blue); }
@@ -340,7 +340,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Drag and drop (blockDrag.ts) */
 .fb-drag-ghost {
   position: fixed; left: 0; top: 0; z-index: 80; pointer-events: none;
-  background: var(--color-surface); border-radius: 8px; box-shadow: var(--shadow-lift);
+  background: var(--color-surface); border-radius: 10px; box-shadow: var(--shadow-lift);
   padding: 6px 14px; opacity: 0.92; max-height: 260px; overflow: hidden;
   -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent); mask-image: linear-gradient(to bottom, #000 78%, transparent);
   transform-origin: 24px 16px; will-change: transform;
@@ -356,13 +356,13 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 @keyframes fb-lift { from { opacity: 0.5; box-shadow: var(--shadow-card); } }
 .fb-drop-line {
   position: fixed; left: 0; top: 0; z-index: 81; height: 3px; pointer-events: none; opacity: 0;
-  border-radius: 999px; background: var(--color-ember);
+  border-radius: 4px; background: var(--color-ember);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ember) 20%, transparent);
   transition: transform 120ms var(--motion-easing), width 120ms var(--motion-easing), opacity 120ms;
 }
 .fb-drop-line::before {
   content: ""; position: absolute; left: -5px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
-  border-radius: 50%; background: var(--color-surface); box-shadow: inset 0 0 0 2.5px var(--color-ember);
+  border-radius: 4px; background: var(--color-surface); box-shadow: inset 0 0 0 2.5px var(--color-ember);
 }
 .fb-drop-line-instant { transition: none; }
 .fb-dragging, .fb-dragging * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
@@ -374,7 +374,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Find & replace bar (in the note): every match, and the current one (ProseMirror decorations). */
 .fb-find-match {
   background-color: color-mix(in oklab, var(--color-marigold) 32%, transparent);
-  border-radius: 2px;
+  border-radius: 4px;
 }
 .fb-find-current {
   background-color: color-mix(in oklab, var(--color-marigold) 78%, transparent);
@@ -482,10 +482,10 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   margin: 0.35em 0;
   --pad-extra: 0.9em;
   background: color-mix(in oklab, var(--block-color, var(--doc-accent)) 7%, transparent);
-  border-radius: 3px 6px 6px 3px;
+  border-radius: 4px 6px 6px 4px;
 }
 .fb-editor > .fb[data-decoration="focus"]::after {
-  content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em); top: 0.2em; bottom: 0.2em; width: 3px; border-radius: 999px;
+  content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em); top: 0.2em; bottom: 0.2em; width: 3px; border-radius: 6px;
   background: var(--block-color, var(--doc-accent));
 }
 .fb-editor > .fb[data-decoration="block"] {
@@ -600,7 +600,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* AI text being written: a soft blinking caret after the last block's text (components/ai/AiMarkdown.tsx). */
 .fb-ai-streaming .fb-ai-answer > .fb-editor:last-child > .fb:last-child::after {
   content: ""; display: inline-block; width: 0.5em; height: 1em; margin-left: 2px; vertical-align: -0.12em;
-  border-radius: 2px; background: color-mix(in oklab, #7c6cf0 70%, transparent);
+  border-radius: 4px; background: color-mix(in oklab, #7c6cf0 70%, transparent);
   animation: fb-ai-caret 1s steps(2, start) infinite;
 }
 @keyframes fb-ai-caret { to { visibility: hidden; } }
@@ -608,7 +608,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Inline citations in an AI answer ([2] links to its source): a small, quiet number. */
 .fb-ai-answer a.fb-link[href^="#cite-"] {
   display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; margin: 0 1px; padding: 0 0.3em;
-  vertical-align: 0.2em; border-radius: 999px; font-size: 0.68em; font-weight: 600; line-height: 1;
+  vertical-align: 0.2em; border-radius: 6px; font-size: 0.68em; font-weight: 600; line-height: 1;
   color: var(--color-ink-muted); text-decoration: none; background: var(--glass-hover);
   box-shadow: inset 0 0 0 1px var(--glass-border);
 }

@@ -227,7 +227,7 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
           },
           ...TAG_COLORS.filter((c) => c.id !== tag.color).map((c) => ({
             label: `Color: ${c.label}`,
-            icon: <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: tagColorVar(c.id) }} />,
+            icon: <span className="inline-block h-2.5 w-2.5 rounded-[4px]" style={{ background: tagColorVar(c.id) }} />,
             onSelect: () => void update({ tagId: tag.id, color: c.id }).catch((e) => toast.show(errorMessage(e), { tone: "error" })),
           })),
           "separator" as const,
@@ -268,7 +268,7 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
               {TAG_COLORS.map((c) => (
                 <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2 py-1 text-sm has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
                   <input type="radio" name={`tag-color-${tag.id}`} value={c.id} checked={color === c.id} onChange={() => setColor(c.id)} className="sr-only" />
-                  <span className="inline-block h-3 w-3 rounded-full" style={{ background: tagColorVar(c.id) }} aria-hidden />
+                  <span className="inline-block h-3 w-3 rounded-[6px]" style={{ background: tagColorVar(c.id) }} aria-hidden />
                   {c.label}
                 </label>
               ))}

@@ -356,7 +356,7 @@ function StylePanel({ art, styles, onPick }: { art: CoverArt; styles: readonly C
               aria-checked={on}
               aria-label={`Note style: ${s.name}`}
               onClick={() => onPick(i)}
-              className={`aspect-square rounded-[8px] bg-cover bg-center outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-heading)]" : "shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] hover:shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-line-strong)]"}`}
+              className={`aspect-square rounded-[10px] bg-cover bg-center outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-heading)]" : "shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] hover:shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-line-strong)]"}`}
               style={{ backgroundImage: `url("${heroGlow(s)}")` }}
             />
           );

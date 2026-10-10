@@ -119,7 +119,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
 
   if (result.status === "password_required" || result.status === "password_incorrect") {
     return shell(
-      <form className="mx-auto mt-16 max-w-sm ui-card rounded-[8px] p-6" action={unlock.bind(null, token)}>
+      <form className="mx-auto mt-16 max-w-sm ui-card rounded-[10px] p-6" action={unlock.bind(null, token)}>
         <h1 className="ui-display text-3xl">This page is protected</h1>
         <p className="mt-2 text-sm text-muted">Enter the password the owner gave you.</p>
         {result.status === "password_incorrect" ? (

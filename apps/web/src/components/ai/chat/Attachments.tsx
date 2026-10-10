@@ -146,7 +146,7 @@ export function useChatAttachments({ scope, caps }: { scope: WireScope; caps: Mo
   };
 }
 
-const CHIP = "inline-flex h-7 max-w-full items-center gap-1.5 rounded-full bg-[var(--glass-hover)] pl-2.5 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]";
+const CHIP = "inline-flex h-7 max-w-full items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] pl-2.5 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]";
 
 /** The files attached to a message (or to the next one, with × to take one off). */
 export function AttachmentChips({ files, onRemove, disabled, className }: { files: (PendingFile | AttachmentInfo)[]; onRemove?: (key: string) => void; disabled?: boolean; className?: string }) {
@@ -162,7 +162,7 @@ export function AttachmentChips({ files, onRemove, disabled, className }: { file
             <span className="min-w-0 max-w-[12rem] truncate">{f.name}</span>
             {uploading ? <span className="sr-only">Uploading</span> : null}
             {onRemove ? (
-              <button type="button" disabled={disabled} aria-label={`Remove ${f.name}`} onClick={() => onRemove(key)} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-full text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
+              <button type="button" disabled={disabled} aria-label={`Remove ${f.name}`} onClick={() => onRemove(key)} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
                 <X size={12} aria-hidden />
               </button>
             ) : null}
@@ -183,7 +183,7 @@ export function AttachmentProblems({ problems, onDismiss }: { problems: { name: 
           <li key={`${p.name}-${i}`}>{p.reason}</li>
         ))}
       </ul>
-      <button type="button" aria-label="Dismiss" onClick={onDismiss} className="grid h-5 w-5 flex-none place-items-center rounded-full hover:bg-[var(--glass-active)]">
+      <button type="button" aria-label="Dismiss" onClick={onDismiss} className="grid h-5 w-5 flex-none place-items-center rounded-[6px] hover:bg-[var(--glass-active)]">
         <X size={12} aria-hidden />
       </button>
     </div>
@@ -196,7 +196,7 @@ export function AttachmentProblems({ problems, onDismiss }: { problems: { name: 
  */
 export function AttachControl({ noteFiles, onFiles, onPick, disabled, className }: { noteFiles: NoteFileOption[]; onFiles: (files: File[]) => void; onPick: (option: NoteFileOption) => void; disabled?: boolean; className?: string }) {
   const input = useRef<HTMLInputElement>(null);
-  const button = "grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-30";
+  const button = "grid h-8 w-8 place-items-center rounded-[6px] text-muted transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-30";
   const browse = () => input.current?.click();
   const items: MenuEntry[] = [{ label: "Upload from this device", icon: <Upload size={14} />, onSelect: browse }];
   if (noteFiles.length) {

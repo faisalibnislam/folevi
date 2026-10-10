@@ -63,7 +63,7 @@ export function TranscriptPreview({
     });
   };
   return (
-    <div role="region" aria-label="Transcript" className="ui-card ui-app-colors mt-1.5 overflow-hidden rounded-[12px] text-ink" contentEditable={false}>
+    <div role="region" aria-label="Transcript" className="ui-card ui-app-colors mt-1.5 overflow-hidden rounded-[14px] text-ink" contentEditable={false}>
       {working ? (
         <div className="px-4 pb-3 pt-3.5" aria-busy="true">
           <p role="status" className="mb-2 flex items-center gap-2 text-[11.5px] font-semibold text-muted">
@@ -71,7 +71,7 @@ export function TranscriptPreview({
           </p>
           <div className="space-y-2 pb-1">
             {[92, 78, 85].map((w) => (
-              <div key={w} className="h-2.5 animate-pulse rounded-full bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))] motion-reduce:animate-none" style={{ width: `${w}%` }} />
+              <div key={w} className="h-2.5 animate-pulse rounded-[4px] bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))] motion-reduce:animate-none" style={{ width: `${w}%` }} />
             ))}
           </div>
         </div>
@@ -101,7 +101,7 @@ export function TranscriptPreview({
           {written ? <AiMarkdown markdown={written} /> : <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.6]">{shown}</p>}
         </div>
       ) : null}
-      {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "mx-3 my-2.5 rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 my-2.5 w-auto"} /> : null}
+      {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "mx-3 my-2.5 rounded-[10px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 my-2.5 w-auto"} /> : null}
       {!working ? (
         <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5" role="group" aria-label="Use the transcript">
           {transcript && canInsert ? (

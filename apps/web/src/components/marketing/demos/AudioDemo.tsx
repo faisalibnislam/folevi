@@ -81,7 +81,7 @@ export function AudioDemo() {
   const progress = time / LENGTH;
 
   return (
-    <div ref={root} onPointerDown={take} onKeyDown={take} role="group" aria-label="A sample of audio recordings: type /rec, record, then play the recording in the note." className="mk-app-pop mx-auto min-h-[340px] w-full max-w-[520px] rounded-[16px] px-5 pb-6 pt-6 text-[14px] text-ink">
+    <div ref={root} onPointerDown={take} onKeyDown={take} role="group" aria-label="A sample of audio recordings: type /rec, record, then play the recording in the note." className="mk-app-pop mx-auto min-h-[340px] w-full max-w-[520px] rounded-[18px] px-5 pb-6 pt-6 text-[14px] text-ink">
       <p className="mk-display text-[22px] text-(--color-heading)">Standup, Tuesday</p>
       <p className="mt-2">Quick voice note after the call.</p>
 
@@ -92,7 +92,7 @@ export function AudioDemo() {
             <span className="mx-px inline-block h-[17px] w-px translate-y-[3px] animate-pulse bg-(--color-heading)" />
           </p>
           {phase.text === "/rec" ? (
-            <p className="mk-app-pop mk-appear absolute left-0 top-[calc(100%+6px)] flex w-[240px] items-center gap-2.5 rounded-[12px] px-2.5 py-2 text-[13px] text-(--color-heading)">
+            <p className="mk-app-pop mk-appear absolute left-0 top-[calc(100%+6px)] flex w-[240px] items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-[13px] text-(--color-heading)">
               <span className="grid size-6 place-items-center rounded-[6px] bg-(--color-surface) shadow-(--shadow-control)">
                 <Mic size={14} />
               </span>
@@ -101,9 +101,9 @@ export function AudioDemo() {
           ) : null}
         </div>
       ) : phase.kind === "recording" ? (
-        <div className="mk-app-pop mk-appear mt-3 grid gap-3 rounded-[12px] p-3 text-[13px]">
+        <div className="mk-app-pop mk-appear mt-3 grid gap-3 rounded-[14px] p-3 text-[13px]">
           <div className="flex items-center gap-2.5">
-            <span className={cx("grid size-8 place-items-center rounded-full", phase.paused ? "bg-(--glass-hover) text-muted" : "bg-[color-mix(in_oklab,#e5484d_16%,transparent)] text-[#e5484d]")}>
+            <span className={cx("grid size-8 place-items-center rounded-[6px]", phase.paused ? "bg-(--glass-hover) text-muted" : "bg-[color-mix(in_oklab,#e5484d_16%,transparent)] text-[#e5484d]")}>
               <Mic size={16} />
             </span>
             <div className="flex-1">
@@ -115,13 +115,13 @@ export function AudioDemo() {
             </div>
             <X size={15} className="text-muted" />
           </div>
-          <div className="flex h-10 items-center gap-[3px] rounded-[8px] bg-(--color-surface-sunken) px-2.5">
+          <div className="flex h-10 items-center gap-[3px] rounded-[10px] bg-(--color-surface-sunken) px-2.5">
             {levels.map((l, i) => (
-              <span key={i} className={cx("w-full rounded-full transition-[height] duration-75", phase.paused ? "bg-(--color-line-strong)" : "bg-[#e5484d]")} style={{ height: `${Math.max(8, l * 100)}%` }} />
+              <span key={i} className={cx("w-full rounded-[6px] transition-[height] duration-75", phase.paused ? "bg-(--color-line-strong)" : "bg-[#e5484d]")} style={{ height: `${Math.max(8, l * 100)}%` }} />
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-9 items-center gap-1.5 rounded-[8px] px-3 shadow-[inset_0_0_0_1px_var(--color-line)]">
+            <span className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-3 shadow-[inset_0_0_0_1px_var(--color-line)]">
               {phase.paused ? <Play size={14} /> : <Pause size={14} />} {phase.paused ? "Resume" : "Pause"}
             </span>
             <span className="mk-btn mk-btn-primary ml-auto h-9 gap-1.5 px-3.5">
@@ -139,7 +139,7 @@ export function AudioDemo() {
               if (!playing && time >= LENGTH) setTime(0);
               setPlaying((p) => !p);
             }}
-            className="grid size-9 flex-none place-items-center rounded-full bg-(--color-heading) text-(--color-canvas)"
+            className="grid size-9 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-(--color-canvas)"
           >
             {playing ? <Pause size={15} className="fill-current" /> : <Play size={15} className="ml-0.5 fill-current" />}
           </button>
@@ -165,8 +165,8 @@ export function AudioDemo() {
                 }}
                 className="relative h-4 flex-1 cursor-pointer outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]"
               >
-                <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-(--color-line-strong)" />
-                <span className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-(--color-heading) transition-[width] duration-200" style={{ width: `${progress * 100}%` }} />
+                <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-[4px] bg-(--color-line-strong)" />
+                <span className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-[4px] bg-(--color-heading) transition-[width] duration-200" style={{ width: `${progress * 100}%` }} />
               </div>
               <span className="text-[12px] tabular-nums text-muted">
                 {fmt(time)} / {fmt(LENGTH)}

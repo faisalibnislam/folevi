@@ -119,7 +119,7 @@ export function EditDemo() {
               take();
               setPhase({ kind: "menu", active: 0 });
             }}
-            className={cx("cursor-text rounded-[2px] outline-none transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] duration-700", flash && "bg-[color-mix(in_oklab,#3fb27f_26%,transparent)]")}
+            className={cx("cursor-text rounded-[4px] outline-none transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] duration-700", flash && "bg-[color-mix(in_oklab,#3fb27f_26%,transparent)]")}
             aria-label="Select the sentence"
           >
             {words.map((w, i) => (
@@ -148,7 +148,7 @@ export function EditDemo() {
               {phase.kind === "busy" ? (
                 <div className="space-y-2 pb-1">
                   {[92, 70].map((w) => (
-                    <div key={w} className="h-2.5 animate-pulse rounded-full bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
+                    <div key={w} className="h-2.5 animate-pulse rounded-[4px] bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
                   ))}
                 </div>
               ) : (
@@ -193,7 +193,7 @@ export function EditDemo() {
                   take();
                   void run(phase.action, plain);
                 }}
-                className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-ink hover:bg-(--glass-hover)"
+                className="inline-flex h-8 items-center gap-1.5 rounded-[6px] px-2 text-ink hover:bg-(--glass-hover)"
               >
                 <RotateCcw size={13} aria-hidden="true" /> Try again
               </button>
@@ -210,7 +210,7 @@ export function EditDemo() {
                       void run(i, plain);
                     }}
                     onPointerEnter={() => setPhase({ kind: "menu", active: i })}
-                    className={cx("flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-[7px] text-left", i === phase.active ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink")}
+                    className={cx("flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-left", i === phase.active ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink")}
                   >
                     <span className="text-muted">{a.icon}</span>
                     <span className="min-w-0 flex-1 truncate">{a.label}</span>
@@ -232,7 +232,7 @@ export function EditDemo() {
                 take();
                 setPhase({ kind: "menu", active: 0 });
               }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-(--glass-hover) px-3 py-1 text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-(--glass-active)"
+              className="inline-flex items-center gap-1.5 rounded-[6px] bg-(--glass-hover) px-3 py-1 text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-(--glass-active)"
             >
               <AiIcon size={13} className="text-[#7c6cf0]" /> Select the text and press ⌘J
             </button>

@@ -283,7 +283,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
   const upload = useUploadState(a.id);
   return (
     <Frame selected={selected} label={`Attachment ${a.name ?? ""}`}>
-      <div className="my-1.5 flex items-center gap-3 ui-card rounded-[8px] px-3 py-2.5">
+      <div className="my-1.5 flex items-center gap-3 ui-card rounded-[10px] px-3 py-2.5">
         <FileText size={20} className="text-muted" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{a.name ?? "Attachment"}</p>
@@ -728,7 +728,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
       <AppLink
         href={`/d/${a.documentId}`}
         contentEditable={false}
-        className="group my-2 flex items-start gap-3 ui-card rounded-[8px] p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+        className="group my-2 flex items-start gap-3 ui-card rounded-[10px] p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
         title="Open page (Alt-click opens a new tab)"
       >
         <FileText size={20} aria-hidden className="mt-0.5 flex-none text-muted" />
@@ -872,7 +872,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   const showImage = Boolean(a.image) && !imageFailed;
   return (
     <Frame selected={selected} label={`Bookmark ${a.title ?? host}`}>
-      <div ref={card} className="group/bookmark relative my-2 overflow-hidden ui-card rounded-[8px]" contentEditable={false} data-bookmark="">
+      <div ref={card} className="group/bookmark relative my-2 overflow-hidden ui-card rounded-[10px]" contentEditable={false} data-bookmark="">
         {/* A click opens the page in a new tab (the pen edits it). */}
         <a
           href={href}
@@ -887,7 +887,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
           <span className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-4 pr-10">
             {a.icon && !iconFailed ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={a.icon} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setIconFailed(true)} className="mb-1 h-6 w-6 flex-none rounded-[5px] object-contain" />
+              <img src={a.icon} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setIconFailed(true)} className="mb-1 h-6 w-6 flex-none rounded-[4px] object-contain" />
             ) : (
               <Link2 size={18} className="mb-1 text-muted" aria-hidden />
             )}

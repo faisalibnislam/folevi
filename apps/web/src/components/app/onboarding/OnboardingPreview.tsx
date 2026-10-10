@@ -175,7 +175,7 @@ function Sidebar({ pages, note, name }: { pages: StarterPage[]; note: boolean; n
       <div className="ob-well mx-1 mt-1 flex h-8 items-center gap-2 rounded-[6px] pl-2.5 pr-1.5 text-[12px] text-muted">
         <Search size={13} />
         <span className="flex-1 truncate">Search or jump to…</span>
-        <span className="rounded-[5px] bg-raised px-1 text-[10px] font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
+        <span className="rounded-[4px] bg-raised px-1 text-[10px] font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
       </div>
       <ul className="mt-3 space-y-0.5 px-1">
         {rows.map(({ icon: RowIcon, label }) => (
@@ -193,7 +193,7 @@ function Sidebar({ pages, note, name }: { pages: StarterPage[]; note: boolean; n
         </li>
         {pages.map((page, i) => (
           <li key={page.template} className="ob-arrive flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[12.5px] text-ink" style={{ ["--i" as string]: i % 2 }}>
-            <TemplateTile name={page.icon} size={18} iconSize={11} className="!rounded-[5px]" />
+            <TemplateTile name={page.icon} size={18} iconSize={11} className="!rounded-[4px]" />
             <span className="truncate">{page.title}</span>
           </li>
         ))}
@@ -210,7 +210,7 @@ function Sidebar({ pages, note, name }: { pages: StarterPage[]; note: boolean; n
         </li>
       </ul>
       <div className="flex flex-none items-center gap-2.5 px-2 pb-1 pt-2">
-        <span className="grid size-7 flex-none place-items-center rounded-full bg-heading text-[11px] font-semibold text-canvas">{name.trim().slice(0, 1).toUpperCase() || "F"}</span>
+        <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-heading text-[11px] font-semibold text-canvas">{name.trim().slice(0, 1).toUpperCase() || "F"}</span>
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block truncate text-[12.5px] font-semibold text-heading">{name}</span>
           <span className="block truncate text-[11px] text-muted">Personal</span>
@@ -222,7 +222,7 @@ function Sidebar({ pages, note, name }: { pages: StarterPage[]; note: boolean; n
 
 function Tabs({ note, compact }: { note: boolean; compact?: boolean }) {
   return (
-    <div className="ob-glass flex h-11 flex-none items-center gap-1.5 rounded-[12px] px-1.5">
+    <div className="ob-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1.5">
       <span className="grid size-8 flex-none place-items-center text-muted">{compact ? <PanelLeft size={15} /> : <ArrowUp size={15} />}</span>
       <span className="h-5 w-px flex-none bg-line-strong opacity-60" />
       <span className="ob-tab flex-none" data-on={!note}>
@@ -247,26 +247,26 @@ function Home({ pages, art, ai, compact }: { pages: StarterPage[]; art: CoverArt
   return (
     <div className="ob-content absolute inset-0 overflow-hidden rounded-[14px] px-8 pt-7">
       <p className="ui-display text-[30px] leading-none">Home</p>
-      <div className={`mt-4 flex h-9 w-fit items-center gap-2 rounded-[8px] bg-[var(--glass-active)] px-3.5 text-[12.5px] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-opacity duration-500 ${ai ? "" : "opacity-0"}`}>
+      <div className={`mt-4 flex h-9 w-fit items-center gap-2 rounded-[10px] bg-[var(--glass-active)] px-3.5 text-[12.5px] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-opacity duration-500 ${ai ? "" : "opacity-0"}`}>
         <AiIcon size={14} /> Catch me up
       </div>
       <p className="ui-caps mt-6 text-[10.5px]">Recent notes</p>
       <ul className={`mt-2.5 grid gap-3 ${cols === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
         {pages.slice(0, cols * 2 - 1).map((page, i) => (
           <li key={page.template} className="ob-arrive h-[132px]" style={{ ["--i" as string]: i % 2 }}>
-            <div className="ob-note flex h-full flex-col rounded-[8px] px-4 py-3.5 shadow-[var(--shadow-card)]">
+            <div className="ob-note flex h-full flex-col rounded-[10px] px-4 py-3.5 shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-2">
                 <TemplateTile name={page.icon} size={24} iconSize={13} className="!rounded-[6px]" />
                 <span className="text-[11px] text-muted">Just now</span>
               </div>
               <p className="ob-note-h mt-2.5 truncate text-[16px]">{page.title}</p>
-              <span className="mt-2.5 block h-1.5 w-4/5 rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
-              <span className="mt-1.5 block h-1.5 w-3/5 rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
+              <span className="mt-2.5 block h-1.5 w-4/5 rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
+              <span className="mt-1.5 block h-1.5 w-3/5 rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
             </div>
           </li>
         ))}
         <li className="h-[132px]">
-          <div className="ob-note grid h-full grid-cols-[14px_minmax(0,1fr)] overflow-hidden rounded-[8px] shadow-[var(--shadow-card)]" style={noteVars(art)}>
+          <div className="ob-note grid h-full grid-cols-[14px_minmax(0,1fr)] overflow-hidden rounded-[10px] shadow-[var(--shadow-card)]" style={noteVars(art)}>
             <span className="transition-[background] duration-500" style={{ background: art ? `${artThumb(art.id)} center / cover no-repeat` : "var(--color-surface-sunken)" }} />
             <div className="min-w-0 px-4 py-3.5">
               <p className="ob-note-h truncate text-[16px]">Welcome to Folevi</p>
@@ -277,10 +277,10 @@ function Home({ pages, art, ai, compact }: { pages: StarterPage[]; art: CoverArt
         </li>
         {seeds.map((title) => (
           <li key={title} className="h-[132px]">
-            <div className="ob-note flex h-full flex-col rounded-[8px] px-4 py-3.5 shadow-[var(--shadow-card)]">
+            <div className="ob-note flex h-full flex-col rounded-[10px] px-4 py-3.5 shadow-[var(--shadow-card)]">
               <p className="ob-note-h line-clamp-2 text-[16px] leading-snug">{title}</p>
-              <span className="mt-auto block h-1.5 w-4/5 rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
-              <span className="mt-1.5 block h-1.5 w-3/5 rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
+              <span className="mt-auto block h-1.5 w-4/5 rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
+              <span className="mt-1.5 block h-1.5 w-3/5 rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
             </div>
           </li>
         ))}
@@ -359,13 +359,13 @@ function Dock({ ai, highlight, compact }: { ai: boolean; highlight: "style" | "a
     { id: "info", label: "Info", icon: <Info size={14} /> },
   ];
   return (
-    <div className="ob-pop absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-[12px] p-1">
+    <div className="ob-pop absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-[14px] p-1">
       {items.map((item) => {
         const hidden = item.id === "ai" && !ai;
         return (
           <span
             key={item.id}
-            className={`flex h-8 items-center gap-1.5 overflow-hidden rounded-[8px] text-[12.5px] font-medium transition-all duration-500 ${hidden ? "max-w-0 px-0 opacity-0" : "max-w-[100px] px-2.5"} ${highlight === item.id ? "ob-dock-on" : "text-ink"}`}
+            className={`flex h-8 items-center gap-1.5 overflow-hidden rounded-[6px] text-[12.5px] font-medium transition-all duration-500 ${hidden ? "max-w-0 px-0 opacity-0" : "max-w-[100px] px-2.5"} ${highlight === item.id ? "ob-dock-on" : "text-ink"}`}
           >
             {item.icon}
             <span className={compact && highlight !== item.id ? "hidden" : ""}>{item.label}</span>
@@ -393,18 +393,18 @@ function Dock({ ai, highlight, compact }: { ai: boolean; highlight: "style" | "a
 /** The Ask AI panel, floating above the dock, with one question and its answer. */
 function AskPanel({ on, compact }: { on: boolean; compact?: boolean }) {
   return (
-    <div className={`ob-ai-pop ob-pop absolute bottom-16 flex flex-col overflow-hidden rounded-[16px] text-[12.5px] ${compact ? "inset-x-4" : "right-6 w-[330px]"}`} data-on={on}>
+    <div className={`ob-ai-pop ob-pop absolute bottom-16 flex flex-col overflow-hidden rounded-[18px] text-[12.5px] ${compact ? "inset-x-4" : "right-6 w-[330px]"}`} data-on={on}>
       <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
         <AiIcon size={15} />
         <p className="flex-1 text-[13.5px] font-semibold text-heading">Ask Foli</p>
         <X size={14} className="text-muted" />
       </div>
       <div className="space-y-2 px-3.5 py-3">
-        <p className="ml-auto w-fit max-w-[85%] rounded-[12px] rounded-br-[4px] bg-heading px-3 py-1.5 text-canvas">What should I try first?</p>
-        <div className="rounded-[12px] rounded-bl-[4px] bg-[var(--glass-active)] px-3 py-2.5 leading-relaxed text-ink shadow-[var(--glass-edge)]">
+        <p className="ml-auto w-fit max-w-[85%] rounded-[14px] rounded-br-[4px] bg-heading px-3 py-1.5 text-canvas">What should I try first?</p>
+        <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-3 py-2.5 leading-relaxed text-ink shadow-[var(--glass-edge)]">
           <p>Start with the Try these list on your Welcome page: add a task with Quick Add, then give it a due date.</p>
           <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--glass-hover)] px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 rounded-[6px] bg-[var(--glass-hover)] px-2 py-0.5">
               <FileText size={11} /> Welcome to Folevi
             </span>
           </p>

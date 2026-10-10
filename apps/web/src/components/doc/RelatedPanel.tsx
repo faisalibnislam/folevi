@@ -71,7 +71,7 @@ export function RelatedList({
           </h3>
           <ul className="space-y-2">
             {clashes.map((c) => (
-              <li key={`${c.from.blockId}:${c.to.blockId}`} className="rounded-[8px] bg-sunken/70 p-2">
+              <li key={`${c.from.blockId}:${c.to.blockId}`} className="rounded-[10px] bg-sunken/70 p-2">
                 <p className="flex items-center gap-1.5 px-1 text-[12px] text-muted">
                   <Split size={12} aria-hidden />
                   {c.kind === "supersedes" ? "Replaces an earlier note" : "Says something different"}

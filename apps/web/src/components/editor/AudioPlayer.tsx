@@ -91,7 +91,7 @@ export function AudioPlayer({
         onClick={toggle}
         disabled={!src}
         aria-label={playing ? "Pause" : "Play"}
-        className="grid size-9 flex-none place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-40"
+        className="grid size-9 flex-none place-items-center rounded-[6px] bg-heading text-canvas transition-opacity disabled:opacity-40"
       >
         {playing ? (
           <Pause size={15} aria-hidden className="fill-current" />
@@ -135,15 +135,15 @@ export function AudioPlayer({
                 seek(e.key === "Home" ? 0 : length);
               }
             }}
-            className="group relative h-4 flex-1 cursor-pointer touch-none rounded-full outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]"
+            className="group relative h-4 flex-1 cursor-pointer touch-none rounded-[6px] outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]"
           >
-            <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-line-strong" />
+            <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-[4px] bg-line-strong" />
             <span
-              className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-heading"
+              className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-[4px] bg-heading"
               style={{ width: `${progress * 100}%` }}
             />
             <span
-              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-heading opacity-0 shadow-[0_0_0_2px_var(--color-surface)] transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-[6px] bg-heading opacity-0 shadow-[0_0_0_2px_var(--color-surface)] transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
               style={{ left: `${progress * 100}%` }}
             />
           </div>

@@ -218,7 +218,7 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
         role="group"
         aria-label="Table size"
         aria-describedby={hintId}
-        className="grid grid-cols-8 gap-1 rounded-[9px] bg-[color-mix(in_oklab,var(--color-ink)_4%,var(--color-surface-raised))] p-2.5 shadow-[0_0_0_1px_var(--color-line)]"
+        className="grid grid-cols-8 gap-1 rounded-[10px] bg-[color-mix(in_oklab,var(--color-ink)_4%,var(--color-surface-raised))] p-2.5 shadow-[0_0_0_1px_var(--color-line)]"
         onPointerLeave={() => setHover(null)}
         onFocus={() => setFocused(true)}
         onBlur={(e) => {

@@ -569,13 +569,13 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
       ) : null}
       {laidOut && sparse ? <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(340px,calc(100%-80px))] rounded-[10px] bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] leading-snug text-muted">{sparse}</p> : null}
       {tip && tipAt ? (
-        <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-[8px] px-2.5 py-1.5 text-[12.5px]" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
+        <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-[10px] px-2.5 py-1.5 text-[12.5px]" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
           <span className="font-medium text-heading">{tip.label || "Untitled"}</span>
           <span className="block text-[11.5px] text-muted">{tip.kind === "note" ? (tipId === focused && !hover ? "Enter opens it" : "Click to open") : `${KIND_LABEL[tip.kind]} · ${tipId === focused && !hover ? "Enter shows its notes" : "Click for its notes"}`}</span>
         </div>
       ) : null}
       {picked ? (
-        <section aria-label={picked.label} className="ui-pop absolute bottom-3 left-3 z-10 w-[min(300px,calc(100%-24px))] rounded-[12px] p-3">
+        <section aria-label={picked.label} className="ui-pop absolute bottom-3 left-3 z-10 w-[min(300px,calc(100%-24px))] rounded-[14px] p-3">
           <div className="flex items-start gap-2">
             <span className="mt-1">
               <KindGlyph kind={picked.kind} />

@@ -273,7 +273,7 @@ export function SupportForm({
       </div>
 
       {formError ? (
-        <p role="alert" className={`rounded-[8px] bg-danger-soft px-3 py-2 ${site ? "text-[14px]" : "text-sm"} text-danger`}>
+        <p role="alert" className={`rounded-[10px] bg-danger-soft px-3 py-2 ${site ? "text-[14px]" : "text-sm"} text-danger`}>
           {formError}
         </p>
       ) : null}

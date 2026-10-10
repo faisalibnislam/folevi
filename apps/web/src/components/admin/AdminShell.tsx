@@ -118,7 +118,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <Link href="/admin" aria-label="Folevi admin" title="Go to the dashboard" className="flex items-center rounded-[6px] px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus">
               <FoleviLogo height={26} title={null} className="flex-none" />
             </Link>
-            <span className="rounded-full bg-[var(--glass-hover)] px-2 py-0.5 text-[11.5px] font-semibold text-muted">Admin</span>
+            <span className="rounded-[6px] bg-[var(--glass-hover)] px-2 py-0.5 text-[11.5px] font-semibold text-muted">Admin</span>
           </div>
           <nav aria-label="Admin" className="px-2.5 md:min-h-0 md:flex-1 md:overflow-y-auto">
             <div className="flex gap-0.5 overflow-x-auto pb-2 md:block md:overflow-visible md:pb-4">
@@ -138,7 +138,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                             <Icon size={16} aria-hidden className={`flex-none transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} />
                             {item.label}
                             {count > 0 ? (
-                              <span className="ml-auto rounded-full bg-heading px-1.5 text-[11px] font-semibold leading-[18px] text-canvas tabular-nums">
+                              <span className="ml-auto rounded-[6px] bg-heading px-1.5 text-[11px] font-semibold leading-[18px] text-canvas tabular-nums">
                                 {count >= 100 ? "99+" : count}
                                 <span className="sr-only"> unread</span>
                               </span>
@@ -177,7 +177,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <div className="ui-content relative flex min-w-0 flex-1 flex-col md:overflow-hidden md:rounded-[14px]">
           <div className="min-h-0 flex-1 md:overflow-y-auto">
             <div className="sticky top-0 z-30 px-2 pt-2">
-              <div className="ui-glass ui-glass-sidebar flex h-11 items-center gap-1.5 rounded-[12px] px-1.5">
+              <div className="ui-glass ui-glass-sidebar flex h-11 items-center gap-1.5 rounded-[14px] px-1.5">
                 {onRecord && section ? (
                   <Link href={section.href} aria-label={`Up to ${section.label}`} title={`Up to ${section.label}`} className={ICON_BTN}>
                     <ArrowUp size={15} aria-hidden />

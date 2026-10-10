@@ -133,7 +133,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     <span className="flex items-center gap-1.5 truncate font-medium">
                       <span className="truncate">{p.displayName}</span>
                       {p.isYou ? <span className="text-xs font-normal text-muted">(you)</span> : null}
-                      {p.guest ? <span className="flex-none rounded-full border border-line px-1.5 py-px text-[11px] font-medium text-muted">Guest</span> : null}
+                      {p.guest ? <span className="flex-none rounded-[6px] border border-line px-1.5 py-px text-[11px] font-medium text-muted">Guest</span> : null}
                     </span>
                     {p.email ? <span className="block truncate text-xs text-muted">{p.email}</span> : null}
                   </span>
@@ -202,7 +202,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               </ul>
               {data.publicLinksAvailable ? (
                 <form
-                  className="mt-3 space-y-3 rounded-[8px] bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] p-3"
+                  className="mt-3 space-y-3 rounded-[10px] bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] p-3"
                   onSubmit={async (e) => {
                     e.preventDefault();
                     if (linkForm.password && linkForm.password.length < 5) {

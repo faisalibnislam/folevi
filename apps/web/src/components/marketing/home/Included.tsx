@@ -102,12 +102,12 @@ function OfflinePicture() {
         <span className="truncate text-[12.5px] font-semibold text-(--color-heading)">Train notes</span>
         <span className="mk-mini-pills">
           <span className="mk-mini-pill mk-mini-pill-offline" data-step="1">
-            <span className="size-1.5 flex-none rounded-full bg-(--color-ink-faint)" />
+            <span className="size-1.5 flex-none rounded-[4px] bg-(--color-ink-faint)" />
             <CloudOff size={12} />
             Offline <span className="tabular-nums">· 3</span>
           </span>
           <span className="mk-mini-pill" data-step="2">
-            <span className="size-1.5 flex-none rounded-full bg-moss" />
+            <span className="size-1.5 flex-none rounded-[4px] bg-moss" />
             <Check size={12} className="text-moss-ink" />
             Saved
           </span>
@@ -124,9 +124,9 @@ function SyncPicture() {
     <div className="flex items-end gap-3">
       <div className="mk-mini-card w-[170px] overflow-hidden sm:w-[190px]">
         <div className="flex items-center gap-1 border-b border-(--color-line) px-2.5 py-1.5">
-          <span className="size-1.5 rounded-full bg-(--color-line-strong)" />
-          <span className="size-1.5 rounded-full bg-(--color-line-strong)" />
-          <span className="size-1.5 rounded-full bg-(--color-line-strong)" />
+          <span className="size-1.5 rounded-[4px] bg-(--color-line-strong)" />
+          <span className="size-1.5 rounded-[4px] bg-(--color-line-strong)" />
+          <span className="size-1.5 rounded-[4px] bg-(--color-line-strong)" />
         </div>
         <div className="px-3 pb-3 pt-2">
           <span className="block text-[11.5px] font-semibold text-(--color-heading)">Seed library</span>
@@ -137,10 +137,10 @@ function SyncPicture() {
         </div>
       </div>
       <div className="mk-mini-card w-[74px] overflow-hidden rounded-[14px] px-2 pb-3 pt-3">
-        <span className="mx-auto mb-2 block h-1 w-5 rounded-full bg-(--color-line-strong)" />
+        <span className="mx-auto mb-2 block h-1 w-5 rounded-[4px] bg-(--color-line-strong)" />
         <span className="block truncate text-[9.5px] font-semibold text-(--color-heading)">Seed library</span>
         <MiniLines widths={["92%", "68%"]} />
-        <span className="mk-mini-arrive mt-1.5 block truncate rounded-[3px] text-[8.5px] text-ink">Print seed labels</span>
+        <span className="mk-mini-arrive mt-1.5 block truncate rounded-[4px] text-[8.5px] text-ink">Print seed labels</span>
       </div>
     </div>
   );
@@ -164,8 +164,8 @@ function StylesPicture() {
         <span className="block h-7 bg-cover bg-center" style={{ backgroundImage: `url("/marketing/mini/${note.id}.webp")` }} />
         <span className="block px-2.5 pb-2.5 pt-1.5">
           <span className="mk-note-h block text-[11px]">Trip sketch</span>
-          <span className="mt-1 block h-[3px] w-[85%] rounded-full bg-[color-mix(in_oklab,var(--n-ink)_22%,transparent)]" />
-          <span className="mt-1 block h-[3px] w-[60%] rounded-full bg-[color-mix(in_oklab,var(--n-ink)_22%,transparent)]" />
+          <span className="mt-1 block h-[3px] w-[85%] rounded-[4px] bg-[color-mix(in_oklab,var(--n-ink)_22%,transparent)]" />
+          <span className="mt-1 block h-[3px] w-[60%] rounded-[4px] bg-[color-mix(in_oklab,var(--n-ink)_22%,transparent)]" />
         </span>
       </span>
     </div>
@@ -209,11 +209,11 @@ function ThemesPicture() {
           </span>
           <span className="mt-2 block space-y-1.5">
             {["90%", "72%", "84%", "46%"].map((w, i) => (
-              <span key={i} className="block h-[4px] rounded-full bg-current opacity-[0.16]" style={{ width: w }} />
+              <span key={i} className="block h-[4px] rounded-[4px] bg-current opacity-[0.16]" style={{ width: w }} />
             ))}
           </span>
           <span className="mt-2.5 flex items-center gap-1.5 text-[10px]">
-            <span className="grid size-3 place-items-center rounded-[3px] bg-current">
+            <span className="grid size-3 place-items-center rounded-[4px] bg-current">
               <Check size={8} className="mk-mini-theme-check" strokeWidth={3} />
             </span>
             <span className="opacity-70">Book the ferry</span>

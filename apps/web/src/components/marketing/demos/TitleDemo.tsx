@@ -93,7 +93,7 @@ export function TitleDemo() {
         {phase.kind === "writing" ? <span className="ml-0.5 inline-block h-6 w-[2px] translate-y-1 animate-pulse bg-[#7c6cf0]" /> : null}
       </button>
       {phase.kind === "pill" ? (
-        <span className="mk-app-pop mk-appear mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-medium text-ink">
+        <span className="mk-app-pop mk-appear mt-2.5 inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[12.5px] font-medium text-ink">
           <AiIcon size={14} className="text-[#7c6cf0]" /> Edit with AI
           <kbd className="ml-1 font-sans text-[11px] text-faint">⌘J</kbd>
         </span>
@@ -116,7 +116,7 @@ export function TitleDemo() {
                   }}
                   onPointerEnter={() => phase.kind === "menu" && setPhase({ kind: "menu", active: i })}
                   className={cx(
-                    "flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-[7px] text-left",
+                    "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-left",
                     (phase.kind === "menu" && phase.active === i) || (phase.kind === "thinking" && phase.row === i) ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink",
                   )}
                 >

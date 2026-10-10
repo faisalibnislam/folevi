@@ -137,7 +137,7 @@ function CreateWorkspaceNudge() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
   return (
-    <div className="flex-none rounded-[8px] border border-line p-3 md:mt-1">
+    <div className="flex-none rounded-[10px] border border-line p-3 md:mt-1">
       <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
       <p className="mt-1 max-w-52 text-[12.5px] text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
       <Button size="sm" className="mt-2" onClick={() => setOpen(true)}>

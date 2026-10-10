@@ -261,7 +261,7 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
   };
 
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[12px] px-1.5">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1.5">
       {up ? (
         <Link href={up} aria-label={`Up to ${upLabel}`} title={`Up to ${upLabel}`} className={ICON_BTN}>
           <ArrowUp size={15} aria-hidden />

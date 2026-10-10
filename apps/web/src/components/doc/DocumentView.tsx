@@ -1027,7 +1027,7 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
           if (e.key === "ArrowLeft") onWidth(Math.min(PANEL_MAX, w + 16));
           if (e.key === "ArrowRight") onWidth(Math.max(PANEL_MIN, w - 16));
         }}
-        className="absolute inset-y-3 -left-[3px] z-10 w-1 cursor-col-resize rounded-full outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
+        className="absolute inset-y-3 -left-[3px] z-10 w-1 cursor-col-resize rounded-[6px] outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
       />
       {children}
     </aside>
@@ -1040,7 +1040,7 @@ function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, 
   for (const [, key] of authors.authors) counts.set(key, (counts.get(key) ?? 0) + 1);
   const people = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   return (
-    <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[8px] bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">
+    <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">
       <span>Each line shows who last edited it.</span>
       {people.map(([key]) => (
         <span key={key} className="inline-flex items-center gap-1.5 text-ink">
@@ -1068,7 +1068,7 @@ function BarAvatars({ me, others }: { me: { name: string; avatarUrl: string | nu
     <div role="group" aria-label={`Here now: ${people.map((p) => p.name).join(", ")}`} className="flex items-center px-1.5">
       <div className="flex -space-x-1.5">
         {shown.map((p) => (
-          <span key={p.key} title={p.name} className="rounded-full bg-[var(--color-surface-raised)] p-[1.5px]">
+          <span key={p.key} title={p.name} className="rounded-[6px] bg-[var(--color-surface-raised)] p-[1.5px]">
             <Avatar name={p.name} url={p.avatarUrl} size={24} ring={`var(--color-${p.color})`} />
           </span>
         ))}
@@ -1088,7 +1088,7 @@ function NestedPath({ crumbs, title }: { crumbs: { id: string; title: string }[]
   const parent = crumbs[crumbs.length - 1]!;
   return (
     <nav aria-label="Page path" className="relative mx-auto -mt-5 mb-2.5" style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}>
-      <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-[8px] p-0.5 text-[12.5px]">
+      <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-[10px] p-0.5 text-[12.5px]">
         <li className="flex-none">
           <AppLink href={`/d/${parent.id}`} aria-label={`Back to ${parent.title || "Untitled"}`} title={`Back to ${parent.title || "Untitled"}`} className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
             <ArrowLeft size={13} aria-hidden />
@@ -1373,7 +1373,7 @@ function DocumentHeader({
               setSuggesting(false);
             }
           }}
-          className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium backdrop-blur-md transition-colors disabled:opacity-60 ${titleColor ? "bg-black/20 text-white hover:bg-black/30" : "bg-[var(--glass-hover)] text-ink hover:bg-[var(--glass-active)]"}`}
+          className={`mt-2 inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1 text-[12.5px] font-medium backdrop-blur-md transition-colors disabled:opacity-60 ${titleColor ? "bg-black/20 text-white hover:bg-black/30" : "bg-[var(--glass-hover)] text-ink hover:bg-[var(--glass-active)]"}`}
         >
           <AiIcon size={13} aria-hidden className={suggesting ? "animate-pulse motion-reduce:animate-none" : ""} />
           {suggesting ? "Thinking of a title…" : "Suggest a title"}
@@ -1450,11 +1450,11 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
       </h2>
       <p className="mt-1 text-sm text-ink">Both versions are kept. Nothing is lost until you choose.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="ui-card rounded-[8px] p-3">
+        <div className="ui-card rounded-[10px] p-3">
           <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : c.reason === "edited" ? "Edited elsewhere" : "Version from elsewhere"}</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(theirs)}</p>
         </div>
-        <div className="ui-card rounded-[8px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
+        <div className="ui-card rounded-[10px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
           <p className="ui-caps">{c.reason === "edited" ? "You deleted it" : "Your version"}</p>
           <p className={`mt-1 whitespace-pre-wrap text-sm ${c.reason === "edited" ? "text-muted line-through" : ""}`}>{text(c.client)}</p>
         </div>

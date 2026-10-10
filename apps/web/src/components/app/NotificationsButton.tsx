@@ -66,7 +66,7 @@ export function NotificationsButton() {
         {count ? (
           <span
             aria-hidden
-            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-coral px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-[var(--color-sidebar)]"
+            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-[6px] bg-coral px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-[var(--color-sidebar)]"
           >
             {count > 9 ? "9+" : count}
           </span>
@@ -77,7 +77,7 @@ export function NotificationsButton() {
           ref={panelRef}
           popover="manual"
           style={panelStyle}
-          className="ui-pop z-[100] flex max-h-[min(560px,calc(100vh-72px))] w-[380px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-[12px] border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
+          className="ui-pop z-[100] flex max-h-[min(560px,calc(100vh-72px))] w-[380px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-[14px] border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
         >
           <NotificationPanel
             unread={count}
@@ -192,7 +192,7 @@ function NotificationPanel({ unread, onClose }: { unread: number; onClose: (refo
           <div className="space-y-3 px-4 py-4" aria-busy aria-label="Loading notifications">
             {[70, 90, 60].map((w) => (
               <div key={w} className="flex gap-3">
-                <div className="h-7 w-7 flex-none animate-pulse rounded-full bg-sunken motion-reduce:animate-none" />
+                <div className="h-7 w-7 flex-none animate-pulse rounded-[6px] bg-sunken motion-reduce:animate-none" />
                 <div className="h-3.5 animate-pulse rounded bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
               </div>
             ))}
@@ -221,7 +221,7 @@ function NotificationPanel({ unread, onClose }: { unread: number; onClose: (refo
 function EmptyState({ unreadOnly }: { unreadOnly: boolean }) {
   return (
     <div className="flex flex-col items-center px-8 py-10 text-center">
-      <span className="mb-3 grid h-10 w-10 place-items-center rounded-full bg-sunken text-muted" aria-hidden>
+      <span className="mb-3 grid h-10 w-10 place-items-center rounded-[10px] bg-sunken text-muted" aria-hidden>
         <BellOff size={17} />
       </span>
       <p className="text-[13.5px] font-medium text-heading">{unreadOnly ? "No unread notifications" : "You're all caught up."}</p>
@@ -252,7 +252,7 @@ function Sentence({ n }: { n: Item }) {
 function KindIcon({ kind }: { kind: Item["kind"] }) {
   const Icon = kind === "comment" || kind === "reply" ? MessageSquare : kind === "mention" ? AtSign : kind === "share" ? Share2 : kind === "invite" ? UserPlus : kind === "share_change" ? KeyRound : FileText;
   return (
-    <span aria-hidden className="absolute -bottom-0.5 -right-1 grid h-4 w-4 place-items-center rounded-full bg-[var(--color-surface-raised)] text-muted shadow-[0_0_0_1.5px_var(--color-surface-raised)]">
+    <span aria-hidden className="absolute -bottom-0.5 -right-1 grid h-4 w-4 place-items-center rounded-[6px] bg-[var(--color-surface-raised)] text-muted shadow-[0_0_0_1.5px_var(--color-surface-raised)]">
       <Icon size={9.5} strokeWidth={2.4} />
     </span>
   );
@@ -278,13 +278,13 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           else if (!n.read) void markRead({ ids: [n.id] }).catch(fail);
         }}
         aria-describedby={`${n.id}-meta`}
-        className="flex w-full gap-3 rounded-[8px] py-2.5 pl-2.5 pr-9 text-left outline-none transition-colors hover:bg-[var(--glass-hover)] focus-visible:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus"
+        className="flex w-full gap-3 rounded-[10px] py-2.5 pl-2.5 pr-9 text-left outline-none transition-colors hover:bg-[var(--glass-hover)] focus-visible:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus"
       >
         <span className="relative mt-0.5 flex-none">
           {n.actorName ? (
             <Avatar name={n.actorName} url={n.actorAvatarUrl} size={28} />
           ) : (
-            <span aria-hidden className="grid h-7 w-7 place-items-center rounded-full bg-sunken text-muted">
+            <span aria-hidden className="grid h-7 w-7 place-items-center rounded-[6px] bg-sunken text-muted">
               <Bell size={13} />
             </span>
           )}
@@ -302,7 +302,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
             {n.read ? null : <span className="sr-only">, unread</span>}
           </span>
         </span>
-        {n.read ? null : <span aria-hidden className="absolute right-3.5 top-4 h-2 w-2 rounded-full bg-coral transition-opacity group-hover:opacity-0 group-focus-within:opacity-0" />}
+        {n.read ? null : <span aria-hidden className="absolute right-3.5 top-4 h-2 w-2 rounded-[4px] bg-coral transition-opacity group-hover:opacity-0 group-focus-within:opacity-0" />}
       </button>
       {n.fileId || (n.kind === "invite" && n.inviteId) || n.pageInviteId ? (
         <div className="-mt-1 flex gap-1.5 pb-2.5 pl-[50px]">

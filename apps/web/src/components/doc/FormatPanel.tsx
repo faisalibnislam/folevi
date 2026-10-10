@@ -223,7 +223,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
         <h3 className="ui-caps mb-2 px-1">Decorations</h3>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Decoration">
           <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "focus"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "focus" ? null : "focus" })} className={`flex h-10 items-center justify-center gap-2 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.decoration === "focus" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
-            <span aria-hidden className="h-4 w-[3px] rounded-full bg-current" /> Focus
+            <span aria-hidden className="h-4 w-[3px] rounded-[6px] bg-current" /> Focus
           </button>
           <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "block"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" })} className={`h-10 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.decoration === "block" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             <span className="rounded-[6px] bg-line/80 px-3 py-1">Block</span>

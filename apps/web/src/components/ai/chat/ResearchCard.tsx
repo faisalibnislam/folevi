@@ -56,7 +56,7 @@ export function ResearchProgress({ research }: { research: ResearchHandlers }) {
           <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> Researching…
         </p>
         <button type="button" onClick={research.onCancel} className={BUTTON}>
-          <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Cancel
+          <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Cancel
         </button>
       </div>
       <ResearchSteps job={job} />

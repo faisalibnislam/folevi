@@ -73,14 +73,14 @@ export function CatchUpDemo() {
               take();
               void brief(plain);
             }}
-            className={`inline-flex h-10 items-center gap-2 rounded-[8px] bg-(--glass-active) px-4 text-[13.5px] font-semibold text-(--color-heading) shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-transform hover:-translate-y-px ${pressed ? "scale-95" : ""}`}
+            className={`inline-flex h-10 items-center gap-2 rounded-[10px] bg-(--glass-active) px-4 text-[13.5px] font-semibold text-(--color-heading) shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-transform hover:-translate-y-px ${pressed ? "scale-95" : ""}`}
           >
             <AiIcon size={15} /> Catch me up
           </button>
           <span className="text-[12.5px] text-muted">A quick AI brief of this week’s notes and what’s due.</span>
         </div>
       ) : (
-        <div className="mk-app-pop mk-appear rounded-[16px] p-5 text-[13px] leading-relaxed text-ink">
+        <div className="mk-app-pop mk-appear rounded-[18px] p-5 text-[13px] leading-relaxed text-ink">
           <div className="mb-2 flex items-center gap-2">
             <AiIcon size={15} className={phase.kind === "reading" ? "animate-pulse text-[#7c6cf0]" : "text-[#7c6cf0]"} />
             <p className="mk-display flex-1 text-[18px]">Your week</p>
@@ -91,7 +91,7 @@ export function CatchUpDemo() {
                 take();
                 void brief(plain);
               }}
-              className="grid size-8 place-items-center rounded-[8px] text-muted hover:bg-(--glass-hover) hover:text-(--color-heading)"
+              className="grid size-8 place-items-center rounded-[6px] text-muted hover:bg-(--glass-hover) hover:text-(--color-heading)"
             >
               <RotateCcw size={14} aria-hidden="true" />
             </button>
@@ -103,7 +103,7 @@ export function CatchUpDemo() {
                 runId.current++;
                 setPhase({ kind: "button" });
               }}
-              className="grid size-8 place-items-center rounded-[8px] text-muted hover:bg-(--glass-hover) hover:text-(--color-heading)"
+              className="grid size-8 place-items-center rounded-[6px] text-muted hover:bg-(--glass-hover) hover:text-(--color-heading)"
             >
               <X size={15} aria-hidden="true" />
             </button>
@@ -112,7 +112,7 @@ export function CatchUpDemo() {
             <div className="space-y-2.5 py-1">
               <p className="text-[13px] text-muted">Reading this week’s notes…</p>
               {[90, 75, 82, 60].map((w) => (
-                <div key={w} className="h-3 animate-pulse rounded-full bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_20%,transparent),color-mix(in_oklab,#f58ab8_16%,transparent))]" style={{ width: `${w}%` }} />
+                <div key={w} className="h-3 animate-pulse rounded-[6px] bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_20%,transparent),color-mix(in_oklab,#f58ab8_16%,transparent))]" style={{ width: `${w}%` }} />
               ))}
             </div>
           ) : (
@@ -121,7 +121,7 @@ export function CatchUpDemo() {
           {phase.kind === "done" ? (
             <div className="mk-appear mt-3 flex flex-wrap gap-1.5">
               {SOURCES.map((title, n) => (
-                <span key={title} className="inline-flex items-center gap-1.5 rounded-full bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
+                <span key={title} className="inline-flex items-center gap-1.5 rounded-[6px] bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
                   <span className="font-semibold text-muted">{n + 1}</span>
                   <FileText size={12} aria-hidden="true" className="text-muted" />
                   {title}

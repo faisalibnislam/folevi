@@ -8,7 +8,7 @@ import { cx } from "../ui";
  */
 
 const keycap = "rounded-[4px] bg-(--color-surface) px-1.5 py-0.5 font-sans text-[11px] text-muted shadow-(--shadow-control)";
-const mark = "rounded-[3px] bg-[var(--color-highlight-yellow)] px-0.5 text-inherit";
+const mark = "rounded-[4px] bg-[var(--color-highlight-yellow)] px-0.5 text-inherit";
 
 /* ⌘K palette ------------------------------------------------------------------------------------------ */
 
@@ -41,7 +41,7 @@ export function PalettePicture() {
             { title: <>Planting <mark className={mark}>cal</mark>endar</>, snippet: <>Sow sweet peas in March. Beans after the last frost, usually mid-April. Label every tray.</>, on: true },
             { title: <>Reading list</>, snippet: <>The Overstory, Braiding Sweetgrass, and a short history of <mark className={mark}>cal</mark>endars, stamps and the post.</>, on: false },
           ].map((row, i) => (
-            <div key={i} className={cx("flex items-start gap-3 rounded-[8px] px-2.5 py-2", row.on && "bg-(--color-accent-soft) shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_14%,transparent)]")}>
+            <div key={i} className={cx("flex items-start gap-3 rounded-[10px] px-2.5 py-2", row.on && "bg-(--color-accent-soft) shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_14%,transparent)]")}>
               <FileText size={16} className="mt-0.5 flex-none text-muted" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-(--color-heading)">{row.title}</p>
@@ -51,7 +51,7 @@ export function PalettePicture() {
             </div>
           ))}
           <p className="px-2.5 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Actions</p>
-          <div className="flex items-center gap-3 rounded-[8px] px-2.5 py-2 text-ink">
+          <div className="flex items-center gap-3 rounded-[10px] px-2.5 py-2 text-ink">
             <ArrowRight size={16} className="text-muted" />
             <span className="flex-1">
               Go to <mark className={mark}>Cal</mark>endar
@@ -105,7 +105,7 @@ export function CalendarPicture() {
             <p className="text-[12.5px] text-muted">October 2026</p>
           </div>
           <span className="flex rounded-[6px] bg-(--color-surface-sunken) p-0.5 text-[12px]">
-            <span className="rounded-[5px] bg-(--color-surface-raised) px-2.5 py-1 font-medium text-(--color-heading) shadow-(--shadow-control)">Month</span>
+            <span className="rounded-[4px] bg-(--color-surface-raised) px-2.5 py-1 font-medium text-(--color-heading) shadow-(--shadow-control)">Month</span>
             <span className="px-2.5 py-1 text-muted">Agenda</span>
           </span>
           <span className="flex items-center gap-1 text-ink">
@@ -121,12 +121,12 @@ export function CalendarPicture() {
                 <span key={d}>{d}</span>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[8px] bg-(--color-line)">
+            <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[10px] bg-(--color-line)">
               {DAYS.map((d) => (
                 <div key={`${d.out ? "s" : "o"}${d.n}`} className={cx("min-h-[78px] bg-(--color-surface) p-1.5", d.n === 7 && !d.out && "bg-(--color-accent-soft)")}>
                   <span
                     className={cx(
-                      "inline-grid size-5 place-items-center rounded-full text-[11px]",
+                      "inline-grid size-5 place-items-center rounded-[6px] text-[11px]",
                       d.n === 1 && !d.out ? "bg-(--color-heading) font-semibold text-(--color-canvas)" : d.out ? "text-faint" : "text-ink",
                     )}
                   >
@@ -153,7 +153,7 @@ export function CalendarPicture() {
                 ["", "Return keys", "Studio move"],
               ].map(([time, text, page]) => (
                 <div key={text} className="flex items-start gap-2">
-                  <span className="mt-0.5 size-[13px] flex-none rounded-[3px] shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]" />
+                  <span className="mt-0.5 size-[13px] flex-none rounded-[4px] shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]" />
                   <div>
                     <p className="text-ink">{text}</p>
                     <p className="text-[11px] text-muted">
@@ -175,7 +175,7 @@ export function CalendarPicture() {
 /* Comments -------------------------------------------------------------------------------------------- */
 
 function Face({ initial, tone }: { initial: string; tone: string }) {
-  return <span className={cx("grid size-6 flex-none place-items-center rounded-full text-[11px] font-semibold text-white", tone)}>{initial}</span>;
+  return <span className={cx("grid size-6 flex-none place-items-center rounded-[6px] text-[11px] font-semibold text-white", tone)}>{initial}</span>;
 }
 
 export function CommentsPicture() {
@@ -226,7 +226,7 @@ export function CommentsPicture() {
           </div>
           <div className="flex items-center gap-2 border-t border-(--color-line) px-3 py-2.5">
             <span className="flex-1 text-faint">Reply</span>
-            <span className="grid size-7 place-items-center rounded-full bg-(--color-heading) text-(--color-canvas) opacity-40">
+            <span className="grid size-7 place-items-center rounded-[6px] bg-(--color-heading) text-(--color-canvas) opacity-40">
               <ArrowUp size={14} />
             </span>
           </div>
@@ -262,7 +262,7 @@ export function VersionsPicture() {
               ["Yesterday, 11:02", "Autosaved version · Maya", false],
               ["Sep 28, 16:47", "Imported · Maya", false],
             ].map(([when, why, on]) => (
-              <div key={String(when)} className={cx("rounded-[8px] px-2.5 py-2", on && "bg-(--color-accent-soft) shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_14%,transparent)]")}>
+              <div key={String(when)} className={cx("rounded-[10px] px-2.5 py-2", on && "bg-(--color-accent-soft) shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_14%,transparent)]")}>
                 <p className="font-medium text-(--color-heading)">{when}</p>
                 <p className="text-[11.5px] text-muted">{why}</p>
               </div>
@@ -279,7 +279,7 @@ export function VersionsPicture() {
               <ul className="mt-2 space-y-1 text-ink">
                 {["Book the hall", "Print seed labels"].map((t) => (
                   <li key={t} className="flex items-center gap-2">
-                    <span className="size-[13px] rounded-[3px] shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]" />
+                    <span className="size-[13px] rounded-[4px] shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]" />
                     {t}
                   </li>
                 ))}

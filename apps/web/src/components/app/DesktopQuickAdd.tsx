@@ -36,7 +36,7 @@ export function DesktopQuickAdd() {
   });
 
   return (
-    <main ref={panel} aria-labelledby="quick-add-heading" className={`ui-canvas text-ink ${bridge ? "ui-desktop-quick-add" : "mx-auto mt-16 max-w-lg rounded-[12px] shadow-[var(--glass-edge)]"} p-5`}>
+    <main ref={panel} aria-labelledby="quick-add-heading" className={`ui-canvas text-ink ${bridge ? "ui-desktop-quick-add" : "mx-auto mt-16 max-w-lg rounded-[14px] shadow-[var(--glass-edge)]"} p-5`}>
       <div className="ui-drag mb-4 flex items-baseline justify-between gap-3">
         <h1 id="quick-add-heading" className="ui-display text-[19px] text-heading">
           Quick add task

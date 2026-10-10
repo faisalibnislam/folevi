@@ -41,7 +41,7 @@ export function Outline({ documentId, onJump }: { documentId: string; onJump: (b
           const on = current === b.id;
           return (
             <li key={b.id} className="relative">
-              {on ? <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-heading" /> : null}
+              {on ? <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-[6px] bg-heading" /> : null}
               <button
                 type="button"
                 onClick={() => onJump(b.id)}

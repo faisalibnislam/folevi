@@ -27,7 +27,7 @@ const TONES: Record<Tone, string> = {
 
 export function Badge({ tone = "neutral", children, className, title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-px text-[11.5px] font-semibold leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
+    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-[6px] px-2 py-px text-[11.5px] font-semibold leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
       {children}
     </span>
   );
@@ -272,8 +272,8 @@ export function Meter({ value, max, label }: { value: number; max: number; label
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   const tone = pct >= 90 ? "bg-danger" : pct >= 75 ? "bg-warning" : "bg-heading";
   return (
-    <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-valuetext={`${pct.toFixed(0)}%`} className="h-2 w-full overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]">
-      <div className={`h-full rounded-full ${tone}`} style={{ width: `${Math.max(pct, value > 0 ? 1.5 : 0)}%` }} />
+    <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-valuetext={`${pct.toFixed(0)}%`} className="h-2 w-full overflow-hidden rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]">
+      <div className={`h-full rounded-[6px] ${tone}`} style={{ width: `${Math.max(pct, value > 0 ? 1.5 : 0)}%` }} />
     </div>
   );
 }

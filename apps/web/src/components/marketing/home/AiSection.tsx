@@ -273,7 +273,7 @@ function Points({ points, className }: { points: ReactNode[]; className?: string
         >
           <span
             aria-hidden="true"
-            className="mt-[9px] size-[5px] flex-none rounded-full bg-(--color-ink-muted)"
+            className="mt-[9px] size-[5px] flex-none rounded-[4px] bg-(--color-ink-muted)"
           />
           <span>{point}</span>
         </li>

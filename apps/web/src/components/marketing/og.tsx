@@ -65,18 +65,18 @@ export async function renderOgImage({ eyebrow, title, sheetTitle, lines }: { eye
             display: "flex",
             flexDirection: "column",
             background: "#FFFFFF",
-            borderRadius: 26,
+            borderRadius: 18,
             overflow: "hidden",
             boxShadow: "0 0 0 1px rgba(74,47,44,0.06), 0 36px 70px -30px rgba(74,47,44,0.40)",
             transform: "rotate(2deg)",
           }}
         >
-          <div style={{ margin: 12, height: 70, borderRadius: 16, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
+          <div style={{ margin: 12, height: 70, borderRadius: 18, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
           <div style={{ display: "flex", flexDirection: "column", padding: "4px 28px", gap: 13 }}>
             <div style={{ fontSize: 28, fontWeight: 600, color: HEADING, letterSpacing: -1, display: "flex" }}>{sheetTitle}</div>
             {lines.slice(0, 5).map((line) => (
               <div key={line} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 18, fontWeight: 500, color: INK }}>
-                <div style={{ width: 7, height: 7, borderRadius: 7, display: "flex", background: EMBER }} />
+                <div style={{ width: 7, height: 7, borderRadius: 4, display: "flex", background: EMBER }} />
                 {line.length > 26 ? `${line.slice(0, 25)}…` : line}
               </div>
             ))}
@@ -105,7 +105,7 @@ export async function renderOgImage({ eyebrow, title, sheetTitle, lines }: { eye
                 alignItems: "center",
                 height: 44,
                 padding: "0 20px",
-                borderRadius: 44,
+                borderRadius: 18,
                 color: "#FFFFFF",
                 fontWeight: 600,
                 fontSize: 20,

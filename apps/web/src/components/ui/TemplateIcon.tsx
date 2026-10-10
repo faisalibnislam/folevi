@@ -75,7 +75,7 @@ export function TemplateTile({ name, size = 36, iconSize = 18, className = "" }:
   return (
     <span
       aria-hidden
-      className={`grid flex-none place-items-center rounded-[9px] ${className}`}
+      className={`grid flex-none place-items-center rounded-[10px] ${className}`}
       style={{ width: size, height: size, background: `color-mix(in oklab, ${hue} 17%, transparent)`, color: `color-mix(in oklab, ${hue} 78%, var(--color-heading))` }}
     >
       <TemplateIcon name={name} size={iconSize} />

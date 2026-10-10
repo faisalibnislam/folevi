@@ -4,7 +4,7 @@ export function Card({ title, description, children }: { title: string; descript
   // A generated id: titles have spaces, and aria-labelledby reads a space-separated list of ids.
   const id = useId();
   return (
-    <section className="ui-card rounded-[8px] p-5" aria-labelledby={id}>
+    <section className="ui-card rounded-[10px] p-5" aria-labelledby={id}>
       <h3 id={id} className="ui-display text-[17px]">
         {title}
       </h3>

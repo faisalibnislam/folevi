@@ -495,7 +495,7 @@ function buildEntries({
         label: "Highlight color",
         icon: <Highlighter size={14} />,
         items: [
-          ...HIGHLIGHT_COLORS.map((h): Item => ({ label: colorName(palette, h), icon: <span className={`fb-hl-${h} fb-swatch block h-3.5 w-3.5 rounded-[3px]`} />, checked: editor.isActive("highlight", { value: h }), run: () => setHighlight(editor, h) })),
+          ...HIGHLIGHT_COLORS.map((h): Item => ({ label: colorName(palette, h), icon: <span className={`fb-hl-${h} fb-swatch block h-3.5 w-3.5 rounded-[4px]`} />, checked: editor.isActive("highlight", { value: h }), run: () => setHighlight(editor, h) })),
           "separator",
           { label: "None", run: () => setHighlight(editor, null) },
         ],

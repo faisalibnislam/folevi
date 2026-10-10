@@ -259,7 +259,7 @@ function FlowchartPicture({ art }: { art: string }) {
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
       <figure className="mk-note overflow-hidden" style={artVars(artById(art))}>
         <div className="flex items-center gap-2 border-b border-[color-mix(in_oklab,var(--n-ink)_12%,transparent)] px-4 py-2.5 text-[12px] font-medium text-(--n-muted)">
-          <span className="rounded-[5px] bg-[color-mix(in_oklab,var(--n-ink)_7%,transparent)] px-1.5 leading-5">Flowchart</span>
+          <span className="rounded-[4px] bg-[color-mix(in_oklab,var(--n-ink)_7%,transparent)] px-1.5 leading-5">Flowchart</span>
           <span className="flex-1" />
           <span aria-hidden="true">Tidy up</span>
           <span aria-hidden="true" className="inline-flex items-center gap-1">
@@ -313,14 +313,14 @@ function WhiteboardPicture({ art }: { art: string }) {
           {PEN.map((c, i) => (
             <span
               key={c}
-              className={cx("mx-px size-4 flex-none rounded-full sm:mx-0 sm:size-5", i >= 4 && "hidden sm:block", i === 1 && "shadow-[0_0_0_2px_var(--n-paper),0_0_0_3.5px_var(--n-ink)]")}
+              className={cx("mx-px size-4 flex-none rounded-[6px] sm:mx-0 sm:size-5", i >= 4 && "hidden sm:block", i === 1 && "shadow-[0_0_0_2px_var(--n-paper),0_0_0_3.5px_var(--n-ink)]")}
               style={{ background: WHITEBOARD_COLORS[c] }}
             />
           ))}
           <span className="mx-1 hidden h-5 w-px bg-[color-mix(in_oklab,var(--n-ink)_18%,transparent)] sm:block" />
           {[2.5, 5, 10].map((w, i) => (
             <span key={w} className={cx("hidden size-8 place-items-center rounded-[6px] sm:grid", i === 0 && "bg-[color-mix(in_oklab,var(--n-ink)_8%,transparent)]")}>
-              <span className="rounded-full bg-(--n-ink)" style={{ width: w + 2, height: w + 2 }} />
+              <span className="rounded-[6px] bg-(--n-ink)" style={{ width: w + 2, height: w + 2 }} />
             </span>
           ))}
           <span className="flex-1" />
@@ -376,7 +376,7 @@ function SharePanel() {
           <ul className="mt-3 space-y-1">
             {people.map((p) => (
               <li key={p.name} className="flex items-center gap-2.5 py-1">
-                <span className="grid size-7 flex-none place-items-center rounded-full bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{p.name[0]}</span>
+                <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{p.name[0]}</span>
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block truncate font-medium text-ink">{p.name}</span>
                   <span className="block truncate text-[11.5px] text-muted">{p.note}</span>
@@ -440,7 +440,7 @@ function WorkspacePanels() {
         <p className="mk-caps px-2.5 pb-1 pt-2 text-[10.5px]">Switch to</p>
         <ul className="space-y-0.5">
           {spaces.map((s) => (
-            <li key={s.name} className={cx("flex h-10 items-center gap-2.5 rounded-[8px] px-2.5", s.on ? "mk-app-row-on" : "text-ink")}>
+            <li key={s.name} className={cx("flex h-10 items-center gap-2.5 rounded-[10px] px-2.5", s.on ? "mk-app-row-on" : "text-ink")}>
               <span className="grid size-6 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{s.name[0]}</span>
               <span className="min-w-0 flex-1 truncate">{s.name}</span>
               <span className="flex-none text-[11.5px] font-normal text-muted">{s.role}</span>
@@ -459,7 +459,7 @@ function WorkspacePanels() {
         <ul className="divide-y divide-(--mk-hair)">
           {members.map((m) => (
             <li key={m.name} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="grid size-7 flex-none place-items-center rounded-full bg-(--color-surface-sunken) text-[11px] font-semibold text-(--color-heading)">{m.name[0]}</span>
+              <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-surface-sunken) text-[11px] font-semibold text-(--color-heading)">{m.name[0]}</span>
               <span className="min-w-0 flex-1 truncate text-ink">{m.name}</span>
               <span className="flex-none text-[12px] text-muted">{m.role}</span>
               <span className={cx("hidden w-14 flex-none text-right text-[11.5px] sm:block", m.seat ? "text-muted" : "font-medium text-moss-ink")}>{m.seat ? "Seat" : "Free"}</span>
@@ -495,7 +495,7 @@ function ExportPanels() {
       aria-label="A page's menu with Share, Version history, Export as Markdown, Export as HTML, Export as PDF (print), Duplicate, Save as template and Archive. Beside it, Settings, Import and export: import Markdown or text files or a folder, and export everything in Personal as a ZIP."
       className="grid items-start gap-6 lg:grid-cols-2"
     >
-      <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[320px] rounded-[12px] p-1.5 text-[13px]">
+      <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[320px] rounded-[14px] p-1.5 text-[13px]">
         <ul className="space-y-0.5">
           <MenuRow icon={<Star size={14} />} label="Star" />
           <MenuRow icon={<Share2 size={14} />} label="Share…" />

@@ -106,8 +106,8 @@ export function DashboardView() {
                       <td className={tdNum}>{n(c.active)}</td>
                       <td className={tdNum}>
                         <span className="inline-flex items-center gap-2">
-                          <span aria-hidden className="inline-block h-1.5 w-14 overflow-hidden rounded-full bg-sunken">
-                            <span className="block h-full rounded-full bg-heading" style={{ width: `${pct}%` }} />
+                          <span aria-hidden className="inline-block h-1.5 w-14 overflow-hidden rounded-[4px] bg-sunken">
+                            <span className="block h-full rounded-[6px] bg-heading" style={{ width: `${pct}%` }} />
                           </span>
                           {pct}%
                         </span>

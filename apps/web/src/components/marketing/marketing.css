@@ -331,7 +331,7 @@
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--color-heading);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-control);
@@ -409,7 +409,7 @@
 .mk-root mark {
   background: var(--color-highlight-yellow);
   color: inherit;
-  border-radius: 3px;
+  border-radius: 4px;
   padding: 0 2px;
 }
 
@@ -448,7 +448,7 @@
 /* Menus open over busy content, so they stay nearly opaque (a menu inside the glass bar can't blur what's below it). */
 .mk-glass.mk-glass-bar { background: color-mix(in oklab, var(--color-surface-raised) 90%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .mk-glass.mk-glass-menu { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.mk-lights span { display: block; width: 11px; height: 11px; border-radius: 999px; }
+.mk-lights span { display: block; width: 11px; height: 11px; border-radius: 6px; }
 .mk-lights span:nth-child(1) { background: #EC6A5E; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
 .mk-lights span:nth-child(2) { background: #F4BF4F; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
 .mk-lights span:nth-child(3) { background: #61C554; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
@@ -484,7 +484,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--glass-canvas);
   box-shadow: var(--shadow-lift);
   font-size: 13px;
@@ -620,7 +620,7 @@
 :root[data-theme="dark"] .mk-note-cover[data-tone="light"]::after { background: linear-gradient(180deg, transparent 30%, var(--mk-title-shade-deep)); }
 :root[data-theme="dark"] .mk-note-cover[data-tone="light"] .mk-note-title { color: #fff; }
 .mk-note-h { font-family: var(--font-display); font-weight: 600; color: var(--n-heading); letter-spacing: -0.01em; }
-.mk-note-callout { background: color-mix(in oklab, var(--n-hl) 70%, var(--n-paper)); border-radius: 8px; }
+.mk-note-callout { background: color-mix(in oklab, var(--n-hl) 70%, var(--n-paper)); border-radius: 10px; }
 .mk-note-accent { color: var(--n-accent); }
 .mk-note-muted { color: var(--n-muted); }
 .mk-note-chip { background: color-mix(in oklab, var(--n-hl-2) 75%, var(--n-paper)); color: var(--n-ink); }
@@ -635,7 +635,7 @@
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr);
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--n-paper);
   color: var(--n-ink);
   box-shadow: var(--shadow-card);
@@ -725,7 +725,7 @@
 @media (min-width: 1024px) { .mk-page-stack { padding-top: 32px; } }
 .mk-box {
   position: relative;
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--color-surface);
   box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -26px rgb(20 20 40 / 0.2);
 }
@@ -745,7 +745,7 @@
 .mk-dark .mk-btn-primary:hover { filter: brightness(0.92); }
 
 :root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
-@media (min-width: 640px) { .mk-box { border-radius: 16px; } }
+@media (min-width: 640px) { .mk-box { border-radius: 18px; } }
 
 /* On Home, the grey wells inside the cards (the section pictures, the Recent notes panel, the security note)
    take a light tint from the hero note's style instead: its paper, warmed with its second highlight, and a
@@ -782,13 +782,13 @@
 }
 .mk-mini-card {
   display: block;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
   color: var(--color-ink);
   text-align: start;
 }
-.mk-mini-line { display: block; height: 4px; border-radius: 999px; background: color-mix(in oklab, var(--color-ink) 14%, transparent); }
+.mk-mini-line { display: block; height: 4px; border-radius: 4px; background: color-mix(in oklab, var(--color-ink) 14%, transparent); }
 /* The sync status pill (SyncStatus's ui-well pill): Offline with changes waiting, then Saved, in turn. */
 .mk-mini-pills { position: relative; display: inline-grid; flex: none; }
 .mk-mini-pill {
@@ -827,7 +827,7 @@
 .mk-mini-art {
   width: 72px;
   height: 96px;
-  border-radius: 8px;
+  border-radius: 10px;
   background-size: cover;
   background-position: center;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 18px -10px rgb(0 0 0 / 0.35);
@@ -839,7 +839,7 @@
   display: block;
   width: 136px;
   padding: 12px 12px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   text-align: start;
 }
 .mk-mini-theme[data-mini-theme="light"] { color: #18181B; background: #FFFFFF; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 20px -12px rgb(0 0 0 / 0.3); }
@@ -883,7 +883,7 @@
 /* The sheet is as wide as the home cards below it (the app's Wide page), with their corners; its blocks
    keep the default editor width (760 px) as their measure, so lines stay easy to read. */
 .mk-hero-note {
-  border-radius: 12px;
+  border-radius: 14px;
   margin-inline: auto;
   box-shadow: var(--shadow-lift);
 }
@@ -1000,7 +1000,7 @@
   gap: 18px;
   margin: var(--mk-stack-gap) 0 0;
   padding: 32px 20px;
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   backdrop-filter: blur(28px) saturate(1.8);
@@ -1029,7 +1029,7 @@
 .mk-hero-swatch {
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: 10px;
   background-size: cover;
   background-position: center;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
@@ -1042,8 +1042,8 @@
   .mk-hero-cover { min-height: 300px; padding: 96px 40px 30px; }
   .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
   .mk-hero-body { padding: 26px 40px 88px; }
-  .mk-hero-actions { padding-inline: 40px; border-radius: 16px; }
-  .mk-hero-note { border-radius: 16px; }
+  .mk-hero-actions { padding-inline: 40px; border-radius: 18px; }
+  .mk-hero-note { border-radius: 18px; }
   .mk-hero-swatch { width: 36px; height: 36px; }
 }
 @media (min-width: 1024px) {
@@ -1094,7 +1094,7 @@
   top: 0.7em;
   width: 5px;
   height: 5px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--color-ink-muted);
 }
 .mk-prose ol { list-style: decimal; padding-left: 1.4em; }

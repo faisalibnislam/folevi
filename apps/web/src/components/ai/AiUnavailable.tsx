@@ -30,7 +30,7 @@ export function AiUnavailable({ ai, compact = false, headingLevel = 2 }: { ai: P
   const Heading = `h${headingLevel}` as "h1" | "h2" | "h3";
   if (compact) {
     return (
-      <section data-testid="ai-unavailable" aria-label={copy.title} className="space-y-2 rounded-[12px] bg-[var(--glass-hover)] p-3.5 text-sm">
+      <section data-testid="ai-unavailable" aria-label={copy.title} className="space-y-2 rounded-[14px] bg-[var(--glass-hover)] p-3.5 text-sm">
         <Heading className="flex items-center gap-2 text-[13.5px] font-semibold text-heading">
           <AiIcon size={14} aria-hidden /> {copy.title}
         </Heading>

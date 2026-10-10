@@ -347,8 +347,8 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           {style.blur && hasBackdrop ? <BlurredBackdrop background={backdropCss} /> : null}
           <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-[6px] px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: sheetColor, color: textColor, fontFamily: font.family }}>
             <span className="block text-[10.5px] font-semibold leading-tight">{styleName}</span>
-            <span className="mt-1.5 block h-1 w-4/5 rounded-full opacity-25" style={{ background: textColor }} />
-            <span className="mt-1 block h-1 w-3/5 rounded-full opacity-25" style={{ background: textColor }} />
+            <span className="mt-1.5 block h-1 w-4/5 rounded-[4px] opacity-25" style={{ background: textColor }} />
+            <span className="mt-1 block h-1 w-3/5 rounded-[4px] opacity-25" style={{ background: textColor }} />
           </span>
         </div>
       </section>

@@ -150,7 +150,7 @@ export function DataSection({ target }: { target: DataTarget }) {
         {results.length ? (
           <ul className="mt-3 space-y-2 text-sm" aria-label="Import results">
             {results.map((r, i) => (
-              <li key={`${r.name}-${i}`} className="ui-card rounded-[8px] p-3">
+              <li key={`${r.name}-${i}`} className="ui-card rounded-[10px] p-3">
                 <p className="font-medium">
                   {r.id ? (
                     <AppLink href={`/d/${r.id}`} className="hover:underline">

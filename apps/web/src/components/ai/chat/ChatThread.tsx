@@ -298,7 +298,7 @@ export function ChatThread({
         </p>
         <div className="flex flex-wrap gap-2">
           {suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => send(s)} className="rounded-[8px] bg-[var(--glass-hover)] px-3.5 py-2 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => send(s)} className="rounded-[10px] bg-[var(--glass-hover)] px-3.5 py-2 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}
@@ -321,7 +321,7 @@ export function ChatThread({
         </p>
         <div className="flex flex-col items-start gap-2">
           {suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => send(s)} className="rounded-[8px] bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => send(s)} className="rounded-[10px] bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}
@@ -380,7 +380,7 @@ export function ChatThread({
               </p>
             </>
           ) : null}
-          {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-[12px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} /> : null}
+          {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-[14px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} /> : null}
           <AiAnnouncer text={announce} />
           <div ref={endRef} />
         </div>
@@ -436,7 +436,7 @@ export function ChatThread({
                 </div>
               <div className="ml-auto flex flex-none items-center gap-1.5">
                 {attachAvailable ? <AttachControl noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
-                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-8 w-8 flex-none place-items-center rounded-full bg-heading text-canvas transition-opacity disabled:opacity-30">
+                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-8 w-8 flex-none place-items-center rounded-[6px] bg-heading text-canvas transition-opacity disabled:opacity-30">
                   <ArrowUp size={16} aria-hidden />
                 </button>
               </div>

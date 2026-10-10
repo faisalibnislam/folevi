@@ -186,7 +186,7 @@ export function SlashDemo() {
 
   return (
     <div ref={root} role="img" aria-label={label} className="mx-auto w-full max-w-[400px]">
-      <div aria-hidden="true" className="mk-app-pop relative h-[440px] rounded-[16px] px-5 pb-5 pt-6 text-[14px] text-ink">
+      <div aria-hidden="true" className="mk-app-pop relative h-[440px] rounded-[18px] px-5 pb-5 pt-6 text-[14px] text-ink">
         <div className={cx("transition-opacity duration-300", s.fading && "opacity-0")}>
           <p className="mk-display text-[24px] text-(--color-heading)">{s.title}</p>
           <div className="mt-3 space-y-2.5">
@@ -210,7 +210,7 @@ export function SlashDemo() {
                 )}
               </p>
               {items.length ? (
-                <ul className={cx("mk-app-pop absolute left-0 z-10 w-[250px] rounded-[12px] p-1.5 text-[13px]", above ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]")}>
+                <ul className={cx("mk-app-pop absolute left-0 z-10 w-[250px] rounded-[14px] p-1.5 text-[13px]", above ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]")}>
                   {items.map((item, i) => (
                     <li key={item.label} className={cx("flex items-center gap-2.5 rounded-[6px] px-2 py-1.5", i === s.active ? "mk-app-row-on text-(--color-heading)" : "text-ink")}>
                       <span className="grid size-6 flex-none place-items-center rounded-[6px] bg-(--color-surface) text-(--color-heading) shadow-(--shadow-control)">{item.icon}</span>
@@ -220,7 +220,7 @@ export function SlashDemo() {
                   ))}
                 </ul>
               ) : s.query !== null ? (
-                <p className={cx("mk-app-pop absolute left-0 z-10 rounded-[12px] px-3 py-2 text-[13px] text-muted", above ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]")}>No matches</p>
+                <p className={cx("mk-app-pop absolute left-0 z-10 rounded-[14px] px-3 py-2 text-[13px] text-muted", above ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]")}>No matches</p>
               ) : null}
             </div>
           </div>
@@ -228,7 +228,7 @@ export function SlashDemo() {
         {/* The key just pressed. */}
         <span
           className={cx(
-            "absolute bottom-4 right-4 grid h-9 min-w-9 place-items-center rounded-[8px] bg-(--color-surface) px-2.5 text-[15px] font-semibold text-(--color-heading) shadow-[var(--shadow-control),0_6px_14px_-6px_rgb(0_0_0/0.25)] transition-all duration-150",
+            "absolute bottom-4 right-4 grid h-9 min-w-9 place-items-center rounded-[10px] bg-(--color-surface) px-2.5 text-[15px] font-semibold text-(--color-heading) shadow-[var(--shadow-control),0_6px_14px_-6px_rgb(0_0_0/0.25)] transition-all duration-150",
             s.key ? "scale-100 opacity-100" : "scale-90 opacity-0",
           )}
         >
@@ -258,7 +258,7 @@ function DemoBlock({ block }: { block: Block }) {
       return (
         <p className="min-h-6">
           {block.text}
-          <span className="rounded-[5px] bg-(--glass-hover) px-1.5 py-0.5 text-[12.5px] font-medium text-(--color-heading)">
+          <span className="rounded-[4px] bg-(--glass-hover) px-1.5 py-0.5 text-[12.5px] font-medium text-(--color-heading)">
             <CalendarDays size={11} className="mr-1 inline -translate-y-px" />
             Saturday
           </span>
@@ -266,14 +266,14 @@ function DemoBlock({ block }: { block: Block }) {
       );
     case "callout":
       return (
-        <p className="flex min-h-10 gap-2 rounded-[8px] bg-[color-mix(in_oklab,#f5b43c_16%,transparent)] px-3 py-2">
+        <p className="flex min-h-10 gap-2 rounded-[10px] bg-[color-mix(in_oklab,#f5b43c_16%,transparent)] px-3 py-2">
           <StickyNote size={15} className="mt-[3px] flex-none text-[#b7791f]" />
           <span>{block.text || <Caret />}</span>
         </p>
       );
     case "summary":
       return (
-        <div className="min-h-10 rounded-[8px] bg-[color-mix(in_oklab,#7c6cf0_10%,transparent)] px-3 py-2">
+        <div className="min-h-10 rounded-[10px] bg-[color-mix(in_oklab,#7c6cf0_10%,transparent)] px-3 py-2">
           <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">{ai} Summary</p>
           <p className="mt-1">{block.text || <Caret />}</p>
         </div>
@@ -281,12 +281,12 @@ function DemoBlock({ block }: { block: Block }) {
     case "audio":
       return (
         <div className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 shadow-[inset_0_0_0_1px_var(--color-line)]">
-          <span className="grid size-7 flex-none place-items-center rounded-full bg-(--color-heading) text-(--color-canvas)">
+          <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-(--color-canvas)">
             <Play size={12} className="ml-px fill-current" />
           </span>
           <span className="flex h-6 flex-1 items-center gap-[2px]">
             {[3, 6, 9, 5, 11, 7, 4, 8, 12, 6, 9, 4, 7, 10, 5, 8, 3, 6, 9, 5, 4, 7].map((h, i) => (
-              <span key={i} className="w-full rounded-full bg-(--color-ink-muted)" style={{ height: `${h * 7}%` }} />
+              <span key={i} className="w-full rounded-[6px] bg-(--color-ink-muted)" style={{ height: `${h * 7}%` }} />
             ))}
           </span>
           <span className="text-[12px] tabular-nums text-muted">0:42</span>
@@ -294,7 +294,7 @@ function DemoBlock({ block }: { block: Block }) {
       );
     case "table":
       return (
-        <div className="grid grid-cols-3 overflow-hidden rounded-[8px] text-[12.5px] shadow-[inset_0_0_0_1px_var(--color-line)]">
+        <div className="grid grid-cols-3 overflow-hidden rounded-[10px] text-[12.5px] shadow-[inset_0_0_0_1px_var(--color-line)]">
           {["Box", "Room", "Done", "Lamp", "Studio", "Yes", "Plan chest", "Studio", "No"].map((c, i) => (
             <span key={i} className={cx("border-(--color-line) px-2 py-1", i < 3 && "bg-(--glass-hover) font-semibold text-(--color-heading)", i % 3 !== 2 && "border-r", i < 6 && "border-b")}>
               {c}

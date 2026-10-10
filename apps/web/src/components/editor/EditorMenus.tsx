@@ -1429,7 +1429,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
       aria-label="Text formatting"
       aria-orientation="horizontal"
       popover="manual"
-      className="z-[100] ui-pop max-w-[calc(100vw-16px)] rounded-[8px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
+      className="z-[100] ui-pop max-w-[calc(100vw-16px)] rounded-[10px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: placed?.left ?? 0, top: placed?.top ?? 0, visibility: placed ? "visible" : "hidden" }}
       onMouseDown={(e) => {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
@@ -1530,7 +1530,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
               }}
               className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
             >
-              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-[3px]`} aria-hidden />
+              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-[4px]`} aria-hidden />
             </button>
           ))}
           <button
@@ -1861,7 +1861,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       </p>
       {hover && !menu && !dragging ? (
         <div
-          className="ui-raised fixed z-30 flex items-center gap-px rounded-[8px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
+          className="ui-raised fixed z-30 flex items-center gap-px rounded-[10px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
           // Where there's no room beside the line (narrow windows, phones) only the grip shows, so the handle
           // never covers the start of the text (the grip's menu has Insert below).
           // On touch screens only the grip shows too (Return adds a line there).

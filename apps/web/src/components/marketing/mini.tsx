@@ -21,7 +21,7 @@ const statusTone: Record<SyncStatus, string> = {
 export function StatusPill({ status, detail }: { status: SyncStatus; detail?: string }) {
   return (
     <span className="mk-mini-sunken inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2 text-[11.5px] font-medium text-muted">
-      <span aria-hidden="true" className={cx("inline-block size-1.5 rounded-full", statusTone[status])} />
+      <span aria-hidden="true" className={cx("inline-block size-1.5 rounded-[4px]", statusTone[status])} />
       <span>
         {status === "Saving" || status === "Syncing" ? `${status}…` : status}
         {detail ? <span className="text-faint"> · {detail}</span> : null}
@@ -43,7 +43,7 @@ const chipTone: Record<ChipTone, string> = {
 
 export function DateChip({ children, tone = "neutral" }: { children: ReactNode; tone?: ChipTone }) {
   return (
-    <span className={cx("inline-flex h-[20px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] font-medium", chipTone[tone])}>
+    <span className={cx("inline-flex h-[20px] shrink-0 items-center gap-1 rounded-[4px] px-1.5 text-[11px] font-medium", chipTone[tone])}>
       <Icon name="calendar" size={11} />
       {children}
     </span>

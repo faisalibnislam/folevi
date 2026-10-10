@@ -32,7 +32,7 @@ export function IdentityImageField({
   // A signed URL can expire (e.g. an offline start from an old snapshot): fall back to the initial.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const shown = src && src !== failedSrc ? src : null;
-  const radius = shape === "circle" ? "rounded-full" : "rounded-[6px]";
+  const radius = shape === "circle" ? "rounded-[6px]" : "rounded-[6px]";
 
   const run = async (kind: "upload" | "remove", fn: () => Promise<void>, done: string) => {
     setBusy(kind);

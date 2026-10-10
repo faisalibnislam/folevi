@@ -212,7 +212,7 @@ export function FlowchartDemo() {
     >
       <div className="mk-card overflow-hidden">
         <div className="flex items-center gap-2 border-b mk-hair px-4 py-2.5 text-[12px] font-medium text-muted">
-          <span className="rounded-[5px] bg-(--glass-hover) px-1.5 leading-5 text-ink">Flowchart</span>
+          <span className="rounded-[4px] bg-(--glass-hover) px-1.5 leading-5 text-ink">Flowchart</span>
           <span className="flex-1" />
           <span>Tidy up</span>
           <span className="inline-flex items-center gap-1 rounded-[6px] bg-(--glass-hover) px-2 py-0.5 text-(--color-heading)">
@@ -220,7 +220,7 @@ export function FlowchartDemo() {
           </span>
         </div>
         <div className="grid items-start md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <div className="mk-app-pop m-3 overflow-hidden rounded-[12px] text-[13.5px] md:m-5">
+          <div className="mk-app-pop m-3 overflow-hidden rounded-[14px] text-[13.5px] md:m-5">
             {chart ? (
               <div className="flex gap-1 px-2.5 pt-2 text-[12px] font-[550]" role="group" aria-label="What the AI should do">
                 {(["update", "create"] as const).map((m) => (
@@ -232,7 +232,7 @@ export function FlowchartDemo() {
                       take();
                       setMode(m);
                     }}
-                    className={cx("rounded-full px-2.5 py-1", mode === m ? "bg-(--glass-hover) text-(--color-heading) shadow-[inset_0_0_0_1px_var(--glass-border)]" : "text-muted hover:text-(--color-heading)")}
+                    className={cx("rounded-[6px] px-2.5 py-1", mode === m ? "bg-(--glass-hover) text-(--color-heading) shadow-[inset_0_0_0_1px_var(--glass-border)]" : "text-muted hover:text-(--color-heading)")}
                   >
                     {m === "update" ? "Update this chart" : "Start over"}
                   </button>
@@ -259,7 +259,7 @@ export function FlowchartDemo() {
                 placeholder={mode === "create" ? "Describe a process, step by step or in a sentence…" : "What should change? e.g. add an approval step after review"}
                 className="min-w-0 flex-1 resize-none bg-transparent text-[14px] leading-[1.45] text-ink outline-none placeholder:text-faint"
               />
-              <button type="submit" aria-label={mode === "create" ? "Create flowchart" : "Update flowchart"} disabled={busy !== null || !text.trim()} className="grid size-7 flex-none place-items-center rounded-full bg-(--color-heading) text-(--color-canvas) transition-opacity disabled:opacity-30">
+              <button type="submit" aria-label={mode === "create" ? "Create flowchart" : "Update flowchart"} disabled={busy !== null || !text.trim()} className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-(--color-canvas) transition-opacity disabled:opacity-30">
                 <ArrowUp size={15} aria-hidden="true" />
               </button>
             </form>
@@ -280,7 +280,7 @@ export function FlowchartDemo() {
                     type="button"
                     disabled={busy !== null}
                     onClick={() => pick(idea)}
-                    className={cx("w-full rounded-[8px] px-2 py-1.5 text-left transition-colors hover:bg-(--glass-hover) hover:text-(--color-heading)", hover === idea ? "bg-(--glass-hover) text-(--color-heading)" : "text-muted")}
+                    className={cx("w-full rounded-[10px] px-2 py-1.5 text-left transition-colors hover:bg-(--glass-hover) hover:text-(--color-heading)", hover === idea ? "bg-(--glass-hover) text-(--color-heading)" : "text-muted")}
                   >
                     {idea}
                   </button>

@@ -228,7 +228,7 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
           const active = (step === "password" ? 0 : step === "scan" ? 1 : 2) >= i;
           return (
             <span key={label} className="flex items-center gap-2">
-              <span className={`h-1.5 w-8 rounded-full ${active ? "bg-ember" : "bg-sunken"}`} aria-hidden />
+              <span className={`h-1.5 w-8 rounded-[4px] ${active ? "bg-ember" : "bg-sunken"}`} aria-hidden />
               <span className={active ? "text-heading" : ""}>{label}</span>
             </span>
           );

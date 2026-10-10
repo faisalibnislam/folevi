@@ -264,7 +264,7 @@ function PlanChangeDialog({
                 <input type="radio" name={`${uid}-plan`} value={t.tier} checked={checked} onChange={() => setTier(t.tier)} aria-label={t.name} aria-describedby={`${uid}-${t.tier}`} className="absolute inset-0 m-0 h-full w-full cursor-pointer appearance-none rounded-[10px] opacity-0" />
                 <span className="flex items-center gap-1.5">
                   <span className="ui-display text-[16px] text-heading">{t.name}</span>
-                  {isCurrent ? <span className="ml-auto rounded-full bg-[var(--glass-hover)] px-1.5 text-[10.5px] font-semibold leading-[16px] text-muted">Current</span> : null}
+                  {isCurrent ? <span className="ml-auto rounded-[6px] bg-[var(--glass-hover)] px-1.5 text-[10.5px] font-semibold leading-[16px] text-muted">Current</span> : null}
                 </span>
                 <span id={`${uid}-${t.tier}`} className="mt-1 text-muted">
                   {t.tier === "free" ? "No charge" : `${formatPrice(interval === "year" ? t.yearlyCents : t.monthlyCents)} / ${interval === "year" ? "year" : "month"}`}

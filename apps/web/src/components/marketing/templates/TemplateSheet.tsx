@@ -42,7 +42,7 @@ function Inline({ md, nodes }: { md?: string; nodes?: InlineNode[] }) {
 const isEmpty = (b: BlockSpec) => !(b.md ?? "").trim() && !b.text?.length;
 
 function Placeholder({ width = "w-40" }: { width?: string }) {
-  return <span aria-hidden="true" className={cx("mt-[0.6em] block h-[3px] max-w-full rounded-full bg-[color-mix(in_oklab,var(--n-ink)_12%,transparent)]", width)} />;
+  return <span aria-hidden="true" className={cx("mt-[0.6em] block h-[3px] max-w-full rounded-[4px] bg-[color-mix(in_oklab,var(--n-ink)_12%,transparent)]", width)} />;
 }
 
 type Props = {
@@ -131,7 +131,7 @@ function Block({ block, depth, index, top, topHeading, compact }: { block: Block
       );
     case "callout":
       return (
-        <div role="note" className={cx("flex gap-2.5 rounded-[8px] px-3.5 py-2.5", CALLOUT_TONE[String(p.tone ?? "note")] ?? CALLOUT_TONE.note)} style={indent}>
+        <div role="note" className={cx("flex gap-2.5 rounded-[10px] px-3.5 py-2.5", CALLOUT_TONE[String(p.tone ?? "note")] ?? CALLOUT_TONE.note)} style={indent}>
           <Asterisk size={compact ? 13 : 15} aria-hidden="true" className="mk-note-accent mt-[0.25em] flex-none" />
           <span className="min-w-0"><Inline md={block.md} /></span>
         </div>

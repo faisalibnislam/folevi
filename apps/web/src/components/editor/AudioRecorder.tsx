@@ -277,7 +277,7 @@ export function AudioRecorder({
       <div className="flex items-center gap-2.5">
         <span
           aria-hidden
-          className={`grid size-8 flex-none place-items-center rounded-full ${phase.kind === "recording" ? "bg-[color-mix(in_oklab,#e5484d_16%,transparent)] text-[#e5484d]" : "bg-sunken text-muted"}`}
+          className={`grid size-8 flex-none place-items-center rounded-[6px] ${phase.kind === "recording" ? "bg-[color-mix(in_oklab,#e5484d_16%,transparent)] text-[#e5484d]" : "bg-sunken text-muted"}`}
         >
           <Mic size={16} />
         </span>
@@ -314,22 +314,22 @@ export function AudioRecorder({
       </div>
 
       {phase.kind === "error" ? (
-        <p className="rounded-[8px] bg-danger-soft px-3 py-2 text-[13px] text-danger" role="alert">
+        <p className="rounded-[10px] bg-danger-soft px-3 py-2 text-[13px] text-danger" role="alert">
           {phase.message}
         </p>
       ) : stopped ? (
-        <p className="rounded-[8px] bg-sunken px-3 py-2 text-[13px] text-ink" role="alert">
+        <p className="rounded-[10px] bg-sunken px-3 py-2 text-[13px] text-ink" role="alert">
           {stopped.message}
         </p>
       ) : (
         <div
-          className="flex h-10 items-center gap-[3px] rounded-[8px] bg-sunken px-2.5"
+          className="flex h-10 items-center gap-[3px] rounded-[10px] bg-sunken px-2.5"
           aria-hidden
         >
           {levels.map((level, i) => (
             <span
               key={i}
-              className={`w-full rounded-full transition-[height] duration-75 ${phase.kind === "recording" ? "bg-[#e5484d]" : "bg-line-strong"}`}
+              className={`w-full rounded-[6px] transition-[height] duration-75 ${phase.kind === "recording" ? "bg-[#e5484d]" : "bg-line-strong"}`}
               style={{ height: `${Math.max(8, level * 100)}%` }}
             />
           ))}

@@ -370,7 +370,7 @@ function VersionRow({
   const shown = editors.slice(0, 3);
   const more = editors.length - shown.length;
   return (
-    <div className={`group relative mb-0.5 rounded-[8px] ${selected ? "bg-accent-soft" : "hover:bg-[var(--glass-hover)]"}`}>
+    <div className={`group relative mb-0.5 rounded-[10px] ${selected ? "bg-accent-soft" : "hover:bg-[var(--glass-hover)]"}`}>
       {naming ? (
         <form
           className="px-3 py-2"
@@ -398,7 +398,7 @@ function VersionRow({
           <p className="mt-1 text-[11px] text-muted">Enter to save, Esc to cancel. Named versions are kept for good.</p>
         </form>
       ) : (
-        <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className="block w-full rounded-[8px] px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className="block w-full rounded-[10px] px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus">
           <span className={`block truncate text-sm ${selected ? "font-semibold text-heading" : "font-medium text-ink"}`}>{title}</span>
           {detail ? <span className="block truncate text-xs text-muted">{detail}</span> : null}
           {shown.length ? (

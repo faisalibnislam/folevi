@@ -151,7 +151,7 @@ export function DocumentSidebar({
             >
               <span aria-hidden className="relative">
                 {t.icon}
-                {t.id === "comments" && unread ? <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-coral" /> : null}
+                {t.id === "comments" && unread ? <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-[4px] bg-coral" /> : null}
               </span>
             </button>
           ))}
@@ -318,7 +318,7 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
       ) : (
         <ul className="space-y-1.5">
           {links.map((l) => (
-            <li key={l.key} className="ui-card rounded-[8px]">
+            <li key={l.key} className="ui-card rounded-[10px]">
               {l.internal ? (
                 <AppLink href={l.href} onClick={onNavigate} className="flex items-center gap-2 px-2.5 py-2 text-[13px] hover:text-heading">
                   <FileText size={14} className="flex-none text-muted" aria-hidden />
@@ -516,7 +516,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
                 className={`block w-full rounded-[6px] px-2 py-1.5 text-left text-[12.5px] leading-snug text-muted transition-colors hover:bg-accent-soft/60 ${i === current ? "bg-accent-soft text-ink" : ""}`}
               >
                 {m.snippet.before}
-                <mark className="rounded-[3px] bg-marigold-soft px-0.5 text-ink">{m.snippet.hit}</mark>
+                <mark className="rounded-[4px] bg-marigold-soft px-0.5 text-ink">{m.snippet.hit}</mark>
                 {m.snippet.after}
               </button>
             </li>

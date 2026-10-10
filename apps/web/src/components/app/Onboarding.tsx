@@ -233,7 +233,7 @@ export function Onboarding() {
 
         <Progress step={step} />
 
-        <div className="mt-5 h-[228px] flex-none overflow-hidden rounded-[16px] sm:h-[300px] lg:hidden">{preview(true)}</div>
+        <div className="mt-5 h-[228px] flex-none overflow-hidden rounded-[18px] sm:h-[300px] lg:hidden">{preview(true)}</div>
 
         <form
           className="flex flex-1 flex-col"
@@ -245,7 +245,7 @@ export function Onboarding() {
         >
           <div key={step} className="ob-step flex-1 pb-8 pt-7 lg:pt-12" data-dir={dir}>
             {step === 4 ? (
-              <span className="ob-ai-mark mb-5 inline-grid size-14 place-items-center rounded-[16px] bg-surface shadow-[var(--shadow-card)]" data-on={ai}>
+              <span className="ob-ai-mark mb-5 inline-grid size-14 place-items-center rounded-[18px] bg-surface shadow-[var(--shadow-card)]" data-on={ai}>
                 <AiIcon size={30} />
               </span>
             ) : null}
@@ -296,7 +296,7 @@ export function Onboarding() {
       </div>
 
       <div className="sticky top-0 hidden h-dvh p-3 pl-0 lg:block">
-        <div className="h-full overflow-hidden rounded-[22px]">{preview(false)}</div>
+        <div className="h-full overflow-hidden rounded-[18px]">{preview(false)}</div>
       </div>
     </main>
   );
@@ -325,7 +325,7 @@ function Progress({ step }: { step: number }) {
 
 function IconTile({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-[9px] bg-surface text-heading shadow-[var(--shadow-card)]">
+    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-[10px] bg-surface text-heading shadow-[var(--shadow-card)]">
       <Icon size={17} strokeWidth={1.75} />
     </span>
   );
@@ -378,7 +378,7 @@ function UseCases({ headingId, picks, applied, onToggle }: { headingId: string; 
             return (
               <label key={u.id} className="ob-choice ob-rise items-center gap-3 p-2 pr-3" style={{ ["--i" as string]: i }}>
                 <input type="checkbox" className="ob-input" checked={picks.includes(u.id)} disabled={added} onChange={(e) => onToggle(u.id, e.target.checked)} />
-                <span aria-hidden className="size-12 flex-none overflow-hidden rounded-[7px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06)]">
+                <span aria-hidden className="size-12 flex-none overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06)]">
                   <span className="ob-art block size-full" style={{ ["--ob-art" as string]: artThumb(u.art) }} />
                 </span>
                 <span className="min-w-0 flex-1 leading-tight">
@@ -438,17 +438,17 @@ function MiniWindow({ mode, styleId }: { mode: "light" | "dark"; styleId: string
   return (
     <span className="absolute inset-0 flex gap-[5%] p-[6%]" style={{ background: "var(--m-bg)" }}>
       <span className="flex w-[26%] flex-col gap-[9%] pt-[4%]">
-        <span className="h-[5%] w-3/4 rounded-full" style={{ background: "var(--m-muted)" }} />
-        <span className="h-[5%] w-full rounded-full" style={{ background: "var(--m-muted)" }} />
-        <span className="h-[5%] w-2/3 rounded-full" style={{ background: "var(--m-muted)" }} />
-        <span className="h-[5%] w-5/6 rounded-full" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-3/4 rounded-[6px]" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-full rounded-[6px]" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-2/3 rounded-[6px]" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-5/6 rounded-[6px]" style={{ background: "var(--m-muted)" }} />
       </span>
       <span className="flex flex-1 flex-col overflow-hidden rounded-[4px] shadow-[0_2px_8px_rgb(0_0_0/0.15)]" style={{ background: paper }}>
         {art ? <span className="h-[34%] flex-none" style={{ background: `${artThumb(art.id)} center / cover no-repeat` }} /> : null}
         <span className="flex flex-col gap-[7%] p-[9%]">
-          <span className="h-[9px] w-2/3 rounded-full" style={{ background: "var(--m-ink)", opacity: 0.85 }} />
-          <span className="h-[4px] w-full rounded-full" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
-          <span className="h-[4px] w-5/6 rounded-full" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
+          <span className="h-[9px] w-2/3 rounded-[4px]" style={{ background: "var(--m-ink)", opacity: 0.85 }} />
+          <span className="h-[4px] w-full rounded-[4px]" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
+          <span className="h-[4px] w-5/6 rounded-[4px]" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
         </span>
       </span>
     </span>
@@ -511,7 +511,7 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
           { icon: PenLine, title: "Writing help", body: "Rewrite, shorten, fix or summarize the text you select, or press ⌘J in a note." },
         ]}
       />
-      <div className="ob-rise mt-6 flex items-start gap-4 rounded-[12px] bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
+      <div className="ob-rise mt-6 flex items-start gap-4 rounded-[14px] bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
         <div className="min-w-0 flex-1">
           <p className="text-[14.5px] font-semibold text-heading">Foli {on ? "on" : "off"}</p>
           <p id={descId} className="mt-1 text-[13px] leading-relaxed text-muted">
@@ -535,13 +535,13 @@ function Summary({ pages, style, appearance, ai }: { pages: string[]; style: str
   return (
     <ul className="space-y-2.5">
       {rows.map((row, i) => (
-        <li key={row.title} className="ob-rise flex items-center gap-3.5 rounded-[12px] bg-surface p-3 pr-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: i }}>
+        <li key={row.title} className="ob-rise flex items-center gap-3.5 rounded-[14px] bg-surface p-3 pr-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: i }}>
           {row.icon}
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-heading">{row.title}</p>
             <p className="mt-0.5 text-[13px] text-muted">{row.body}</p>
           </div>
-          <span aria-hidden className="ob-draw grid size-6 flex-none place-items-center rounded-full bg-heading text-canvas" style={{ ["--i" as string]: i }}>
+          <span aria-hidden className="ob-draw grid size-6 flex-none place-items-center rounded-[6px] bg-heading text-canvas" style={{ ["--i" as string]: i }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="m2.5 6.2 2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -554,7 +554,7 @@ function Summary({ pages, style, appearance, ai }: { pages: string[]; style: str
 
 function AiIconTile() {
   return (
-    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-[9px] bg-surface shadow-[var(--shadow-card)]">
+    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-[10px] bg-surface shadow-[var(--shadow-card)]">
       <AiIcon size={17} />
     </span>
   );

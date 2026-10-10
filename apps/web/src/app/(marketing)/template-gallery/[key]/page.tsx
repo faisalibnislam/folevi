@@ -134,7 +134,7 @@ export default async function TemplatePage({ params }: Params) {
                 <ul className="mt-3 space-y-1.5 text-[14.5px] text-ink">
                   {sections.map((s) => (
                     <li key={s} className="flex gap-2.5">
-                      <span aria-hidden="true" className="mt-[9px] size-[5px] flex-none rounded-full bg-(--color-ink-muted)" />
+                      <span aria-hidden="true" className="mt-[9px] size-[5px] flex-none rounded-[4px] bg-(--color-ink-muted)" />
                       {s}
                     </li>
                   ))}

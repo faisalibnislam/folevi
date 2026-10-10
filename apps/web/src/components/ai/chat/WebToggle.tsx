@@ -14,7 +14,7 @@ export function WebToggle({ on, onChange, disabled }: { on: boolean; onChange: (
       disabled={disabled}
       onClick={() => onChange(!on)}
       title={on ? "Answers use your notes and the web" : "Also search the web"}
-      className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors disabled:opacity-40 ${
+      className={`inline-flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-[12.5px] transition-colors disabled:opacity-40 ${
         on ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"
       }`}
     >

@@ -33,7 +33,7 @@ export function startNoteDrag(e: DragEvent, ids: string[]) {
       left: "8px",
       zIndex: "30",
       padding: "3px 9px",
-      borderRadius: "999px",
+      borderRadius: "6px",
       font: "600 12px system-ui, sans-serif",
       background: dark ? "#f4f4f5" : "#18181b",
       color: dark ? "#18181b" : "#ffffff",

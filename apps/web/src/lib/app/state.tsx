@@ -334,7 +334,7 @@ export function FullPageMessage({ title, body, busy, children }: { title: string
       <div className="w-full max-w-md rounded-[6px] border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>
         <h1 className="font-display text-3xl leading-tight text-ink">{title}</h1>
         {body ? <div className="mt-3 text-muted">{body}</div> : null}
-        {busy ? <div className="mt-6 h-1 overflow-hidden rounded-full bg-sunken"><div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-full bg-accent" /></div> : null}
+        {busy ? <div className="mt-6 h-1 overflow-hidden rounded-[4px] bg-sunken"><div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-[6px] bg-accent" /></div> : null}
         {children ? <div className="mt-6">{children}</div> : null}
       </div>
     </main>

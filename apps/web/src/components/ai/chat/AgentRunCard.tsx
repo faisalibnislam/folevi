@@ -62,7 +62,7 @@ function Details({ op, id }: { op: AgentOperation; id: string }) {
           <ul className="space-y-1 text-[13px] text-ink">
             {op.items.map((it, i) => (
               <li key={i} className="flex gap-2">
-                <span aria-hidden className="mt-[3px] h-3 w-3 flex-none rounded-[3px] shadow-[inset_0_0_0_1.5px_currentColor] opacity-50" />
+                <span aria-hidden className="mt-[3px] h-3 w-3 flex-none rounded-[4px] shadow-[inset_0_0_0_1.5px_currentColor] opacity-50" />
                 <span>
                   {it.text}
                   {it.dueDate ? <span className="text-muted"> · due {it.dueDate}</span> : null}
@@ -83,7 +83,7 @@ function Details({ op, id }: { op: AgentOperation; id: string }) {
     }
   })();
   return (
-    <div id={id} className="mt-2 max-h-[280px] overflow-y-auto rounded-[8px] bg-[var(--glass-hover)] px-3 py-2.5">
+    <div id={id} className="mt-2 max-h-[280px] overflow-y-auto rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5">
       {body}
       {op.kind === "update_note" || op.kind === "rename_note" ? <AiDiffLegend /> : null}
     </div>
@@ -133,7 +133,7 @@ function ResultRow({ op, onOpen, undone }: { op: AgentOperation; onOpen: (href: 
         {op.error ? <span className="block text-[12.5px] text-danger">{op.error}</span> : null}
         {undone && op.status === "applied" && op.undone === "kept" ? <span className="block text-[12px] text-muted">Left as it was.</span> : null}
         {op.status === "applied" && href && !undone ? (
-          <button type="button" onClick={() => onOpen(href)} className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-full bg-[var(--glass-active)] px-2.5 py-0.5 text-[12px] text-ink hover:text-heading">
+          <button type="button" onClick={() => onOpen(href)} className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-[6px] bg-[var(--glass-active)] px-2.5 py-0.5 text-[12px] text-ink hover:text-heading">
             {op.kind === "create_folder" ? <Folder size={12} aria-hidden className="flex-none text-muted" /> : <FileText size={12} aria-hidden className="flex-none text-muted" />}
             <span className="truncate">Open {op.kind === "create_folder" ? (op.result?.title ?? op.folderName ?? "folder") : (op.result?.title ?? op.noteTitle ?? "note")}</span>
           </button>
@@ -187,7 +187,7 @@ export function AgentRunCard({
     });
 
   return (
-    <section aria-labelledby={headingId} className="mt-3 rounded-[12px] bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
+    <section aria-labelledby={headingId} className="mt-3 rounded-[14px] bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
       <div className="mb-1.5 flex items-center gap-2">
         <h3 id={headingId} className="ui-caps">
           {preview ? "Proposed changes" : (DONE[run.status] ?? "Changes")}

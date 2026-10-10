@@ -344,7 +344,7 @@ export function Shell() {
                 if (e.key === "ArrowLeft") setWidth(Math.max(248, width - 8));
                 if (e.key === "ArrowRight") setWidth(Math.min(320, width + 8));
               }}
-              className="absolute inset-y-3 -right-[6px] z-10 w-1 cursor-col-resize rounded-full outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
+              className="absolute inset-y-3 -right-[6px] z-10 w-1 cursor-col-resize rounded-[6px] outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
             />
           </div>
         ) : null}

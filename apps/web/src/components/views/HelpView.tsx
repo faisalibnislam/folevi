@@ -73,7 +73,7 @@ export function HelpView() {
           <h3 id="h-shortcuts" className="ui-display mb-3 text-[20px]">
             Keyboard shortcuts
           </h3>
-          <table className="w-full overflow-hidden ui-card rounded-[8px] text-sm">
+          <table className="w-full overflow-hidden ui-card rounded-[10px] text-sm">
             <tbody>
               {SHORTCUTS.map(([label, keys]) => (
                 <tr key={label} className="border-b border-line last:border-0">
@@ -95,7 +95,7 @@ export function HelpView() {
           </h3>
           <dl className="grid gap-3 sm:grid-cols-2">
             {STATUSES.map(([k, v]) => (
-              <div key={k} className="ui-card rounded-[8px] p-3">
+              <div key={k} className="ui-card rounded-[10px] p-3">
                 <dt className="font-medium">{k}</dt>
                 <dd className="text-sm text-muted">{v}</dd>
               </div>

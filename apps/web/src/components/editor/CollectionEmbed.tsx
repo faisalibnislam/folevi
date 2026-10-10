@@ -180,7 +180,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const { rename } = useCollectionMutations();
   const toast = useToast();
 
-  if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-[8px] motion-reduce:animate-none" aria-busy />;
+  if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-[10px] motion-reduce:animate-none" aria-busy />;
   if (data === null) return <p className="rounded-[6px] border border-dashed border-line p-4 text-sm text-muted">This collection is unavailable.</p>;
   const view = data.views.find((v) => v.id === viewId) ?? data.views.find((v) => v.id === initialViewId) ?? data.views[0]!;
   const canEdit = editable && data.canEdit;
@@ -200,7 +200,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   };
 
   return (
-    <section className="ui-card rounded-[8px]" aria-label={`Collection ${data.name}`}>
+    <section className="ui-card rounded-[10px]" aria-label={`Collection ${data.name}`}>
       <header className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-2">
         {canEdit ? (
           <InlineText
@@ -724,7 +724,7 @@ function GalleryCollection({ data, view, rows, visible }: { data: CollectionData
     <ul className={`grid grid-cols-1 gap-3 p-3 ${size}`}>
       {rows.map((row) => (
         <li key={row.id}>
-          <AppLink href={`/d/${row.documentId}`} className="block overflow-hidden ui-card rounded-[8px] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
+          <AppLink href={`/d/${row.documentId}`} className="block overflow-hidden ui-card rounded-[10px] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
             {view.config.cardPreview !== "none" ? (
               <GalleryCover cover={row.cover}>
                 {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-xs text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={28} aria-hidden /></div>}

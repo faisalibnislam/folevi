@@ -195,10 +195,10 @@ export const tokens = {
     "1.5": 12
   },
   "radius": {
-    "controlSmall": 4,
-    "control": 6,
-    "card": 8,
-    "sheet": 10,
+    "controlSmall": 6,
+    "control": 10,
+    "card": 14,
+    "sheet": 18,
     "round": 999
   },
   "font": {

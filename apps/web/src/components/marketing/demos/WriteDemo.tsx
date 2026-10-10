@@ -102,7 +102,7 @@ export function WriteDemo() {
       onKeyDown={take}
       role="group"
       aria-label="A working sample of Find action items. Run it, change the list with the quick changes, then insert it."
-      className="mk-app-pop mx-auto flex h-[470px] max-w-[460px] flex-col overflow-hidden rounded-[16px] text-[13.5px]"
+      className="mk-app-pop mx-auto flex h-[470px] max-w-[460px] flex-col overflow-hidden rounded-[18px] text-[13.5px]"
     >
       <div className="px-5 pt-5">
         <p className="mk-display text-[21px] text-(--color-heading)">Thursday call</p>
@@ -136,7 +136,7 @@ export function WriteDemo() {
                   setTicked(0);
                   void run("Find action items", plain);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-(--glass-hover) px-3 py-1 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-(--glass-active) hover:text-(--color-heading)"
+                className="inline-flex items-center gap-1.5 rounded-[6px] bg-(--glass-hover) px-3 py-1 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-(--glass-active) hover:text-(--color-heading)"
               >
                 <AiIcon size={13} className={VIOLET} /> {phase.kind === "inserted" ? "Run Find action items again" : "Find action items"}
               </button>
@@ -162,7 +162,7 @@ export function WriteDemo() {
             {phase.kind === "reading" ? (
               <div className="space-y-2 pb-1">
                 {[92, 78, 85].map((w) => (
-                  <div key={w} className="h-2.5 animate-pulse rounded-full bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
+                  <div key={w} className="h-2.5 animate-pulse rounded-[4px] bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
                 ))}
               </div>
             ) : (
@@ -195,7 +195,7 @@ export function WriteDemo() {
                   take();
                   void run(label, plain);
                 }}
-                className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-ink hover:bg-(--glass-hover)"
+                className="inline-flex h-8 items-center gap-1.5 rounded-[6px] px-2.5 text-ink hover:bg-(--glass-hover)"
               >
                 <RotateCcw size={13} aria-hidden="true" /> Try again
               </button>
@@ -206,7 +206,7 @@ export function WriteDemo() {
                   runId.current++;
                   setPhase({ kind: "idle" });
                 }}
-                className="ml-auto inline-flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-muted hover:bg-(--glass-hover)"
+                className="ml-auto inline-flex h-8 items-center gap-1 rounded-[6px] px-2.5 text-muted hover:bg-(--glass-hover)"
               >
                 <X size={13} aria-hidden="true" /> Discard
               </button>
@@ -221,7 +221,7 @@ export function WriteDemo() {
                     void run(r, plain);
                   }}
                   className={cx(
-                    "rounded-full px-2.5 py-1 text-[12px] shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)",
+                    "rounded-[6px] px-2.5 py-1 text-[12px] shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)",
                     label === r ? "bg-(--glass-active) text-(--color-heading)" : "bg-(--glass-hover) text-ink",
                   )}
                 >

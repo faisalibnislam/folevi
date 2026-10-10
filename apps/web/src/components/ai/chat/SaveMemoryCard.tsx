@@ -27,14 +27,14 @@ export function SaveMemoryCard({ memory, busy, onSave, onDismiss }: { memory: Me
     );
   }
   return (
-    <div role="group" aria-label="Remember this?" className="mt-3 rounded-[12px] bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
+    <div role="group" aria-label="Remember this?" className="mt-3 rounded-[14px] bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
       <p className="text-[12px] text-muted">Remember this for next time?</p>
       <p className="mt-0.5 text-[13px] font-semibold text-heading">{memory.text}</p>
       <div className="mt-2 flex gap-1.5">
-        <button type="button" disabled={busy} onClick={onSave} className="rounded-full bg-[var(--glass-active)] px-3 py-1 text-[12.5px] font-medium text-heading hover:bg-accent-soft disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={onSave} className="rounded-[6px] bg-[var(--glass-active)] px-3 py-1 text-[12.5px] font-medium text-heading hover:bg-accent-soft disabled:opacity-50">
           Save
         </button>
-        <button type="button" disabled={busy} onClick={onDismiss} className="rounded-full px-3 py-1 text-[12.5px] text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={onDismiss} className="rounded-[6px] px-3 py-1 text-[12.5px] text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
           Not now
         </button>
       </div>

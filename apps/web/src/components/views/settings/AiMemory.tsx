@@ -129,7 +129,7 @@ export function MemoryList({
   return (
     <div className="max-w-xl space-y-4">
       {on ? null : (
-        <p role="status" className="rounded-[8px] bg-sunken px-3 py-2 text-sm text-muted">
+        <p role="status" className="rounded-[10px] bg-sunken px-3 py-2 text-sm text-muted">
           Memory is off. Nothing here is used, and Foli won&apos;t offer to remember anything. What&apos;s saved stays until you delete it.
         </p>
       )}

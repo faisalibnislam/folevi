@@ -120,7 +120,7 @@ export function CalendarView({ month }: { month: string | null }) {
 
         {mode === "month" ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-            <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-[8px]">
+            <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-[10px]">
               <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-medium text-muted">
                 {weekdays.map((w) => (
                   <div key={w} role="columnheader" className="py-2">
@@ -186,7 +186,7 @@ export function CalendarView({ month }: { month: string | null }) {
             </div>
             <aside aria-label="Selected day">
               <h3 className="font-semibold">{formatCalendarDate(selected, { weekday: "long", month: "long", day: "numeric" })}</h3>
-              <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-[8px]">
+              <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-[10px]">
                 {(byDate.get(selected) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">No tasks due. Drag a task here to schedule it.</li> : null}
                 {(byDate.get(selected) ?? []).map((t) => (
                   <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
@@ -201,7 +201,7 @@ export function CalendarView({ month }: { month: string | null }) {
             {overdue?.length ? (
               <section aria-label="Overdue">
                 <h3 className="mb-2 text-sm font-semibold text-danger">Overdue</h3>
-                <ul className="divide-y divide-line overflow-hidden ui-card rounded-[8px]">
+                <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
                   {[...overdue]
                     .sort((a, b) => ((a.dueDate ?? "") < (b.dueDate ?? "") ? -1 : 1))
                     .map((t) => (
@@ -217,7 +217,7 @@ export function CalendarView({ month }: { month: string | null }) {
                   <h3 className="mb-2 flex items-center gap-3 text-sm font-semibold">
                     {d === today ? "Today" : formatCalendarDate(d, { weekday: "long", month: "long", day: "numeric" })}
                   </h3>
-                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-[8px]">
+                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
                     {(byDate.get(d) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">Nothing due.</li> : null}
                     {(byDate.get(d) ?? []).map((t) => (
                       <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
@@ -257,7 +257,7 @@ function Unscheduled({
       {tasks.length === 0 ? (
         <p className="text-sm text-muted">Every open task has a date.</p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden ui-card rounded-[8px]">
+        <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
           {tasks.slice(0, 8).map((t) => (
             <TaskItem
               key={t.blockId}

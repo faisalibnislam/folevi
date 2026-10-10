@@ -115,7 +115,7 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
         {notice ? <p className="px-1 text-[12.5px] text-muted">{notice}</p> : null}
       </div>
       {preview && !busy ? (
-        <section aria-label="Translation" className="rounded-[12px] bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
+        <section aria-label="Translation" className="rounded-[14px] bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
           <p className="mb-2 text-[12px] font-semibold text-muted">In {preview.language}</p>
           <div className="max-h-[320px] overflow-y-auto pr-1">
             <AiMarkdown markdown={preview.preview} />

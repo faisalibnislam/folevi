@@ -102,7 +102,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
           {workspace.storageRule === "shared_free" ? (workspace.role === "owner" ? "Your free storage, shared with the free workspaces you own" : "The owner’s free storage") : workspace.storageRule === "per_person" ? "Your storage here" : "Workspace storage"}:{" "}
           {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
         </p>
-        <div className="mt-2 h-1.5 max-w-md overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${Math.round(pct)}% of storage used`}>
+        <div className="mt-2 h-1.5 max-w-md overflow-hidden rounded-[4px] bg-sunken" role="img" aria-label={`${Math.round(pct)}% of storage used`}>
           <div className="h-full bg-accent" style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
         {workspace.storageUsedBytes > workspace.storageQuotaBytes ? (

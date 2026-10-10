@@ -58,7 +58,7 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
   const visible = data.properties.filter((p) => data.config.visibleProperties.includes(p.id));
   const group = data.viewType === "board" ? data.properties.find((p) => p.id === data.config.groupBy && p.type === "select") : undefined;
   return (
-    <section className="my-4 overflow-hidden ui-card rounded-[8px]" aria-label={`Collection ${data.name}`}>
+    <section className="my-4 overflow-hidden ui-card rounded-[10px]" aria-label={`Collection ${data.name}`}>
       <h3 className="border-b border-line px-3 py-2 text-sm font-semibold text-heading">{data.name}</h3>
       {group ? (
         <div className="flex gap-3 overflow-x-auto p-3">
@@ -95,7 +95,7 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
       ) : data.viewType === "gallery" ? (
         <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => (
-            <li key={r.id} className="ui-card rounded-[8px] p-3 text-sm">
+            <li key={r.id} className="ui-card rounded-[10px] p-3 text-sm">
               <p className="font-medium">
                 
                 {r.title || "Untitled"}

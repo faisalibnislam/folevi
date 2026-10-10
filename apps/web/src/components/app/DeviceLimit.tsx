@@ -60,13 +60,13 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       body={`Your plan works on ${limit} ${limit === 1 ? "device" : "devices"} at a time. Sign out of one below to use Folevi here, or upgrade for unlimited devices.`}
     >
       <p className="ui-caps mb-2">Signed in on</p>
-      <ul className="divide-y divide-line overflow-hidden rounded-[8px] ui-card" aria-busy={sessions === undefined || undefined}>
+      <ul className="divide-y divide-line overflow-hidden rounded-[10px] ui-card" aria-busy={sessions === undefined || undefined}>
         {sessions === undefined ? (
           <li className="px-3 py-3 text-sm text-muted">Loading your devices…</li>
         ) : (
           others.map((s) => (
             <li key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-              <span className="grid h-8 w-8 flex-none place-items-center rounded-[8px] bg-[var(--glass-hover)] text-heading">
+              <span className="grid h-8 w-8 flex-none place-items-center rounded-[6px] bg-[var(--glass-hover)] text-heading">
                 <DeviceIcon label={s.label} client={s.client} />
               </span>
               <span className="min-w-0 flex-1">

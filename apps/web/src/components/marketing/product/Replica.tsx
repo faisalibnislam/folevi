@@ -176,7 +176,7 @@ function SidebarTop({ chrome }: { chrome: "web" | "mac" }) {
 function Account() {
   return (
     <div className="mt-auto flex flex-none items-center gap-2.5 px-2 pb-1 pt-2">
-      <span className="grid size-7 flex-none place-items-center rounded-full bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">A</span>
+      <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">A</span>
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block truncate text-[12.5px] font-semibold text-(--color-heading)">Ada Example</span>
         <span className="block truncate text-[11px] text-muted">Personal</span>
@@ -191,7 +191,7 @@ export function PageSidebar({ note, chrome = "web" }: { note: NoteContent; chrom
   return (
     <div className="hidden w-[208px] flex-none flex-col md:flex lg:w-[224px]">
       <SidebarTop chrome={chrome} />
-      <div className="mk-app-glass mx-1 mt-1 rounded-[8px] px-3 py-2.5">
+      <div className="mk-app-glass mx-1 mt-1 rounded-[10px] px-3 py-2.5">
         <p className="truncate text-[13px] font-semibold text-(--color-heading)">{note.title}</p>
         <p className="mt-0.5 truncate text-[11px] text-muted">In {note.folder}</p>
       </div>
@@ -207,7 +207,7 @@ export function PageSidebar({ note, chrome = "web" }: { note: NoteContent; chrom
         <li className="mk-app-row-on flex h-8 items-center rounded-[6px] px-2.5 text-[12.5px]">{note.title}</li>
         {note.toc.map((item, i) => (
           <li key={item} className="relative flex h-8 items-center rounded-[6px] pl-5 pr-2 text-[12.5px] text-muted">
-            {i === 0 ? <span className="absolute inset-y-1.5 left-0.5 w-[2px] rounded-full bg-(--color-heading)" /> : null}
+            {i === 0 ? <span className="absolute inset-y-1.5 left-0.5 w-[2px] rounded-[6px] bg-(--color-heading)" /> : null}
             <span className={cx("truncate", i === 0 && "text-ink")}>{item}</span>
           </li>
         ))}
@@ -256,7 +256,7 @@ export function MainSidebar({
       <div className="mk-app-well mx-1 mt-1 flex h-8 items-center gap-2 rounded-[6px] pl-2.5 pr-1.5 text-[12px] text-muted">
         <Search size={13} />
         <span className="flex-1 truncate">Search or jump to…</span>
-        <span className="rounded-[5px] bg-(--color-surface-raised) px-1 text-[10px] font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
+        <span className="rounded-[4px] bg-(--color-surface-raised) px-1 text-[10px] font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
       </div>
       <ul className="mt-3 space-y-0.5 px-1">
         {rows.map(({ icon: RowIcon, label, count }) => (
@@ -307,7 +307,7 @@ export function MainSidebar({
 /** The tab strip across the top: Up, Home, one tab per open page, and New note. */
 export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "web" | "mac" }) {
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[12px] px-1.5">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1.5">
       {chrome === "mac" ? <TrafficLights /> : null}
       <span className="grid size-8 flex-none place-items-center text-muted md:hidden">
         <PanelLeft size={15} />
@@ -340,7 +340,7 @@ export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "w
 /** The tab strip while a list is open (Drafts, or the Folders page): a list view shows as the current tab. */
 export function ListTabs({ view }: { view: "Drafts" | "Folders" }) {
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[12px] px-1.5">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1.5">
       <span className="grid size-8 flex-none place-items-center text-muted md:hidden">
         <PanelLeft size={15} />
       </span>
@@ -379,12 +379,12 @@ export function Dock({ active }: { active: DockItem }) {
     { label: "Info", icon: <Info size={14} /> },
   ];
   return (
-    <div className="mk-app-pop mk-app-dock absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-[12px] p-1 sm:bottom-4">
+    <div className="mk-app-pop mk-app-dock absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-[14px] p-1 sm:bottom-4">
       {items.map((item) => (
         <span
           key={item.label}
           className={cx(
-            "flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[12.5px] font-medium",
+            "flex h-8 items-center gap-1.5 rounded-[6px] px-2.5 text-[12.5px] font-medium",
             item.label === active ? "mk-app-dock-on" : "text-ink",
             item.label !== active && (item.label === "Format" || item.label === "Info") && "hidden sm:flex",
           )}
@@ -442,7 +442,7 @@ function NoteBlockView({ block }: { block: NoteBlock }) {
             {block.done ? <CheckMark /> : null}
           </span>
           <span className={cx("min-w-0 flex-1", block.done && "mk-note-muted line-through")}>{block.text}</span>
-          {block.date ? <span className="mk-note-chip rounded-[5px] px-1.5 font-sans text-[11px] font-medium leading-5">{block.date}</span> : null}
+          {block.date ? <span className="mk-note-chip rounded-[4px] px-1.5 font-sans text-[11px] font-medium leading-5">{block.date}</span> : null}
         </p>
       );
     case "page":
@@ -481,7 +481,7 @@ export function NoteCard({ art, title, lines, folder, when = "Just now" }: { art
         </div>
         <p className="mt-4 flex items-center justify-between gap-2 text-[11.5px]">
           <span className="mk-note-muted">{art.name}</span>
-          <span className="mk-note-chip rounded-[5px] px-1.5 font-medium leading-5">{folder}</span>
+          <span className="mk-note-chip rounded-[4px] px-1.5 font-medium leading-5">{folder}</span>
         </p>
       </div>
     </div>

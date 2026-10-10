@@ -221,7 +221,7 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
         {historyOff ? (
-          <p className="mb-3 rounded-[8px] bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] text-muted">
+          <p className="mb-3 rounded-[10px] bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] text-muted">
             History is off, so new conversations are deleted when you close them.{" "}
             <AppLink href="/settings/ai" className="underline underline-offset-2 hover:text-heading">
               Change

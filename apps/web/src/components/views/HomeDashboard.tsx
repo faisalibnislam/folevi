@@ -46,7 +46,7 @@ function Section({ title, icon, href, count, children, empty, shelf }: { title: 
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id={`home-${id}`} className="ui-display flex items-center gap-2.5 text-[22px]">
-          <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-[8px] bg-[var(--glass-hover)] text-heading">
+          <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-[6px] bg-[var(--glass-hover)] text-heading">
             {icon}
           </span>
           {title}
@@ -135,7 +135,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
     return (
       <div className="flex gap-8 overflow-hidden pb-7 pt-2" role="status" aria-busy aria-label="Loading">
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-[2px] rounded-r-[12px] bg-sunken motion-reduce:animate-none`} />
+          <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-[4px] rounded-r-[14px] bg-sunken motion-reduce:animate-none`} />
         ))}
       </div>
     );

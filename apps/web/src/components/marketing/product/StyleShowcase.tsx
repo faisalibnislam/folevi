@@ -56,7 +56,7 @@ export function StyleShowcase({ artSize = "large" }: { artSize?: "thumb" | "larg
                 onClick={() => setIndex(i)}
                 onKeyDown={onKey}
                 className={cx(
-                  "size-11 rounded-[8px] bg-cover bg-center transition-shadow duration-150 sm:size-9",
+                  "size-11 rounded-[10px] bg-cover bg-center transition-shadow duration-150 sm:size-9",
                   checked
                     ? "shadow-[0_0_0_2px_var(--color-canvas),0_0_0_4px_var(--color-heading)]"
                     : "shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] hover:shadow-[0_0_0_2px_var(--color-canvas),0_0_0_4px_var(--color-line-strong)]",

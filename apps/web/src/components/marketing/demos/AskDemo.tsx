@@ -160,7 +160,7 @@ export function AskDemo() {
                   key={qa.q}
                   type="button"
                   onClick={() => pick(qa)}
-                  className="rounded-full bg-(--glass-hover) px-3 py-1.5 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)"
+                  className="rounded-[6px] bg-(--glass-hover) px-3 py-1.5 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)"
                 >
                   {qa.q}
                 </button>
@@ -175,7 +175,7 @@ export function AskDemo() {
                 <div className="space-y-2 py-0.5">
                   <p className="text-[12.5px] text-muted">Reading your notes…</p>
                   {[90, 72, 84].map((w) => (
-                    <div key={w} className="h-2.5 animate-pulse rounded-full bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
+                    <div key={w} className="h-2.5 animate-pulse rounded-[4px] bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
                   ))}
                 </div>
               ) : (
@@ -189,7 +189,7 @@ export function AskDemo() {
                       <p className="mk-caps mb-1.5 text-[10.5px]">Sources</p>
                       <div className="flex flex-wrap gap-1.5">
                         {turn.qa.sources.map((title, n) => (
-                          <span key={title} className="inline-flex items-center gap-1.5 rounded-full bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
+                          <span key={title} className="inline-flex items-center gap-1.5 rounded-[6px] bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
                             <span className="font-semibold text-muted">{n + 1}</span>
                             <FileText size={12} aria-hidden="true" className="text-muted" />
                             {title}
@@ -224,7 +224,7 @@ export function AskDemo() {
           <button
             type="submit"
             aria-label="Send"
-            className={cx("absolute bottom-3 right-2 grid size-7 place-items-center rounded-full bg-(--color-heading) text-(--color-canvas) transition-opacity", draft.trim() ? "opacity-100" : "opacity-30")}
+            className={cx("absolute bottom-3 right-2 grid size-7 place-items-center rounded-[6px] bg-(--color-heading) text-(--color-canvas) transition-opacity", draft.trim() ? "opacity-100" : "opacity-30")}
           >
             <ArrowUp size={15} aria-hidden="true" />
           </button>

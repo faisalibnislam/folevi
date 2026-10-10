@@ -31,7 +31,7 @@ export function AppearanceSection() {
                 setAppearance(v);
                 void update({ appearance: v });
               }}
-              className={`flex flex-col items-center gap-2 rounded-[8px] border p-4 text-sm ${appearance === v ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface"}`}
+              className={`flex flex-col items-center gap-2 rounded-[10px] border p-4 text-sm ${appearance === v ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface"}`}
             >
               {icon}
               {label}

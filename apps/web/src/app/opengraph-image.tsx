@@ -39,7 +39,7 @@ function Bubble({ left, top, s, children }: { left: number; top: number; s: numb
         top,
         width: s,
         height: s,
-        borderRadius: s,
+        borderRadius: s >= 64 ? 18 : s >= 40 ? 14 : 10,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -82,13 +82,13 @@ export default async function OpengraphImage() {
             display: "flex",
             flexDirection: "column",
             background: "#FFFFFF",
-            borderRadius: 26,
+            borderRadius: 18,
             overflow: "hidden",
             boxShadow: "0 0 0 1px rgba(74,47,44,0.06), 0 36px 70px -30px rgba(74,47,44,0.40)",
             transform: "rotate(2deg)",
           }}
         >
-          <div style={{ margin: 12, height: 78, borderRadius: 16, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
+          <div style={{ margin: 12, height: 78, borderRadius: 18, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
           <div style={{ display: "flex", flexDirection: "column", padding: "4px 28px", gap: 14 }}>
             <div style={{ fontSize: 34, fontWeight: 600, color: HEADING, letterSpacing: -1.2, display: "flex" }}>Seed library</div>
             {tasks.map((t, i) => (
@@ -153,7 +153,7 @@ export default async function OpengraphImage() {
                 alignItems: "center",
                 height: 46,
                 padding: "0 22px",
-                borderRadius: 46,
+                borderRadius: 18,
                 color: "#FFFFFF",
                 fontWeight: 600,
                 fontSize: 21,

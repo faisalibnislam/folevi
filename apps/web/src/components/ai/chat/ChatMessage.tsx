@@ -59,7 +59,7 @@ export function NotSharedChips({ count }: { count: number }) {
   return (
     <ul aria-label="Files not shared" className="mb-1 flex max-w-[85%] flex-wrap justify-end gap-1.5">
       {Array.from({ length: count }, (_, i) => (
-        <li key={i} title="Only the person who uploaded it can open it." className="inline-flex h-7 items-center gap-1.5 rounded-full bg-[var(--glass-hover)] px-2.5 text-[12.5px] text-muted">
+        <li key={i} title="Only the person who uploaded it can open it." className="inline-flex h-7 items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] px-2.5 text-[12.5px] text-muted">
           <EyeOff size={12} aria-hidden className="flex-none" /> File not shared
         </li>
       ))}
@@ -145,7 +145,7 @@ export function AgentSteps({ steps, live }: { steps: AgentStep[]; live?: boolean
   return (
     <ul aria-label={live ? "What Foli is doing" : "What Foli did"} className="mb-2 flex flex-wrap gap-1.5">
       {lines.map((l) => (
-        <li key={l} className="rounded-full bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
+        <li key={l} className="rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
           {l}
         </li>
       ))}
@@ -176,7 +176,7 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
             type="button"
             title={c.quote ? `“${c.quote}”` : undefined}
             onClick={() => onCite(c)}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
           >
             <span className="font-semibold text-muted">{c.n}</span>
             <FileText size={12} aria-hidden className="flex-none text-muted" />
@@ -190,7 +190,7 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
             target="_blank"
             rel="noopener noreferrer"
             title={c.url}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
           >
             <span className="font-semibold text-muted">{c.n}</span>
             <Globe size={12} aria-hidden className="flex-none text-muted" />
@@ -292,7 +292,7 @@ export function AssistantMessage({
             <AiMarkdown markdown={message.text} />
           </div>
         ) : null}
-        <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-[12px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} />
+        <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-[14px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} />
         {last && !readOnly ? (
           <button type="button" disabled={busy} onClick={onRegenerate} className={ROW_BUTTON}>
             <RotateCcw size={12} aria-hidden /> Try again
@@ -313,7 +313,7 @@ export function AssistantMessage({
           </p>
           {readOnly ? null : (
             <button type="button" onClick={onStop} className={ROW_BUTTON}>
-              <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Stop
+              <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Stop
             </button>
           )}
         </div>
@@ -332,7 +332,7 @@ export function AssistantMessage({
         <StreamingText text={text} cited={cited} />
         {streaming && !readOnly ? (
           <button type="button" onClick={onStop} className={`${ROW_BUTTON} mt-1`}>
-            <span aria-hidden className="h-2 w-2 rounded-[2px] bg-current" /> Stop
+            <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Stop
           </button>
         ) : null}
       </div>
@@ -364,7 +364,7 @@ export function AssistantMessage({
       {last && message.suggestions.length && !busy && !readOnly ? (
         <div className="flex flex-col items-start gap-1.5" aria-label="Suggested follow-ups" role="group">
           {message.suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => onSuggestion(s)} className="rounded-full bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => onSuggestion(s)} className="rounded-[6px] bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}

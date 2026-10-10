@@ -77,7 +77,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
       role="search"
       aria-label="Find in note"
       onKeyDown={onKeys}
-      className="ui-pop absolute right-3 top-3 z-30 w-[min(460px,calc(100%-24px))] rounded-[12px] p-1.5 animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
+      className="ui-pop absolute right-3 top-3 z-30 w-[min(460px,calc(100%-24px))] rounded-[14px] p-1.5 animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
     >
       <div className="flex items-center gap-0.5">
         {!readOnly ? (

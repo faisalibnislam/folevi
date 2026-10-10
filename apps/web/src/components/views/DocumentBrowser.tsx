@@ -36,7 +36,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 function UnsyncedMarker({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-[11px] font-medium text-heading ${className}`} title="Changes on this device haven’t synced yet">
-      <span className="inline-block h-1.5 w-1.5 rounded-full bg-heading" aria-hidden />
+      <span className="inline-block h-1.5 w-1.5 rounded-[4px] bg-heading" aria-hidden />
       <span>Not synced</span>
     </span>
   );
@@ -365,7 +365,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   type="button"
                   aria-label={`New page from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
-                  className="flex items-start gap-3 ui-card rounded-[8px] p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+                  className="flex items-start gap-3 ui-card rounded-[10px] p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
                 >
                   <TemplateTile name={t.icon} />
                   <span>
@@ -382,7 +382,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         {loading ? (
           <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-52 animate-pulse ui-card rounded-[8px] motion-reduce:animate-none" />
+              <div key={i} className="h-52 animate-pulse ui-card rounded-[10px] motion-reduce:animate-none" />
             ))}
           </div>
         ) : docs.length === 0 ? (
@@ -396,7 +396,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             ) : null}
           </div>
         ) : layout === "list" ? (
-          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[8px]">
+          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
             {docs.map((d) => {
               const on = selection.selected.has(d.id);
               return (
@@ -565,7 +565,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
 /** The check on a selected card (the card also gets a ring). */
 function SelectedMark() {
   return (
-    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.2)]">
+    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-[6px] bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.2)]">
       <Check size={14} strokeWidth={3} />
     </span>
   );

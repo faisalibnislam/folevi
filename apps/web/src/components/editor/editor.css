@@ -581,6 +581,22 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   mix-blend-mode: screen;
 }
 
+/* Foli's answers and drafts (components/ai/AiMarkdown.tsx): UI-sized text in the app's font wherever they show
+   (chat, the note's Foli panel, the composer, previews), never the note's size, font, style or zoom. */
+.fb-ai-answer .fb-editor,
+.fb-page .fb-ai-answer .fb-editor {
+  font-family: var(--font-sans, inherit);
+  font-size: 13.5px;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+.fb-ai-answer .fb-editor .fb-heading, .fb-page .fb-ai-answer .fb-editor .fb-heading { font-family: var(--font-sans, inherit); letter-spacing: 0; line-height: 1.3; }
+.fb-ai-answer .fb-editor .fb-h1, .fb-page .fb-ai-answer .fb-editor .fb-h1 { font-size: 1.22em; margin-top: 0.9em; }
+.fb-ai-answer .fb-editor .fb-h2, .fb-page .fb-ai-answer .fb-editor .fb-h2 { font-size: 1.12em; margin-top: 0.85em; letter-spacing: 0; }
+.fb-ai-answer .fb-editor .fb-h3, .fb-page .fb-ai-answer .fb-editor .fb-h3 { font-size: 1.04em; margin-top: 0.75em; letter-spacing: 0; }
+.fb-ai-answer .fb-editor > .fb:first-child { margin-top: 0; }
+.fb-ai-answer .fb-editor .fb-quote { font-size: 1em; }
+
 /* AI text being written: a soft blinking caret after the last block's text (components/ai/AiMarkdown.tsx). */
 .fb-ai-streaming .fb-ai-answer > .fb-editor:last-child > .fb:last-child::after {
   content: ""; display: inline-block; width: 0.5em; height: 1em; margin-left: 2px; vertical-align: -0.12em;

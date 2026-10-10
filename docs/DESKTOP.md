@@ -76,8 +76,12 @@ cd apps/desktop && pnpm install --ignore-workspace
 pnpm dev        # against the local web app (FOLEVI_URL=http://app.localhost:3000)
 pnpm typecheck
 pnpm test       # settings, URLs and window state (no Electron needed)
-pnpm release    # build, sign, replace /Applications/Folevi.app and relaunch it
+pnpm release    # next version, build, sign, replace /Applications/Folevi.app and relaunch it
 ```
+
+Every `pnpm release` bumps the version first (`scripts/bump-version.mjs`): 1.1.0, 1.2.0, 1.3.0 and so on,
+the number after "1." going up by one. The app's version (About Folevi) comes from `package.json`; commit
+the bump with the build.
 
 `FOLEVI_URL` points the shell at another origin; `FOLEVI_USER_DATA` gives a run its own sign-in and
 settings (used by tests). The end-to-end test drives the real shell with Playwright:

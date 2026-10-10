@@ -107,7 +107,7 @@ const WRITE: Suggestion[] = [
   { id: "summarize", label: "Summarize this page", icon: <FileText size={15} />, task: "summarize", group: "write" },
   { id: "actions", label: "Find action items", icon: <ListChecks size={15} />, task: "actions", group: "write" },
   { id: "outline", label: "Make an outline", icon: <ListTree size={15} />, task: "outline", group: "write" },
-  { id: "brainstorm", label: "Brainstorm ideas", icon: <Lightbulb size={15} />, task: "brainstorm", group: "write" },
+  { id: "brainstorm", label: "Brainstorm", icon: <Lightbulb size={15} />, task: "brainstorm", group: "write" },
   { id: "page", label: "Write a whole page…", icon: <FilePlus2 size={15} />, page: true, group: "write" },
 ];
 const TONES = SELECTION_ACTIONS.filter((a) => a.group === "tone");

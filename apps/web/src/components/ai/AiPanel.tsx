@@ -30,7 +30,7 @@ const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "continue", label: "Continue writing", icon: <PenLine size={15} /> },
   { task: "actions", label: "Action items", icon: <ListChecks size={15} /> },
   { task: "outline", label: "Outline", icon: <ListTree size={15} /> },
-  { task: "brainstorm", label: "Brainstorm ideas", icon: <Lightbulb size={15} /> },
+  { task: "brainstorm", label: "Brainstorm", icon: <Lightbulb size={15} /> },
   { task: "title", label: "Suggest a title", icon: <Type size={15} /> },
   { task: "meetingSummary", label: "Meeting summary", icon: <Users size={15} /> },
   { task: "flashcards", label: "Flashcards", icon: TOOL_ICONS.flashcards },

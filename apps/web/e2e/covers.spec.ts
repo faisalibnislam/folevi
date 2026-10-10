@@ -30,6 +30,7 @@ test("pick one of the note themes (or Plain) from the inspector; it persists", a
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveCount(0);
   await page.getByRole("radio", { name: "Note theme: Irises" }).click();
   await expect(page.locator("#doc-scroll")).toHaveAttribute("style", /\/covers\/art-03\.webp/);
+  await page.getByRole("dialog", { name: "Note theme" }).getByRole("button", { name: "Done" }).click();
   // Blur background: the artwork moves to a blurred layer behind the page; the page itself stays sharp.
   const blur = page.getByRole("switch", { name: "Blur background" });
   await expect(blur).toHaveAttribute("aria-checked", "false");
@@ -54,6 +55,7 @@ test("page styles and block formatting persist (Style and Format tabs)", async (
   await openTool(page, "Style");
   await page.getByRole("group", { name: "Note Theme" }).getByRole("button").first().click();
   await page.getByRole("radio", { name: "Note theme: Parchment" }).click();
+  await page.getByRole("dialog", { name: "Note theme" }).getByRole("button", { name: "Done" }).click();
   await page.getByRole("button", { name: "Document color" }).click();
   await page.getByRole("radio", { name: "Document color: Night" }).click();
   const sheet = page.locator("article.fb-sheet");

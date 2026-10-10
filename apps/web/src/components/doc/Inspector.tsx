@@ -14,9 +14,6 @@ import {
   Grip,
   X,
   ChevronRight,
-  ImagePlus,
-  Loader2,
-  Lock,
 } from "lucide-react";
 import type { DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -26,10 +23,10 @@ import { IconButton, Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import type { MenuItem } from "@/components/ui/Menu";
-import { COVER_IMAGE_HINT, COVER_IMAGE_PLACEHOLDER, coverArtOf, coverArtThumbUrl, pageBackdrop, styleColorsOf } from "@/lib/cover";
-import { allThemes, applyThemeDefaults, SHEETS, TEXTS, familyFor, FONT_TYPES, planAllows, THEME_PLANS, type NoteTheme } from "@/lib/themes";
+import { COVER_IMAGE_PLACEHOLDER, coverArtOf, coverArtThumbUrl, pageBackdrop, styleColorsOf } from "@/lib/cover";
+import { allThemes, applyThemeDefaults, SHEETS, TEXTS, familyFor, FONT_TYPES, planAllows, THEME_PLANS, PLAIN_DEFAULTS, type NoteTheme, type ThemeDefaults } from "@/lib/themes";
 import { useThemesVersion } from "@/lib/useThemes";
-import { COVER_IMAGE_ACCEPT, coverImageProblem, uploadCoverImage, useCoverImage } from "@/lib/app/coverImage";
+import { coverImageProblem, uploadCoverImage, useCoverImage } from "@/lib/app/coverImage";
 
 /** The Plain note style: a very light grey page background. */
 const PLAIN_CSS = "#F1F1F3";
@@ -38,6 +35,7 @@ import { MovePageDialog } from "./MovePageDialog";
 import { InsertPanel } from "./InsertPanel";
 import { FormatPanel } from "./FormatPanel";
 import { BlurredBackdrop } from "./BlurredBackdrop";
+import { ThemeGallery } from "./ThemeGallery";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
@@ -266,7 +264,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const toast = useToast();
   const [open, setOpen] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [gallery, setGallery] = useState(false);
   const { url: imageUrl, palette } = useCoverImage(meta?.document.cover);
   // The plan where the note lives decides which themes it can pick (the server checks again).
   const plan = useQuery(api.themes.planForDocument, { documentId }) ?? null;
@@ -284,7 +282,6 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   }, [mine]);
   const pendingStyle = mine && JSON.stringify(mine.style) !== savedKey && (!now || now - mine.at < 5000) ? mine.style : null;
   // Each set of swatches is one Tab stop; the arrow keys move between its choices.
-  const styleGroup = useRadioGroup();
   const sheetGroup = useRadioGroup();
   const textGroup = useRadioGroup();
   if (!meta) return <p className="text-sm text-muted">Style is available once the document has synced.</p>;
@@ -297,10 +294,11 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
     engine?.updateDocument(documentId, { style: next }, rev);
   };
   // Choosing a theme sets everything it decides (colours, separator, font type), like a real theme, and the
-  // page's backdrop goes back to following it. Your own image or Plain keep the rest as it is.
-  const setCover = (next: typeof cover, theme?: NoteTheme) => {
+  // page's backdrop goes back to following it. Plain starts Serif on the app's own colours; your own image
+  // keeps the rest as it is.
+  const setCover = (next: typeof cover, defaults?: ThemeDefaults) => {
     const base = { ...style, backdrop: undefined };
-    const nextStyle = cleanStyle(theme ? applyThemeDefaults(base, theme.defaults) : base);
+    const nextStyle = cleanStyle(defaults ? applyThemeDefaults(base, defaults) : base);
     setMine({ style: nextStyle, at: Date.now() });
     engine?.updateDocument(documentId, { cover: next, style: nextStyle }, rev);
   };
@@ -317,7 +315,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
       const needs = THEME_PLANS.find((p) => p.id === t.plan)?.name ?? "a paid plan";
       return toast.show(`${t.name} is for ${needs.replace(" and up", " plans and up")}. Change your plan in Settings, under Plan & billing.`);
     }
-    setCover({ kind: "art", value: t.id }, t);
+    setCover({ kind: "art", value: t.id }, t.defaults);
   };
   const noBackdrop = "linear-gradient(180deg, var(--color-surface-sunken), var(--color-canvas))";
   const hasBackdrop = Boolean(pageBackdrop(style, cover, imageUrl));
@@ -360,70 +358,32 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
 
       <fieldset disabled={disabled}>
         <legend className="ui-caps mb-1 px-1">Note Theme</legend>
-        {/* One choice: the artwork is the note's cover and its page background. */}
-        <StyleRow
-          label={styleName}
-          swatch={<ColorDot css={art ? `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` : ownImage ? imageCss : PLAIN_CSS} />}
-          open={open === "artwork"}
-          onToggle={() => toggle("artwork")}
+        {/* One choice: the theme is the note's cover, page background, colours and fonts. Its gallery opens in a modal. */}
+        <button
+          type="button"
           disabled={disabled}
+          aria-haspopup="dialog"
+          onClick={() => setGallery(true)}
+          className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
         >
-          <div role="radiogroup" aria-label="Note theme" ref={styleGroup.ref} onKeyDown={styleGroup.onKeyDown} className="grid grid-cols-4 gap-2">
-            <Choice label="Plain" on={cover.kind !== "art" && !ownImage} onPick={() => setCover({ kind: "none" })}>
-              <span className="grid h-full place-items-center text-[11px] text-[#55555c]" style={{ background: PLAIN_CSS }}>Plain</span>
-            </Choice>
-            {ownImage ? (
-              <Choice label="Note theme: Your image" on onPick={() => undefined}>
-                <span aria-hidden className="block h-full w-full" style={{ background: imageCss }} />
-              </Choice>
-            ) : null}
-            {themes.map((a) => {
-              const locked = Boolean(plan) && !planAllows(plan!, a.plan) && art?.id !== a.id;
-              return (
-                <Choice key={a.id} label={`Note theme: ${a.name}${locked ? ` (${THEME_PLANS.find((p) => p.id === a.plan)?.name})` : ""}`} on={art?.id === a.id} onPick={() => pickTheme(a)}>
-                  <span aria-hidden className="block h-full w-full" style={{ background: `url(${coverArtThumbUrl(a.id)}) center / cover no-repeat` }} />
-                  {locked ? (
-                    <span aria-hidden className="absolute bottom-1 right-1 grid size-4 place-items-center rounded-tiny bg-[rgb(0_0_0/0.55)] text-white">
-                      <Lock size={10} strokeWidth={2.5} />
-                    </span>
-                  ) : null}
-                </Choice>
-              );
-            })}
-          </div>
-          <input
-            ref={fileInput}
-            type="file"
-            name="note-style-image"
-            accept={COVER_IMAGE_ACCEPT}
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) void uploadImage(file);
-            }}
-          />
-          <button
-            type="button"
-            disabled={disabled || uploading}
-            aria-busy={uploading || undefined}
-            onClick={() => fileInput.current?.click()}
-            className="mt-2.5 flex h-9 w-full items-center justify-center gap-2 rounded-chip border border-dashed border-[color-mix(in_oklab,var(--color-ink)_22%,transparent)] text-[13px] font-medium text-heading transition-colors hover:bg-accent-soft/60 disabled:opacity-60"
-          >
-            {uploading ? <Loader2 size={15} aria-hidden className="animate-spin" /> : <ImagePlus size={15} aria-hidden />}
-            {uploading ? "Uploading…" : ownImage ? "Replace your image…" : "Upload your own image…"}
-          </button>
-          <p className="mt-1.5 px-0.5 text-[11.5px] text-faint">{COVER_IMAGE_HINT}</p>
-          <p className="mt-2 px-0.5 text-xs text-muted">
-            {art
-              ? `${art.name}: the cover, the page background, and the colours, separator and font it starts with.`
-              : ownImage
-                ? "Your image: the cover and page background. Auto colours are picked from it."
-                : "Plain: a very light grey page background, no cover."}
-          </p>
-        </StyleRow>
+          {styleName}
+          <span className="flex items-center gap-2">
+            <ColorDot css={art ? `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` : ownImage ? imageCss : PLAIN_CSS} />
+          </span>
+        </button>
+        <ThemeGallery
+          open={gallery}
+          onClose={() => setGallery(false)}
+          themes={themes}
+          currentId={art?.id ?? (ownImage ? "image" : "plain")}
+          plain={PLAIN_DEFAULTS}
+          ownImage={ownImage ? imageCss : null}
+          plan={plan}
+          onPickTheme={pickTheme}
+          onPickPlain={() => setCover({ kind: "none" }, PLAIN_DEFAULTS)}
+          onUpload={(file) => void uploadImage(file)}
+          uploading={uploading}
+        />
         {hasBackdrop ? (
           <div className="flex items-center justify-between gap-3 px-1 pt-2">
             <span aria-hidden className="text-[13px] text-heading">

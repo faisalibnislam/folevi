@@ -82,8 +82,9 @@ export interface WireDocumentPatch {
   parentDocumentId?: string | null;
 }
 
+/** A new note's style: Plain's (convex/lib/themes.ts PLAIN_DEFAULTS), Serif. */
 export const DEFAULT_DOCUMENT_STYLE: DocumentStyle = {
-  font: "sans",
+  font: "serif",
   width: "wide",
   background: "paper",
   accent: "accent",

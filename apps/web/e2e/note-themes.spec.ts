@@ -4,11 +4,14 @@ import { APP, createAccount, completeOnboarding, endTrial, grantPlatformRole, ne
 
 const IMAGE = fileURLToPath(new URL("../../../packages/design-tokens/covers/source/27-ultramarine.jpg", import.meta.url));
 
+/** Opens the theme gallery (a modal) from the Style panel; returns its grid of themes. */
 async function openThemes(page: Page) {
   await openTool(page, "Style");
   await page.getByRole("group", { name: "Note Theme" }).getByRole("button").first().click();
+  await expect(page.getByRole("dialog", { name: "Note theme" })).toBeVisible();
   return page.getByRole("radiogroup", { name: "Note theme" });
 }
+const closeThemes = (page: Page) => page.getByRole("dialog", { name: "Note theme" }).getByRole("button", { name: "Done" }).click();
 
 test("picking a theme sets its colours, separator and font type, drawn in its own typefaces", async ({ browser }) => {
   const { page } = await newPerson(browser, "Theme Picker");
@@ -28,6 +31,7 @@ test("picking a theme sets its colours, separator and font type, drawn in its ow
   await expect(page.getByRole("button", { name: "Font: Serif" })).toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => editor.evaluate((el) => getComputedStyle(el).fontFamily)).toContain("Spectral");
   // People can still change what the theme set; Mono draws in the theme's mono (JetBrains Mono).
+  await closeThemes(page);
   await page.getByRole("button", { name: "Font: Mono" }).click();
   await expect.poll(() => editor.evaluate((el) => getComputedStyle(el).fontFamily)).toContain("JetBrains Mono");
   await waitForSaved(page);
@@ -88,7 +92,7 @@ test("the Theme manager adds a theme, gates it by plan, reorders, retires and de
   const locked = picker.getByRole("radio", { name: `Note theme: ${name} (Pro and up)` });
   await expect(locked).toBeVisible({ timeout: 20_000 });
   await locked.click();
-  await expect(free.page.getByText(/is for Pro plans and up/)).toBeVisible();
+  await expect(free.page.getByRole("dialog", { name: "Note theme" }).getByRole("status")).toContainText(/is for Pro plans and up/);
   await expect(locked).toHaveAttribute("aria-checked", "false");
 
   // Reorder from the list with the keyboard: one step to the left.

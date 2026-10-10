@@ -76,6 +76,9 @@ export interface ThemeDefaults {
 
 export const STANDARD_DEFAULTS: ThemeDefaults = { font: "sans", separator: "line" };
 
+/** What Plain (no theme) starts a note with: Serif, plain lines, the app's own page and text colours. */
+export const PLAIN_DEFAULTS: ThemeDefaults = { font: "serif", separator: "line" };
+
 export const isFontId = (slot: FontSlot, id: string) => FONT_POOL[slot].some((f) => f.id === id);
 
 /** Plans in order: a theme marked for a plan is available on that plan and the ones above it. */

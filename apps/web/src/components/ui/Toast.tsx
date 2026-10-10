@@ -34,7 +34,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={t.id}
               role={t.tone === "error" ? "alert" : "status"}
-              className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-[6px] py-2 pl-5 pr-2.5 text-sm font-medium shadow-[var(--shadow-pop)] animate-[folio-rise_180ms_var(--ease-folio)] ${
+              className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-chip py-2 pl-5 pr-2.5 text-sm font-medium shadow-[var(--shadow-pop)] animate-[folio-rise_180ms_var(--ease-folio)] ${
                 t.tone === "error" ? "bg-danger-soft text-ink" : t.tone === "success" ? "bg-success-soft text-ink" : "bg-[var(--color-accent-strong)] text-[var(--color-accent-ink)]"
               }`}
             >
@@ -42,7 +42,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               {t.action ? (
                 <button
                   type="button"
-                  className="rounded-[6px] bg-[color-mix(in_oklab,currentColor_14%,transparent)] px-3 py-1 font-semibold hover:bg-[color-mix(in_oklab,currentColor_22%,transparent)]"
+                  className="rounded-chip bg-[color-mix(in_oklab,currentColor_14%,transparent)] px-3 py-1 font-semibold hover:bg-[color-mix(in_oklab,currentColor_22%,transparent)]"
                   onClick={() => {
                     t.action!.onClick();
                     dismiss(t.id);

@@ -39,12 +39,12 @@ export function PlanRow({
   return (
     <section
       aria-label={`${name} plan`}
-      className={`grid gap-4 rounded-[14px] p-5 @xl:col-span-3 @xl:grid-cols-subgrid @xl:items-center @xl:gap-x-6 ${highlight ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}
+      className={`grid gap-4 rounded-panel p-5 @xl:col-span-3 @xl:grid-cols-subgrid @xl:items-center @xl:gap-x-6 ${highlight ? "bg-[linear-gradient(160deg,color-mix(in_oklab,#8b7cf6_12%,transparent),color-mix(in_oklab,#f58ab8_10%,transparent))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,#7c6cf0_35%,transparent)]" : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)]"}`}
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h4 className="ui-display text-[19px]">{name}</h4>
-          {current ? <span className="ml-auto rounded-[6px] bg-heading px-2 py-0.5 text-[11px] font-semibold text-canvas @xl:ml-0">Current</span> : null}
+          {current ? <span className="ml-auto rounded-chip bg-heading px-2 py-0.5 text-[11px] font-semibold text-canvas @xl:ml-0">Current</span> : null}
         </div>
         <p className="mt-1">
           <span className="text-[28px] font-semibold tracking-tight text-heading">{price}</span>

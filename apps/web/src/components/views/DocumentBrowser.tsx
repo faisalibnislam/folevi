@@ -36,7 +36,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 function UnsyncedMarker({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-[11px] font-medium text-heading ${className}`} title="Changes on this device haven’t synced yet">
-      <span className="inline-block h-1.5 w-1.5 rounded-[4px] bg-heading" aria-hidden />
+      <span className="inline-block h-1.5 w-1.5 rounded-tiny bg-heading" aria-hidden />
       <span>Not synced</span>
     </span>
   );
@@ -305,14 +305,14 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </p>
           <label className="flex items-center gap-2 text-sm text-muted">
             <span>Sort</span>
-            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 ui-input rounded-[6px] px-3 text-ink">
+            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 ui-input rounded-chip px-3 text-ink">
               <option value="updated">Last edited</option>
               <option value="created">Created</option>
               <option value="title">Title</option>
               <option value="manual">Manual order</option>
             </Select>
           </label>
-          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-[10px] p-1">
+          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-control p-1">
             {(
               [
                 ["grid", "Grid", <LayoutGrid key="g" size={15} />],
@@ -328,7 +328,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                 aria-label={label}
                 title={label}
                 onClick={() => setLayout(value)}
-                className={`grid h-7 w-9 place-items-center rounded-[6px] transition-[background-color,box-shadow] ${layout === value ? "bg-raised text-heading shadow-[var(--shadow-control)]" : "text-muted hover:text-heading"}`}
+                className={`grid h-7 w-9 place-items-center rounded-chip transition-[background-color,box-shadow] ${layout === value ? "bg-raised text-heading shadow-[var(--shadow-control)]" : "text-muted hover:text-heading"}`}
               >
                 {icon}
               </button>
@@ -365,7 +365,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   type="button"
                   aria-label={`New page from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
-                  className="flex items-start gap-3 ui-card rounded-[10px] p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+                  className="flex items-start gap-3 ui-card rounded-control p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
                 >
                   <TemplateTile name={t.icon} />
                   <span>
@@ -382,11 +382,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         {loading ? (
           <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-52 animate-pulse ui-card rounded-[10px] motion-reduce:animate-none" />
+              <div key={i} className="h-52 animate-pulse ui-card rounded-control motion-reduce:animate-none" />
             ))}
           </div>
         ) : docs.length === 0 ? (
-          <div className="rounded-[6px] border border-dashed border-line-strong px-6 py-16 text-center">
+          <div className="rounded-chip border border-dashed border-line-strong px-6 py-16 text-center">
             <p className="ui-display text-2xl">{EMPTY[view]}</p>
             {view === "all" || view === "folder" ? (
               // On a folder page the new note starts in that folder.
@@ -396,7 +396,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             ) : null}
           </div>
         ) : layout === "list" ? (
-          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
+          <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
             {docs.map((d) => {
               const on = selection.selected.has(d.id);
               return (
@@ -407,7 +407,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                 >
                   <DocDragHandle ids={on ? selection.selectedIds : [d.id]} />
                   {on ? (
-                    <span className="grid h-4 w-4 flex-none place-items-center rounded-[4px] bg-heading text-canvas">
+                    <span className="grid h-4 w-4 flex-none place-items-center rounded-tiny bg-heading text-canvas">
                       <Check size={11} strokeWidth={3} aria-hidden />
                     </span>
                   ) : (
@@ -434,11 +434,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               return (
                 <li
                   key={d.id}
-                  className={`group relative [container-type:inline-size] rounded-[6px] ${dropTarget === d.id || on ? "ring-2 ring-heading ring-offset-4 ring-offset-canvas" : ""}`}
+                  className={`group relative [container-type:inline-size] rounded-chip ${dropTarget === d.id || on ? "ring-2 ring-heading ring-offset-4 ring-offset-canvas" : ""}`}
                   {...cardProps(d)}
                 >
                   {layout === "compact" ? (
-                    <AppLink href={`/d/${d.id}`} className="block h-28 rounded-[6px] shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
+                    <AppLink href={`/d/${d.id}`} className="block h-28 rounded-chip shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
                       <DocumentCardPreview
                         title={d.title}
                         style={d.style}
@@ -472,7 +472,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   {on ? <SelectedMark /> : null}
                   <div className={`absolute top-2 flex items-center gap-1 ${d.starred && layout !== "compact" ? "right-[calc(12cqw+8px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
                     {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} raised /> : null}
-                    <div className="ui-raised rounded-[6px]">
+                    <div className="ui-raised rounded-chip">
                       <DocMenu {...menuProps(d)} />
                     </div>
                   </div>
@@ -493,7 +493,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         ? createPortal(
             <div
               aria-hidden
-              className="pointer-events-none fixed z-40 rounded-[4px]"
+              className="pointer-events-none fixed z-40 rounded-tiny"
               style={{ ...selection.marquee, background: "color-mix(in oklab, var(--color-heading) 7%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 45%, transparent)" }}
             />,
             document.body,
@@ -565,7 +565,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
 /** The check on a selected card (the card also gets a ring). */
 function SelectedMark() {
   return (
-    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-[6px] bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.2)]">
+    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-chip bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.2)]">
       <Check size={14} strokeWidth={3} />
     </span>
   );
@@ -728,7 +728,7 @@ export function PermanentDeleteDialog({ open, onClose, documentId, title }: { op
       <label className="block text-sm" htmlFor="confirm-title">
         Document title
       </label>
-      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-[6px] px-3" />
+      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-chip px-3" />
     </Dialog>
   );
 }

@@ -62,7 +62,7 @@ const CollectionEmbed = lazy(() => import("./CollectionEmbed").then((m) => ({ de
 function LoadingBlock({ height }: { height: number }) {
   return (
     <NodeViewWrapper>
-      <div contentEditable={false} aria-busy aria-label="Loading" className="my-3 animate-pulse rounded-[10px] bg-sunken motion-reduce:animate-none" style={{ height }} />
+      <div contentEditable={false} aria-busy aria-label="Loading" className="my-3 animate-pulse rounded-control bg-sunken motion-reduce:animate-none" style={{ height }} />
     </NodeViewWrapper>
   );
 }
@@ -200,7 +200,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           // float over it, so nothing below moves.
           <div className="relative mx-auto w-fit max-w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={a.alt || ""} className="block h-auto max-w-full rounded-[6px] border border-line bg-sunken" draggable={false} />
+            <img src={src} alt={a.alt || ""} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} />
             {selected && editable ? (
               <div
                 className="ui-pop absolute bottom-2 left-2 z-20 flex w-max max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-xs text-muted"
@@ -214,7 +214,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                     onCommit={(v) => update({ alt: v })}
                     onExit={() => selectBlock(editor, getPos)}
                     placeholder="Describe the image"
-                    className="h-7 w-56 ui-input rounded-[6px] px-2 text-ink"
+                    className="h-7 w-56 ui-input rounded-chip px-2 text-ink"
                   />
                 </label>
                 <span>Width</span>
@@ -224,7 +224,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                     type="button"
                     onClick={() => update({ width: w === 1 ? null : w })}
                     aria-pressed={width === w}
-                    className={`h-7 rounded-[6px] border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}
+                    className={`h-7 rounded-chip border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}
                   >
                     {w * 100}%
                   </button>
@@ -233,7 +233,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             ) : null}
           </div>
         ) : (
-          <div className="grid h-40 place-items-center rounded-[6px] border border-dashed border-line-strong text-sm text-muted">
+          <div className="grid h-40 place-items-center rounded-chip border border-dashed border-line-strong text-sm text-muted">
             {a.fileId && !missing ? (
               "Loading image…"
             ) : (
@@ -283,7 +283,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
   const upload = useUploadState(a.id);
   return (
     <Frame selected={selected} label={`Attachment ${a.name ?? ""}`}>
-      <div className="my-1.5 flex items-center gap-3 ui-card rounded-[10px] px-3 py-2.5">
+      <div className="my-1.5 flex items-center gap-3 ui-card rounded-control px-3 py-2.5">
         <FileText size={20} className="text-muted" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{a.name ?? "Attachment"}</p>
@@ -301,7 +301,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
         {file ? (
           <a
             href={file.url}
-            className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-line px-2.5 text-xs hover:bg-surface"
+            className="inline-flex h-8 items-center gap-1.5 rounded-chip border border-line px-2.5 text-xs hover:bg-surface"
             download={a.name ?? true}
             contentEditable={false}
           >
@@ -509,7 +509,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     }
   };
   const toolBtn =
-    "grid h-6 w-6 place-items-center rounded-[6px] text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
+    "grid h-6 w-6 place-items-center rounded-chip text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
   return (
     <Frame selected={selected} label="Table">
       <div
@@ -663,7 +663,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             <button
               type="button"
               onClick={addRow}
-              className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-accent-soft hover:text-heading"
+              className="inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading"
             >
               <Plus size={12} aria-hidden /> Row
             </button>
@@ -671,7 +671,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
               type="button"
               onClick={addCol}
               disabled={width >= 20}
-              className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-accent-soft hover:text-heading disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading disabled:opacity-40"
             >
               <Plus size={12} aria-hidden /> Column
             </button>
@@ -679,7 +679,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
               type="button"
               aria-pressed={headerRow}
               onClick={() => editor.isEditable && updateAttributes({ headerRow: !headerRow })}
-              className={`inline-flex items-center gap-1 rounded-[6px] px-2 py-1 hover:bg-accent-soft hover:text-heading ${tools ? "" : "invisible"} ${headerRow ? "text-heading" : ""}`}
+              className={`inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading ${tools ? "" : "invisible"} ${headerRow ? "text-heading" : ""}`}
             >
               {headerRow ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />} Header row
             </button>
@@ -715,7 +715,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
         <AppLink
           href={`/d/${a.documentId}`}
           title={trashed ? "This page is in Trash" : missing ? "This page is unavailable or you no longer have access" : undefined}
-          className={`my-0.5 inline-flex items-center gap-2 rounded-[6px] px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent ${gone ? "text-muted line-through" : ""}`}
+          className={`my-0.5 inline-flex items-center gap-2 rounded-chip px-1 py-0.5 font-medium underline decoration-line-strong underline-offset-4 hover:decoration-accent ${gone ? "text-muted line-through" : ""}`}
           contentEditable={false}
         >
           <FileText size={15} aria-hidden className="flex-none text-muted" /> {title}
@@ -728,7 +728,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
       <AppLink
         href={`/d/${a.documentId}`}
         contentEditable={false}
-        className="group my-2 flex items-start gap-3 ui-card rounded-[10px] p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+        className="group my-2 flex items-start gap-3 ui-card rounded-control p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
         title="Open page (Alt-click opens a new tab)"
       >
         <FileText size={20} aria-hidden className="mt-0.5 flex-none text-muted" />
@@ -872,7 +872,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   const showImage = Boolean(a.image) && !imageFailed;
   return (
     <Frame selected={selected} label={`Bookmark ${a.title ?? host}`}>
-      <div ref={card} className="group/bookmark relative my-2 overflow-hidden ui-card rounded-[10px]" contentEditable={false} data-bookmark="">
+      <div ref={card} className="group/bookmark relative my-2 overflow-hidden ui-card rounded-control" contentEditable={false} data-bookmark="">
         {/* A click opens the page in a new tab (the pen edits it). */}
         <a
           href={href}
@@ -887,7 +887,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
           <span className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-4 pr-10">
             {a.icon && !iconFailed ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={a.icon} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setIconFailed(true)} className="mb-1 h-6 w-6 flex-none rounded-[4px] object-contain" />
+              <img src={a.icon} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setIconFailed(true)} className="mb-1 h-6 w-6 flex-none rounded-tiny object-contain" />
             ) : (
               <Link2 size={18} className="mb-1 text-muted" aria-hidden />
             )}
@@ -900,7 +900,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
           </span>
           {showImage ? (
             // The standard social image shape (1.91:1), so the whole picture shows rather than a cropped strip.
-            <span className="relative my-3 mr-3 hidden aspect-[1.91/1] w-[34%] max-w-[260px] flex-none self-center overflow-hidden rounded-[6px] bg-sunken shadow-[inset_0_0_0_1px_var(--color-line)] sm:block" aria-hidden>
+            <span className="relative my-3 mr-3 hidden aspect-[1.91/1] w-[34%] max-w-[260px] flex-none self-center overflow-hidden rounded-chip bg-sunken shadow-[inset_0_0_0_1px_var(--color-line)] sm:block" aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={a.image!} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setImageFailed(true)} className="absolute inset-0 h-full w-full object-cover" />
             </span>
@@ -912,7 +912,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             aria-label="Edit bookmark"
             title="Edit bookmark"
             onClick={startEditing}
-            className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-[6px] text-muted ui-raised transition-opacity hover:text-heading focus-visible:opacity-100 focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none group-hover/bookmark:opacity-100 pointer-coarse:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
+            className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-chip text-muted ui-raised transition-opacity hover:text-heading focus-visible:opacity-100 focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none group-hover/bookmark:opacity-100 pointer-coarse:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
           >
             <Pencil size={14} aria-hidden />
           </button>
@@ -946,7 +946,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
                   if (address.trim() !== (a.url ?? "")) saveAddress();
                 }}
                 aria-invalid={Boolean(addressError)}
-                className={`h-8 ui-input rounded-[6px] px-2 text-sm text-ink ${addressError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+                className={`h-8 ui-input rounded-chip px-2 text-sm text-ink ${addressError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
               />
               {addressError ? (
                 <span role="alert" className="text-danger">
@@ -956,11 +956,11 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             </label>
             <label className="grid gap-1">
               Title
-              <DraftInput value={a.title ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ title: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
+              <DraftInput value={a.title ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ title: v || null })} className="h-8 ui-input rounded-chip px-2 text-sm text-ink" />
             </label>
             <label className="grid gap-1">
               Description
-              <DraftInput value={a.description ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ description: v || null })} className="h-8 ui-input rounded-[6px] px-2 text-sm text-ink" />
+              <DraftInput value={a.description ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ description: v || null })} className="h-8 ui-input rounded-chip px-2 text-sm text-ink" />
             </label>
             <div className="flex items-center justify-between gap-2">
               <button
@@ -989,7 +989,7 @@ function CollectionView({ node, selected, editor }: ReactNodeViewProps) {
   return (
     <Frame selected={selected} label="Collection">
       <div contentEditable={false} className="my-3">
-        <Suspense fallback={<div aria-busy aria-label="Loading collection" className="h-48 animate-pulse rounded-[10px] bg-sunken motion-reduce:animate-none" />}>
+        <Suspense fallback={<div aria-busy aria-label="Loading collection" className="h-48 animate-pulse rounded-control bg-sunken motion-reduce:animate-none" />}>
           <CollectionEmbed collectionId={a.collectionId} initialViewId={a.viewId} editable={editable} />
         </Suspense>
       </div>
@@ -1004,7 +1004,7 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
     <Frame selected={selected} label="Unsupported block">
       <div
         contentEditable={false}
-        className="my-2 flex items-center gap-3 rounded-[6px] border border-dashed border-line-strong bg-sunken px-4 py-3 text-sm text-muted"
+        className="my-2 flex items-center gap-3 rounded-chip border border-dashed border-line-strong bg-sunken px-4 py-3 text-sm text-muted"
       >
         <span className="flex-1">
           This “{wire?.type ?? "unknown"}” block was created by a newer version of Folevi. It’s kept

@@ -1,3 +1,5 @@
+import { effectiveTheme } from "./lib/noteThemes";
+import { applyThemeDefaults } from "./lib/themes";
 import { v } from "convex/values";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -205,7 +207,7 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
  * Completes one onboarding step and moves to the next (never back: see laterStep). Each step can carry
  * its choice, applied here after validation:
  *   uses:       `useCases` (USE_CASES ids) adds each one's starter pages from built-in templates, once
- *   style:      `noteStyle` ("plain" or an ONBOARDING_NOTE_STYLES art id) styles their Welcome page
+ *   style:      `noteStyle` ("plain" or an ONBOARDING_NOTE_STYLES art id) gives their Welcome page that theme
  *   appearance: `appearance`
  *   ai:         `aiEnabled` turns the AI Assistant on or off
  * Older clients (the archived Swift Mac app) send "workspace" (with an ignored `workspaceName`), "appearance" and
@@ -225,7 +227,7 @@ export const completeOnboardingStep = mutation({
     await assertWritable(ctx, profile);
     // A choice belongs to its own step; anything else is a client error.
     if (args.useCases !== undefined && args.step !== "uses") fail("invalid_argument", "Use cases belong to the uses step.");
-    if (args.noteStyle !== undefined && args.step !== "style") fail("invalid_argument", "A note style belongs to the style step.");
+    if (args.noteStyle !== undefined && args.step !== "style") fail("invalid_argument", "A note theme belongs to the style step.");
     if (args.aiEnabled !== undefined && args.step !== "ai") fail("invalid_argument", "The AI setting belongs to the ai step.");
     if (args.appearance !== undefined && args.step !== "appearance") fail("invalid_argument", "Appearance belongs to the appearance step.");
 
@@ -242,7 +244,7 @@ export const completeOnboardingStep = mutation({
       }
     }
     if (args.step === "style" && args.noteStyle !== undefined) {
-      if (!isOnboardingNoteStyle(args.noteStyle)) fail("invalid_argument", "Unknown note style.");
+      if (!isOnboardingNoteStyle(args.noteStyle)) fail("invalid_argument", "Unknown note theme.");
       await styleWelcomePage(ctx, profile, args.noteStyle);
     }
     // Personal needs no name; `workspaceName` is accepted from older clients and ignored.
@@ -276,7 +278,7 @@ async function addStarterPages(ctx: MutationCtx, profile: Doc<"profiles">, appli
   }
 }
 
-/** Gives the person's own "Welcome to Folevi" page (from their seed content) a note style, if it's still there. */
+/** Gives the person's own "Welcome to Folevi" page (from their seed content) a note theme, if it's still there. */
 async function styleWelcomePage(ctx: MutationCtx, profile: Doc<"profiles">, noteStyle: string) {
   const candidates = await ctx.db
     .query("documents")
@@ -286,8 +288,10 @@ async function styleWelcomePage(ctx: MutationCtx, profile: Doc<"profiles">, note
   if (!doc) return;
   const cover: Doc<"documents">["cover"] = noteStyle === PLAIN_STYLE ? { kind: "none" } : { kind: "art", value: noteStyle };
   if (doc.cover.kind === cover.kind && doc.cover.value === cover.value) return;
-  // The backdrop follows the style (as when a style is picked in the page tools).
-  const style = { ...doc.style };
+  // The backdrop follows the theme, and the page takes the theme's colours, separator and font type (as
+  // when a theme is picked in the page tools).
+  const theme = cover.kind === "art" ? await effectiveTheme(ctx, cover.value!) : null;
+  const style = theme ? applyThemeDefaults({ ...doc.style }, theme.defaults) : { ...doc.style };
   delete style.backdrop;
   const revision = doc.revision + 1;
   await ctx.db.patch(doc._id, {

@@ -91,9 +91,9 @@ export function CalendarView({ month }: { month: string | null }) {
       tabTitle="Calendar"
       actions={
         <>
-          <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-[10px] p-1 text-xs">
+          <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-control p-1 text-xs">
             {(["month", "agenda"] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`h-7 rounded-[6px] px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`h-7 rounded-chip px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
                 {m}
               </button>
             ))}
@@ -120,7 +120,7 @@ export function CalendarView({ month }: { month: string | null }) {
 
         {mode === "month" ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-            <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-[10px]">
+            <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-control">
               <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-medium text-muted">
                 {weekdays.map((w) => (
                   <div key={w} role="columnheader" className="py-2">
@@ -161,7 +161,7 @@ export function CalendarView({ month }: { month: string | null }) {
                         className={`min-h-[104px] border-b border-r border-line p-1.5 outline-none last:border-r-0 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${inMonth ? "" : "bg-surface/60"} ${selected === date ? "bg-accent-soft/40" : ""}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`grid h-6 min-w-6 place-items-center rounded-[6px] px-1 text-xs tabular-nums ${isToday ? "bg-heading font-semibold text-canvas shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
+                          <span className={`grid h-6 min-w-6 place-items-center rounded-chip px-1 text-xs tabular-nums ${isToday ? "bg-heading font-semibold text-canvas shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
                         </div>
                         <ul className="mt-1 space-y-0.5">
                           {items.slice(0, 3).map((t) => (
@@ -169,7 +169,7 @@ export function CalendarView({ month }: { month: string | null }) {
                               key={t.blockId}
                               draggable
                               onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-task", t.blockId)}
-                              className={`cursor-grab truncate rounded-[4px] px-1 text-[11.5px] leading-5 ${t.status === "done" ? "bg-sunken text-faint line-through" : "bg-accent-soft text-accent-soft-ink"}`}
+                              className={`cursor-grab truncate rounded-tiny px-1 text-[11.5px] leading-5 ${t.status === "done" ? "bg-sunken text-faint line-through" : "bg-accent-soft text-accent-soft-ink"}`}
                               title={t.title}
                             >
                               {t.dueTime ? `${t.dueTime} ` : ""}
@@ -186,7 +186,7 @@ export function CalendarView({ month }: { month: string | null }) {
             </div>
             <aside aria-label="Selected day">
               <h3 className="font-semibold">{formatCalendarDate(selected, { weekday: "long", month: "long", day: "numeric" })}</h3>
-              <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-[10px]">
+              <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-control">
                 {(byDate.get(selected) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">No tasks due. Drag a task here to schedule it.</li> : null}
                 {(byDate.get(selected) ?? []).map((t) => (
                   <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
@@ -201,7 +201,7 @@ export function CalendarView({ month }: { month: string | null }) {
             {overdue?.length ? (
               <section aria-label="Overdue">
                 <h3 className="mb-2 text-sm font-semibold text-danger">Overdue</h3>
-                <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
+                <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
                   {[...overdue]
                     .sort((a, b) => ((a.dueDate ?? "") < (b.dueDate ?? "") ? -1 : 1))
                     .map((t) => (
@@ -217,7 +217,7 @@ export function CalendarView({ month }: { month: string | null }) {
                   <h3 className="mb-2 flex items-center gap-3 text-sm font-semibold">
                     {d === today ? "Today" : formatCalendarDate(d, { weekday: "long", month: "long", day: "numeric" })}
                   </h3>
-                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
+                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
                     {(byDate.get(d) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">Nothing due.</li> : null}
                     {(byDate.get(d) ?? []).map((t) => (
                       <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
@@ -257,7 +257,7 @@ function Unscheduled({
       {tasks.length === 0 ? (
         <p className="text-sm text-muted">Every open task has a date.</p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
+        <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
           {tasks.slice(0, 8).map((t) => (
             <TaskItem
               key={t.blockId}

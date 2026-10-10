@@ -245,7 +245,7 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
   return (
     // The list is the scroll container. It is focusable (axe: scrollable-region-focusable) but focus
     // normally stays in the editor, which points at the active option with aria-activedescendant.
-    <ul role="listbox" id={listId} aria-label={label} tabIndex={0} className="max-h-[min(400px,65vh)] overflow-y-auto rounded-[6px] outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]">
+    <ul role="listbox" id={listId} aria-label={label} tabIndex={0} className="max-h-[min(400px,65vh)] overflow-y-auto rounded-chip outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]">
       {items.map((item, i) => (
         <li
           key={item.id}
@@ -259,9 +259,9 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
             if (i !== active) setActive(i);
           }}
           onClick={() => onRun(item)}
-          className={`flex cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 text-sm transition-colors ${i === active ? "ui-row-active" : ""}`}
+          className={`flex cursor-pointer items-center gap-2.5 rounded-chip px-2 py-1.5 text-sm transition-colors ${i === active ? "ui-row-active" : ""}`}
         >
-          <span className="grid h-7 w-7 flex-none place-items-center rounded-[6px] bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
+          <span className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
             {item.icon}
           </span>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -1099,7 +1099,7 @@ function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: (
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="mt-2 h-10 w-full ui-input rounded-[6px] px-4"
+          className="mt-2 h-10 w-full ui-input rounded-chip px-4"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${formId}-err` : undefined}
         />
@@ -1191,7 +1191,7 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
  * also with no selection (the address is inserted as a link).
  */
 function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (blockId: string) => void }) {
-  // The note style's text colours and highlights (its own names), when it has them.
+  // The note theme's text colours and highlights (its own names), when it has them.
   const palette = useNotePalette();
   const aiOn = useAiEnabled();
   // The selection's box: centre x, top and bottom. The toolbar sits above it (below near the top of the window).
@@ -1417,7 +1417,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
         // Formatting applied from the keyboard (⌥F10) returns to the text; mode switches keep focus here.
         if (pressable || label === "Clear formatting") afterAction();
       }}
-      className={`grid h-8 w-8 place-items-center rounded-[6px] transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${isActive ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_25%,transparent)]" : "text-muted hover:bg-accent-soft hover:text-heading"}`}
+      className={`grid h-8 w-8 place-items-center rounded-chip transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${isActive ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_25%,transparent)]" : "text-muted hover:bg-accent-soft hover:text-heading"}`}
     >
       {icon}
     </button>
@@ -1429,7 +1429,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
       aria-label="Text formatting"
       aria-orientation="horizontal"
       popover="manual"
-      className="z-[100] ui-pop max-w-[calc(100vw-16px)] rounded-[10px] border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
+      className="z-[100] ui-pop max-w-[calc(100vw-16px)] rounded-control border-0 p-1 text-ink animate-[folio-rise_120ms_var(--ease-folio)]"
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: placed?.left ?? 0, top: placed?.top ?? 0, visibility: placed ? "visible" : "hidden" }}
       onMouseDown={(e) => {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
@@ -1463,7 +1463,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
             aria-label="Link address"
             aria-invalid={Boolean(linkError)}
             aria-describedby={linkError ? linkErrorId : undefined}
-            className={`ui-input h-8 w-60 rounded-[6px] px-3 text-sm ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+            className={`ui-input h-8 w-60 rounded-chip px-3 text-sm ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
           />
           <button type="submit" className="ui-btn ui-btn-primary h-8 px-3 text-xs">
             Apply
@@ -1496,7 +1496,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
               if (ref.current?.contains(document.activeElement)) focusFirst.current = true;
               setMode("marks");
             }}
-            className="grid h-7 w-7 place-items-center rounded-[6px] text-muted hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
+            className="grid h-7 w-7 place-items-center rounded-chip text-muted hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
           >
             <ChevronLeft size={15} aria-hidden />
           </button>
@@ -1510,7 +1510,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
                 setTextColor(editor, c);
                 afterAction();
               }}
-              className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
+              className="grid h-7 w-7 place-items-center rounded-chip hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
             >
               <span className={`fb-color-${c} text-sm font-semibold`} aria-hidden>
                 A
@@ -1528,9 +1528,9 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
                 setHighlight(editor, h);
                 afterAction();
               }}
-              className="grid h-7 w-7 place-items-center rounded-[6px] hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
+              className="grid h-7 w-7 place-items-center rounded-chip hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
             >
-              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-[4px]`} aria-hidden />
+              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-tiny`} aria-hidden />
             </button>
           ))}
           <button
@@ -1852,7 +1852,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     }
   };
 
-  const itemClass = "flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left transition-colors hover:bg-accent-soft hover:text-heading focus:bg-accent-soft focus:text-heading focus:outline-none";
+  const itemClass = "flex w-full items-center gap-2 rounded-chip px-2 py-1.5 text-left transition-colors hover:bg-accent-soft hover:text-heading focus:bg-accent-soft focus:text-heading focus:outline-none";
 
   return (
     <>
@@ -1861,7 +1861,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       </p>
       {hover && !menu && !dragging ? (
         <div
-          className="ui-raised fixed z-30 flex items-center gap-px rounded-[10px] p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
+          className="ui-raised fixed z-30 flex items-center gap-px rounded-control p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
           // Where there's no room beside the line (narrow windows, phones) only the grip shows, so the handle
           // never covers the start of the text (the grip's menu has Insert below).
           // On touch screens only the grip shows too (Return adds a line there).
@@ -1877,7 +1877,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
             type="button"
             hidden={hover.left - 58 < 4 || coarse}
             aria-label="Insert block below"
-            className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading"
+            className="grid h-6 w-6 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {
               if (hover.index >= editor.state.doc.childCount) return;
               clearBlockSelection(editor.view);
@@ -1893,7 +1893,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
             type="button"
             aria-label="Drag to move, click for block options, Shift-click to select several blocks"
             // A 44px target for a finger, reaching left of the grip so it never covers the text.
-            className="relative grid h-6 w-6 cursor-grab touch-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:-left-4 pointer-coarse:after:-right-1 pointer-coarse:after:content-['']"
+            className="relative grid h-6 w-6 cursor-grab touch-none place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:-left-4 pointer-coarse:after:-right-1 pointer-coarse:after:content-['']"
             onPointerDown={(e) => {
               if (e.button !== 0 || e.shiftKey) return;
               e.preventDefault();
@@ -2189,7 +2189,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           </div>
           <label className="grid gap-1">
             <span className="text-xs text-muted">Priority</span>
-            <Select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-[6px] px-3">
+            <Select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-chip px-3">
               <option value="none">None</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -2199,7 +2199,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           {members && members.members.length > 1 ? (
             <label className="grid gap-1">
               <span className="text-xs text-muted">Assignee</span>
-              <Select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 ui-input rounded-[6px] px-3">
+              <Select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 ui-input rounded-chip px-3">
                 <option value="">Unassigned</option>
                 {members.members.map((m) => (
                   <option key={m.profileId} value={m.profileId}>

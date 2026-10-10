@@ -82,8 +82,8 @@ export default function MacPage() {
           </div>
 
         </HeaderCard>
-        <Card as="div" inner="p-3 sm:p-5">
-          <div className="mk-stage p-3 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
+        <Card as="div" inner="p-4 sm:p-5">
+          <div className="mk-stage p-4 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
             <MacMenuBar initial="File" />
             <AppWindow
               art={art}
@@ -172,7 +172,7 @@ export default function MacPage() {
           <div className="mx-auto mt-12 max-w-[1080px]">
             <AppWindow
               art={artById("art-03")}
-              label="Folevi on the web: the page sidebar with the note’s table of contents, and a note called Seed library in the Irises style."
+              label="Folevi on the web: the page sidebar with the note’s table of contents, and a note called Seed library in the Irises theme."
               className="h-[440px] sm:h-[560px]"
             />
           </div>

@@ -120,7 +120,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
             </Button>
             {busy ? (
               <Button variant="secondary" onClick={() => stream.stop()}>
-                <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Stop
+                <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
               </Button>
             ) : (
               <Button variant="primary" disabled={!prompt.trim()} onClick={() => void generate(prompt)}>
@@ -149,19 +149,19 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
               }
             }}
             placeholder={kind === "template" ? "A one-on-one with my manager: wins, blockers, feedback, next steps" : "A plan for moving house next month"}
-            className="ui-input block w-full resize-none rounded-[10px] px-3 py-2.5 text-[14px] text-ink placeholder:text-faint"
+            className="ui-input block w-full resize-none rounded-control px-3 py-2.5 text-[14px] text-ink placeholder:text-faint"
           />
           {!busy ? (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Examples">
               {EXAMPLES[kind].map((x) => (
-                <button key={x} type="button" onClick={() => setPrompt(x)} className="rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                <button key={x} type="button" onClick={() => setPrompt(x)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
                   {x}
                 </button>
               ))}
             </div>
           ) : null}
           {busy ? (
-            <div className="max-h-[46vh] overflow-y-auto rounded-[10px] bg-[var(--glass-hover)] p-3" aria-busy="true">
+            <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3" aria-busy="true">
               <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
                 <AiIcon size={12} aria-hidden className="animate-pulse motion-reduce:animate-none" /> Writing the {noun}…
               </p>
@@ -182,16 +182,16 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
               value={draft.title}
               maxLength={120}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              className="ui-input block h-9 w-full rounded-[10px] px-3 text-[15px] font-semibold text-heading"
+              className="ui-input block h-9 w-full rounded-control px-3 text-[15px] font-semibold text-heading"
             />
           </div>
-          <div className="max-h-[46vh] overflow-y-auto rounded-[10px] bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
+          <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
             <AiMarkdown markdown={draft.text} />
           </div>
           <p className="text-[11.5px] text-faint">Foli can make mistakes, so check it before you save. Sent to Google Gemini.</p>
         </section>
       )}
-      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-[10px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mt-3"} /> : null}
+      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mt-3"} /> : null}
       <AiAnnouncer text={announce} />
     </Dialog>
   );

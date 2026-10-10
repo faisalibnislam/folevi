@@ -37,7 +37,7 @@ function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: (
       }}
     >
       <div ref={ref} className="ui-pop relative h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] rounded-none motion-reduce:animate-none">
-        <button type="button" aria-label="Close conversations" onClick={onClose} className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+        <button type="button" aria-label="Close conversations" onClick={onClose} className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
           <X size={16} aria-hidden />
         </button>
         <div className="flex h-full flex-col pt-8">
@@ -111,13 +111,13 @@ export function AiView({ id }: { id: string | null }) {
         <section aria-label={title || "Conversation"} className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-11 flex-none items-center gap-2 px-4 sm:px-8">
             {narrow ? (
-              <button type="button" onClick={() => setListOpen(true)} aria-haspopup="dialog" className="inline-flex h-8 items-center gap-1.5 rounded-[6px] px-2 text-[13px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+              <button type="button" onClick={() => setListOpen(true)} aria-haspopup="dialog" className="inline-flex h-8 items-center gap-1.5 rounded-chip px-2 text-[13px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
                 <MessagesSquare size={15} aria-hidden /> Conversations
               </button>
             ) : null}
             <h1 className="min-w-0 flex-1 truncate text-[14px] font-semibold text-heading">{title}</h1>
             {actions.items.length ? (
-              <MenuButton label="Conversation options" triggerClassName="grid h-8 w-8 place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading" trigger={<MoreHorizontal size={16} aria-hidden />} items={actions.items} />
+              <MenuButton label="Conversation options" triggerClassName="grid h-8 w-8 place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading" trigger={<MoreHorizontal size={16} aria-hidden />} items={actions.items} />
             ) : null}
             {actions.dialog}
           </div>

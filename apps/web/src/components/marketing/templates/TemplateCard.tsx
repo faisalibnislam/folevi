@@ -6,13 +6,13 @@ import { templatePath, type GalleryTemplate } from "../content/templates";
 export function TemplateCard({ template, headingLevel = "h3" }: { template: GalleryTemplate; headingLevel?: "h2" | "h3" }) {
   const Heading = headingLevel;
   return (
-    <div className="mk-card group relative flex h-full items-start gap-3.5 p-4 transition-shadow duration-150 hover:shadow-(--shadow-pop) sm:p-5">
+    <div className="mk-card group relative flex h-full items-start gap-3.5 p-5 transition-shadow duration-150 hover:shadow-(--shadow-pop)">
       <TemplateTile name={template.icon} />
       <div className="min-w-0">
         <Heading className="text-[15.5px] font-semibold leading-snug text-(--color-heading)">
           <Link
             href={templatePath(template.key)}
-            className="after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)"
+            className="after:absolute after:inset-0 after:rounded-control focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)"
           >
             {template.name}
           </Link>

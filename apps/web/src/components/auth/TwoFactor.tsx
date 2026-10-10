@@ -26,7 +26,7 @@ function CodeField({ value, onChange, label = "6-digit code", autoFocus = true }
 
 function TrustDevice({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-start gap-3 rounded-[6px] bg-sunken px-4 py-3 text-sm">
+    <label className="flex items-start gap-3 rounded-chip bg-sunken px-4 py-3 text-sm">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]" />
       <span>
         <span className="font-medium text-ink">Trust this device for 30 days</span>
@@ -48,7 +48,7 @@ export function TwoFactorChallenge({ returnTo }: { returnTo?: string }) {
 
   return (
     <>
-      <div className="mb-4 grid h-12 w-12 place-items-center rounded-[6px] bg-accent-soft text-accent-soft-ink" aria-hidden>
+      <div className="mb-4 grid h-12 w-12 place-items-center rounded-chip bg-accent-soft text-accent-soft-ink" aria-hidden>
         <ShieldCheck size={22} />
       </div>
       <AuthHeading
@@ -121,9 +121,9 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
   const text = useMemo(() => `Folevi backup codes\nEach code works once. Keep them somewhere safe.\n\n${codes.join("\n")}\n`, [codes]);
   return (
     <div className="space-y-4">
-      <ol className="grid grid-cols-2 gap-2 rounded-[6px] bg-sunken p-4 font-mono text-[15px] text-ink" aria-label="Backup codes">
+      <ol className="grid grid-cols-2 gap-2 rounded-chip bg-sunken p-4 font-mono text-[15px] text-ink" aria-label="Backup codes">
         {codes.map((c) => (
-          <li key={c} className="rounded-[6px] bg-surface px-3 py-1.5 text-center shadow-[var(--shadow-hairline)]">
+          <li key={c} className="rounded-chip bg-surface px-3 py-1.5 text-center shadow-[var(--shadow-hairline)]">
             {c}
           </li>
         ))}
@@ -183,14 +183,14 @@ export function TotpEnrollment({ totpUri }: { totpUri: string }) {
   }, [totpUri]);
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-      <div className="grid h-[188px] w-[188px] flex-none place-items-center rounded-[6px] bg-white p-3 shadow-[var(--shadow-card)]">
+      <div className="grid h-[188px] w-[188px] flex-none place-items-center rounded-chip bg-white p-3 shadow-[var(--shadow-card)]">
         {/* A locally generated data-URI QR code; next/image adds nothing here. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {qr ? <img src={qr} alt="QR code to add Folevi to your authenticator app" width={164} height={164} /> : <span className="text-xs text-muted">Preparing…</span>}
       </div>
       <div className="min-w-0 text-sm">
         <p className="text-muted">Scan with an authenticator app (1Password, Google Authenticator, Authy, Microsoft Authenticator…), or enter this key:</p>
-        <p className="mt-2 flex items-center gap-2 rounded-[6px] bg-sunken px-3 py-2">
+        <p className="mt-2 flex items-center gap-2 rounded-chip bg-sunken px-3 py-2">
           <KeyRound size={14} className="flex-none text-muted" aria-hidden />
           <code className="select-all break-all font-mono text-[13px] text-ink" data-testid="totp-secret">
             {groupSecret(secret)}
@@ -228,7 +228,7 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
           const active = (step === "password" ? 0 : step === "scan" ? 1 : 2) >= i;
           return (
             <span key={label} className="flex items-center gap-2">
-              <span className={`h-1.5 w-8 rounded-[4px] ${active ? "bg-ember" : "bg-sunken"}`} aria-hidden />
+              <span className={`h-1.5 w-8 rounded-tiny ${active ? "bg-ember" : "bg-sunken"}`} aria-hidden />
               <span className={active ? "text-heading" : ""}>{label}</span>
             </span>
           );

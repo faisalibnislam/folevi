@@ -64,8 +64,8 @@ function Gate({ children }: { children: ReactNode }) {
     return (
       <div className="grid min-h-dvh place-items-center bg-canvas" aria-busy="true">
         <span className="sr-only">Loading…</span>
-        <div className="h-1 w-40 overflow-hidden rounded-[4px] bg-sunken" aria-hidden>
-          <div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-[6px] bg-heading" />
+        <div className="h-1 w-40 overflow-hidden rounded-tiny bg-sunken" aria-hidden>
+          <div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-chip bg-heading" />
         </div>
       </div>
     );

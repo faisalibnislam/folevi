@@ -44,14 +44,14 @@ export function SupportRequests({ onContact }: { onContact: () => void }) {
   const [openNumber, setOpenNumber] = useState<number | null>(null);
   if (requests === undefined) {
     return (
-      <div aria-busy="true" className="h-16 animate-pulse rounded-[10px] bg-sunken">
+      <div aria-busy="true" className="h-16 animate-pulse rounded-control bg-sunken">
         <span className="sr-only">Loading…</span>
       </div>
     );
   }
   if (requests.length === 0) {
     return (
-      <div className="ui-card flex flex-wrap items-center gap-3 rounded-[10px] px-4 py-3.5">
+      <div className="ui-card flex flex-wrap items-center gap-3 rounded-control px-4 py-3.5">
         <LifeBuoy size={18} aria-hidden className="flex-none text-muted" />
         <p className="min-w-0 flex-1 text-sm text-muted">No support requests yet. Requests you send from here, and our replies, will show up in this list.</p>
         <Button size="sm" onClick={onContact}>
@@ -66,7 +66,7 @@ export function SupportRequests({ onContact }: { onContact: () => void }) {
         const expanded = openNumber === r.number;
         const replies = r.messages.filter((m) => m.from === "support").length;
         return (
-          <li key={r.number} className="ui-card overflow-hidden rounded-[10px]">
+          <li key={r.number} className="ui-card overflow-hidden rounded-control">
             <button
               type="button"
               aria-expanded={expanded}
@@ -82,14 +82,14 @@ export function SupportRequests({ onContact }: { onContact: () => void }) {
                   {r.topicLabel} · {replies === 0 ? "No reply yet" : replies === 1 ? "1 reply" : `${replies} replies`} · {formatRelative(r.lastMessageAt)}
                 </span>
               </span>
-              <span className={`flex-none rounded-[6px] px-2 py-px text-[11.5px] font-semibold leading-[18px] ${STATUS_TONE[r.status] ?? STATUS_TONE.open}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
+              <span className={`flex-none rounded-chip px-2 py-px text-[11.5px] font-semibold leading-[18px] ${STATUS_TONE[r.status] ?? STATUS_TONE.open}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
               <ChevronDown size={15} aria-hidden className={`flex-none text-muted transition-transform ${expanded ? "rotate-180" : ""}`} />
             </button>
             {expanded ? (
               <div id={`support-${r.number}`} className="border-t border-line px-4 pb-4 pt-3">
                 <ol className="space-y-3" aria-label={`Messages in request ${r.number}`}>
                   {r.messages.map((m) => (
-                    <li key={m.id} className={`rounded-[10px] px-3 py-2.5 ${m.from === "support" ? "bg-[var(--glass-hover)]" : "shadow-[inset_0_0_0_1px_var(--color-line)]"}`}>
+                    <li key={m.id} className={`rounded-control px-3 py-2.5 ${m.from === "support" ? "bg-[var(--glass-hover)]" : "shadow-[inset_0_0_0_1px_var(--color-line)]"}`}>
                       <p className="text-[12px] text-muted">
                         <span className="font-semibold text-heading">{m.from === "support" ? "Folevi support" : "You"}</span> ·{" "}
                         <time dateTime={new Date(m.createdAt).toISOString()} title={formatDateTime(m.createdAt)}>
@@ -151,7 +151,7 @@ function ReplyBox({ number, closed }: { number: number; closed: boolean }) {
         }}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${uid}-error` : undefined}
-        className="ui-input w-full resize-y rounded-[6px] px-3 py-2 text-sm text-ink"
+        className="ui-input w-full resize-y rounded-chip px-3 py-2 text-sm text-ink"
       />
       {error ? (
         <p id={`${uid}-error`} role="alert" className="mt-1 text-[12.5px] text-danger">

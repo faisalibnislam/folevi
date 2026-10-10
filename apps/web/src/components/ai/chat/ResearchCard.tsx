@@ -15,7 +15,7 @@ export interface ResearchHandlers {
   onSave: () => void;
 }
 
-const BUTTON = "inline-flex h-7 items-center gap-1 rounded-[6px] px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
+const BUTTON = "inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
 
 function StepIcon({ status }: { status: ResearchJob["steps"][number]["status"] }) {
   if (status === "running") return <Loader2 size={13} className="animate-spin motion-reduce:animate-none" aria-hidden />;
@@ -50,13 +50,13 @@ export function ResearchSteps({ job }: { job: ResearchJob }) {
 export function ResearchProgress({ research }: { research: ResearchHandlers }) {
   const { job } = research;
   return (
-    <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
+    <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
       <div className="mb-2 flex items-center justify-between gap-3">
         <p role="status" className="flex items-center gap-2 text-[13px] font-medium text-heading">
           <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> Researching…
         </p>
         <button type="button" onClick={research.onCancel} className={BUTTON}>
-          <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Cancel
+          <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Cancel
         </button>
       </div>
       <ResearchSteps job={job} />

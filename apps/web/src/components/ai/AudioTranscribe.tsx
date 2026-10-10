@@ -34,7 +34,7 @@ export function useCanTranscribe(fileId: string | null): boolean {
 /** The Transcribe button for an audio block's controls. */
 export function TranscribeButton({ onClick, busy }: { onClick: () => void; busy: boolean }) {
   return (
-    <button type="button" onClick={onClick} disabled={busy} aria-label="Transcribe" title="Transcribe with AI" className="grid size-8 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40">
+    <button type="button" onClick={onClick} disabled={busy} aria-label="Transcribe" title="Transcribe with AI" className="grid size-8 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40">
       <Captions size={15} aria-hidden />
     </button>
   );

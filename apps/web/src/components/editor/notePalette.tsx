@@ -5,9 +5,9 @@ import { PALETTE_HIGHLIGHT_SLOTS, PALETTE_TEXT_SLOTS, paletteVars, type StyleCol
 import { COLOR_NAMES } from "./commands";
 
 /**
- * The open note's style palette, for pickers outside the page (Format panel, selection toolbar): the
- * attributes that make `.fb-color-*` / `.fb-hl-*` swatches show the style's colours, and their names.
- * Null when the note has no style palette (Plain, or a manual page colour): the fixed colours apply.
+ * The open note's theme palette, for pickers outside the page (Format panel, selection toolbar): the
+ * attributes that make `.fb-color-*` / `.fb-hl-*` swatches show the theme's colours, and their names.
+ * Null when the note has no theme palette (Plain, or a manual page colour): the fixed colours apply.
  */
 interface NotePalette {
   attrs: { "data-palette": string; style: Record<string, string> };
@@ -25,7 +25,7 @@ export function useNotePalette(): NotePalette | null {
   return useContext(Ctx);
 }
 
-/** A colour's name for labels: the style's own name for its slot ("Teal"), else the fixed name ("Moss"). */
+/** A colour's name for labels: the theme's own name for its slot ("Teal"), else the fixed name ("Moss"). */
 export function colorName(palette: NotePalette | null, id: string): string {
   if (palette) {
     const t = (PALETTE_TEXT_SLOTS as readonly string[]).indexOf(id);

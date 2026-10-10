@@ -357,7 +357,7 @@ const MAX_CLOCK_SKEW_MS = 5 * 60_000;
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /**
- * Saves the page and text colours picked (in the browser) from a note style image. Only colours are
+ * Saves the page and text colours picked (in the browser) from a note theme image. Only colours are
  * accepted (six-digit hex values and a tone), and only by someone who can edit the note it belongs to.
  */
 export const setPalette = mutation({

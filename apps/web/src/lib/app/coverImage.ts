@@ -7,7 +7,7 @@ import { api } from "@/lib/convex/api";
 import { uploadFileNow } from "@/lib/sync/uploads";
 import { isImagePalette, paletteFromImage, type StylePalette as ImagePalette } from "@/lib/palette";
 
-/** Image types the server accepts for a note style image (it re-checks the bytes). */
+/** Image types the server accepts for a note theme image (it re-checks the bytes). */
 export const COVER_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
 export const COVER_IMAGE_ACCEPT = COVER_IMAGE_TYPES.join(",");
 /** Same limit as other images (convex/lib/images.ts MAX_IMAGE_BYTES). */
@@ -26,7 +26,7 @@ const picked = new Map<string, ImagePalette>();
 const picking = new Map<string, Promise<ImagePalette | null>>();
 
 /**
- * Uploads a note style image into the note (so it follows the note's access) and returns its file id. The
+ * Uploads a note theme image into the note (so it follows the note's access) and returns its file id. The
  * page and text colours are picked from the local file and saved with it.
  */
 export async function uploadCoverImage(client: ConvexReactClient, input: { documentId: string; file: File }): Promise<string> {
@@ -57,8 +57,8 @@ function useHour() {
 }
 
 /**
- * A note's own style image: its signed URL and the colours picked from it (null while loading, or for the
- * built-in styles). An image saved before colours were picked gets them here, once, from its pixels, and
+ * A note's own theme image: its signed URL and the colours picked from it (null while loading, or for the
+ * built-in themes). An image saved before colours were picked gets them here, once, from its pixels, and
  * they're saved back when this person can edit the note.
  */
 export function useCoverImage(cover: DocumentCover | null | undefined): { url: string | null; palette: ImagePalette | null } {
@@ -99,7 +99,7 @@ export function useCoverImage(cover: DocumentCover | null | undefined): { url: s
   return { url, palette: stored ?? (local?.fileId === fileId ? local.palette : null) ?? picked.get(fileId) ?? null };
 }
 
-/** The signed URL of a note's own style image, or null while loading / for the built-in styles. */
+/** The signed URL of a note's own theme image, or null while loading / for the built-in themes. */
 export function useCoverImageUrl(cover: DocumentCover | null | undefined): string | null {
   return useCoverImage(cover).url;
 }

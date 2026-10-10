@@ -38,7 +38,9 @@ export type Capability =
   | "revenue.view"
   | "config.maintenance"
   | "support.view"
-  | "support.reply";
+  | "support.reply"
+  | "themes.view"
+  | "themes.edit";
 
 const ALL: AdminRole[] = ["super_admin", "ops_admin", "support_admin"];
 const ADMIN: AdminRole[] = ["super_admin", "ops_admin"];
@@ -80,6 +82,9 @@ export const PERMISSIONS: Record<Capability, AdminRole[]> = {
   "support.view": ALL,
   /** Reply to the requester (emailed), add internal notes, change status, assign to yourself. */
   "support.reply": ALL,
+  /** The Theme manager (mirrors convex/adminThemes.ts): everyone looks; owners and admins change themes. */
+  "themes.view": ALL,
+  "themes.edit": ADMIN,
 };
 
 /** The longest trial extension each role may give (mirrors adminBilling.extendTrial). */

@@ -16,11 +16,11 @@ export function Checkbox({ checked, onChange, children, disabled, describedBy, c
       aria-describedby={describedBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`group/check flex min-w-0 items-start gap-2 rounded-[6px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 ${className ?? ""}`}
+      className={`group/check flex min-w-0 items-start gap-2 rounded-chip text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 ${className ?? ""}`}
     >
       <span
         aria-hidden
-        className={`mt-[1px] grid h-4 w-4 flex-none place-items-center rounded-[4px] transition-colors ${
+        className={`mt-[1px] grid h-4 w-4 flex-none place-items-center rounded-tiny transition-colors ${
           checked ? "bg-heading text-canvas" : "bg-transparent shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_35%,transparent)] group-hover/check:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_55%,transparent)]"
         }`}
       >

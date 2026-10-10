@@ -6,6 +6,7 @@ import { AppRouterProvider } from "@/lib/app/router";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AccountGate } from "./AccountGate";
 import { ServiceWorkerRegistration } from "./ServiceWorkerRegistration";
+import { ThemesSync } from "./ThemesSync";
 import { FullPageMessage } from "@/lib/app/state";
 
 export function ProductApp() {
@@ -15,6 +16,7 @@ export function ProductApp() {
         <AppRouterProvider>
           <ToastProvider>
             <ServiceWorkerRegistration />
+            <ThemesSync />
             <AccountGate />
           </ToastProvider>
         </AppRouterProvider>

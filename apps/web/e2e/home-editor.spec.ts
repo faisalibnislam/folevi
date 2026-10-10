@@ -51,9 +51,9 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
   await dock.getByRole("button", { name: "Style" }).click();
-  await panel.getByRole("radio", { name: "Note style: Poppy print" }).click();
+  await panel.getByRole("radio", { name: "Note theme: Poppy print" }).click();
   await expect(page.locator(".mk-hero-stage")).toHaveAttribute("data-tone", "light");
-  await expect(page.getByText("Note style: Poppy print", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("Note theme: Poppy print", { exact: false }).first()).toBeVisible();
 
   // AI needs an account.
   await dock.getByRole("button", { name: "Foli" }).click();

@@ -16,7 +16,7 @@ import type { ChatContext } from "./chat/chatText";
 
 /** The launcher's shadow: soft black at 10%. */
 const SHADOW = "shadow-[0_8px_24px_rgb(0_0_0/0.1),0_2px_6px_rgb(0_0_0/0.1),inset_0_0_0_1px_rgb(255_255_255/0.12)]";
-const HEADER_BUTTON = "grid h-8 w-8 place-items-center rounded-[6px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading";
+const HEADER_BUTTON = "grid h-8 w-8 place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading";
 
 /**
  * Ask AI (⌘J): a chat with your notes that pops out from a floating button in the bottom-right corner.
@@ -111,7 +111,7 @@ export function AskAiChat({
             close();
           }
         }}
-        className={`ui-pop fixed bottom-[104px] right-9 z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-[18px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
+        className={`ui-pop fixed bottom-[104px] right-9 z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-container animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
       >
         <header className="flex flex-none items-center gap-1 border-b border-line/70 py-3 pl-4 pr-3">
           <AiIcon size={20} aria-hidden className="mr-1.5 flex-none" />
@@ -161,7 +161,7 @@ export function AskAiChat({
           aria-keyshortcuts="Meta+J"
           title={open ? "Close Foli" : `Ask Foli (${modKey()}J)`}
           onClick={() => (open ? close() : onOpen())}
-          className={`fixed bottom-9 right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] inline-flex h-12 items-center gap-2.5 rounded-[14px] bg-black pl-4 pr-5 text-[15px] font-medium text-white ${SHADOW} transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#1c1c1f] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black max-sm:bottom-3 max-sm:right-3`}
+          className={`fixed bottom-9 right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] inline-flex h-12 items-center gap-2.5 rounded-panel bg-black pl-4 pr-5 text-[15px] font-medium text-white ${SHADOW} transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#1c1c1f] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black max-sm:bottom-3 max-sm:right-3`}
         >
           {open ? <X size={18} aria-hidden /> : <AiIcon size={17} />}
           <span>Ask Foli</span>

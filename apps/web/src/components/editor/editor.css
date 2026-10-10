@@ -1,12 +1,14 @@
 /* Folevi editor. Blocks are flat; nesting comes from --depth. Quiet, legible, generous. */
+/* The font types draw in the note theme's typefaces (--note-*, set from lib/themes.ts themeFontVars) or the
+   app's standard ones. */
 .fb-page {
-  --editor-font: var(--font-sans);
+  --editor-font: var(--note-modern, var(--font-modern));
   --editor-width: var(--layout-editor-width-default);
   --doc-accent: var(--color-accent);
   --doc-accent-soft: var(--color-accent-soft);
 }
-.fb-page[data-font="serif"] { --editor-font: var(--font-serif); }
-.fb-page[data-font="mono"] { --editor-font: var(--font-mono); }
+.fb-page[data-font="serif"] { --editor-font: var(--note-serif, var(--font-serif)); }
+.fb-page[data-font="mono"] { --editor-font: var(--note-mono, var(--font-mono)); }
 .fb-page[data-width="narrow"] { --editor-width: var(--layout-editor-width-narrow); }
 .fb-page[data-width="wide"] { --editor-width: var(--layout-editor-width-wide); }
 
@@ -22,12 +24,19 @@
 }
 .fb-page[data-font="serif"] .fb-editor { font-size: calc(17.5px * var(--editor-zoom, 1)); line-height: 1.62; letter-spacing: 0; }
 .fb-page[data-font="mono"] .fb-editor { font-size: calc(15px * var(--editor-zoom, 1)); }
+/* Every theme's typeface reads at the same size: each font type is set to its standard face's x-height
+   (Inter, Spectral, JetBrains Mono, the system's rounded face), so a theme's Newsreader or Space Mono looks
+   as big as the standard one. UI drawn with the font shorthand inside the editor resets it. */
+.fb-editor { font-size-adjust: ex-height 0.546; }
+.fb-page[data-font="serif"] .fb-editor { font-size-adjust: ex-height 0.45; }
+.fb-page[data-font="mono"] .fb-editor { font-size-adjust: ex-height 0.55; }
+.fb-page[data-font="rounded"] .fb-editor { font-size-adjust: ex-height 0.52; }
 
 .fb-editor > .fb {
   position: relative;
   margin: 0;
   padding: 3px 2px 3px calc(var(--depth, 0) * 1.6em + 2px + var(--pad-extra, 0px));
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   min-height: 1.6em;
 }
 .fb-editor > .fb.fb-hidden, .fb-editor > .fb-hidden { display: none; }
@@ -43,25 +52,25 @@
   position: absolute; right: -4px; top: -10px;
   font: 500 10px/1.4 var(--font-sans);
   color: var(--color-canvas); background: var(--presence-ink, var(--presence));
-  padding: 0 5px; border-radius: 4px; pointer-events: none;
+  padding: 0 5px; border-radius: var(--radius-tiny); pointer-events: none;
 }
 /* "Show editors": each block carries a bar in the colour of whoever last changed it; hover says who and when.
    The colour and label are variables from a stylesheet keyed by block id (authorSheet in plugins.ts); :where()
    keeps anything else marking a line (presence, a conflict, a selection) on top. */
 :where(.fb-editor.fb-show-editors > .fb) { box-shadow: inset 3px 0 0 var(--author); }
-.fb-editor.fb-show-editors > .fb { border-top-left-radius: var(--author-radius, 6px); border-bottom-left-radius: var(--author-radius, 6px); }
+.fb-editor.fb-show-editors > .fb { border-top-left-radius: var(--author-radius, var(--radius-chip)); border-bottom-left-radius: var(--author-radius, var(--radius-chip)); }
 :where(.fb-editor.fb-show-editors > .fb:not(.is-empty, [data-decoration="focus"])):hover::after {
   content: var(--author-label);
   position: absolute; right: -4px; top: -12px; z-index: 1;
   font: 500 10.5px/1.5 var(--font-sans);
   color: var(--color-canvas); background: var(--author-ink, var(--author));
-  padding: 0 6px; border-radius: 4px; pointer-events: none; white-space: nowrap;
+  padding: 0 6px; border-radius: var(--radius-tiny); pointer-events: none; white-space: nowrap;
 }
 /* Small light text needs the deeper shade in light mode; in dark mode the canvas-dark text reads on the bright one. */
 :root[data-theme="dark"] .fb-editor > .fb.fb-presence::after { background: var(--presence); }
 :root[data-theme="dark"] :where(.fb-editor.fb-show-editors > .fb:not(.is-empty, [data-decoration="focus"])):hover::after { background: var(--author); }
 /* Version history: what changed since the version before, in the colour of who changed it. */
-.fb-editor > [data-change] { box-shadow: inset 3px 0 0 var(--author); border-radius: 0 4px 4px 0; }
+.fb-editor > [data-change] { box-shadow: inset 3px 0 0 var(--author); border-radius: 0 var(--radius-tiny) var(--radius-tiny) 0; }
 .fb-editor > [data-change="added"] { background: color-mix(in oklab, var(--author) 11%, transparent); }
 .fb-editor > [data-change="styled"] { background: color-mix(in oklab, var(--author) 6%, transparent); }
 .fb-editor > [data-change="removed"] {
@@ -72,7 +81,7 @@
 .fb-diff-added {
   text-decoration: none; color: inherit;
   background: color-mix(in oklab, var(--author, var(--color-accent)) 16%, transparent);
-  box-shadow: inset 0 -2px 0 var(--author, var(--color-accent)); border-radius: 4px;
+  box-shadow: inset 0 -2px 0 var(--author, var(--color-accent)); border-radius: var(--radius-tiny);
 }
 .fb-diff-removed { color: var(--color-ink-muted); text-decoration: line-through; text-decoration-color: var(--author, var(--color-ink-muted)); }
 /* Screen readers don't announce <ins>/<del> on their own: say it, without showing it. */
@@ -82,7 +91,7 @@
 .fb-diff-added::after, .fb-diff-removed::after { content: "] "; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* The line a resolved comment was made on, while its thread is open from the Comments tab. */
 .fb-editor > .fb-block-highlight {
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background: color-mix(in oklab, var(--doc-accent-soft, var(--color-accent-soft)) 85%, transparent);
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--doc-accent-soft, var(--color-accent-soft)) 85%, transparent);
   transition: background-color 200ms var(--motion-easing), box-shadow 200ms var(--motion-easing);
@@ -90,7 +99,7 @@
 /* A [[ page link whose page is in Trash or gone. */
 .fb-editor .fb-page-link-gone, .fb-editor .fb-page-link-gone .fb-page-link { color: var(--color-ink-muted); text-decoration: line-through; }
 /* The text a link is being added to, while focus is in the link field. */
-.fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: 4px; }
+.fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: var(--radius-tiny); }
 /* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */
 .fb-editor > .fb-comment-line {
   padding: 0 2px 4px calc(var(--depth, 0) * 1.6em + var(--pad-list, 0px) + var(--pad-extra, 0px));
@@ -99,7 +108,7 @@
 }
 .fb-comment-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  height: 22px; padding: 0 8px 0 3px; border-radius: 6px;
+  height: 22px; padding: 0 8px 0 3px; border-radius: var(--radius-chip);
   font: 500 12px/1 var(--font-sans); letter-spacing: 0;
   color: color-mix(in oklab, var(--doc-accent-ink, var(--color-ink)) 55%, var(--color-ink-muted));
   background: transparent; cursor: pointer;
@@ -109,12 +118,12 @@
 .fb-comment-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .fb-comment-faces { display: inline-flex; }
 .fb-comment-faces > * {
-  display: grid; place-items: center; width: 16px; height: 16px; margin-left: -4px; border-radius: 6px; object-fit: cover;
+  display: grid; place-items: center; width: 16px; height: 16px; margin-left: -4px; border-radius: var(--radius-chip); object-fit: cover;
   font-size: 9px; font-weight: 650; background: var(--doc-accent-soft); color: var(--doc-accent-ink, var(--color-heading));
   box-shadow: 0 0 0 1.5px var(--color-surface);
 }
 .fb-comment-faces > :first-child { margin-left: 0; }
-.fb-comment-unread { width: 6px; height: 6px; border-radius: 4px; background: var(--doc-accent); }
+.fb-comment-unread { width: 6px; height: 6px; border-radius: var(--radius-tiny); background: var(--doc-accent); }
 @media (prefers-reduced-motion: reduce) { .fb-comment-chip { transition: none; } }
 
 .fb-editor p.is-empty::before,
@@ -149,11 +158,11 @@
 .fb-editor .fb-bulleted::before {
   content: "";
   position: absolute; left: calc(var(--depth, 0) * 1.6em + 0.55em + var(--pad-extra, 0px)); top: 0.8em;
-  width: 0.36em; height: 0.36em; border-radius: 6px;
+  width: 0.36em; height: 0.36em; border-radius: var(--radius-chip);
   background: color-mix(in oklab, var(--doc-accent) 85%, var(--color-heading));
 }
 .fb-editor .fb-bulleted[data-depth="1"]::before, .fb-editor .fb-bulleted[data-depth="4"]::before { background: transparent; border: 1.5px solid color-mix(in oklab, var(--doc-accent) 85%, var(--color-heading)); }
-.fb-editor .fb-bulleted[data-depth="2"]::before, .fb-editor .fb-bulleted[data-depth="5"]::before { border-radius: 4px; }
+.fb-editor .fb-bulleted[data-depth="2"]::before, .fb-editor .fb-bulleted[data-depth="5"]::before { border-radius: var(--radius-tiny); }
 .fb-editor .fb-numbered::before {
   content: attr(data-index) ".";
   position: absolute; left: calc(var(--depth, 0) * 1.6em + var(--pad-extra, 0px)); width: 1.35em; text-align: right;
@@ -196,10 +205,10 @@
 /* The hit area is 24×24 (WCAG 2.5.8); the visible box is drawn inside it. */
 .fb-check {
   flex: none; position: relative; width: 24px; height: 24px; margin: calc(0.8em - 12px) -3px 0 -4px;
-  display: grid; place-items: center; border-radius: 6px; background: transparent;
+  display: grid; place-items: center; border-radius: var(--radius-chip); background: transparent;
 }
 .fb-check::before {
-  content: ""; width: 18px; height: 18px; border-radius: 4px; box-sizing: border-box;
+  content: ""; width: 18px; height: 18px; border-radius: var(--radius-tiny); box-sizing: border-box;
   border: 1.5px solid var(--color-line-strong);
   background: linear-gradient(180deg, var(--color-surface-raised), color-mix(in oklab, var(--color-surface-raised) 92%, var(--color-surface-sunken)));
   box-shadow: 0 1px 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
@@ -219,7 +228,7 @@
 .fb-todo[data-checked="true"] > .fb-content { color: var(--color-ink-muted); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--color-ink-muted) 60%, transparent); }
 .fb-task-meta { flex: none; }
 .fb-due-chip {
-  font: 550 12px/24px var(--font-sans); min-height: 24px; padding: 0 9px; border-radius: 4px;
+  font: 550 12px/24px var(--font-sans); min-height: 24px; padding: 0 9px; border-radius: var(--radius-tiny);
   background: var(--color-surface-sunken); color: var(--color-ink-muted); margin-top: 0.15em;
 }
 .fb-due-chip:hover { color: var(--color-ink); }
@@ -228,19 +237,19 @@
 /* Toggle */
 .fb-editor .fb-toggle { display: flex; align-items: flex-start; gap: 0.35em; }
 .fb-editor .fb-toggle > .fb-content { flex: 1; min-width: 0; font-weight: 500; }
-.fb-disclosure { flex: none; width: 24px; height: 24px; margin: calc(0.8em - 12px) -2px 0 -4px; border-radius: 6px; color: var(--color-ink-muted); display: grid; place-items: center; }
+.fb-disclosure { flex: none; width: 24px; height: 24px; margin: calc(0.8em - 12px) -2px 0 -4px; border-radius: var(--radius-chip); color: var(--color-ink-muted); display: grid; place-items: center; }
 .fb-disclosure::before { content: ""; border-left: 0.42em solid currentColor; border-top: 0.3em solid transparent; border-bottom: 0.3em solid transparent; transition: transform 160ms var(--motion-easing); transform: rotate(90deg); }
 .fb-toggle[data-collapsed="true"] .fb-disclosure::before { transform: rotate(0deg); }
 .fb-disclosure:hover { background: var(--color-surface-sunken); color: var(--color-ink); }
 
 /* Quote & callout */
 .fb-editor .fb-quote { padding-left: calc(var(--depth, 0) * 1.6em + 1.05em + var(--pad-extra, 0px)); margin: 0.35em 0; color: color-mix(in oklab, var(--color-heading) 80%, var(--color-ink)); font-style: italic; }
-.fb-editor .fb-quote::before { content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em + 2px); top: 0.3em; bottom: 0.3em; width: 3px; border-radius: 6px; background: var(--doc-accent); }
+.fb-editor .fb-quote::before { content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em + 2px); top: 0.3em; bottom: 0.3em; width: 3px; border-radius: var(--radius-chip); background: var(--doc-accent); }
 .fb-page[data-font="serif"] .fb-editor .fb-quote { font-size: 1.08em; }
 .fb-editor .fb-callout {
   display: flex; gap: 0.6em; align-items: flex-start;
   margin: 0.5em 0 0.5em calc(var(--depth, 0) * 1.6em); padding: 0.8em 1em;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--color-surface-sunken);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 6%, transparent);
 }
@@ -268,11 +277,11 @@
 .fb-editor pre.fb-code {
   margin: 0.5em 0 0.5em calc(var(--depth, 0) * 1.6em); padding: 0.85em 1em;
   background: var(--color-code-bg); color: var(--color-code-ink);
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
   font: 13.5px/1.65 var(--font-mono); white-space: pre-wrap; overflow-x: auto; tab-size: 2;
 }
-.fb-inline-code { font: 0.86em var(--font-mono); background: var(--color-code-bg); color: var(--color-ember-ink); padding: 0.12em 0.4em; border-radius: 6px; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent); }
+.fb-inline-code { font: 0.86em var(--font-mono); background: var(--color-code-bg); color: var(--color-ember-ink); padding: 0.12em 0.4em; border-radius: var(--radius-chip); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent); }
 
 /* Divider */
 .fb-editor .fb-divider { padding: 0.7em 0 0.7em calc(var(--depth, 0) * 1.6em); }
@@ -280,10 +289,10 @@
 .fb-editor .fb-divider.ProseMirror-selectednode hr { border-top-color: var(--doc-accent); }
 
 /* Atoms */
-.fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: 6px; outline-offset: 3px; }
+.fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: var(--radius-chip); outline-offset: 3px; }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { outline: 2px solid var(--doc-accent); }
 /* Flowcharts and whiteboards have rounder boxes (14px): the outline follows them. */
-.fb-atom.fb-flowchart, .fb-atom.fb-whiteboard { border-radius: 18px; }
+.fb-atom.fb-flowchart, .fb-atom.fb-whiteboard { border-radius: var(--radius-container); }
 
 /* Inline */
 .fb-link { color: var(--color-accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--color-accent) 35%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
@@ -296,7 +305,7 @@
 }
 .fb-page-link::before { content: "↗ "; color: var(--color-ember-ink); font-size: 0.85em; }
 .fb-mention, .fb-date {
-  display: inline-block; padding: 0 0.4em; border-radius: 4px; font-size: 0.92em; line-height: 1.5;
+  display: inline-block; padding: 0 0.4em; border-radius: var(--radius-tiny); font-size: 0.92em; line-height: 1.5;
   background: var(--color-ember-soft); color: var(--color-ember-ink); font-weight: 550;
 }
 .fb-date { background: var(--color-marigold-soft); color: var(--color-marigold-ink); }
@@ -308,7 +317,7 @@
 .fb-color-marigold { color: var(--color-marigold-ink); }
 .fb-color-plum { color: var(--color-plum-ink); }
 .fb-color-coral { color: var(--color-coral-ink); }
-mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { color: inherit; border-radius: 4px; padding: 0 1px; }
+mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { color: inherit; border-radius: var(--radius-tiny); padding: 0 1px; }
 .fb-hl-yellow { background: var(--color-highlight-yellow); }
 .fb-hl-green { background: var(--color-highlight-green); }
 .fb-hl-blue { background: var(--color-highlight-blue); }
@@ -340,7 +349,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Drag and drop (blockDrag.ts) */
 .fb-drag-ghost {
   position: fixed; left: 0; top: 0; z-index: 80; pointer-events: none;
-  background: var(--color-surface); border-radius: 10px; box-shadow: var(--shadow-lift);
+  background: var(--color-surface); border-radius: var(--radius-control); box-shadow: var(--shadow-lift);
   padding: 6px 14px; opacity: 0.92; max-height: 260px; overflow: hidden;
   -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent); mask-image: linear-gradient(to bottom, #000 78%, transparent);
   transform-origin: 24px 16px; will-change: transform;
@@ -349,20 +358,20 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-drag-ghost .fb-editor { padding-bottom: 0; }
 .fb-drag-ghost .fb-editor > .fb { background: transparent !important; }
 .fb-drag-chip {
-  padding: 9px 16px; border-radius: 6px; white-space: nowrap;
+  padding: 9px 16px; border-radius: var(--radius-chip); white-space: nowrap;
   font: 600 13px/1.2 var(--font-sans); color: var(--color-heading);
   -webkit-mask-image: none; mask-image: none;
 }
 @keyframes fb-lift { from { opacity: 0.5; box-shadow: var(--shadow-card); } }
 .fb-drop-line {
   position: fixed; left: 0; top: 0; z-index: 81; height: 3px; pointer-events: none; opacity: 0;
-  border-radius: 4px; background: var(--color-ember);
+  border-radius: var(--radius-tiny); background: var(--color-ember);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ember) 20%, transparent);
   transition: transform 120ms var(--motion-easing), width 120ms var(--motion-easing), opacity 120ms;
 }
 .fb-drop-line::before {
   content: ""; position: absolute; left: -5px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
-  border-radius: 4px; background: var(--color-surface); box-shadow: inset 0 0 0 2.5px var(--color-ember);
+  border-radius: var(--radius-tiny); background: var(--color-surface); box-shadow: inset 0 0 0 2.5px var(--color-ember);
 }
 .fb-drop-line-instant { transition: none; }
 .fb-dragging, .fb-dragging * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
@@ -374,7 +383,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Find & replace bar (in the note): every match, and the current one (ProseMirror decorations). */
 .fb-find-match {
   background-color: color-mix(in oklab, var(--color-marigold) 32%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-tiny);
 }
 .fb-find-current {
   background-color: color-mix(in oklab, var(--color-marigold) 78%, transparent);
@@ -392,11 +401,11 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 }
 
 /* ------------------------------------------------------------------------------------------------
- * Page style (Inspector → Style): document colour, text colour, separator style, Rounded font.
+ * Page style (Inspector → Style): document colour, text colour, separator style, Soft font.
  * An explicit document colour is an explicit appearance: light sheets keep dark text and a night sheet
  * keeps light text whatever the app theme.
  * --------------------------------------------------------------------------------------------- */
-.fb-page[data-font="rounded"] { --editor-font: ui-rounded, "SF Pro Rounded", "Nunito", var(--font-sans); }
+.fb-page[data-font="rounded"] { --editor-font: var(--note-soft, var(--font-rounded)); }
 .fb-sheet[data-sheet] {
   --color-ink: #1c1c1f; --color-heading: #0d0d0f; --color-ink-muted: #5c5c64; --color-ink-faint: #6b6b73;
   --color-line: rgb(0 0 0 / 0.1); --color-line-strong: rgb(0 0 0 / 0.18); --color-surface-sunken: rgb(0 0 0 / 0.045);
@@ -482,10 +491,10 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   margin: 0.35em 0;
   --pad-extra: 0.9em;
   background: color-mix(in oklab, var(--block-color, var(--doc-accent)) 7%, transparent);
-  border-radius: 4px 6px 6px 4px;
+  border-radius: var(--radius-tiny) var(--radius-chip) var(--radius-chip) var(--radius-tiny);
 }
 .fb-editor > .fb[data-decoration="focus"]::after {
-  content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em); top: 0.2em; bottom: 0.2em; width: 3px; border-radius: 6px;
+  content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em); top: 0.2em; bottom: 0.2em; width: 3px; border-radius: var(--radius-chip);
   background: var(--block-color, var(--doc-accent));
 }
 .fb-editor > .fb[data-decoration="block"] {
@@ -493,7 +502,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   padding-top: 0.45em; padding-bottom: 0.45em; padding-right: 0.8em;
   --pad-extra: 0.8em;
   background: color-mix(in oklab, var(--block-color, var(--color-ink)) 9%, var(--color-surface));
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
 }
 
 /* Card group: consecutive blocks marked as a card share one raised card inside the page. */
@@ -506,11 +515,11 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 }
 .fb-editor > .fb[data-group="card"]:first-child,
 .fb-editor > :not([data-group="card"]) + .fb[data-group="card"] {
-  margin-top: 0.8em; padding-top: 0.8em; border-top-left-radius: 8px; border-top-right-radius: 8px;
+  margin-top: 0.8em; padding-top: 0.8em; border-top-left-radius: var(--radius-control); border-top-right-radius: var(--radius-control);
   box-shadow: inset 1px 0 0 var(--color-line), inset -1px 0 0 var(--color-line), inset 0 1px 0 var(--color-line);
 }
 .fb-editor > .fb[data-group="card"]:not(:has(+ .fb[data-group="card"])) {
-  margin-bottom: 0.8em; padding-bottom: 0.8em; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+  margin-bottom: 0.8em; padding-bottom: 0.8em; border-bottom-left-radius: var(--radius-control); border-bottom-right-radius: var(--radius-control);
   box-shadow: inset 1px 0 0 var(--color-line), inset -1px 0 0 var(--color-line), inset 0 -1px 0 var(--color-line), 0 10px 24px -18px rgb(0 0 0 / 0.35);
 }
 .fb-editor > .fb[data-group="card"]:first-child:not(:has(+ .fb[data-group="card"])),
@@ -568,25 +577,13 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-sheet[data-palette] .fb-tone-info { background: color-mix(in oklab, var(--pal-hl-green) var(--pal-callout-mix), var(--color-surface)) !important; }
 .fb-sheet[data-palette] .fb-tone-info .fb-callout-icon { color: var(--pal-moss); }
 
-/* Film grain over a note's cover image (DocumentHeader): fine specks from fractal noise, tiled. Dark on
-   covers that read deep, white on covers that read light (data-tone). */
-.fb-cover-grain {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
-  background-size: 220px 220px;
-  opacity: 0.83;
-  mix-blend-mode: multiply;
-}
-.fb-cover-grain[data-tone="light"] {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
-  mix-blend-mode: screen;
-}
-
 /* Foli's answers and drafts (components/ai/AiMarkdown.tsx): UI-sized text in the app's font wherever they show
    (chat, the note's Foli panel, the composer, previews), never the note's size, font, style or zoom. */
 .fb-ai-answer .fb-editor,
 .fb-page .fb-ai-answer .fb-editor {
   font-family: var(--font-sans, inherit);
   font-size: 13.5px;
+  font-size-adjust: none;
   line-height: 1.55;
   letter-spacing: 0;
 }
@@ -600,7 +597,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* AI text being written: a soft blinking caret after the last block's text (components/ai/AiMarkdown.tsx). */
 .fb-ai-streaming .fb-ai-answer > .fb-editor:last-child > .fb:last-child::after {
   content: ""; display: inline-block; width: 0.5em; height: 1em; margin-left: 2px; vertical-align: -0.12em;
-  border-radius: 4px; background: color-mix(in oklab, #7c6cf0 70%, transparent);
+  border-radius: var(--radius-tiny); background: color-mix(in oklab, #7c6cf0 70%, transparent);
   animation: fb-ai-caret 1s steps(2, start) infinite;
 }
 @keyframes fb-ai-caret { to { visibility: hidden; } }
@@ -608,7 +605,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Inline citations in an AI answer ([2] links to its source): a small, quiet number. */
 .fb-ai-answer a.fb-link[href^="#cite-"] {
   display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; margin: 0 1px; padding: 0 0.3em;
-  vertical-align: 0.2em; border-radius: 6px; font-size: 0.68em; font-weight: 600; line-height: 1;
+  vertical-align: 0.2em; border-radius: var(--radius-chip); font-size: 0.68em; font-weight: 600; line-height: 1;
   color: var(--color-ink-muted); text-decoration: none; background: var(--glass-hover);
   box-shadow: inset 0 0 0 1px var(--glass-border);
 }

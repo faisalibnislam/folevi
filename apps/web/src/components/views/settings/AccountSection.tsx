@@ -26,7 +26,7 @@ export function AccountSection() {
   const zoneField = useMemo(() => {
     const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
     return (
-      <Select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full ui-input rounded-[6px] px-3">
+      <Select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full ui-input rounded-chip px-3">
         {zones.map((z) => (
           <option key={z} value={z}>
             {z}
@@ -64,11 +64,11 @@ export function AccountSection() {
         >
           <label className="text-sm">
             <span className="mb-1 block font-medium">Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 w-full ui-input rounded-[6px] px-3" />
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 w-full ui-input rounded-chip px-3" />
           </label>
           <label className="text-sm">
             <span className="mb-1 block font-medium">Email</span>
-            <input value={profile.email} readOnly aria-describedby="email-hint" className="h-9 w-full ui-well rounded-[6px] px-3 text-muted" />
+            <input value={profile.email} readOnly aria-describedby="email-hint" className="h-9 w-full ui-well rounded-chip px-3 text-muted" />
             <span id="email-hint" className="mt-1 block text-xs text-muted">
               Your sign-in address. Contact support to change it.
             </span>

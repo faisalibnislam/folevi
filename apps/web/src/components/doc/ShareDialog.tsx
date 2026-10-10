@@ -51,7 +51,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
           <section>
             <h3 className="mb-2 font-semibold">Who has access</h3>
             {personal ? (
-              <p className="flex items-start gap-2 rounded-[6px] border border-line p-3 text-muted">
+              <p className="flex items-start gap-2 rounded-chip border border-line p-3 text-muted">
                 <Lock size={16} aria-hidden className="mt-0.5 flex-none" />
                 <span>This page is in a Personal space: only its owner and the people added below can open it.</span>
               </p>
@@ -70,7 +70,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     aria-checked={data.accessMode === mode}
                     disabled={!canManage}
                     onClick={() => void run(setMode({ documentId, mode }))}
-                    className={`flex items-start gap-2 rounded-[6px] border p-3 text-left disabled:opacity-60 ${data.accessMode === mode ? "border-accent bg-accent-soft" : "border-line"}`}
+                    className={`flex items-start gap-2 rounded-chip border p-3 text-left disabled:opacity-60 ${data.accessMode === mode ? "border-accent bg-accent-soft" : "border-line"}`}
                   >
                     <span className="mt-0.5 text-muted" aria-hidden>
                       {icon}
@@ -111,8 +111,8 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 <label className="sr-only" htmlFor="share-email">
                   Email address
                 </label>
-                <input id="share-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 ui-input rounded-[6px] px-3" />
-                <Select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as typeof role)} className="h-9 ui-input rounded-[6px] px-3">
+                <input id="share-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3" />
+                <Select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as typeof role)} className="h-9 ui-input rounded-chip px-3">
                   <option value="viewer">Can view</option>
                   <option value="commenter">Can comment</option>
                   <option value="editor">Can edit</option>
@@ -125,7 +125,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 </p>
               </form>
             ) : null}
-            <ul className="mt-3 divide-y divide-line rounded-[6px] border border-line">
+            <ul className="mt-3 divide-y divide-line rounded-chip border border-line">
               {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">{data.youAreGuest ? "It was shared with you through a page above it." : "No one has been added directly."}</li> : null}
               {data.people.map((p) => (
                 <li key={p.profileId} className="flex items-center gap-3 px-3 py-2">
@@ -133,7 +133,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     <span className="flex items-center gap-1.5 truncate font-medium">
                       <span className="truncate">{p.displayName}</span>
                       {p.isYou ? <span className="text-xs font-normal text-muted">(you)</span> : null}
-                      {p.guest ? <span className="flex-none rounded-[6px] border border-line px-1.5 py-px text-[11px] font-medium text-muted">Guest</span> : null}
+                      {p.guest ? <span className="flex-none rounded-chip border border-line px-1.5 py-px text-[11px] font-medium text-muted">Guest</span> : null}
                     </span>
                     {p.email ? <span className="block truncate text-xs text-muted">{p.email}</span> : null}
                   </span>
@@ -149,7 +149,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
             {data.pendingInvites.length ? (
               <>
                 <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
-                <ul className="divide-y divide-line rounded-[6px] border border-line">
+                <ul className="divide-y divide-line rounded-chip border border-line">
                   {data.pendingInvites.map((i) => (
                     <li key={i.id} className="flex items-center gap-3 px-3 py-2">
                       <span className="min-w-0 flex-1 truncate">{i.email}</span>
@@ -174,10 +174,10 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               <p className="text-xs text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Links aren’t indexed by search engines and can be revoked instantly.</p>
               {!data.publicLinksAvailable ? <p className="mt-2 text-xs text-warning">Public links are temporarily turned off for Folevi.</p> : null}
               {freshLink ? (
-                <div className="mt-3 rounded-[6px] border border-success/40 bg-success-soft p-3">
+                <div className="mt-3 rounded-chip border border-success/40 bg-success-soft p-3">
                   <p className="text-xs font-medium">Copy this link now. For your security, it isn’t shown again.</p>
                   <div className="mt-2 flex gap-2">
-                    <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 ui-well rounded-[6px] px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
+                    <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
                     <Button size="sm" onClick={() => void navigator.clipboard.writeText(freshLink).then(() => toast.show("Link copied"))}>
                       <Copy size={13} aria-hidden /> Copy
                     </Button>
@@ -186,7 +186,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               ) : null}
               <ul className="mt-3 space-y-2">
                 {data.links.map((l) => (
-                  <li key={l.id} className="flex items-center gap-3 rounded-[6px] border border-line px-3 py-2">
+                  <li key={l.id} className="flex items-center gap-3 rounded-chip border border-line px-3 py-2">
                     <span className="min-w-0 flex-1">
                       <span className="block font-mono text-xs">…/s/{l.tokenHint}••••••••</span>
                       <span className="block text-xs text-muted">
@@ -202,7 +202,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               </ul>
               {data.publicLinksAvailable ? (
                 <form
-                  className="mt-3 space-y-3 rounded-[10px] bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] p-3"
+                  className="mt-3 space-y-3 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] p-3"
                   onSubmit={async (e) => {
                     e.preventDefault();
                     if (linkForm.password && linkForm.password.length < 5) {
@@ -232,7 +232,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     <label htmlFor="share-link-password" className="text-[13px] font-medium text-ink">
                       Password
                     </label>
-                    <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-[6px] px-3 text-sm" />
+                    <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-chip px-3 text-sm" />
                   </div>
                   <div className="flex justify-end">
                     <Button type="submit" variant="primary">

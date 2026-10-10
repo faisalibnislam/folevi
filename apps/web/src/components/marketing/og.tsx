@@ -2,6 +2,10 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { LETTER_PATHS, LOGO_HEIGHT, LOGO_WIDTH } from "@/components/brand/FoleviMark";
+import { tokens } from "@folevi/design-tokens";
+
+/** The corner scale (packages/design-tokens): images render without CSS, so they read the numbers. */
+const R = tokens.radius;
 
 /*
  * Open Graph images for feature, template and docs pages, in the style of the site-wide image
@@ -65,23 +69,23 @@ export async function renderOgImage({ eyebrow, title, sheetTitle, lines }: { eye
             display: "flex",
             flexDirection: "column",
             background: "#FFFFFF",
-            borderRadius: 18,
+            borderRadius: R.container,
             overflow: "hidden",
             boxShadow: "0 0 0 1px rgba(74,47,44,0.06), 0 36px 70px -30px rgba(74,47,44,0.40)",
             transform: "rotate(2deg)",
           }}
         >
-          <div style={{ margin: 12, height: 70, borderRadius: 18, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
+          <div style={{ margin: 12, height: 70, borderRadius: R.container - 12, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
           <div style={{ display: "flex", flexDirection: "column", padding: "4px 28px", gap: 13 }}>
             <div style={{ fontSize: 28, fontWeight: 600, color: HEADING, letterSpacing: -1, display: "flex" }}>{sheetTitle}</div>
             {lines.slice(0, 5).map((line) => (
               <div key={line} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 18, fontWeight: 500, color: INK }}>
-                <div style={{ width: 7, height: 7, borderRadius: 4, display: "flex", background: EMBER }} />
+                <div style={{ width: 7, height: 7, borderRadius: R.tiny, display: "flex", background: EMBER }} />
                 {line.length > 26 ? `${line.slice(0, 25)}…` : line}
               </div>
             ))}
-            <div style={{ display: "flex", height: 10, width: 230, marginTop: 6, borderRadius: 6, background: LINE }} />
-            <div style={{ display: "flex", height: 10, width: 180, borderRadius: 6, background: LINE }} />
+            <div style={{ display: "flex", height: 10, width: 230, marginTop: 6, borderRadius: R.chip, background: LINE }} />
+            <div style={{ display: "flex", height: 10, width: 180, borderRadius: R.chip, background: LINE }} />
           </div>
         </div>
 
@@ -105,7 +109,7 @@ export async function renderOgImage({ eyebrow, title, sheetTitle, lines }: { eye
                 alignItems: "center",
                 height: 44,
                 padding: "0 20px",
-                borderRadius: 18,
+                borderRadius: R.control,
                 color: "#FFFFFF",
                 fontWeight: 600,
                 fontSize: 20,

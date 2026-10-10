@@ -167,7 +167,7 @@ export default async function ComparePage({ params }: Params) {
                 <li key={item.id}>
                   <a
                     href={`#${item.id}`}
-                    className="flex min-h-11 items-center rounded-[6px] px-2.5 py-1 text-[14px] leading-snug text-muted transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) max-lg:bg-(--color-surface-sunken) lg:-ml-px lg:min-h-8 lg:rounded-l-none lg:border-l lg:border-transparent lg:pl-3.5 lg:hover:border-(--color-heading)"
+                    className="flex min-h-11 items-center rounded-chip px-2.5 py-1 text-[14px] leading-snug text-muted transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) max-lg:bg-(--color-surface-sunken) lg:-ml-px lg:min-h-8 lg:rounded-l-none lg:border-l lg:border-transparent lg:pl-3.5 lg:hover:border-(--color-heading)"
                   >
                     {item.label}
                   </a>

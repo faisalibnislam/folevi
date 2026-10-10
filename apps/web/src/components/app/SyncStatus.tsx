@@ -105,8 +105,8 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         title={compact ? LABELS[status] : undefined}
         className={
           compact
-            ? `relative grid h-8 w-8 place-items-center rounded-[6px] transition-colors hover:bg-accent-soft ${tone}`
-            : `ui-well inline-flex h-8 w-[7.75rem] items-center justify-center gap-1.5 rounded-[6px] px-2.5 text-[12px] font-semibold transition-colors hover:text-heading ${tone}`
+            ? `relative grid h-8 w-8 place-items-center rounded-chip transition-colors hover:bg-accent-soft ${tone}`
+            : `ui-well inline-flex h-8 w-[7.75rem] items-center justify-center gap-1.5 rounded-chip px-2.5 text-[12px] font-semibold transition-colors hover:text-heading ${tone}`
         }
         data-testid="sync-status"
         data-status={status}
@@ -114,12 +114,12 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         {compact ? (
           <>
             {status === "saved" ? <Cloud size={16} aria-hidden /> : icon}
-            <span className={`absolute bottom-[7px] right-[6px] h-2 w-2 rounded-[4px] ring-2 ring-[var(--color-canvas)] ${dot}`} aria-hidden />
-            {status === "offline" && pending ? <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-[6px] bg-heading px-1 text-[9.5px] font-bold tabular-nums text-canvas">{pending}</span> : null}
+            <span className={`absolute bottom-[7px] right-[6px] h-2 w-2 rounded-tiny ring-2 ring-[var(--color-canvas)] ${dot}`} aria-hidden />
+            {status === "offline" && pending ? <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-chip bg-heading px-1 text-[9.5px] font-bold tabular-nums text-canvas">{pending}</span> : null}
           </>
         ) : (
           <>
-            <span className={`h-1.5 w-1.5 flex-none rounded-[4px] ${dot}`} aria-hidden />
+            <span className={`h-1.5 w-1.5 flex-none rounded-tiny ${dot}`} aria-hidden />
             {icon}
             <span>{LABELS[status]}</span>
             {status === "offline" && pending ? <span className="tabular-nums">· {pending}</span> : null}
@@ -130,9 +130,9 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         {announce}
       </span>
       {open ? (
-        <div ref={panelRef} id={panelId} role="dialog" aria-label="Sync details" popover="manual" style={panelStyle} className={`ui-pop z-[100] border-0 text-ink w-72 max-w-[calc(100vw-2rem)] rounded-[14px] px-4 py-3.5 text-[13px] leading-snug animate-[folio-rise_160ms_var(--ease-folio)]`}>
+        <div ref={panelRef} id={panelId} role="dialog" aria-label="Sync details" popover="manual" style={panelStyle} className={`ui-pop z-[100] border-0 text-ink w-72 max-w-[calc(100vw-2rem)] rounded-panel px-4 py-3.5 text-[13px] leading-snug animate-[folio-rise_160ms_var(--ease-folio)]`}>
           <p className="flex items-center gap-2 font-semibold text-heading">
-            <span className={`h-2 w-2 flex-none rounded-[4px] ${dot}`} aria-hidden />
+            <span className={`h-2 w-2 flex-none rounded-tiny ${dot}`} aria-hidden />
             {LABELS[status]}
           </p>
           <p className="mt-1 pl-4 text-muted">
@@ -196,7 +196,7 @@ function PendingList({ onNavigate }: { onNavigate: () => void }) {
               <AppLink
                 href={`/d/${p.documentId}`}
                 onClick={onNavigate}
-                className="-mx-2 flex items-center gap-2 rounded-[6px] px-2 py-1.5 text-ink transition-colors hover:bg-accent-soft focus-visible:bg-accent-soft"
+                className="-mx-2 flex items-center gap-2 rounded-chip px-2 py-1.5 text-ink transition-colors hover:bg-accent-soft focus-visible:bg-accent-soft"
               >
                 <FileText size={14} aria-hidden className="flex-none text-muted" />
                 <span className="min-w-0 flex-1 truncate">{title}</span>

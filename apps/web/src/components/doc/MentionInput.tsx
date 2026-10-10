@@ -209,9 +209,9 @@ export const MentionInput = forwardRef<
               aria-selected={i === current}
               onMouseEnter={() => setActive(i)}
               onClick={() => choose(p)}
-              className={`flex cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-sm ${i === current ? "bg-accent-soft text-heading" : ""}`}
+              className={`flex cursor-pointer items-center gap-2 rounded-chip px-2 py-1.5 text-sm ${i === current ? "bg-accent-soft text-heading" : ""}`}
             >
-              <span className="grid h-6 w-6 flex-none place-items-center rounded-[6px] bg-sunken text-[11px] font-semibold text-heading" aria-hidden>
+              <span className="grid h-6 w-6 flex-none place-items-center rounded-chip bg-sunken text-[11px] font-semibold text-heading" aria-hidden>
                 {p.displayName.slice(0, 1).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1 truncate">{p.displayName}</span>

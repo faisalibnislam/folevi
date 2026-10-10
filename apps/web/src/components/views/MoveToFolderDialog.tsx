@@ -145,7 +145,7 @@ export function FolderPicker({
             }
           }}
           placeholder="Search folders"
-          className="ui-input h-10 w-full rounded-[6px] pl-8 pr-3 text-sm"
+          className="ui-input h-10 w-full rounded-chip pl-8 pr-3 text-sm"
         />
       </div>
       <ul ref={listRef} id={`${baseId}-list`} role="listbox" aria-label="Folders" aria-busy={org === undefined} className="mt-3 max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto">

@@ -77,7 +77,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
       role="search"
       aria-label="Find in note"
       onKeyDown={onKeys}
-      className="ui-pop absolute right-3 top-3 z-30 w-[min(460px,calc(100%-24px))] rounded-[14px] p-1.5 animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
+      className="ui-pop absolute right-3 top-3 z-30 w-[min(460px,calc(100%-24px))] rounded-panel p-1.5 animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
     >
       <div className="flex items-center gap-0.5">
         {!readOnly ? (
@@ -112,7 +112,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
               }
             }}
             aria-describedby={`${id}-count`}
-            className="ui-input h-8 w-full rounded-[6px] pl-7 pr-2 text-[13px]"
+            className="ui-input h-8 w-full rounded-chip pl-7 pr-2 text-[13px]"
           />
         </div>
         <span id={`${id}-count`} role="status" aria-live="polite" className="min-w-[4.5rem] flex-none px-1.5 text-right text-[12px] tabular-nums text-muted">
@@ -155,7 +155,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
                 replaceCurrent(editor, replacement);
               }
             }}
-            className="ui-input h-8 min-w-0 flex-1 rounded-[6px] px-2.5 text-[13px]"
+            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-2.5 text-[13px]"
           />
           <button
             type="button"

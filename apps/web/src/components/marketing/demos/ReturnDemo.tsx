@@ -224,7 +224,7 @@ function TaskGroup({
           const isDone = done.has(task.id);
           return (
             <li key={task.id}>
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[6px] px-2 py-2 hover:bg-sunken">
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-control px-2 py-2 hover:bg-sunken">
                 <input type="checkbox" checked={isDone} onChange={() => onToggle(task)} className="mk-check-input sr-only" />
                 <span aria-hidden="true" className="mk-check mt-[2px]" data-checked={isDone ? "true" : undefined}>
                   {isDone ? <CheckMark /> : null}

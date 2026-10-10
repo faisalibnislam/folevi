@@ -8,7 +8,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { WHOLE_SCOPE, withNote, without, type ChatContext } from "./chatText";
 
-const CHIP = "inline-flex h-7 max-w-full items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] pl-2.5 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]";
+const CHIP = "inline-flex h-7 max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] pl-2.5 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]";
 
 /**
  * What the next question is about, as chips above the box: the notes it reads, the folder it searches,
@@ -45,7 +45,7 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
   }
 
   const remove = (id: string, name: string) => (
-    <button type="button" disabled={disabled} aria-label={`Remove ${name}`} onClick={() => onChange(without(context, id))} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
+    <button type="button" disabled={disabled} aria-label={`Remove ${name}`} onClick={() => onChange(without(context, id))} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
       <X size={12} aria-hidden />
     </button>
   );
@@ -79,7 +79,7 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
           label="Add to what Foli reads"
           align="start"
           side="top"
-          triggerClassName="inline-flex h-7 items-center gap-1 rounded-[6px] px-2 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
+          triggerClassName="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
           trigger={
             <>
               <Plus size={13} aria-hidden /> Add

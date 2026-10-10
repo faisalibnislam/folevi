@@ -62,7 +62,7 @@ function Row({ item, onUpdate, onRemove }: { item: MemoryItem; onUpdate: (id: Id
           }}
         >
           <KindSelect value={kind} onChange={setKind} label="Kind" />
-          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" autoFocus className="ui-input h-9 min-w-0 flex-1 rounded-[6px] px-3 text-sm" />
+          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" autoFocus className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-sm" />
           <IconButton type="submit" label="Save" disabled={!text.trim()}>
             <Check size={15} aria-hidden />
           </IconButton>
@@ -129,7 +129,7 @@ export function MemoryList({
   return (
     <div className="max-w-xl space-y-4">
       {on ? null : (
-        <p role="status" className="rounded-[10px] bg-sunken px-3 py-2 text-sm text-muted">
+        <p role="status" className="rounded-control bg-sunken px-3 py-2 text-sm text-muted">
           Memory is off. Nothing here is used, and Foli won&apos;t offer to remember anything. What&apos;s saved stays until you delete it.
         </p>
       )}
@@ -144,7 +144,7 @@ export function MemoryList({
           }}
         >
           <KindSelect value={kind} onChange={setKind} label="Kind" />
-          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" placeholder={PLACEHOLDER[kind]} className="ui-input h-9 min-w-0 flex-1 rounded-[6px] px-3 text-sm" />
+          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" placeholder={PLACEHOLDER[kind]} className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-sm" />
           {workspaces.length ? (
             <Select value={where} onChange={(e) => setWhere(e.target.value)} aria-label="Applies" className="w-44 flex-none">
               <option value="">Everywhere</option>

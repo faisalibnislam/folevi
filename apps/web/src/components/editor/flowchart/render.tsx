@@ -1,6 +1,6 @@
 // Drawing a flowchart: node shapes, connectors and the static (read-only) chart. No hooks and no browser
 // APIs, so share pages can render it on the server. Colours come from CSS variables (flowchart.css), so a
-// chart follows light/dark and the note's style palette; the geometry is shared with exports.
+// chart follows light/dark and the note's theme palette; the geometry is shared with exports.
 import { memo } from "react";
 import {
   FLOWCHART_FONT_SIZE,

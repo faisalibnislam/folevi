@@ -27,7 +27,7 @@ const TONES: Record<Tone, string> = {
 
 export function Badge({ tone = "neutral", children, className, title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-[6px] px-2 py-px text-[11.5px] font-semibold leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
+    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-chip px-2 py-px text-[11.5px] font-semibold leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
       {children}
     </span>
   );
@@ -112,7 +112,7 @@ export function Panel({ title, description, actions, children, className, flush 
 export function Callout({ tone = "neutral", title, children, icon }: { tone?: "neutral" | "warning" | "danger"; title?: string; children: ReactNode; icon?: ReactNode }) {
   const cls = tone === "warning" ? "bg-warning-soft" : tone === "danger" ? "bg-danger-soft" : "bg-[var(--glass-hover)]";
   return (
-    <div className={`flex gap-3 rounded-[10px] px-4 py-3 text-[13px] leading-relaxed text-ink ${cls}`}>
+    <div className={`flex gap-3 rounded-control px-4 py-3 text-[13px] leading-relaxed text-ink ${cls}`}>
       {icon ?? (tone === "warning" || tone === "danger" ? <AlertTriangle size={16} aria-hidden className={`mt-0.5 flex-none ${tone === "danger" ? "text-danger" : "text-warning"}`} /> : null)}
       <div className="min-w-0">
         {title ? <p className="font-semibold text-heading">{title}</p> : null}
@@ -165,7 +165,7 @@ export function LoadingRows({ colSpan, rows = 4 }: { colSpan: number; rows?: num
       {Array.from({ length: rows }, (_, i) => (
         <tr key={i} aria-hidden>
           <td colSpan={colSpan} className="border-b border-line px-5 py-3">
-            <div className="h-3 animate-pulse rounded bg-sunken" style={{ width: `${60 + ((i * 17) % 35)}%` }} />
+            <div className="h-3 animate-pulse rounded-tiny bg-sunken" style={{ width: `${60 + ((i * 17) % 35)}%` }} />
           </td>
         </tr>
       ))}
@@ -194,7 +194,7 @@ export function Pager({ page, hasPrev, hasNext, onPrev, onNext, busy }: { page: 
 
 export function Mono({ children, title, wrap }: { children: ReactNode; title?: string; wrap?: boolean }) {
   return (
-    <code title={title} className={`rounded-[4px] bg-[var(--glass-hover)] px-1 py-px font-mono text-[12px] text-ink ${wrap ? "break-all" : "whitespace-nowrap"}`}>
+    <code title={title} className={`rounded-tiny bg-[var(--glass-hover)] px-1 py-px font-mono text-[12px] text-ink ${wrap ? "break-all" : "whitespace-nowrap"}`}>
       {children}
     </code>
   );
@@ -204,7 +204,7 @@ export function Mono({ children, title, wrap }: { children: ReactNode; title?: s
 export function ShortId({ value, head = 6, tail = 6 }: { value: string; head?: number; tail?: number }) {
   if (value.length <= head + tail + 1) return <Mono>{value}</Mono>;
   return (
-    <code title={value} className="whitespace-nowrap rounded-[4px] bg-[var(--glass-hover)] px-1 py-px font-mono text-[12px] text-ink">
+    <code title={value} className="whitespace-nowrap rounded-tiny bg-[var(--glass-hover)] px-1 py-px font-mono text-[12px] text-ink">
       <span aria-hidden>
         {value.slice(0, head)}…{value.slice(-tail)}
       </span>
@@ -237,7 +237,7 @@ export function KeyValues({ items }: { items: { label: string; value: ReactNode 
 
 export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[10px] bg-danger-soft px-4 py-3 text-[13px]">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-control bg-danger-soft px-4 py-3 text-[13px]">
       <AlertTriangle size={16} aria-hidden className="flex-none text-danger" />
       <span className="flex-1">{errorMessage(error)}</span>
       {onRetry ? (
@@ -262,7 +262,7 @@ export function StatTile({ label, value, hint, footnote }: { label: string; valu
 
 // ---------------------------------------------------------------- form controls
 
-export const inputCls = "ui-input h-9 w-full rounded-[6px] px-3 text-[13.5px] text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]";
+export const inputCls = "ui-input h-9 w-full rounded-chip px-3 text-[13.5px] text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]";
 export const selectCls = `${inputCls} pr-2.5`;
 
 /** The app's on/off switch (dark when on). */
@@ -272,8 +272,8 @@ export function Meter({ value, max, label }: { value: number; max: number; label
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   const tone = pct >= 90 ? "bg-danger" : pct >= 75 ? "bg-warning" : "bg-heading";
   return (
-    <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-valuetext={`${pct.toFixed(0)}%`} className="h-2 w-full overflow-hidden rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]">
-      <div className={`h-full rounded-[6px] ${tone}`} style={{ width: `${Math.max(pct, value > 0 ? 1.5 : 0)}%` }} />
+    <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-valuetext={`${pct.toFixed(0)}%`} className="h-2 w-full overflow-hidden rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]">
+      <div className={`h-full rounded-chip ${tone}`} style={{ width: `${Math.max(pct, value > 0 ? 1.5 : 0)}%` }} />
     </div>
   );
 }

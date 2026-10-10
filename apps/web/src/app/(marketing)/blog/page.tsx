@@ -61,7 +61,7 @@ export default function BlogIndexPage() {
                   <h2 className="mk-h3 mt-3 text-[21px] leading-snug">
                     <Link
                       href={blogPath(post.slug)}
-                      className="after:absolute after:inset-0 after:rounded-[14px] sm:after:rounded-[18px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)"
+                      className="after:absolute after:inset-0 after:rounded-panel sm:after:rounded-container focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)"
                     >
                       {post.title}
                     </Link>

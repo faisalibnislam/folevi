@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useAppRouter } from "@/lib/app/router";
 
 const BTN =
-  "grid h-9 w-9 flex-none place-items-center rounded-[10px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
+  "grid h-9 w-9 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
 
 /**
  * Back and Forward, like a browser's: the page you were on before (in any tab; going back to it switches to

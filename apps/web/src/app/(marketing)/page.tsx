@@ -24,8 +24,8 @@ export default function HomePage() {
   return (
     <>
       <JsonLd data={[organizationLd(), softwareLd()]} />
-      {/* The hero note, then every section in its own card, all over one blurred copy of the note's style image. */}
-      {/* The first style's colours are in the HTML; the hero updates them when the visitor picks another. */}
+      {/* The hero note, then every section in its own card, all over one blurred copy of the note's theme image. */}
+      {/* The first theme's colours are in the HTML; the hero updates them when the visitor picks another. */}
       <div className="mk-home" style={{ ...artVars(HERO_STYLES[0]!), ...paletteVars(HERO_STYLES[0]!) } as CSSProperties}>
         <PageBackdrop />
         <Hero />

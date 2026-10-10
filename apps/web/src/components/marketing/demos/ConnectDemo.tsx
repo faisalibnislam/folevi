@@ -129,7 +129,7 @@ export function ConnectDemo() {
           <div className="relative">
             <div
               className={cx(
-                "flex min-h-11 flex-wrap items-center gap-x-1 rounded-[6px] border border-dashed px-3 py-1 transition-colors duration-150",
+                "flex min-h-11 flex-wrap items-center gap-x-1 rounded-chip border border-dashed px-3 py-1 transition-colors duration-150",
                 focused ? "border-(--color-ink-faint) bg-(--color-surface-sunken)" : "border-line-strong",
               )}
               onClick={() => inputRef.current?.focus()}
@@ -184,7 +184,7 @@ export function ConnectDemo() {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => choose(id)}
                     onMouseMove={() => setActiveIndex(options.indexOf(id))}
-                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-[6px] px-2 text-[14px]", selected ? "bg-(--color-surface-sunken) text-(--color-heading)" : "text-ink")}
+                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-chip px-2 text-[14px]", selected ? "bg-(--color-surface-sunken) text-(--color-heading)" : "text-ink")}
                   >
                     <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                     {PAGES[id].title}
@@ -213,7 +213,7 @@ export function ConnectDemo() {
               {count > 0 ? (
                 <ul className="mt-2 space-y-1 border-t mk-hair pt-2" aria-label={`Backlinks to ${page.title}`}>
                   {linked ? (
-                    <li key={`${id}-${fresh === id ? "fresh" : "static"}`} className={cx("rounded-[4px] px-1.5 py-1 text-[12.5px]", fresh === id && "mk-appear mk-flash")}>
+                    <li key={`${id}-${fresh === id ? "fresh" : "static"}`} className={cx("rounded-tiny px-1.5 py-1 text-[12.5px]", fresh === id && "mk-appear mk-flash")}>
                       <span className="flex items-center gap-1.5 font-medium text-(--color-heading)">
                         <Icon name="link" size={12} /> {SOURCE}
                       </span>

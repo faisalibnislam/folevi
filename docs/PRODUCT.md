@@ -32,7 +32,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   conversion). Unknown future block types are preserved, never dropped.
 - Markdown shortcuts, a `/` menu, `[[` page links, `@` mentions, nesting with Tab, block moves with
   ⌥⇧↑/↓ and drag handles, undo/redo, paste normalization (HTML and Markdown).
-- Per-page styling: 57 note styles (artwork that also colours text, highlights and blocks) or your own
+- Per-page styling: 57 note themes (artwork that also colours text, highlights and blocks) or your own
   image, serif/sans/mono font, width, background, card style.
 - A tool bar at the bottom of each note (AI, Insert, Format, Style, Info), a page sidebar (contents,
   tasks, files, search) and browser-style tabs.

@@ -28,7 +28,7 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
                   </span>
                 ) : (
                   <>
-                    <Link href={item.path} className="inline-flex min-h-8 items-center rounded-[6px] px-1.5 transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading)">
+                    <Link href={item.path} className="inline-flex min-h-8 items-center rounded-chip px-1.5 transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading)">
                       {item.name}
                     </Link>
                     <Icon name="chevron-right" size={13} className="flex-none text-faint" />
@@ -94,7 +94,7 @@ export function LinkCard({
       <div className={cx("flex flex-1 flex-col", cover ? "p-5 sm:p-6" : undefined)}>
         {icon ? <span className="mb-4">{icon}</span> : null}
         <Heading className="mk-h3 text-[16.5px] leading-snug">
-          <Link href={href} className="after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)">
+          <Link href={href} className="after:absolute after:inset-0 after:rounded-control focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)">
             {title}
           </Link>
         </Heading>

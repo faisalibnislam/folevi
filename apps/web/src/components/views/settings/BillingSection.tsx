@@ -40,8 +40,8 @@ export function UsageMeter({ label, pct, invert = false }: { label: string; pct:
   // `invert`: the bar shows what's left, and turns red when little is.
   const alarm = invert ? shown < 10 : shown > 90;
   return (
-    <div className="mt-2.5 h-2 overflow-hidden rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(shown)}>
-      <div className={`h-full rounded-[4px] ${alarm ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(shown, 1.5)}%` }} />
+    <div className="mt-2.5 h-2 overflow-hidden rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(shown)}>
+      <div className={`h-full rounded-tiny ${alarm ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(shown, 1.5)}%` }} />
     </div>
   );
 }
@@ -49,7 +49,7 @@ export function UsageMeter({ label, pct, invert = false }: { label: string; pct:
 /** A tile in a plan card's grid. */
 export function Tile({ icon, title, children, wide = false }: { icon: ReactNode; title: string; children: ReactNode; wide?: boolean }) {
   return (
-    <div className={`rounded-[10px] bg-[var(--glass-hover)] p-4 ${wide ? "sm:col-span-2" : ""}`}>
+    <div className={`rounded-control bg-[var(--glass-hover)] p-4 ${wide ? "sm:col-span-2" : ""}`}>
       <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
         {icon} {title}
       </p>
@@ -156,8 +156,8 @@ export function BillingSection() {
           <div>
             <p className="flex flex-wrap items-center gap-2">
               <span className="ui-display text-[24px]">{planLabel}</span>
-              {e.paid && sub?.interval ? <span className="rounded-[6px] bg-[var(--glass-hover)] px-2 py-0.5 text-[12px] text-muted">{sub.interval === "year" ? "Annual" : "Monthly"}</span> : null}
-              {status ? <span className={`rounded-[6px] px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
+              {e.paid && sub?.interval ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[12px] text-muted">{sub.interval === "year" ? "Annual" : "Monthly"}</span> : null}
+              {status ? <span className={`rounded-chip px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
             </p>
             <p className="mt-1 text-sm text-muted">
               {e.trialing
@@ -210,7 +210,7 @@ export function BillingSection() {
               <p className="mt-1 text-sm text-muted">Core doesn&apos;t include AI, so nothing in your notes is sent to an AI model. Pro and Pro AI come with AI credits every month.</p>
             )}
           </Tile>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[10px] bg-[var(--glass-hover)] p-4 sm:col-span-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-control bg-[var(--glass-hover)] p-4 sm:col-span-2">
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
                 <MonitorSmartphone size={15} aria-hidden /> Devices
@@ -235,7 +235,7 @@ export function BillingSection() {
           </button>
           <button type="button" aria-pressed={interval === "year"} onClick={() => setInterval("year")} className="h-8 whitespace-nowrap !px-3.5">
             Yearly
-            <span className="whitespace-nowrap rounded-[6px] bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
+            <span className="whitespace-nowrap rounded-chip bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
           </button>
         </div>
         <PlanRows>

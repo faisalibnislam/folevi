@@ -128,7 +128,7 @@ export function AskDemo() {
     <div
       ref={root}
       onPointerDown={() => setAuto(false)}
-      className="mk-app-pop mx-auto flex h-[470px] max-w-[420px] flex-col overflow-hidden rounded-[18px] text-[13.5px]"
+      className="mk-app-pop mx-auto flex h-[470px] max-w-[420px] flex-col overflow-hidden rounded-container text-[13.5px]"
       aria-label="A working sample of Foli. Pick a question or type one."
       role="group"
     >
@@ -142,7 +142,7 @@ export function AskDemo() {
             runId.current++;
             setTurn(null);
           }}
-          className="rounded-[6px] px-1.5 py-0.5 text-[12px] text-muted hover:bg-(--glass-hover) hover:text-(--color-heading)"
+          className="rounded-chip px-1.5 py-0.5 text-[12px] text-muted hover:bg-(--glass-hover) hover:text-(--color-heading)"
         >
           New chat
         </button>
@@ -160,7 +160,7 @@ export function AskDemo() {
                   key={qa.q}
                   type="button"
                   onClick={() => pick(qa)}
-                  className="rounded-[6px] bg-(--glass-hover) px-3 py-1.5 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)"
+                  className="rounded-chip bg-(--glass-hover) px-3 py-1.5 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)"
                 >
                   {qa.q}
                 </button>
@@ -169,13 +169,13 @@ export function AskDemo() {
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="mk-appear ml-auto w-fit max-w-[85%] rounded-[14px] rounded-br-[4px] bg-(--color-heading) px-3.5 py-2 text-(--color-canvas)">{turn.question}</p>
-            <div className="mk-appear rounded-[14px] rounded-bl-[4px] bg-(--glass-active) px-4 py-3 leading-relaxed text-ink shadow-(--glass-edge)">
+            <p className="mk-appear ml-auto w-fit max-w-[85%] rounded-panel rounded-br-tiny bg-(--color-heading) px-3.5 py-2 text-(--color-canvas)">{turn.question}</p>
+            <div className="mk-appear rounded-panel rounded-bl-tiny bg-(--glass-active) px-4 py-3 leading-relaxed text-ink shadow-(--glass-edge)">
               {turn.phase === "reading" ? (
                 <div className="space-y-2 py-0.5">
                   <p className="text-[12.5px] text-muted">Reading your notes…</p>
                   {[90, 72, 84].map((w) => (
-                    <div key={w} className="h-2.5 animate-pulse rounded-[4px] bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
+                    <div key={w} className="h-2.5 animate-pulse rounded-tiny bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
                   ))}
                 </div>
               ) : (
@@ -189,7 +189,7 @@ export function AskDemo() {
                       <p className="mk-caps mb-1.5 text-[10.5px]">Sources</p>
                       <div className="flex flex-wrap gap-1.5">
                         {turn.qa.sources.map((title, n) => (
-                          <span key={title} className="inline-flex items-center gap-1.5 rounded-[6px] bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
+                          <span key={title} className="inline-flex items-center gap-1.5 rounded-chip bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
                             <span className="font-semibold text-muted">{n + 1}</span>
                             <FileText size={12} aria-hidden="true" className="text-muted" />
                             {title}
@@ -206,7 +206,7 @@ export function AskDemo() {
       </div>
 
       <form onSubmit={submit} className="border-t border-(--color-line) px-3 pb-3 pt-2.5">
-        <div className="relative rounded-[14px] bg-(--glass-hover) shadow-[inset_0_0_0_1px_var(--glass-border)]">
+        <div className="relative rounded-panel bg-(--glass-hover) shadow-[inset_0_0_0_1px_var(--glass-border)]">
           <label className="sr-only" htmlFor="ask-demo-input">
             Ask a question about the sample notes
           </label>
@@ -224,7 +224,7 @@ export function AskDemo() {
           <button
             type="submit"
             aria-label="Send"
-            className={cx("absolute bottom-3 right-2 grid size-7 place-items-center rounded-[6px] bg-(--color-heading) text-(--color-canvas) transition-opacity", draft.trim() ? "opacity-100" : "opacity-30")}
+            className={cx("absolute bottom-3 right-2 grid size-7 place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas) transition-opacity", draft.trim() ? "opacity-100" : "opacity-30")}
           >
             <ArrowUp size={15} aria-hidden="true" />
           </button>

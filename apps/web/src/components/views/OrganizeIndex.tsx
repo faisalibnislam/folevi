@@ -31,9 +31,9 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (v: 
         {label}
       </label>
       <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
-      <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className="ui-input h-9 w-full rounded-[6px] pl-8 pr-8 text-sm" />
+      <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-sm" />
       {value ? (
-        <button type="button" aria-label="Clear search" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-[6px] text-faint hover:text-ink">
+        <button type="button" aria-label="Clear search" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
           <X size={13} aria-hidden />
         </button>
       ) : null}
@@ -45,7 +45,7 @@ function SortSelect<T extends string>({ value, onChange, options }: { value: T; 
   return (
     <label className="flex items-center gap-2 text-sm text-muted">
       Sort
-      <Select value={value} onChange={(e) => onChange(e.target.value as T)} className="ui-input h-9 rounded-[6px] px-3 text-sm text-ink">
+      <Select value={value} onChange={(e) => onChange(e.target.value as T)} className="ui-input h-9 rounded-chip px-3 text-sm text-ink">
         {options.map(([v, label]) => (
           <option key={v} value={v}>
             {label}
@@ -185,7 +185,7 @@ export function FoldersIndex() {
             ))}
           </ul>
         ) : (
-          <ul className="ui-card mt-6 divide-y divide-line overflow-hidden rounded-[6px]" aria-label="Folders">
+          <ul className="ui-card mt-6 divide-y divide-line overflow-hidden rounded-chip" aria-label="Folders">
             {list.map((f) => (
               <li key={f.id} data-ctx-host="" className="group relative">
                 <AppLink href={`/folders/${f.id}`} className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none">
@@ -263,10 +263,10 @@ export function TagsIndex() {
           <ul className="mt-6 flex flex-wrap gap-2" aria-label="Tags">
             {list.map((t) => (
               <li key={t.id}>
-                <AppLink href={`/tags/${t.id}`} className="ui-raised inline-flex h-9 items-center gap-2 rounded-[6px] pl-3 pr-2 text-[13.5px] outline-none transition-colors hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus">
+                <AppLink href={`/tags/${t.id}`} className="ui-raised inline-flex h-9 items-center gap-2 rounded-chip pl-3 pr-2 text-[13.5px] outline-none transition-colors hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus">
                   <Hash size={14} style={{ color: tagColor(t.color) }} aria-hidden />
                   <span className="font-medium text-ink">{t.name}</span>
-                  <span className="rounded-[6px] bg-sunken px-2 py-0.5 text-[11px] tabular-nums text-muted">
+                  <span className="rounded-chip bg-sunken px-2 py-0.5 text-[11px] tabular-nums text-muted">
                     <span className="sr-only">, </span>
                     {pages(t.documentCount)}
                   </span>

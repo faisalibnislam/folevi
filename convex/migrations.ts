@@ -94,8 +94,8 @@ export const wideByDefault = internalMutation({
 });
 
 /**
- * The 40 mesh-gradient note styles replaced the old artwork: every note gets a random one, with its page and
- * text colours back on Auto (taken from the style) and no separate page backdrop.
+ * The 40 mesh-gradient note themes replaced the old artwork: every note gets a random one, with its page and
+ * text colours back on Auto (taken from the theme) and no separate page backdrop.
  */
 export const randomizeNoteStyles = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },
@@ -114,7 +114,7 @@ export const randomizeNoteStyles = internalMutation({
 });
 
 /**
- * Folder colours became the note styles' light page colours. Moves each folder from its old colour to the
+ * Folder colours became the note themes' light page colours. Moves each folder from its old colour to the
  * new one closest in hue (neutrals to neutrals); anything unknown gets a random new colour.
  */
 const OLD_FOLDER_COLOR_TO_STYLE: Record<string, string> = {"rose":"deco","blush":"red-lacquer","peach":"rust","apricot":"peeling-paint","butter":"runners","raspberry":"deco","coral":"red-lacquer","terracotta":"rust","tangerine":"peeling-paint","honey":"runners","lemon":"cypresses","pistachio":"crackle-green","mint":"irises","seafoam":"irises","aqua":"summer-sky","olive":"cypresses","sage":"crackle-green","jade":"irises","teal":"irises","steel":"summer-sky","sky":"tarp-blue","periwinkle":"navy-crackle","lavender":"ultramarine","lilac":"ultramarine","orchid":"deco","powder":"tarp-blue","cornflower":"navy-crackle","iris":"ultramarine","plum":"ultramarine","mauve":"deco","sand":"weathered-wood","stone":"wood-thrush","clay":"poppy-print","graphite":"watercolour-marsh","slate":"midnight-rose"};
@@ -125,7 +125,7 @@ export const folderColorsFromStyles = internalMutation({
     let updated = 0;
     for (const f of page.page) {
       if (f.color && isFolderColor(f.color)) continue;
-      // Through the style colours to the current palette (a re-run keeps folders' colours close to what they had).
+      // Through the theme colours to the current palette (a re-run keeps folders' colours close to what they had).
       const mapped = currentFolderColor(f.color ? (OLD_FOLDER_COLOR_TO_STYLE[f.color] ?? f.color) : null);
       await ctx.db.patch(f._id, { color: mapped ?? randomFolderColor() });
       updated++;

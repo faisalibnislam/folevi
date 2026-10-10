@@ -64,7 +64,7 @@ export function CommentBody({ body, links = true }: { body: BodyNode[]; links?: 
     <>
       {body.map((n, i) =>
         n.type === "mention" ? (
-          <span key={i} className="rounded-[4px] bg-accent-soft px-1 font-medium text-heading">
+          <span key={i} className="rounded-tiny bg-accent-soft px-1 font-medium text-heading">
             @{n.label}
           </span>
         ) : n.type === "text" ? (
@@ -315,7 +315,7 @@ export function CommentThreadCard({
           onClose();
         }
       }}
-      className={embedded ? "overflow-hidden rounded-[10px] bg-[var(--color-surface)] shadow-[var(--shadow-card)]" : "ui-pop overflow-hidden rounded-[14px] text-ink"}
+      className={embedded ? "overflow-hidden rounded-control bg-[var(--color-surface)] shadow-[var(--shadow-card)]" : "ui-pop overflow-hidden rounded-panel text-ink"}
     >
       <header className="flex items-center gap-0.5 border-b border-line/70 py-2 pl-4 pr-2">
         <div className="min-w-0 flex-1">
@@ -345,7 +345,7 @@ export function CommentThreadCard({
           <MenuButton
             label="Thread options"
             trigger={<MoreHorizontal size={15} aria-hidden />}
-            triggerClassName="grid h-7 w-7 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading"
+            triggerClassName="grid h-7 w-7 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             items={menu}
           />
         ) : null}
@@ -396,7 +396,7 @@ export function CommentThreadCard({
             Resolved{thread?.resolvedBy ? ` by ${thread.resolvedBy}` : ""}
             {thread?.resolvedAt ? ` · ${formatRelative(thread.resolvedAt)}` : ""}
           </span>
-          <button type="button" className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 font-medium text-heading hover:bg-accent-soft" onClick={() => setShowResolved(true)}>
+          <button type="button" className="inline-flex items-center gap-1 rounded-chip px-1.5 py-0.5 font-medium text-heading hover:bg-accent-soft" onClick={() => setShowResolved(true)}>
             <Eye size={12} aria-hidden /> Show {thread && thread.comments.length === 1 ? "comment" : `${thread?.comments.length ?? 0} comments`}
           </button>
         </div>
@@ -447,7 +447,7 @@ export function CommentThreadCard({
               Enter to send, Shift+Enter for a new line. Type @ to mention someone who can see this page.
             </span>
           </div>
-          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11 !rounded-[6px]">
+          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11 !rounded-chip">
             <ArrowUp size={14} aria-hidden />
           </IconButton>
         </form>
@@ -515,7 +515,7 @@ function CommentRow({
               value={editing}
               onChange={onEditChange}
               people={people}
-              className="ui-input block w-full resize-none rounded-[6px] px-2 py-1.5 text-[13.5px] leading-snug"
+              className="ui-input block w-full resize-none rounded-chip px-2 py-1.5 text-[13.5px] leading-snug"
               onSubmitShortcut={onEditSave}
               onEscape={onEditCancel}
             />
@@ -536,7 +536,7 @@ function CommentRow({
         <MenuButton
           label={`Options for ${c.authorName}'s comment`}
           className="!absolute right-2 top-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
-          triggerClassName="grid h-6 w-6 place-items-center rounded-[6px] text-muted hover:bg-accent-soft hover:text-heading"
+          triggerClassName="grid h-6 w-6 place-items-center rounded-chip text-muted hover:bg-accent-soft hover:text-heading"
           trigger={<MoreHorizontal size={14} aria-hidden />}
           items={items}
         />
@@ -790,7 +790,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
       <NoteNotifications documentId={documentId} />
       {data.canComment ? (
         <form
-          className="ui-input rounded-[14px] pb-1 pl-3 pr-1 pt-2"
+          className="ui-input rounded-panel pb-1 pl-3 pr-1 pt-2"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
@@ -839,7 +839,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search comments"
             aria-label="Search comments"
-            className="h-8 w-full ui-input rounded-[6px] px-2.5 text-[13px]"
+            className="h-8 w-full ui-input rounded-chip px-2.5 text-[13px]"
           />
         ) : null}
       </div>
@@ -859,13 +859,13 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                     label="Thread actions"
                     align="end"
                     className="absolute right-1.5 top-1.5 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover/thread:opacity-100 pointer-coarse:opacity-100"
-                    triggerClassName="grid h-7 w-7 place-items-center rounded-[6px] text-muted hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    triggerClassName="grid h-7 w-7 place-items-center rounded-chip text-muted hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     trigger={<MoreHorizontal size={15} aria-hidden />}
                     items={threadMenu(t)}
                   />
                 ) : null}
                 {confirmDelete === t.id ? (
-                  <div role="alert" className="mb-1 flex items-center gap-2 rounded-[10px] bg-danger-soft/40 px-2.5 py-2 text-[12.5px]">
+                  <div role="alert" className="mb-1 flex items-center gap-2 rounded-control bg-danger-soft/40 px-2.5 py-2 text-[12.5px]">
                     <span className="flex-1">Delete this thread and its {t.comments.length === 1 ? "comment" : `${t.comments.length} comments`}?</span>
                     <Button size="sm" variant="quiet" onClick={() => setConfirmDelete(null)}>
                       Cancel
@@ -890,7 +890,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                   disabled={isPending(t.id)}
                   aria-busy={isPending(t.id) || undefined}
                   onClick={() => (inline ? setExpanded(expanded === t.id ? null : t.id) : onOpenThread(t))}
-                  className="block w-full rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-progress"
+                  className="block w-full rounded-control px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-progress"
                 >
                   <span className="flex min-w-0 items-center gap-1 pr-8 text-[11.5px] text-faint">{anchorLabel(t)}</span>
                   <span className="mt-1.5 flex items-center gap-2">
@@ -898,7 +898,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                     <span className="min-w-0 flex-1 truncate text-[12.5px]">
                       <span className="font-semibold text-heading">{first.authorName}</span> <span className="text-faint">· {formatRelative(t.lastActivityAt)}</span>
                     </span>
-                    {t.unread ? <span className="h-2 w-2 flex-none rounded-[4px] bg-coral" aria-label="Unread" role="img" /> : null}
+                    {t.unread ? <span className="h-2 w-2 flex-none rounded-tiny bg-coral" aria-label="Unread" role="img" /> : null}
                   </span>
                   <span className={`mt-1 line-clamp-2 block whitespace-pre-wrap text-[13px] leading-snug ${first.deleted ? "italic text-faint" : "text-ink"}`}>
                     {first.deleted ? "Comment deleted" : <CommentBody body={first.body} links={false} />}
@@ -977,7 +977,7 @@ export function NoteNotifications({ documentId }: { documentId: string }) {
             (err) => toast.show(errorMessage(err), { tone: "error" }),
           )
         }
-        className="ui-input h-8 w-48 rounded-[6px] px-2.5 text-[12.5px]"
+        className="ui-input h-8 w-48 rounded-chip px-2.5 text-[12.5px]"
       >
         {sub.isAuthor ? <option value="default">All comments</option> : <option value="follow">All comments</option>}
         {sub.isAuthor ? null : <option value="default">Replies and @mentions</option>}

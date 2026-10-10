@@ -139,7 +139,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
-      className="m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop rounded-[14px] p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
+      className="m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop rounded-panel p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
     >
       {open ? (
         <div>
@@ -174,7 +174,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <Kbd>Esc</Kbd>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
-            <Select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
+            <Select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any folder</option>
               {org?.folders.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -182,7 +182,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 </option>
               ))}
             </Select>
-            <Select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
+            <Select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any tag</option>
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -191,7 +191,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               ))}
             </Select>
             {workspace ? (
-              <Select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
+              <Select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
                 <option value="">Anyone</option>
                 {members?.members.map((m) => (
                   <option key={m.profileId} value={m.profileId}>
@@ -200,7 +200,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 ))}
               </Select>
             ) : null}
-            <Select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="ui-well h-7 rounded-[6px] px-2.5 text-muted">
+            <Select aria-label="Updated" value={filters.updated ?? ""} onChange={(e) => setFilters({ ...filters, updated: (e.target.value || undefined) as typeof filters.updated })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any time</option>
               <option value="7">Past week</option>
               <option value="30">Past month</option>
@@ -215,7 +215,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {
                 const selected = i === active;
-                const cls = `flex cursor-pointer items-start gap-3 rounded-[6px] px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
+                const cls = `flex cursor-pointer items-start gap-3 rounded-chip px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
                 const header =
                   i === docCount && item.kind === "action" ? (
                     <li role="presentation" className="ui-caps px-3 pb-1.5 pt-3">

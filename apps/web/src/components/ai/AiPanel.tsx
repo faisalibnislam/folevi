@@ -277,7 +277,7 @@ export function AiPanel({
       {/* Prompt */}
       <section aria-label="Ask Foli">
         {modes}
-        <div className="relative rounded-[14px] bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
+        <div className="relative rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
             {mode === "write" ? "Tell Foli what to write" : "Ask about this note and your other notes"}
           </label>
@@ -302,7 +302,7 @@ export function AiPanel({
             aria-label={mode === "write" ? "Write" : "Ask"}
             disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)}
             onClick={submit}
-            className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-[6px] bg-heading text-canvas transition-opacity disabled:opacity-30"
+            className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-30"
           >
             <ArrowUp size={15} aria-hidden />
           </button>
@@ -329,7 +329,7 @@ export function AiPanel({
                 type="button"
                 disabled={Boolean(busy) || (readOnly && a.task !== "summarize" && !TOOL_TASKS.has(a.task))}
                 onClick={() => (TOOL_TASKS.has(a.task) ? runTool(a.task) : void doWrite({ task: a.task, placement: a.task === "summarize" ? { kind: "cursor" } : a.task === "continue" ? { kind: "end" } : { kind: "cursor" } }))}
-                className="flex h-10 items-center gap-2 rounded-[10px] bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+                className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
               >
                 <span aria-hidden className="text-muted">
                   {a.icon}
@@ -349,7 +349,7 @@ export function AiPanel({
               </h3>
               <div className="flex flex-col items-start gap-1.5">
                 {ASK_NOTE.map((q) => (
-                  <button key={q} type="button" onClick={() => void doAsk(q)} className="rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                  <button key={q} type="button" onClick={() => void doAsk(q)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
                     {q}
                   </button>
                 ))}
@@ -366,19 +366,19 @@ export function AiPanel({
       <AiAnnouncer text={announce} />
       <div className="empty:hidden">
         {busy && stream.text ? (
-          <div className="rounded-[14px] bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]" aria-busy="true">
+          <div className="rounded-panel bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]" aria-busy="true">
             <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
               <AiIcon size={13} aria-hidden className="animate-pulse motion-reduce:animate-none" /> {busy}…
             </p>
             <div className="max-h-[320px] overflow-y-auto pr-1">
               <StreamingText text={stream.text} />
             </div>
-            <button type="button" onClick={() => stream.stop()} className="mt-1 inline-flex items-center gap-1.5 rounded-[6px] px-1.5 py-0.5 text-[12px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
-              <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Stop
+            <button type="button" onClick={() => stream.stop()} className="mt-1 inline-flex items-center gap-1.5 rounded-chip px-1.5 py-0.5 text-[12px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+              <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
             </button>
           </div>
         ) : busy ? (
-          <p className="flex items-center gap-2 rounded-[10px] bg-[var(--glass-hover)] px-3 py-3 text-muted">
+          <p className="flex items-center gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-3 text-muted">
             <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {busy}…
           </p>
         ) : null}
@@ -392,7 +392,7 @@ export function AiPanel({
 
       {/* Result */}
       {result && !busy ? (
-        <section aria-label="AI result" className="rounded-[14px] bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
+        <section aria-label="AI result" className="rounded-panel bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
           <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
             <AiIcon size={13} aria-hidden /> {result.kind === "ask" ? result.question : labelFor(result.task)}
             {result.kind === "write" && result.task === "translate" ? (
@@ -400,7 +400,7 @@ export function AiPanel({
                 aria-label="Language"
                 value={result.request.language ?? "English"}
                 onChange={(e) => void doWrite({ ...result.request, language: e.target.value })}
-                className="ml-auto h-7 rounded-[6px] bg-[var(--glass-hover)] px-2 text-[12px] font-medium text-ink"
+                className="ml-auto h-7 rounded-chip bg-[var(--glass-hover)] px-2 text-[12px] font-medium text-ink"
               >
                 {AI_LANGUAGES.map((l) => (
                   <option key={l} value={l}>
@@ -426,7 +426,7 @@ export function AiPanel({
           {result.kind === "ask" && result.sources.length ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {result.sources.map((s, i) => (
-                <AppLink key={s.id} href={`/d/${s.id}`} className="inline-flex max-w-full items-center gap-1 rounded-[6px] bg-[var(--glass-hover)] px-2 py-0.5 text-[11.5px] text-ink hover:text-heading">
+                <AppLink key={s.id} href={`/d/${s.id}`} className="inline-flex max-w-full items-center gap-1 rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[11.5px] text-ink hover:text-heading">
                   <span className="font-semibold text-muted">{i + 1}</span>
                   <span className="truncate">{s.title}</span>
                 </AppLink>
@@ -494,7 +494,7 @@ export function AiPanel({
                   type="button"
                   // A tool runs again with the request (its result keeps its shape); anything else is revised.
                   onClick={() => void doWrite(TOOL_TASKS.has(result.task) ? { ...result.request, instruction: r } : { task: "refine", text: result.text, instruction: r, placement: result.placement })}
-                  className="rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"
+                  className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"
                 >
                   {r}
                 </button>
@@ -523,7 +523,7 @@ export function AiPanel({
                         onClick={() => runTool(a.task)}
                         aria-label={a.label}
                         aria-describedby={`${uid}-hint-${a.task}`}
-                        className="flex w-full items-start gap-2.5 rounded-[10px] bg-[var(--glass-hover)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+                        className="flex w-full items-start gap-2.5 rounded-control bg-[var(--glass-hover)] px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
                       >
                         <span aria-hidden className="mt-0.5 flex-none text-muted">
                           {TOOL_ICONS[a.task]}

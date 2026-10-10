@@ -89,14 +89,14 @@ export const vDocumentStyle = v.object({
   ),
   text: v.optional(v.union(v.literal("ink"), v.literal("slate"), v.literal("navy"), v.literal("forest"), v.literal("plum"), v.literal("brown"), v.literal("white"))),
   separator: v.optional(v.union(v.literal("line"), v.literal("dots"), v.literal("doodle"))),
-  /** Blurs the page background behind the note (its style artwork, image or colour). */
+  /** Blurs the page background behind the note (its theme artwork, image or colour). */
   blur: v.optional(v.boolean()),
 });
 export const vDocumentCover = v.object({
   kind: v.union(v.literal("none"), v.literal("color"), v.literal("gradient"), v.literal("image"), v.literal("art")),
   value: v.optional(v.string()),
 });
-/** Colours picked from a note style image: page/text for light and dark themes, and how the cover reads. */
+/** Colours picked from a note theme image: page/text for light and dark themes, and how the cover reads. */
 export const vImagePalette = v.object({
   paper: v.string(),
   ink: v.string(),
@@ -113,6 +113,43 @@ export const vImagePalette = v.object({
   highlight: v.optional(v.array(v.string())),
   highlightDark: v.optional(v.array(v.string())),
 });
+/** A note theme's full palette (all fields; see packages/design-tokens/src/palette.ts). */
+export const vThemePalette = v.object({
+  paper: v.string(),
+  ink: v.string(),
+  paperDark: v.string(),
+  inkDark: v.string(),
+  tone: v.union(v.literal("deep"), v.literal("light")),
+  accent: v.string(),
+  accentDark: v.string(),
+  text: v.array(v.string()),
+  textDark: v.array(v.string()),
+  names: v.array(v.string()),
+  highlight: v.array(v.string()),
+  highlightDark: v.array(v.string()),
+});
+const vSheet = v.union(v.literal("white"), v.literal("paper"), v.literal("ivory"), v.literal("mist"), v.literal("sage"), v.literal("blush"), v.literal("night"));
+const vTextColor = v.union(v.literal("ink"), v.literal("slate"), v.literal("navy"), v.literal("forest"), v.literal("plum"), v.literal("brown"), v.literal("white"));
+/** What picking a theme sets on a note (convex/lib/themes.ts). No sheet or text colour = Auto. */
+export const vThemeDefaults = v.object({
+  font: v.union(v.literal("sans"), v.literal("serif"), v.literal("mono"), v.literal("rounded")),
+  separator: v.union(v.literal("line"), v.literal("dots"), v.literal("doodle")),
+  sheet: v.optional(vSheet),
+  text: v.optional(vTextColor),
+});
+/** The typeface behind each font type (ids from FONT_POOL in convex/lib/themes.ts). */
+export const vThemeFonts = v.object({ modern: v.string(), serif: v.string(), mono: v.string(), soft: v.string() });
+export const vThemeStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("retired"));
+export const vThemePlan = v.union(v.literal("free"), v.literal("core"), v.literal("pro"), v.literal("pro_ai"));
+/** A theme image an admin uploaded: the 3200 px, 1600 px and 640 px thumbnail versions (WebP). */
+export const vThemeImage = v.object({
+  full: v.id("_storage"),
+  half: v.id("_storage"),
+  thumb: v.id("_storage"),
+  width: v.number(),
+  height: v.number(),
+});
+
 export const vCollectionPropertyType = v.union(
   v.literal("text"),
   v.literal("number"),

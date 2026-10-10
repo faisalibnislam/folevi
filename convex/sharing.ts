@@ -651,7 +651,7 @@ export const openPublicLink = mutation({
       if (!file || file.documentId !== doc._id || file.status !== "ready") continue;
       fileUrls[fileId] = `${site}/files/${fileId}?exp=${exp}&sig=${await signFileUrl(`${fileId}:${exp}`)}`;
     }
-    // The note's own style image, if it has one (only a file stored with this document).
+    // The note's own theme image, if it has one (only a file stored with this document).
     let coverUrl: string | null = null;
     let coverPalette: Doc<"files">["palette"] | null = null;
     if (doc.cover.kind === "image" && doc.cover.value) {

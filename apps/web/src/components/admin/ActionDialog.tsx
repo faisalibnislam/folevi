@@ -297,7 +297,7 @@ export function ActionDialog({
           ) : null}
         </div>
         {formError ? (
-          <div role="alert" className="rounded-[10px] bg-danger-soft px-3 py-2 text-[13px]">
+          <div role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-[13px]">
             {formError}
           </div>
         ) : null}

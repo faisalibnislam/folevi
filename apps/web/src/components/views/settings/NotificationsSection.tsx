@@ -92,7 +92,7 @@ export function NotificationsSection() {
             Send comment emails
             <span className="block text-xs text-muted">The daily digest lists what you haven’t read yet, by page title only, once a day.</span>
           </label>
-          <Select id="notify-digest" value={prefs.digest} onChange={(e) => void set({ digest: e.target.value as Prefs["digest"] })} className="ui-input h-9 w-44 flex-none rounded-[6px] px-3 text-sm">
+          <Select id="notify-digest" value={prefs.digest} onChange={(e) => void set({ digest: e.target.value as Prefs["digest"] })} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-sm">
             <option value="off">As they happen</option>
             <option value="daily">In a daily digest</option>
           </Select>

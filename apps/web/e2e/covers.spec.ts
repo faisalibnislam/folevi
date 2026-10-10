@@ -1,19 +1,20 @@
 import { expect, test } from "@playwright/test";
 import { newPerson, waitForSaved, showFolders, openTool } from "./helpers";
 
-test("pick one of the note styles (or Plain) from the inspector; it persists", async ({ browser }) => {
+test("pick one of the note themes (or Plain) from the inspector; it persists", async ({ browser }) => {
   const { page } = await newPerson(browser, "Cover Picker");
   await showFolders(page);
   await openTool(page, "Style");
-  // "Note Style": one row, named after the current artwork; no accent colours, no style gallery.
-  const noteStyle = page.getByRole("group", { name: "Note Style" });
+  // "Note Theme": one row, named after the current theme; no accent colours, no style gallery.
+  const noteStyle = page.getByRole("group", { name: "Note Theme" });
   await noteStyle.getByRole("button").first().click();
   await expect(page.getByRole("button", { name: "All styles" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Accent / })).toHaveCount(0);
-  const styles = page.getByRole("radiogroup", { name: "Note style" }).getByRole("radio", { name: /^Note style: / });
-  await expect(styles).toHaveCount(57);
-  await page.getByRole("radio", { name: "Note style: Irises" }).click();
-  await expect(page.getByRole("radio", { name: "Note style: Irises" })).toHaveAttribute("aria-checked", "true");
+  const styles = page.getByRole("radiogroup", { name: "Note theme" }).getByRole("radio", { name: /^Note theme: / });
+  // The 57 built-in themes (plus any an admin added on this deployment).
+  expect(await styles.count()).toBeGreaterThanOrEqual(57);
+  await page.getByRole("radio", { name: "Note theme: Irises" }).click();
+  await expect(page.getByRole("radio", { name: "Note theme: Irises" })).toHaveAttribute("aria-checked", "true");
   // A dark style: the chrome around it is veiled for legibility (light mode keeps light glass).
   await expect(page.locator("html")).toHaveAttribute("data-ambient", "deep");
   await expect(noteStyle.getByRole("button", { name: "Irises" })).toBeVisible();
@@ -27,7 +28,7 @@ test("pick one of the note styles (or Plain) from the inspector; it persists", a
   await page.getByRole("radio", { name: "Plain" }).click();
   await expect(page.locator("#doc-scroll")).not.toHaveAttribute("style", /art-03/);
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveCount(0);
-  await page.getByRole("radio", { name: "Note style: Irises" }).click();
+  await page.getByRole("radio", { name: "Note theme: Irises" }).click();
   await expect(page.locator("#doc-scroll")).toHaveAttribute("style", /\/covers\/art-03\.webp/);
   // Blur background: the artwork moves to a blurred layer behind the page; the page itself stays sharp.
   const blur = page.getByRole("switch", { name: "Blur background" });
@@ -51,8 +52,8 @@ test("page styles and block formatting persist (Style and Format tabs)", async (
 
   // Style: the note's artwork (cover and page background), then a dark document colour.
   await openTool(page, "Style");
-  await page.getByRole("group", { name: "Note Style" }).getByRole("button").first().click();
-  await page.getByRole("radio", { name: "Note style: Parchment" }).click();
+  await page.getByRole("group", { name: "Note Theme" }).getByRole("button").first().click();
+  await page.getByRole("radio", { name: "Note theme: Parchment" }).click();
   await page.getByRole("button", { name: "Document color" }).click();
   await page.getByRole("radio", { name: "Document color: Night" }).click();
   const sheet = page.locator("article.fb-sheet");
@@ -96,11 +97,11 @@ test("page styles and block formatting persist (Style and Format tabs)", async (
   await expect(again).toHaveAttribute("data-text-style", "strong");
 });
 
-test("upload your own image as the note style; it persists and rejects non-images", async ({ browser }) => {
+test("upload your own image as the note theme; it persists and rejects non-images", async ({ browser }) => {
   const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   const { page } = await newPerson(browser, "Cover Uploader");
   await openTool(page, "Style");
-  const noteStyle = page.getByRole("group", { name: "Note Style" });
+  const noteStyle = page.getByRole("group", { name: "Note Theme" });
   await noteStyle.getByRole("button").first().click();
   await expect(page.getByText("Best at 2400 × 1500 px")).toBeVisible();
   const input = page.locator('input[type="file"][name="note-style-image"]');
@@ -108,7 +109,7 @@ test("upload your own image as the note style; it persists and rejects non-image
   await input.setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
   await expect(page.getByText("Choose a PNG, JPEG, WebP or GIF image.")).toBeVisible();
   await input.setInputFiles({ name: "cover.png", mimeType: "image/png", buffer: PNG });
-  await expect(page.getByRole("radio", { name: "Note style: Your image" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: "Note theme: Your image" })).toHaveAttribute("aria-checked", "true");
   await expect(noteStyle.getByRole("button", { name: "Your image", exact: true })).toBeVisible();
   // The image is the cover and the page background, served through signed file URLs.
   await expect(page.locator("#doc-scroll")).toHaveAttribute("style", /\/files\/[^"]+\?exp=/);
@@ -122,7 +123,7 @@ test("upload your own image as the note style; it persists and rejects non-image
   await expect(page.locator("article.fb-sheet")).toHaveAttribute("style", /--art-ink: #[0-9a-f]{6}/);
   // Back to a built-in style.
   await openTool(page, "Style");
-  await page.getByRole("group", { name: "Note Style" }).getByRole("button").first().click();
-  await page.getByRole("radio", { name: "Note style: Parchment" }).click();
+  await page.getByRole("group", { name: "Note Theme" }).getByRole("button").first().click();
+  await page.getByRole("radio", { name: "Note theme: Parchment" }).click();
   await expect(page.locator("#doc-scroll")).toHaveAttribute("style", /\/covers\/art-08\.webp/);
 });

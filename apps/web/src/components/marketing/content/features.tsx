@@ -29,7 +29,7 @@ export type Feature = {
   /** Which plans include it, in one line. */
   plans: string;
   updated: string;
-  /** The note style that lights the visual's stage. */
+  /** The note theme that lights the visual's stage. */
   art: string;
   visual: FeatureVisual;
   sections: Array<{ id: string; title: string; body: ReactNode }>;
@@ -755,7 +755,7 @@ export const FEATURES: Feature[] = [
         title: "A colour for each folder",
         body: (
           <p>
-            Every new folder gets a colour. To pick another, open the folder’s menu and choose <strong>Change color</strong>. The {FOLDER_COLOR_COUNT} colours are the page colours of the note styles, and the folder shows its colour in the sidebar, on note cards and on Home.
+            Every new folder gets a colour. To pick another, open the folder’s menu and choose <strong>Change color</strong>. The {FOLDER_COLOR_COUNT} colours are the page colours of the note themes, and the folder shows its colour in the sidebar, on note cards and on Home.
           </p>
         ),
       },
@@ -822,7 +822,7 @@ export const FEATURES: Feature[] = [
       { q: "Can I change a folder’s colour?", a: `Yes. Open the folder’s menu and choose Change color. There are ${FOLDER_COLOR_COUNT} colours to pick from.` },
       { q: "Are folders on the Free plan?", a: "Yes. Folders work the same way on every plan." },
     ],
-    related: ["search", "linked-notes", "note-styles"],
+    related: ["search", "linked-notes", "note-themes"],
   },
   {
     slug: "flowcharts",
@@ -944,40 +944,40 @@ export const FEATURES: Feature[] = [
       { q: "Does a whiteboard work offline?", a: "Yes. It’s part of the note, so it’s saved on your device first and syncs when you reconnect." },
       { q: "Should I use a whiteboard or a flowchart?", a: "Use a whiteboard for freehand sketches. Use a flowchart for shapes and connectors you want to move, label and lay out." },
     ],
-    related: ["flowcharts", "note-styles", "linked-notes"],
+    related: ["flowcharts", "note-themes", "linked-notes"],
   },
   {
-    slug: "note-styles",
-    name: "Note styles",
-    summary: `${STYLE_COUNT} artwork styles, or your own image, colour each page.`,
-    title: "Note styles: themes and colours for your notes",
-    description: `Pick one of ${STYLE_COUNT} artwork styles for a Folevi note, or your own image. It colours the cover, paper, text, highlights and checkboxes.`,
-    h1: "Note styles that give each page its own colours",
-    intro: `Folevi’s app stays white, or near-black when you switch it to dark mode. The colour comes from your notes: pick one of ${STYLE_COUNT} note styles, or your own picture, and the page takes its colours from it.`,
+    slug: "note-themes",
+    name: "Note themes",
+    summary: `${STYLE_COUNT} themes, or your own image, colour each page.`,
+    title: "Note themes: artwork, colours and fonts for your notes",
+    description: `Pick one of ${STYLE_COUNT} themes for a Folevi note, or your own image. It colours the cover, paper, text, highlights and checkboxes.`,
+    h1: "Note themes that give each page its own colours",
+    intro: `Folevi’s app stays white, or near-black when you switch it to dark mode. The colour comes from your notes: pick one of ${STYLE_COUNT} note themes, or your own picture, and the page takes its colours from it.`,
     plans: "Every plan, including Free.",
-    updated: "2026-09-30",
+    updated: "2026-10-10",
     art: "art-03",
     visual: "styles",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
     sections: [
       {
         id: "styles",
-        title: `${STYLE_COUNT} styles, or Plain`,
+        title: `${STYLE_COUNT} themes, or Plain`,
         body: (
           <p>
-            Each style is an artwork that sets the cover, the paper colour and the text colour. On Auto, highlights, callouts and checkboxes take their colours from it too. Plain has no artwork, and new notes start Plain.
+            Each theme is an artwork with the colours, separator and fonts a note starts with. It sets the cover, the paper colour and the text colour. On Auto, highlights, callouts and checkboxes take their colours from it too. Plain has no artwork, and new notes start Plain.
           </p>
         ),
       },
       {
         id: "own-image",
         title: "Your own image",
-        body: <p>Upload a picture as a note’s style and Folevi picks the page and text colours from it. PNG, JPEG, WebP and GIF work, up to 20 MB; 2400 × 1500 pixels fits best.</p>,
+        body: <p>Upload a picture as a note’s theme and Folevi picks the page and text colours from it. PNG, JPEG, WebP and GIF work, up to 20 MB; 2400 × 1500 pixels fits best.</p>,
       },
       {
         id: "blur",
         title: "Blur background",
-        body: <p>Turn on Blur background and the style image sits blurred behind the page, which becomes see-through.</p>,
+        body: <p>Turn on Blur background and the theme image sits blurred behind the page, which becomes see-through.</p>,
       },
       {
         id: "fine-tune",
@@ -986,7 +986,7 @@ export const FEATURES: Feature[] = [
           <ul>
             <li>Document colour: Auto, or white, paper, ivory, mist, sage, blush or night.</li>
             <li>Text colour: Auto, or ink, slate, navy, forest, plum, brown or white.</li>
-            <li>Font: System, Serif, Mono or Rounded.</li>
+            <li>Font: Modern, Serif, Mono or Soft.</li>
             <li>Page width: Narrow or Wide. Separators: line, dots or doodle.</li>
           </ul>
         ),
@@ -994,14 +994,14 @@ export const FEATURES: Feature[] = [
       {
         id: "dark",
         title: "Light and dark",
-        body: <p>Every style has a set of dark colours, so a note keeps its look at night.</p>,
+        body: <p>Every theme has a set of dark colours, so a note keeps its look at night.</p>,
       },
     ],
     faq: [
-      { q: "How many note styles are there?", a: `${STYLE_COUNT}, plus Plain and your own image.` },
+      { q: "How many note themes are there?", a: `${STYLE_COUNT}, plus Plain and your own image.` },
       { q: "Can I use my own picture?", a: "Yes. Upload a PNG, JPEG, WebP or GIF up to 20 MB and Folevi picks the page and text colours from it." },
-      { q: "Do note styles work in dark mode?", a: "Yes. Every style has dark colours as well as light ones." },
-      { q: "Does a note style change the whole app?", a: "No. The app stays white, or near-black in dark mode. Only the note takes the style’s colours." },
+      { q: "Do note themes work in dark mode?", a: "Yes. Every theme has dark colours as well as light ones." },
+      { q: "Does a note theme change the whole app?", a: "No. The app stays white, or near-black in dark mode. Only the note takes the theme’s colours." },
     ],
     related: ["whiteboard", "templates", "sharing"],
   },
@@ -1184,7 +1184,7 @@ export const FEATURES: Feature[] = [
         title: "Real blocks, ready to use",
         body: (
           <p>
-            To-dos in a template are tasks, so they show up in Tasks, and in Today once they have a date. Tables, callouts and toggles work as they do anywhere else, and you can give the page a <Link href="/features/note-styles">note style</Link>.
+            To-dos in a template are tasks, so they show up in Tasks, and in Today once they have a date. Tables, callouts and toggles work as they do anywhere else, and you can give the page a <Link href="/features/note-themes">note theme</Link>.
           </p>
         ),
       },
@@ -1195,7 +1195,7 @@ export const FEATURES: Feature[] = [
       { q: "Where are templates in the app?", a: "Open Templates in the sidebar. Built-in templates are listed first, then your own." },
       { q: "Does changing a page change the template?", a: "No. A page made from a template is an ordinary page, so edits to it stay on that page." },
     ],
-    related: ["blocks", "tasks", "note-styles"],
+    related: ["blocks", "tasks", "note-themes"],
   },
   {
     slug: "import-and-export",

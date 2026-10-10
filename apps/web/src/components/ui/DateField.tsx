@@ -119,7 +119,7 @@ export function Calendar({
   };
 
   const nav =
-    "grid h-7 w-7 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none";
+    "grid h-7 w-7 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none";
   return (
     <div className="w-[244px] select-none">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
@@ -161,7 +161,7 @@ export function Calendar({
                   aria-current={isToday ? "date" : undefined}
                   aria-label={dateLabel(day)}
                   onClick={() => onPick(day)}
-                  className={`grid h-8 place-items-center rounded-[6px] text-[13px] tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
+                  className={`grid h-8 place-items-center rounded-chip text-[13px] tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
                     selected
                       ? "bg-[var(--color-heading)] font-semibold text-[var(--color-surface)]"
                       : isToday
@@ -258,7 +258,7 @@ export function DateField({
         className={
           bare
             ? "flex w-full min-w-0 items-center bg-transparent text-left outline-none disabled:opacity-50"
-            : `ui-input flex ${size === "lg" ? "h-9" : "h-8"} w-full min-w-0 items-center gap-2 rounded-[6px] pl-2.5 pr-8 text-left text-[13px] disabled:opacity-50`
+            : `ui-input flex ${size === "lg" ? "h-9" : "h-8"} w-full min-w-0 items-center gap-2 rounded-chip pl-2.5 pr-8 text-left text-[13px] disabled:opacity-50`
         }
       >
         {bare ? null : <CalendarDays size={14} aria-hidden className="flex-none text-muted" />}
@@ -272,7 +272,7 @@ export function DateField({
             onChange("");
             button.current?.focus();
           }}
-          className="absolute right-1.5 grid h-5 w-5 place-items-center rounded-[4px] text-faint hover:bg-accent-soft hover:text-heading"
+          className="absolute right-1.5 grid h-5 w-5 place-items-center rounded-tiny text-faint hover:bg-accent-soft hover:text-heading"
         >
           <X size={12} aria-hidden />
         </button>
@@ -377,7 +377,7 @@ export function TimeField({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label={ariaLabel}
-      className={`${size === "lg" ? "h-9" : "h-8"} ui-input rounded-[6px] px-2.5 text-[13px] ${className}`}
+      className={`${size === "lg" ? "h-9" : "h-8"} ui-input rounded-chip px-2.5 text-[13px] ${className}`}
     >
       {allowEmpty || !value ? <option value="">{emptyLabel}</option> : null}
       {times.map((t) => (

@@ -95,7 +95,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
         placeholder="What needs doing?"
         maxLength={500}
         aria-invalid={error ? true : undefined}
-        className="h-11 w-full ui-input rounded-[6px] px-3 text-[15px] outline-none"
+        className="h-11 w-full ui-input rounded-chip px-3 text-[15px] outline-none"
       />
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <div className="text-sm">
@@ -110,7 +110,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
         ) : null}
         <label className="text-sm">
           <span className="block text-muted">Priority</span>
-          <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-[6px] px-3">
+          <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-chip px-3">
             <option value="none">None</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
@@ -183,7 +183,7 @@ function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: T
             <span className="truncate">
               {value.title || "Untitled"}
             </span>
-            <button type="button" aria-label="Add to Inbox instead" onClick={() => onChange(null)} className="-mr-1 grid h-5 w-5 place-items-center rounded-[6px] hover:bg-[var(--glass-hover)]">
+            <button type="button" aria-label="Add to Inbox instead" onClick={() => onChange(null)} className="-mr-1 grid h-5 w-5 place-items-center rounded-chip hover:bg-[var(--glass-hover)]">
               <X size={12} aria-hidden />
             </button>
           </span>
@@ -205,7 +205,7 @@ function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: T
           }}
           onKeyDown={onKey}
           placeholder={value ? "Search another page…" : "Inbox, or search a page…"}
-          className="h-9 min-w-0 flex-1 ui-input rounded-[6px] px-3"
+          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3"
         />
       </div>
       {open ? (
@@ -220,7 +220,7 @@ function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: T
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => choose(t)}
-              className="ui-menu-item flex cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5"
+              className="ui-menu-item flex cursor-pointer items-center gap-2 rounded-chip px-2 py-1.5"
             >
               {t ? <FileText size={14} aria-hidden className="text-muted" /> : <Inbox size={14} aria-hidden className="text-muted" />}
               <span className="truncate">{t ? t.title || "Untitled" : "Inbox (your task page)"}</span>

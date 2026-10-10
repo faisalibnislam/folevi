@@ -29,7 +29,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={[hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined}
-        className={`ui-input h-11 w-full rounded-[6px] px-4 text-[15px] text-ink placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
+        className={`ui-input h-11 w-full rounded-chip px-4 text-[15px] text-ink placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
         {...rest}
       />
       {hint ? (
@@ -56,7 +56,7 @@ export function PasswordField(props: Omit<FieldProps, "type">) {
         onClick={() => setShown((s) => !s)}
         aria-label={shown ? "Hide password" : "Show password"}
         aria-pressed={shown}
-        className="absolute right-1.5 top-[calc(1.5rem+6px)] grid h-8 w-8 place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading"
+        className="absolute right-1.5 top-[calc(1.5rem+6px)] grid h-8 w-8 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading"
       >
         {shown ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
       </button>
@@ -81,7 +81,7 @@ export function Alert({ tone = "error", children }: { tone?: "error" | "success"
         ? "bg-success-soft text-ink shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-success)_25%,transparent)]"
         : "bg-accent-soft text-ink";
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={`rounded-[6px] px-4 py-3 text-sm leading-relaxed ${cls}`}>
+    <div role={tone === "error" ? "alert" : "status"} className={`rounded-chip px-4 py-3 text-sm leading-relaxed ${cls}`}>
       {children}
     </div>
   );

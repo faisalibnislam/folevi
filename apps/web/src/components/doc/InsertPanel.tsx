@@ -164,8 +164,8 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
 }
 
 // The picture card: the same soft fill as the Format panel's buttons (bg-sunken/80, accent wash on hover), so the
-// two tools read as one set on any note style, light or dark.
-const PICTURE = "grid h-14 w-full place-items-center overflow-hidden rounded-[6px] bg-sunken/80 transition-[background-color,transform] duration-150";
+// two tools read as one set on any note theme, light or dark.
+const PICTURE = "grid h-14 w-full place-items-center overflow-hidden rounded-chip bg-sunken/80 transition-[background-color,transform] duration-150";
 const PICTURE_LIVE = "group-hover:bg-accent-soft/70 group-active:scale-[0.97]";
 
 function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | null; disabled: boolean }) {
@@ -177,7 +177,7 @@ function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | n
       aria-label={tile.name ?? tile.label}
       title={tile.label}
       {...handlers}
-      className={`group flex min-w-0 touch-none select-none flex-col items-center gap-1.5 rounded-[10px] p-0.5 disabled:opacity-45 ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
+      className={`group flex min-w-0 touch-none select-none flex-col items-center gap-1.5 rounded-control p-0.5 disabled:opacity-45 ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
       <span className={`${PICTURE} ${disabled ? "" : PICTURE_LIVE}`} aria-hidden>
         {tile.picture}
@@ -218,7 +218,7 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
         role="group"
         aria-label="Table size"
         aria-describedby={hintId}
-        className="grid grid-cols-8 gap-1 rounded-[10px] bg-[color-mix(in_oklab,var(--color-ink)_4%,var(--color-surface-raised))] p-2.5 shadow-[0_0_0_1px_var(--color-line)]"
+        className="grid grid-cols-8 gap-1 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_4%,var(--color-surface-raised))] p-2.5 shadow-[0_0_0_1px_var(--color-line)]"
         onPointerLeave={() => setHover(null)}
         onFocus={() => setFocused(true)}
         onBlur={(e) => {
@@ -289,7 +289,7 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
   return (
     <div>
       <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
-      <label className="ui-well flex h-9 items-center gap-2 rounded-[6px] px-3 text-[13px] text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
+      <label className="ui-well flex h-9 items-center gap-2 rounded-chip px-3 text-[13px] text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
         <Search size={14} aria-hidden />
         <input data-autofocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
       </label>

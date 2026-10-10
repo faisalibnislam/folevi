@@ -9,7 +9,8 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useDocumentBlocks } from "@/lib/hooks/useEngine";
-import { sheetProps } from "@/lib/cover";
+import { coverArtOf, sheetProps } from "@/lib/cover";
+import { themeFontVars } from "@/lib/themes";
 import { diffVersions } from "@/lib/history/diff";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -203,7 +204,7 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          <main className="fb-page min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-surface-sunken)] px-3 py-6 sm:px-8" data-font={(shown?.style ?? style).font} data-width={(shown?.style ?? style).width}>
+          <main className="fb-page min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-surface-sunken)] px-3 py-6 sm:px-8" data-font={(shown?.style ?? style).font} data-width={(shown?.style ?? style).width} style={themeFontVars(coverArtOf(cover)?.fonts)}>
             {diff && diff.authors.length ? (
               <div role="group" className="mx-auto mb-3 flex max-w-[calc(var(--editor-width)+8rem)] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Changes in this version by">
                 <span>Changes by</span>
@@ -220,7 +221,7 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
               ) : !shown ? (
                 <div className="space-y-3 py-6" aria-busy aria-label="Loading version">
                   {[60, 95, 80, 88].map((w, i) => (
-                    <div key={i} className="h-4 animate-pulse rounded bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
+                    <div key={i} className="h-4 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
                   ))}
                 </div>
               ) : (
@@ -370,7 +371,7 @@ function VersionRow({
   const shown = editors.slice(0, 3);
   const more = editors.length - shown.length;
   return (
-    <div className={`group relative mb-0.5 rounded-[10px] ${selected ? "bg-accent-soft" : "hover:bg-[var(--glass-hover)]"}`}>
+    <div className={`group relative mb-0.5 rounded-control ${selected ? "bg-accent-soft" : "hover:bg-[var(--glass-hover)]"}`}>
       {naming ? (
         <form
           className="px-3 py-2"
@@ -393,12 +394,12 @@ function VersionRow({
                 onCancelName();
               }
             }}
-            className="ui-input h-8 w-full rounded-[6px] px-2 text-sm"
+            className="ui-input h-8 w-full rounded-chip px-2 text-sm"
           />
           <p className="mt-1 text-[11px] text-muted">Enter to save, Esc to cancel. Named versions are kept for good.</p>
         </form>
       ) : (
-        <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className="block w-full rounded-[10px] px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className="block w-full rounded-control px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus">
           <span className={`block truncate text-sm ${selected ? "font-semibold text-heading" : "font-medium text-ink"}`}>{title}</span>
           {detail ? <span className="block truncate text-xs text-muted">{detail}</span> : null}
           {shown.length ? (

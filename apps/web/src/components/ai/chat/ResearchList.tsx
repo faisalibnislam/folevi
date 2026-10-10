@@ -40,7 +40,7 @@ export function ResearchList({ activeId, onNavigate }: { activeId: string | null
               href={`/ai/${j.conversationId}`}
               onClick={onNavigate}
               aria-current={j.conversationId === activeId ? "page" : undefined}
-              className={`flex flex-col rounded-[6px] px-2.5 py-1.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
+              className={`flex flex-col rounded-chip px-2.5 py-1.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
                 j.conversationId === activeId ? "bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
               }`}
             >

@@ -206,7 +206,7 @@ export function AuditView() {
                           aria-controls={detailId}
                           aria-label={`${expanded ? "Hide" : "Show"} details for ${e.action} at ${formatDateTime(e.createdAt)}`}
                           onClick={() => toggle(e.id)}
-                          className="grid h-6 w-6 place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
+                          className="grid h-6 w-6 place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
                         >
                           {expanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
                         </button>

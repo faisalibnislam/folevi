@@ -46,13 +46,13 @@ function Section({ title, icon, href, count, children, empty, shelf }: { title: 
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id={`home-${id}`} className="ui-display flex items-center gap-2.5 text-[22px]">
-          <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-[6px] bg-[var(--glass-hover)] text-heading">
+          <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
             {icon}
           </span>
           {title}
           {count ? <span className="ml-2 text-[13px] font-normal text-muted">{count}</span> : null}
         </h2>
-        <AppLink href={href} className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[13px] font-medium text-ink transition-colors hover:bg-accent-soft">
+        <AppLink href={href} className="inline-flex items-center gap-1 rounded-chip px-2.5 py-1 text-[13px] font-medium text-ink transition-colors hover:bg-accent-soft">
           See all <span className="sr-only">{title.toLowerCase()}</span>
           <ArrowRight size={13} aria-hidden />
         </AppLink>
@@ -94,7 +94,7 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
         />
       </AppLink>
       <div className={`absolute top-2 ${d.starred ? "right-[calc(12cqw+8px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
-        <div className="ui-raised rounded-[6px]">
+        <div className="ui-raised rounded-chip">
           <DocMenu doc={d} view="all" recent={recent} />
         </div>
       </div>
@@ -135,7 +135,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
     return (
       <div className="flex gap-8 overflow-hidden pb-7 pt-2" role="status" aria-busy aria-label="Loading">
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-[4px] rounded-r-[14px] bg-sunken motion-reduce:animate-none`} />
+          <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-tiny rounded-r-panel bg-sunken motion-reduce:animate-none`} />
         ))}
       </div>
     );
@@ -143,7 +143,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
   // The cards fade out at either edge while there's more to scroll that way. A mask on the row, not a
   // coloured overlay, so the fade matches whatever is behind it (the glass panel, a note's artwork).
   const fadeMask = `linear-gradient(to right, ${edges.start ? "#000" : "transparent"} 0, #000 64px, #000 calc(100% - 64px), ${edges.end ? "#000" : "transparent"} 100%)`;
-  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[6px] bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-chip bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div className="relative">
       <ul

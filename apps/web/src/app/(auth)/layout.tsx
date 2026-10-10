@@ -13,8 +13,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <FoleviLogo height={28} title={null} />
         </a>
         <main id="main" className="relative">
-          <div aria-hidden className="absolute inset-0 translate-x-2 translate-y-2 ui-card rounded-[10px]" />
-          <div className="relative ui-card rounded-[10px] p-8">{children}</div>
+          <div aria-hidden className="absolute inset-0 translate-x-2 translate-y-2 ui-card rounded-control" />
+          <div className="relative ui-card rounded-control p-8">{children}</div>
         </main>
       </div>
     </div>

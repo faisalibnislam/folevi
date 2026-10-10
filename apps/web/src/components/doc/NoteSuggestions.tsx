@@ -22,7 +22,7 @@ const KIND: Record<NoteSuggestion["kind"], { label: string; icon: React.ReactNod
   duplicate: { label: "Possible duplicate", icon: <Copy size={13} aria-hidden /> },
 };
 
-const CHIP_BUTTON = "grid h-6 w-6 flex-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-[var(--glass-active)] hover:text-heading";
+const CHIP_BUTTON = "grid h-6 w-6 flex-none place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-active)] hover:text-heading";
 
 /**
  * A note's suggestions as quiet chips (data in, actions out), so they can be shown and tested without a
@@ -52,8 +52,8 @@ export function SuggestionChips({
         {items.map((s) => {
           const kind = KIND[s.kind];
           return (
-            <li key={s.key} aria-label={`${kind.label}: ${s.label}`} className="flex max-w-full items-center gap-0.5 rounded-[6px] bg-[var(--glass-hover)] py-0.5 pl-2.5 pr-1 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]">
-              <button type="button" onClick={() => onOpen(s)} title={s.reason ?? kind.label} className="flex min-w-0 items-center gap-1.5 rounded-[6px] py-0.5 pr-1 text-left hover:text-heading">
+            <li key={s.key} aria-label={`${kind.label}: ${s.label}`} className="flex max-w-full items-center gap-0.5 rounded-chip bg-[var(--glass-hover)] py-0.5 pl-2.5 pr-1 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]">
+              <button type="button" onClick={() => onOpen(s)} title={s.reason ?? kind.label} className="flex min-w-0 items-center gap-1.5 rounded-chip py-0.5 pr-1 text-left hover:text-heading">
                 <span className="flex-none text-muted">{kind.icon}</span>
                 <span className="sr-only">{kind.label}: </span>
                 <span className="truncate">{s.label}</span>

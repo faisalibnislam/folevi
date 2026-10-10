@@ -141,7 +141,7 @@ export function PagePicker({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search pages"
-        className="ui-input h-10 w-full rounded-[6px] px-4 text-sm"
+        className="ui-input h-10 w-full rounded-chip px-4 text-sm"
         aria-describedby={error ? `${baseId}-err` : undefined}
       />
       {error ? (

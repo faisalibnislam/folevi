@@ -139,7 +139,7 @@ export function UserDetailView({ id }: { id: string }) {
               { label: "All documents", value: user.usage.documents.toLocaleString() },
               { label: "Personal storage", value: formatBytes(user.usage.storageBytes) },
             ].map((s) => (
-              <div key={s.label} className="rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5">
+              <div key={s.label} className="rounded-control bg-[var(--glass-hover)] px-3 py-2.5">
                 <dt className="text-[12px] font-medium text-muted">{s.label}</dt>
                 <dd className="mt-0.5 ui-display text-[24px] leading-tight tabular-nums">{s.value}</dd>
               </div>

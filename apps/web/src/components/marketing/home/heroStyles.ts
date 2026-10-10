@@ -1,7 +1,7 @@
 import type { CoverArt } from "@/lib/cover";
 import { artById } from "../product/Replica";
 
-/** The styles the home page's note offers, by their ids in covers.json (their sized artwork: scripts/hero-art.mjs). */
+/** The themes the home page's note offers, by their ids in covers.json (their sized artwork: scripts/hero-art.mjs). */
 export const HERO_STYLES = ["art-03", "art-01", "art-30", "art-49", "art-09"].map(artById);
 
 /** The note's cover band: 1080 and 1440 px wide, and 2160 px for Retina screens. */
@@ -12,5 +12,5 @@ export const heroBandSet = (art: CoverArt) =>
 export const heroPhone = (art: CoverArt) => `/marketing/hero/${art.id}-phone.webp`;
 /** Below this width the hero shows the phone crop. */
 export const HERO_PHONE_MEDIA = "(max-width: 639px)";
-/** A 200 px copy for the light behind the note (drawn heavily blurred) and the style picker's tiles. */
+/** A 200 px copy for the light behind the note (drawn heavily blurred) and the theme picker's tiles. */
 export const heroGlow = (art: CoverArt) => `/marketing/hero/${art.id}-glow.webp`;

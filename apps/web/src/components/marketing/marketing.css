@@ -2,7 +2,7 @@
  * Folevi marketing.
  * The same neutral chrome as the app (tokens.chrome in packages/design-tokens, data-chrome="neutral"):
  * pure white in light mode, near-black in dark mode, Instrument Sans for text and Spectral for titles,
- * 6 px controls, 8 to 14 px panels. Colour comes from the notes (their styles), never from the chrome.
+ * 6 px controls, 8 to 14 px panels. Colour comes from the notes (their themes), never from the chrome.
  * Scoped with `mk-` prefixes so nothing leaks into the product surfaces that share this Next.js app.
  */
 
@@ -158,7 +158,7 @@
   top: 12px;
   left: 12px;
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background: var(--color-accent);
   color: var(--color-accent-ink);
   box-shadow: var(--shadow-primary);
@@ -180,7 +180,7 @@
     radial-gradient(60vw 70vh at -10% 110%, var(--glass-light-b), transparent 70%),
     radial-gradient(50vw 50vh at 50% 50%, var(--glass-light-c), transparent 75%);
 }
-/* The ambient light (Shell's .ui-ambient): the home page's note style, heavily blurred under a veil. */
+/* The ambient light (Shell's .ui-ambient): the home page's note theme, heavily blurred under a veil. */
 .mk-ambient {
   position: fixed;
   inset: 0;
@@ -249,7 +249,7 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     /* The page panel is the outer frame (18); the note inside it is 14, so the inner corner is never rounder. */
-    border-radius: 18px;
+    border-radius: var(--radius-container);
     box-shadow: var(--glass-edge), var(--glass-shadow);
   }
 }
@@ -278,7 +278,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   font-weight: 550;
   letter-spacing: -0.005em;
   white-space: nowrap;
@@ -317,7 +317,7 @@
   gap: 7px;
   min-height: 26px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   font-size: 12.5px;
   font-weight: 550;
   color: var(--color-ink);
@@ -332,7 +332,7 @@
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   color: var(--color-heading);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-control);
@@ -346,7 +346,7 @@
   min-width: 1.7em;
   height: 1.6em;
   padding: 0 0.4em;
-  border-radius: 4px;
+  border-radius: var(--radius-tiny);
   background: var(--color-surface-raised);
   color: var(--color-ink-muted);
   box-shadow: 0 0 0 1px var(--color-line), 0 1px 0 var(--color-line-strong);
@@ -358,23 +358,23 @@
 /* Surfaces -------------------------------------------------------------------------------------- */
 .mk-card {
   background: var(--color-surface);
-  border-radius: var(--radius-sheet, 10px);
+  border-radius: var(--radius-container);
   box-shadow: var(--shadow-card);
 }
 /* A quiet grey well for grouped content (the app's canvas grey, without the glass). */
 .mk-panel {
   position: relative;
   background: var(--mk-well);
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 70%, transparent);
 }
 
-/* A stage for a live demo: the app's glass canvas, lit by a note's style image, as behind a note. */
+/* A stage for a live demo: the app's glass canvas, lit by a note's theme image, as behind a note. */
 .mk-stage {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   background: var(--glass-canvas);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 60%, transparent);
 }
@@ -410,7 +410,7 @@
 .mk-root mark {
   background: var(--color-highlight-yellow);
   color: inherit;
-  border-radius: 4px;
+  border-radius: var(--radius-tiny);
   padding: 0 2px;
 }
 
@@ -418,12 +418,12 @@
 .mk-seg {
   display: flex;
   gap: 2px;
-  padding: 3px;
-  border-radius: 6px;
+  padding: 4px;
+  border-radius: var(--radius-control);
   background: var(--color-surface-sunken);
 }
 .mk-seg-item {
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
   color: var(--color-ink-muted);
   transition: color var(--motion-fast, 140ms) var(--mk-ease), background-color var(--motion-base, 180ms) var(--mk-ease), box-shadow var(--motion-base, 180ms) var(--mk-ease);
 }
@@ -449,7 +449,7 @@
 /* Menus open over busy content, so they stay nearly opaque (a menu inside the glass bar can't blur what's below it). */
 .mk-glass.mk-glass-bar { background: color-mix(in oklab, var(--color-surface-raised) 90%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .mk-glass.mk-glass-menu { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.mk-lights span { display: block; width: 11px; height: 11px; border-radius: 6px; }
+.mk-lights span { display: block; width: 11px; height: 11px; border-radius: var(--radius-chip); }
 .mk-lights span:nth-child(1) { background: #EC6A5E; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
 .mk-lights span:nth-child(2) { background: #F4BF4F; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
 .mk-lights span:nth-child(3) { background: #61C554; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.15); }
@@ -464,7 +464,7 @@
   flex: none;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-tiny);
   color: var(--check-ink, #fff);
   background: var(--color-surface);
   box-shadow: inset 0 0 0 1.5px var(--check-line, var(--color-line-strong));
@@ -479,13 +479,13 @@
 
 /* ------------------------------------------------------------------------------------------------
  * Product replicas: the app's own chrome (glass canvas, sidebar, tab strip, dock) around a note that
- * carries its style's colours. Built in HTML so it follows the theme and never goes out of date.
+ * carries its note theme's colours. Built in HTML so it follows light and dark mode and never goes out of date.
  * --------------------------------------------------------------------------------------------- */
 .mk-app {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: var(--radius-container);
   background: var(--glass-canvas);
   box-shadow: var(--shadow-lift);
   font-size: 13px;
@@ -493,7 +493,7 @@
   color: var(--color-ink);
   text-align: start;
 }
-/* The note's style image lights the canvas behind the glass, heavily blurred (Shell's ambient layer). */
+/* The note's theme image lights the canvas behind the glass, heavily blurred (Shell's ambient layer). */
 .mk-app-ambient {
   position: absolute;
   inset: -96px;
@@ -548,7 +548,7 @@
   gap: 8px;
   height: 36px;
   padding: 0 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   font-size: 12.5px;
   white-space: nowrap;
   color: var(--color-ink-muted);
@@ -566,15 +566,15 @@
   box-shadow: var(--shadow-primary);
 }
 
-/* The page behind a note: its style image, full bleed, inside the rounded content panel. */
+/* The page behind a note: its theme image, full bleed, inside the rounded content panel. */
 .mk-note-page {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   background: var(--note-art, var(--color-surface-sunken)) center / cover no-repeat;
   box-shadow: var(--glass-edge), var(--glass-shadow);
 }
-/* A note's sheet, coloured by its style (editor.css: .fb-sheet[data-sheet="art"][data-text="art"]). */
+/* A note's sheet, coloured by its theme (editor.css: .fb-sheet[data-sheet="art"][data-text="art"]). */
 .mk-note {
   --n-paper: var(--art-paper, var(--color-surface));
   --n-ink: var(--art-ink, var(--color-ink));
@@ -586,7 +586,7 @@
   --n-muted: color-mix(in oklab, var(--n-ink) 76%, var(--n-paper));
   background: var(--n-paper);
   color: var(--n-ink);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   box-shadow: var(--shadow-sheet);
   transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
 }
@@ -605,7 +605,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
   background: linear-gradient(var(--cover-art-tint), var(--cover-art-tint)), var(--note-art, none) center / cover no-repeat;
 }
 .mk-note-cover::after {
@@ -621,7 +621,7 @@
 :root[data-theme="dark"] .mk-note-cover[data-tone="light"]::after { background: linear-gradient(180deg, transparent 30%, var(--mk-title-shade-deep)); }
 :root[data-theme="dark"] .mk-note-cover[data-tone="light"] .mk-note-title { color: #fff; }
 .mk-note-h { font-family: var(--font-display); font-weight: 600; color: var(--n-heading); letter-spacing: -0.01em; }
-.mk-note-callout { background: color-mix(in oklab, var(--n-hl) 70%, var(--n-paper)); border-radius: 10px; }
+.mk-note-callout { background: color-mix(in oklab, var(--n-hl) 70%, var(--n-paper)); border-radius: var(--radius-control); }
 .mk-note-accent { color: var(--n-accent); }
 .mk-note-muted { color: var(--n-muted); }
 .mk-note-chip { background: color-mix(in oklab, var(--n-hl-2) 75%, var(--n-paper)); color: var(--n-ink); }
@@ -631,18 +631,18 @@
   .mk-note, .mk-app-ambient { transition: none; }
 }
 
-/* A note card as the app's Home shows it: a strip of the style image, then the page. */
+/* A note card as the app's Home shows it: a strip of the theme image, then the page. */
 .mk-notecard {
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr);
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--n-paper);
   color: var(--n-ink);
   box-shadow: var(--shadow-card);
 }
 .mk-notecard-spine { background: var(--note-art, none) center / cover no-repeat; transition: filter 200ms var(--mk-ease); }
-/* Hover, as the app's note cards: the card lifts a little, its shadow deepens and its style image brightens. */
+/* Hover, as the app's note cards: the card lifts a little, its shadow deepens and its theme image brightens. */
 .mk-notecard { transition: transform 200ms var(--mk-ease), box-shadow 200ms var(--mk-ease); }
 .mk-notecard:hover {
   transform: translateY(-3px);
@@ -726,7 +726,7 @@
 @media (min-width: 1024px) { .mk-page-stack { padding-top: 32px; } }
 .mk-box {
   position: relative;
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   background: var(--color-surface);
   box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -26px rgb(20 20 40 / 0.2);
 }
@@ -746,7 +746,7 @@
 .mk-dark .mk-btn-primary:hover { filter: brightness(0.92); }
 
 :root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
-@media (min-width: 640px) { .mk-box { border-radius: 18px; } }
+@media (min-width: 640px) { .mk-box { border-radius: var(--radius-container); } }
 
 /* On Home, the grey wells inside the cards (the section pictures, the Recent notes panel, the security note)
    take a light tint from the hero note's style instead: its paper, warmed with its second highlight, and a
@@ -777,19 +777,19 @@
   place-items: center;
   height: 168px;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--mk-well);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 70%, transparent);
 }
 .mk-mini-card {
   display: block;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
   color: var(--color-ink);
   text-align: start;
 }
-.mk-mini-line { display: block; height: 4px; border-radius: 4px; background: color-mix(in oklab, var(--color-ink) 14%, transparent); }
+.mk-mini-line { display: block; height: 4px; border-radius: var(--radius-tiny); background: color-mix(in oklab, var(--color-ink) 14%, transparent); }
 /* The sync status pill (SyncStatus's ui-well pill): Offline with changes waiting, then Saved, in turn. */
 .mk-mini-pills { position: relative; display: inline-grid; flex: none; }
 .mk-mini-pill {
@@ -800,7 +800,7 @@
   gap: 5px;
   height: 24px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   font-size: 10.5px;
   font-weight: 600;
   white-space: nowrap;
@@ -828,7 +828,7 @@
 .mk-mini-art {
   width: 72px;
   height: 96px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background-size: cover;
   background-position: center;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 18px -10px rgb(0 0 0 / 0.35);
@@ -840,7 +840,7 @@
   display: block;
   width: 136px;
   padding: 12px 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   text-align: start;
 }
 .mk-mini-theme[data-mini-theme="light"] { color: #18181B; background: #FFFFFF; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 20px -12px rgb(0 0 0 / 0.3); }
@@ -854,8 +854,8 @@
 }
 
 /* ------------------------------------------------------------------------------------------------
- * The home page hero: a note in the app. Its style lights the page behind it (blurred, as the Style
- * panel's Blur background does), the sheet takes the style's paper and ink, and the title sits on the
+ * The home page hero: a note in the app. Its theme lights the page behind it (blurred, as the Style
+ * panel's Blur background does), the sheet takes the theme's paper and ink, and the title sits on the
  * cover as DocumentHeader draws it. The section slides under the glass site header.
  * --------------------------------------------------------------------------------------------- */
 .mk-hero {
@@ -884,7 +884,7 @@
 /* The sheet is as wide as the home cards below it (the app's Wide page), with their corners; its blocks
    keep the default editor width (760 px) as their measure, so lines stay easy to read. */
 .mk-hero-note {
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   margin-inline: auto;
   box-shadow: var(--shadow-lift);
 }
@@ -904,37 +904,20 @@
 /* Dark mode dims the artwork a little (--cover-art-tint), except behind an ink title on a light cover. */
 .mk-hero-art::after { content: ""; position: absolute; inset: 0; background: var(--cover-art-tint); transition: opacity var(--motion-page, 320ms) var(--mk-ease); }
 .mk-hero-stage[data-tone="light"] .mk-hero-art::after { opacity: 0; }
-/* The film grain (editor.css .fb-cover-grain): dark specks on covers that read deep, white on light ones. */
-.mk-hero-grain {
-  position: absolute;
-  inset: 0;
-  background-size: 220px 220px;
-  opacity: 0;
-  transition: opacity var(--motion-page, 320ms) var(--mk-ease);
-}
-.mk-hero-grain[data-grain="deep"] {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
-  mix-blend-mode: multiply;
-}
-.mk-hero-grain[data-grain="light"] {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.4 1.5'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
-  mix-blend-mode: screen;
-}
-/* The shade under the title: dark under white titles, light under ink ones. */
+/* The tone under the title, in the theme's colours (as DocumentView's coverTone): a deep shade of its key
+   colour multiplied in under white titles, its page colour screened in under ink ones. */
 .mk-hero-shade {
   position: absolute;
   inset: 0;
   opacity: 0;
   transition: opacity var(--motion-page, 320ms) var(--mk-ease);
 }
-.mk-hero-shade[data-shade="deep"] { background: linear-gradient(180deg, transparent 12%, rgb(0 0 0 / 0.3) 48%, rgb(0 0 0 / 0.56)); }
-.mk-hero-shade[data-shade="light"] { background: linear-gradient(180deg, transparent 12%, rgb(255 255 255 / 0.36) 48%, rgb(255 255 255 / 0.62)); }
-.mk-hero-stage[data-tone="deep"] [data-grain="deep"],
-.mk-hero-stage[data-tone="light"] [data-grain="light"] { opacity: 0.5; }
+.mk-hero-shade[data-shade="deep"] { --tint: color-mix(in oklab, var(--art-accent, #000000) 42%, black); background: linear-gradient(180deg, color-mix(in oklab, var(--tint) 50%, transparent), color-mix(in oklab, var(--tint) 75%, transparent)); mix-blend-mode: multiply; }
+.mk-hero-shade[data-shade="light"] { --tint: var(--art-paper, #ffffff); background: linear-gradient(180deg, color-mix(in oklab, var(--tint) 50%, transparent), color-mix(in oklab, var(--tint) 75%, transparent)); mix-blend-mode: screen; }
 .mk-hero-stage[data-tone="deep"] [data-shade="deep"],
 .mk-hero-stage[data-tone="light"] [data-shade="light"] { opacity: 1; }
 
-/* The note's title on its cover (DocumentHeader): Spectral, white on deep covers, the style's ink on light ones. */
+/* The note's title on its cover (DocumentHeader): Spectral, white on deep covers, the theme's ink on light ones. */
 .mk-hero-title {
   max-width: 17ch;
   font-family: var(--font-display);
@@ -963,14 +946,14 @@
   align-items: center;
   min-height: 26px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   font-size: 12.5px;
   font-weight: 550;
   color: var(--n-ink);
   background: color-mix(in oklab, var(--n-hl-2) 80%, var(--n-paper));
   transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
 }
-/* The note's body: the badge line, then the editor (editor.css) on the note's Serif font in the style's
+/* The note's body: the badge line, then the editor (editor.css) on the note's Serif font in the theme's
    colours (fb-sheet data-sheet/data-text/data-palette read the --art-* and --pal-* variables set above).
    The same markup is drawn by the server first (HeroStaticBody) and then by the live editor (HeroEditor). */
 .mk-hero-body {
@@ -992,7 +975,7 @@
   max-height: min(560px, calc(100dvh - 180px));
 }
 
-/* The actions, in their own glass card under the note, with the style picker beside them. */
+/* The actions, in their own glass card under the note, with the theme picker beside them. */
 .mk-hero-actions {
   --n-accent: var(--art-accent, var(--color-heading));
   --n-paper: var(--art-paper, var(--color-surface));
@@ -1001,7 +984,7 @@
   gap: 18px;
   margin: var(--mk-stack-gap) 0 0;
   padding: 32px 20px;
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   backdrop-filter: blur(28px) saturate(1.8);
@@ -1014,7 +997,7 @@
 @media (prefers-reduced-transparency: reduce) {
   .mk-hero-actions { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
-/* The call to action takes the style's accent, as the note's checkboxes and links do. */
+/* The call to action takes the theme's accent, as the note's checkboxes and links do. */
 .mk-hero-primary {
   color: var(--n-paper);
   background: var(--n-accent);
@@ -1030,7 +1013,7 @@
 .mk-hero-swatch {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background-size: cover;
   background-position: center;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
@@ -1043,8 +1026,8 @@
   .mk-hero-cover { min-height: 300px; padding: 96px 40px 30px; }
   .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
   .mk-hero-body { padding: 26px 40px 88px; }
-  .mk-hero-actions { padding-inline: 40px; border-radius: 14px; }
-  .mk-hero-note { border-radius: 14px; }
+  .mk-hero-actions { padding-inline: 40px; border-radius: var(--radius-panel); }
+  .mk-hero-note { border-radius: var(--radius-panel); }
   .mk-hero-swatch { width: 36px; height: 36px; }
 }
 @media (min-width: 1024px) {
@@ -1058,7 +1041,7 @@
   .mk-hero-picker { flex: none; padding: 0 0 0 24px; border-top: 0; border-left: 1px solid var(--glass-border); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mk-hero-layer, .mk-hero-grain, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary { transition: none; }
+  .mk-hero-layer, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary { transition: none; }
 }
 
 /* Long-form pages (docs, legal) ------------------------------------------------------------------ */
@@ -1095,7 +1078,7 @@
   top: 0.7em;
   width: 5px;
   height: 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-tiny);
   background: var(--color-ink-muted);
 }
 .mk-prose ol { list-style: decimal; padding-left: 1.4em; }
@@ -1117,7 +1100,7 @@
   font-size: 0.86em;
   background: var(--color-surface-sunken);
   color: var(--color-code-ink);
-  border-radius: 4px;
+  border-radius: var(--radius-tiny);
   padding: 0.12em 0.4em;
 }
 .mk-prose table { width: 100%; border-collapse: collapse; font-size: 15px; }
@@ -1128,7 +1111,7 @@
 /* Tables sit on a card so they read as one object. */
 .mk-prose .mk-table-card {
   padding: 6px 20px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
 }

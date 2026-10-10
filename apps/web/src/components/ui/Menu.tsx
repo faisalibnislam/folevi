@@ -92,7 +92,7 @@ export function MenuButton({
             show();
           }
         }}
-        className={triggerClassName ?? "inline-flex h-8 min-w-8 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:min-w-11"}
+        className={triggerClassName ?? "inline-flex h-8 min-w-8 items-center justify-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:min-w-11"}
       >
         {trigger}
       </button>

@@ -87,7 +87,7 @@ export function SettingsView({ section }: { section: Section }) {
                         <AppLink
                           href={`/settings/${s.id}`}
                           aria-current={active ? "page" : undefined}
-                          className={`group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-[6px] px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
+                          className={`group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
                             active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
                           }`}
                         >
@@ -137,7 +137,7 @@ function CreateWorkspaceNudge() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
   return (
-    <div className="flex-none rounded-[10px] border border-line p-3 md:mt-1">
+    <div className="flex-none rounded-control border border-line p-3 md:mt-1">
       <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
       <p className="mt-1 max-w-52 text-[12.5px] text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
       <Button size="sm" className="mt-2" onClick={() => setOpen(true)}>

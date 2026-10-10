@@ -32,7 +32,7 @@ export function InviteView({ token }: { token: string }) {
               {preview.inviterName} invited you to join as {preview.role === "admin" ? "an admin" : preview.memberAccess === "edit" ? "a member" : `a member who can ${preview.memberAccess === "comment" ? "comment" : "view"} only`}.
             </p>
             {!preview.emailMatches ? (
-              <p className="mt-4 rounded-[6px] border border-warning/30 bg-warning-soft p-3 text-sm">
+              <p className="mt-4 rounded-chip border border-warning/30 bg-warning-soft p-3 text-sm">
                 This invitation was sent to a different address than the one you’re signed in with ({profile.email}). Sign in with the invited address to accept it.
               </p>
             ) : (

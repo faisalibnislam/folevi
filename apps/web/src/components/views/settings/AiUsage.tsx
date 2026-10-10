@@ -56,7 +56,7 @@ export function UsageChart({ days }: { days: { day: string; credits: number }[] 
           })}
         </svg>
         {shown ? (
-          <p aria-hidden className="pointer-events-none absolute -top-7 rounded-[6px] bg-[var(--glass-active)] px-2 py-0.5 text-[12px] text-ink shadow-[var(--glass-edge)]" style={{ left: `clamp(0px, calc(${((hover! + 0.5) / days.length) * 100}% - 3.5rem), calc(100% - 7rem))` }}>
+          <p aria-hidden className="pointer-events-none absolute -top-7 rounded-chip bg-[var(--glass-active)] px-2 py-0.5 text-[12px] text-ink shadow-[var(--glass-edge)]" style={{ left: `clamp(0px, calc(${((hover! + 0.5) / days.length) * 100}% - 3.5rem), calc(100% - 7rem))` }}>
             {shortDay(shown.day)}: {credits(shown.credits)}
           </p>
         ) : null}
@@ -138,8 +138,8 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
           {usage.features.map((f) => (
             <li key={f.feature} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3 text-[13px]">
               <span className="truncate text-ink">{f.label}</span>
-              <span aria-hidden className="h-1.5 overflow-hidden rounded-[4px] bg-[var(--glass-hover)]">
-                <span className="block h-full rounded-[6px] bg-[color-mix(in_oklab,var(--color-heading)_55%,transparent)]" style={{ width: `${(f.credits / most) * 100}%` }} />
+              <span aria-hidden className="h-1.5 overflow-hidden rounded-tiny bg-[var(--glass-hover)]">
+                <span className="block h-full rounded-chip bg-[color-mix(in_oklab,var(--color-heading)_55%,transparent)]" style={{ width: `${(f.credits / most) * 100}%` }} />
               </span>
               <span className="tabular-nums text-muted">{f.credits.toLocaleString()}</span>
             </li>

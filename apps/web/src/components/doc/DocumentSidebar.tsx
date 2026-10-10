@@ -84,7 +84,7 @@ export function DocumentSidebar({
           <IconButton label="Hide sidebar" shortcut="⌘\" onClick={onHide}>
             <PanelLeft size={16} aria-hidden />
           </IconButton>
-          <AppLink href="/documents" onClick={onNavigate} aria-label="Home" title="Home" className="ui-btn ui-btn-ghost grid h-8 w-8 place-items-center rounded-[6px] p-0 text-muted hover:text-heading">
+          <AppLink href="/documents" onClick={onNavigate} aria-label="Home" title="Home" className="ui-btn ui-btn-ghost grid h-8 w-8 place-items-center rounded-chip p-0 text-muted hover:text-heading">
             <House size={16} aria-hidden />
           </AppLink>
         </div>
@@ -99,7 +99,7 @@ export function DocumentSidebar({
 
       <div className="flex-none px-3 pb-3">
         {/* The note's name and where it lives, in a translucent card. */}
-        <div className="rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--glass-border)]">
+        <div className="rounded-control bg-[var(--glass-hover)] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--glass-border)]">
           <div className="min-w-0">
             <p className="truncate text-[13.5px] font-semibold leading-tight text-heading" title={title || "Untitled"}>
               {title || "Untitled"}
@@ -109,7 +109,7 @@ export function DocumentSidebar({
                 {trail.map((c, i) => (
                   <li key={`${c.href}-${i}`} className="flex min-w-0 items-center gap-0.5">
                     {i > 0 ? <ChevronRight size={11} className="flex-none text-faint" aria-hidden /> : <span className="flex-none">In</span>}
-                    <AppLink href={c.href} onClick={onNavigate} className="max-w-[9.5rem] truncate rounded-[6px] px-1 transition-colors hover:bg-accent-soft hover:text-heading">
+                    <AppLink href={c.href} onClick={onNavigate} className="max-w-[9.5rem] truncate rounded-chip px-1 transition-colors hover:bg-accent-soft hover:text-heading">
                                             {c.label}
                     </AppLink>
                   </li>
@@ -151,7 +151,7 @@ export function DocumentSidebar({
             >
               <span aria-hidden className="relative">
                 {t.icon}
-                {t.id === "comments" && unread ? <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-[4px] bg-coral" /> : null}
+                {t.id === "comments" && unread ? <span className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-tiny bg-coral" /> : null}
               </span>
             </button>
           ))}
@@ -205,7 +205,7 @@ function ContentsPanel({ documentId, title, onJump }: { documentId: string; titl
       <button
         type="button"
         onClick={() => (document.getElementById("doc-scroll") ?? document.getElementById("main"))?.scrollTo({ top: 0, behavior: scrollBehavior() })}
-        className="mb-0.5 block w-full truncate rounded-[6px] bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] font-semibold text-heading transition-colors hover:bg-[var(--glass-hover)]"
+        className="mb-0.5 block w-full truncate rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] font-semibold text-heading transition-colors hover:bg-[var(--glass-hover)]"
       >
         {title || "Untitled"}
       </button>
@@ -236,7 +236,7 @@ function TasksPanel({ documentId, editor, readOnly, onJump }: { documentId: stri
             const checked = Boolean((b.props as { checked?: boolean }).checked);
             const text = plainText(b.text) || "Untitled task";
             return (
-              <li key={b.id} className="flex items-start gap-2 rounded-[6px] px-1.5 py-1 hover:bg-accent-soft/60">
+              <li key={b.id} className="flex items-start gap-2 rounded-chip px-1.5 py-1 hover:bg-accent-soft/60">
                 <button
                   type="button"
                   role="checkbox"
@@ -244,7 +244,7 @@ function TasksPanel({ documentId, editor, readOnly, onJump }: { documentId: stri
                   aria-label={`${checked ? "Mark as not done" : "Mark as done"}: ${text}`}
                   disabled={readOnly || !editor}
                   onClick={() => toggle(b.id)}
-                  className={`mt-[3px] grid h-4 w-4 flex-none place-items-center rounded-[6px] border transition-colors ${checked ? "border-moss bg-moss text-white" : "border-line-strong bg-surface hover:border-moss"} disabled:cursor-default`}
+                  className={`mt-[3px] grid h-4 w-4 flex-none place-items-center rounded-chip border transition-colors ${checked ? "border-moss bg-moss text-white" : "border-line-strong bg-surface hover:border-moss"} disabled:cursor-default`}
                 >
                   {checked ? (
                     <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" aria-hidden>
@@ -302,8 +302,8 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
         <ul className="mb-5 space-y-0.5">
           {attachments.map((a) => (
             <li key={a.id}>
-              <button type="button" onClick={() => onJump(a.id)} className="flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[13px] hover:bg-accent-soft/60">
-                <span aria-hidden className="grid h-7 w-7 flex-none place-items-center rounded-[6px] bg-sunken text-muted">
+              <button type="button" onClick={() => onJump(a.id)} className="flex w-full items-center gap-2 rounded-chip px-2 py-1.5 text-left text-[13px] hover:bg-accent-soft/60">
+                <span aria-hidden className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-sunken text-muted">
                   {a.kind === "image" ? <ImageIcon size={14} /> : a.kind === "audio" ? <Mic size={14} /> : <Paperclip size={14} />}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{a.name}</span>
@@ -318,7 +318,7 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
       ) : (
         <ul className="space-y-1.5">
           {links.map((l) => (
-            <li key={l.key} className="ui-card rounded-[10px]">
+            <li key={l.key} className="ui-card rounded-control">
               {l.internal ? (
                 <AppLink href={l.href} onClick={onNavigate} className="flex items-center gap-2 px-2.5 py-2 text-[13px] hover:text-heading">
                   <FileText size={14} className="flex-none text-muted" aria-hidden />
@@ -397,6 +397,15 @@ function FindPanel({ editor }: { editor: Editor | null }) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => inputRef.current?.focus(), []);
+  // ⌘F again while Find is open: back to the search box, its text selected.
+  useEffect(() => {
+    const focus = () => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    };
+    window.addEventListener("folevi:focus-find", focus);
+    return () => window.removeEventListener("folevi:focus-find", focus);
+  }, []);
   useEffect(() => {
     if (!editor) return;
     // Searched again a moment after typing stops, not on every key (a long note takes a while to search).
@@ -485,11 +494,11 @@ function FindPanel({ editor }: { editor: Editor | null }) {
             }
           }}
           placeholder="Text in document"
-          className="ui-input h-9 w-full rounded-[6px] pl-8 pr-8 text-sm"
+          className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-sm"
           aria-describedby={`${inputId}-count`}
         />
         {query ? (
-          <button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-[6px] text-faint hover:text-ink">
+          <button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
             <X size={13} aria-hidden />
           </button>
         ) : null}
@@ -513,10 +522,10 @@ function FindPanel({ editor }: { editor: Editor | null }) {
                 type="button"
                 onClick={() => reveal(i)}
                 aria-current={i === current ? "true" : undefined}
-                className={`block w-full rounded-[6px] px-2 py-1.5 text-left text-[12.5px] leading-snug text-muted transition-colors hover:bg-accent-soft/60 ${i === current ? "bg-accent-soft text-ink" : ""}`}
+                className={`block w-full rounded-chip px-2 py-1.5 text-left text-[12.5px] leading-snug text-muted transition-colors hover:bg-accent-soft/60 ${i === current ? "bg-accent-soft text-ink" : ""}`}
               >
                 {m.snippet.before}
-                <mark className="rounded-[4px] bg-marigold-soft px-0.5 text-ink">{m.snippet.hit}</mark>
+                <mark className="rounded-tiny bg-marigold-soft px-0.5 text-ink">{m.snippet.hit}</mark>
                 {m.snippet.after}
               </button>
             </li>
@@ -546,7 +555,7 @@ function PageTree({ documentId, onNavigate }: { documentId: string; onNavigate?:
                 href={`/d/${p.id}`}
                 onClick={onNavigate}
                 aria-current={here ? "page" : undefined}
-                className={`flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] pr-2 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-10 ${here ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"}`}
+                className={`flex h-7 min-w-0 items-center gap-1.5 rounded-chip pr-2 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-10 ${here ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"}`}
                 style={{ paddingLeft: `${0.5 + p.depth * 0.85}rem` }}
               >
                 <FileText size={13} aria-hidden className="flex-none opacity-60" />

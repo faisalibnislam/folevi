@@ -164,7 +164,7 @@ export function SupportTicketView({ number }: { number: number }) {
               {ticket.messages.map((m) => (
                 <li
                   key={m.id}
-                  className={`rounded-[10px] px-4 py-3 ${
+                  className={`rounded-control px-4 py-3 ${
                     m.kind === "note" ? "bg-warning-soft" : m.kind === "staff" ? "bg-[var(--glass-hover)]" : "shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
                   }`}
                 >
@@ -222,7 +222,7 @@ export function SupportTicketView({ number }: { number: number }) {
                   aria-invalid={textError ? true : undefined}
                   aria-describedby={`${uid}-hint${textError ? ` ${uid}-error` : ""}`}
                   placeholder={mode === "reply" ? `Write to ${ticket.name}…` : "Only staff can see notes."}
-                  className="ui-input w-full resize-y rounded-[6px] px-3 py-2.5 text-[13.5px] leading-relaxed text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]"
+                  className="ui-input w-full resize-y rounded-chip px-3 py-2.5 text-[13.5px] leading-relaxed text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]"
                 />
                 <p id={`${uid}-hint`} className="mt-1 text-[12.5px] text-muted">
                   {mode === "reply"

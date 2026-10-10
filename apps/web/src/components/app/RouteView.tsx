@@ -34,10 +34,10 @@ if (typeof window !== "undefined" && window.location.pathname.startsWith("/d/"))
 function NoteLoading() {
   return (
     <ViewChrome title="">
-      <div className="fb-page relative h-full overflow-y-auto rounded-[14px] bg-[var(--color-surface-sunken)] px-3 pb-28 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] sm:px-8">
+      <div className="fb-page relative h-full overflow-y-auto rounded-panel bg-[var(--color-surface-sunken)] px-3 pb-28 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] sm:px-8">
         <div className="mx-auto max-w-3xl space-y-3 py-6" aria-busy aria-label="Loading document">
           {[80, 95, 60, 88].map((w, i) => (
-            <div key={i} className="h-4 animate-pulse rounded bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
+            <div key={i} className="h-4 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
           ))}
         </div>
       </div>

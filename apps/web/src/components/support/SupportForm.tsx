@@ -96,7 +96,7 @@ export function SupportForm({
   };
 
   const site = variant === "site";
-  const input = `ui-input w-full rounded-[6px] px-3 text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)] ${site ? "h-11 text-[15px]" : "h-9 text-sm"}`;
+  const input = `ui-input w-full rounded-chip px-3 text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)] ${site ? "h-11 text-[15px]" : "h-9 text-sm"}`;
   const label = site ? "mb-1.5 block text-[14px] font-medium text-(--color-heading)" : "mb-1 block text-sm font-medium text-heading";
   const hint = site ? "mt-1.5 text-[13px] text-muted" : "mt-1 text-[12.5px] text-muted";
   const errorCls = site ? "mt-1.5 text-[13px] text-danger" : "mt-1 text-[12.5px] text-danger";
@@ -273,7 +273,7 @@ export function SupportForm({
       </div>
 
       {formError ? (
-        <p role="alert" className={`rounded-[10px] bg-danger-soft px-3 py-2 ${site ? "text-[14px]" : "text-sm"} text-danger`}>
+        <p role="alert" className={`rounded-control bg-danger-soft px-3 py-2 ${site ? "text-[14px]" : "text-sm"} text-danger`}>
           {formError}
         </p>
       ) : null}

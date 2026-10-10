@@ -31,7 +31,7 @@ export interface StarterPage {
 export interface UseCase {
   id: string;
   label: string;
-  /** A note style (cover art id) that illustrates the choice. */
+  /** A note theme (cover art id) that illustrates the choice. */
   art: string;
   pages: StarterPage[];
 }
@@ -132,10 +132,10 @@ export function starterPagesFor(ids: readonly string[]): StarterPage[] {
   return out;
 }
 
-/** "plain": no note style (a new note's default). */
+/** "plain": no note theme (a new note's default). */
 export const PLAIN_STYLE = "plain";
 
-/** The note styles offered for the Welcome page during onboarding (cover art ids). */
+/** The note themes offered for the Welcome page during onboarding (cover art ids). */
 export const ONBOARDING_NOTE_STYLES = ["art-03", "art-39", "art-40", "art-09", "art-01", "art-30", "art-49", "art-57"] as const;
 
 export function isOnboardingNoteStyle(value: string): boolean {

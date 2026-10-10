@@ -11,11 +11,11 @@ export function Switch({ checked, onChange, label, describedBy, disabled }: { ch
       aria-describedby={describedBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-10 flex-none items-center rounded-[6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 ${
+      className={`relative inline-flex h-6 w-10 flex-none items-center rounded-chip transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 ${
         checked ? "bg-heading" : "bg-[color-mix(in_oklab,var(--color-ink)_22%,transparent)]"
       }`}
     >
-      <span aria-hidden className={`inline-block h-5 w-5 rounded-[4px] shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-150 ${checked ? "translate-x-[18px] bg-canvas" : "translate-x-[2px] bg-white"}`} />
+      <span aria-hidden className={`inline-block h-5 w-5 rounded-tiny shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-150 ${checked ? "translate-x-[18px] bg-canvas" : "translate-x-[2px] bg-white"}`} />
     </button>
   );
 }

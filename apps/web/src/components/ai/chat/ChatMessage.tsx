@@ -28,7 +28,7 @@ export function openWebCitation(c: WebCitation) {
   window.open(c.url, "_blank", "noopener,noreferrer");
 }
 
-const ROW_BUTTON = "inline-flex h-7 items-center gap-1 rounded-[6px] px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
+const ROW_BUTTON = "inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
 
 /** Copies text, and says so for a moment. */
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
@@ -59,7 +59,7 @@ export function NotSharedChips({ count }: { count: number }) {
   return (
     <ul aria-label="Files not shared" className="mb-1 flex max-w-[85%] flex-wrap justify-end gap-1.5">
       {Array.from({ length: count }, (_, i) => (
-        <li key={i} title="Only the person who uploaded it can open it." className="inline-flex h-7 items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] px-2.5 text-[12.5px] text-muted">
+        <li key={i} title="Only the person who uploaded it can open it." className="inline-flex h-7 items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 text-[12.5px] text-muted">
           <EyeOff size={12} aria-hidden className="flex-none" /> File not shared
         </li>
       ))}
@@ -77,7 +77,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
   if (editing && onEdit) {
     return (
       <form
-        className="ml-auto w-full max-w-[85%] rounded-[14px] bg-[var(--glass-hover)] p-2 shadow-[inset_0_0_0_1px_var(--glass-border)]"
+        className="ml-auto w-full max-w-[85%] rounded-panel bg-[var(--glass-hover)] p-2 shadow-[inset_0_0_0_1px_var(--glass-border)]"
         onSubmit={(e) => {
           e.preventDefault();
           if (!draft.trim()) return;
@@ -106,10 +106,10 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
           className="block w-full resize-none bg-transparent px-1.5 py-1 text-[14px] leading-[1.5] text-ink outline-none"
         />
         <div className="mt-1 flex justify-end gap-1.5">
-          <button type="button" onClick={() => setEditing(false)} className="h-7 rounded-[6px] px-2.5 text-[12.5px] text-muted hover:bg-[var(--glass-active)] hover:text-heading">
+          <button type="button" onClick={() => setEditing(false)} className="h-7 rounded-chip px-2.5 text-[12.5px] text-muted hover:bg-[var(--glass-active)] hover:text-heading">
             Cancel
           </button>
-          <button type="submit" disabled={!draft.trim()} className="h-7 rounded-[6px] bg-heading px-2.5 text-[12.5px] font-medium text-canvas disabled:opacity-40">
+          <button type="submit" disabled={!draft.trim()} className="h-7 rounded-chip bg-heading px-2.5 text-[12.5px] font-medium text-canvas disabled:opacity-40">
             Send
           </button>
         </div>
@@ -120,7 +120,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
     <div className="group/user flex flex-col items-end gap-0.5">
       {files?.length ? <AttachmentChips files={files} className="mb-1 max-w-[85%] justify-end" /> : null}
       <NotSharedChips count={hidden} />
-      <p className="w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-[14px] rounded-br-[4px] bg-heading px-3.5 py-2 text-[14px] text-canvas">{text}</p>
+      <p className="w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-panel rounded-br-tiny bg-heading px-3.5 py-2 text-[14px] text-canvas">{text}</p>
       {onEdit ? (
         <button
           type="button"
@@ -145,7 +145,7 @@ export function AgentSteps({ steps, live }: { steps: AgentStep[]; live?: boolean
   return (
     <ul aria-label={live ? "What Foli is doing" : "What Foli did"} className="mb-2 flex flex-wrap gap-1.5">
       {lines.map((l) => (
-        <li key={l} className="rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
+        <li key={l} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
           {l}
         </li>
       ))}
@@ -176,7 +176,7 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
             type="button"
             title={c.quote ? `“${c.quote}”` : undefined}
             onClick={() => onCite(c)}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
           >
             <span className="font-semibold text-muted">{c.n}</span>
             <FileText size={12} aria-hidden className="flex-none text-muted" />
@@ -190,7 +190,7 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
             target="_blank"
             rel="noopener noreferrer"
             title={c.url}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
           >
             <span className="font-semibold text-muted">{c.n}</span>
             <Globe size={12} aria-hidden className="flex-none text-muted" />
@@ -288,11 +288,11 @@ export function AssistantMessage({
     return (
       <div className="space-y-1.5">
         {message.text ? (
-          <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
+          <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
             <AiMarkdown markdown={message.text} />
           </div>
         ) : null}
-        <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-[14px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} />
+        <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-panel bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} />
         {last && !readOnly ? (
           <button type="button" disabled={busy} onClick={onRegenerate} className={ROW_BUTTON}>
             <RotateCcw size={12} aria-hidden /> Try again
@@ -313,7 +313,7 @@ export function AssistantMessage({
           </p>
           {readOnly ? null : (
             <button type="button" onClick={onStop} className={ROW_BUTTON}>
-              <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Stop
+              <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
             </button>
           )}
         </div>
@@ -328,11 +328,11 @@ export function AssistantMessage({
 
   if (reveal) {
     return (
-      <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]" aria-busy="true">
+      <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]" aria-busy="true">
         <StreamingText text={text} cited={cited} />
         {streaming && !readOnly ? (
           <button type="button" onClick={onStop} className={`${ROW_BUTTON} mt-1`}>
-            <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Stop
+            <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
           </button>
         ) : null}
       </div>
@@ -341,7 +341,7 @@ export function AssistantMessage({
 
   return (
     <div className="space-y-2">
-      <div className="rounded-[14px] rounded-bl-[4px] bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
+      <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
         {message.agent ? <AgentSteps steps={message.agent.steps} /> : null}
         {message.text ? <AiMarkdown markdown={message.text} cited={cited} onCite={citeBy} onNavigate={onOpen} /> : <p className="text-[13.5px] text-muted">Stopped before it said anything.</p>}
         {message.agent?.run && (run || readOnly) ? <AgentRunCard run={message.agent.run} activity={run?.activity ?? { busy: null, error: null }} onApprove={run?.onApprove ?? (() => {})} onDiscard={run?.onDiscard ?? (() => {})} onUndo={run?.onUndo ?? (() => {})} onOpen={onOpen} readOnly={readOnly} /> : null}
@@ -364,7 +364,7 @@ export function AssistantMessage({
       {last && message.suggestions.length && !busy && !readOnly ? (
         <div className="flex flex-col items-start gap-1.5" aria-label="Suggested follow-ups" role="group">
           {message.suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => onSuggestion(s)} className="rounded-[6px] bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => onSuggestion(s)} className="rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}

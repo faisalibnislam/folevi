@@ -13,7 +13,7 @@ export function CheckInbox({ email: initialEmail, callbackURL = "/documents" }: 
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   return (
     <>
-      <div className="mb-4 grid h-12 w-12 place-items-center rounded-[6px] bg-ember-soft text-ember-ink" aria-hidden>
+      <div className="mb-4 grid h-12 w-12 place-items-center rounded-chip bg-ember-soft text-ember-ink" aria-hidden>
         <MailCheck size={22} />
       </div>
       <AuthHeading

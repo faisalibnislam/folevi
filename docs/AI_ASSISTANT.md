@@ -227,7 +227,7 @@ As built (milestone 9, part B). The assistant is called Foli in the interface.
   chat closes (the launcher, or on a note where you were), to the prompt when a result is discarded, and to
   the draft's name when a generated note is ready. AI chrome inside a styled page (a night sheet, artwork
   colours) takes the app's own colours (`.ui-app-colors` in globals.css), so the inline composer and the
-  transcript preview keep their contrast on any note style. `e2e/ai-a11y.spec.ts` runs axe over every AI
+  transcript preview keep their contrast on any note theme. `e2e/ai-a11y.spec.ts` runs axe over every AI
   surface in light and dark.
 - Graph: nodes are sized by connections, never drawn under 4.5 px and hit within 12 px, the 12
   best-connected are labelled (others on hover, focus, search or zoom), entities have a shape per kind

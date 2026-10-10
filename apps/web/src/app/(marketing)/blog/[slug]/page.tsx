@@ -91,7 +91,7 @@ export default async function BlogPostPage({ params }: Params) {
                 <dt className="mk-caps">Topics</dt>
                 <dd className="mt-1 flex flex-wrap gap-1.5">
                   {post.tags.map((tag) => (
-                    <span key={tag} className="inline-flex h-6 items-center rounded-[4px] bg-(--color-surface-sunken) px-2 text-[12.5px] font-medium text-muted">
+                    <span key={tag} className="inline-flex h-6 items-center rounded-tiny bg-(--color-surface-sunken) px-2 text-[12.5px] font-medium text-muted">
                       {tag}
                     </span>
                   ))}

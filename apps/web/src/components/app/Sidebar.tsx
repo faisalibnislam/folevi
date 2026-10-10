@@ -109,7 +109,7 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
             }
           : undefined
       }
-      className={`group relative flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 pointer-coarse:h-11 ${
+      className={`group relative flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 pointer-coarse:h-11 ${
         active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
       } ${over ? "bg-[var(--glass-active)] text-heading ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
@@ -117,7 +117,7 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
         {icon}
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {count ? <span className={`min-w-5 rounded-[6px] px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums ${active ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted"}`}>{count}</span> : null}
+      {count ? <span className={`min-w-5 rounded-chip px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums ${active ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted"}`}>{count}</span> : null}
     </AppLink>
   );
 }
@@ -129,13 +129,13 @@ function MoreLink({ href, count, noun, onNavigate, exact = true }: { href: strin
   if (count <= 0) return null;
   if (!exact) {
     return (
-      <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-[6px] px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+      <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-chip px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
         View all <span className="sr-only">{noun}</span>
       </AppLink>
     );
   }
   return (
-    <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-[6px] px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+    <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-chip px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
       +{count.toLocaleString()} more <span className="sr-only">{noun}</span>
     </AppLink>
   );
@@ -158,7 +158,7 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
               onClick={() => setOpen(!open)}
               aria-expanded={open}
               aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
-              className="ui-caps grid h-7 w-6 flex-none place-items-center rounded-[6px] transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
+              className="ui-caps grid h-7 w-6 flex-none place-items-center rounded-chip transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
             >
               {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
             </button>
@@ -166,7 +166,7 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
               href={href}
               onClick={onNavigate}
               aria-current={isActive(route, href) ? "page" : undefined}
-              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-[6px] px-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
+              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip px-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
               title={`All ${title.toLowerCase()}`}
             >
               {title}
@@ -227,7 +227,7 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
           },
           ...TAG_COLORS.filter((c) => c.id !== tag.color).map((c) => ({
             label: `Color: ${c.label}`,
-            icon: <span className="inline-block h-2.5 w-2.5 rounded-[4px]" style={{ background: tagColorVar(c.id) }} />,
+            icon: <span className="inline-block h-2.5 w-2.5 rounded-tiny" style={{ background: tagColorVar(c.id) }} />,
             onSelect: () => void update({ tagId: tag.id, color: c.id }).catch((e) => toast.show(errorMessage(e), { tone: "error" })),
           })),
           "separator" as const,
@@ -260,15 +260,15 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
               setError(null);
             }}
             aria-invalid={error ? true : undefined}
-            className="ui-input mt-2 h-10 w-full rounded-[6px] px-4"
+            className="ui-input mt-2 h-10 w-full rounded-chip px-4"
           />
           <fieldset className="mt-4">
             <legend className="text-sm font-medium">Color</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {TAG_COLORS.map((c) => (
-                <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2 py-1 text-sm has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
+                <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-chip px-2 py-1 text-sm has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
                   <input type="radio" name={`tag-color-${tag.id}`} value={c.id} checked={color === c.id} onChange={() => setColor(c.id)} className="sr-only" />
-                  <span className="inline-block h-3 w-3 rounded-[6px]" style={{ background: tagColorVar(c.id) }} aria-hidden />
+                  <span className="inline-block h-3 w-3 rounded-chip" style={{ background: tagColorVar(c.id) }} aria-hidden />
                   {c.label}
                 </label>
               ))}
@@ -329,7 +329,7 @@ export function SidebarSearch() {
     <button
       type="button"
       onClick={openPalette}
-      className="ui-well flex h-9 w-full items-center gap-2 rounded-[10px] pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
+      className="ui-well flex h-9 w-full items-center gap-2 rounded-control pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
     >
       <Search size={14} aria-hidden />
       <span className="flex-1">Search or jump to…</span>
@@ -350,7 +350,7 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         aria-label="Folevi"
         title="Go to Home"
-        className="ui-browser-only flex min-w-0 flex-1 items-center gap-2 rounded-[6px] px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="ui-browser-only flex min-w-0 flex-1 items-center gap-2 rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <FoleviLogo height={26} title={null} className="flex-none" />
       </AppLink>
@@ -410,7 +410,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={() => setStarredOpen(!starredOpen)}
                 aria-expanded={starredOpen}
                 aria-label={starredOpen ? "Collapse Starred" : "Expand Starred"}
-                className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-[6px] text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 {starredOpen ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
               </button>

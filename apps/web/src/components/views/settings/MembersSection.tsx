@@ -30,7 +30,7 @@ function choiceOf(role: string, access: MemberAccess): Choice {
 
 function RoleChip({ access }: { access: MemberAccess }) {
   const chip = ACCESS_CHIP[access];
-  return chip ? <span className="ml-1.5 rounded-[6px] border border-line px-1.5 py-px text-[11px] font-medium text-muted">{chip}</span> : null;
+  return chip ? <span className="ml-1.5 rounded-chip border border-line px-1.5 py-px text-[11px] font-medium text-muted">{chip}</span> : null;
 }
 
 /** Members of the current team workspace. Only shown when a workspace is open: Personal has no members. */
@@ -85,7 +85,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
           ) : undefined
         }
       >
-        <ul className="divide-y divide-line rounded-[10px] border border-line">
+        <ul className="divide-y divide-line rounded-control border border-line">
           {data?.members.map((m) => (
             <li key={m.profileId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <span className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                     aria-label={`Role for ${m.displayName}`}
                     value={choiceOf(m.role, m.memberAccess)}
                     onChange={(e) => setChoice(m.profileId, m.displayName, e.target.value as Choice)}
-                    className="h-8 ui-input rounded-[6px] px-3 text-sm"
+                    className="h-8 ui-input rounded-chip px-3 text-sm"
                   >
                     <option value="member:edit">Member</option>
                     <option value="member:comment">Member · can comment</option>
@@ -146,7 +146,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
         {data?.invites.length ? (
           <>
             <h4 className="mb-2 mt-5 text-sm font-semibold">Pending invitations</h4>
-            <ul className="divide-y divide-line rounded-[10px] border border-line">
+            <ul className="divide-y divide-line rounded-control border border-line">
               {data.invites.map((i) => (
                 <li key={i.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                   <span className="flex-1">{i.email}</span>

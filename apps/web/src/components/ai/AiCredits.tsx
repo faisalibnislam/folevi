@@ -54,13 +54,13 @@ function CreditsLink({ action, className }: { action: "buy" | "upgrade"; classNa
 export function AiProblemNotice({ problem, className }: { problem: AiProblem; className?: string }) {
   if (problem.kind === "other") {
     return (
-      <p role="alert" className={className ?? "rounded-[10px] bg-danger-soft px-3 py-2.5 text-[13px] text-danger"}>
+      <p role="alert" className={className ?? "rounded-control bg-danger-soft px-3 py-2.5 text-[13px] text-danger"}>
         {problem.message}
       </p>
     );
   }
   return (
-    <div role="alert" data-testid="ai-credits-problem" className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] ${className ?? ""}`}>
+    <div role="alert" data-testid="ai-credits-problem" className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] ${className ?? ""}`}>
       <p className="min-w-0 flex-1 basis-56">{problem.message}</p>
       {problem.action !== "none" ? <CreditsLink action={problem.action} /> : null}
     </div>
@@ -90,7 +90,7 @@ export function AiCreditsNote({ documentId, className }: { documentId?: string; 
   const when = c.trialing ? `Your trial ends on ${creditDate(c.resetsAt)}.` : `Resets ${creditDate(c.resetsAt)}.`;
   const action = c.canBuy ? "buy" : c.account === "seat" ? null : "upgrade";
   return (
-    <div data-testid="ai-credits-note" className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[10px] bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] text-muted ${className ?? ""}`}>
+    <div data-testid="ai-credits-note" className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] text-muted ${className ?? ""}`}>
       <p className="min-w-0 flex-1 basis-48">
         {left} {when}
       </p>

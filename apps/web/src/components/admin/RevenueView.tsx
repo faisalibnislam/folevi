@@ -26,7 +26,7 @@ function MonthlyBars({ caption, rows, format }: { caption: string; rows: { month
               {monthLabel(r.month)}
             </th>
             <td className={`${td} w-full align-middle`}>
-              <div aria-hidden className="h-2 rounded-[4px] bg-heading/80" style={{ width: `${Math.max((r.value / max) * 100, r.value > 0 ? 1.5 : 0)}%` }} />
+              <div aria-hidden className="h-2 rounded-tiny bg-heading/80" style={{ width: `${Math.max((r.value / max) * 100, r.value > 0 ? 1.5 : 0)}%` }} />
             </td>
             <td className={`${tdNum} whitespace-nowrap`}>
               {format(r.value)}

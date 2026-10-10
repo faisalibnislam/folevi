@@ -118,10 +118,10 @@ const diff = {
     ),
   }),
   styles: {
-    title: "Note styles with artwork",
+    title: "Note themes with artwork",
     body: (
       <p>
-        Each page can take one of {STYLE_COUNT} artwork styles, or your own image, and the style colours the cover, the paper and the text. The app around it stays plain white, or near-black in dark mode. See <Link href="/features/note-styles">note styles</Link>.
+        Each page can take one of {STYLE_COUNT} artwork themes, or your own image, and the theme colours the cover, the paper and the text. The app around it stays plain white, or near-black in dark mode. See <Link href="/features/note-themes">note themes</Link>.
       </p>
     ),
   } satisfies Section,

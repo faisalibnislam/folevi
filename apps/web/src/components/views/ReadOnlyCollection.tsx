@@ -23,7 +23,7 @@ function Value({ prop, value }: { prop: ViewProperty; value: unknown }) {
       return <span>{value ? "✓" : ""}</span>;
     case "select": {
       const o = prop.options.find((x) => x.id === value);
-      return o ? <span className="rounded-[6px] px-2 py-0.5 text-[11px]" style={optionStyle(o.color)}>{o.name}</span> : null;
+      return o ? <span className="rounded-chip px-2 py-0.5 text-[11px]" style={optionStyle(o.color)}>{o.name}</span> : null;
     }
     case "multiSelect":
       return (
@@ -31,7 +31,7 @@ function Value({ prop, value }: { prop: ViewProperty; value: unknown }) {
           {(Array.isArray(value) ? value : []).map((id) => {
             const o = prop.options.find((x) => x.id === id);
             return o ? (
-              <span key={String(id)} className="rounded-[6px] px-2 py-0.5 text-[11px]" style={optionStyle(o.color)}>
+              <span key={String(id)} className="rounded-chip px-2 py-0.5 text-[11px]" style={optionStyle(o.color)}>
                 {o.name}
               </span>
             ) : null;
@@ -53,27 +53,27 @@ function Value({ prop, value }: { prop: ViewProperty; value: unknown }) {
 
 /** A collection as its view shows it: filters and sorts applied, visible properties only. */
 export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | undefined }) {
-  if (!data) return <p className="fb my-3 rounded-[6px] border border-dashed border-line p-4 text-sm text-muted">This collection isn’t available.</p>;
+  if (!data) return <p className="fb my-3 rounded-chip border border-dashed border-line p-4 text-sm text-muted">This collection isn’t available.</p>;
   const rows = applyView(data.rows, data.config, data.properties);
   const visible = data.properties.filter((p) => data.config.visibleProperties.includes(p.id));
   const group = data.viewType === "board" ? data.properties.find((p) => p.id === data.config.groupBy && p.type === "select") : undefined;
   return (
-    <section className="my-4 overflow-hidden ui-card rounded-[10px]" aria-label={`Collection ${data.name}`}>
+    <section className="my-4 overflow-hidden ui-card rounded-control" aria-label={`Collection ${data.name}`}>
       <h3 className="border-b border-line px-3 py-2 text-sm font-semibold text-heading">{data.name}</h3>
       {group ? (
         <div className="flex gap-3 overflow-x-auto p-3">
           {[...group.options.map((o) => ({ id: o.id as string | null, name: o.name, color: o.color })), { id: null, name: `No ${group.name.toLowerCase()}`, color: "muted" }].map((col) => {
             const items = rows.filter((r) => ((r.values[group.id] as string | undefined) ?? null) === col.id);
             return (
-              <section key={col.id ?? "none"} aria-label={`${col.name}, ${items.length}`} className="flex w-60 flex-none flex-col rounded-[6px] bg-sunken p-2">
+              <section key={col.id ?? "none"} aria-label={`${col.name}, ${items.length}`} className="flex w-60 flex-none flex-col rounded-chip bg-sunken p-2">
                 <h4 className="mb-2 px-1 text-xs font-semibold">
-                  <span className="rounded-[6px] px-2 py-0.5" style={optionStyle(col.color)}>
+                  <span className="rounded-chip px-2 py-0.5" style={optionStyle(col.color)}>
                     {col.name}
                   </span>
                 </h4>
                 <ul className="space-y-2">
                   {items.map((r) => (
-                    <li key={r.id} className="rounded-[6px] border border-line bg-raised p-2.5 text-sm">
+                    <li key={r.id} className="rounded-chip border border-line bg-raised p-2.5 text-sm">
                       <p className="font-medium">
                         
                         {r.title || "Untitled"}
@@ -95,7 +95,7 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
       ) : data.viewType === "gallery" ? (
         <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => (
-            <li key={r.id} className="ui-card rounded-[10px] p-3 text-sm">
+            <li key={r.id} className="ui-card rounded-control p-3 text-sm">
               <p className="font-medium">
                 
                 {r.title || "Untitled"}

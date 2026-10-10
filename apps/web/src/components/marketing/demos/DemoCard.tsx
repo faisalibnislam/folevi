@@ -21,7 +21,7 @@ export function DemoCard({
 }) {
   return (
     <div className={cx("mk-card", clip && "overflow-hidden", className)}>
-      <div className="flex h-11 items-center gap-2 border-b mk-hair px-4">
+      <div className="flex h-[60px] items-center gap-2 border-b mk-hair px-4 sm:h-12">
         <FileText size={14} aria-hidden="true" className="flex-none text-muted" />
         <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-(--color-heading)">{title}</p>
         {meta}

@@ -16,13 +16,13 @@ export interface SelectionAction {
  */
 export function SelectionBar({ count, total, actions, onSelectAll, onClear }: { count: number; total: number; actions: SelectionAction[]; onSelectAll: () => void; onClear: () => void }) {
   const btn =
-    "inline-flex h-9 items-center gap-1.5 rounded-[6px] px-2.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus";
+    "inline-flex h-9 items-center gap-1.5 rounded-chip px-2.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div
       role="toolbar"
       aria-label="Selected notes"
       data-no-marquee=""
-      className="ui-pop absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-[14px] p-1.5 animate-[folio-rise_160ms_var(--ease-folio)] motion-reduce:animate-none [scrollbar-width:none]"
+      className="ui-pop absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-panel p-1.5 animate-[folio-rise_160ms_var(--ease-folio)] motion-reduce:animate-none [scrollbar-width:none]"
     >
       <p role="status" aria-live="polite" className="flex-none whitespace-nowrap px-2.5 text-[13px] font-semibold text-heading">
         {count.toLocaleString()} selected

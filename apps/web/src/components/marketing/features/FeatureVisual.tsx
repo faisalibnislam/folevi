@@ -61,7 +61,7 @@ export function FeatureVisual({ visual, art }: { visual: VisualKey; art: string 
   if (visual === "folders") {
     // The Folders page replica, as in the home page's Folders section.
     return (
-      <div className="mk-stage p-2 sm:p-6 lg:p-8" style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
+      <div className="mk-stage p-4 sm:p-6 lg:p-8" style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
         <FoldersPageReplica />
       </div>
     );
@@ -171,7 +171,7 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
 
 function Pop({ label, title, icon, children, className }: { label: string; title: string; icon?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div role="img" aria-label={label} className={cx("mk-app-pop mx-auto w-full overflow-hidden rounded-[14px] text-[13px]", className)}>
+    <div role="img" aria-label={label} className={cx("mk-app-pop mx-auto w-full overflow-hidden rounded-panel text-[13px]", className)}>
       <div aria-hidden="true">
         <div className="flex items-center gap-2.5 border-b border-(--color-line) px-4 py-3">
           {icon}
@@ -186,7 +186,7 @@ function Pop({ label, title, icon, children, className }: { label: string; title
 
 function MenuRow({ icon, label, hint, active = false }: { icon: ReactNode; label: string; hint?: string; active?: boolean }) {
   return (
-    <li className={cx("flex h-8 items-center gap-2.5 rounded-[6px] px-2.5", active ? "mk-app-row-on" : "text-ink")}>
+    <li className={cx("flex h-8 items-center gap-2.5 rounded-chip px-2.5", active ? "mk-app-row-on" : "text-ink")}>
       <span className="flex-none text-muted">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {hint ? <span className="flex-none text-[11px] text-faint">{hint}</span> : null}
@@ -231,7 +231,7 @@ function SyncStatuses() {
             </li>
           ))}
         </ul>
-        <div className="flex flex-wrap items-center gap-2 border-t mk-hair bg-(--mk-well) px-4 py-3 text-[12.5px]">
+        <div className="flex flex-wrap items-center gap-2 border-t mk-hair bg-(--mk-well) px-4 py-2 text-[12.5px]">
           <span className="text-muted">Conflict:</span>
           {["Keep mine", "Keep theirs", "Keep both"].map((label) => (
             <span key={label} className="mk-btn mk-btn-secondary h-7 px-2.5 text-[12px]">
@@ -259,7 +259,7 @@ function FlowchartPicture({ art }: { art: string }) {
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
       <figure className="mk-note overflow-hidden" style={artVars(artById(art))}>
         <div className="flex items-center gap-2 border-b border-[color-mix(in_oklab,var(--n-ink)_12%,transparent)] px-4 py-2.5 text-[12px] font-medium text-(--n-muted)">
-          <span className="rounded-[4px] bg-[color-mix(in_oklab,var(--n-ink)_7%,transparent)] px-1.5 leading-5">Flowchart</span>
+          <span className="rounded-tiny bg-[color-mix(in_oklab,var(--n-ink)_7%,transparent)] px-1.5 leading-5">Flowchart</span>
           <span className="flex-1" />
           <span aria-hidden="true">Tidy up</span>
           <span aria-hidden="true" className="inline-flex items-center gap-1">
@@ -299,13 +299,13 @@ function WhiteboardPicture({ art }: { art: string }) {
     >
       <div aria-hidden="true">
         {/* One row at every width: on phones the controls are a little smaller and two pen colours are left out. */}
-        <div className="flex items-center gap-0.5 overflow-hidden border-b border-[color-mix(in_oklab,var(--n-ink)_12%,transparent)] px-2 py-2 sm:gap-1 sm:px-3">
+        <div className="flex items-center gap-0.5 overflow-hidden border-b border-[color-mix(in_oklab,var(--n-ink)_12%,transparent)] p-2.5 sm:gap-1 sm:px-3">
           {[
             { icon: <Pencil size={14} />, on: true },
             { icon: <Highlighter size={14} /> },
             { icon: <Eraser size={14} /> },
           ].map((tool, i) => (
-            <span key={i} className={cx("grid size-7 flex-none place-items-center rounded-[6px] sm:size-8", tool.on ? "mk-app-dock-on" : "text-(--n-muted)")}>
+            <span key={i} className={cx("grid size-7 flex-none place-items-center rounded-chip sm:size-8", tool.on ? "mk-app-dock-on" : "text-(--n-muted)")}>
               {tool.icon}
             </span>
           ))}
@@ -313,14 +313,14 @@ function WhiteboardPicture({ art }: { art: string }) {
           {PEN.map((c, i) => (
             <span
               key={c}
-              className={cx("mx-px size-4 flex-none rounded-[6px] sm:mx-0 sm:size-5", i >= 4 && "hidden sm:block", i === 1 && "shadow-[0_0_0_2px_var(--n-paper),0_0_0_3.5px_var(--n-ink)]")}
+              className={cx("mx-px size-4 flex-none rounded-chip sm:mx-0 sm:size-5", i >= 4 && "hidden sm:block", i === 1 && "shadow-[0_0_0_2px_var(--n-paper),0_0_0_3.5px_var(--n-ink)]")}
               style={{ background: WHITEBOARD_COLORS[c] }}
             />
           ))}
           <span className="mx-1 hidden h-5 w-px bg-[color-mix(in_oklab,var(--n-ink)_18%,transparent)] sm:block" />
           {[2.5, 5, 10].map((w, i) => (
-            <span key={w} className={cx("hidden size-8 place-items-center rounded-[6px] sm:grid", i === 0 && "bg-[color-mix(in_oklab,var(--n-ink)_8%,transparent)]")}>
-              <span className="rounded-[6px] bg-(--n-ink)" style={{ width: w + 2, height: w + 2 }} />
+            <span key={w} className={cx("hidden size-8 place-items-center rounded-chip sm:grid", i === 0 && "bg-[color-mix(in_oklab,var(--n-ink)_8%,transparent)]")}>
+              <span className="rounded-chip bg-(--n-ink)" style={{ width: w + 2, height: w + 2 }} />
             </span>
           ))}
           <span className="flex-1" />
@@ -367,7 +367,7 @@ function SharePanel() {
         <div>
           <p className="text-[13px] font-semibold text-(--color-heading)">Who has access</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <span className="mk-app-well flex h-9 min-w-0 flex-1 items-center rounded-[6px] px-3 text-faint">name@example.com</span>
+            <span className="mk-app-well flex h-9 min-w-0 flex-1 items-center rounded-chip px-3 text-faint">name@example.com</span>
             <span className="mk-btn mk-btn-secondary h-9 gap-1 px-3 text-[12.5px]">
               Can view <ChevronDown size={13} />
             </span>
@@ -376,7 +376,7 @@ function SharePanel() {
           <ul className="mt-3 space-y-1">
             {people.map((p) => (
               <li key={p.name} className="flex items-center gap-2.5 py-1">
-                <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{p.name[0]}</span>
+                <span className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{p.name[0]}</span>
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block truncate font-medium text-ink">{p.name}</span>
                   <span className="block truncate text-[11.5px] text-muted">{p.note}</span>
@@ -391,7 +391,7 @@ function SharePanel() {
             <Globe size={14} /> Public link
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Links aren’t indexed by search engines and can be revoked instantly.</p>
-          <div className="mt-3 flex items-center gap-3 rounded-[6px] border border-(--color-line) px-3 py-2">
+          <div className="mt-3 flex items-center gap-3 rounded-chip border border-(--color-line) px-3 py-2">
             <span className="min-w-0 flex-1">
               <span className="block truncate font-mono text-[11.5px] text-ink">…/s/k3Jd••••••••</span>
               <span className="block truncate text-[11.5px] text-muted">Expires 12 Oct · Password protected · 4 views</span>
@@ -401,11 +401,11 @@ function SharePanel() {
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
             <span className="text-[11.5px] text-muted">
               Expires (optional)
-              <span className="mk-app-well mt-1 block h-8 rounded-[6px]" />
+              <span className="mk-app-well mt-1 block h-8 rounded-chip" />
             </span>
             <span className="text-[11.5px] text-muted">
               Password (optional, 8+ characters)
-              <span className="mk-app-well mt-1 block h-8 rounded-[6px]" />
+              <span className="mk-app-well mt-1 block h-8 rounded-chip" />
             </span>
             <span className="mk-btn mk-btn-primary h-8 self-end px-3 text-[12px]">Create link</span>
           </div>
@@ -436,12 +436,12 @@ function WorkspacePanels() {
       aria-label="Two panels. The switcher lists Personal first, then two workspaces with your role: Owner of Alder Street Studio and Member of Reading group. The members list for Alder Street Studio shows an owner, an admin, two members (one who can only comment) and a guest. Four seats are billed; the guest is free."
       className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
     >
-      <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[340px] rounded-[14px] p-1.5 text-[13px]">
+      <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[340px] rounded-panel p-1.5 text-[13px]">
         <p className="mk-caps px-2.5 pb-1 pt-2 text-[10.5px]">Switch to</p>
         <ul className="space-y-0.5">
           {spaces.map((s) => (
-            <li key={s.name} className={cx("flex h-10 items-center gap-2.5 rounded-[10px] px-2.5", s.on ? "mk-app-row-on" : "text-ink")}>
-              <span className="grid size-6 flex-none place-items-center rounded-[6px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{s.name[0]}</span>
+            <li key={s.name} className={cx("flex h-10 items-center gap-2.5 rounded-control px-2.5", s.on ? "mk-app-row-on" : "text-ink")}>
+              <span className="grid size-6 flex-none place-items-center rounded-chip bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{s.name[0]}</span>
               <span className="min-w-0 flex-1 truncate">{s.name}</span>
               <span className="flex-none text-[11.5px] font-normal text-muted">{s.role}</span>
             </li>
@@ -454,12 +454,12 @@ function WorkspacePanels() {
       <div aria-hidden="true" className="mk-card overflow-hidden text-[13px]">
         <div className="flex items-center justify-between gap-3 border-b mk-hair px-4 py-3">
           <p className="font-semibold text-(--color-heading)">Members</p>
-          <span className="rounded-[6px] bg-(--color-surface-sunken) px-2 text-[11.5px] font-medium leading-6 text-muted">4 seats · Pro</span>
+          <span className="rounded-chip bg-(--color-surface-sunken) px-2 text-[11.5px] font-medium leading-6 text-muted">4 seats · Pro</span>
         </div>
         <ul className="divide-y divide-(--mk-hair)">
           {members.map((m) => (
-            <li key={m.name} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="grid size-7 flex-none place-items-center rounded-[6px] bg-(--color-surface-sunken) text-[11px] font-semibold text-(--color-heading)">{m.name[0]}</span>
+            <li key={m.name} className="flex items-center gap-3 px-4 py-3">
+              <span className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-surface-sunken) text-[11px] font-semibold text-(--color-heading)">{m.name[0]}</span>
               <span className="min-w-0 flex-1 truncate text-ink">{m.name}</span>
               <span className="flex-none text-[12px] text-muted">{m.role}</span>
               <span className={cx("hidden w-14 flex-none text-right text-[11.5px] sm:block", m.seat ? "text-muted" : "font-medium text-moss-ink")}>{m.seat ? "Seat" : "Free"}</span>
@@ -478,7 +478,7 @@ function TemplateTrio() {
   return (
     <div role="img" aria-label="Three built-in templates as new pages: Meeting Notes, Weekly Reset and Travel Plan." className="grid gap-4 md:grid-cols-3">
       {picks.map((t, i) => (
-        <div key={t.key} aria-hidden="true" className={cx("h-[340px] overflow-hidden rounded-[10px] [mask-image:linear-gradient(black_80%,transparent)]", i === 2 && "hidden md:block")}>
+        <div key={t.key} aria-hidden="true" className={cx("h-[340px] overflow-hidden rounded-control [mask-image:linear-gradient(black_80%,transparent)]", i === 2 && "hidden md:block")}>
           <TemplateSheet blocks={t.blocks} title={t.name} compact topHeading={3} className="h-full" />
         </div>
       ))}
@@ -495,7 +495,7 @@ function ExportPanels() {
       aria-label="A page's menu with Share, Version history, Export as Markdown, Export as HTML, Export as PDF (print), Duplicate, Save as template and Archive. Beside it, Settings, Import and export: import Markdown or text files or a folder, and export everything in Personal as a ZIP."
       className="grid items-start gap-6 lg:grid-cols-2"
     >
-      <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[320px] rounded-[14px] p-1.5 text-[13px]">
+      <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[320px] rounded-panel p-1.5 text-[13px]">
         <ul className="space-y-0.5">
           <MenuRow icon={<Star size={14} />} label="Star" />
           <MenuRow icon={<Share2 size={14} />} label="Share…" />

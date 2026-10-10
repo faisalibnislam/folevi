@@ -89,7 +89,7 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
     title: sanitizeTitle(input.title),
     // Every note has an icon (templates and collection rows keep whatever they were given).
     icon: input.icon ?? ((input.kind ?? "document") === "document" ? randomNoteEmoji() : undefined),
-    // New notes start Plain unless the caller gives a note style.
+    // New notes start Plain unless the caller gives a note theme.
     cover: input.cover ?? DEFAULTS.cover,
     style: input.style ?? DEFAULTS.style,
     dailyDate: input.dailyDate,

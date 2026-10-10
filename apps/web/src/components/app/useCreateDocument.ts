@@ -31,7 +31,7 @@ export function useCreateDocument() {
         title: opts.title ?? "",
         icon: null,
         style: DEFAULT_DOCUMENT_STYLE,
-        // New notes start Plain; the owner picks a note style later in Style.
+        // New notes start Plain; the owner picks a note theme later in Style.
         cover: DEFAULT_COVER,
         templateId: opts.templateId ?? null,
       });

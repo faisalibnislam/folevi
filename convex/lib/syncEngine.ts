@@ -1,4 +1,5 @@
 // Server side of docs/SYNC_PROTOCOL.md. Pure functions over a MutationCtx; no client-supplied identity.
+import { checkThemePick } from "./noteThemes";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
@@ -723,7 +724,8 @@ export class SyncEngine {
       parentDocumentId,
       folderId,
       style: input.style ? checkedStyle(input.style) : undefined,
-      cover: input.cover ? await files.cover(await this.checkedCover(input.cover, scope)) : undefined,
+      // A new page may keep a theme it was copied with (a duplicate, a template); switching themes is checked.
+      cover: input.cover ? await files.cover(await this.checkedCover(input.cover, scope, input.cover)) : undefined,
       dailyDate: input.kind === "daily" ? (input.dailyDate ?? undefined) : undefined,
       dailyOwnerId: input.kind === "daily" ? this.profile._id : undefined,
       templateKey,
@@ -737,10 +739,12 @@ export class SyncEngine {
   }
 
   /**
-   * A note style image must be an image already uploaded into the note's own scope; anything else is
+   * A note theme image must be an image already uploaded into the note's own scope; anything else is
    * refused (the client never gets to point a note at someone else's file).
    */
-  private async checkedCover(cover: Doc<"documents">["cover"], scope: Scope): Promise<Doc<"documents">["cover"]> {
+  private async checkedCover(cover: Doc<"documents">["cover"], scope: Scope, current?: Doc<"documents">["cover"]): Promise<Doc<"documents">["cover"]> {
+    // A theme has to be published and on the plan where the note lives; a note keeps the theme it has.
+    if (cover.kind === "art" && cover.value && !(current?.kind === "art" && current.value === cover.value)) await checkThemePick(this.ctx, scope, cover.value);
     if (cover.kind !== "image") return cover;
     const fileId = cover.value;
     const file = fileId
@@ -749,7 +753,7 @@ export class SyncEngine {
           .withIndex("by_public_id", (q) => q.eq("publicId", fileId))
           .unique()
       : null;
-    if (!file || !inScope(file, scope) || file.status !== "ready" || (file.kind !== "cover" && file.kind !== "image")) fail("invalid_argument", "That image can't be used as a note style.");
+    if (!file || !inScope(file, scope) || file.status !== "ready" || (file.kind !== "cover" && file.kind !== "image")) fail("invalid_argument", "That image can't be used as a note theme.");
     return { kind: "image", value: file.publicId };
   }
 
@@ -769,7 +773,7 @@ export class SyncEngine {
     }
     // Notes always keep an icon: an icon can be changed, not removed.
     if (patch.icon) update.icon = patch.icon;
-    if (patch.cover !== undefined) update.cover = await this.checkedCover(patch.cover, scopeOfRow(doc));
+    if (patch.cover !== undefined) update.cover = await this.checkedCover(patch.cover, scopeOfRow(doc), doc.cover);
     if (patch.style !== undefined) update.style = checkedStyle(patch.style);
     // Moving a page: guests (a page grant, no membership) may only rearrange pages among what was shared
     // with them (never file pages in the scope's folders or put them at its top level), and taking a

@@ -23,28 +23,28 @@ const BAND_SIZES = "(min-width: 1472px) 1136px, (min-width: 1024px) calc(100vw -
 type Layer = { key: number; art: CoverArt };
 
 /**
- * The home page hero, drawn as a Folevi note: the style's artwork lights the page behind it (blurred, as with
- * the app's Blur background), the sheet takes the style's paper and ink, and the title sits on the cover as
- * the app puts it (white on covers that read deep, the style's ink on light ones). Picking a style cross-fades
- * all of it, as changing a note's style does in the app. `children` is the note's body (its blocks); `actions`
- * sit in their own card under the note, beside the style picker.
+ * The home page hero, drawn as a Folevi note: the theme's artwork lights the page behind it (blurred, as with
+ * the app's Blur background), the sheet takes the theme's paper and ink, and the title sits on the cover as
+ * the app puts it (white on covers that read deep, the theme's ink on light ones). Picking a theme cross-fades
+ * all of it, as changing a note's theme does in the app. `children` is the note's body (its blocks); `actions`
+ * sit in their own card under the note, beside the theme picker.
  */
 export function HeroNote({ title, chip, children, actions }: { title: ReactNode; chip: ReactNode; children: ReactNode; actions: ReactNode }) {
   const [index, setIndex] = useState(0);
-  // The artwork shown, newest last: a new style fades in over the one before it once its image has loaded.
+  // The artwork shown, newest last: a new theme fades in over the one before it once its image has loaded.
   const [layers, setLayers] = useState<Layer[]>([{ key: 0, art: HERO_STYLES[0]! }]);
   const nextKey = useRef(1);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const art = HERO_STYLES[index]!;
-  // The note's style lights the site's chrome too, as a note's style lights the app's glass.
+  // The note's theme lights the site's chrome too, as a note's theme lights the app's glass.
   useSiteAmbient(glow(art));
 
-  // The first style's cover is the largest thing above the fold: fetch it early, at the size it shows, and
+  // The first theme's cover is the largest thing above the fold: fetch it early, at the size it shows, and
   // only the one the screen will use (the phone crop below 640 px, the band above).
   preload(phone(HERO_STYLES[0]!), { as: "image", fetchPriority: "high", media: HERO_PHONE_MEDIA });
   preload(band(HERO_STYLES[0]!), { as: "image", imageSrcSet: bandSet(HERO_STYLES[0]!), imageSizes: BAND_SIZES, fetchPriority: "high", media: "(min-width: 640px)" });
 
-  // The style's colours also tint the rest of the home page (the section pictures and wells, via .mk-home).
+  // The theme's colours also tint the rest of the home page (the section pictures and wells, via .mk-home).
   const stageRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const home = stageRef.current?.closest<HTMLElement>(".mk-home");
@@ -123,8 +123,6 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
                   onShown={() => shown(layer.key)}
                 />
               ))}
-              <span className="mk-hero-grain" data-grain="deep" />
-              <span className="mk-hero-grain" data-grain="light" />
               <span className="mk-hero-shade" data-shade="deep" />
               <span className="mk-hero-shade" data-shade="light" />
             </div>
@@ -160,7 +158,7 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
             <p id={savedId} className="sr-only">
               This note is a live demo of the editor. Changes aren’t saved; reloading the page brings the original note back.
             </p>
-            {/* The body as the editor draws it: the note's font and the style's page, text and accent colours. */}
+            {/* The body as the editor draws it: the note's font and the theme's page, text and accent colours. */}
             <div className="fb-page mk-hero-page" data-font="serif">
               <div className="fb-sheet mk-hero-sheet relative" data-sheet="art" data-text="art" data-palette="">
                 {Live ? <Live staticBody={children} art={art} styles={HERO_STYLES} onPickStyle={pick} dockSlot={dockSlot} describedBy={savedId} onReady={onReady} /> : children}
@@ -175,7 +173,7 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
           <div className="min-w-0">{actions}</div>
           <div className="mk-hero-picker">
             <p id="hero-note-style" className="text-[13.5px] text-(--color-ink-muted)">
-              Note style: <span className="font-semibold text-(--color-heading)">{art.name}</span>
+              Note theme: <span className="font-semibold text-(--color-heading)">{art.name}</span>
             </p>
             <div role="radiogroup" aria-labelledby="hero-note-style" className="flex items-center gap-2">
               {HERO_STYLES.map((style, i) => {

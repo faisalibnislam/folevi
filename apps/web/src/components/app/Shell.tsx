@@ -47,7 +47,7 @@ interface ShellValue {
   focusMode: boolean;
   setFocusMode: (on: boolean) => void;
   /**
-   * The ambient light behind the glass chrome: a CSS background (a note's style image), or null for neutral;
+   * The ambient light behind the glass chrome: a CSS background (a note's theme image), or null for neutral;
    * `tone` says whether it reads dark ("deep") or light, so the chrome over it stays readable.
    */
   setAmbient: (css: string | null, tone?: "deep" | "light" | null) => void;
@@ -165,7 +165,7 @@ export function Shell() {
     setAmbientCss(css);
     setAmbientTone(css ? tone : null);
   }, []);
-  // A dark style in light mode (or a light one in dark mode) gets a stronger veil (globals.css, data-ambient).
+  // A dark note theme in light mode (or a light one in dark mode) gets a stronger veil (globals.css, data-ambient).
   useEffect(() => {
     const root = document.documentElement;
     if (ambientTone) root.dataset.ambient = ambientTone;
@@ -321,7 +321,7 @@ export function Shell() {
       ) : null}
       {/* The app never scrolls as a page: each region scrolls on its own (and nothing can push the tab strip away). */}
       <div className={`ui-canvas flex h-dvh min-h-0 overflow-hidden text-ink ${isNarrow ? "" : "gap-2 p-2"}`}>
-        {/* Ambient light behind the glass: on a note, its style image, heavily blurred and veiled. */}
+        {/* Ambient light behind the glass: on a note, its theme image, heavily blurred and veiled. */}
         <div aria-hidden className={`ui-ambient pointer-events-none fixed inset-0 -z-[1] transition-opacity duration-500 ${ambient ? "opacity-100" : "opacity-0"}`}>
           {ambient ? <div className="absolute -inset-24 blur-[56px] saturate-[1.4]" style={{ background: ambient }} /> : null}
           <div className="absolute inset-0" style={{ background: "var(--ambient-veil)" }} />
@@ -344,13 +344,13 @@ export function Shell() {
                 if (e.key === "ArrowLeft") setWidth(Math.max(248, width - 8));
                 if (e.key === "ArrowRight") setWidth(Math.min(320, width + 8));
               }}
-              className="absolute inset-y-3 -right-[6px] z-10 w-1 cursor-col-resize rounded-[6px] outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
+              className="absolute inset-y-3 -right-[6px] z-10 w-1 cursor-col-resize rounded-chip outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
             />
           </div>
         ) : null}
         {/* While the modal drawer is open, the page behind it is inert (not focusable, hidden from AT). */}
         {/* The content panel. A note brings its own panel (its page on its backdrop), so it sits straight on the canvas. */}
-        <div className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-[18px]"}`} inert={isNarrow && drawerOpen}>
+        <div className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-container"}`} inert={isNarrow && drawerOpen}>
           {/* The tab strip floats over the view: content scrolls behind it (views pad their top to clear it). */}
           {!isNarrow ? <TabStrip /> : null}
           <RouteView />

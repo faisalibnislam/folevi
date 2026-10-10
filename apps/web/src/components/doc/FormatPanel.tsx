@@ -57,11 +57,11 @@ function Tile({ label, icon, onClick, disabled, pressed, tone = "ink" }: { label
       aria-pressed={pressed}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={`group flex flex-col items-center gap-1.5 rounded-[6px] px-1 py-2.5 text-[11.5px] font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
+      className={`group flex flex-col items-center gap-1.5 rounded-chip px-1 py-2.5 text-[11.5px] font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
         pressed ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_45%,transparent)]" : "ui-raised text-ink hover:-translate-y-px hover:shadow-[var(--shadow-card)]"
       }`}
     >
-      <span aria-hidden className={`grid h-7 w-7 place-items-center rounded-[6px] ${TONES[tone] ?? TONES.ink}`}>
+      <span aria-hidden className={`grid h-7 w-7 place-items-center rounded-chip ${TONES[tone] ?? TONES.ink}`}>
         {icon}
       </span>
       {label}
@@ -115,9 +115,9 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
   const formattable = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"].includes(type ?? "");
   const blockOff = d || !formattable;
   const textStyle = type === "paragraph" ? (fmt.textStyle ?? "body") : null;
-  const seg = "flex rounded-[10px] bg-sunken/80 p-1";
+  const seg = "flex rounded-control bg-sunken/80 p-1";
   const segBtn = (on: boolean) =>
-    `grid h-9 flex-1 place-items-center rounded-[6px] text-[13px] transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
+    `grid h-9 flex-1 place-items-center rounded-chip text-[13px] transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
   const toggleList = (t: string, attrs: Record<string, unknown> = {}) => (type === t ? turnInto(editor, "paragraph") : turnInto(editor, t, attrs));
   return (
     // Its buttons don't take focus from the note (dropdowns and fields do): what's typed next goes on where
@@ -142,7 +142,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               ["Caption", textStyle === "caption", () => turnInto(editor, "paragraph", { textStyle: "caption" }), "text-[12px] text-muted"],
             ] as const
           ).map(([label, on, run, cls]) => (
-            <button key={label} type="button" disabled={d || inCode} aria-pressed={on} onMouseDown={(e) => e.preventDefault()} onClick={run} className={`h-10 rounded-[6px] ${on ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"} disabled:opacity-40 ${cls}`}>
+            <button key={label} type="button" disabled={d || inCode} aria-pressed={on} onMouseDown={(e) => e.preventDefault()} onClick={run} className={`h-10 rounded-chip ${on ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"} disabled:opacity-40 ${cls}`}>
               {label}
             </button>
           ))}
@@ -152,10 +152,10 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       <section>
         <h3 className="ui-caps mb-2 px-1">Groups</h3>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Group">
-          <button type="button" disabled={blockOff} aria-pressed={fmt.group !== "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: null })} className={`flex h-11 items-center justify-center gap-2 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.group !== "card" ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group !== "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: null })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.group !== "card" ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             <FileText size={15} aria-hidden /> Page
           </button>
-          <button type="button" disabled={blockOff} aria-pressed={fmt.group === "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" })} className={`flex h-11 items-center justify-center gap-2 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.group === "card" ? "bg-heading font-semibold text-canvas" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group === "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.group === "card" ? "bg-heading font-semibold text-canvas" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             Card <PanelTop size={15} aria-hidden />
           </button>
         </div>
@@ -222,16 +222,16 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       <section>
         <h3 className="ui-caps mb-2 px-1">Decorations</h3>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Decoration">
-          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "focus"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "focus" ? null : "focus" })} className={`flex h-10 items-center justify-center gap-2 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.decoration === "focus" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
-            <span aria-hidden className="h-4 w-[3px] rounded-[6px] bg-current" /> Focus
+          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "focus"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "focus" ? null : "focus" })} className={`flex h-10 items-center justify-center gap-2 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.decoration === "focus" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <span aria-hidden className="h-4 w-[3px] rounded-chip bg-current" /> Focus
           </button>
-          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "block"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" })} className={`h-10 rounded-[6px] text-[13.5px] disabled:opacity-40 ${fmt.decoration === "block" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
-            <span className="rounded-[6px] bg-[var(--glass-active)] px-3 py-1 shadow-[inset_0_0_0_1px_var(--glass-border)]">Block</span>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "block"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" })} className={`h-10 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.decoration === "block" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <span className="rounded-chip bg-[var(--glass-active)] px-3 py-1 shadow-[inset_0_0_0_1px_var(--glass-border)]">Block</span>
           </button>
         </div>
       </section>
 
-      <details className="group rounded-[6px] bg-sunken/50 px-2.5 py-2">
+      <details className="group rounded-chip bg-sunken/50 px-2.5 py-2">
         <summary className="cursor-pointer list-none text-[13px] font-medium text-ink marker:hidden">
           <span className="inline-flex items-center gap-1.5">
             <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden /> More: quote, callout, code, links, highlight
@@ -275,7 +275,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             placeholder={editor.state.selection.empty && !linkActive ? "Address to insert as a link" : "Paste or type a link"}
             aria-invalid={Boolean(linkError)}
             aria-describedby={`${linkId}-hint`}
-            className="ui-input h-8 min-w-0 flex-1 rounded-[6px] px-3 text-sm disabled:opacity-50"
+            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-3 text-sm disabled:opacity-50"
           />
           <Button size="sm" type="submit" disabled={marksOff || !href.trim()}>
             {linkActive ? "Update" : "Link"}
@@ -290,7 +290,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
           {linkError ?? "Links the selected text. Shortcut: ⌘⇧K."}
         </p>
       </section>
-      {/* Text colours and highlights come from the note's style (its own colours and names) when it has
+      {/* Text colours and highlights come from the note's theme (its own colours and names) when it has
           them; "Default" (the page's text colour / no highlight) is the starting choice. */}
       <section {...palette?.attrs}>
         <h3 className="ui-caps mb-2 px-1">Text color</h3>
@@ -308,7 +308,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               aria-label={`Text color: ${colorName(palette, c)}`}
               aria-pressed={editor.isActive("textColor", { value: c })}
               title={colorName(palette, c)}
-              className={`grid h-8 w-8 place-items-center rounded-[6px] ui-raised disabled:opacity-40 ${editor.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${editor.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
             >
               <span className={`fb-color-${c} text-sm font-semibold`} aria-hidden>
                 A
@@ -333,9 +333,9 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               aria-label={`Highlight: ${colorName(palette, h)}`}
               aria-pressed={editor.isActive("highlight", { value: h })}
               title={colorName(palette, h)}
-              className={`grid h-8 w-8 place-items-center rounded-[6px] ui-raised disabled:opacity-40 ${editor.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${editor.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
             >
-              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-[4px]`} aria-hidden />
+              <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-tiny`} aria-hidden />
             </button>
           ))}
         </div>
@@ -362,7 +362,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               const pos = editor.state.selection.$from.before(1);
               editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
             }}
-            className="ui-input h-9 w-full rounded-[6px] px-3 text-sm"
+            className="ui-input h-9 w-full rounded-chip px-3 text-sm"
           >
             {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
               <option key={l} value={l}>

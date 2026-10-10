@@ -425,7 +425,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
       }}
       style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? 0, top: pos?.top ?? 0, width: pos?.width ?? 480, visibility: pos ? "visible" : "hidden" }}
-      className="ui-pop ui-app-colors z-[100] overflow-hidden rounded-[14px] border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
+      className="ui-pop ui-app-colors z-[100] overflow-hidden rounded-panel border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
     >
       {/* What it's working on */}
       {target ? (
@@ -479,7 +479,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           ) : (
             <div className="space-y-2 pb-1.5">
               {[92, 78, 85].map((w) => (
-                <div key={w} className="h-2.5 animate-pulse rounded-[4px] bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))] motion-reduce:animate-none" style={{ width: `${w}%` }} />
+                <div key={w} className="h-2.5 animate-pulse rounded-tiny bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))] motion-reduce:animate-none" style={{ width: `${w}%` }} />
               ))}
             </div>
           )}
@@ -490,7 +490,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       {phase.kind !== "busy" ? (
         <div className="flex items-center gap-2 px-3 py-2.5">
           {inSubmenu ? (
-            <button type="button" aria-label="Back" onClick={back} className="grid h-7 w-7 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+            <button type="button" aria-label="Back" onClick={back} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
               <ChevronLeft size={16} aria-hidden />
             </button>
           ) : (
@@ -514,24 +514,24 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
               type="button"
               aria-label="Send"
               onClick={() => (phase.kind === "result" ? refine(input) : choose(options[0]))}
-              className="grid h-7 w-7 flex-none place-items-center rounded-[6px] bg-heading text-canvas"
+              className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas"
             >
               <ArrowUp size={15} aria-hidden />
             </button>
           ) : null}
-          <button type="button" aria-label="Close AI" title="Close (Esc)" onClick={close} className="grid h-7 w-7 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+          <button type="button" aria-label="Close AI" title="Close (Esc)" onClick={close} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
             <X size={15} aria-hidden />
           </button>
         </div>
       ) : (
         <div className="flex justify-end px-3 pb-2.5">
-          <button type="button" onClick={() => stream.stop()} className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-1 text-[12.5px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
-            <span aria-hidden className="h-2 w-2 rounded-[4px] bg-current" /> Stop
+          <button type="button" onClick={() => stream.stop()} className="inline-flex items-center gap-1.5 rounded-chip px-2 py-1 text-[12.5px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+            <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
           </button>
         </div>
       )}
 
-      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-3 mb-2.5 rounded-[10px] bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 mb-2.5 w-auto"} /> : phase.kind === "compose" ? <AiCreditsNote documentId={documentId} className="mx-3 mb-2.5" /> : null}
+      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-3 mb-2.5 rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 mb-2.5 w-auto"} /> : phase.kind === "compose" ? <AiCreditsNote documentId={documentId} className="mx-3 mb-2.5" /> : null}
       {notice ? (
         <p className="mx-4 mb-2 text-[12.5px] text-muted" role="status">
           {notice}
@@ -592,7 +592,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           {!isPage ? (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick changes">
               {REFINES.map((r) => (
-                <button key={r} type="button" onClick={() => refine(r)} className="rounded-[6px] bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                <button key={r} type="button" onClick={() => refine(r)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
                   {r}
                 </button>
               ))}
@@ -640,7 +640,7 @@ function SuggestionRow({ o, id, active, heading, target, onHover, onChoose }: { 
         aria-selected={active}
         onPointerMove={onHover}
         onClick={onChoose}
-        className={`flex cursor-default items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
+        className={`flex cursor-default items-center gap-2.5 rounded-control px-2.5 py-2 text-[13.5px] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
       >
         <span aria-hidden className="text-muted">
           {o.icon}

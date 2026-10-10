@@ -6,9 +6,10 @@
 @theme inline {
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-spectral), ui-serif, Georgia, serif;
+  --font-modern: var(--font-inter), "Inter", var(--font-instrument-sans), sans-serif;
   --font-serif: var(--font-spectral), ui-serif, Georgia, serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
-  --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito", var(--font-instrument-sans), system-ui, sans-serif;
+  --font-rounded: ui-rounded, "SF Pro Rounded", var(--font-nunito), var(--font-inter), system-ui, sans-serif;
 
   --color-canvas: var(--color-canvas);
   --color-surface: var(--color-surface);
@@ -50,9 +51,15 @@
   --color-code: var(--color-code-bg);
   --color-code-ink: var(--color-code-ink);
 
+  /* The corner scale (packages/design-tokens): rounded-tiny 4, -chip 6, -small 8, -control 10, -panel 14,
+     -container 18. Nested corners: inner = outer - inset (docs/DESIGN_SYSTEM.md, Corners). */
+  --radius-none: var(--radius-none);
+  --radius-tiny: var(--radius-tiny);
+  --radius-chip: var(--radius-chip);
+  --radius-small: var(--radius-small);
   --radius-control: var(--radius-control);
-  --radius-card: var(--radius-card);
-  --radius-sheet: var(--radius-sheet);
+  --radius-panel: var(--radius-panel);
+  --radius-container: var(--radius-container);
 
   --shadow-hairline: var(--shadow-hairline);
   --shadow-control: var(--shadow-control);
@@ -89,7 +96,6 @@
   :focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
-    border-radius: 4px;
   }
   button,
   [role="button"] {
@@ -169,8 +175,8 @@
   --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(20 20 40 / 0.14);
   --ambient-veil: var(--glass-veil);
 }
-/* A note whose style reads dark, in light mode, would darken the light glass under dark text (and a light
-   style in dark mode the reverse): its ambient light is veiled far more, so the chrome stays legible. */
+/* A note whose theme reads dark, in light mode, would darken the light glass under dark text (and a light
+   theme in dark mode the reverse): its ambient light is veiled far more, so the chrome stays legible. */
 :root[data-theme="light"][data-ambient="deep"] { --ambient-veil: rgb(238 238 241 / 0.84); --glass-sidebar: rgb(255 255 255 / 0.6); }
 :root[data-theme="dark"][data-ambient="light"] { --ambient-veil: rgb(12 12 14 / 0.84); --glass-sidebar: rgb(28 28 31 / 0.6); }
 @media (prefers-color-scheme: light) {
@@ -207,7 +213,7 @@
 .ui-desktop-quick-add { min-height: 100vh; }
 
 @layer components {
-  /* Canvas: a soft, neutral ambient light behind the floating glass panels. On a note, the note's own style
+  /* Canvas: a soft, neutral ambient light behind the floating glass panels. On a note, the note's own theme
      image shows through instead (Shell's ambient layer), so notes carry the colour and the chrome stays neutral. */
   .ui-canvas {
     position: relative;
@@ -233,7 +239,7 @@
     justify-content: center;
     gap: 0.45rem;
     white-space: nowrap;
-    border-radius: 10px;
+    border-radius: var(--radius-control);
     font-weight: 550;
     letter-spacing: -0.005em;
     user-select: none;
@@ -274,7 +280,7 @@
   }
   .ui-input {
     background: var(--color-surface);
-    border-radius: 6px;
+    border-radius: var(--radius-control);
     box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line);
     transition: box-shadow 140ms;
   }
@@ -282,15 +288,33 @@
   .ui-input:focus, .ui-input:focus-within, .ui-input[aria-expanded="true"] { outline: none; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
 
   /* Surfaces */
-  .ui-card { background: var(--color-surface); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
-  .ui-sheet { border-radius: var(--radius-sheet); box-shadow: var(--shadow-sheet); }
+  .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--shadow-card); }
+  .ui-sheet { border-radius: var(--radius-container); box-shadow: var(--shadow-sheet); }
   /* Popovers, menus, dialogs: strong glass, with enough tint for text to read on anything behind. */
   .ui-pop {
     background: var(--glass-pop);
     -webkit-backdrop-filter: blur(28px) saturate(1.8);
     backdrop-filter: blur(28px) saturate(1.8);
-    border-radius: 10px;
+    /* Menus, dropdowns, popovers: panel corners with 6px padding, so their 8px items run parallel. */
+    border-radius: var(--radius-panel);
     box-shadow: var(--glass-edge), var(--shadow-pop);
+  }
+  /* Progressive blur at a panel's bottom edge (clear above, strongest at the edge), like iOS's bars:
+     stacked layers, each blurrier and masked to a lower band. */
+  .ui-blur-bottom { position: absolute; inset-inline: 0; bottom: 0; height: 72px; pointer-events: none; z-index: 1; }
+  .ui-blur-bottom, .ui-blur-bottom::before, .ui-blur-bottom::after { border-bottom-left-radius: inherit; border-bottom-right-radius: inherit; }
+  .ui-blur-bottom {
+    -webkit-backdrop-filter: blur(1px); backdrop-filter: blur(1px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 100%);
+  }
+  .ui-blur-bottom::before, .ui-blur-bottom::after { content: ""; position: absolute; inset: 0; }
+  .ui-blur-bottom::before {
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 30%, #000 65%, #000 100%); mask-image: linear-gradient(to bottom, transparent 30%, #000 65%, #000 100%);
+  }
+  .ui-blur-bottom::after {
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 60%, #000 100%); mask-image: linear-gradient(to bottom, transparent 60%, #000 100%);
   }
   .ui-raised { background: var(--color-surface-raised); box-shadow: var(--shadow-control); }
   /* Panels (sidebar, tab bar, dock): frosted glass with a fine light edge. */
@@ -322,11 +346,11 @@
 
   /* Segmented control (track + raised thumb). The active item carries data-active. */
   /* Segmented control: outer corner = inner corner + padding (10 = 6 + 4). */
-  .ui-seg { display: flex; gap: 2px; padding: 4px; border-radius: 10px; }
+  .ui-seg { display: flex; gap: 2px; padding: 4px; border-radius: var(--radius-control); }
   .ui-seg > * {
     flex: 1;
     display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
-    min-height: 28px; padding: 0 0.6rem; border-radius: 6px;
+    min-height: 28px; padding: 0 0.6rem; border-radius: var(--radius-chip);
     font-size: 12.5px; font-weight: 550; color: var(--color-ink-muted);
     transition: background-color 180ms var(--motion-easing), box-shadow 180ms var(--motion-easing), color 180ms;
   }
@@ -341,12 +365,12 @@
   /* Keycap */
   .ui-kbd {
     display: inline-flex; align-items: center; justify-content: center; min-width: 1.35rem; height: 1.25rem; padding: 0 0.3rem;
-    border-radius: 4px; font: 550 10.5px/1 var(--font-sans); color: var(--color-ink-muted);
+    border-radius: var(--radius-tiny); font: 550 10.5px/1 var(--font-sans); color: var(--color-ink-muted);
     background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line), 0 1px 0 var(--color-line-strong);
   }
 
   /* Chips */
-  .ui-chip { display: inline-flex; align-items: center; gap: 0.3rem; height: 1.6rem; padding: 0 0.65rem; border-radius: 6px; font-size: 12.5px; font-weight: 550; }
+  .ui-chip { display: inline-flex; align-items: center; gap: 0.3rem; height: 1.6rem; padding: 0 0.65rem; border-radius: var(--radius-chip); font-size: 12.5px; font-weight: 550; }
 
   /* Headings in views */
   /* Titles and larger UI text: Spectral. */
@@ -354,7 +378,7 @@
 
   /* Menus */
   .ui-menu-item {
-    display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 32px; padding: 0 0.6rem; border-radius: 6px;
+    display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 32px; padding: 0 0.6rem; border-radius: var(--radius-small);
     font-size: 13.5px; text-align: left; color: var(--color-ink);
   }
   .ui-menu-item:hover, .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"] { background: var(--glass-hover); color: var(--color-heading); outline: none; }

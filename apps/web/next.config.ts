@@ -73,6 +73,12 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
+  async redirects() {
+    return [
+      // Note styles were renamed note themes; old links keep working.
+      { source: "/features/note-styles", destination: "/features/note-themes", permanent: true },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

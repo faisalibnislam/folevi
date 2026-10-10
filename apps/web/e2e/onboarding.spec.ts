@@ -12,7 +12,7 @@ async function scan(page: Page, label: string) {
 
 const heading = (page: Page, name: string) => page.getByRole("heading", { name, level: 1 });
 
-test("onboarding: choices are saved, a reload resumes, and the Welcome page opens in its new style", async ({ browser }) => {
+test("onboarding: choices are saved, a reload resumes, and the Welcome page opens in its new theme", async ({ browser }) => {
   test.setTimeout(180_000);
   const context = await browser.newContext();
   const { page } = await createAccount(context, { name: "Onboarding Tester" });
@@ -32,17 +32,17 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
   await scan(page, "uses");
   await page.getByRole("button", { name: "Continue" }).click();
 
-  // 3. Note style. A reload resumes here, and Back shows the saved use cases.
-  await expect(heading(page, "Pick a style for your first page")).toBeFocused();
+  // 3. Note theme. A reload resumes here, and Back shows the saved use cases.
+  await expect(heading(page, "Pick a theme for your first page")).toBeFocused();
   await page.reload();
-  await expect(heading(page, "Pick a style for your first page")).toBeVisible({ timeout: 30_000 });
+  await expect(heading(page, "Pick a theme for your first page")).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("checkbox", { name: /Work projects/ })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: /Work projects/ })).toBeDisabled();
   await expect(page.getByRole("checkbox", { name: /Journaling/ })).not.toBeChecked();
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(heading(page, "Pick a style for your first page")).toBeVisible();
-  const styles = page.getByRole("group", { name: "Pick a style for your first page" });
+  await expect(heading(page, "Pick a theme for your first page")).toBeVisible();
+  const styles = page.getByRole("group", { name: "Pick a theme for your first page" });
   await expect(styles.getByRole("radio")).toHaveCount(9);
   await expect(styles.getByRole("radio", { name: "Plain" })).toBeChecked();
   // A real radio group: arrow keys move the choice.
@@ -78,12 +78,12 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.getByText("4 starter pages")).toBeVisible();
   await expect(page.getByText("Project Brief, Meeting Notes, Travel Plan and Event Plan")).toBeVisible();
-  await expect(page.getByText("In the Cypresses style")).toBeVisible();
+  await expect(page.getByText("In the Cypresses theme")).toBeVisible();
   await expect(page.getByText("Off. Turn it on in Settings any time.")).toBeVisible();
   await scan(page, "ready");
   await page.getByRole("button", { name: "Open “Welcome to Folevi”" }).click();
 
-  // The Welcome page wears the chosen style; AI is off (no AI in the page tools).
+  // The Welcome page wears the chosen theme; AI is off (no AI in the page tools).
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");
   await expect(page.locator("article.fb-sheet header [data-cover-image]")).toHaveAttribute("style", /\/covers\/art-39/);
   await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Style", exact: true })).toBeVisible();
@@ -109,7 +109,7 @@ test("onboarding: every step can be skipped, and passes axe in dark mode", async
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await scan(page, "welcome (dark)");
   await page.getByRole("button", { name: "Get started" }).click();
-  for (const name of ["What will you use Folevi for?", "Pick a style for your first page", "Light or dark?", "Meet Foli"]) {
+  for (const name of ["What will you use Folevi for?", "Pick a theme for your first page", "Light or dark?", "Meet Foli"]) {
     await expect(heading(page, name)).toBeFocused();
     await scan(page, `${name} (dark)`);
     await page.getByRole("button", { name: "Skip", exact: true }).click();
@@ -136,7 +136,7 @@ test("onboarding: phone width, with the preview above the choices", async ({ bro
   await page.getByRole("checkbox", { name: /Journaling/ }).check();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(heading(page, "Pick a style for your first page")).toBeVisible();
+  await expect(heading(page, "Pick a theme for your first page")).toBeVisible();
   await page.getByRole("button", { name: "Skip setup" }).click();
   await expect(heading(page, "Your Folevi is ready.")).toBeVisible();
   await expect(page.getByText("Journal Entry and Habit Tracker")).toBeVisible();

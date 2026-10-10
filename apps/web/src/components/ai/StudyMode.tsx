@@ -61,7 +61,7 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
 
   if (!shown) {
     return (
-      <section aria-label="Study" className="space-y-3 rounded-[14px] bg-[var(--glass-hover)] p-3.5">
+      <section aria-label="Study" className="space-y-3 rounded-panel bg-[var(--glass-hover)] p-3.5">
         <p className="text-[13.5px] font-semibold text-heading">Nothing to study yet</p>
         <p className="text-[12.5px] leading-snug text-muted">Make flashcards or a quiz from this note (or the text you've selected). You'll see them before they're added, then study them here.</p>
         {make}
@@ -99,8 +99,8 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
 
 function Progress({ value, max, label }: { value: number; max: number; label: string }) {
   return (
-    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} className="h-1.5 overflow-hidden rounded-[4px] bg-[var(--glass-active)]">
-      <div className="h-full rounded-[6px] bg-heading transition-[width] motion-reduce:transition-none" style={{ width: `${max ? (value / max) * 100 : 0}%` }} />
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} className="h-1.5 overflow-hidden rounded-tiny bg-[var(--glass-active)]">
+      <div className="h-full rounded-chip bg-heading transition-[width] motion-reduce:transition-none" style={{ width: `${max ? (value / max) * 100 : 0}%` }} />
     </div>
   );
 }
@@ -149,7 +149,7 @@ export function CardsDeck({ cards }: { cards: readonly Flashcard[] }) {
       <Progress value={known} max={cards.length} label="Cards known" />
       {card ? (
         <>
-          <div role="group" aria-roledescription="flashcard" aria-label={`Card: ${card.question}`} className="rounded-[14px] bg-[var(--glass-active)] p-3.5 shadow-[var(--glass-edge)]">
+          <div role="group" aria-roledescription="flashcard" aria-label={`Card: ${card.question}`} className="rounded-panel bg-[var(--glass-active)] p-3.5 shadow-[var(--glass-edge)]">
             <p className="text-[14px] font-semibold leading-snug text-heading">{card.question}</p>
             <div id={`${uid}-answer`} className="mt-2 min-h-[1.5rem]">
               {state.flipped ? <p className="whitespace-pre-wrap text-[13.5px] leading-snug text-ink">{card.answer}</p> : <p className="text-[12.5px] text-faint">Answer hidden</p>}
@@ -169,7 +169,7 @@ export function CardsDeck({ cards }: { cards: readonly Flashcard[] }) {
           <p className="text-[11.5px] text-faint">Keys: F flips, A again, K know it.</p>
         </>
       ) : (
-        <div className="space-y-2 rounded-[14px] bg-[var(--glass-hover)] p-3.5">
+        <div className="space-y-2 rounded-panel bg-[var(--glass-hover)] p-3.5">
           <p className="text-[13.5px] font-semibold text-heading">You know all {cards.length} cards.</p>
           {state.again.length ? <p className="text-[12.5px] text-muted">{state.again.length === 1 ? "One needed" : `${state.again.length} needed`} another go.</p> : null}
           <button type="button" onClick={() => (dispatch({ type: "restart", ids }), setSaid(""))} className="ui-btn ui-btn-secondary h-8 px-3 text-[12.5px]">
@@ -203,7 +203,7 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
 
   if (state.done) {
     return (
-      <div className="space-y-2 rounded-[14px] bg-[var(--glass-hover)] p-3.5" role="status" aria-live="polite">
+      <div className="space-y-2 rounded-panel bg-[var(--glass-hover)] p-3.5" role="status" aria-live="polite">
         <p className="text-[13.5px] font-semibold text-heading">
           You got {score} of {questions.length} right.
         </p>
@@ -245,7 +245,7 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
               aria-disabled={answered}
               aria-pressed={picked === i}
               onClick={() => !answered && dispatch({ type: "pick", option: i })}
-              className={`flex w-full items-start gap-2 rounded-[10px] px-2.5 py-2 text-left text-[13px] shadow-[inset_0_0_0_1px_var(--glass-border)] ${right ? "bg-success-soft text-success" : wrong ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-ink"} ${answered ? "cursor-default" : "hover:bg-[var(--glass-active)] hover:text-heading"}`}
+              className={`flex w-full items-start gap-2 rounded-control px-2.5 py-2 text-left text-[13px] shadow-[inset_0_0_0_1px_var(--glass-border)] ${right ? "bg-success-soft text-success" : wrong ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-ink"} ${answered ? "cursor-default" : "hover:bg-[var(--glass-active)] hover:text-heading"}`}
             >
               <span className="font-semibold text-muted">{LETTERS[i]}.</span>
               <span className="min-w-0 flex-1">{o}</span>

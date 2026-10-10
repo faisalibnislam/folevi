@@ -12,11 +12,13 @@
   --space-12: 96px;
   --space-0_5: 4px;
   --space-1_5: 12px;
-  --radius-control-small: 6px;
+  --radius-none: 0px;
+  --radius-tiny: 4px;
+  --radius-chip: 6px;
+  --radius-small: 8px;
   --radius-control: 10px;
-  --radius-card: 14px;
-  --radius-sheet: 18px;
-  --radius-round: 999px;
+  --radius-panel: 14px;
+  --radius-container: 18px;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-md: 14px;

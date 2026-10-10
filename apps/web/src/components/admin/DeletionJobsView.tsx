@@ -64,9 +64,9 @@ export function DeletionJobsView() {
                           aria-valuemin={0}
                           aria-valuemax={100}
                           aria-valuenow={pct}
-                          className="h-1.5 w-24 overflow-hidden rounded-[4px] bg-sunken"
+                          className="h-1.5 w-24 overflow-hidden rounded-tiny bg-sunken"
                         >
-                          <div className={`h-full rounded-[6px] ${j.status === "failed" ? "bg-danger" : j.status === "completed" ? "bg-success" : "bg-heading"}`} style={{ width: `${pct}%` }} />
+                          <div className={`h-full rounded-chip ${j.status === "failed" ? "bg-danger" : j.status === "completed" ? "bg-success" : "bg-heading"}`} style={{ width: `${pct}%` }} />
                         </div>
                         <span className="tabular-nums text-muted">{pct}%</span>
                       </div>

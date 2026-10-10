@@ -23,7 +23,7 @@ import "./onboarding/onboarding.css";
 const STEPS = [
   { key: "workspace", name: "Welcome" },
   { key: "uses", name: "Your pages" },
-  { key: "style", name: "Note style" },
+  { key: "style", name: "Note theme" },
   { key: "appearance", name: "Appearance" },
   { key: "ai", name: "Foli" },
   { key: "welcome", name: "Ready" },
@@ -70,7 +70,7 @@ export function Onboarding() {
   const headingId = useId();
   const first = useRef(true);
 
-  // The Welcome page's current style, once it has loaded (a reload resumes with it).
+  // The Welcome page's current theme, once it has loaded (a reload resumes with it).
   const savedStyle = welcome ? (welcome.cover.kind === "art" && welcome.cover.value ? welcome.cover.value : PLAIN_STYLE) : null;
   const styleLoaded = useRef(false);
   useEffect(() => {
@@ -182,10 +182,10 @@ export function Onboarding() {
   const ambient = step === 0 ? "art-03" : step === 1 ? (lastPick ?? (picks.length ? (USE_CASES.find((u) => u.id === picks[picks.length - 1])?.art ?? null) : null)) : chosenArt;
   const previewLabel =
     step === 0
-      ? "Five note styles fanned out like cards: Cypresses, Summer sky, Irises, Poppy print and Aurora."
+      ? "Five note themes fanned out like cards: Cypresses, Summer sky, Irises, Poppy print and Aurora."
       : step === 1
         ? `A preview of your Home${pages.length ? ` with ${pages.length} new starter pages: ${listOf(pages.map((p) => p.title))}` : ""}.`
-        : `A preview of your “${WELCOME}” page in the ${styleName(styleId)} style${step === 4 && ai ? ", with Foli open" : ""}.`;
+        : `A preview of your “${WELCOME}” page in the ${styleName(styleId)} theme${step === 4 && ai ? ", with Foli open" : ""}.`;
   const preview = (compact: boolean) => (
     <OnboardingPreview
       scene={scene}
@@ -205,7 +205,7 @@ export function Onboarding() {
   const heading = [
     `Welcome, ${firstName}.`,
     "What will you use Folevi for?",
-    "Pick a style for your first page",
+    "Pick a theme for your first page",
     "Light or dark?",
     "Meet Foli",
     "Your Folevi is ready.",
@@ -213,7 +213,7 @@ export function Onboarding() {
   const lede = [
     "Folevi is a notes app for documents, tasks and linked pages. Let’s set up your Personal space. It takes about a minute.",
     "Pick any that fit. Each one adds two starter pages made from Folevi’s templates, next to the pages we already made for you.",
-    `A note style gives a page its cover, paper and text colours. This one is for “${WELCOME}”. New pages start Plain.`,
+    `A note theme gives a page its cover, paper and text colours. This one is for “${WELCOME}”. New pages start Plain.`,
     "The app around your notes stays white, or near-black in dark mode, so your notes carry the colour. You can change this in Settings.",
     "It answers questions from your notes and links the notes it used, so you can check the answer.",
     "Here’s what we set up. Your Welcome page has a short tour and a few things to try.",
@@ -233,7 +233,7 @@ export function Onboarding() {
 
         <Progress step={step} />
 
-        <div className="mt-5 h-[228px] flex-none overflow-hidden rounded-[18px] sm:h-[300px] lg:hidden">{preview(true)}</div>
+        <div className="mt-5 h-[228px] flex-none overflow-hidden rounded-container sm:h-[300px] lg:hidden">{preview(true)}</div>
 
         <form
           className="flex flex-1 flex-col"
@@ -245,7 +245,7 @@ export function Onboarding() {
         >
           <div key={step} className="ob-step flex-1 pb-8 pt-7 lg:pt-12" data-dir={dir}>
             {step === 4 ? (
-              <span className="ob-ai-mark mb-5 inline-grid size-14 place-items-center rounded-[18px] bg-surface shadow-[var(--shadow-card)]" data-on={ai}>
+              <span className="ob-ai-mark mb-5 inline-grid size-14 place-items-center rounded-container bg-surface shadow-[var(--shadow-card)]" data-on={ai}>
                 <AiIcon size={30} />
               </span>
             ) : null}
@@ -296,7 +296,7 @@ export function Onboarding() {
       </div>
 
       <div className="sticky top-0 hidden h-dvh p-3 pl-0 lg:block">
-        <div className="h-full overflow-hidden rounded-[18px]">{preview(false)}</div>
+        <div className="h-full overflow-hidden rounded-container">{preview(false)}</div>
       </div>
     </main>
   );
@@ -325,7 +325,7 @@ function Progress({ step }: { step: number }) {
 
 function IconTile({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-[10px] bg-surface text-heading shadow-[var(--shadow-card)]">
+    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-control bg-surface text-heading shadow-[var(--shadow-card)]">
       <Icon size={17} strokeWidth={1.75} />
     </span>
   );
@@ -378,7 +378,7 @@ function UseCases({ headingId, picks, applied, onToggle }: { headingId: string; 
             return (
               <label key={u.id} className="ob-choice ob-rise items-center gap-3 p-2 pr-3" style={{ ["--i" as string]: i }}>
                 <input type="checkbox" className="ob-input" checked={picks.includes(u.id)} disabled={added} onChange={(e) => onToggle(u.id, e.target.checked)} />
-                <span aria-hidden className="size-12 flex-none overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06)]">
+                <span aria-hidden className="size-12 flex-none overflow-hidden rounded-control shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06)]">
                   <span className="ob-art block size-full" style={{ ["--ob-art" as string]: artThumb(u.art) }} />
                 </span>
                 <span className="min-w-0 flex-1 leading-tight">
@@ -425,30 +425,30 @@ function Styles({ headingId, value, onPick }: { headingId: string; value: string
         </div>
       </fieldset>
       <p className="mt-4 text-[13px] text-muted">
-        {COVER_ART.length} styles in all. Change any page’s style from Style in the page tools.
+        {COVER_ART.length} themes in all. Change any page’s theme from Style in the page tools.
       </p>
     </>
   );
 }
 
-/** A tiny window in fixed light or dark colours, with the Welcome page in its chosen style. */
+/** A tiny window in fixed light or dark colours, with the Welcome page in its chosen theme. */
 function MiniWindow({ mode, styleId }: { mode: "light" | "dark"; styleId: string | null }) {
   const art = artOf(styleId);
   const paper = art ? (mode === "light" ? art.paper : art.paperDark) : mode === "light" ? "#ffffff" : "#1c1c1e";
   return (
     <span className="absolute inset-0 flex gap-[5%] p-[6%]" style={{ background: "var(--m-bg)" }}>
       <span className="flex w-[26%] flex-col gap-[9%] pt-[4%]">
-        <span className="h-[5%] w-3/4 rounded-[6px]" style={{ background: "var(--m-muted)" }} />
-        <span className="h-[5%] w-full rounded-[6px]" style={{ background: "var(--m-muted)" }} />
-        <span className="h-[5%] w-2/3 rounded-[6px]" style={{ background: "var(--m-muted)" }} />
-        <span className="h-[5%] w-5/6 rounded-[6px]" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-3/4 rounded-chip" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-full rounded-chip" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-2/3 rounded-chip" style={{ background: "var(--m-muted)" }} />
+        <span className="h-[5%] w-5/6 rounded-chip" style={{ background: "var(--m-muted)" }} />
       </span>
-      <span className="flex flex-1 flex-col overflow-hidden rounded-[4px] shadow-[0_2px_8px_rgb(0_0_0/0.15)]" style={{ background: paper }}>
+      <span className="flex flex-1 flex-col overflow-hidden rounded-tiny shadow-[0_2px_8px_rgb(0_0_0/0.15)]" style={{ background: paper }}>
         {art ? <span className="h-[34%] flex-none" style={{ background: `${artThumb(art.id)} center / cover no-repeat` }} /> : null}
         <span className="flex flex-col gap-[7%] p-[9%]">
-          <span className="h-[9px] w-2/3 rounded-[4px]" style={{ background: "var(--m-ink)", opacity: 0.85 }} />
-          <span className="h-[4px] w-full rounded-[4px]" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
-          <span className="h-[4px] w-5/6 rounded-[4px]" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
+          <span className="h-[9px] w-2/3 rounded-tiny" style={{ background: "var(--m-ink)", opacity: 0.85 }} />
+          <span className="h-[4px] w-full rounded-tiny" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
+          <span className="h-[4px] w-5/6 rounded-tiny" style={{ background: "var(--m-ink)", opacity: 0.25 }} />
         </span>
       </span>
     </span>
@@ -511,7 +511,7 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
           { icon: PenLine, title: "Writing help", body: "Rewrite, shorten, fix or summarize the text you select, or press ⌘J in a note." },
         ]}
       />
-      <div className="ob-rise mt-6 flex items-start gap-4 rounded-[14px] bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
+      <div className="ob-rise mt-6 flex items-start gap-4 rounded-panel bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
         <div className="min-w-0 flex-1">
           <p className="text-[14.5px] font-semibold text-heading">Foli {on ? "on" : "off"}</p>
           <p id={descId} className="mt-1 text-[13px] leading-relaxed text-muted">
@@ -528,20 +528,20 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
 function Summary({ pages, style, appearance, ai }: { pages: string[]; style: string; appearance: Appearance; ai: boolean }) {
   const rows: { icon: ReactNode; title: string; body: string }[] = [
     { icon: <IconTile icon={Files} />, title: pages.length ? `${pages.length} starter ${pages.length === 1 ? "page" : "pages"}` : "Starter pages", body: pages.length ? listOf(pages) : "None this time. You’ll find templates in the sidebar." },
-    { icon: <IconTile icon={Paintbrush} />, title: WELCOME, body: style === "Plain" ? "Plain, like every new page" : `In the ${style} style` },
+    { icon: <IconTile icon={Paintbrush} />, title: WELCOME, body: style === "Plain" ? "Plain, like every new page" : `In the ${style} theme` },
     { icon: <IconTile icon={SunMoon} />, title: "Appearance", body: appearance === "system" ? "Matches your system" : appearance === "dark" ? "Dark" : "Light" },
     { icon: <AiIconTile />, title: "Foli", body: ai ? "On. Press ⌘J in a note to ask." : "Off. Turn it on in Settings any time." },
   ];
   return (
     <ul className="space-y-2.5">
       {rows.map((row, i) => (
-        <li key={row.title} className="ob-rise flex items-center gap-3.5 rounded-[14px] bg-surface p-3 pr-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: i }}>
+        <li key={row.title} className="ob-rise flex items-center gap-3.5 rounded-panel bg-surface p-3 pr-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: i }}>
           {row.icon}
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-heading">{row.title}</p>
             <p className="mt-0.5 text-[13px] text-muted">{row.body}</p>
           </div>
-          <span aria-hidden className="ob-draw grid size-6 flex-none place-items-center rounded-[6px] bg-heading text-canvas" style={{ ["--i" as string]: i }}>
+          <span aria-hidden className="ob-draw grid size-6 flex-none place-items-center rounded-chip bg-heading text-canvas" style={{ ["--i" as string]: i }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="m2.5 6.2 2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -554,7 +554,7 @@ function Summary({ pages, style, appearance, ai }: { pages: string[]; style: str
 
 function AiIconTile() {
   return (
-    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-[10px] bg-surface shadow-[var(--shadow-card)]">
+    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-control bg-surface shadow-[var(--shadow-card)]">
       <AiIcon size={17} />
     </span>
   );

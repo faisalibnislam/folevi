@@ -14,7 +14,7 @@ const ICONS: Record<string, LucideIcon> = {
   folders: Folder,
   flowcharts: Network,
   whiteboard: PenTool,
-  "note-styles": Paintbrush,
+  "note-themes": Paintbrush,
   sharing: Share2,
   "team-workspaces": Users,
   templates: LayoutTemplate,

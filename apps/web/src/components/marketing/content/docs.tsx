@@ -160,7 +160,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         <p>Inside a block you can use bold, italic, underline, strikethrough, inline code, links, text colours and highlights, and insert dates, mentions and links to other pages. See <Link href="/features/blocks">Blocks and the / menu</Link> for a tour.</p>
         <h2 id="page-style">Page style</h2>
         <p>
-          Each page has a note style: one of 57 artworks, Plain, or your own image. The style colours the cover, the paper and the text. In the Style panel you can also blur the style image behind the page, pick the document and text colours, the separator style, the font (System, Serif, Mono or Rounded) and the page width (Narrow or Wide). See <Link href="/features/note-styles">Note styles</Link>.
+          Each page has a note theme: one of 57 artworks, Plain, or your own image. The theme colours the cover, the paper and the text. In the Style panel you can also blur the theme image behind the page, pick the document and text colours, the separator style, the font (Modern, Serif, Mono or Soft) and the page width (Narrow or Wide). See <Link href="/features/note-themes">Note themes</Link>.
         </p>
       </>
     ),

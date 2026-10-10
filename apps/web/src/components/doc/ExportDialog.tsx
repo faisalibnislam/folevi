@@ -112,9 +112,9 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
                 role="radio"
                 aria-checked={on}
                 onClick={() => pick(f.id)}
-                className={`flex flex-col items-start gap-2.5 rounded-[10px] border p-3 text-left transition-colors ${on ? "border-accent bg-accent-soft" : "border-line hover:bg-[var(--glass-hover)]"}`}
+                className={`flex flex-col items-start gap-2.5 rounded-control border p-3 text-left transition-colors ${on ? "border-accent bg-accent-soft" : "border-line hover:bg-[var(--glass-hover)]"}`}
               >
-                <span className={`grid h-9 w-9 place-items-center rounded-[10px] ${on ? "bg-canvas text-heading" : "bg-[var(--glass-hover)] text-muted"}`} aria-hidden>
+                <span className={`grid h-9 w-9 place-items-center rounded-control ${on ? "bg-canvas text-heading" : "bg-[var(--glass-hover)] text-muted"}`} aria-hidden>
                   {f.icon}
                 </span>
                 <span>
@@ -129,7 +129,7 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
           })}
         </div>
         {files ? (
-          <p className="flex items-start gap-2 rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5 text-xs text-muted">
+          <p className="flex items-start gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-xs text-muted">
             <Paperclip size={14} className="mt-px flex-none" aria-hidden />
             <span>{attachmentNote(format, files)}</span>
           </p>

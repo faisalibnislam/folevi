@@ -15,7 +15,7 @@ export function FolderBadge({ folder, className = "" }: { folder: HomeFolder | n
   if (folder) {
     return (
       <span
-        className={`inline-flex min-w-0 max-w-[70%] shrink-0 items-center gap-1 rounded-[6px] bg-moss-soft px-2 py-0.5 text-[11px] font-medium text-moss-ink ${className}`}
+        className={`inline-flex min-w-0 max-w-[70%] shrink-0 items-center gap-1 rounded-chip bg-moss-soft px-2 py-0.5 text-[11px] font-medium text-moss-ink ${className}`}
         title={`In folder “${folder.name}”`}
       >
         <Check size={11} strokeWidth={2.5} className="shrink-0" aria-hidden />
@@ -28,7 +28,7 @@ export function FolderBadge({ folder, className = "" }: { folder: HomeFolder | n
     );
   }
   return (
-    <span className={`inline-flex shrink-0 items-center gap-1 rounded-[6px] bg-sunken px-2 py-0.5 text-[11px] font-medium text-muted ${className}`} title="Not in a folder yet">
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-chip bg-sunken px-2 py-0.5 text-[11px] font-medium text-muted ${className}`} title="Not in a folder yet">
       <PencilLine size={11} className="shrink-0" aria-hidden />
       Draft
     </span>

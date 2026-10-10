@@ -14,6 +14,12 @@ import {
   vMemberAccess,
   vShareRole,
   vPersonalTier,
+  vThemeDefaults,
+  vThemeFonts,
+  vThemeImage,
+  vThemePalette,
+  vThemePlan,
+  vThemeStatus,
   vWorkspacePlanId,
   vWorkspaceRole,
 } from "./lib/validators";
@@ -313,6 +319,8 @@ export default defineSchema({
     .index("by_workspace_access", ["workspaceId", "accessMode"])
     // Trash retention (maintenance.purgeExpiredTrash): pages in Trash, oldest deletion first.
     .index("by_trash_deleted", ["inTrash", "deletedAt"])
+    // Notes on a note theme (moving them when an admin deletes the theme, convex/themes.ts).
+    .index("by_cover", ["cover.kind", "cover.value"])
     .searchIndex("search_text", {
       searchField: "searchText",
       filterFields: ["workspaceId", "ownerProfileId", "inTrash", "folderId", "createdBy", "kind"],
@@ -1569,6 +1577,32 @@ export default defineSchema({
     rank: v.string(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  /**
+   * Note themes (convex/lib/themes.ts). For a built-in theme (key art-01 to art-57) a row holds an admin's
+   * changes; every field left out keeps the built-in's. An admin's own theme (key th-<ulid>) has them all.
+   * Retired themes leave the picker but keep drawing the notes that use them.
+   */
+  noteThemes: defineTable({
+    key: v.string(),
+    name: v.optional(v.string()),
+    status: vThemeStatus,
+    /** Position in the picker (lower first). */
+    order: v.number(),
+    /** The lowest plan that can pick it. */
+    plan: vThemePlan,
+    image: v.optional(vThemeImage),
+    palette: v.optional(vThemePalette),
+    /** The palette the image gave, kept so an admin's colour changes can go back to it. */
+    autoPalette: v.optional(vThemePalette),
+    defaults: v.optional(vThemeDefaults),
+    fonts: v.optional(vThemeFonts),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("profiles")),
+  })
+    .index("by_key", ["key"])
+    .index("by_order", ["order"]),
 
   rateLimits: defineTable({
     bucket: v.string(),

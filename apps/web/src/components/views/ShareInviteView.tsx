@@ -33,7 +33,7 @@ export function ShareInviteView({ token }: { token: string }) {
         ) : !preview.emailMatches ? (
           <>
             <h2 className="ui-display text-3xl">A page was shared with you</h2>
-            <p className="mt-4 rounded-[6px] border border-warning/30 bg-warning-soft p-3 text-sm">
+            <p className="mt-4 rounded-chip border border-warning/30 bg-warning-soft p-3 text-sm">
               {preview.inviterName} shared a page with a different address than the one you’re signed in with ({profile.email}). Sign in with the invited address to open it.
             </p>
           </>

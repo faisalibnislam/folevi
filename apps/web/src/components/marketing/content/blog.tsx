@@ -163,7 +163,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="includes">What Core includes</h2>
         <p>
-          Core has everything in Folevi except Foli: the block editor, nested and linked pages, tasks with Today and the calendar, offline editing and sync, flowcharts and whiteboards, note styles, templates, sharing with guests and public links, {VERSION_DAYS} days of version history, and export. Compared with Free, it adds room ({gb(STORAGE_BYTES.core)} instead of {gb(STORAGE_BYTES.free)}) and removes the two-device limit.
+          Core has everything in Folevi except Foli: the block editor, nested and linked pages, tasks with Today and the calendar, offline editing and sync, flowcharts and whiteboards, note themes, templates, sharing with guests and public links, {VERSION_DAYS} days of version history, and export. Compared with Free, it adds room ({gb(STORAGE_BYTES.core)} instead of {gb(STORAGE_BYTES.free)}) and removes the two-device limit.
         </p>
 
         <h2 id="enforced">What “no AI” means in practice</h2>

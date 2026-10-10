@@ -51,6 +51,8 @@ import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
 import type { DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
+import { themeFontVars } from "@/lib/themes";
+import { useThemesVersion } from "@/lib/useThemes";
 import { BlurredBackdrop } from "./BlurredBackdrop";
 import { NotePaletteProvider } from "@/components/editor/notePalette";
 import { useCoverImage } from "@/lib/app/coverImage";
@@ -374,6 +376,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // A note style can be the person's own image: its signed URL comes from the server, and its page and
   // text colours are picked from it.
   const { url: coverImageUrl, palette: coverPalette } = useCoverImage(summary?.cover);
+  // The note theme (redrawn when an admin changes it) also sets the typefaces behind its font types.
+  useThemesVersion();
+  const themeFonts = themeFontVars(coverArtOf(summary?.cover ?? DEFAULT_COVER)?.fonts);
   const sheetAttrs = sheetProps(style, summary?.cover ?? DEFAULT_COVER, coverPalette);
   const blurredBackdrop = style.blur ? pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) : undefined;
   // The note's style lights the glass chrome around it (a small image: it's heavily blurred anyway).
@@ -489,20 +494,27 @@ export function DocumentView({ documentId }: { documentId: string }) {
     };
   }, [openAi, aiOn]);
 
-  // ⌘F finds in the note and ⌘⌥F replaces, while focus is in the note (or nowhere in particular);
-  // anywhere else the browser's own find still works.
+  // ⌘F (Ctrl+F on Windows and Linux) opens Find in the page's sidebar, or the find bar when the sidebar
+  // shows folders; ⌘⌥F finds and replaces. While focus is in the note, its sidebar, or nowhere in
+  // particular; anywhere else the browser's own find still works.
   const openFind = useCallback((replace: boolean) => setFindBar((f) => ({ replace, key: (f?.key ?? 0) + 1 })), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.code !== "KeyF" || !editor) return;
       const active = document.activeElement;
-      if (active && active !== document.body && !noteRef.current?.contains(active)) return;
+      if (active && active !== document.body && !noteRef.current?.contains(active) && !sidebarSlot?.contains(active)) return;
       e.preventDefault();
+      if (!e.altKey && sidebarSlot && !drawerMode) {
+        if (!sidebarOpen) toggleSidebar();
+        setSidebarRequest({ tab: "find", at: Date.now() });
+        requestAnimationFrame(() => window.dispatchEvent(new Event("folevi:focus-find")));
+        return;
+      }
       openFind(e.altKey);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [editor, openFind]);
+  }, [editor, openFind, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode]);
 
   // A block: its thread floats under it. Otherwise the Comments panel (every thread in the note).
   const openComments = useCallback(
@@ -641,7 +653,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setShareOpen(true)}
           title={shareState === "link" ? "Anyone with the link can view" : shareState === "people" ? "Shared with other people" : "Only you can open this"}
-          className={`inline-flex h-10 items-center gap-2 rounded-[6px] px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
+          className={`inline-flex h-10 items-center gap-2 rounded-control px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
             shareState ? "bg-accent-soft text-heading hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_80%,var(--color-ink)_8%)]" : "text-ink hover:bg-accent-soft hover:text-heading"
           }`}
         >
@@ -654,7 +666,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           label="Document actions"
           side="top"
           align="end"
-          triggerClassName="grid h-10 w-10 place-items-center rounded-[6px] text-ink pointer-coarse:h-11 pointer-coarse:w-11 transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          triggerClassName="grid h-10 w-10 place-items-center rounded-control text-ink pointer-coarse:h-11 pointer-coarse:w-11 transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           trigger={<MoreHorizontal size={16} aria-hidden />}
           items={actions}
         />
@@ -673,14 +685,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-[13.5px]">
           {parentFolder ? (
             <>
-              <AppLink href={`/folders/${parentFolder.id}`} className="flex min-w-0 max-w-[10rem] items-center gap-1.5 truncate rounded-[6px] px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+              <AppLink href={`/folders/${parentFolder.id}`} className="flex min-w-0 max-w-[10rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                 <Folder size={14} className="flex-none" aria-hidden />
                 <span className="truncate">{parentFolder.name}</span>
               </AppLink>
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </>
           ) : null}
-          <AppLink href={meta?.folder ? `/folders/${meta.folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-[6px] px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+          <AppLink href={meta?.folder ? `/folders/${meta.folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
             {meta?.folder ? (
               <>
                 <Folder size={14} className="flex-none" aria-hidden />
@@ -696,13 +708,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
           {meta?.breadcrumbs.map((b) => (
             <span key={b.id} className="flex min-w-0 items-center gap-0.5">
-              <AppLink href={`/d/${b.id}`} className="max-w-[12rem] truncate rounded-[6px] px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+              <AppLink href={`/d/${b.id}`} className="max-w-[12rem] truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                 {b.title || "Untitled"}
               </AppLink>
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </span>
           ))}
-          <span className="truncate rounded-[6px] px-2 py-1 font-semibold text-heading" aria-current="page">
+          <span className="truncate rounded-chip px-2 py-1 font-semibold text-heading" aria-current="page">
             {summary?.title || localTitle || "Untitled"}
           </span>
           {readOnly ? <span className="ui-chip ml-1 h-6 flex-none bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
@@ -743,15 +755,16 @@ export function DocumentView({ documentId }: { documentId: string }) {
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
         {/* Blur background: the backdrop sits blurred behind the scrolling page, which is then see-through. */}
-        {blurredBackdrop ? <BlurredBackdrop background={blurredBackdrop} className="inset-x-1.5 bottom-2 top-0 rounded-[14px] sm:inset-0" /> : null}
+        {blurredBackdrop ? <BlurredBackdrop background={blurredBackdrop} className="inset-x-1.5 bottom-2 top-0 rounded-panel sm:inset-0" /> : null}
         <div
           id="doc-scroll"
           ref={setScrollEl}
-          className={`fb-page relative h-full overflow-y-auto rounded-[14px] px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
+          className={`fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
           data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
           data-font={style.font}
           data-width={style.width}
           style={{
+            ...themeFonts,
             ["--doc-accent" as string]: style.accent === "accent" ? "var(--color-ember)" : `var(--color-${style.accent})`,
             ["--doc-accent-ink" as string]: style.accent === "accent" ? "var(--color-ember-ink)" : `var(--color-${style.accent}-ink)`,
             ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-ember-soft)" : `var(--color-${style.accent}-soft)`,
@@ -819,7 +832,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               ) : (
                 <div className="space-y-3 py-6" aria-busy aria-label="Loading document">
                   {[80, 95, 60, 88].map((w, i) => (
-                    <div key={i} className="h-4 animate-pulse rounded bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
+                    <div key={i} className="h-4 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
                   ))}
                 </div>
               )}
@@ -876,7 +889,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 closeInspector();
               }
             }}
-            className="ui-pop absolute bottom-[calc(84px+var(--kb-inset,0px))] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px-var(--kb-inset,0px)))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-[14px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
+            className="ui-pop absolute bottom-[calc(84px+var(--kb-inset,0px))] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px-var(--kb-inset,0px)))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-panel animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
           >
             <Inspector
               documentId={documentId}
@@ -1012,7 +1025,7 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
       style={{ width: w }}
       // Like the left sidebar: straight on the canvas, no card. Over the note (narrower windows) it needs a ground.
       // As an overlay it stops above the floating bar (0.25rem inset + 1.25rem, 3.25rem tall, 0.75rem gap), 0.75rem in from the page's edge.
-      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-[14px] animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
+      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-panel animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
     >
       <div
         role="separator"
@@ -1027,7 +1040,7 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
           if (e.key === "ArrowLeft") onWidth(Math.min(PANEL_MAX, w + 16));
           if (e.key === "ArrowRight") onWidth(Math.max(PANEL_MIN, w - 16));
         }}
-        className="absolute inset-y-3 -left-[3px] z-10 w-1 cursor-col-resize rounded-[6px] outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
+        className="absolute inset-y-3 -left-[3px] z-10 w-1 cursor-col-resize rounded-chip outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
       />
       {children}
     </aside>
@@ -1040,7 +1053,7 @@ function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, 
   for (const [, key] of authors.authors) counts.set(key, (counts.get(key) ?? 0) + 1);
   const people = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   return (
-    <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">
+    <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">
       <span>Each line shows who last edited it.</span>
       {people.map(([key]) => (
         <span key={key} className="inline-flex items-center gap-1.5 text-ink">
@@ -1048,7 +1061,7 @@ function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, 
           {authors.people[key]?.name ?? "Someone"}
         </span>
       ))}
-      <button type="button" onClick={onHide} className="ml-auto rounded-[6px] px-2 py-0.5 font-medium text-heading hover:bg-accent-soft">
+      <button type="button" onClick={onHide} className="ml-auto rounded-chip px-2 py-0.5 font-medium text-heading hover:bg-accent-soft">
         Hide editors
       </button>
     </div>
@@ -1068,7 +1081,7 @@ function BarAvatars({ me, others }: { me: { name: string; avatarUrl: string | nu
     <div role="group" aria-label={`Here now: ${people.map((p) => p.name).join(", ")}`} className="flex items-center px-1.5">
       <div className="flex -space-x-1.5">
         {shown.map((p) => (
-          <span key={p.key} title={p.name} className="rounded-[6px] bg-[var(--color-surface-raised)] p-[1.5px]">
+          <span key={p.key} title={p.name} className="rounded-chip bg-[var(--color-surface-raised)] p-[1.5px]">
             <Avatar name={p.name} url={p.avatarUrl} size={24} ring={`var(--color-${p.color})`} />
           </span>
         ))}
@@ -1088,15 +1101,15 @@ function NestedPath({ crumbs, title }: { crumbs: { id: string; title: string }[]
   const parent = crumbs[crumbs.length - 1]!;
   return (
     <nav aria-label="Page path" className="relative mx-auto -mt-5 mb-2.5" style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}>
-      <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-[10px] p-0.5 text-[12.5px]">
+      <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-control p-0.5 text-[12.5px]">
         <li className="flex-none">
-          <AppLink href={`/d/${parent.id}`} aria-label={`Back to ${parent.title || "Untitled"}`} title={`Back to ${parent.title || "Untitled"}`} className="grid h-6 w-6 place-items-center rounded-[6px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+          <AppLink href={`/d/${parent.id}`} aria-label={`Back to ${parent.title || "Untitled"}`} title={`Back to ${parent.title || "Untitled"}`} className="grid h-6 w-6 place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
             <ArrowLeft size={13} aria-hidden />
           </AppLink>
         </li>
         {crumbs.map((c) => (
           <li key={c.id} className="flex min-w-0 items-center gap-0.5">
-            <AppLink href={`/d/${c.id}`} className="max-w-[14rem] truncate rounded-[6px] px-1.5 py-0.5 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+            <AppLink href={`/d/${c.id}`} className="max-w-[14rem] truncate rounded-chip px-1.5 py-0.5 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
               {c.title || "Untitled"}
             </AppLink>
             <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
@@ -1108,6 +1121,16 @@ function NestedPath({ crumbs, title }: { crumbs: { id: string; title: string }[]
       </ol>
     </nav>
   );
+}
+
+/**
+ * The layer that tones a cover image under its title, in the theme's own colours: a deep shade of the key
+ * colour multiplied in (darker) behind a white title, or the page colour screened in (lighter) behind a dark
+ * one. Half strength at the top, three quarters under the title.
+ */
+function coverTone(tone: "deep" | "light", colors: { paper?: string; ink?: string; accent?: string } | null | undefined): React.CSSProperties {
+  const tint = tone === "light" ? (colors?.paper ?? "#ffffff") : `color-mix(in oklab, ${colors?.accent ?? colors?.ink ?? "#000000"} 42%, black)`;
+  return { background: `linear-gradient(180deg, color-mix(in oklab, ${tint} 50%, transparent) 0%, color-mix(in oklab, ${tint} 75%, transparent) 100%)`, mixBlendMode: tone === "light" ? "screen" : "multiply" };
 }
 
 function DocumentHeader({
@@ -1258,13 +1281,12 @@ function DocumentHeader({
   }, [documentId]);
   const { url: imageUrl, palette } = useCoverImage(cover as never);
   const bg = coverBackground(cover as never, style, imageUrl);
-  // With a cover, the title sits on it over a soft shade: white on deep covers, the style's dark ink on
+  // With a cover, the title sits on it over a tone in the theme's colours: white on deep covers, its dark ink on
   // light ones, chosen by how light the band behind the title reads (a person's image: white until known).
   const art = coverArtOf(cover as never);
   const onCover = Boolean(bg);
   const ownImage = (cover as { kind?: string }).kind === "image";
   const tone = art ? art.tone : ownImage ? (palette?.tone ?? "deep") : null;
-  const lightImage = tone === "light";
   const whiteTitle = tone === "deep";
   const titleColor = !onCover || !tone ? undefined : whiteTitle ? "#ffffff" : (art?.ink ?? palette?.ink);
   const titleField = (
@@ -1316,7 +1338,7 @@ function DocumentHeader({
             }
           }}
           style={titleColor ? { color: titleColor, textShadow: whiteTitle ? "0 1px 14px rgb(0 0 0 / 0.4)" : "0 1px 12px rgb(255 255 255 / 0.5)" } : undefined}
-          className={`block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] outline-none ${titleColor ? "placeholder:text-current placeholder:opacity-55" : "text-heading placeholder:text-[var(--color-ink-faint)]"} ${onCover ? "" : "mt-4"} ${style.font === "mono" ? "font-mono text-[34px] tracking-[-0.02em]" : style.font === "rounded" ? "font-rounded tracking-[-0.02em]" : "font-serif tracking-[-0.012em]"}`}
+          className={`block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] outline-none ${titleColor ? "placeholder:text-current placeholder:opacity-55" : "text-heading placeholder:text-[var(--color-ink-faint)]"} ${onCover ? "" : "mt-4"} ${style.font === "mono" ? "[font-family:var(--note-mono,var(--font-mono))] [font-size-adjust:ex-height_0.55] text-[34px] tracking-[-0.02em]" : style.font === "rounded" ? "[font-family:var(--note-soft,var(--font-rounded))] [font-size-adjust:ex-height_0.52] tracking-[-0.02em]" : "[font-family:var(--note-serif,var(--font-serif))] [font-size-adjust:ex-height_0.45] tracking-[-0.012em]"}`}
           aria-describedby={readOnly ? `ro-${documentId}` : undefined}
         />
       </h1>
@@ -1373,7 +1395,7 @@ function DocumentHeader({
               setSuggesting(false);
             }
           }}
-          className={`mt-2 inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1 text-[12.5px] font-medium backdrop-blur-md transition-colors disabled:opacity-60 ${titleColor ? "bg-black/20 text-white hover:bg-black/30" : "bg-[var(--glass-hover)] text-ink hover:bg-[var(--glass-active)]"}`}
+          className={`mt-2 inline-flex items-center gap-1.5 rounded-chip px-3 py-1 text-[12.5px] font-medium backdrop-blur-md transition-colors disabled:opacity-60 ${titleColor ? "bg-black/20 text-white hover:bg-black/30" : "bg-[var(--glass-hover)] text-ink hover:bg-[var(--glass-active)]"}`}
         >
           <AiIcon size={13} aria-hidden className={suggesting ? "animate-pulse motion-reduce:animate-none" : ""} />
           {suggesting ? "Thinking of a title…" : "Suggest a title"}
@@ -1384,14 +1406,12 @@ function DocumentHeader({
   return (
     <header>
       {onCover ? (
-        <div className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-[6px] border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
-          {/* The style's image under a film grain (dark specks on covers that read deep, white on light ones),
-              with a shade under the title. */}
+        <div className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-chip border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
+          {/* The theme's image, toned in its own colour under the title so the title reads: darkened (multiply)
+              with a deep shade of its key colour where the title is white, lightened (screen) with its page
+              colour where the title is dark. */}
           <div aria-hidden data-cover-image="" className="absolute inset-0 -z-10" style={{ background: bg }} />
-          <div aria-hidden data-tone={tone ?? "deep"} className="fb-cover-grain absolute inset-0 -z-10" />
-          {tone ? (
-            <div aria-hidden className="absolute inset-0 -z-10" style={{ background: `linear-gradient(180deg, transparent 35%, ${lightImage ? "rgb(255 255 255 / 0.45)" : "rgb(0 0 0 / 0.4)"})` }} />
-          ) : null}
+          {tone ? <div aria-hidden data-cover-tone={tone} className="absolute inset-0 -z-10" style={coverTone(tone, art ?? palette)} /> : null}
           <div className="w-full">{titleField}</div>
         </div>
       ) : (
@@ -1444,17 +1464,17 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
   };
   // Not an alert: the sync status already announces conflicts.
   return (
-    <section ref={sectionRef} aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-[6px] bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
+    <section ref={sectionRef} aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-chip bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
       <h2 ref={headingRef} id={`conflict-${c.id}`} tabIndex={-1} className="text-sm font-semibold text-plum-ink outline-none">
         {conflicts.length === 1 ? "This block was changed in two places" : `${conflicts.length} blocks were changed in two places`}
       </h2>
       <p className="mt-1 text-sm text-ink">Both versions are kept. Nothing is lost until you choose.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="ui-card rounded-[10px] p-3">
+        <div className="ui-card rounded-control p-3">
           <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : c.reason === "edited" ? "Edited elsewhere" : "Version from elsewhere"}</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(theirs)}</p>
         </div>
-        <div className="ui-card rounded-[10px] p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
+        <div className="ui-card rounded-control p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
           <p className="ui-caps">{c.reason === "edited" ? "You deleted it" : "Your version"}</p>
           <p className={`mt-1 whitespace-pre-wrap text-sm ${c.reason === "edited" ? "text-muted line-through" : ""}`}>{text(c.client)}</p>
         </div>
@@ -1485,7 +1505,7 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
           </Button>
         ) : null}
         {conflicts.length > 1 ? (
-          <Select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 ui-raised rounded-[6px] px-3 text-xs">
+          <Select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 ui-raised rounded-chip px-3 text-xs">
             {conflicts.map((x, i) => (
               <option key={x.id} value={x.id}>
                 Conflict {i + 1}
@@ -1509,7 +1529,7 @@ function Backlinks({ documentId }: { documentId: string }) {
       <ul className="mt-2 space-y-1">
         {data.linked.map((l) => (
           <li key={l.id}>
-            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[6px] px-2 py-1 hover:bg-surface">
+            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1 hover:bg-surface">
               <FileText size={14} aria-hidden className="flex-none text-muted" />
               <span className="font-medium">{l.title || "Untitled"}</span>
               <span className="truncate text-xs text-muted">{l.excerpt}</span>
@@ -1524,7 +1544,7 @@ function Backlinks({ documentId }: { documentId: string }) {
           <ul className="mt-2 space-y-1">
             {data.unlinked.map((l) => (
               <li key={l.id}>
-                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-[6px] px-2 py-1 hover:bg-surface">
+                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1 hover:bg-surface">
                   <FileText size={14} aria-hidden className="flex-none text-muted" />
                   <span className="font-medium">{l.title || "Untitled"}</span>
                 </AppLink>

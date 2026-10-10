@@ -1,6 +1,6 @@
 /* Flowchart block (flowchart/FlowchartView.tsx, render.tsx). Loaded with the editor styles by the document
  * view and share pages. Shapes mix their tint into the page colour (--color-surface), so charts sit well
- * on any note style, in light and dark; "accent" follows the note's palette (--doc-accent). */
+ * on any note theme, in light and dark; "accent" follows the note's palette (--doc-accent). */
 
 .fc-root, .fc-card {
   --fc-node-bg: var(--color-surface-raised);
@@ -81,7 +81,7 @@
 
 /* ---------------------------------------------------------------- the block */
 .fc-card {
-  margin: 0.5em 0; border-radius: 14px; overflow: hidden;
+  margin: 0.5em 0; border-radius: var(--radius-panel); overflow: hidden;
   background: color-mix(in oklab, var(--color-surface-sunken) 30%, var(--color-surface));
   box-shadow: 0 0 0 1px var(--color-line);
   font-family: var(--font-sans);
@@ -127,14 +127,14 @@
 }
 .fc-text-input[data-color]:not([data-color="neutral"]), .fc-text-input[data-shape="note"] { color: color-mix(in oklab, var(--fc-tint, var(--fc-yellow)) 32%, var(--color-ink)); }
 .fc-label-input {
-  border-radius: 6px; padding: 0 6px; background: var(--color-surface);
+  border-radius: var(--radius-chip); padding: 0 6px; background: var(--color-surface);
   box-shadow: 0 0 0 1.5px var(--fc-select); line-height: 1;
 }
 
 /* ---------------------------------------------------------------- floating chrome */
 .fc-bar {
   position: absolute; z-index: 3; display: flex; align-items: center; gap: 2px;
-  padding: 4px; border-radius: 14px;
+  padding: 4px; border-radius: var(--radius-panel);
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
   box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
@@ -147,7 +147,7 @@
 .fc-sep { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--color-line-strong); }
 .fc-btn {
   flex: none; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 5px;
-  min-width: 30px; height: 30px; padding: 0 6px; border-radius: 10px;
+  min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--radius-control);
   color: var(--color-ink-muted); transition: background-color 100ms, color 100ms;
 }
 .fc-btn:hover:not(:disabled), .fc-btn[aria-pressed="true"], .fc-btn[aria-expanded="true"] { background: var(--glass-hover); color: var(--color-heading); }
@@ -157,7 +157,7 @@
 .fc-ai-mark { color: #7c6cf0; }
 .fc-zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
 .fc-swatch {
-  flex: none; width: 22px; height: 22px; margin: 0 1px; border-radius: 6px;
+  flex: none; width: 22px; height: 22px; margin: 0 1px; border-radius: var(--radius-chip);
   background: color-mix(in oklab, var(--fc-tint, var(--color-surface-raised)) 22%, var(--color-surface));
   box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--fc-tint, var(--color-ink)) 55%, var(--color-surface));
 }
@@ -178,7 +178,7 @@
 .fc-empty p { margin: 0; }
 .fc-empty-ai { pointer-events: auto; background: var(--glass-pop); box-shadow: var(--glass-edge); }
 .fc-warning {
-  position: absolute; left: 10px; bottom: 10px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: 10px;
+  position: absolute; left: 10px; bottom: 10px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: var(--radius-control);
   font: 500 12.5px/1.4 var(--font-sans); color: var(--color-danger, #b42318); background: var(--color-surface-raised);
   box-shadow: var(--glass-edge);
 }
@@ -186,10 +186,10 @@
 /* AI */
 .fc-ai {
   position: absolute; z-index: 4; top: 54px; right: 10px; width: min(380px, calc(100% - 20px));
-  border-radius: 14px; overflow: hidden; font-family: var(--font-sans); color: var(--color-ink);
+  border-radius: var(--radius-panel); overflow: hidden; font-family: var(--font-sans); color: var(--color-ink);
 }
 .fc-ai-modes { display: flex; gap: 4px; padding: 8px 10px 0; }
-.fc-ai-modes button { padding: 4px 9px; border-radius: 6px; font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.fc-ai-modes button { padding: 4px 9px; border-radius: var(--radius-chip); font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
 .fc-ai-modes button[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1px var(--glass-border); }
 .fc-ai-form { display: flex; align-items: flex-start; gap: 8px; padding: 10px; }
 .fc-ai-form .fc-ai-mark { margin-top: 5px; }
@@ -198,10 +198,10 @@
   font: 14px/1.45 var(--font-sans); color: var(--color-ink);
 }
 .fc-ai-form textarea::placeholder { color: var(--color-ink-faint); }
-.fc-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; background: var(--color-heading); color: var(--color-canvas); }
+.fc-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--color-heading); color: var(--color-canvas); }
 .fc-ai-send:disabled { opacity: 0.3; }
 .fc-ai-ideas { margin: 0; padding: 4px 6px 6px; list-style: none; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); }
-.fc-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: 10px; text-align: left; font-size: 13px; color: var(--color-ink-muted); }
+.fc-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: 13px; color: var(--color-ink-muted); }
 .fc-ai-ideas button:hover { background: var(--glass-hover); color: var(--color-heading); }
 .fc-ai-status, .fc-ai-error { margin: 0; padding: 4px 14px 10px; font-size: 13px; color: var(--color-ink-muted); }
 .fc-ai-error { color: var(--color-danger, #b42318); }
@@ -211,7 +211,7 @@
 .fc-static { display: flex; justify-content: center; padding: 8px 12px; }
 .fc-static svg { height: auto; }
 .fc-static-empty { padding: 20px; font: 13px var(--font-sans); color: var(--color-ink-muted); }
-.fb-readonly-flowchart { margin: 0.6em 0; border-radius: 14px; box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); }
+.fb-readonly-flowchart { margin: 0.6em 0; border-radius: var(--radius-panel); box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); }
 
 @media (forced-colors: active) {
   .fc-shape, .fc-edge-line { stroke: CanvasText; }

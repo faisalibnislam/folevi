@@ -55,7 +55,7 @@ function currentHref(pathname: string): string | null {
 
 // The app's sidebar row (components/app/Sidebar.tsx NavItem): the open page comes forward on light glass.
 const ROW =
-  "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-[6px] px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
+  "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
 const ROW_ON = "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]";
 const ROW_OFF = "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading";
 
@@ -86,11 +86,11 @@ function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: str
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-[52px] flex-none items-center gap-1 px-3">
-        <Link href="/" onClick={onNavigate} aria-label="Folevi home" className="flex min-w-0 flex-1 items-center rounded-[6px] px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <Link href="/" onClick={onNavigate} aria-label="Folevi home" className="flex min-w-0 flex-1 items-center rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus">
           <FoleviLogo height={26} title={null} className="flex-none" />
         </Link>
         {onClose ? (
-          <button type="button" onClick={onClose} aria-label="Close menu" className="grid size-11 flex-none place-items-center rounded-[6px] text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus">
+          <button type="button" onClick={onClose} aria-label="Close menu" className="grid size-11 flex-none place-items-center rounded-chip text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus">
             <X size={18} aria-hidden />
           </button>
         ) : null}
@@ -207,12 +207,12 @@ function useSiteTabs(pathname: string) {
 
 // The app's tab strip tabs (components/app/TabStrip.tsx): the open one comes forward, the others sit back.
 const TAB =
-  "group relative flex h-9 min-w-0 items-center gap-2 rounded-[10px] px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus";
+  "group relative flex h-9 min-w-0 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus";
 const TAB_ON = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
 // Quiet tabs use a slightly stronger text than the app's muted grey: on Home they sit over the note's artwork.
 const TAB_OFF = "bg-[var(--glass-hover)] text-ink/65 hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 const ICON_BTN =
-  "grid size-9 flex-none place-items-center rounded-[10px] text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus";
+  "grid size-9 flex-none place-items-center rounded-control text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus";
 
 /**
  * The bar over the page panel, as the app's tab strip draws it: Up (to the page's section), then the tabs
@@ -261,7 +261,7 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
   };
 
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-panel px-1">
       {up ? (
         <Link href={up} aria-label={`Up to ${upLabel}`} title={`Up to ${upLabel}`} className={ICON_BTN}>
           <ArrowUp size={15} aria-hidden />
@@ -296,7 +296,7 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
                 aria-label={`Close ${tab.title}`}
                 onClick={() => closeTab(tab.href)}
                 className={cx(
-                  "grid size-5 flex-none place-items-center rounded-[4px] text-faint outline-none transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus",
+                  "grid size-5 flex-none place-items-center rounded-chip text-faint outline-none transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus",
                   active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                 )}
               >
@@ -307,10 +307,10 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
         })}
       </nav>
       <span className="flex-1" />
-      <a href={signInUrl} className="mk-btn mk-btn-secondary h-9 min-w-[92px] flex-none gap-1.5 rounded-[10px] px-5 text-[13px]">
+      <a href={signInUrl} className="mk-btn mk-btn-secondary h-9 min-w-[92px] flex-none gap-1.5 rounded-control px-5 text-[13px]">
         Sign in
       </a>
-      <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 min-w-[92px] flex-none gap-1.5 rounded-[10px] px-5 text-[13px]">
+      <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 min-w-[92px] flex-none gap-1.5 rounded-control px-5 text-[13px]">
         Sign up
       </a>
     </div>
@@ -418,8 +418,8 @@ function Drawer({ id, onClose, children }: { id: string; onClose: () => void; ch
 
 export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children }: { signInUrl: string; signUpUrl: string; homeAmbient: string; footer: ReactNode; children: ReactNode }) {
   const pathname = usePathname() ?? "/";
-  // Every page is lit by an artwork: the site's default (the home note's first style) unless the page sets
-  // its own; the home page's style picker changes it from there.
+  // Every page is lit by an artwork: the site's default (the home note's first theme) unless the page sets
+  // its own; the home page's theme picker changes it from there.
   const [pageAmbient, setAmbient] = useState<string | null>(null);
   const ambient = pageAmbient ?? homeAmbient;
   const [open, setOpen] = useState(false);
@@ -469,7 +469,7 @@ export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children 
               </div>
               <header className="mk-rail sticky top-0 z-50 lg:hidden" data-scrolled={scrolled}>
                 <div className="flex h-16 items-center gap-2 px-4 sm:px-8">
-                  <Link href="/" className="-ml-1.5 flex h-11 items-center rounded-[6px] px-1.5 text-heading" aria-label="Folevi home">
+                  <Link href="/" className="-ml-1.5 flex h-11 items-center rounded-chip px-1.5 text-heading" aria-label="Folevi home">
                     <FoleviLogo height={24} title={null} />
                   </Link>
                   <span className="flex-1" />

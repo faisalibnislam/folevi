@@ -52,7 +52,7 @@ export function MoveNoteDialog({
   return (
     <Dialog open={open} onClose={onClose} title={`Move ${name}`} description="Pick a folder for it, or a page to put it inside.">
       <div className="space-y-4">
-        <p className="flex items-center gap-2 rounded-[10px] bg-[var(--glass-hover)] px-3 py-2 text-[13px] text-muted">
+        <p className="flex items-center gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2 text-[13px] text-muted">
           {parent ? <FileText size={14} className="flex-none" aria-hidden /> : folder ? <Folder size={14} className="flex-none" aria-hidden /> : <Inbox size={14} className="flex-none" aria-hidden />}
           <span className="min-w-0 truncate">
             Now {parent ? "inside" : "in"} <span className="font-medium text-heading">{parent ? parent.title || "Untitled" : folder ? folder.name : "Drafts"}</span>
@@ -72,7 +72,7 @@ export function MoveNoteDialog({
               role="radio"
               aria-checked={where === id}
               onClick={() => setWhere(id)}
-              className={`flex items-start gap-2.5 rounded-[10px] border p-3 text-left text-sm transition-colors ${where === id ? "border-accent bg-accent-soft" : "border-line hover:bg-[var(--glass-hover)]"}`}
+              className={`flex items-start gap-2.5 rounded-control border p-3 text-left text-sm transition-colors ${where === id ? "border-accent bg-accent-soft" : "border-line hover:bg-[var(--glass-hover)]"}`}
             >
               <span className={`mt-0.5 ${where === id ? "text-heading" : "text-muted"}`} aria-hidden>
                 {icon}
@@ -90,7 +90,7 @@ export function MoveNoteDialog({
             canFile ? (
               <FolderPicker open={open && where === "folder"} onClose={onClose} onPick={onPickFolder} currentFolderId={folder?.id ?? null} />
             ) : (
-              <p className="rounded-[10px] border border-dashed border-line px-3 py-4 text-[13px] text-muted">
+              <p className="rounded-control border border-dashed border-line px-3 py-4 text-[13px] text-muted">
                 {parent ? (
                   <>
                     A page inside another page lives in that page&apos;s folder. To file it on its own, choose <span className="font-medium text-heading">A page</span> and move it to the top level first.
@@ -103,7 +103,7 @@ export function MoveNoteDialog({
           ) : canNest ? (
             <PagePicker open={open && where === "page"} onClose={onClose} documentId={documentId} title={title} currentParentId={parent?.id ?? null} home={home} />
           ) : (
-            <p className="rounded-[10px] border border-dashed border-line px-3 py-4 text-[13px] text-muted">Only people who can manage this note can put it inside another page.</p>
+            <p className="rounded-control border border-dashed border-line px-3 py-4 text-[13px] text-muted">Only people who can manage this note can put it inside another page.</p>
           )}
         </div>
       </div>

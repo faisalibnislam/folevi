@@ -15,13 +15,13 @@ import { NewWorkspaceDialog, workspaceRoleLabel } from "./NewWorkspaceDialog";
 
 /** A team workspace's mark: its square logo, or its initial on a neutral tile. */
 export function WorkspaceLogo({ workspace, size = 24, className = "" }: { workspace: Pick<Workspace, "name" | "logoUrl">; size?: number; className?: string }) {
-  return <Mark src={workspace.logoUrl ?? null} initial={workspace.name} shape="rounded-[6px]" size={size} className={className} />;
+  return <Mark src={workspace.logoUrl ?? null} initial={workspace.name} shape="rounded-chip" size={size} className={className} />;
 }
 
 /** Personal's mark: your profile picture (or your initial), drawn round. Personal is you, not a workspace. */
 export function PersonalMark({ size = 24, className = "" }: { size?: number; className?: string }) {
   const { profile } = useAppState();
-  return <Mark src={profile.avatarUrl ?? null} initial={profile.displayName} shape="rounded-[6px]" size={size} className={className} />;
+  return <Mark src={profile.avatarUrl ?? null} initial={profile.displayName} shape="rounded-chip" size={size} className={className} />;
 }
 
 function Mark({ src, initial, shape, size, className }: { src: string | null; initial: string; shape: string; size: number; className: string }) {
@@ -134,7 +134,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
         <button
           type="button"
           onClick={() => go("/settings/billing")}
-          className="mb-1.5 flex h-8 w-full items-center gap-2 rounded-[6px] bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2.5 text-left text-[12.5px] font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)] transition-[filter] hover:brightness-[1.03]"
+          className="mb-1.5 flex h-8 w-full items-center gap-2 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2.5 text-left text-[12.5px] font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)] transition-[filter] hover:brightness-[1.03]"
         >
           <AiIcon size={13} aria-hidden className="text-[#7c6cf0]" />
           <span className="flex-1 truncate">{pill}</span>
@@ -147,7 +147,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
         align="start"
         className="w-full"
         menuClassName="w-full min-w-64 pt-3"
-        triggerClassName="flex h-12 w-full items-center gap-2.5 rounded-[6px] px-2 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)]"
+        triggerClassName="flex h-12 w-full items-center gap-2.5 rounded-chip px-2 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)]"
         items={items}
         trigger={
           <>

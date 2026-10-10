@@ -1,46 +1,46 @@
 // Shared (server + client) cover/accent helpers.
 import type { DocumentCover, DocumentStyle } from "@folevi/editor-schema";
-import coverArt from "@folevi/design-tokens/covers.json";
 import type { StylePalette } from "@/lib/palette";
+import { allThemes, BUILT_IN_THEMES, themeById, type NoteTheme } from "@/lib/themes";
 
 /**
- * One note style: an image (packages/design-tokens/covers/source) and the colours it gives a note: page, text, accent, five text
- * colours and four highlights (packages/design-tokens/src/palette.ts, precomputed into covers.json).
+ * One note theme: an image (packages/design-tokens/covers/source, or one an admin uploaded) and the colours
+ * it gives a note: page, text, accent, five text colours and four highlights (packages/design-tokens/src/
+ * palette.ts), plus what picking it sets and its typefaces (lib/themes.ts).
  */
-export interface CoverArt extends Omit<StylePalette, "tone"> {
-  id: string;
-  name: string;
-  tone: "deep" | "light";
-  width?: number;
-  height?: number;
-}
+export type CoverArt = NoteTheme;
 
 /**
- * The note styles: images built by packages/design-tokens/scripts/covers.mjs and served from /covers: the
- * cover and page background at 1600 px (1×) and 3200 px (2×, Retina), and a 640 px thumbnail (picker tiles,
- * note-card spines).
+ * The shipped themes (images built by packages/design-tokens/scripts/covers.mjs, served from /covers: the
+ * cover and page background at 1600 px (1×) and 3200 px (2×, Retina), and a 640 px thumbnail). The app's
+ * live list, with the admins' changes, is allThemes() in lib/themes.ts.
  */
-export const COVER_ART: readonly CoverArt[] = coverArt as CoverArt[];
-const ART_BY_ID = new Map(COVER_ART.map((a) => [a.id, a]));
+export const COVER_ART: readonly CoverArt[] = BUILT_IN_THEMES;
 
 /**
- * The style a stored art id shows. Notes keep ids from art-01 to art-57; while fewer styles exist, an id past
- * the end wraps round onto the ones there are, so every note has a style (and gets its own once it exists).
+ * The theme a stored id shows. Notes keep ids from art-01 to art-57 (and th-… for added themes); an art id
+ * past the end of the built-ins wraps round onto the ones there are, so every note has a theme.
  */
 function resolveArt(id: string | undefined): CoverArt | null {
   if (!id) return null;
-  const direct = ART_BY_ID.get(id);
+  const direct = themeById(id);
   if (direct) return direct;
   const n = /^art-(\d+)$/.exec(id)?.[1];
-  if (!n || !COVER_ART.length) return null;
-  return COVER_ART[(Number(n) - 1) % COVER_ART.length] ?? null;
+  const builtIns = allThemes().filter((t) => t.builtIn);
+  if (!n || !builtIns.length) return null;
+  return builtIns[(Number(n) - 1) % builtIns.length] ?? null;
 }
-/** A style's image as a CSS image: 1600 px on regular screens, 3200 px on Retina (2×) ones. */
+/** A theme's image as a CSS image: 1600 px on regular screens, 3200 px on Retina (2×) ones. */
 const artUrl = (id: string | undefined) => {
   const a = resolveArt(id);
-  return a ? `image-set("/covers/${a.id}-1x.webp" 1x, "/covers/${a.id}.webp" 2x)` : null;
+  if (!a) return null;
+  if (a.image) return `image-set(url(${JSON.stringify(a.image.half)}) 1x, url(${JSON.stringify(a.image.full)}) 2x)`;
+  return `image-set("/covers/${a.id}-1x.webp" 1x, "/covers/${a.id}.webp" 2x)`;
 };
-export const coverArtThumbUrl = (id: string) => `/covers/${resolveArt(id)?.id ?? id}-thumb.webp`;
+export const coverArtThumbUrl = (id: string) => {
+  const a = resolveArt(id);
+  return a?.image ? a.image.thumb : `/covers/${a?.id ?? id}-thumb.webp`;
+};
 
 // The "Accent" page accent renders ember (docs/DESIGN_SYSTEM.md); the Mac app loads the web, so it matches.
 export const accentVar = (a: DocumentStyle["accent"]) => (a === "accent" ? "var(--color-ember)" : `var(--color-${a})`);

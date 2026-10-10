@@ -40,8 +40,8 @@ import { cx } from "../ui";
 
 /*
  * HTML replicas of the app's own chrome (packages/design-tokens chrome + globals.css glass recipes): the
- * glass canvas lit by the open note's style, the page sidebar, the tab strip, the page tools dock and a
- * note coloured by its style. Illustrations only: nothing here is a control.
+ * glass canvas lit by the open note's theme, the page sidebar, the tab strip, the page tools dock and a
+ * note coloured by its theme. Illustrations only: nothing here is a control.
  */
 
 export function artById(id: string): CoverArt {
@@ -51,7 +51,7 @@ export function artById(id: string): CoverArt {
 export const artThumb = (art: CoverArt) => `url("/covers/${art.id}-thumb.webp")`;
 const artLarge = (art: CoverArt) => `image-set(url("/covers/${art.id}-thumb.webp") 1x, url("/covers/${art.id}-1x.webp") 2x)`;
 
-/** CSS variables that colour a note like the editor does for a style (editor.css, data-sheet="art"). */
+/** CSS variables that colour a note like the editor does for a theme (editor.css, data-sheet="art"). */
 export function artVars(art: CoverArt, size: "thumb" | "large" = "thumb"): CSSProperties {
   const vars: Record<string, string> = {
     "--note-art": size === "large" ? artLarge(art) : artThumb(art),
@@ -138,7 +138,7 @@ export function AppWindow({
         {sidebar === "page" ? <PageSidebar note={note} chrome={chrome} /> : sidebar === "main" ? <MainSidebar chrome={chrome} /> : null}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <TabStrip title={note.title} chrome={sidebar === "none" ? chrome : "web"} />
-          <div className="mk-note-page min-h-0 flex-1 px-2 pt-3 sm:px-6 sm:pt-5" style={artVars(art, artSize)}>
+          <div className="mk-note-page min-h-0 flex-1 px-1 pt-1 sm:px-6 sm:pt-5" style={artVars(art, artSize)}>
             <NoteSheet art={art} note={note} artSize={artSize} />
             <Dock active={active} />
           </div>
@@ -176,7 +176,7 @@ function SidebarTop({ chrome }: { chrome: "web" | "mac" }) {
 function Account() {
   return (
     <div className="mt-auto flex flex-none items-center gap-2.5 px-2 pb-1 pt-2">
-      <span className="grid size-7 flex-none place-items-center rounded-[10px] bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">A</span>
+      <span className="grid size-7 flex-none place-items-center rounded-control bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">A</span>
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block truncate text-[12.5px] font-semibold text-(--color-heading)">Ada Example</span>
         <span className="block truncate text-[11px] text-muted">Personal</span>
@@ -191,23 +191,23 @@ export function PageSidebar({ note, chrome = "web" }: { note: NoteContent; chrom
   return (
     <div className="hidden w-[208px] flex-none flex-col md:flex lg:w-[224px]">
       <SidebarTop chrome={chrome} />
-      <div className="mk-app-glass mx-1 mt-1 rounded-[10px] px-3 py-2.5">
+      <div className="mk-app-glass mx-1 mt-1 rounded-control px-3 py-2.5">
         <p className="truncate text-[13px] font-semibold text-(--color-heading)">{note.title}</p>
         <p className="mt-0.5 truncate text-[11px] text-muted">In {note.folder}</p>
       </div>
-      <div className="mk-app-well mx-1 mt-2.5 flex gap-0.5 rounded-[10px] p-1">
+      <div className="mk-app-well mx-1 mt-2.5 flex gap-0.5 rounded-control p-1">
         {tools.map((Tool, i) => (
-          <span key={i} className={cx("grid h-7 flex-1 place-items-center rounded-[6px] text-muted", i === 0 && "mk-app-row-on")}>
+          <span key={i} className={cx("grid h-7 flex-1 place-items-center rounded-chip text-muted", i === 0 && "mk-app-row-on")}>
             <Tool size={14} />
           </span>
         ))}
       </div>
       <p className="mt-4 px-3 text-[12.5px] font-semibold text-(--color-heading)">Table of contents</p>
       <ul className="mt-1.5 space-y-0.5 px-1">
-        <li className="mk-app-row-on flex h-8 items-center rounded-[6px] px-2.5 text-[12.5px]">{note.title}</li>
+        <li className="mk-app-row-on flex h-8 items-center rounded-chip px-2.5 text-[12.5px]">{note.title}</li>
         {note.toc.map((item, i) => (
-          <li key={item} className="relative flex h-8 items-center rounded-[6px] pl-5 pr-2 text-[12.5px] text-muted">
-            {i === 0 ? <span className="absolute inset-y-1.5 left-0.5 w-[2px] rounded-[6px] bg-(--color-heading)" /> : null}
+          <li key={item} className="relative flex h-8 items-center rounded-chip pl-5 pr-2 text-[12.5px] text-muted">
+            {i === 0 ? <span className="absolute inset-y-1.5 left-0.5 w-[2px] rounded-chip bg-(--color-heading)" /> : null}
             <span className={cx("truncate", i === 0 && "text-ink")}>{item}</span>
           </li>
         ))}
@@ -253,24 +253,24 @@ export function MainSidebar({
   return (
     <div className="hidden w-[208px] flex-none flex-col md:flex lg:w-[224px]">
       <SidebarTop chrome={chrome} />
-      <div className="mk-app-well mx-1 mt-1 flex h-8 items-center gap-2 rounded-[6px] pl-2.5 pr-1.5 text-[12px] text-muted">
+      <div className="mk-app-well mx-1 mt-1 flex h-8 items-center gap-2 rounded-chip pl-2.5 pr-1.5 text-[12px] text-muted">
         <Search size={13} />
         <span className="flex-1 truncate">Search or jump to…</span>
-        <span className="rounded-[4px] bg-(--color-surface-raised) px-1 text-[10px] font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
+        <span className="rounded-tiny bg-(--color-surface-raised) px-1 text-[10px] font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
       </div>
       <ul className="mt-3 space-y-0.5 px-1">
         {rows.map(({ icon: RowIcon, label, count }) => (
-          <li key={label} className={cx("flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[12.5px]", label === activeLabel ? "mk-app-row-on" : "text-ink")}>
+          <li key={label} className={cx("flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px]", label === activeLabel ? "mk-app-row-on" : "text-ink")}>
             <RowIcon size={15} className={label === activeLabel ? "text-(--color-heading)" : "text-muted"} />
             <span className="flex-1 truncate">{label}</span>
-            {count ? <span className="min-w-5 rounded-[6px] bg-(--glass-hover) px-1.5 text-center text-[10.5px] font-semibold leading-5 text-muted">{count}</span> : null}
+            {count ? <span className="min-w-5 rounded-chip bg-(--glass-hover) px-1.5 text-center text-[10.5px] font-semibold leading-5 text-muted">{count}</span> : null}
           </li>
         ))}
       </ul>
       {sections ? (
         <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[10.5px]">
           <ChevronDown size={11} />
-          <span className={cx("-my-1 flex-1 rounded-[6px] px-1.5 py-1", activeLabel === "Folders" && "bg-(--glass-hover) text-(--color-heading)")}>Folders</span>
+          <span className={cx("-my-1 flex-1 rounded-chip px-1.5 py-1", activeLabel === "Folders" && "bg-(--glass-hover) text-(--color-heading)")}>Folders</span>
           <FolderPlus size={13} className="text-muted" />
         </p>
       ) : (
@@ -278,7 +278,7 @@ export function MainSidebar({
       )}
       <ul className="mt-1 space-y-0.5 px-1">
         {folders.map((folder) => (
-          <li key={folder.label} className="flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 pl-4 text-[12.5px] text-ink">
+          <li key={folder.label} className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 pl-4 text-[12.5px] text-ink">
             <FolderGlyph color={folder.color} size={16} />
             <span className="truncate">{folder.label}</span>
           </li>
@@ -292,10 +292,10 @@ export function MainSidebar({
         </p>
       ) : null}
       <ul className="mt-4 space-y-0.5 px-1">
-        <li className="flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[12.5px] text-ink">
+        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] text-ink">
           <Archive size={15} className="text-muted" /> Archive
         </li>
-        <li className="flex h-8 items-center gap-2.5 rounded-[6px] px-2.5 text-[12.5px] text-ink">
+        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] text-ink">
           <Trash2 size={15} className="text-muted" /> Trash
         </li>
       </ul>
@@ -307,12 +307,12 @@ export function MainSidebar({
 /** The tab strip across the top: Up, Home, one tab per open page, and New note. */
 export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "web" | "mac" }) {
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-panel px-1">
       {chrome === "mac" ? <TrafficLights /> : null}
-      <span className="grid size-9 flex-none place-items-center rounded-[10px] text-muted md:hidden">
+      <span className="grid size-9 flex-none place-items-center rounded-control text-muted md:hidden">
         <PanelLeft size={15} />
       </span>
-      <span className="hidden size-9 flex-none place-items-center rounded-[10px] text-muted md:grid">
+      <span className="hidden size-9 flex-none place-items-center rounded-control text-muted md:grid">
         <ArrowUp size={15} />
       </span>
       <span className="h-5 w-px flex-none bg-(--color-line-strong) opacity-60" />
@@ -329,7 +329,7 @@ export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "w
         <span className="truncate">Reading list</span>
       </span>
       <span className="flex-1" />
-      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-[10px] px-2.5 text-[12.5px] sm:px-3">
+      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-control px-2.5 text-[12.5px] sm:px-3">
         <Plus size={14} />
         <span className="hidden sm:inline">New note</span>
       </span>
@@ -340,11 +340,11 @@ export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "w
 /** The tab strip while a list is open (Drafts, or the Folders page): a list view shows as the current tab. */
 export function ListTabs({ view }: { view: "Drafts" | "Folders" }) {
   return (
-    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-[14px] px-1">
-      <span className="grid size-9 flex-none place-items-center rounded-[10px] text-muted md:hidden">
+    <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-panel px-1">
+      <span className="grid size-9 flex-none place-items-center rounded-control text-muted md:hidden">
         <PanelLeft size={15} />
       </span>
-      <span className="hidden size-9 flex-none place-items-center rounded-[10px] text-muted md:grid">
+      <span className="hidden size-9 flex-none place-items-center rounded-control text-muted md:grid">
         <ArrowUp size={15} />
       </span>
       <span className="h-5 w-px flex-none bg-(--color-line-strong) opacity-60" />
@@ -359,7 +359,7 @@ export function ListTabs({ view }: { view: "Drafts" | "Folders" }) {
         <span className="truncate">Lisbon in April</span>
       </span>
       <span className="flex-1" />
-      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-[10px] px-2.5 text-[12.5px] sm:px-3">
+      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-control px-2.5 text-[12.5px] sm:px-3">
         <Plus size={14} />
         <span className="hidden sm:inline">New note</span>
       </span>
@@ -379,12 +379,12 @@ export function Dock({ active }: { active: DockItem }) {
     { label: "Info", icon: <Info size={14} /> },
   ];
   return (
-    <div className="mk-app-pop mk-app-dock absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-[14px] p-1 sm:bottom-4">
+    <div className="mk-app-pop mk-app-dock absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-panel p-1 sm:bottom-4">
       {items.map((item) => (
         <span
           key={item.label}
           className={cx(
-            "flex h-8 items-center gap-1.5 rounded-[6px] px-2.5 text-[12.5px] font-medium",
+            "flex h-8 items-center gap-1.5 rounded-chip px-2.5 text-[12.5px] font-medium",
             item.label === active ? "mk-app-dock-on" : "text-ink",
             item.label !== active && (item.label === "Format" || item.label === "Info") && "hidden sm:flex",
           )}
@@ -442,7 +442,7 @@ function NoteBlockView({ block }: { block: NoteBlock }) {
             {block.done ? <CheckMark /> : null}
           </span>
           <span className={cx("min-w-0 flex-1", block.done && "mk-note-muted line-through")}>{block.text}</span>
-          {block.date ? <span className="mk-note-chip rounded-[4px] px-1.5 font-sans text-[11px] font-medium leading-5">{block.date}</span> : null}
+          {block.date ? <span className="mk-note-chip rounded-tiny px-1.5 font-sans text-[11px] font-medium leading-5">{block.date}</span> : null}
         </p>
       );
     case "page":
@@ -481,7 +481,7 @@ export function NoteCard({ art, title, lines, folder, when = "Just now" }: { art
         </div>
         <p className="mt-4 flex items-center justify-between gap-2 text-[11.5px]">
           <span className="mk-note-muted">{art.name}</span>
-          <span className="mk-note-chip rounded-[4px] px-1.5 font-medium leading-5">{folder}</span>
+          <span className="mk-note-chip rounded-tiny px-1.5 font-medium leading-5">{folder}</span>
         </p>
       </div>
     </div>

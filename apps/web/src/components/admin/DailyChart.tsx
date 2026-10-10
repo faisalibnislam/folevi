@@ -181,7 +181,7 @@ export function DailyChart({
         {hovered ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-pop rounded-[10px] px-2.5 py-1.5 text-[12px]"
+            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-pop rounded-control px-2.5 py-1.5 text-[12px]"
             style={{ left: Math.min(Math.max(x(hover!) + 8, 60), width - 50) }}
           >
             <div className="text-muted">{formatDate(hovered.date, { weekday: "short", month: "short", day: "numeric" })}</div>
@@ -190,7 +190,7 @@ export function DailyChart({
         ) : null}
       </div>
       <details className="border-t border-line px-5 py-2 text-[13px]">
-        <summary className="cursor-pointer rounded-[4px] text-muted hover:text-ink">Show data table</summary>
+        <summary className="cursor-pointer rounded-tiny text-muted hover:text-ink">Show data table</summary>
         <div className="mt-2 max-h-56 overflow-y-auto">
           <table className="w-full border-collapse text-[12.5px]">
             <caption className="sr-only">{`${title} by day`}</caption>

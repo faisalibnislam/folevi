@@ -75,7 +75,7 @@ export function DeleteAccountCard() {
         <label className="text-sm" htmlFor="confirm-email">
           Type <strong>{profile.email}</strong> to confirm
         </label>
-        <input id="confirm-email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-[6px] px-3" autoComplete="off" />
+        <input id="confirm-email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-chip px-3" autoComplete="off" />
       </Dialog>
     </>
   );

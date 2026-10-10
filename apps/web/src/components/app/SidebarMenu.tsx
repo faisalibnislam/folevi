@@ -31,7 +31,7 @@ export function SidebarMenu() {
     <MenuButton
       label="Sidebar"
       align="start"
-      triggerClassName="grid h-8 w-8 flex-none place-items-center rounded-[6px] text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-accent-soft aria-expanded:text-heading"
+      triggerClassName="grid h-8 w-8 flex-none place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-accent-soft aria-expanded:text-heading"
       trigger={<PanelLeft size={16} aria-hidden />}
       items={items}
     />

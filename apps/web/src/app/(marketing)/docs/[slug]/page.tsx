@@ -109,7 +109,7 @@ export default async function DocArticlePage({ params }: Params) {
                       href={docPath(a.slug)}
                       aria-current={current ? "page" : undefined}
                       className={cx(
-                        "flex min-h-11 items-center rounded-[6px] px-2.5 py-1 text-[14px] leading-snug transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) lg:-ml-px lg:min-h-8 lg:rounded-l-none lg:border-l lg:pl-3.5",
+                        "flex min-h-11 items-center rounded-chip px-2.5 py-1 text-[14px] leading-snug transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) lg:-ml-px lg:min-h-8 lg:rounded-l-none lg:border-l lg:pl-3.5",
                         current ? "bg-(--color-surface-sunken) font-semibold text-(--color-heading) lg:border-(--color-heading) lg:bg-transparent" : "text-muted lg:border-transparent lg:hover:border-(--color-heading)",
                       )}
                     >

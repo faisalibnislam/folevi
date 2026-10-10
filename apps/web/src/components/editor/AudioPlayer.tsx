@@ -83,7 +83,7 @@ export function AudioPlayer({
 
   return (
     <div
-      className={`fb-audio flex items-center gap-3 ui-card rounded-[10px] px-3 py-2.5 ${className ?? ""}`}
+      className={`fb-audio flex items-center gap-3 ui-card rounded-control px-3 py-2.5 ${className ?? ""}`}
       contentEditable={false}
     >
       <button
@@ -91,7 +91,7 @@ export function AudioPlayer({
         onClick={toggle}
         disabled={!src}
         aria-label={playing ? "Pause" : "Play"}
-        className="grid size-9 flex-none place-items-center rounded-[6px] bg-heading text-canvas transition-opacity disabled:opacity-40"
+        className="grid size-9 flex-none place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-40"
       >
         {playing ? (
           <Pause size={15} aria-hidden className="fill-current" />
@@ -135,15 +135,15 @@ export function AudioPlayer({
                 seek(e.key === "Home" ? 0 : length);
               }
             }}
-            className="group relative h-4 flex-1 cursor-pointer touch-none rounded-[6px] outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]"
+            className="group relative h-4 flex-1 cursor-pointer touch-none rounded-chip outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]"
           >
-            <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-[4px] bg-line-strong" />
+            <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-tiny bg-line-strong" />
             <span
-              className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-[4px] bg-heading"
+              className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-tiny bg-heading"
               style={{ width: `${progress * 100}%` }}
             />
             <span
-              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-[6px] bg-heading opacity-0 shadow-[0_0_0_2px_var(--color-surface)] transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-chip bg-heading opacity-0 shadow-[0_0_0_2px_var(--color-surface)] transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
               style={{ left: `${progress * 100}%` }}
             />
           </div>
@@ -169,7 +169,7 @@ export function AudioPlayer({
         }}
         aria-label={`Playback speed ${speed} times`}
         title="Playback speed"
-        className="h-8 min-w-11 flex-none rounded-[6px] px-1.5 text-xs font-semibold tabular-nums text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
+        className="h-8 min-w-11 flex-none rounded-chip px-1.5 text-xs font-semibold tabular-nums text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
       >
         {speed}×
       </button>
@@ -179,7 +179,7 @@ export function AudioPlayer({
           download={name ?? true}
           aria-label="Download"
           title="Download"
-          className="grid size-8 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
+          className="grid size-8 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
         >
           <Download size={15} aria-hidden />
         </a>

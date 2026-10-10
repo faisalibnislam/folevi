@@ -45,7 +45,7 @@ export function PromptDialog({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           maxLength={80}
-          className="ui-input mt-2 h-10 w-full rounded-[6px] px-4"
+          className="ui-input mt-2 h-10 w-full rounded-chip px-4"
         />
         <div className="mt-4 flex justify-end gap-2">
           <Button onClick={onClose}>Cancel</Button>

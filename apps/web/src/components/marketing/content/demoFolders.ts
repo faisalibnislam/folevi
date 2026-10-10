@@ -5,7 +5,7 @@
  *
  * Folders are listed in the order they were made, which is the sidebar's order. `color` is a FOLDER_COLORS
  * id and `age` is the folder card's "last update" text. Notes are listed oldest first, so the last three are
- * the ones a folder card shows through its cover. A note's `style` is a note style's name, or none for Plain.
+ * the ones a folder card shows through its cover. A note's `style` is a note theme's name, or none for Plain.
  */
 
 export type DemoNote = { title: string; lines: [string, string]; style?: string };

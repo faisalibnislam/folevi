@@ -10,7 +10,7 @@ export const randomFolderColor = (random: () => number = Math.random): FolderCol
 export const isFolderColor = (c: string): c is FolderColor => FOLDER_COLORS.includes(c);
 
 /**
- * A colour from the earlier palette (the note styles' pale page colours) as its nearest colour now. Folders keep their stored colour until it's changed; this is for
+ * A colour from the earlier palette (the note themes' pale page colours) as its nearest colour now. Folders keep their stored colour until it's changed; this is for
  * clients and jobs that need a current one.
  */
 const LEGACY: Record<string, string> = legacyColors;

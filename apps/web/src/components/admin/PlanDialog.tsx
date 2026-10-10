@@ -255,16 +255,16 @@ function PlanChangeDialog({
             return (
               <label
                 key={t.tier}
-                className={`relative flex cursor-pointer flex-col rounded-[10px] px-3 py-2.5 text-[12.5px] transition-[background-color,box-shadow] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus ${
+                className={`relative flex cursor-pointer flex-col rounded-control px-3 py-2.5 text-[12.5px] transition-[background-color,box-shadow] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus ${
                   checked
                     ? "bg-[var(--color-surface-raised)] shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_var(--color-heading)]"
                     : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)]"
                 }`}
               >
-                <input type="radio" name={`${uid}-plan`} value={t.tier} checked={checked} onChange={() => setTier(t.tier)} aria-label={t.name} aria-describedby={`${uid}-${t.tier}`} className="absolute inset-0 m-0 h-full w-full cursor-pointer appearance-none rounded-[10px] opacity-0" />
+                <input type="radio" name={`${uid}-plan`} value={t.tier} checked={checked} onChange={() => setTier(t.tier)} aria-label={t.name} aria-describedby={`${uid}-${t.tier}`} className="absolute inset-0 m-0 h-full w-full cursor-pointer appearance-none rounded-control opacity-0" />
                 <span className="flex items-center gap-1.5">
                   <span className="ui-display text-[16px] text-heading">{t.name}</span>
-                  {isCurrent ? <span className="ml-auto rounded-[6px] bg-[var(--glass-hover)] px-1.5 text-[10.5px] font-semibold leading-[16px] text-muted">Current</span> : null}
+                  {isCurrent ? <span className="ml-auto rounded-chip bg-[var(--glass-hover)] px-1.5 text-[10.5px] font-semibold leading-[16px] text-muted">Current</span> : null}
                 </span>
                 <span id={`${uid}-${t.tier}`} className="mt-1 text-muted">
                   {t.tier === "free" ? "No charge" : `${formatPrice(interval === "year" ? t.yearlyCents : t.monthlyCents)} / ${interval === "year" ? "year" : "month"}`}
@@ -335,7 +335,7 @@ function PlanChangeDialog({
         </div>
       ) : null}
 
-      <section aria-label="What changes" className="rounded-[10px] bg-[var(--glass-hover)] px-4 py-3 text-[13px]">
+      <section aria-label="What changes" className="rounded-control bg-[var(--glass-hover)] px-4 py-3 text-[13px]">
         <p className="mb-2 font-semibold text-heading">{changed ? "What changes" : "Nothing changes yet"}</p>
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5">
           {rows.map((r) => {

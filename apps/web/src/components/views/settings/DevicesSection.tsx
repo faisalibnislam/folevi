@@ -16,7 +16,7 @@ import { Card } from "./Card";
 function DeviceIcon({ client, label }: { client: string; label: string }) {
   const Icon = client === "mac" ? Laptop : /iPad/.test(label) ? Tablet : /iPhone|iOS|Android/.test(label) ? Smartphone : Monitor;
   return (
-    <span aria-hidden className="grid h-9 w-9 flex-none place-items-center rounded-[10px] bg-[var(--glass-hover)] text-heading">
+    <span aria-hidden className="grid h-9 w-9 flex-none place-items-center rounded-control bg-[var(--glass-hover)] text-heading">
       <Icon size={17} />
     </span>
   );
@@ -44,8 +44,8 @@ export function DevicesSection() {
   return (
     <>
       <Card title="Connected devices">
-        <div className="flex flex-wrap items-center gap-4 rounded-[10px] bg-[var(--glass-hover)] p-4">
-          <span aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-[10px] bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]">
+        <div className="flex flex-wrap items-center gap-4 rounded-control bg-[var(--glass-hover)] p-4">
+          <span aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-control bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]">
             <MonitorSmartphone size={20} />
           </span>
           <div className="min-w-0 flex-1">
@@ -60,8 +60,8 @@ export function DevicesSection() {
                 : `Your personal plan works on ${limit} ${plural(limit)} at a time, in Personal and every workspace. A new device beyond that asks you to sign one out first.`}
             </p>
             {limit !== null ? (
-              <div className="mt-2.5 h-1.5 max-w-sm overflow-hidden rounded-[4px] bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label="Devices connected" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={count ?? 0}>
-                <div className={`h-full rounded-[6px] ${limit && (count ?? 0) > limit ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(pct, 4)}%` }} />
+              <div className="mt-2.5 h-1.5 max-w-sm overflow-hidden rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" role="meter" aria-label="Devices connected" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={count ?? 0}>
+                <div className={`h-full rounded-chip ${limit && (count ?? 0) > limit ? "bg-danger" : "bg-heading"}`} style={{ width: `${Math.max(pct, 4)}%` }} />
               </div>
             ) : null}
           </div>
@@ -74,7 +74,7 @@ export function DevicesSection() {
       </Card>
 
       <Card title="Signed in" description="Browsers and apps signed in to your account. Signing a device out ends its session right away; it asks for your password and code to sign in again.">
-        <ul className="ui-card divide-y divide-line overflow-hidden rounded-[10px]" aria-busy={sessions === undefined || undefined}>
+        <ul className="ui-card divide-y divide-line overflow-hidden rounded-control" aria-busy={sessions === undefined || undefined}>
           {sessions === undefined ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
           {sessions?.map((s) => (
             <li key={s.id} className="flex items-center gap-3 px-4 py-3">

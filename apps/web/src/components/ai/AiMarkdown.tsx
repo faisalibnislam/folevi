@@ -49,7 +49,7 @@ function CodeBlock({ block }: { block: WireBlock }) {
             setTimeout(() => setCopied(false), 1500);
           });
         }}
-        className="absolute right-1.5 top-1.5 inline-flex h-7 items-center gap-1 rounded-[6px] bg-[var(--glass-active)] px-2 text-[11.5px] text-muted opacity-0 shadow-[var(--glass-edge)] transition-opacity hover:text-heading focus-visible:opacity-100 group-hover/code:opacity-100 pointer-coarse:opacity-100"
+        className="absolute right-1.5 top-1.5 inline-flex h-7 items-center gap-1 rounded-chip bg-[var(--glass-active)] px-2 text-[11.5px] text-muted opacity-0 shadow-[var(--glass-edge)] transition-opacity hover:text-heading focus-visible:opacity-100 group-hover/code:opacity-100 pointer-coarse:opacity-100"
       >
         {copied ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
         {language ? <span className="font-mono">{language}</span> : null}

@@ -64,7 +64,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
   return (
     <Dialog open={open} onClose={onClose} title="Image from Unsplash" description="Free photos from Unsplash, credited to the photographer." size="lg">
       {state.kind === "unconfigured" ? (
-        <div className="rounded-[6px] bg-sunken px-4 py-5 text-sm" role="status">
+        <div className="rounded-chip bg-sunken px-4 py-5 text-sm" role="status">
           <p className="font-medium text-heading">Unsplash isn’t set up for this Folevi server yet</p>
           <p className="mt-1 text-muted">An administrator can turn it on by adding an Unsplash access key (UNSPLASH_ACCESS_KEY) to the server’s settings.</p>
         </div>
@@ -79,7 +79,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
             }}
             className="flex gap-2"
           >
-            <label className="ui-well flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[6px] px-3.5 text-sm text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
+            <label className="ui-well flex h-10 min-w-0 flex-1 items-center gap-2 rounded-chip px-3.5 text-sm text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
               <Search size={15} aria-hidden />
               <input
                 autoFocus
@@ -111,7 +111,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
                       <button
                         type="button"
                         onClick={() => choose(p)}
-                        className="group block w-full overflow-hidden rounded-[6px] outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--color-focus)]"
+                        className="group block w-full overflow-hidden rounded-chip outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--color-focus)]"
                         style={{ background: p.color ?? "var(--color-surface-sunken)", aspectRatio: "3 / 2" }}
                         aria-label={`Insert photo by ${p.photographer}${p.alt ? `: ${p.alt}` : ""}`}
                       >

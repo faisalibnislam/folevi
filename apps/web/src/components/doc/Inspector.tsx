@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ImagePlus,
   Loader2,
+  Lock,
 } from "lucide-react";
 import type { DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -25,7 +26,9 @@ import { IconButton, Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import type { MenuItem } from "@/components/ui/Menu";
-import { COVER_ART, COVER_IMAGE_HINT, COVER_IMAGE_PLACEHOLDER, coverArtOf, coverArtThumbUrl, pageBackdrop, styleColorsOf } from "@/lib/cover";
+import { COVER_IMAGE_HINT, COVER_IMAGE_PLACEHOLDER, coverArtOf, coverArtThumbUrl, pageBackdrop, styleColorsOf } from "@/lib/cover";
+import { allThemes, applyThemeDefaults, SHEETS, TEXTS, familyFor, FONT_TYPES, planAllows, THEME_PLANS, type NoteTheme } from "@/lib/themes";
+import { useThemesVersion } from "@/lib/useThemes";
 import { COVER_IMAGE_ACCEPT, coverImageProblem, uploadCoverImage, useCoverImage } from "@/lib/app/coverImage";
 
 /** The Plain note style: a very light grey page background. */
@@ -35,6 +38,7 @@ import { MovePageDialog } from "./MovePageDialog";
 import { InsertPanel } from "./InsertPanel";
 import { FormatPanel } from "./FormatPanel";
 import { BlurredBackdrop } from "./BlurredBackdrop";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
@@ -110,7 +114,8 @@ export function Inspector({
       <div className={`flex-none px-3 ${bare ? "pt-0" : "pt-2.5"}`}>
         {hideTabs && tab !== "comments" ? (
           <div className="flex h-9 items-center gap-1 px-1">
-            <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex-1 text-[18px]">
+            <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex flex-1 items-center gap-2 text-[18px]">
+              {tab === "ai" ? <AiIcon size={18} aria-hidden /> : null}
               {TITLES[tab]}
             </h2>
             <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
@@ -119,7 +124,7 @@ export function Inspector({
           </div>
         ) : tab === "comments" ? (
           <div className="flex h-9 items-center gap-1">
-            <button type="button" onClick={() => onTab(lastTab)} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-[13px] text-muted hover:bg-accent-soft hover:text-heading">
+            <button type="button" onClick={() => onTab(lastTab)} className="inline-flex items-center gap-1 rounded-chip px-2 py-1 text-[13px] text-muted hover:bg-accent-soft hover:text-heading">
               <ChevronRight size={14} className="rotate-180" aria-hidden /> {TABS.find((t) => t.id === lastTab)?.label}
             </button>
             <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-[13.5px] font-semibold text-heading">
@@ -166,7 +171,9 @@ export function Inspector({
         </div>
         )}
       </div>
-      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-3">
+      {/* In the right sidebar, content blurs progressively into the bottom edge (clear at the top), like iOS. */}
+      <div className="relative min-h-0 flex-1">
+      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full overflow-y-auto px-3 pt-3 ${bare ? "pb-16" : "pb-4"}`}>
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} /> : null}
         {/* AI off, or not on the plan where this note lives: how to turn it on, or what a plan with AI includes. */}
@@ -179,35 +186,17 @@ export function Inspector({
         {/* Related notes, likely duplicates and contradictions (the knowledge graph; links only below Pro). */}
         {tab === "related" ? <RelatedPanel documentId={documentId} /> : null}
       </div>
+      {bare ? <div aria-hidden className="ui-blur-bottom" /> : null}
+      </div>
     </div>
   );
 }
 
 
-const SHEETS: { id: NonNullable<DocumentStyle["sheet"]>; name: string; color: string }[] = [
-  { id: "white", name: "White", color: "#ffffff" },
-  { id: "paper", name: "Paper", color: "#fbf8f2" },
-  { id: "ivory", name: "Ivory", color: "#f4ecdb" },
-  { id: "mist", name: "Mist", color: "#edf1f6" },
-  { id: "sage", name: "Sage", color: "#ecf2ea" },
-  { id: "blush", name: "Blush", color: "#f8ecec" },
-  { id: "night", name: "Night", color: "#161618" },
-];
-const TEXTS: { id: NonNullable<DocumentStyle["text"]>; name: string; color: string }[] = [
-  { id: "ink", name: "Ink", color: "#1c1c1f" },
-  { id: "slate", name: "Slate", color: "#3a4758" },
-  { id: "navy", name: "Navy", color: "#23406f" },
-  { id: "forest", name: "Forest", color: "#25543a" },
-  { id: "plum", name: "Plum", color: "#5a2d66" },
-  { id: "brown", name: "Brown", color: "#5b3b23" },
-  { id: "white", name: "White", color: "#f2f2f4" },
-];
-const FONTS: { id: DocumentStyle["font"]; glyph: string; name: string; family: string }[] = [
-  { id: "sans", glyph: "Aa", name: "System", family: "var(--font-sans)" },
-  { id: "serif", glyph: "Ss", name: "Serif", family: "var(--font-serif)" },
-  { id: "mono", glyph: "00", name: "Mono", family: "var(--font-mono)" },
-  { id: "rounded", glyph: "Rr", name: "Rounded", family: 'ui-rounded, "SF Pro Rounded", "Nunito", var(--font-sans)' },
-];
+// Each font's name is set at the same x-height, so Serif doesn't look smaller than Mono at the same size.
+const OPTICAL = "ex-height 0.52";
+// The font types; each draws in the note theme's typeface for it (the standard ones without a theme).
+const FONTS = FONT_TYPES;
 const SEPARATORS: { id: NonNullable<DocumentStyle["separator"]>; name: string; icon: React.ReactNode }[] = [
   { id: "line", name: "Line", icon: <Equal size={15} /> },
   { id: "dots", name: "Dots", icon: <Grip size={15} /> },
@@ -237,13 +226,13 @@ function StyleRow({ label, swatch, open, onToggle, children, disabled }: { label
         aria-expanded={open}
         aria-controls={id}
         onClick={onToggle}
-        className="flex h-10 w-full items-center justify-between rounded-[6px] px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
+        className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
       >
         {label}
         <span className="flex items-center gap-2">{swatch}</span>
       </button>
       {open ? (
-        <div id={id} className="mb-2 mt-1 rounded-[6px] bg-sunken/70 p-2.5">
+        <div id={id} className="mb-2 mt-1 rounded-chip bg-sunken/70 p-2.5">
           {children}
         </div>
       ) : null}
@@ -252,7 +241,7 @@ function StyleRow({ label, swatch, open, onToggle, children, disabled }: { label
 }
 
 function ColorDot({ css, ring }: { css: string; ring?: boolean }) {
-  return <span aria-hidden className={`inline-block h-7 w-9 rounded-[6px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] ${ring ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`} style={{ background: css }} />;
+  return <span aria-hidden className={`inline-block h-7 w-9 rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] ${ring ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`} style={{ background: css }} />;
 }
 
 function Choice({ label, on, onPick, children, wide }: { label: string; on: boolean; onPick: () => void; children: React.ReactNode; wide?: boolean }) {
@@ -264,7 +253,7 @@ function Choice({ label, on, onPick, children, wide }: { label: string; on: bool
       aria-label={label}
       title={label}
       onClick={onPick}
-      className={`relative overflow-hidden rounded-[6px] transition-transform hover:-translate-y-px ${wide ? "h-12" : "h-9"} ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : "shadow-[var(--shadow-hairline)]"}`}
+      className={`relative overflow-hidden rounded-chip transition-transform hover:-translate-y-px ${wide ? "h-12" : "h-9"} ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : "shadow-[var(--shadow-hairline)]"}`}
     >
       {children}
     </button>
@@ -279,6 +268,9 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const { url: imageUrl, palette } = useCoverImage(meta?.document.cover);
+  // The plan where the note lives decides which themes it can pick (the server checks again).
+  const plan = useQuery(api.themes.planForDocument, { documentId }) ?? null;
+  useThemesVersion();
   // Changes not yet back from the server: each one builds on the last (two quick clicks used to start from
   // the same saved style, so the second undid the first), and the panel shows them straight away.
   const [mine, setMine] = useState<{ style: DocumentStyle; at: number } | null>(null);
@@ -304,9 +296,11 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
     setMine({ style: next, at: Date.now() });
     engine?.updateDocument(documentId, { style: next }, rev);
   };
-  // Choosing a cover also sets the page's backdrop: it goes back to following the cover.
-  const setCover = (next: typeof cover) => {
-    const nextStyle = cleanStyle({ ...style, backdrop: undefined });
+  // Choosing a theme sets everything it decides (colours, separator, font type), like a real theme, and the
+  // page's backdrop goes back to following it. Your own image or Plain keep the rest as it is.
+  const setCover = (next: typeof cover, theme?: NoteTheme) => {
+    const base = { ...style, backdrop: undefined };
+    const nextStyle = cleanStyle(theme ? applyThemeDefaults(base, theme.defaults) : base);
     setMine({ style: nextStyle, at: Date.now() });
     engine?.updateDocument(documentId, { cover: next, style: nextStyle }, rev);
   };
@@ -316,6 +310,15 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const ownImage = cover.kind === "image" && Boolean(cover.value);
   const imageCss = imageUrl ? `url(${JSON.stringify(imageUrl)}) center / cover no-repeat` : COVER_IMAGE_PLACEHOLDER;
   const styleName = art?.name ?? (ownImage ? "Your image" : "Plain");
+  // The themes on offer: published ones, plus the one this note has even if it's been retired since.
+  const themes = allThemes().filter((t) => t.status === "published" || t.id === art?.id);
+  const pickTheme = (t: NoteTheme) => {
+    if (plan && !planAllows(plan, t.plan) && t.id !== art?.id) {
+      const needs = THEME_PLANS.find((p) => p.id === t.plan)?.name ?? "a paid plan";
+      return toast.show(`${t.name} is for ${needs.replace(" and up", " plans and up")}. Change your plan in Settings, under Plan & billing.`);
+    }
+    setCover({ kind: "art", value: t.id }, t);
+  };
   const noBackdrop = "linear-gradient(180deg, var(--color-surface-sunken), var(--color-canvas))";
   const hasBackdrop = Boolean(pageBackdrop(style, cover, imageUrl));
   const backdropCss = pageBackdrop(style, cover, imageUrl) ?? noBackdrop;
@@ -339,22 +342,24 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const sheetColor = SHEETS.find((s) => s.id === style.sheet)?.color ?? auto?.paper ?? "var(--color-surface)";
   const textColor = TEXTS.find((t) => t.id === style.text)?.color ?? auto?.ink ?? "var(--color-ink)";
   const font = FONTS.find((f) => f.id === style.font) ?? FONTS[0]!;
+  // Your own image and Plain keep the standard typefaces.
+  const fontFamilyOf = (id: DocumentStyle["font"]) => familyFor(id, art?.fonts);
 
   return (
     <div className="space-y-5 text-sm">
       <section aria-label="Page style">
-        <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-[6px] shadow-[var(--shadow-card)]" style={{ background: style.blur && hasBackdrop ? undefined : backdropCss }}>
+        <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-chip shadow-[var(--shadow-card)]" style={{ background: style.blur && hasBackdrop ? undefined : backdropCss }}>
           {style.blur && hasBackdrop ? <BlurredBackdrop background={backdropCss} /> : null}
-          <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-[6px] px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: sheetColor, color: textColor, fontFamily: font.family }}>
+          <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: sheetColor, color: textColor, fontFamily: fontFamilyOf(font.id) }}>
             <span className="block text-[10.5px] font-semibold leading-tight">{styleName}</span>
-            <span className="mt-1.5 block h-1 w-4/5 rounded-[4px] opacity-25" style={{ background: textColor }} />
-            <span className="mt-1 block h-1 w-3/5 rounded-[4px] opacity-25" style={{ background: textColor }} />
+            <span className="mt-1.5 block h-1 w-4/5 rounded-tiny opacity-25" style={{ background: textColor }} />
+            <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: textColor }} />
           </span>
         </div>
       </section>
 
       <fieldset disabled={disabled}>
-        <legend className="ui-caps mb-1 px-1">Note Style</legend>
+        <legend className="ui-caps mb-1 px-1">Note Theme</legend>
         {/* One choice: the artwork is the note's cover and its page background. */}
         <StyleRow
           label={styleName}
@@ -363,20 +368,28 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           onToggle={() => toggle("artwork")}
           disabled={disabled}
         >
-          <div role="radiogroup" aria-label="Note style" ref={styleGroup.ref} onKeyDown={styleGroup.onKeyDown} className="grid grid-cols-4 gap-2">
+          <div role="radiogroup" aria-label="Note theme" ref={styleGroup.ref} onKeyDown={styleGroup.onKeyDown} className="grid grid-cols-4 gap-2">
             <Choice label="Plain" on={cover.kind !== "art" && !ownImage} onPick={() => setCover({ kind: "none" })}>
               <span className="grid h-full place-items-center text-[11px] text-[#55555c]" style={{ background: PLAIN_CSS }}>Plain</span>
             </Choice>
             {ownImage ? (
-              <Choice label="Note style: Your image" on onPick={() => undefined}>
+              <Choice label="Note theme: Your image" on onPick={() => undefined}>
                 <span aria-hidden className="block h-full w-full" style={{ background: imageCss }} />
               </Choice>
             ) : null}
-            {COVER_ART.map((a) => (
-              <Choice key={a.id} label={`Note style: ${a.name}`} on={art?.id === a.id} onPick={() => setCover({ kind: "art", value: a.id })}>
-                <span aria-hidden className="block h-full w-full" style={{ background: `url(${coverArtThumbUrl(a.id)}) center / cover no-repeat` }} />
-              </Choice>
-            ))}
+            {themes.map((a) => {
+              const locked = Boolean(plan) && !planAllows(plan!, a.plan) && art?.id !== a.id;
+              return (
+                <Choice key={a.id} label={`Note theme: ${a.name}${locked ? ` (${THEME_PLANS.find((p) => p.id === a.plan)?.name})` : ""}`} on={art?.id === a.id} onPick={() => pickTheme(a)}>
+                  <span aria-hidden className="block h-full w-full" style={{ background: `url(${coverArtThumbUrl(a.id)}) center / cover no-repeat` }} />
+                  {locked ? (
+                    <span aria-hidden className="absolute bottom-1 right-1 grid size-4 place-items-center rounded-tiny bg-[rgb(0_0_0/0.55)] text-white">
+                      <Lock size={10} strokeWidth={2.5} />
+                    </span>
+                  ) : null}
+                </Choice>
+              );
+            })}
           </div>
           <input
             ref={fileInput}
@@ -397,7 +410,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
             disabled={disabled || uploading}
             aria-busy={uploading || undefined}
             onClick={() => fileInput.current?.click()}
-            className="mt-2.5 flex h-9 w-full items-center justify-center gap-2 rounded-[6px] border border-dashed border-[color-mix(in_oklab,var(--color-ink)_22%,transparent)] text-[13px] font-medium text-heading transition-colors hover:bg-accent-soft/60 disabled:opacity-60"
+            className="mt-2.5 flex h-9 w-full items-center justify-center gap-2 rounded-chip border border-dashed border-[color-mix(in_oklab,var(--color-ink)_22%,transparent)] text-[13px] font-medium text-heading transition-colors hover:bg-accent-soft/60 disabled:opacity-60"
           >
             {uploading ? <Loader2 size={15} aria-hidden className="animate-spin" /> : <ImagePlus size={15} aria-hidden />}
             {uploading ? "Uploading…" : ownImage ? "Replace your image…" : "Upload your own image…"}
@@ -405,7 +418,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           <p className="mt-1.5 px-0.5 text-[11.5px] text-faint">{COVER_IMAGE_HINT}</p>
           <p className="mt-2 px-0.5 text-xs text-muted">
             {art
-              ? `${art.name}: the cover and page background. Auto colours come from it.`
+              ? `${art.name}: the cover, the page background, and the colours, separator and font it starts with.`
               : ownImage
                 ? "Your image: the cover and page background. Auto colours are picked from it."
                 : "Plain: a very light grey page background, no cover."}
@@ -425,7 +438,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         <legend className="ui-caps mb-1 px-1">Color</legend>
         <StyleRow label="Document color" swatch={<ColorDot css={sheetColor} />} open={open === "sheet"} onToggle={() => toggle("sheet")} disabled={disabled}>
           <div role="radiogroup" aria-label="Document color" ref={sheetGroup.ref} onKeyDown={sheetGroup.onKeyDown} className="grid grid-cols-4 gap-2">
-            <Choice label="Auto (from the note style)" on={!style.sheet} onPick={() => set({ sheet: undefined })}>
+            <Choice label="Auto (from the note theme)" on={!style.sheet} onPick={() => set({ sheet: undefined })}>
               <span className="grid h-full place-items-center text-[11px]" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink-muted)" }}>Auto</span>
             </Choice>
             {SHEETS.map((s) => (
@@ -437,7 +450,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         </StyleRow>
         <StyleRow label="Text color" swatch={<ColorDot css={textColor} />} open={open === "text"} onToggle={() => toggle("text")} disabled={disabled}>
           <div role="radiogroup" aria-label="Text color" ref={textGroup.ref} onKeyDown={textGroup.onKeyDown} className="grid grid-cols-4 gap-2">
-            <Choice label="Auto (from the note style)" on={!style.text} onPick={() => set({ text: undefined })}>
+            <Choice label="Auto (from the note theme)" on={!style.text} onPick={() => set({ text: undefined })}>
               <span className="grid h-full place-items-center text-[11px] font-semibold" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink)" }}>Auto</span>
             </Choice>
             {TEXTS.map((t) => (
@@ -473,7 +486,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           {FONTS.map((f) => {
             const on = style.font === f.id;
             return (
-              <button key={f.id} type="button" aria-pressed={on} aria-label={`Font: ${f.name}`} onClick={() => set({ font: f.id })} className="!flex-1 !px-1" style={{ fontFamily: f.family }}>
+              <button key={f.id} type="button" aria-pressed={on} aria-label={`Font: ${f.name}`} onClick={() => set({ font: f.id })} className="!flex-1 !px-1" style={{ fontFamily: fontFamilyOf(f.id), fontSizeAdjust: OPTICAL }}>
                 <span aria-hidden>{f.name}</span>
               </button>
             );
@@ -532,7 +545,7 @@ function ActionList({ actions }: { actions: (MenuItem | "separator")[] }) {
               type="button"
               disabled={a.disabled}
               onClick={a.onSelect}
-              className={`flex h-9 w-full items-center gap-2.5 rounded-[6px] px-3 text-left text-[13px] font-medium transition-colors disabled:opacity-40 ${a.danger ? "bg-coral-soft/60 text-coral-ink hover:bg-coral-soft" : "bg-sunken/70 text-ink hover:bg-accent-soft hover:text-heading"}`}
+              className={`flex h-9 w-full items-center gap-2.5 rounded-chip px-3 text-left text-[13px] font-medium transition-colors disabled:opacity-40 ${a.danger ? "bg-coral-soft/60 text-coral-ink hover:bg-coral-soft" : "bg-sunken/70 text-ink hover:bg-accent-soft hover:text-heading"}`}
             >
               <span aria-hidden className={a.danger ? "text-coral-ink" : "text-muted"}>
                 {a.icon}
@@ -590,7 +603,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
             ["Characters", info?.charCount.toLocaleString(), undefined],
             ["Blocks", info?.blockCount?.toLocaleString(), undefined],
           ].map(([label, value, title]) => (
-            <div key={label} className="rounded-[6px] bg-sunken/70 px-2.5 py-2" title={title}>
+            <div key={label} className="rounded-chip bg-sunken/70 px-2.5 py-2" title={title}>
               <dt className="text-[11px] text-muted">{label}</dt>
               <dd className="text-[15px] font-semibold tabular-nums text-heading">{value ?? "-"}</dd>
             </div>
@@ -603,7 +616,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           disabled={disabled}
           value={meta.folder?.id ?? ""}
           onChange={(e) => void move({ documentId, folderId: e.target.value || null }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
-          className="ui-input h-9 w-full rounded-[6px] px-3 text-sm"
+          className="ui-input h-9 w-full rounded-chip px-3 text-sm"
           aria-label="Folder"
         >
           <option value="">Drafts</option>
@@ -672,7 +685,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
               }
             }}
           >
-            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-[6px] px-3 text-sm" />
+            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-chip px-3 text-sm" />
             <datalist id="tag-suggestions">
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.name} />
@@ -688,7 +701,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
         <h3 className="ui-caps mb-2 flex items-center justify-between px-1">
           Activity
           {onHistory ? (
-            <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 normal-case tracking-normal text-heading hover:bg-accent-soft">
+            <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-chip px-2 py-0.5 normal-case tracking-normal text-heading hover:bg-accent-soft">
               <History size={12} aria-hidden /> Version history
             </button>
           ) : null}

@@ -85,7 +85,7 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
         Translate this note
       </h3>
       <div className="flex flex-wrap items-center gap-1.5">
-        <Select aria-label="Translate into" value={language} onChange={(e) => setLanguage(e.target.value)} className="h-8 rounded-[6px] bg-[var(--glass-hover)] px-2 text-[12.5px] font-medium text-ink">
+        <Select aria-label="Translate into" value={language} onChange={(e) => setLanguage(e.target.value)} className="h-8 rounded-chip bg-[var(--glass-hover)] px-2 text-[12.5px] font-medium text-ink">
           {AI_LANGUAGES.map((l) => (
             <option key={l} value={l}>
               {l}
@@ -107,7 +107,7 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
       </div>
       <div aria-live="polite" className="space-y-2 empty:hidden">
         {busy ? (
-          <p className="flex items-center gap-2 rounded-[10px] bg-[var(--glass-hover)] px-3 py-3 text-muted">
+          <p className="flex items-center gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-3 text-muted">
             <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {busy}…
           </p>
         ) : null}
@@ -115,7 +115,7 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
         {notice ? <p className="px-1 text-[12.5px] text-muted">{notice}</p> : null}
       </div>
       {preview && !busy ? (
-        <section aria-label="Translation" className="rounded-[14px] bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
+        <section aria-label="Translation" className="rounded-panel bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
           <p className="mb-2 text-[12px] font-semibold text-muted">In {preview.language}</p>
           <div className="max-h-[320px] overflow-y-auto pr-1">
             <AiMarkdown markdown={preview.preview} />

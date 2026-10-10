@@ -31,7 +31,7 @@ function NoteLink({ id, title, blockId, onOpen, children, className = "" }: { id
         e.preventDefault();
         onOpen(id, blockId);
       }}
-      className={`flex min-w-0 items-start gap-2 rounded-[6px] px-1.5 py-1.5 hover:bg-accent-soft ${className}`}
+      className={`flex min-w-0 items-start gap-2 rounded-chip px-1.5 py-1.5 hover:bg-accent-soft ${className}`}
     >
       {children ?? (
         <>
@@ -71,7 +71,7 @@ export function RelatedList({
           </h3>
           <ul className="space-y-2">
             {clashes.map((c) => (
-              <li key={`${c.from.blockId}:${c.to.blockId}`} className="rounded-[10px] bg-sunken/70 p-2">
+              <li key={`${c.from.blockId}:${c.to.blockId}`} className="rounded-control bg-sunken/70 p-2">
                 <p className="flex items-center gap-1.5 px-1 text-[12px] text-muted">
                   <Split size={12} aria-hidden />
                   {c.kind === "supersedes" ? "Replaces an earlier note" : "Says something different"}

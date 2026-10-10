@@ -19,7 +19,7 @@ export function SharedThread({ data, onCite, onOpen }: { data: SharedConversatio
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
       <div className="mx-auto max-w-3xl space-y-5">
-        <p role="note" className="flex items-start gap-2 rounded-[10px] bg-[var(--glass-hover)] px-3 py-2.5 text-[13px] text-muted shadow-[inset_0_0_0_1px_var(--glass-border)]">
+        <p role="note" className="flex items-start gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-[13px] text-muted shadow-[inset_0_0_0_1px_var(--glass-border)]">
           <Users size={14} aria-hidden className="mt-[3px] flex-none" />
           <span>
             Shared by <span className="font-medium text-heading">{conversation.by}</span>. You can read it, but only they can ask in it.

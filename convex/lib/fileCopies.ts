@@ -8,12 +8,12 @@ import { fail } from "./errors";
 import { bump } from "./metrics";
 import { insertScoped, scopeOfRow } from "./scope";
 
-/** File kinds a note shows (block images, files and recordings, and its style image). */
+/** File kinds a note shows (block images, files and recordings, and its theme image). */
 const NOTE_FILE_KINDS = new Set<Doc<"files">["kind"]>(["image", "file", "audio", "cover"]);
 
 /**
  * A copied note owns its files. A file belongs to one note (`files.documentId`): readers of that note may
- * open it, and it's deleted when that note is purged. So when blocks (or a style image) are copied into a
+ * open it, and it's deleted when that note is purged. So when blocks (or a theme image) are copied into a
  * new note (Duplicate, a copy of a version, a note from a template), each file they show gets a row of
  * its own on the copy, counted toward the copy's storage like an upload. Deleting the original for good
  * then never takes the copy's images, files or recordings with it. (Merging moves files instead: see
@@ -44,7 +44,7 @@ export class FileCopies {
     return out;
   }
 
-  /** The note style, pointing at the copy's own image. */
+  /** The note theme, pointing at the copy's own image. */
   async cover(cover: Doc<"documents">["cover"] | undefined): Promise<Doc<"documents">["cover"] | undefined> {
     if (cover?.kind !== "image" || !cover.value) return cover;
     const copied = await this.copyOf(cover.value);
@@ -88,7 +88,7 @@ export class FileCopies {
 
   /**
    * The new id for a file the copy shows, or null to keep the reference as it is: files that aren't a
-   * note's (loose style images stay where they are), aren't ready, or belong to a note the person can't
+   * note's (loose theme images stay where they are), aren't ready, or belong to a note the person can't
    * read (a copy never opens up someone else's file).
    */
   private async copyOf(fileId: string): Promise<string | null> {

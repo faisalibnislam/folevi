@@ -50,7 +50,7 @@ export function FoldersPageReplica({ className }: { className?: string }) {
   return (
     <div role="img" aria-label={label} className={cx("mk-app", className)} style={{ ["--app-art" as string]: artThumb(artById("art-44")) }}>
       <div aria-hidden="true" className="mk-app-ambient" />
-      <div aria-hidden="true" className="flex h-full gap-2 p-1.5 sm:p-2">
+      <div aria-hidden="true" className="flex h-full gap-2 p-1">
         <MainSidebar
           activeLabel="Folders"
           folders={DEMO_FOLDERS.slice(0, SIDEBAR_FOLDERS).map((f) => ({ color: f.color, label: f.name }))}
@@ -59,14 +59,14 @@ export function FoldersPageReplica({ className }: { className?: string }) {
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <ListTabs view="Folders" />
-          <div className="mk-app-content min-h-0 flex-1 rounded-[14px] px-3 pb-6 pt-3 sm:px-6 sm:pb-8 sm:pt-4">
+          <div className="mk-app-content min-h-0 flex-1 rounded-panel px-4 pb-6 pt-4 sm:px-6 sm:pb-8">
             <div className="flex justify-end">
               <span className="mk-btn mk-btn-primary h-8 gap-1.5 px-3 text-[12.5px]">
                 <FolderPlus size={14} /> New folder
               </span>
             </div>
             <div className="mt-3 flex items-center gap-2.5">
-              <span className="relative flex h-8 min-w-0 flex-1 items-center rounded-[6px] bg-(--color-surface) pl-7 text-[12.5px] text-faint shadow-[inset_0_1px_2px_color-mix(in_oklab,var(--color-heading)_8%,transparent),0_0_0_1px_var(--color-line)] sm:max-w-[300px]">
+              <span className="relative flex h-8 min-w-0 flex-1 items-center rounded-chip bg-(--color-surface) pl-7 text-[12.5px] text-faint shadow-[inset_0_1px_2px_color-mix(in_oklab,var(--color-heading)_8%,transparent),0_0_0_1px_var(--color-line)] sm:max-w-[300px]">
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <span className="truncate">Search folders</span>
               </span>
@@ -74,12 +74,12 @@ export function FoldersPageReplica({ className }: { className?: string }) {
               <span className="hidden flex-1 sm:block" />
               <span className="hidden items-center gap-2 text-[12px] text-muted md:flex">
                 Sort
-                <span className="flex h-8 items-center gap-1.5 rounded-[6px] bg-(--color-surface) px-2.5 text-ink shadow-[0_0_0_1px_var(--color-line)]">
+                <span className="flex h-8 items-center gap-1.5 rounded-chip bg-(--color-surface) px-2.5 text-ink shadow-[0_0_0_1px_var(--color-line)]">
                   Name <ChevronDown size={12} className="text-muted" />
                 </span>
               </span>
-              <span className="mk-app-well flex flex-none rounded-[10px] p-1">
-                <span className="grid h-7 w-8 place-items-center rounded-[4px] bg-(--color-surface-raised) text-(--color-heading) shadow-[var(--shadow-control)]">
+              <span className="mk-app-well flex flex-none rounded-control p-1">
+                <span className="grid h-7 w-8 place-items-center rounded-chip bg-(--color-surface-raised) text-(--color-heading) shadow-[var(--shadow-control)]">
                   <LayoutGrid size={14} />
                 </span>
                 <span className="grid h-7 w-8 place-items-center text-muted">

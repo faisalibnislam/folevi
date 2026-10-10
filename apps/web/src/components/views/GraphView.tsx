@@ -85,7 +85,7 @@ export function GraphView() {
               List
             </button>
           </div>
-          <label className="ui-input flex h-8 min-w-[10rem] flex-1 items-center gap-1.5 rounded-[6px] px-2.5 sm:max-w-xs">
+          <label className="ui-input flex h-8 min-w-[10rem] flex-1 items-center gap-1.5 rounded-chip px-2.5 sm:max-w-xs">
             <Search size={14} aria-hidden className="flex-none text-faint" />
             <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find in the graph" aria-label="Find in the graph" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none" />
           </label>
@@ -567,15 +567,15 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
           Laying out the graph…
         </p>
       ) : null}
-      {laidOut && sparse ? <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(340px,calc(100%-80px))] rounded-[10px] bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] leading-snug text-muted">{sparse}</p> : null}
+      {laidOut && sparse ? <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(340px,calc(100%-80px))] rounded-control bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] leading-snug text-muted">{sparse}</p> : null}
       {tip && tipAt ? (
-        <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-[10px] px-2.5 py-1.5 text-[12.5px]" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
+        <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-control px-2.5 py-1.5 text-[12.5px]" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
           <span className="font-medium text-heading">{tip.label || "Untitled"}</span>
           <span className="block text-[11.5px] text-muted">{tip.kind === "note" ? (tipId === focused && !hover ? "Enter opens it" : "Click to open") : `${KIND_LABEL[tip.kind]} · ${tipId === focused && !hover ? "Enter shows its notes" : "Click for its notes"}`}</span>
         </div>
       ) : null}
       {picked ? (
-        <section aria-label={picked.label} className="ui-pop absolute bottom-3 left-3 z-10 w-[min(300px,calc(100%-24px))] rounded-[14px] p-3">
+        <section aria-label={picked.label} className="ui-pop absolute bottom-3 left-3 z-10 w-[min(300px,calc(100%-24px))] rounded-panel p-3">
           <div className="flex items-start gap-2">
             <span className="mt-1">
               <KindGlyph kind={picked.kind} />
@@ -590,7 +590,7 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
           <ul className="mt-2 max-h-48 space-y-0.5 overflow-y-auto">
             {pickedNotes.map((n) => (
               <li key={n.id}>
-                <AppLink href={`/d/${n.id}`} className="flex items-center gap-1.5 rounded-[6px] px-1.5 py-1 text-[13px] hover:bg-accent-soft">
+                <AppLink href={`/d/${n.id}`} className="flex items-center gap-1.5 rounded-chip px-1.5 py-1 text-[13px] hover:bg-accent-soft">
                   <FileText size={13} aria-hidden className="flex-none text-muted" />
                   <span className="truncate">{n.label || "Untitled"}</span>
                 </AppLink>
@@ -599,7 +599,7 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
           </ul>
         </section>
       ) : null}
-      <div role="group" aria-label="Zoom" className="ui-pop absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-[10px] p-1">
+      <div role="group" aria-label="Zoom" className="ui-pop absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-panel p-1">
         <IconButton label="Zoom in" onClick={() => zoomBy(1.25)}>
           <ZoomIn size={15} aria-hidden />
         </IconButton>

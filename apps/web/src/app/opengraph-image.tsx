@@ -2,6 +2,10 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { LETTER_PATHS, LOGO_HEIGHT, LOGO_WIDTH } from "@/components/brand/FoleviMark";
 import { ImageResponse } from "next/og";
+import { tokens } from "@folevi/design-tokens";
+
+/** The corner scale (packages/design-tokens): images render without CSS, so they read the numbers. */
+const R = tokens.radius;
 
 export const alt = "Folevi: a quiet notes app for ideas that keep growing.";
 export const size = { width: 1200, height: 630 };
@@ -39,7 +43,7 @@ function Bubble({ left, top, s, children }: { left: number; top: number; s: numb
         top,
         width: s,
         height: s,
-        borderRadius: s >= 64 ? 18 : s >= 40 ? 14 : 10,
+        borderRadius: s >= 64 ? R.container : s >= 40 ? R.panel : R.control,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -82,13 +86,13 @@ export default async function OpengraphImage() {
             display: "flex",
             flexDirection: "column",
             background: "#FFFFFF",
-            borderRadius: 18,
+            borderRadius: R.container,
             overflow: "hidden",
             boxShadow: "0 0 0 1px rgba(74,47,44,0.06), 0 36px 70px -30px rgba(74,47,44,0.40)",
             transform: "rotate(2deg)",
           }}
         >
-          <div style={{ margin: 12, height: 78, borderRadius: 18, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
+          <div style={{ margin: 12, height: 78, borderRadius: R.container - 12, display: "flex", backgroundImage: `linear-gradient(135deg, ${MOSS_SOFT}, ${MARIGOLD_SOFT})` }} />
           <div style={{ display: "flex", flexDirection: "column", padding: "4px 28px", gap: 14 }}>
             <div style={{ fontSize: 34, fontWeight: 600, color: HEADING, letterSpacing: -1.2, display: "flex" }}>Seed library</div>
             {tasks.map((t, i) => (
@@ -97,7 +101,7 @@ export default async function OpengraphImage() {
                   style={{
                     width: 18,
                     height: 18,
-                    borderRadius: 6,
+                    borderRadius: R.chip,
                     display: "flex",
                     background: i === 0 ? MOSS : "#FFFFFF",
                     border: i === 0 ? `1.5px solid ${MOSS}` : `1.5px solid #D8C8C3`,
@@ -106,9 +110,9 @@ export default async function OpengraphImage() {
                 {t}
               </div>
             ))}
-            <div style={{ display: "flex", marginTop: 8, height: 4, width: 150, borderRadius: 4, background: EMBER }} />
-            <div style={{ display: "flex", height: 10, width: 250, borderRadius: 6, background: LINE }} />
-            <div style={{ display: "flex", height: 10, width: 200, borderRadius: 6, background: LINE }} />
+            <div style={{ display: "flex", marginTop: 8, height: 4, width: 150, borderRadius: R.tiny, background: EMBER }} />
+            <div style={{ display: "flex", height: 10, width: 250, borderRadius: R.chip, background: LINE }} />
+            <div style={{ display: "flex", height: 10, width: 200, borderRadius: R.chip, background: LINE }} />
           </div>
         </div>
 
@@ -153,7 +157,7 @@ export default async function OpengraphImage() {
                 alignItems: "center",
                 height: 46,
                 padding: "0 22px",
-                borderRadius: 18,
+                borderRadius: R.control,
                 color: "#FFFFFF",
                 fontWeight: 600,
                 fontSize: 21,

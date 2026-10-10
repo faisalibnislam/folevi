@@ -6,7 +6,7 @@ import { useSiteAmbient, useSiteAmbientImage } from "./SiteShell";
 /**
  * A page's backdrop: an artwork, heavily blurred, held still behind the page while its cards scroll over it
  * (the Style panel's Blur background, for the page as a whole). A page names its artwork (`image`), which
- * also lights the sidebar; without one (Home) it follows the canvas light, which the hero's style picker sets.
+ * also lights the sidebar; without one (Home) it follows the canvas light, which the hero's theme picker sets.
  * A new image fades in over the last one once it has loaded.
  */
 export function PageBackdrop({ image: own }: { image?: string }) {

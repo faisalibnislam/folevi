@@ -11,7 +11,7 @@ import { container, cx } from "./ui";
  * separate cards stacked over it (the header first), like panels in the app.
  */
 
-/** The small copy of a style's artwork used for the blurred backdrop (the hero's 200 px copies, else the 640 px thumb). */
+/** The small copy of a theme's artwork used for the blurred backdrop (the hero's 200 px copies, else the 640 px thumb). */
 function backdropImage(art: string): string {
   const hero = HERO_STYLES.find((a) => a.id === art);
   return hero ? heroGlow(hero) : coverArtThumbUrl(art);

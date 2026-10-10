@@ -21,7 +21,7 @@ function Chapter({
   /** Shown before the name when the chapters are a numbered series. */
   number?: string;
   name: string;
-  /** The note style that lights the stage, as a note's style lights the app's canvas. */
+  /** The note theme that lights the stage, as a note's theme lights the app's canvas. */
   art: string;
   title: string;
   children: ReactNode;
@@ -53,7 +53,7 @@ function Chapter({
             {more.label} <Icon name="arrow-right" size={15} />
           </Link>
         </div>
-        <div className={cx("mk-stage p-3 sm:p-8", reverse && "lg:order-1")} style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
+        <div className={cx("mk-stage p-4 sm:p-8", reverse && "lg:order-1")} style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
           {demo}
         </div>
       </div>

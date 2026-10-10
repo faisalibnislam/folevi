@@ -22,7 +22,7 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
       role="toolbar"
       aria-label="Page tools"
       // Lifted above the on-screen keyboard (--kb-inset, set by useKeyboardInset).
-      className="ui-pop absolute bottom-[calc(1.25rem+var(--kb-inset,0px))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-[14px] p-1"
+      className="ui-pop absolute bottom-[calc(1.25rem+var(--kb-inset,0px))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-panel p-1"
     >
       {DOCK.filter((d) => ai || d.id !== "ai").map((d) => {
         const on = open && tab === d.id;
@@ -36,7 +36,7 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
             // Keep the editor's selection when opening Format or Insert.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(d.id)}
-            className={`inline-flex h-10 items-center pointer-coarse:h-11 gap-2 rounded-[10px] px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus sm:px-4 ${on ? "bg-heading text-canvas" : "text-ink hover:bg-accent-soft hover:text-heading"}`}
+            className={`inline-flex h-10 items-center pointer-coarse:h-11 gap-2 rounded-control px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus sm:px-4 ${on ? "bg-heading text-canvas" : "text-ink hover:bg-accent-soft hover:text-heading"}`}
           >
             <span aria-hidden>{d.icon}</span>
             <span className="max-sm:sr-only">{d.label}</span>

@@ -24,7 +24,7 @@ const hue = (hex: string) => {
   return { r: r!, g: g!, b: b! };
 };
 
-describe("note style colours from an image", () => {
+describe("note theme colours from an image", () => {
   test("a navy-and-coral image tints the page with its colour and keeps text readable", () => {
     const p = paletteFromPixels(image([[28, 44, 110, 0.6], [240, 128, 128, 0.25], [245, 245, 245, 0.15]]), 40, 50);
     // Text passes a high contrast on its page, in both themes.

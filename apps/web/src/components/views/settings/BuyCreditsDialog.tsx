@@ -54,7 +54,7 @@ export function BuyCreditsDialog({ open, onClose, target, name }: { open: boolea
         {CREDIT_PACK_ORDER.map((id) => {
           const pack = CREDIT_PACKS[id];
           return (
-            <li key={id} className="flex items-center gap-3 rounded-[10px] bg-[var(--glass-hover)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
+            <li key={id} className="flex items-center gap-3 rounded-control bg-[var(--glass-hover)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
               <div className="min-w-0 flex-1">
                 <p className="text-[14px] font-semibold text-heading">{pack.credits.toLocaleString()} AI credits</p>
                 <p className="text-[12.5px] text-muted">{formatPrice(pack.priceCents)}, one time</p>

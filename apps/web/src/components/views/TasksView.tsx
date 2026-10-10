@@ -74,7 +74,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
         aria-checked={task.status === "done"}
         aria-label={task.status === "done" ? `Mark “${task.title}” as not done` : task.status === "canceled" ? `Reopen canceled task “${task.title}”` : `Mark “${task.title}” as done`}
         onClick={() => onToggle(task)}
-        className={`mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-[6px] border-[1.5px] transition-colors ${
+        className={`mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-chip border-[1.5px] transition-colors ${
           task.status === "done"
             ? "border-transparent bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-moss)_82%,white),var(--color-moss))] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]"
             : task.status === "canceled"
@@ -92,13 +92,13 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
             {task.documentTitle || "Untitled"}
           </AppLink>
           {task.assigneeName ? <span>· {task.assigneeName}</span> : null}
-          {task.status === "canceled" ? <span className="rounded-[6px] bg-sunken px-1.5 text-[11px] font-medium text-muted">Canceled</span> : null}
+          {task.status === "canceled" ? <span className="rounded-chip bg-sunken px-1.5 text-[11px] font-medium text-muted">Canceled</span> : null}
           {task.completedAt && task.status === "done" ? <span>· done {formatRelative(task.completedAt)}</span> : null}
         </p>
         {action ? <div className="mt-1.5">{action}</div> : null}
       </div>
       {task.priority !== "none" ? (
-        <span className={`mt-0.5 rounded-[6px] px-2 text-[11px] font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{PRIORITY_LABEL[task.priority as Priority] ?? task.priority}</span>
+        <span className={`mt-0.5 rounded-chip px-2 text-[11px] font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{PRIORITY_LABEL[task.priority as Priority] ?? task.priority}</span>
       ) : null}
       {task.dueDate ? (
         <span className={`mt-0.5 whitespace-nowrap text-xs ${overdue ? "font-medium text-danger" : "text-muted"}`}>
@@ -113,7 +113,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
           onClick={() => onEdit(task)}
           aria-label={`Edit “${task.title || "Untitled task"}”: date, priority, assignee, status`}
           title="Edit task"
-          className="-my-0.5 grid h-7 w-7 flex-none place-items-center rounded-[6px] text-faint opacity-0 transition-opacity hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
+          className="-my-0.5 grid h-7 w-7 flex-none place-items-center rounded-chip text-faint opacity-0 transition-opacity hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
         >
           <SlidersHorizontal size={14} aria-hidden />
         </button>
@@ -231,7 +231,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
         <div className="flex flex-wrap gap-3">
           <label className="text-sm">
             <span className="block text-muted">Priority</span>
-            <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-[6px] px-3">
+            <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-chip px-3">
               {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
                 <option key={p} value={p}>
                   {PRIORITY_LABEL[p]}
@@ -241,7 +241,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
           </label>
           <label className="min-w-0 flex-1 text-sm">
             <span className="block text-muted">Assignee</span>
-            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="mt-1 h-9 w-full ui-input rounded-[6px] px-3">
+            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="mt-1 h-9 w-full ui-input rounded-chip px-3">
               <option value="">Unassigned</option>
               {people?.map((m) => (
                 <option key={m.profileId} value={m.profileId}>
@@ -298,7 +298,7 @@ export function TasksView({ view }: { view: View }) {
       groups.map((g) => (
         <section key={g.key} className="mt-6" aria-label={g.label ?? meta.label}>
           {g.label ? <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
-          <ul className="divide-y divide-line overflow-hidden ui-card rounded-[10px]">
+          <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
             {g.items.map((t) => (
               <TaskItem key={t.blockId} task={t} today={today} onToggle={onToggle} onEdit={setEditing} />
             ))}
@@ -338,19 +338,19 @@ export function TasksView({ view }: { view: View }) {
                 className="!min-h-8 !text-[13px]"
               >
                 {v.label}
-                {count ? <span className={`rounded-[6px] px-1.5 text-[11px] font-semibold leading-[18px] tabular-nums ${v.id === view ? "bg-heading text-canvas" : "text-[var(--color-ink-faint)]"}`}>{count}</span> : null}
+                {count ? <span className={`rounded-chip px-1.5 text-[11px] font-semibold leading-[18px] tabular-nums ${v.id === view ? "bg-heading text-canvas" : "text-[var(--color-ink-faint)]"}`}>{count}</span> : null}
               </AppLink>
             );
           })}
         </nav>
         <label className="mt-4 block">
           <span className="sr-only">Filter tasks</span>
-          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by task or page" className="h-9 w-full ui-input rounded-[6px] px-3 text-sm" />
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by task or page" className="h-9 w-full ui-input rounded-chip px-3 text-sm" />
         </label>
         {tasks === undefined ? (
           <div className="mt-6 space-y-2" aria-busy>
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-[6px] bg-surface motion-reduce:animate-none" />
+              <div key={i} className="h-12 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" />
             ))}
           </div>
         ) : shown.length === 0 ? (

@@ -78,7 +78,7 @@ export default async function FeaturePage({ params }: Params) {
           <p className="mt-4 text-[13.5px] text-muted">{feature.plans}</p>
         </HeaderCard>
 
-        <Card as="div" inner="p-3 sm:p-5">
+        <Card as="div" inner="p-4 sm:p-5">
           <FeatureVisual visual={feature.visual} art={feature.art} />
         </Card>
 

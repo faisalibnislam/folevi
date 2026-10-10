@@ -186,7 +186,7 @@ export function AiSection() {
 
 /* Layout ------------------------------------------------------------------------------------------- */
 
-/** Some features sit in a panel tinted by the page's note style, so tinted and plain rows alternate. */
+/** Some features sit in a panel tinted by the page's note theme, so tinted and plain rows alternate. */
 const TINTED = "mk-panel p-4 sm:p-8 lg:p-10";
 
 function Feature({
@@ -202,7 +202,7 @@ function Feature({
 }: {
   eyebrow: string;
   title: string;
-  /** The note style that lights the picture's stage. */
+  /** The note theme that lights the picture's stage. */
   art: string;
   picture: ReactNode;
   points: ReactNode[];
@@ -273,7 +273,7 @@ function Points({ points, className }: { points: ReactNode[]; className?: string
         >
           <span
             aria-hidden="true"
-            className="mt-[9px] size-[5px] flex-none rounded-[4px] bg-(--color-ink-muted)"
+            className="mt-[9px] size-[5px] flex-none rounded-tiny bg-(--color-ink-muted)"
           />
           <span>{point}</span>
         </li>

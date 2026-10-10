@@ -365,7 +365,7 @@ export function ReadOnlyBlocks({
                   <img
                     src={src}
                     alt={String(p.alt ?? "")}
-                    className="w-full rounded-[6px] border border-line"
+                    className="w-full rounded-chip border border-line"
                   />
                   {p.caption ? (
                     <figcaption className="mt-1 text-center text-sm text-muted">

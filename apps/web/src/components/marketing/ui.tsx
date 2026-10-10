@@ -125,7 +125,7 @@ export function PageHeader({
 
 export function DraftNotice({ updated }: { updated: string }) {
   return (
-    <div role="note" className="mt-8 inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] bg-(--color-surface-sunken) px-4 py-3 text-[14px] text-ink">
+    <div role="note" className="mt-8 inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-(--color-surface-sunken) px-4 py-3 text-[14px] text-ink">
       <strong className="font-semibold text-(--color-heading)">Draft: pending legal review</strong>
       <span className="text-muted">Last updated {updated}. This plain-language draft is not yet final.</span>
     </div>

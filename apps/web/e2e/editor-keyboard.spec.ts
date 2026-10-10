@@ -116,7 +116,7 @@ test.describe("editor keyboard", () => {
     await expect(toolbar.getByRole("button", { name: "Text color: Gray" })).toBeFocused();
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
-    // The third swatch is the note style's second text colour (named after its hue, so it varies).
+    // The third swatch is the note theme's second text colour (named after its hue, so it varies).
     await expect(toolbar.getByRole("button", { name: /^Text color: / }).nth(2)).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(body.locator(".fb-color-moss")).toHaveText("Read");

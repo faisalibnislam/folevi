@@ -1,5 +1,5 @@
 // Folder colours: 25 distinct colours (packages/design-tokens/covers/folder-colors.json; the server checks
-// against the same file). Folders coloured with the earlier palette (the note styles' pale page colours)
+// against the same file). Folders coloured with the earlier palette (the note themes' pale page colours)
 // show the nearest of these (folder-colors-legacy.json) until they're given a new one.
 import folderColors from "@folevi/design-tokens/folder-colors.json";
 import legacyColors from "@folevi/design-tokens/folder-colors-legacy.json";

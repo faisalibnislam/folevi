@@ -56,7 +56,7 @@ export function TitleAiPill({ anchor, onOpen }: { anchor: HTMLElement | null; on
       onMouseDown={(e) => e.preventDefault()}
       onClick={onOpen}
       style={{ top: pos.top, left: pos.left }}
-      className="ui-pop fixed z-40 inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[12.5px] font-medium text-ink hover:text-heading"
+      className="ui-pop fixed z-40 inline-flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-[12.5px] font-medium text-ink hover:text-heading"
     >
       <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Edit with AI
       <kbd className="ml-1 font-sans text-[11px] text-faint">⌘J</kbd>
@@ -138,7 +138,7 @@ export function TitleAi({
   };
 
   if (!pos) return null;
-  const item = "flex w-full items-center rounded-[10px] px-2.5 py-1.5 text-left text-[13.5px] text-ink hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-50";
+  const item = "flex w-full items-center rounded-control px-2.5 py-1.5 text-left text-[13.5px] text-ink hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-50";
 
   return createPortal(
     <div
@@ -153,7 +153,7 @@ export function TitleAi({
           onClose();
         }
       }}
-      className="ui-pop fixed z-50 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-[14px] text-left font-sans text-ink animate-[folio-rise_160ms_var(--ease-folio)] motion-reduce:animate-none"
+      className="ui-pop fixed z-50 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-panel text-left font-sans text-ink animate-[folio-rise_160ms_var(--ease-folio)] motion-reduce:animate-none"
     >
       <form
         className="flex items-center gap-2 px-3 py-2.5"
@@ -173,16 +173,16 @@ export function TitleAi({
           className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-faint"
         />
         {instruction.trim() ? (
-          <button type="submit" aria-label="Send" disabled={Boolean(busy)} className="grid h-7 w-7 flex-none place-items-center rounded-[6px] bg-heading text-canvas">
+          <button type="submit" aria-label="Send" disabled={Boolean(busy)} className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas">
             <ArrowUp size={15} aria-hidden />
           </button>
         ) : null}
-        <button type="button" aria-label="Close AI" title="Close (Esc)" onClick={onClose} className="grid h-7 w-7 flex-none place-items-center rounded-[6px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+        <button type="button" aria-label="Close AI" title="Close (Esc)" onClick={onClose} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
           <X size={15} aria-hidden />
         </button>
       </form>
       {error ? (
-        <p role="alert" className="mx-3 mb-2 rounded-[10px] bg-danger-soft px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="mx-3 mb-2 rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger">
           {error}
         </p>
       ) : null}

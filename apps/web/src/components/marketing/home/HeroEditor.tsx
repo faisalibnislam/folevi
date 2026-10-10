@@ -140,7 +140,7 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
   const [ready, setReady] = useState(false);
   const aiHint = useRef(false);
   const extensions = useMemo(() => editorExtensions({ aiHint, onTrigger: setTrigger }), []);
-  // One set of options for the editor's lifetime: new options on a re-render (a style change) would be
+  // One set of options for the editor's lifetime: new options on a re-render (a theme change) would be
   // applied to the live editor and could reset its selection.
   const options = useMemo(
     () => ({
@@ -315,7 +315,7 @@ function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { edi
               close();
             }
           }}
-          className="mk-hero-panel ui-pop flex flex-col overflow-hidden rounded-[14px] animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none"
+          className="mk-hero-panel ui-pop flex flex-col overflow-hidden rounded-panel animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none"
         >
           <div className="flex h-12 flex-none items-center gap-1 px-4 pt-1">
             <h2 id={titleId} className="ui-display flex-1 text-[18px]">
@@ -337,13 +337,13 @@ function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { edi
   );
 }
 
-/** The Style panel's note styles: the ones the home page offers, picked the way the app picks them. */
+/** The Style panel's note themes: the ones the home page offers, picked the way the app picks them. */
 function StylePanel({ art, styles, onPick }: { art: CoverArt; styles: readonly CoverArt[]; onPick: (i: number) => void }) {
   const labelId = useId();
   return (
     <div className="px-1">
       <p id={labelId} className="ui-caps">
-        Note style
+        Note theme
       </p>
       <div role="radiogroup" aria-labelledby={labelId} className="mt-2 grid grid-cols-5 gap-2">
         {styles.map((s, i) => {
@@ -354,16 +354,16 @@ function StylePanel({ art, styles, onPick }: { art: CoverArt; styles: readonly C
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`Note style: ${s.name}`}
+              aria-label={`Note theme: ${s.name}`}
               onClick={() => onPick(i)}
-              className={`aspect-square rounded-[10px] bg-cover bg-center outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-heading)]" : "shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] hover:shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-line-strong)]"}`}
+              className={`aspect-square rounded-control bg-cover bg-center outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-heading)]" : "shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] hover:shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-line-strong)]"}`}
               style={{ backgroundImage: `url("${heroGlow(s)}")` }}
             />
           );
         })}
       </div>
       <p className="mt-3 text-[13px] text-muted">
-        {art.name}. The style colours the cover, the paper, the text and the checkboxes. Your own notes have {COVER_ART.length} styles, or a picture of your own.
+        {art.name}. The theme colours the cover, the paper, the text and the checkboxes. Your own notes have {COVER_ART.length} themes, or a picture of your own.
       </p>
     </div>
   );
@@ -376,7 +376,7 @@ function NoticeBody({ notice }: { notice: Notice }) {
       {notice.items ? (
         <ul className="mt-3 space-y-0.5" aria-label="Not available here">
           {notice.items.map((item) => (
-            <li key={item} aria-disabled="true" className="flex h-8 items-center gap-2 rounded-[6px] px-2 text-[13.5px] text-muted">
+            <li key={item} aria-disabled="true" className="flex h-8 items-center gap-2 rounded-chip px-2 text-[13.5px] text-muted">
               <AiIcon size={14} />
               {item}
             </li>

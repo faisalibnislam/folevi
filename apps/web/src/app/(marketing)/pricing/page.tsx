@@ -160,7 +160,7 @@ export default function PricingPage() {
                   {CREDIT_PACK_ORDER.map((id) => {
                     const pack = CREDIT_PACKS[id];
                     return (
-                      <li key={id} className="rounded-[10px] bg-(--color-surface-sunken) p-4">
+                      <li key={id} className="rounded-control bg-(--color-surface-sunken) p-4">
                         <p className="text-[14.5px] font-semibold text-(--color-heading)">{credits(pack.credits)} credits</p>
                         <p className="mk-display mt-2 text-[32px] leading-none">{formatPrice(pack.priceCents)}</p>
                         <p className="mt-1.5 text-[13px] text-muted">One-time</p>

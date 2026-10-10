@@ -24,7 +24,7 @@ export const HERO_SEED: SeedBlock[] = [
   },
   { id: "hero-try", type: "heading", level: 1, text: [{ text: "First things to try" }] },
   { id: "hero-todo-offline", type: "todo", checked: true, text: [{ text: "Write a page while offline" }] },
-  { id: "hero-todo-style", type: "todo", checked: true, text: [{ text: "Pick a style for this note" }] },
+  { id: "hero-todo-style", type: "todo", checked: true, text: [{ text: "Pick a theme for this note" }] },
   { id: "hero-todo-link", type: "todo", checked: false, text: [{ text: "Link another page with " }, { text: "[[", code: true }] },
   { id: "hero-todo-date", type: "todo", checked: false, dueDate: "2026-10-09", text: [{ text: "Give a to-do a due date" }] },
   {

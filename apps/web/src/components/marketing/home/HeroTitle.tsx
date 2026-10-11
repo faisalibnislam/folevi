@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Avatar, PEOPLE, type PersonId } from "../people";
 
 /*
  * The hero's title, being edited by a few people at once: "Folevi is a digital workspace for …", and each in
@@ -12,13 +13,13 @@ import { useEffect, useRef, useState } from "react";
 
 /** The first line stays; the second ("for …") is the one people change. Endings fit on one line. */
 const LEAD = "Folevi is a digital workspace";
-const TURNS = [
-  { text: "notes", who: "Maya", color: "#6C5CE0" },
-  { text: "documentation", who: "Sam", color: "#D9603F" },
-  { text: "collaboration", who: "Ines", color: "#22927F" },
-  { text: "publishing", who: "Maya", color: "#6C5CE0" },
-  { text: "team wikis", who: "Sam", color: "#D9603F" },
-  { text: "planning your week", who: "Ines", color: "#22927F" },
+const TURNS: { text: string; who: PersonId }[] = [
+  { text: "notes", who: "maya" },
+  { text: "documentation", who: "sam" },
+  { text: "collaboration", who: "ines" },
+  { text: "publishing", who: "maya" },
+  { text: "team wikis", who: "sam" },
+  { text: "planning your week", who: "ines" },
 ];
 /** What the sentence says, for screen readers and the page's text. */
 export const HERO_TITLE_TEXT = `${LEAD} for notes, documentation, collaboration and publishing.`;
@@ -83,7 +84,7 @@ export function HeroTitle() {
     };
   }, [stopped]);
 
-  const person = TURNS[turn]!;
+  const person = { ...PEOPLE[TURNS[turn]!.who], id: TURNS[turn]!.who };
   return (
     <span ref={root}>
       <span className="sr-only">{HERO_TITLE_TEXT}</span>
@@ -96,7 +97,10 @@ export function HeroTitle() {
           </span>
           {stopped ? null : (
             <span className="mk-hero-caret" data-typing={typing || undefined} style={{ ["--who" as string]: person.color }}>
-              <span className="mk-hero-caret-name">{person.who}</span>
+              <span className="mk-hero-caret-name">
+                <Avatar who={person.id} size={24} />
+                {person.name}
+              </span>
             </span>
           )}
         </span>

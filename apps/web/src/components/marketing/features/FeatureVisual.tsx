@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Avatar, personNamed } from "../people";
 import {
   AlertTriangle,
   Archive,
@@ -352,7 +353,7 @@ function WhiteboardPicture({ art }: { art: string }) {
 
 function SharePanel() {
   const people = [
-    { name: "Ada Example", note: "You", role: "Owner" },
+    { name: "Alex Example", note: "You", role: "Owner" },
     { name: "Ines Moreau", note: "ines@example.com", role: "Can edit" },
     { name: "Sam Rivera", note: "Guest", role: "Can comment" },
   ];
@@ -376,7 +377,7 @@ function SharePanel() {
           <ul className="mt-3 space-y-1">
             {people.map((p) => (
               <li key={p.name} className="flex items-center gap-2.5 py-1">
-                <span className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{p.name[0]}</span>
+                <Avatar who={personNamed(p.name) ?? "alex"} size={28} />
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block truncate font-medium text-ink">{p.name}</span>
                   <span className="block truncate text-[11.5px] text-muted">{p.note}</span>
@@ -424,10 +425,10 @@ function WorkspacePanels() {
     { name: "Reading group", role: "Member", on: false },
   ];
   const members = [
-    { name: "Ada Example", role: "Owner", seat: true },
+    { name: "Alex Example", role: "Owner", seat: true },
     { name: "Ines Moreau", role: "Admin", seat: true },
     { name: "Theo Park", role: "Member", seat: true },
-    { name: "Priya Shah", role: "Member · can comment", seat: true },
+    { name: "Jonas Berg", role: "Member · can comment", seat: true },
     { name: "Sam Rivera", role: "Guest", seat: false },
   ];
   return (
@@ -459,7 +460,7 @@ function WorkspacePanels() {
         <ul className="divide-y divide-(--mk-hair)">
           {members.map((m) => (
             <li key={m.name} className="flex items-center gap-3 px-4 py-3">
-              <span className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-surface-sunken) text-[11px] font-semibold text-(--color-heading)">{m.name[0]}</span>
+              <Avatar who={personNamed(m.name) ?? "alex"} size={28} />
               <span className="min-w-0 flex-1 truncate text-ink">{m.name}</span>
               <span className="flex-none text-[12px] text-muted">{m.role}</span>
               <span className={cx("hidden w-14 flex-none text-right text-[11.5px] sm:block", m.seat ? "text-muted" : "font-medium text-moss-ink")}>{m.seat ? "Seat" : "Free"}</span>

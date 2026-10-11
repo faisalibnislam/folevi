@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar, PEOPLE, type PersonId } from "../people";
 import type { ReactNode } from "react";
 import { ArrowRight, Check, CloudOff, History, Play as PlayIcon } from "lucide-react";
 import { artById, artVars } from "../product/Replica";
@@ -299,11 +300,7 @@ function HistoryPicture() {
 
 /** A shared note: who's here, a line someone is typing, and a comment with a mention. */
 function TogetherPicture() {
-  const people = [
-    { i: "M", c: "var(--mk-violet-strong)" },
-    { i: "S", c: "var(--color-moss-ink)" },
-    { i: "Y", c: "var(--color-heading)" },
-  ];
+  const people: PersonId[] = ["maya", "sam", "alex"];
   return (
     <div className="flex items-start gap-3">
       <div className="mk-mini-card w-[200px] px-3 pb-3 pt-2.5">
@@ -311,8 +308,8 @@ function TogetherPicture() {
           <span className="text-[11.5px] font-semibold text-(--color-heading)">Trip plan</span>
           <span className="flex -space-x-1.5">
             {people.map((p) => (
-              <span key={p.i} data-step className="grid size-5 place-items-center rounded-chip text-[9px] font-bold text-white ring-2 ring-(--color-surface)" style={{ background: p.c }}>
-                {p.i}
+              <span key={p} data-step>
+                <Avatar who={p} size={20} className="ring-2 ring-(--color-surface)" />
               </span>
             ))}
           </span>
@@ -320,12 +317,17 @@ function TogetherPicture() {
         <MiniLines widths={["92%", "70%"]} />
         <span data-step className="mt-1.5 flex items-center gap-1 text-[10.5px] text-ink">
           Book the ferry
-          <span className="h-3 w-[2px] rounded-tiny" style={{ background: "var(--mk-violet-strong)" }} />
-          <span className="rounded-tiny px-1 text-[9px] font-semibold text-white" style={{ background: "var(--mk-violet-strong)" }}>Maya</span>
+          <span className="h-3 w-[2px] rounded-tiny" style={{ background: PEOPLE.maya.color }} />
+          <span className="inline-flex items-center gap-1 rounded-chip py-px pl-px pr-1.5 text-[9px] font-semibold text-white" style={{ background: PEOPLE.maya.color }}>
+            <Avatar who="maya" size={12} />
+            Maya
+          </span>
         </span>
       </div>
       <div data-step className="mk-app-pop mt-6 w-[150px] rounded-control p-2.5 text-[10.5px] text-ink max-sm:hidden">
-        <span className="font-semibold text-(--color-heading)">Sam</span>
+        <span className="flex items-center gap-1.5 font-semibold text-(--color-heading)">
+          <Avatar who="sam" size={16} /> Sam
+        </span>
         <span className="mt-0.5 block">
           <span className="rounded-tiny bg-(--mk-violet-soft) px-0.5 font-semibold text-(--mk-violet-ink)">@Maya</span> can you check the times?
         </span>

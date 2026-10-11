@@ -1344,10 +1344,13 @@
   position: absolute;
   left: 0;
   bottom: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-bottom: 4px;
-  padding: 2px 7px;
+  padding: 2px 10px 2px 2px;
   border-radius: var(--radius-chip);
-  font: 600 12px/1.4 var(--font-sans);
+  font: 600 14px/1.4 var(--font-sans);
   letter-spacing: 0;
   color: #fff;
   background: var(--who);

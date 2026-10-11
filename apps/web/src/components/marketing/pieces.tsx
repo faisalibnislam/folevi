@@ -1,6 +1,7 @@
 import { Check, Command, Search } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { cx } from "./ui";
+import { Avatar, PEOPLE, personNamed, type PersonId } from "./people";
 
 /*
  * Small pieces of the app, cut out to float beside sections (fun.tsx Float): a task, a Foli AI answer, a
@@ -34,13 +35,16 @@ export function AiPiece({ text, className }: { text: string; className?: string 
 }
 
 export function CursorPiece({ name, tone = "violet", className }: { name: string; tone?: "violet" | "ink" | "moss"; className?: string }) {
-  const color = tone === "violet" ? "var(--mk-violet-strong)" : tone === "moss" ? "var(--color-moss-ink)" : "var(--color-heading)";
+  // Someone from the cast: their own colour and photo on the tag.
+  const who = personNamed(name);
+  const color = who ? PEOPLE[who].color : tone === "violet" ? "var(--mk-violet-strong)" : tone === "moss" ? "var(--color-moss-ink)" : "var(--color-heading)";
   return (
     <div className={cx("flex w-max flex-col items-start", className)}>
       <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true">
         <path d="M2 2l13 7-6 1.6L6.4 17z" fill={color} stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
       </svg>
-      <span className="ml-3 -mt-1 rounded-chip px-2 py-0.5 text-[11.5px] font-semibold text-white shadow-(--shadow-control)" style={{ background: color }}>
+      <span className="ml-3 -mt-1 inline-flex items-center gap-1.5 rounded-chip py-0.5 pr-2 text-[11.5px] font-semibold text-white shadow-(--shadow-control)" style={{ background: color, paddingLeft: who ? 2 : 8 }}>
+        {who ? <Avatar who={who} size={18} /> : null}
         {name}
       </span>
     </div>
@@ -83,10 +87,13 @@ export function ThemesPiece({ arts, className }: { arts: string[]; className?: s
   );
 }
 
-export function MentionPiece({ name, className }: { name: string; className?: string }) {
+export function MentionPiece({ name, from = "sam", className }: { name: string; from?: PersonId; className?: string }) {
   return (
-    <div className={cx(pop, "w-max px-3 py-2", className)}>
+    <div className={cx(pop, "flex w-max items-center gap-2 px-3 py-2", className)}>
+      <Avatar who={from} size={22} />
+      <span>
       <span className="rounded-tiny bg-(--mk-violet-soft) px-1 font-semibold text-(--mk-violet-ink)">@{name}</span> can you check this?
+      </span>
     </div>
   );
 }

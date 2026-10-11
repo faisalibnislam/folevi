@@ -1,4 +1,5 @@
 import { ArrowRight, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, MoreHorizontal, Search, X } from "lucide-react";
+import { Avatar } from "../people";
 import { cx } from "../ui";
 
 /*
@@ -174,9 +175,6 @@ export function CalendarPicture() {
 
 /* Comments -------------------------------------------------------------------------------------------- */
 
-function Face({ initial, tone }: { initial: string; tone: string }) {
-  return <span className={cx("grid size-6 flex-none place-items-center rounded-chip text-[11px] font-semibold text-white", tone)}>{initial}</span>;
-}
 
 export function CommentsPicture() {
   return (
@@ -191,8 +189,8 @@ export function CommentsPicture() {
           <p className="mt-2 rounded-tiny bg-[color-mix(in_oklab,#f5b43c_18%,transparent)] px-1 leading-relaxed text-ink">The library hall is free on the 5th, from 10 to 2.</p>
           <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted">
             <span className="flex -space-x-1.5">
-              <Face initial="M" tone="bg-[#7c6cf0]" />
-              <Face initial="I" tone="bg-[#2f9e78]" />
+              <Avatar who="maya" size={24} className="ring-2 ring-(--color-surface)" />
+              <Avatar who="ines" size={24} className="ring-2 ring-(--color-surface)" />
             </span>
             2 comments · 8:18 AM
           </p>
@@ -209,8 +207,8 @@ export function CommentsPicture() {
           </div>
           <div className="space-y-3 px-3.5 py-3">
             {[
-              { face: <Face initial="M" tone="bg-[#7c6cf0]" />, name: "Maya", time: "8:12 AM", body: <><span className="rounded-tiny bg-(--color-accent-soft) px-1 font-medium text-(--color-heading)">@Ines</span> can you check the booking?</> },
-              { face: <Face initial="I" tone="bg-[#2f9e78]" />, name: "Ines", time: "8:18 AM", body: <>Booked for Saturday. I’ll bring the key.</> },
+              { face: <Avatar who="maya" size={24} />, name: "Maya", time: "8:12 AM", body: <><span className="rounded-tiny bg-(--color-accent-soft) px-1 font-medium text-(--color-heading)">@Ines</span> can you check the booking?</> },
+              { face: <Avatar who="ines" size={24} />, name: "Ines", time: "8:18 AM", body: <>Booked for Saturday. I’ll bring the key.</> },
             ].map((c) => (
               <div key={c.name} className="flex gap-2.5">
                 {c.face}

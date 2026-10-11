@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { Avatar } from "../people";
 import {
   Archive,
   ArrowUp,
@@ -176,9 +177,9 @@ function SidebarTop({ chrome }: { chrome: "web" | "mac" }) {
 function Account() {
   return (
     <div className="mt-auto flex flex-none items-center gap-2.5 px-2 pb-1 pt-2">
-      <span className="grid size-7 flex-none place-items-center rounded-control bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">A</span>
+      <Avatar who="alex" size={28} />
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block truncate text-[12.5px] font-semibold text-(--color-heading)">Ada Example</span>
+        <span className="block truncate text-[12.5px] font-semibold text-(--color-heading)">Alex Example</span>
         <span className="block truncate text-[11px] text-muted">Personal</span>
       </span>
     </div>

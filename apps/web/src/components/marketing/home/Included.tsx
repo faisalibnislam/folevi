@@ -5,7 +5,7 @@ import { ArrowRight, Check, CloudOff, History, Play as PlayIcon } from "lucide-r
 import { artById, artVars } from "../product/Replica";
 import { Play } from "../Play";
 import { Eyebrow, container, cx } from "../ui";
-import { Hand, Mark, Sticker } from "../fun";
+import { Hand, Mark } from "../fun";
 
 /*
  * What every plan includes, each with a small picture of it drawn from the app's own pieces (the sync status
@@ -111,20 +111,13 @@ export function Included() {
           </div>
         </div>
         <ul className="mt-10 grid gap-x-4 gap-y-7 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-5">
-          {TILES.map((tile, i) => (
+          {TILES.map((tile) => (
             <li key={tile.title} className={cx("relative", tile.wide ? "lg:col-span-3" : "lg:col-span-2")}>
               <div role="img" aria-label={tile.label} className="mk-mini-stage" data-tilt="5">
                 <div aria-hidden="true" className="contents">
                   {tile.picture}
                 </div>
               </div>
-              {i === 0 ? (
-                <span aria-hidden="true" className="absolute left-3 -top-3 z-10">
-                  <Sticker tone="ink" rotate={-8} className="text-[12px]">
-                    Even on a plane
-                  </Sticker>
-                </span>
-              ) : null}
               <h3 className="mk-h3 mt-3 text-[15.5px]">
                 {tile.href ? (
                   <Link href={tile.href} className="group inline-flex min-h-11 items-center gap-1.5 hover:underline">
@@ -255,24 +248,42 @@ function AudioPicture() {
   );
 }
 
-/** A small flowchart: shapes and arrows, as the flowchart block draws them. */
+/** A flowchart block in a note: nodes on a grid, square connectors, a decision with Yes and No. */
 function FlowPicture() {
-  const box = "rounded-small bg-(--color-surface) px-2.5 py-1.5 text-[11px] font-semibold text-(--color-heading) shadow-(--shadow-control)";
+  const line = "color-mix(in oklab, var(--color-ink) 38%, transparent)";
+  const node = { fill: "var(--color-surface)", stroke: "color-mix(in oklab, var(--color-ink) 22%, transparent)" };
+  const text = { fontFamily: "var(--font-sans)", fontSize: 9.5, fontWeight: 600, fill: "var(--color-heading)", textAnchor: "middle" as const, dominantBaseline: "central" as const };
   return (
-    <div className="relative h-[120px] w-[230px]">
-      <svg aria-hidden="true" viewBox="0 0 230 120" className="absolute inset-0 size-full" fill="none">
-        <g data-step stroke="var(--mk-violet)" strokeWidth="1.6" strokeLinecap="round">
-          <path d="M62 30h36" />
-          <path d="M94 26l5 4-5 4" />
-          <path d="M146 36c18 4 22 14 24 30" />
-          <path d="M146 30c24-6 34-4 44 4" />
-          <path d="M166 62l4 6 4-6" />
+    <div className="mk-mini-card w-[88%] max-w-[280px] px-3 pb-3 pt-2.5">
+      <span className="block text-[11.5px] font-semibold text-(--color-heading)">Launch plan</span>
+      <svg aria-hidden="true" viewBox="0 0 240 104" className="mt-2 block w-full" fill="none">
+        <defs>
+          <marker id="mk-flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0.8 7 4 0 7.2z" fill={line} />
+          </marker>
+        </defs>
+        <g data-step stroke={line} strokeWidth="1.2" markerEnd="url(#mk-flow-arrow)">
+          <path d="M62 30h22" />
+          <path d="M146 30h24" />
+          <path d="M115 48v26H41V49" />
+        </g>
+        <g data-step>
+          <rect x="6" y="18" width="56" height="24" rx="6" {...node} />
+          <text x="34" y="30" {...text}>Draft</text>
+        </g>
+        <g data-step>
+          <path d="M115 10 146 30 115 50 84 30z" fill="var(--mk-violet-soft)" stroke="var(--mk-violet)" strokeWidth="1.2" />
+          <text x="115" y="30" {...text} fill="var(--mk-violet-ink)">Ready?</text>
+        </g>
+        <g data-step>
+          <rect x="172" y="18" width="62" height="24" rx="6" {...node} />
+          <text x="203" y="30" {...text}>Publish</text>
+        </g>
+        <g data-step fontFamily="var(--font-sans)" fontSize="8.5" fill="var(--color-ink-muted)">
+          <text x="158" y="22" textAnchor="middle">Yes</text>
+          <text x="124" y="66">No</text>
         </g>
       </svg>
-      <span data-step className={`${box} absolute left-1 top-[18px]`}>Idea</span>
-      <span data-step className={`${box} absolute left-[100px] top-[18px]`}>Draft</span>
-      <span data-step className={`${box} absolute left-[140px] top-[74px]`}>Share</span>
-      <span data-step className="absolute right-0 top-[30px] rounded-chip bg-(--mk-violet-soft) px-2 py-1 text-[11px] font-semibold text-(--mk-violet-ink)">Keep</span>
     </div>
   );
 }

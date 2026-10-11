@@ -1,11 +1,12 @@
 import { PLANS, PLAN_ORDER, TRIAL_DAYS, TRIAL_TIER, TIER_NAMES, formatPrice } from "@/lib/plans";
+import { AiIcon } from "@/components/ai/AiIcon";
 import Link from "next/link";
 import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
 import { SIGN_UP_URL } from "../site";
 import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
-import { Float, Hand, Mark, Sticker } from "../fun";
-import { AiPiece, CursorPiece, TaskPiece, ThemesPiece } from "../pieces";
+import { Float, Mark, Sticker } from "../fun";
+import { AiPiece, TaskPiece } from "../pieces";
 
 export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: string }> = [
   {
@@ -79,9 +80,13 @@ export function PricingSection() {
                 )}
               >
                 <div className="flex min-h-7 items-center gap-2">
-                  <h3 className="text-[16px] font-semibold text-(--color-heading)">{plan.name}</h3>
+                  <h3 className="flex items-center gap-1.5 text-[16px] font-semibold text-(--color-heading)">
+                    {/* The plans with Foli AI carry its flower. */}
+                    {tier === "pro" || tier === "pro_ai" ? <AiIcon size={16} /> : null}
+                    {plan.name}
+                  </h3>
                   {badge ? (
-                    <Sticker tone="violet" rotate={tier === "pro_ai" ? 6 : -6} className="ml-auto text-[12px]">
+                    <Sticker shine tone="violet" rotate={tier === "pro_ai" ? 6 : -6} className="ml-auto text-[12px]">
                       {badge}
                     </Sticker>
                   ) : null}
@@ -111,17 +116,11 @@ export function FinalCta() {
   return (
     <section aria-labelledby="cta-title" className={container}>
       <div className="mk-box mk-tint relative overflow-hidden px-6 py-20 text-center sm:px-10 sm:py-28">
-        <Float depth={0.18} className="left-[7%] top-14 [--tilt:-5deg]">
+        <Float depth={0.06} className="left-[5%] top-10 hidden xl:block [--tilt:-5deg]">
           <TaskPiece text="Write the first note" done />
         </Float>
-        <Float depth={0.1} delay={800} className="left-[5%] bottom-10 [--tilt:4deg]">
-          <ThemesPiece arts={["art-30", "art-41", "art-03"]} />
-        </Float>
-        <Float depth={0.22} delay={300} className="right-[6%] top-16 [--tilt:4deg]">
+        <Float depth={0.06} delay={300} className="right-[4%] top-10 hidden xl:block [--tilt:4deg]">
           <AiPiece text="Welcome in. Ask me anything about your notes." />
-        </Float>
-        <Float depth={0.12} delay={1400} className="right-[8%] bottom-14">
-          <CursorPiece name="You" tone="ink" />
         </Float>
         <FoleviMark size={48} className="mx-auto block" />
         <h2
@@ -131,9 +130,6 @@ export function FinalCta() {
           Start with one <Mark kind="circle">note</Mark>.
         </h2>
         <p className="mk-lede mx-auto mt-5 max-w-[46ch]">The Free plan has no time limit.</p>
-        <div aria-hidden="true" className="mt-3">
-          <Hand rotate={-3}>you&apos;ll like it here</Hand>
-        </div>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
           <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
             Start writing

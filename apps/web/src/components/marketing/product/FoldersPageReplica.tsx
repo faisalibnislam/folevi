@@ -1,6 +1,6 @@
 import type { DocumentCover } from "@folevi/editor-schema";
 import { ChevronDown, FolderPlus, LayoutGrid, Rows3, Search } from "lucide-react";
-import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, FolderCardMenuLook, type FolderPreview } from "@/components/views/FolderCardArt";
+import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FolderCardArt, type FolderPreview } from "@/components/views/FolderCardArt";
 import { COVER_ART } from "@/lib/cover";
 import { DEMO_FOLDERS, type DemoFolder, type DemoNote } from "../content/demoFolders";
 import { cx } from "../ui";
@@ -29,16 +29,13 @@ const previewsOf = (notes: DemoNote[]): FolderPreview[] =>
     .reverse()
     .map((n) => ({ cover: coverFor(n.style), title: n.title, excerpt: `${n.lines[0]} ${n.lines[1]}` }));
 
-/** One demo folder drawn as the app's folder card: it lifts on hover and its newest notes rise out of it. */
+/** One demo folder drawn as the app's folder card: it lifts on hover and its newest notes rise out of it (no "…" menu on the site). */
 export function DemoFolderCard({ folder }: { folder: DemoFolder }) {
   return (
     <div className={FOLDER_CARD_BOX}>
       <div className={FOLDER_CARD_FRAME}>
         <FolderCardArt name={folder.name} color={folder.color} count={folder.notes.length} age={folder.age} previews={previewsOf(folder.notes)} />
       </div>
-      <span className={FOLDER_CARD_MENU}>
-        <FolderCardMenuLook />
-      </span>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { NoteCard, artById } from "../product/Replica";
 import { Checks } from "../Checks";
 import { Play } from "../Play";
 import { SectionHeading, box, container, cx } from "../ui";
-import { Mark, Sticker } from "../fun";
+import { Mark } from "../fun";
 
 const CARDS = [
   { art: "art-03", title: "Seed library", folder: "Projects", lines: ["Swap day is the first Saturday in April.", "Print seed labels by Friday."] },
@@ -47,9 +47,6 @@ export function NoteStyles() {
                 </>
               }
             />
-            <Sticker tone="violet" rotate={9} className="absolute -top-2 right-0 max-sm:hidden">
-              {COVER_ART.length} themes
-            </Sticker>
           </div>
           <div className="lg:pb-1">
             <p className="mk-lede">{COVER_ART.length} note themes for your pages, and a colour for each folder.</p>

@@ -25,7 +25,7 @@ const PATHS: Record<DoodleKind, { viewBox: string; d: string[]; stretch?: boolea
   },
   arrow: { viewBox: "0 0 64 64", d: ["M8 6c10 26 22 40 46 50", "M40 56l15 1-3-15"] },
   "loop-arrow": { viewBox: "0 0 90 70", d: ["M6 10c22-8 40 4 34 18-5 11-20 6-15-5 6-12 30-10 44 4 8 8 12 18 13 30", "M72 50l10 9 6-13"] },
-  squiggle: { viewBox: "0 0 120 18", d: ["M3 12c10-12 18-12 24 0s14 12 22 0 16-12 24 0 14 12 22 0 14-10 22-2"], stretch: true },
+  squiggle: { viewBox: "0 0 120 12", d: ["M3 7c10-3 19-3 29 0s19 3 29 0 19-3 29 0 18 3 27 0"], stretch: true },
 };
 
 export function Doodle({ kind, className, style, width = 2.4 }: { kind: DoodleKind; className?: string; style?: CSSProperties; width?: number }) {
@@ -43,10 +43,8 @@ export function Doodle({ kind, className, style, width = 2.4 }: { kind: DoodleKi
         <path
           key={i}
           d={d}
-          pathLength={1}
           strokeWidth={width}
           vectorEffect={p.stretch ? "non-scaling-stroke" : undefined}
-          style={{ ["--d" as string]: `${i * 140}ms` }}
         />
       ))}
     </svg>
@@ -95,15 +93,18 @@ export function Sticker({
   rotate = -6,
   className,
   icon,
+  shine = false,
 }: {
   children: ReactNode;
   tone?: "paper" | "violet" | "ink";
   rotate?: number;
   className?: string;
   icon?: ReactNode;
+  /** A glint of light sweeps across it now and then. */
+  shine?: boolean;
 }) {
   return (
-    <span className={cx("mk-sticker", className)} data-tone={tone} style={{ ["--r" as string]: `${rotate}deg` }}>
+    <span className={cx("mk-sticker", className)} data-tone={tone} data-shine={shine || undefined} style={{ ["--r" as string]: `${rotate}deg` }}>
       {icon ? <span aria-hidden="true" className="mk-sticker-icon">{icon}</span> : null}
       {children}
     </span>

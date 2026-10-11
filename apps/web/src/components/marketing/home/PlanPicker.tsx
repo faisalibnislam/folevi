@@ -1,5 +1,6 @@
 "use client";
 
+import { AiIcon } from "@/components/ai/AiIcon";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { Check } from "lucide-react";
 import { PLANS, PLAN_ORDER, TRIAL_DAYS, TRIAL_TIER, WORKSPACE_PLANS, formatPrice, monthlyEquivalent, yearlySavingPercent, type PersonalPlanCard, type WorkspacePlanCard } from "@/lib/plans";
@@ -96,11 +97,15 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
       className={cx("mk-card relative flex flex-col p-6 sm:p-7", sticker ? "shadow-[var(--shadow-card),inset_0_0_0_1.5px_var(--mk-violet)]" : featured && "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]")}
     >
       <div className="flex min-h-7 items-center gap-2">
-        <Heading className="text-[16px] font-semibold text-(--color-heading)">{card.name}</Heading>
+        <Heading className="flex items-center gap-1.5 text-[16px] font-semibold text-(--color-heading)">
+          {/* The plans with Foli AI carry its flower. */}
+          {card.tier === "pro" || card.tier === "pro_ai" ? <AiIcon size={16} /> : null}
+          {card.name}
+        </Heading>
       </div>
       {/* Stuck on the card's corner; it says something, so it stays readable. */}
       {sticker ? (
-        <Sticker tone="violet" rotate={card.tier === "pro_ai" ? 6 : -6} className="absolute -top-3 right-4 text-[12.5px]">
+        <Sticker shine tone="violet" rotate={card.tier === "pro_ai" ? 6 : -6} className="absolute -top-3 right-4 text-[12.5px]">
           {sticker}
         </Sticker>
       ) : null}

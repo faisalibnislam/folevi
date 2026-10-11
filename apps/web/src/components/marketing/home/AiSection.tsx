@@ -5,8 +5,7 @@ import { AskDemo } from "../demos/AskDemo";
 import { EditDemo } from "../demos/EditDemo";
 import { Kbd, SectionHeading, box, container, cx } from "../ui";
 import { Feature } from "../featureRows";
-import { Float, Mark } from "../fun";
-import { CursorPiece } from "../pieces";
+import { Mark } from "../fun";
 
 /*
  * Foli AI on the home page, kept short: two features (Ask and Edit), side by side, each picture over a few points
@@ -17,9 +16,6 @@ export function AiSection() {
   return (
     <section id="ai" aria-labelledby="ai-title" className={cx(container, "scroll-mt-20")}>
       <div className={cx(box, "mk-tint relative")}>
-        <Float depth={0.12} className="right-[30%] top-24">
-          <CursorPiece name="Foli AI" />
-        </Float>
         <AiIcon size={32} />
         <SectionHeading className="mt-6" id="ai-title" eyebrow="Foli AI" title={
             <>

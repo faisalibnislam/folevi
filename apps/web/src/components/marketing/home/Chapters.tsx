@@ -5,8 +5,7 @@ import { artById, artThumb } from "../product/Replica";
 import { Checks } from "../Checks";
 import { Icon } from "../icons";
 import { Eyebrow, Kbd, box, container, cx } from "../ui";
-import { Float, Hand, Mark } from "../fun";
-import { TaskPiece } from "../pieces";
+import { Hand, Mark } from "../fun";
 
 function Chapter({
   id,
@@ -70,9 +69,6 @@ function Chapter({
 export function Chapters() {
   return (
     <section id="chapters" aria-label="Writing in Folevi" className={cx(container, "mk-stack relative scroll-mt-20")}>
-      <Float depth={0.14} className="-top-6 right-14 [--tilt:-3deg]">
-        <TaskPiece text="Print seed labels" due="Fri" />
-      </Float>
       <div aria-hidden="true" className="pointer-events-none absolute bottom-16 right-16 z-10 hidden xl:block">
         <Hand rotate={-6} arrow="up-left">
           it really searches, try it

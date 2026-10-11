@@ -28,13 +28,15 @@ import { IconButton } from "@/components/ui/Button";
 import { ToastProvider } from "@/components/ui/Toast";
 import { StaticAppStateProvider, type AppState, type Profile } from "@/lib/app/state";
 import { StaticRouterProvider, type RouterValue } from "@/lib/app/router";
-import { COVER_ART, coverArtThumbUrl, type CoverArt } from "@/lib/cover";
+import { coverArtThumbUrl, type CoverArt } from "@/lib/cover";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/plans";
 import { SIGN_UP_URL } from "../site";
-import { siteArt } from "./heroStyles";
+import { pickableThemes } from "./heroStyles";
+import { loadLiveThemes } from "../liveThemes";
+import { useThemesVersion } from "@/lib/useThemes";
 import { ThemeGallery } from "@/components/doc/ThemeGallery";
-import { allThemes, PLAIN_DEFAULTS as THEME_PLAIN_DEFAULTS } from "@/lib/themes";
+import { PLAIN_DEFAULTS as THEME_PLAIN_DEFAULTS } from "@/lib/themes";
 import { seedDoc } from "./heroNoteSeed";
 
 /*
@@ -346,7 +348,10 @@ function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { edi
  */
 function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt[]; onPick: (art: CoverArt) => void }) {
   const [gallery, setGallery] = useState(false);
-  const themes = useMemo(() => allThemes().filter((t) => t.status === "published" && COVER_ART.some((a) => a.id === t.id)), []);
+  // Every theme the app offers, kept in step with the server's list.
+  useEffect(() => void loadLiveThemes(), []);
+  useThemesVersion();
+  const themes = pickableThemes();
   return (
     <div className="space-y-4 px-1 text-sm">
       <div aria-hidden className="relative block h-28 w-full overflow-hidden rounded-chip bg-cover bg-center shadow-[var(--shadow-card)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }}>
@@ -368,7 +373,6 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
           <span aria-hidden className="inline-block h-7 w-9 rounded-chip bg-cover bg-center shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }} />
         </button>
       </fieldset>
-      <p className="px-1 text-[12.5px] text-muted">The theme you pick dresses this whole website too.</p>
       <ThemeGallery
         open={gallery}
         onClose={() => setGallery(false)}
@@ -377,7 +381,7 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
         plain={THEME_PLAIN_DEFAULTS}
         ownImage={null}
         plan={null}
-        onPickTheme={(t) => onPick(siteArt(t.id))}
+        onPickTheme={(t) => onPick(t)}
       />
     </div>
   );

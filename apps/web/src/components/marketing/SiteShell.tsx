@@ -1,6 +1,7 @@
 "use client";
 
 import { HERO_STYLES, siteArt } from "./home/heroStyles";
+import { loadLiveThemes } from "./liveThemes";
 import type { CoverArt } from "@/lib/cover";
 import { MarketingMotion } from "./MarketingMotion";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -597,12 +598,20 @@ export function SiteShell({
   const [pageAmbient, setAmbient] = useState<string | null>(null);
   const [themeArt, setThemeArt] = useState<CoverArt>(HERO_STYLES[0]!);
   useEffect(() => {
+    let id: string | null = null;
     try {
-      const saved = siteArt(window.localStorage.getItem(SITE_THEME_KEY));
-      if (saved.id !== HERO_STYLES[0]!.id) setThemeArt(saved);
+      id = window.localStorage.getItem(SITE_THEME_KEY);
     } catch {
       // Storage blocked: the default theme.
     }
+    if (!id || id === HERO_STYLES[0]!.id) return;
+    const saved = siteArt(id);
+    if (saved.id === id) setThemeArt(saved);
+    // A theme added on the server (or changed there): the app's live list has it.
+    void loadLiveThemes().then(() => {
+      const live = siteArt(id);
+      if (live.id === id) setThemeArt(live);
+    });
   }, []);
   const pickTheme = useCallback((art: CoverArt) => {
     setThemeArt(art);

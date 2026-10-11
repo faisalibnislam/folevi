@@ -35,7 +35,7 @@ function PanelHeader({ icon, title }: { icon: ReactNode; title: string }) {
 export function NoteStyles() {
   return (
     <section id="styles" aria-labelledby="styles-title" className={cx(container, "scroll-mt-20")}>
-      <div className={cx(box, "mk-tint")}>
+      <div className={box}>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
           <div className="relative">
             <SectionHeading

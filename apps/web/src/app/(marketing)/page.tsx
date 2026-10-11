@@ -31,10 +31,10 @@ export default function HomePage() {
         <Hero />
         <div className="mk-stack mk-home-stack">
           <Included />
+          <AiSection />
           <NoteStyles />
           <SlashSection />
           <Chapters />
-          <AiSection />
           <PricingSection />
           <FinalCta />
         </div>

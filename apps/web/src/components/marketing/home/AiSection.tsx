@@ -16,7 +16,7 @@ import { CursorPiece } from "../pieces";
 export function AiSection() {
   return (
     <section id="ai" aria-labelledby="ai-title" className={cx(container, "scroll-mt-20")}>
-      <div className={cx(box, "relative")}>
+      <div className={cx(box, "mk-tint relative")}>
         <Float depth={0.12} className="right-[30%] top-24">
           <CursorPiece name="Foli AI" />
         </Float>
@@ -33,7 +33,7 @@ export function AiSection() {
             eyebrow="Ask"
             title="Answers from your notes, with sources."
             art="art-49"
-            picture={<AskDemo />}
+            picture={<AskDemo compact />}
             points={[
               <>
                 <Kbd>⌘J</Kbd> anywhere
@@ -47,7 +47,7 @@ export function AiSection() {
             eyebrow="Edit"
             title="Select text and say what to change."
             art="art-16"
-            picture={<EditDemo />}
+            picture={<EditDemo compact />}
             points={[<>Rewrite, shorten, fix spelling</>, <>Translate or explain</>, <>See the changes before they replace anything</>]}
           />
         </div>

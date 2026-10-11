@@ -66,7 +66,7 @@ const length = (parts: Part[]) => parts.reduce((n, p) => n + p.t.length, 0);
 
 type Turn = { qa: Qa; question: string; shown: number; phase: "reading" | "writing" | "done" };
 
-export function AskDemo() {
+export function AskDemo({ compact = false }: { compact?: boolean } = {}) {
   const [turn, setTurn] = useState<Turn | null>(null);
   const [draft, setDraft] = useState("");
   const [auto, setAuto] = useState(true);
@@ -128,7 +128,7 @@ export function AskDemo() {
     <div
       ref={root}
       onPointerDown={() => setAuto(false)}
-      className="mk-app-pop mx-auto flex h-[470px] max-w-[420px] flex-col overflow-hidden rounded-container text-[13.5px]"
+      className={cx("mk-app-pop mx-auto flex max-w-[420px] flex-col overflow-hidden rounded-container text-[13.5px]", compact ? "h-[400px]" : "h-[470px]")}
       aria-label="A working sample of Foli AI. Pick a question or type one."
       role="group"
     >

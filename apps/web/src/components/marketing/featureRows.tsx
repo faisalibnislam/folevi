@@ -50,7 +50,7 @@ export function Feature({
     return (
       <div className={cx(tinted, "grid gap-8 lg:row-span-2 lg:grid-rows-subgrid")}>
         <div
-          className="mk-stage flex items-center px-3 py-8 sm:px-6 sm:py-10"
+          className="mk-stage flex items-center px-3 py-5 sm:px-6 sm:py-6"
           style={{ ["--stage-art" as string]: artThumb(artById(art)) }}
         >
           {picture}

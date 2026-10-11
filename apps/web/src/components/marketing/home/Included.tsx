@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, Check, CloudOff, FileCode, FileText, Moon, Printer, Sun } from "lucide-react";
+import { ArrowRight, Check, CloudOff, History, Play as PlayIcon } from "lucide-react";
 import { artById, artVars } from "../product/Replica";
 import { Play } from "../Play";
 import { Eyebrow, container, cx } from "../ui";
@@ -39,22 +39,53 @@ const TILES: Tile[] = [
     ),
   },
   {
-    title: "Markdown, HTML and PDF export",
-    href: "/features/import-and-export",
-    label: "A page’s menu with Export as Markdown, Export as HTML and Export as PDF (print).",
+    title: "Audio recordings",
+    href: "/features/audio-recordings",
+    label: "A voice note in a page: a play button, its waveform and its length, 0:42.",
     picture: (
       <Play>
-        <ExportPicture />
+        <AudioPicture />
+      </Play>
+    ),
+  },
+  {
+    title: "Flowcharts",
+    href: "/features/flowcharts",
+    label: "A small flowchart in a note: Idea, then Draft, then two arrows to Share and Keep.",
+    picture: (
+      <Play>
+        <FlowPicture />
+      </Play>
+    ),
+  },
+  {
+    title: "Version history",
+    href: "/features/version-history",
+    label: "A page's versions: Now, an hour ago by Maya, yesterday by you, with a Restore button.",
+    picture: (
+      <Play>
+        <HistoryPicture />
+      </Play>
+    ),
+  },
+  {
+    title: "Edit together",
+    href: "/features/sharing",
+    label: "A shared note with three people in it, a line Maya is typing, and a comment mentioning Sam.",
+    picture: (
+      <Play>
+        <TogetherPicture />
       </Play>
     ),
     wide: true,
   },
   {
-    title: "Light and dark mode",
-    label: "The same note in light mode and in dark mode, side by side.",
+    title: "Tasks and a calendar",
+    href: "/features/tasks",
+    label: "Today's tasks from your notes, with dates, beside a small week calendar.",
     picture: (
       <Play>
-        <ThemesPicture />
+        <TasksPicture />
       </Play>
     ),
     wide: true,
@@ -202,55 +233,138 @@ function StylesPicture() {
   );
 }
 
-/** The export items of a page's ••• menu (DocumentView), with the first one under the pointer. */
-function ExportPicture() {
-  const items = [
-    { icon: <FileText size={13} />, label: "Export as Markdown" },
-    { icon: <FileCode size={13} />, label: "Export as HTML" },
-    { icon: <Printer size={13} />, label: "Export as PDF (print)" },
+/** A voice note in a page (the /record block): play, waveform, length. */
+function AudioPicture() {
+  const bars = [6, 12, 18, 10, 22, 16, 8, 20, 14, 24, 12, 18, 9, 15, 21, 11, 7, 16, 13, 6];
+  return (
+    <div className="mk-mini-card w-[82%] max-w-[270px] px-3.5 py-3">
+      <span className="block text-[11.5px] font-semibold text-(--color-heading)">Standup, Tuesday</span>
+      <span className="mt-2.5 flex items-center gap-2.5">
+        <span data-step className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas)">
+          <PlayIcon size={11} fill="currentColor" />
+        </span>
+        <span data-step className="flex h-6 flex-1 items-center gap-[2px]">
+          {bars.map((h, i) => (
+            <span key={i} className="w-[3px] rounded-tiny" style={{ height: h, background: i < 8 ? "var(--mk-violet)" : "color-mix(in oklab, var(--color-ink) 22%, transparent)" }} />
+          ))}
+        </span>
+        <span className="text-[10.5px] tabular-nums text-muted">0:42</span>
+      </span>
+    </div>
+  );
+}
+
+/** A small flowchart: shapes and arrows, as the flowchart block draws them. */
+function FlowPicture() {
+  const box = "rounded-small bg-(--color-surface) px-2.5 py-1.5 text-[11px] font-semibold text-(--color-heading) shadow-(--shadow-control)";
+  return (
+    <div className="relative h-[120px] w-[230px]">
+      <svg aria-hidden="true" viewBox="0 0 230 120" className="absolute inset-0 size-full" fill="none">
+        <g data-step stroke="var(--mk-violet)" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M62 30h36" />
+          <path d="M94 26l5 4-5 4" />
+          <path d="M146 36c18 4 22 14 24 30" />
+          <path d="M146 30c24-6 34-4 44 4" />
+          <path d="M166 62l4 6 4-6" />
+        </g>
+      </svg>
+      <span data-step className={`${box} absolute left-1 top-[18px]`}>Idea</span>
+      <span data-step className={`${box} absolute left-[100px] top-[18px]`}>Draft</span>
+      <span data-step className={`${box} absolute left-[140px] top-[74px]`}>Share</span>
+      <span data-step className="absolute right-0 top-[30px] rounded-chip bg-(--mk-violet-soft) px-2 py-1 text-[11px] font-semibold text-(--mk-violet-ink)">Keep</span>
+    </div>
+  );
+}
+
+/** The version history panel: when, who, and Restore. */
+function HistoryPicture() {
+  const rows = [
+    { when: "Now", who: "Current", on: true },
+    { when: "1 hour ago", who: "Maya" },
+    { when: "Yesterday", who: "You" },
   ];
   return (
-    <div className="flex items-center gap-4">
-      <div data-step className="mk-mini-card w-[112px] px-3 pb-3 pt-2.5 max-sm:hidden">
-        <span className="block text-[11px] font-semibold text-(--color-heading)">Reading list</span>
-        <MiniLines widths={["88%", "64%", "76%"]} />
+    <div className="mk-mini-card w-[82%] max-w-[260px] p-1.5">
+      {rows.map((r) => (
+        <span key={r.when} data-step className={`flex items-center gap-1.5 whitespace-nowrap rounded-small px-2 py-1.5 text-[10.5px] ${r.on ? "bg-(--glass-hover)" : ""}`}>
+          <History size={11} className="flex-none text-muted" />
+          <span className="font-semibold text-(--color-heading)">{r.when}</span>
+          <span className="min-w-0 flex-1 truncate text-muted">{r.who}</span>
+          {r.when === "1 hour ago" ? <span className="flex-none rounded-chip bg-(--color-heading) px-1.5 py-0.5 text-[9.5px] font-semibold text-(--color-canvas)">Restore</span> : null}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** A shared note: who's here, a line someone is typing, and a comment with a mention. */
+function TogetherPicture() {
+  const people = [
+    { i: "M", c: "var(--mk-violet-strong)" },
+    { i: "S", c: "var(--color-moss-ink)" },
+    { i: "Y", c: "var(--color-heading)" },
+  ];
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mk-mini-card w-[200px] px-3 pb-3 pt-2.5">
+        <span className="flex items-center justify-between">
+          <span className="text-[11.5px] font-semibold text-(--color-heading)">Trip plan</span>
+          <span className="flex -space-x-1.5">
+            {people.map((p) => (
+              <span key={p.i} data-step className="grid size-5 place-items-center rounded-chip text-[9px] font-bold text-white ring-2 ring-(--color-surface)" style={{ background: p.c }}>
+                {p.i}
+              </span>
+            ))}
+          </span>
+        </span>
+        <MiniLines widths={["92%", "70%"]} />
+        <span data-step className="mt-1.5 flex items-center gap-1 text-[10.5px] text-ink">
+          Book the ferry
+          <span className="h-3 w-[2px] rounded-tiny" style={{ background: "var(--mk-violet-strong)" }} />
+          <span className="rounded-tiny px-1 text-[9px] font-semibold text-white" style={{ background: "var(--mk-violet-strong)" }}>Maya</span>
+        </span>
       </div>
-      <div className="mk-app-pop w-[210px] rounded-control p-1 text-[12px]">
-        {items.map((item, i) => (
-          <span key={item.label} data-step className={`flex h-7 items-center gap-2 rounded-chip px-2 ${i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink"}`}>
-            <span className="text-muted">{item.icon}</span>
-            {item.label}
+      <div data-step className="mk-app-pop mt-6 w-[150px] rounded-control p-2.5 text-[10.5px] text-ink max-sm:hidden">
+        <span className="font-semibold text-(--color-heading)">Sam</span>
+        <span className="mt-0.5 block">
+          <span className="rounded-tiny bg-(--mk-violet-soft) px-0.5 font-semibold text-(--mk-violet-ink)">@Maya</span> can you check the times?
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Today's tasks from your notes, and the week they fall in. */
+function TasksPicture() {
+  const tasks = [
+    { t: "Print seed labels", d: "Today", done: true },
+    { t: "Book the ferry", d: "Fri" },
+    { t: "Send the deck", d: "Mon" },
+  ];
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mk-mini-card w-[200px] p-2.5">
+        <span className="block text-[11.5px] font-semibold text-(--color-heading)">Today</span>
+        {tasks.map((x) => (
+          <span key={x.t} data-step className="mt-1.5 flex items-center gap-1.5 text-[10.5px]">
+            <span className={`grid size-3 flex-none place-items-center rounded-tiny ${x.done ? "bg-(--mk-violet-strong) text-white" : "shadow-[inset_0_0_0_1.2px_var(--color-line-strong)]"}`}>
+              {x.done ? <Check size={8} strokeWidth={3} /> : null}
+            </span>
+            <span className={`flex-1 ${x.done ? "text-muted line-through" : "text-ink"}`}>{x.t}</span>
+            <span className="rounded-chip bg-(--color-surface-sunken) px-1.5 text-[9.5px] text-muted">{x.d}</span>
+          </span>
+        ))}
+      </div>
+      <div data-step className="mk-mini-card grid w-[120px] grid-cols-7 gap-0.5 p-2 text-center text-[8.5px] text-muted max-sm:hidden">
+        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+          <span key={i} className="font-semibold">{d}</span>
+        ))}
+        {Array.from({ length: 14 }, (_, i) => (
+          <span key={i} className={`rounded-tiny py-0.5 ${i === 2 ? "bg-(--color-heading) text-(--color-canvas)" : i === 4 || i === 7 ? "bg-(--mk-violet-soft) text-(--mk-violet-ink)" : ""}`}>
+            {i + 8}
           </span>
         ))}
       </div>
     </div>
   );
 }
-
-/** The same note in the app's light and dark chrome. */
-function ThemesPicture() {
-  return (
-    <div className="mk-mini-themes">
-      {(["light", "dark"] as const).map((theme) => (
-        <div key={theme} data-step className="mk-mini-theme" data-mini-theme={theme}>
-          <span className="flex items-center justify-between">
-            <span className="text-[11.5px] font-semibold">Weekly review</span>
-            {theme === "light" ? <Sun size={12} /> : <Moon size={12} />}
-          </span>
-          <span className="mt-2 block space-y-1.5">
-            {["90%", "72%", "84%", "46%"].map((w, i) => (
-              <span key={i} className="block h-[4px] rounded-tiny bg-current opacity-[0.16]" style={{ width: w }} />
-            ))}
-          </span>
-          <span className="mt-2.5 flex items-center gap-1.5 text-[10px]">
-            <span className="grid size-3 place-items-center rounded-tiny bg-current">
-              <Check size={8} className="mk-mini-theme-check" strokeWidth={3} />
-            </span>
-            <span className="opacity-70">Book the ferry</span>
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-

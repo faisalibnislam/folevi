@@ -37,7 +37,10 @@ type Phase =
   | { kind: "busy"; action: number }
   | { kind: "result"; action: number; shown: number };
 
-export function EditDemo() {
+/** In the compact demo (the home page's short row), the menu lists only these (the autoplay's among them). */
+const COMPACT = [0, 1, 2, 6, 7];
+
+export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
   const [text, setText] = useState(ORIGINAL);
   const [phase, setPhase] = useState<Phase>({ kind: "menu", active: 0 });
   const [flash, setFlash] = useState(false);
@@ -100,7 +103,7 @@ export function EditDemo() {
   const highlightWords = selected === true ? words.length : selected || 0;
 
   return (
-    <div ref={root} onPointerDown={take} onKeyDown={take} role="group" aria-label="A working sample of editing with ⌘J. Select the sentence, then pick an action." className="mx-auto h-[600px] w-full max-w-[480px]">
+    <div ref={root} onPointerDown={take} onKeyDown={take} role="group" aria-label="A working sample of editing with ⌘J. Select the sentence, then pick an action." className={cx("mx-auto w-full max-w-[480px]", compact ? "h-[420px]" : "h-[600px]")}>
       <div className="mk-note rounded-panel px-5 pb-6 pt-5 text-[14px] leading-[1.65] shadow-(--glass-edge)" style={{ ...artVars(artById("art-16")), fontFamily: "var(--font-serif)" }}>
         <p className="mk-note-h text-[19px]">Swap day update</p>
         <p className="mt-2">
@@ -135,9 +138,11 @@ export function EditDemo() {
 
       {open ? (
         <div className="mk-app-pop mk-appear relative z-10 -mt-3 ml-4 overflow-hidden rounded-panel text-[13.5px] sm:ml-10">
-          <p className="truncate border-b border-(--color-line) px-3.5 py-2 text-[12px] text-muted">
-            <span className="font-semibold">Editing:</span> “{text}”
-          </p>
+          {compact ? null : (
+            <p className="truncate border-b border-(--color-line) px-3.5 py-2 text-[12px] text-muted">
+              <span className="font-semibold">Editing:</span> “{text}”
+            </p>
+          )}
           {phase.kind === "busy" || phase.kind === "result" ? (
             <div className="border-b border-(--color-line) px-4 pb-2.5 pt-3">
               <p className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
@@ -201,7 +206,7 @@ export function EditDemo() {
           ) : phase.kind === "menu" ? (
             <ul className="border-t border-(--color-line) p-1.5" aria-label="Edit or review">
               <li className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Edit or review</li>
-              {ACTIONS.map((a, i) => (
+              {ACTIONS.map((a, i) => (compact && !COMPACT.includes(i) ? null : (
                 <li key={a.label}>
                   <button
                     type="button"
@@ -210,7 +215,7 @@ export function EditDemo() {
                       void run(i, plain);
                     }}
                     onPointerEnter={() => setPhase({ kind: "menu", active: i })}
-                    className={cx("flex w-full items-center gap-2.5 rounded-control px-2.5 py-[7px] text-left", i === phase.active ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink")}
+                    className={cx("flex w-full items-center gap-2.5 rounded-control px-2.5 text-left", compact ? "py-[5px]" : "py-[7px]", i === phase.active ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink")}
                   >
                     <span className="text-muted">{a.icon}</span>
                     <span className="min-w-0 flex-1 truncate">{a.label}</span>
@@ -218,7 +223,7 @@ export function EditDemo() {
                     {i === phase.active ? <CornerDownLeft size={13} className="text-faint" /> : null}
                   </button>
                 </li>
-              ))}
+              )))}
             </ul>
           ) : null}
           <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>

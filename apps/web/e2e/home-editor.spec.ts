@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { APP } from "./helpers";
+import { APP, convexUrl } from "./helpers";
 
 // The home page's note is the app's real editor, running with no account and no server: it can be edited,
 // its to-dos ticked, blocks inserted with "/", formatted and restyled from the page tools dock; what needs an
@@ -11,7 +11,8 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await page.setViewportSize({ width: 1440, height: 900 });
   const external: string[] = [];
   page.on("request", (r) => {
-    if (!r.url().startsWith(SITE) && !r.url().startsWith("data:")) external.push(r.url());
+    // Our own backend is allowed (the Style gallery loads the app's theme list from it); nothing else.
+    if (!r.url().startsWith(SITE) && !r.url().startsWith("data:") && !r.url().startsWith(new URL(convexUrl()).origin)) external.push(r.url());
   });
   await page.goto(`${SITE}/`);
   const editor = page.getByRole("textbox", { name: "Try the editor" });
@@ -50,10 +51,16 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await expect(panel.getByRole("heading", { name: "Format" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
+  // Style: the app's theme gallery, every theme (no upload here); a pick dresses the note, and the site.
   await dock.getByRole("button", { name: "Style" }).click();
-  await panel.getByRole("radio", { name: "Note theme: Poppy print" }).click();
+  await panel.getByRole("button", { name: "Irises" }).click();
+  const gallery = page.getByRole("dialog", { name: "Note theme" });
+  await expect(gallery.getByRole("radio")).not.toHaveCount(0);
+  await expect(gallery.getByRole("button", { name: /Use your own image/ })).toHaveCount(0);
+  await gallery.getByRole("radio", { name: "Note theme: Poppy print" }).click();
+  await gallery.getByRole("button", { name: "Done" }).click();
   await expect(page.locator(".mk-hero-stage")).toHaveAttribute("data-tone", "light");
-  await expect(page.getByText("Note theme: Poppy print", { exact: false }).first()).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Poppy print" })).toBeVisible();
 
   // AI needs an account.
   await dock.getByRole("button", { name: "Foli AI" }).click();

@@ -30,7 +30,7 @@ import { StaticAppStateProvider, type AppState, type Profile } from "@/lib/app/s
 import { StaticRouterProvider, type RouterValue } from "@/lib/app/router";
 import { COVER_ART, type CoverArt } from "@/lib/cover";
 import type { SyncEngine } from "@/lib/sync/engine";
-import { MONTHLY_CREDITS } from "@/lib/plans";
+import { TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/plans";
 import { SIGN_UP_URL } from "../site";
 import { heroGlow } from "./heroStyles";
 import { seedDoc } from "./heroNoteSeed";
@@ -91,7 +91,7 @@ type Notice = { title: string; body: ReactNode; items?: string[] };
 const NOTICES: Record<"ai" | "comments" | "share" | "info" | "more", Notice> = {
   ai: {
     title: "Foli AI",
-    body: `Ask your notes a question, or let AI continue, summarize or tidy a page. Sign up to use it: the Free plan includes ${MONTHLY_CREDITS.free} AI credits a month.`,
+    body: `Ask your notes a question, or let AI continue, summarize or tidy a page. Sign up to use it: every new account gets ${TRIAL_CREDITS} AI credits in a ${TRIAL_DAYS}-day trial.`,
     items: ["Ask Foli AI…", "Continue writing", "Summarize note", "Find action items"],
   },
   comments: { title: "Comments", body: "Comment on any block and reply in threads. Sign up to comment on your own pages." },

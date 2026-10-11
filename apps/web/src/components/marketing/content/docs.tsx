@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CREDIT_PACKS, MONTHLY_CREDITS, PACK_VALID_MONTHS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
+import { CREDIT_PACKS, MONTHLY_CREDITS, PACK_VALID_MONTHS, STORAGE_BYTES, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
 import { ShortcutTable } from "../mac/ShortcutTable";
 import { SECURITY_EMAIL, SIGN_UP_URL, SUPPORT_EMAIL } from "../site";
 
@@ -281,7 +281,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Plans.</strong> Free, Core, Pro and Pro AI, the same as personal plans. Paid plans are billed per member seat. The owner, admins and members each take one and get the plan’s storage and AI credits in the workspace; guests and pending invitations are free. On Core, nobody in the workspace can use AI. The owner, and admins the owner allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
           </li>
           <li>
-            <strong>Separate plans.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes your Personal. On Free, your Personal and the free workspaces you own share 1 GB, and in a free workspace each member uses their own personal AI credits. On paid plans, storage and AI credits are per person. If a space goes over its limit, nothing is deleted. New uploads wait until there’s room.
+            <strong>Separate plans.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes your Personal. On Free, your Personal and the free workspaces you own share {sizeLabel(STORAGE_BYTES.free)}, and in a free workspace each member uses their own personal AI credits. On paid plans, storage and AI credits are per person. If a space goes over its limit, nothing is deleted. New uploads wait until there’s room.
           </li>
           <li>
             <strong>Leaving and deleting.</strong> Content in a workspace belongs to the workspace and stays when someone leaves. The owner can’t leave until they transfer ownership or delete the workspace; a deleted workspace is removed after 7 days, and the owner can cancel until then.
@@ -357,7 +357,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <ul>
           <li>
-            {TIER_NAMES.free}: {MONTHLY_CREDITS.free} credits a month.
+            {TIER_NAMES.free}: AI during the {TRIAL_DAYS}-day trial ({TRIAL_CREDITS} credits), then none.
           </li>
           <li>{TIER_NAMES.core}: no AI.</li>
           <li>

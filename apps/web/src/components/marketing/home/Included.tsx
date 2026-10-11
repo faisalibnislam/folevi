@@ -3,51 +3,60 @@ import type { ReactNode } from "react";
 import { ArrowRight, Check, CloudOff, FileCode, FileText, Moon, Printer, Sun } from "lucide-react";
 import { COVER_ART } from "@/lib/cover";
 import { artById, artVars } from "../product/Replica";
+import { Play } from "../Play";
 import { container } from "../ui";
 
 /*
  * What every plan includes, each with a small picture of it drawn from the app's own pieces (the sync status
  * pill, a note, the page menu's export items, the note themes, and light and dark mode). Pictures are decorative:
- * each is one image to assistive tech, described by its label. The labels are the app's own strings.
+ * each is one image to assistive tech, described by its label. The labels are the app's own strings. The
+ * offline and sync pictures animate by themselves (CSS); the others play when they scroll into view (Play).
  */
 
-type Tile = { title: string; body: ReactNode; link?: { label: string; href: string }; label: string; picture: ReactNode; wide?: boolean };
+type Tile = { title: string; href?: string; label: string; picture: ReactNode; wide?: boolean };
 
 const TILES: Tile[] = [
   {
     title: "Works offline",
-    body: "Write with no connection. Folevi keeps your changes on this device and syncs them when you reconnect.",
-    link: { label: "Offline notes", href: "/features/offline-notes" },
+    href: "/features/offline-notes",
     label: "A note with the sync status reading Offline, 3 changes waiting, then Saved once the connection is back.",
     picture: <OfflinePicture />,
   },
   {
     title: "Real-time sync",
-    body: "Open a note on another device and your latest edits are already there. The status says Saved once the server has them.",
-    link: { label: "Sync and offline", href: "/docs/sync-and-offline" },
+    href: "/docs/sync-and-offline",
     label: "The same note open on a laptop and a phone. A line typed on the laptop appears on the phone.",
     picture: <SyncPicture />,
   },
   {
     title: `${COVER_ART.length} note themes`,
-    body: "Give each page a theme. The cover, the paper and the text take their colours from its artwork.",
-    link: { label: "Note themes", href: "/features/note-themes" },
+    href: "/features/note-themes",
     label: "Five note theme artworks fanned out, and a note in the Summer sky theme.",
-    picture: <StylesPicture />,
+    picture: (
+      <Play>
+        <StylesPicture />
+      </Play>
+    ),
   },
   {
     title: "Markdown, HTML and PDF export",
-    body: "Export a page from its ••• menu, or everything in a space as a ZIP of Markdown files from Settings.",
-    link: { label: "Import and export", href: "/features/import-and-export" },
+    href: "/features/import-and-export",
     label: "A page’s menu with Export as Markdown, Export as HTML and Export as PDF (print).",
-    picture: <ExportPicture />,
+    picture: (
+      <Play>
+        <ExportPicture />
+      </Play>
+    ),
     wide: true,
   },
   {
     title: "Light and dark mode",
-    body: "Pick Light, Dark or System in Settings. Every note theme has colours for both.",
     label: "The same note in light mode and in dark mode, side by side.",
-    picture: <ThemesPicture />,
+    picture: (
+      <Play>
+        <ThemesPicture />
+      </Play>
+    ),
     wide: true,
   },
 ];
@@ -59,7 +68,7 @@ export function Included() {
         <h2 id="included-title" className="mk-caps">
           Included in every plan
         </h2>
-        <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-6 lg:gap-5">
+        <ul className="mt-5 grid gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-5">
           {TILES.map((tile) => (
             <li key={tile.title} className={tile.wide ? "lg:col-span-3" : "lg:col-span-2"}>
               <div role="img" aria-label={tile.label} className="mk-mini-stage">
@@ -67,13 +76,15 @@ export function Included() {
                   {tile.picture}
                 </div>
               </div>
-              <h3 className="mk-h3 mt-4 text-[15.5px]">{tile.title}</h3>
-              <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">{tile.body}</p>
-              {tile.link ? (
-                <Link href={tile.link.href} className="mk-link mt-2 inline-flex min-h-11 items-center gap-1.5 text-[14px]">
-                  {tile.link.label} <ArrowRight size={14} aria-hidden="true" />
-                </Link>
-              ) : null}
+              <h3 className="mk-h3 mt-3 text-[15.5px]">
+                {tile.href ? (
+                  <Link href={tile.href} className="group inline-flex min-h-11 items-center gap-1.5 hover:underline">
+                    {tile.title} <ArrowRight size={14} aria-hidden="true" className="text-muted transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                ) : (
+                  <span className="inline-flex min-h-11 items-center">{tile.title}</span>
+                )}
+              </h3>
             </li>
           ))}
         </ul>
@@ -154,13 +165,15 @@ function StylesPicture() {
   return (
     <div className="relative h-[124px] w-[240px]">
       {FAN.map((art, i) => (
-        <span
-          key={art.id}
-          className="mk-mini-art absolute top-2"
-          style={{ left: `${i * 30}px`, backgroundImage: `url("/marketing/mini/${art.id}.webp")`, transform: `rotate(${(i - 2) * 5}deg)`, zIndex: i }}
-        />
+        // The step is the wrapper, so playing it never replaces the card's own rotation.
+        <span key={art.id} data-step className="absolute top-2" style={{ left: `${i * 30}px`, zIndex: i }}>
+          <span
+            className="mk-mini-art block"
+            style={{ backgroundImage: `url("/marketing/mini/${art.id}.webp")`, transform: `rotate(${(i - 2) * 5}deg)` }}
+          />
+        </span>
       ))}
-      <span className="mk-note absolute bottom-0 right-0 z-10 w-[112px] overflow-hidden shadow-(--shadow-pop)" style={artVars(note)}>
+      <span data-step className="mk-note absolute bottom-0 right-0 z-10 w-[112px] overflow-hidden shadow-(--shadow-pop)" style={artVars(note)}>
         <span className="block h-7 bg-cover bg-center" style={{ backgroundImage: `url("/marketing/mini/${note.id}.webp")` }} />
         <span className="block px-2.5 pb-2.5 pt-1.5">
           <span className="mk-note-h block text-[11px]">Trip sketch</span>
@@ -181,13 +194,13 @@ function ExportPicture() {
   ];
   return (
     <div className="flex items-center gap-4">
-      <div className="mk-mini-card w-[112px] px-3 pb-3 pt-2.5 max-sm:hidden">
+      <div data-step className="mk-mini-card w-[112px] px-3 pb-3 pt-2.5 max-sm:hidden">
         <span className="block text-[11px] font-semibold text-(--color-heading)">Reading list</span>
         <MiniLines widths={["88%", "64%", "76%"]} />
       </div>
       <div className="mk-app-pop w-[210px] rounded-control p-1 text-[12px]">
         {items.map((item, i) => (
-          <span key={item.label} className={`flex h-7 items-center gap-2 rounded-chip px-2 ${i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink"}`}>
+          <span key={item.label} data-step className={`flex h-7 items-center gap-2 rounded-chip px-2 ${i === 0 ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink"}`}>
             <span className="text-muted">{item.icon}</span>
             {item.label}
           </span>
@@ -202,7 +215,7 @@ function ThemesPicture() {
   return (
     <div className="mk-mini-themes">
       {(["light", "dark"] as const).map((theme) => (
-        <div key={theme} className="mk-mini-theme" data-mini-theme={theme}>
+        <div key={theme} data-step className="mk-mini-theme" data-mini-theme={theme}>
           <span className="flex items-center justify-between">
             <span className="text-[11.5px] font-semibold">Weekly review</span>
             {theme === "light" ? <Sun size={12} /> : <Moon size={12} />}

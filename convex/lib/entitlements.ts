@@ -8,10 +8,10 @@
 // is the person's subscription (lib/scope.ts). AI credits are in lib/credits.ts.
 //
 // Storage rules (docs/BILLING.md):
-//   Free pool: an owner's Personal (while it's on Free) and every free workspace they own share one 1 GB
+//   Free pool: an owner's Personal (while it's on Free) and every free workspace they own share one 500 MB
 //     limit; every upload in those workspaces, by anyone, counts against it.
 //   Paid workspace (Core, Pro, Pro AI): each member has the plan's storage for themselves in that
-//     workspace (20 or 50 GB). A guest's uploads count against the page owner's (or, if the page's creator
+//     workspace (10 or 50 GB). A guest's uploads count against the page owner's (or, if the page's creator
 //     is no longer a member, the workspace owner's).
 //   Admin override: a workspace with a storage override has that one total limit; a person's override
 //     replaces their Personal limit (on Free, the pool's).
@@ -98,7 +98,7 @@ async function freeWorkspacesOwnedBy(ctx: Ctx, ownerId: Id<"profiles">, now: num
 
 /**
  * The free pool of an owner: their Personal (while it's on Free, not trialing or paid) plus every free
- * workspace they own. Limit: 1 GB, or the person's storage override while their Personal is in the pool.
+ * workspace they own. Limit: 500 MB, or the person's storage override while their Personal is in the pool.
  */
 export async function freePool(ctx: Ctx, ownerId: Id<"profiles">, now = Date.now()): Promise<StorageUsage & { includesPersonal: boolean; workspaces: number }> {
   const owner = await ctx.db.get(ownerId);

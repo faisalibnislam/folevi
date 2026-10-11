@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Checks } from "@/components/marketing/Checks";
 import { TemplateCard } from "@/components/marketing/templates/TemplateCard";
 import { galleryGroups, templatePath, type GalleryTemplate } from "@/components/marketing/content/templates";
 import { availableGalleryTemplates } from "@/components/marketing/content/templateAvailability";
@@ -47,9 +48,20 @@ export default async function TemplateGalleryPage() {
         >
           <Eyebrow>Template gallery</Eyebrow>
           <h1 className="mk-display mt-4 max-w-[18ch] text-[40px] sm:text-[56px] lg:text-[64px]">Free note templates for Folevi.</h1>
-          <p className="mk-lede mt-5 max-w-[60ch]">
-            {count} templates come with every Folevi account, on every plan. Open one to see the page it makes, then start from it in the app. You can also save any page as your own template.
-          </p>
+          <p className="mk-lede mt-5 max-w-[60ch]">{count} templates, free on every plan.</p>
+          <Checks
+            className="mt-6"
+            items={[
+              <>Preview the page each one makes</>,
+              <>Start a page from it in the app</>,
+              <>
+                Save any page as{" "}
+                <Link href="/features/templates" className="mk-link">
+                  your own template
+                </Link>
+              </>,
+            ]}
+          />
           <nav aria-label="Template groups" className="mt-8">
             <ul className="flex flex-wrap gap-2">
               {groups.map((g) => (
@@ -77,16 +89,7 @@ export default async function TemplateGalleryPage() {
             </ul>
           </Card>
         ))}
-        <Card as="div" inner="px-5 py-5 sm:px-10 lg:px-14">
-          <p className="text-[15px] text-muted">
-            How templates work in the app, and how to save your own:{" "}
-            <Link href="/features/templates" className="mk-link">
-              Templates in Folevi
-            </Link>
-            .
-          </p>
-        </Card>
-        <SignUpPanel title="Start from a template." body="Every template is free on every plan, and a page you make from one is yours to change." secondary={{ label: "All features", href: "/features" }} />
+        <SignUpPanel title="Start from a template." body="Free on every plan, and the page you make is yours to change." secondary={{ label: "All features", href: "/features" }} />
       </PageFrame>
     </>
   );

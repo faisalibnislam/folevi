@@ -981,6 +981,8 @@ export default defineSchema({
     contentHash: v.string(),
     entities: v.number(),
     extractedAt: v.number(),
+    /** When a read put off by the rebuild cooldown (convex/aiGraph.ts) is due; one is scheduled at a time. */
+    nextAt: v.optional(v.number()),
   })
     .index("by_document", ["documentId"])
     .index("by_workspace", ["workspaceId"])

@@ -101,11 +101,11 @@ const price = (t: TierInfo, i: BillingInterval) => {
   return `${formatPrice(cents)}${t.perMember ? " per member" : ""} / ${i === "year" ? "year" : "month"}`;
 };
 
-/** "1 GB, shared", "20 GB per member" */
+/** "500 MB, shared", "10 GB per member" */
 const storageText = (t: TierInfo, kind: "personal" | "workspace") => (t.tier === "free" ? (kind === "personal" ? `${storageLimit(t.storageBytes)}, shared` : `Owner's ${storageLimit(t.storageBytes)}`) : `${storageLimit(t.storageBytes)}${kind === "workspace" ? " per member" : ""}`);
 
-/** "180 a month", "No AI", "Their personal credits" */
-const creditsText = (t: TierInfo, kind: "personal" | "workspace") => (!t.ai ? "No AI" : kind === "workspace" && t.tier === "free" ? "Their personal credits" : `${t.credits.toLocaleString()} a month${kind === "workspace" ? " per member" : ""}`);
+/** "180 a month", "No AI", "Trial only", "Their personal credits" */
+const creditsText = (t: TierInfo, kind: "personal" | "workspace") => (!t.ai ? "No AI" : kind === "workspace" && t.tier === "free" ? "Their personal credits" : t.tier === "free" ? "Trial only" : `${t.credits.toLocaleString()} a month${kind === "workspace" ? " per member" : ""}`);
 
 // ---------------------------------------------------------------- the dialog
 

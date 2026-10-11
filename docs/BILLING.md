@@ -15,10 +15,10 @@ storage and its own AI credits, and neither ever changes the other.
 
 |                       | Free                  | Core                     | Pro                      | Pro AI                                   |
 | --------------------- | --------------------- | ------------------------ | ------------------------ | ---------------------------------------- |
-| Personal price        | $0                    | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $12.99 a month or $149 a year        |
-| Team price, per member | $0                   | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $12.99 a month or $149 a year        |
-| Storage               | 1 GB in total, shared (below) | 20 GB per person | 20 GB per person         | 50 GB per person                         |
-| AI credits a month    | 25 per person         | none: Core has no AI     | 180 per person           | 550 per person ("Unlimited AI, fair use") |
+| Personal price        | $0                    | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $13.99 a month or $159 a year        |
+| Team price, per member | $0                   | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $13.99 a month or $159 a year        |
+| Storage               | 500 MB in total, shared (below) | 10 GB per person | 10 GB per person       | 50 GB per person                         |
+| AI credits a month    | none: AI only during the trial | none: Core has no AI | 180 per person      | 550 per person ("Unlimited AI, fair use") |
 | Credit packs          | no                    | no                       | 500 for $7.99, 1,000 for $14.99 | same                              |
 | Devices (Personal)    | 2                     | unlimited                | unlimited                | unlimited                                |
 | Members               | unlimited, nobody billed | unlimited, each billed | unlimited, each billed | unlimited, each billed                 |
@@ -27,6 +27,11 @@ storage and its own AI credits, and neither ever changes the other.
 - **Trial:** every new account gets a 7-day Pro AI trial with 100 AI credits for the whole trial (a fixed
   allowance, not prorated: 100 credits is at most $1 of AI cost). No card. When it ends the account is on
   Free unless they chose a plan; choosing a plan ends the trial.
+- **Free has AI only during the trial** (since 2026-10-11; it had 25 credits a month before). After the
+  trial a Free account has no monthly credits and can't buy packs, so every AI request is refused with
+  `out_of_credits` and "Foli AI comes with Pro and Pro AI. Upgrade in Settings → Plan & billing." Nothing is
+  sent to the model. That holds wherever the person's own credits would be used: their Personal, free
+  workspaces and pages they're a guest on.
 - **Core** is the plan without AI, and says so plainly: nothing is sent to an AI model. The server refuses
   every AI request in a Core Personal or a Core workspace, for everyone there (the owner, members and
   guests), and never sends a Core scope's pages to AI from anywhere else either. A person on Core Personal
@@ -40,11 +45,11 @@ storage and its own AI credits, and neither ever changes the other.
 ### Storage
 
 - **Free pool:** an owner's Personal (while it's on Free, not trialing or paid) and every free workspace
-  they own share one 1 GB limit. Every upload in those workspaces, by anyone, counts against the owner's
+  they own share one 500 MB limit. Every upload in those workspaces, by anyone, counts against the owner's
   pool. When the owner's Personal is on a paid plan (or the trial), their Personal has its own room and
-  their free workspaces share a 1 GB pool among themselves.
+  their free workspaces share a 500 MB pool among themselves.
 - **Paid workspaces (Core, Pro, Pro AI):** each member has the plan's storage for themselves in that
-  workspace (20 or 50 GB), not pooled. Their uploads count against their own quota there
+  workspace (10 or 50 GB), not pooled. Their uploads count against their own quota there
   (`workspaceStorage` rows; each file records `chargedTo`).
 - **Guests' uploads** count against the workspace scope they're in: in a free workspace, the owner's pool;
   in a paid workspace, the quota of the page's creator (or, if that person is no longer a member, the
@@ -68,16 +73,18 @@ storage and its own AI credits, and neither ever changes the other.
 - **Before a request** (`ai.begin`), the server holds a conservative estimate: every planned call at its
   full input (characters / 4) and its maximum output. If there aren't enough credits it refuses with
   `out_of_credits` ("You've used this month's AI credits. They reset on October 1." plus "Buy more" on Pro
-  and Pro AI, "Upgrade" on Free). The hold keeps parallel requests from spending the same credits. When the
-  request ends (`ai.settle`, however it ends) the hold is released and the real cost charged. If the real
+  and Pro AI; during the trial, "Your trial ends on October 1; after that, Foli AI comes with Pro and Pro
+  AI." and "Upgrade"; on Free after the trial, the upgrade message above). The hold keeps parallel
+  requests from spending the same credits. When the request ends (`ai.settle`, however it ends) the hold is released and the real cost charged. If the real
   cost is more than what's left, the balance goes to zero and the difference is recorded (`overrun` on the
   period row), never charged later.
 - **Whose credits:** a member's seat in a paid workspace uses that workspace's monthly credits (180 or
   550) plus packs bought for that seat. Everything else uses the person's own personal credits: their
-  Personal, free workspaces (so a Free person has 25 a month there), and pages they're a guest on.
+  Personal, free workspaces (so a Free person has AI there only during their trial), and pages they're a
+  guest on.
 - **Periods:** monthly credits reset each month of the billing period (anchored on the period's start, so
-  yearly plans also reset monthly); Free resets each calendar month (UTC); the trial has one allowance
-  for the whole trial. A new period is a new `aiCreditPeriods` row.
+  yearly plans also reset monthly); the trial has one allowance for the whole trial. Free's periods are
+  calendar months (UTC) with an allowance of 0. A new period is a new `aiCreditPeriods` row.
 - **Packs** (`aiCreditPacks`): 500 for $7.99 or 1,000 for $14.99, one-time, Pro and Pro AI only. A pack is
   bought by and belongs to one person in one scope (their Personal, or their seat in one workspace), so
   heavy users pay for themselves; packs aren't pooled for a workspace. They last 12 months from purchase
@@ -166,14 +173,14 @@ then repeat in production.
    | `personal_core_yearly`    | `POLAR_PRODUCT_PERSONAL_CORE_YEARLY`    | Folevi Core (yearly)          | Recurring | $19 fixed                      | Year     |
    | `personal_pro_monthly`    | `POLAR_PRODUCT_PERSONAL_PRO_MONTHLY`    | Folevi Pro (monthly)          | Recurring | $4.99 fixed                    | Month    |
    | `personal_pro_yearly`     | `POLAR_PRODUCT_PERSONAL_PRO_YEARLY`     | Folevi Pro (yearly)           | Recurring | $49 fixed                      | Year     |
-   | `personal_pro_ai_monthly` | `POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY` | Folevi Pro AI (monthly)       | Recurring | $12.99 fixed                   | Month    |
-   | `personal_pro_ai_yearly`  | `POLAR_PRODUCT_PERSONAL_PRO_AI_YEARLY`  | Folevi Pro AI (yearly)        | Recurring | $149 fixed                     | Year     |
+   | `personal_pro_ai_monthly` | `POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY` | Folevi Pro AI (monthly)       | Recurring | $13.99 fixed                   | Month    |
+   | `personal_pro_ai_yearly`  | `POLAR_PRODUCT_PERSONAL_PRO_AI_YEARLY`  | Folevi Pro AI (yearly)        | Recurring | $159 fixed                     | Year     |
    | `workspace_core_monthly`  | `POLAR_PRODUCT_TEAM_CORE_MONTHLY`       | Folevi Team Core (monthly)    | Recurring | Seat-based, $1.99 per seat     | Month    |
    | `workspace_core_yearly`   | `POLAR_PRODUCT_TEAM_CORE_YEARLY`        | Folevi Team Core (yearly)     | Recurring | Seat-based, $19 per seat       | Year     |
    | `workspace_pro_monthly`   | `POLAR_PRODUCT_TEAM_PRO_MONTHLY`        | Folevi Team Pro (monthly)     | Recurring | Seat-based, $4.99 per seat     | Month    |
    | `workspace_pro_yearly`    | `POLAR_PRODUCT_TEAM_PRO_YEARLY`         | Folevi Team Pro (yearly)      | Recurring | Seat-based, $49 per seat       | Year     |
-   | `workspace_pro_ai_monthly`| `POLAR_PRODUCT_TEAM_PRO_AI_MONTHLY`     | Folevi Team Pro AI (monthly)  | Recurring | Seat-based, $12.99 per seat    | Month    |
-   | `workspace_pro_ai_yearly` | `POLAR_PRODUCT_TEAM_PRO_AI_YEARLY`      | Folevi Team Pro AI (yearly)   | Recurring | Seat-based, $149 per seat      | Year     |
+   | `workspace_pro_ai_monthly`| `POLAR_PRODUCT_TEAM_PRO_AI_MONTHLY`     | Folevi Team Pro AI (monthly)  | Recurring | Seat-based, $13.99 per seat    | Month    |
+   | `workspace_pro_ai_yearly` | `POLAR_PRODUCT_TEAM_PRO_AI_YEARLY`      | Folevi Team Pro AI (yearly)   | Recurring | Seat-based, $159 per seat      | Year     |
    | `credits_500`             | `POLAR_PRODUCT_CREDITS_500`             | Folevi AI credits: 500        | One-time  | $7.99 fixed                    |          |
    | `credits_1000`            | `POLAR_PRODUCT_CREDITS_1000`            | Folevi AI credits: 1,000      | One-time  | $14.99 fixed                   |          |
 

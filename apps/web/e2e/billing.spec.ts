@@ -30,13 +30,13 @@ test("a new account is on a 7-day Pro AI trial, can take a test plan, and cancel
   await expect(card("Core").getByText("$1.58/month, billed yearly")).toBeVisible();
   await expect(card("Pro").getByText("$49", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText("$4.08/month, billed yearly")).toBeVisible();
-  await expect(card("Pro AI").getByText("$149", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("$12.41/month, billed yearly")).toBeVisible();
+  await expect(card("Pro AI").getByText("$159", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$13.25/month, billed yearly")).toBeVisible();
   await expect(card("Core").getByText("No AI. Your notes stay yours: nothing is sent to an AI model")).toBeVisible();
   await page.getByRole("group", { name: "Billing period" }).getByRole("button", { name: "Monthly" }).click();
   await expect(card("Core").getByText("$1.99", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText("$4.99", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("$12.99", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$13.99", { exact: true })).toBeVisible();
 
   // Choosing a plan ends the trial: Pro (test purchase), monthly.
   await card("Pro").getByRole("button", { name: "Choose Pro (test)" }).click();
@@ -45,7 +45,7 @@ test("a new account is on a 7-day Pro AI trial, can take a test plan, and cancel
   await expect(plan.getByText("Active", { exact: true })).toBeVisible();
   await expect(plan.getByText("180 AI credits left")).toBeVisible();
   await expect(plan.getByText(/180 of 180 monthly credits left\. Resets on /)).toBeVisible();
-  await expect(plan.getByText("Your own 20 GB on Pro.")).toBeVisible();
+  await expect(plan.getByText("Your own 10 GB on Pro.")).toBeVisible();
   await expect(card("Pro").getByRole("button", { name: "Your plan" })).toBeDisabled();
   await expect(card("Pro AI").getByRole("button", { name: "Upgrade to Pro AI (test)" })).toBeVisible();
   await expect(card("Core").getByRole("button", { name: "Change to Core (test)" })).toBeVisible();
@@ -76,7 +76,7 @@ test("Core: more room and no AI, said plainly on the plan page", async ({ browse
   await expect(plan.getByText("Core", { exact: true })).toBeVisible();
   await expect(plan.getByText("Annual", { exact: true })).toBeVisible();
   await expect(plan.getByText(/Core doesn't include AI, so nothing in your notes is sent to an AI model\./)).toBeVisible();
-  await expect(plan.getByText("Your own 20 GB on Core.")).toBeVisible();
+  await expect(plan.getByText("Your own 10 GB on Core.")).toBeVisible();
   const personal = page.getByRole("listitem", { name: "AI credits: Personal" });
   await expect(personal).toContainText("Not included in Core.");
   await expect(personal.getByRole("button", { name: "Buy credits" })).toHaveCount(0);

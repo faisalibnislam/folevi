@@ -4,7 +4,8 @@ import { cx } from "../ui";
 
 // Pictures for the Foli AI page, drawn with the app's own labels: the chat proposing changes to a note (the
 // agent's result card), a "Think it through" result, the Study tab, a recording's meeting summary and a
-// research report. Each is one image for assistive tech, described in its label.
+// research report. Each is one image for assistive tech, described in its label. Parts marked data-step appear
+// one after another when the picture is wrapped in Play.
 
 /** The Foli AI panel's frame: a popover-like card with its title row. */
 function Panel({ label, title, children, className }: { label: string; title: string; children: React.ReactNode; className?: string }) {
@@ -36,8 +37,8 @@ export function ChangesPicture() {
       label="The Foli AI panel in a note. The person asked: the section numbers are messed up, please fix. Foli AI proposes three changes to the note's own headings, shown as before and after: Section #4 becomes Section 4, a duplicate section 5 becomes Section 7, and Inight/Blog becomes Section 9: Insights / Blog. Approve and Discard buttons sit under the changes."
     >
       <div className="space-y-3 p-2">
-        <p className={userBubble}>The section numbers are all messed up. Please fix.</p>
-        <div className="rounded-control bg-(--glass-hover) p-3">
+        <p data-step className={userBubble}>The section numbers are all messed up. Please fix.</p>
+        <div data-step className="rounded-control bg-(--glass-hover) p-3">
           <p className="text-[12.5px] leading-relaxed text-ink">I renumbered the sections and fixed two headings. These changes need your approval.</p>
           <div className="mt-3 rounded-small bg-(--color-surface) p-2.5 shadow-(--shadow-control)">
             <p className="mk-caps text-[10.5px]">Proposed changes</p>
@@ -46,13 +47,13 @@ export function ChangesPicture() {
             </p>
             <ul className="mt-2 space-y-1.5 text-[12px]">
               {rows.map((r) => (
-                <li key={r.after} className="rounded-tiny bg-(--color-surface-sunken) px-2 py-1.5">
+                <li key={r.after} data-step className="rounded-tiny bg-(--color-surface-sunken) px-2 py-1.5">
                   <span className="block text-muted line-through decoration-[color-mix(in_oklab,var(--color-danger)_70%,transparent)]">{r.before}</span>
                   <span className="block font-medium text-(--color-heading)">{r.after}</span>
                 </li>
               ))}
             </ul>
-            <div className="mt-2.5 flex gap-1.5">
+            <div data-step className="mt-2.5 flex gap-1.5">
               <span className="mk-btn mk-btn-primary h-8 gap-1 px-3 text-[12px]">
                 <Check size={13} /> Approve
               </span>
@@ -93,7 +94,7 @@ export function ThinkPicture() {
           </thead>
           <tbody className="text-ink">
             {rows.map(([name, a, b, c, total]) => (
-              <tr key={name} className="border-t border-(--color-line)">
+              <tr key={name} data-step className="border-t border-(--color-line)">
                 <td className="py-1.5 font-medium text-(--color-heading)">{name}</td>
                 <td className="py-1.5 text-center tabular-nums">{a}</td>
                 <td className="py-1.5 text-center tabular-nums">{b}</td>
@@ -103,7 +104,7 @@ export function ThinkPicture() {
             ))}
           </tbody>
         </table>
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div data-step className="mt-4 flex flex-wrap gap-1.5">
           {["Pros and cons", "SWOT", "Risks", "Pre-mortem", "Mind map", "How might we", "SCAMPER", "Six hats"].map((f) => (
             <span key={f} className="rounded-chip bg-(--glass-hover) px-2 py-0.5 text-[11.5px] text-ink">
               {f}
@@ -130,15 +131,15 @@ export function StudyPicture() {
         <div className="mt-2 h-1 overflow-hidden rounded-tiny bg-(--color-surface-sunken)">
           <div className="h-full w-1/4 rounded-tiny bg-(--color-heading)" />
         </div>
-        <div className="mt-4 rounded-control bg-(--color-surface) p-4 shadow-(--shadow-control)">
+        <div data-step className="mt-4 rounded-control bg-(--color-surface) p-4 shadow-(--shadow-control)">
           <p className="mk-display text-[17px] leading-snug text-(--color-heading)">What does the mitochondria do?</p>
-          <p className="mt-3 border-t border-(--color-line) pt-3 text-[13px] leading-relaxed text-ink">It turns food into energy the cell can use (ATP).</p>
+          <p data-step className="mt-3 border-t border-(--color-line) pt-3 text-[13px] leading-relaxed text-ink">It turns food into energy the cell can use (ATP).</p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <span className="mk-btn mk-btn-secondary h-9 gap-1.5 text-[12.5px]">
+          <span data-step className="mk-btn mk-btn-secondary h-9 gap-1.5 text-[12.5px]">
             <RotateCcw size={13} /> Again
           </span>
-          <span className="mk-btn mk-btn-primary h-9 gap-1.5 text-[12.5px]">
+          <span data-step className="mk-btn mk-btn-primary h-9 gap-1.5 text-[12.5px]">
             <Check size={13} /> Know it
           </span>
         </div>
@@ -155,7 +156,7 @@ export function MeetingPicture() {
       label="A recording in a note, transcribed by Foli AI, and the meeting summary made from it: decisions, then action items as to-dos with owners and due dates, like '@Maya: send the venue shortlist (due 14 October)'."
     >
       <div className="space-y-3 p-4">
-        <div className="flex items-center gap-2.5 rounded-control bg-(--color-surface-sunken) px-3 py-2">
+        <div data-step className="flex items-center gap-2.5 rounded-control bg-(--color-surface-sunken) px-3 py-2">
           <span className="grid size-7 place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas)">
             <Mic size={14} />
           </span>
@@ -164,7 +165,7 @@ export function MeetingPicture() {
             <p className="text-[11px] text-muted">18:42 · Transcribed</p>
           </div>
         </div>
-        <div>
+        <div data-step>
           <p className="mk-caps text-[10.5px]">Decisions</p>
           <p className="mt-1 text-[12.5px] text-ink">Hold the launch event in Lisbon, the first week of November.</p>
         </div>
@@ -176,7 +177,7 @@ export function MeetingPicture() {
               ["Ines", "draft the invite list", "16 Oct"],
               ["Sam", "book the photographer", "20 Oct"],
             ].map(([who, what, when]) => (
-              <li key={who} className="flex items-start gap-2">
+              <li key={who} data-step className="flex items-start gap-2">
                 <span className="mt-[3px] size-[13px] flex-none rounded-tiny shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]" />
                 <span className="min-w-0 flex-1">
                   <span className="rounded-tiny bg-(--color-accent-soft) px-1 font-medium text-(--color-heading)">@{who}</span> {what}
@@ -199,16 +200,16 @@ export function ResearchPicture() {
       label="A Foli AI research report on heat pumps versus gas boilers. Steps show it searched the web and read six pages and two of the person's notes. The report has numbered sources from the web and the notes, and a Save as note button."
     >
       <div className="space-y-3 p-4">
-        <p className={userBubble}>How do heat pumps compare with gas boilers?</p>
+        <p data-step className={userBubble}>How do heat pumps compare with gas boilers?</p>
         <ul className="space-y-1 text-[11.5px] text-muted">
-          <li className="flex items-center gap-1.5">
+          <li data-step className="flex items-center gap-1.5">
             <Check size={12} /> Searched the web (3 searches)
           </li>
-          <li className="flex items-center gap-1.5">
+          <li data-step className="flex items-center gap-1.5">
             <Check size={12} /> Read 6 pages and 2 of your notes
           </li>
         </ul>
-        <div className="rounded-control bg-(--glass-hover) p-3 text-[12.5px] leading-relaxed text-ink">
+        <div data-step className="rounded-control bg-(--glass-hover) p-3 text-[12.5px] leading-relaxed text-ink">
           <p className="font-semibold text-(--color-heading)">Running costs</p>
           <p className="mt-1">
             A heat pump uses about a third of the energy for the same heat <sup className="text-muted">[1]</sup>, so it costs less to run where electricity isn’t much dearer than gas <sup className="text-muted">[2]</sup>.
@@ -222,7 +223,7 @@ export function ResearchPicture() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div data-step className="flex items-center gap-2">
           <span className="mk-btn mk-btn-secondary h-8 px-3 text-[12px]">Save as note</span>
           <span className="ml-auto grid size-8 place-items-center rounded-control bg-(--color-heading) text-(--color-canvas) opacity-40">
             <ArrowUp size={14} />

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookOpenCheck, Brain, Languages, Lightbulb, Lock, Mail, Network, Search, Sparkles, ToggleRight, Undo2, Users } from "lucide-react";
+import { Brain, Languages, Lightbulb, Mail, Network, Search } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AI_LANGUAGES } from "@/components/ai/languages";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
@@ -10,9 +10,11 @@ import { EditDemo } from "@/components/marketing/demos/EditDemo";
 import { FlowchartDemo } from "@/components/marketing/demos/FlowchartDemo";
 import { TitleDemo } from "@/components/marketing/demos/TitleDemo";
 import { WriteDemo } from "@/components/marketing/demos/WriteDemo";
+import { Checks } from "@/components/marketing/Checks";
 import { Feature, SmallFeature } from "@/components/marketing/featureRows";
 import { ChangesPicture, MeetingPicture, ResearchPicture, StudyPicture, ThinkPicture } from "@/components/marketing/foli/pictures";
 import { SignUpPanel } from "@/components/marketing/parts";
+import { Play } from "@/components/marketing/Play";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SIGN_UP_URL } from "@/components/marketing/site";
 import { ButtonLink, Eyebrow, Kbd, SectionHeading } from "@/components/marketing/ui";
@@ -25,25 +27,27 @@ export const metadata = pageMetadata({
   path: "/foli-ai",
 });
 
-/** One more thing Foli AI does, as a small card with an icon. */
-function Extra({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+/** One more thing Foli AI does, as a small tile with an icon (and the plans it's on, when not every plan). */
+function Extra({ icon, title, plans }: { icon: ReactNode; title: string; plans?: string }) {
   return (
-    <li className="mk-card p-5">
-      <span aria-hidden="true" className="grid size-9 place-items-center rounded-control bg-(--glass-hover) text-(--color-heading)">
+    <li className="mk-card flex items-center gap-3.5 p-4">
+      <span aria-hidden="true" className="grid size-9 flex-none place-items-center rounded-control bg-(--glass-hover) text-(--color-heading)">
         {icon}
       </span>
-      <h3 className="mk-h3 mt-4 text-[16.5px]">{title}</h3>
-      <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">{children}</p>
+      <div className="min-w-0">
+        <h3 className="mk-h3 text-[15.5px]">{title}</h3>
+        {plans ? <p className="mt-0.5 text-[13px] text-muted">{plans}</p> : null}
+      </div>
     </li>
   );
 }
 
-const PLACES: { where: ReactNode; what: string }[] = [
-  { where: <b>Foli AI on a note’s floating bar</b>, what: "Write, Ask and Study, about the note you’re in." },
-  { where: <><b>Ask Foli AI</b> (<Kbd>⌘J</Kbd>) everywhere else</>, what: "A chat about all your notes, or one folder." },
-  { where: <><Kbd>/</Kbd> on an empty line</>, what: "The AI items: write, summarize, flowcharts and more." },
-  { where: <b>Select text</b>, what: "Edit with AI: rewrite, translate, explain." },
-  { where: <b>The Foli AI page</b>, what: "Every chat, to rename, pin, search, export or share." },
+const PLACES: ReactNode[] = [
+  <><b>Floating bar</b> in a note</>,
+  <><Kbd>⌘J</Kbd> anywhere else</>,
+  <><Kbd>/</Kbd> on an empty line</>,
+  <><b>Select text</b> to edit it</>,
+  <><b>Foli AI page</b> for every chat</>,
 ];
 
 export default function FoliPage() {
@@ -60,9 +64,7 @@ export default function FoliPage() {
             <AiIcon size={36} />
             <Eyebrow className="mt-6">Foli AI</Eyebrow>
             <h1 className="mk-display mt-4 max-w-[16ch] text-[44px] sm:text-[60px] lg:text-[68px]">The assistant that knows your notes.</h1>
-            <p className="mk-lede mt-6 max-w-[52ch]">
-              Foli AI answers questions from your notes, writes and edits with you, and tidies a page when you ask. It shows every change before it happens, only reads the notes you can open, and you can switch it off.
-            </p>
+            <p className="mk-lede mt-6 max-w-[52ch]">Answers from your notes, and edits you approve first.</p>
             <div className="mt-8 flex flex-wrap gap-2.5">
               <ButtonLink href={SIGN_UP_URL} icon="arrow-right">
                 Start writing
@@ -74,11 +76,10 @@ export default function FoliPage() {
           </div>
           <div className="mk-card p-6 sm:p-7">
             <p className="mk-caps">Where to find it</p>
-            <ul className="mt-4 space-y-3.5">
-              {PLACES.map((p, i) => (
-                <li key={i} className="text-[14.5px] leading-snug [&_b]:font-semibold [&_b]:text-(--color-heading)">
-                  <span className="block text-ink">{p.where}</span>
-                  <span className="block text-muted">{p.what}</span>
+            <ul className="mt-3">
+              {PLACES.map((place, i) => (
+                <li key={i} className="border-t py-2.5 text-[15px] text-ink mk-hair first:border-t-0 [&_b]:font-semibold [&_b]:text-(--color-heading)">
+                  {place}
                 </li>
               ))}
             </ul>
@@ -87,7 +88,7 @@ export default function FoliPage() {
       </HeaderCard>
 
       <Card aria-labelledby="ask-title">
-        <SectionHeading id="ask-title" eyebrow="Ask and change" title="Ask a question, or ask for a change." lede="One chat for both. Questions get an answer with the notes it came from. Requests to change your notes become a set of changes you review and approve." />
+        <SectionHeading id="ask-title" eyebrow="Ask and change" title="Ask a question, or ask for a change." lede="One chat for both." />
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
             eyebrow="Ask"
@@ -95,17 +96,11 @@ export default function FoliPage() {
             art="art-49"
             picture={<AskDemo />}
             points={[
-              <>Every answer lists the notes it used. Click one to open it at the right place.</>,
-              <>Ask follow-ups in the same chat, or ask about one folder so answers stay inside it.</>,
-              <>
-                Attach files: PDFs, images, spreadsheets and text. Numbers in a spreadsheet are worked out exactly, not guessed.
-              </>,
-              <>Turn on <b>Web</b> (when web research is on in Settings) to mix in what the web says, with links to the pages it read.</>,
-              <>Chats are saved: rename, pin, search, export or delete them, or turn history off. Share one with your workspace; people only see it if they can open every note it cites.</>,
+              <>Click a source to open the note</>,
+              <>Attach PDFs, images and spreadsheets</>,
+              <>Turn on <b>Web</b> for web sources</>,
             ]}
-          >
-            Try “What am I working on this week?” or “Which tasks are still open?”. If your notes don’t have the answer, Foli AI says so before it gives a general one.
-          </Feature>
+          />
 
           <Feature
             reverse
@@ -113,21 +108,22 @@ export default function FoliPage() {
             eyebrow="Make changes"
             title="Ask it to fix the note. It changes the note."
             art="art-27"
-            picture={<ChangesPicture />}
+            picture={
+              <Play>
+                <ChangesPicture />
+              </Play>
+            }
             points={[
-              <>Fix, tidy, renumber, rename, shorten or reorganise a page. Foli AI edits the note’s own blocks, so images, embeds and links stay where they are.</>,
-              <>Move notes into folders, add tags, make a note, a checklist or tasks, or merge duplicates.</>,
-              <>You see every change first, as before and after. Approve all of them or only some.</>,
-              <>A version of each note is saved before anything changes, and one <b>Undo</b> puts it all back.</>,
+              <>Fix, tidy or reorganise a page</>,
+              <>Approve each change first</>,
+              <>One <b>Undo</b> puts it all back</>,
             ]}
-          >
-            Say what you want in the chat, like “the section numbers are messed up, please fix” or “put my travel notes in a Travel folder”. Nothing changes until you approve it.
-          </Feature>
+          />
         </div>
       </Card>
 
       <Card aria-labelledby="write-title">
-        <SectionHeading id="write-title" eyebrow="Write and edit" title="Write with it, right in the page." lede="It uses the note you’re in as context, writes as you watch, and you can stop it, try again or tweak the result before it goes in." />
+        <SectionHeading id="write-title" eyebrow="Write and edit" title="Write with it, right in the page." lede="It uses the note you’re in as context." />
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
             eyebrow="Edit selected text"
@@ -135,16 +131,11 @@ export default function FoliPage() {
             art="art-16"
             picture={<EditDemo />}
             points={[
-              <>Improve the writing, fix spelling and grammar, make it shorter, longer or simpler, or change the tone.</>,
-              <>Translate into {AI_LANGUAGES.length} languages, or ask it to explain or summarize the selection.</>,
-              <>Turn text into a list, a table or a checklist, or type your own instruction.</>,
-              <>
-                See the changes before they replace anything. <b>Replace</b> swaps the text; <b>Insert below</b> keeps both.
-              </>,
+              <>Rewrite, shorten or change the tone</>,
+              <>Translate into {AI_LANGUAGES.length} languages</>,
+              <>Preview before it replaces anything</>,
             ]}
-          >
-            Select a sentence or a whole section and press <Kbd>⌘J</Kbd>, or use the AI button in the selection toolbar.
-          </Feature>
+          />
 
           <Feature
             reverse
@@ -154,14 +145,11 @@ export default function FoliPage() {
             art="art-03"
             picture={<WriteDemo />}
             points={[
-              <><b>Continue</b> picks up where you stopped. <b>Summarize</b> and <b>Outline</b> sum up long pages.</>,
-              <><b>Action items</b> writes real to-dos, so they show up in Tasks with the rest.</>,
-              <><b>Brainstorm</b> gives you a list to start from, and <b>Title</b> suggests a name for the note.</>,
-              <>Or describe what you want: a paragraph, an email, or a whole page.</>,
+              <><b>Continue</b>, <b>Summarize</b> or <b>Outline</b></>,
+              <><b>Action items</b> become to-dos</>,
+              <>Or describe what you want</>,
             ]}
-          >
-            Open Foli AI from the floating bar, type <Kbd>/</Kbd> on an empty line, or press <Kbd>⌘J</Kbd>.
-          </Feature>
+          />
 
           <Feature
             stacked
@@ -170,32 +158,32 @@ export default function FoliPage() {
             art="art-42"
             picture={<FlowchartDemo />}
             points={[
-              <>Write the steps, or one sentence. Foli AI draws the shapes, decisions and arrows, and lays them out.</>,
-              <>Change it in words: “add an approval step after review”.</>,
-              <>Every shape stays editable, and <Kbd>⌘Z</Kbd> undoes the whole AI change.</>,
+              <>Write the steps, or one sentence</>,
+              <>Change it in words</>,
+              <>Every shape stays editable</>,
             ]}
-          >
-            Insert a flowchart with <Kbd>/</Kbd> and click <b>Create with AI</b>, or the <b>AI</b> button on a chart you already have.
-          </Feature>
+          />
         </div>
       </Card>
 
       <Card aria-labelledby="think-title">
-        <SectionHeading id="think-title" eyebrow="Think, study and meet" title="Decide, learn and follow up." lede="Tools that work on the note you’re in, or just the part you’ve selected." />
+        <SectionHeading id="think-title" eyebrow="Think, study and meet" title="Decide, learn and follow up." lede="On the note you’re in, or just a selection." />
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
             eyebrow="Think it through"
             title="Nine ways to work through a decision."
             art="art-12"
-            picture={<ThinkPicture />}
+            picture={
+              <Play>
+                <ThinkPicture />
+              </Play>
+            }
             points={[
-              <>Pros and cons, a decision matrix, SWOT, risks and what to do about them, and a pre-mortem.</>,
-              <>A mind map, “How might we” questions, SCAMPER and six thinking hats for new ideas.</>,
-              <>A decision matrix’s weighted totals are worked out exactly, and a pre-mortem ends in to-dos.</>,
+              <>Pros and cons, SWOT and a decision matrix</>,
+              <>Mind map, SCAMPER and six thinking hats</>,
+              <>Weighted totals worked out exactly</>,
             ]}
-          >
-            Pick a framework in Foli AI’s Write tab. It reads the note, or your selection, and writes the result for you to insert.
-          </Feature>
+          />
 
           <Feature
             reverse
@@ -203,29 +191,33 @@ export default function FoliPage() {
             eyebrow="Study"
             title="Flashcards and quizzes from any note."
             art="art-40"
-            picture={<StudyPicture />}
+            picture={
+              <Play>
+                <StudyPicture />
+              </Play>
+            }
             points={[
-              <>Foli AI writes flashcards and quiz questions into the note, as toggles you can edit.</>,
-              <>The <b>Study</b> tab flips through cards (Know it or Again) and runs the quiz with explanations and a score.</>,
-              <>It can use toggles you wrote yourself, too.</>,
+              <>Written into the note as toggles</>,
+              <>Flip cards: <b>Know it</b> or <b>Again</b></>,
+              <>Quizzes with explanations and a score</>,
             ]}
-          >
-            Good for class notes, a book you’re reading or anything you want to remember.
-          </Feature>
+          />
 
           <Feature
             eyebrow="Meetings and voice notes"
             title="From a recording to who does what."
             art="art-38"
-            picture={<MeetingPicture />}
+            picture={
+              <Play>
+                <MeetingPicture />
+              </Play>
+            }
             points={[
-              <>Record a voice note in any page, then <b>Transcribe</b> it when you want to (never on its own).</>,
-              <>A meeting summary lists the decisions, then the action items as to-dos.</>,
-              <>Owners become mentions and the to-do’s assignee, and real dates become due dates.</>,
+              <><b>Transcribe</b> recordings when you choose</>,
+              <>Decisions, then to-dos</>,
+              <>Owners and due dates filled in</>,
             ]}
-          >
-            Use it on a transcript, on notes you typed during the meeting, or on a pasted agenda.
-          </Feature>
+          />
         </div>
       </Card>
 
@@ -238,74 +230,54 @@ export default function FoliPage() {
           eyebrow="Research"
           title="A report from the web and your notes."
           art="art-30"
-          picture={<ResearchPicture />}
+          picture={
+            <Play>
+              <ResearchPicture />
+            </Play>
+          }
           points={[
-            <>Foli AI searches the web, reads the pages and your notes, and writes a report with numbered sources.</>,
-            <>It works in the background for a few minutes, so you can keep writing.</>,
-            <><b>Save as note</b> keeps the report, with its sources, in your notes.</>,
+            <>Numbered sources from both</>,
+            <>Runs in the background while you write</>,
+            <><b>Save as note</b> keeps it</>,
           ]}
-        >
-          Pick <b>Research</b> in the chat. It shows when web research is on in Settings.
-        </Feature>
+        />
       </Card>
 
       <Card aria-labelledby="more-title">
         <SectionHeading id="more-title" eyebrow="Around your notes" title="And the quieter things." />
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <SmallFeature art="art-30" picture={<CatchUpDemo />} title="Catch me up" body="On Home, one click writes a short brief of your week: what changed in your notes and the tasks due next, with links." />
-          <SmallFeature art="art-01" picture={<TitleDemo />} title="Titles" body="Foli AI suggests a title from what the note says, and untitled notes offer it on their own." />
+          <SmallFeature art="art-30" picture={<CatchUpDemo />} title="Catch me up" body="A short brief of your week, from Home." />
+          <SmallFeature art="art-01" picture={<TitleDemo />} title="Titles" body="A title from what the note says." />
         </div>
-        <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Extra icon={<Languages size={17} />} title="Translate a whole note">
-            Into a new note beside the original, or in place after a preview. Mentions, links and code stay as they are.
-          </Extra>
-          <Extra icon={<Lightbulb size={17} />} title="Suggestions under a note">
-            Open questions and lines that read like tasks, found without using credits (plus related notes and likely duplicates on Pro, Pro AI and paid teams). Turn a line into a to-do or link a note in one click.
-          </Extra>
-          <Extra icon={<Network size={17} />} title="A graph of your notes">
-            The people, projects and topics in your notes and how they connect, as a map you can explore with the mouse or the keyboard. On Pro, Pro AI and paid team workspaces.
-          </Extra>
-          <Extra icon={<Brain size={17} />} title="Memory you control">
-            Tell Foli AI how you like answers (tone, language, length, words to use) and it remembers. Only what you save; edit or delete it in Settings.
-          </Extra>
-          <Extra icon={<Mail size={17} />} title="Daily or weekly digests">
-            A short note in your Inbox on what changed and what’s due, at the time you choose. Off until you turn it on.
-          </Extra>
-          <Extra icon={<Search size={17} />} title="Search by meaning">
-            On Pro, Pro AI and paid team workspaces, Foli AI finds notes by what they mean, not only the words in them.
-          </Extra>
+        <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Extra icon={<Languages size={17} />} title="Translate a whole note" />
+          <Extra icon={<Lightbulb size={17} />} title="Suggestions under a note" />
+          <Extra icon={<Brain size={17} />} title="Memory you control" />
+          <Extra icon={<Mail size={17} />} title="Daily or weekly digests" />
+          <Extra icon={<Network size={17} />} title="A graph of your notes" plans="Pro, Pro AI and paid teams" />
+          <Extra icon={<Search size={17} />} title="Search by meaning" plans="Pro, Pro AI and paid teams" />
         </ul>
       </Card>
 
       <Card aria-labelledby="private-title">
-        <SectionHeading id="private-title" eyebrow="Private and in your control" title="Your notes stay yours." />
-        <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Extra icon={<Lock size={17} />} title="Only what you can open">
-            Foli AI reads only the notes you can open, and a shared chat only shows to people who can open every note it cites.
-          </Extra>
-          <Extra icon={<Sparkles size={17} />} title="Not used for training">
-            Requests go to Google’s paid Gemini API, which doesn’t use them to train models. Folevi doesn’t train models on your notes either.
-          </Extra>
-          <Extra icon={<Undo2 size={17} />} title="Nothing changes on its own">
-            Every change to your notes is previewed and needs your approval. A version is saved first, and one Undo reverses it.
-          </Extra>
-          <Extra icon={<ToggleRight size={17} />} title="Switches in Settings">
-            Turn Foli AI off, turn chat history off, and choose whether it can use the web or read attached files.
-          </Extra>
-          <Extra icon={<Users size={17} />} title="Teams decide too">
-            In a workspace, Foli AI follows its plan and members’ access. A Core workspace has no AI at all.
-          </Extra>
-          <Extra icon={<BookOpenCheck size={17} />} title="It says what it doesn’t know">
-            When your notes don’t answer the question, Foli AI says so before it gives a general answer.
-          </Extra>
-        </ul>
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
+          <SectionHeading id="private-title" eyebrow="Private and in your control" title="Your notes stay yours." lede="Foli AI reads only the notes you can open." />
+          <Checks
+            className="lg:text-[16px]"
+            items={[
+              <>Not used to train AI models</>,
+              <>Every change needs your approval</>,
+              <>Switch it off in Settings</>,
+            ]}
+          />
+        </div>
       </Card>
 
       <Card aria-labelledby="plans-title">
-        <SectionHeading id="plans-title" eyebrow="Plans and credits" title="Pay for the AI you use." lede="Foli AI runs on AI credits. One credit is one cent of what the AI costs to run: rewriting a paragraph is about 1 credit, a question about 2, a flowchart 3 to 5." />
+        <SectionHeading id="plans-title" eyebrow="Plans and credits" title="Pay for the AI you use." lede="One credit is one cent of what the AI costs." />
         <dl className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Free", `${MONTHLY_CREDITS.free} credits a month`],
+            ["Free", `${TRIAL_CREDITS} in the ${TRIAL_DAYS}-day trial`],
             ["Core", "No AI at all"],
             ["Pro", `${MONTHLY_CREDITS.pro} credits a month`],
             ["Pro AI", `${MONTHLY_CREDITS.pro_ai} credits a month`],
@@ -316,15 +288,18 @@ export default function FoliPage() {
             </div>
           ))}
         </dl>
-        <ul className="mt-6 max-w-[70ch] space-y-2 text-[15px] leading-relaxed text-muted">
-          <li>
-            New accounts start with a {TRIAL_DAYS}-day Pro AI trial with {TRIAL_CREDITS} credits.
-          </li>
-          <li>
-            On Pro and Pro AI you can add a pack of {CREDIT_PACKS.credits_500.credits.toLocaleString("en-US")} or {CREDIT_PACKS.credits_1000.credits.toLocaleString("en-US")} credits, used after the monthly ones and valid for 12 months.
-          </li>
-          <li>In a paid team workspace, every member gets the plan’s credits for that workspace.</li>
-        </ul>
+        <Checks
+          className="mt-8"
+          items={[
+            <>
+              New accounts get a {TRIAL_DAYS}-day Pro AI trial with {TRIAL_CREDITS} credits
+            </>,
+            <>
+              Packs of {CREDIT_PACKS.credits_500.credits.toLocaleString("en-US")} or {CREDIT_PACKS.credits_1000.credits.toLocaleString("en-US")} credits on Pro and Pro AI
+            </>,
+            <>Paid team members each get the plan’s credits</>,
+          ]}
+        />
         <p className="mt-6 flex flex-wrap gap-x-8 gap-y-1 text-[15px]">
           <Link href="/pricing" className="mk-link inline-flex min-h-11 items-center">
             See pricing
@@ -338,7 +313,7 @@ export default function FoliPage() {
         </p>
       </Card>
 
-      <SignUpPanel title="Ask your notes something." body="Create an account, write a few notes, and ask Foli AI about them. The Free plan includes AI credits every month." />
+      <SignUpPanel title="Ask your notes something." body={`Every new account gets ${TRIAL_CREDITS} AI credits to try it, free for ${TRIAL_DAYS} days.`} />
     </PageFrame>
   );
 }

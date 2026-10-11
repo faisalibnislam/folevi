@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { COVER_ART } from "@/lib/cover";
-import { CREDIT_PACKS, GB, MONTHLY_CREDITS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TRIAL_DAYS, formatPrice } from "@/lib/plans";
+import { CREDIT_PACKS, MONTHLY_CREDITS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
 import { BUILT_IN_TEMPLATES } from "@/lib/templates";
 
 /*
@@ -76,7 +76,7 @@ export type Competitor = {
 
 const c = COMPARE_CHECKED;
 const src = (id: string, title: string, url: string): CompareSource => ({ id, title, url, checked: c });
-const gb = (bytes: number) => `${bytes / GB} GB`;
+const gb = sizeLabel;
 const credits = (n: number) => n.toLocaleString("en-US");
 const STYLE_COUNT = COVER_ART.length;
 const TEMPLATE_COUNT = BUILT_IN_TEMPLATES.length;
@@ -86,13 +86,13 @@ const p = (cents: number) => formatPrice(cents);
 
 /** Folevi's column. Every value comes from the plan catalog or from what the app does today. */
 export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }> = {
-  price: { label: "Free plan", value: `$0, with ${gb(STORAGE_BYTES.free)} of storage, ${MONTHLY_CREDITS.free} AI credits a month and ${FREE_DEVICES} devices` },
+  price: { label: "Free plan", value: `$0, with ${gb(STORAGE_BYTES.free)} of storage and ${FREE_DEVICES} devices, with AI during the ${TRIAL_DAYS}-day trial` },
   monthly: { label: "Paid plans, monthly", value: `Core ${p(PRICES.core.month)}, Pro ${p(PRICES.pro.month)} and Pro AI ${p(PRICES.pro_ai.month)} a month` },
   yearly: { label: "Paid plans, yearly", value: `Core ${p(PRICES.core.year)}, Pro ${p(PRICES.pro.year)} and Pro AI ${p(PRICES.pro_ai.year)} a year` },
   teams: { label: "Teams", value: "Workspaces on the same four plans, priced per member. Guests are free." },
   ai: {
     label: "AI",
-    value: `Metered in credits: Free ${MONTHLY_CREDITS.free} a month, Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai} (fair use). Core has no AI. Packs of ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}.`,
+    value: `Metered in credits: Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai} (fair use). Free has AI only during the trial, and Core has none. Packs of ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}.`,
   },
   offline: { label: "Offline", value: "Yes, in the browser. Every edit is saved on the device first and syncs when you reconnect." },
   platforms: { label: "Apps", value: "Web, in any modern browser, and installable as a web app. Mac app coming soon. No iOS, iPad, Android or Windows app yet." },
@@ -180,7 +180,7 @@ export const COMPETITORS: Competitor[] = [
     h1: "Folevi vs Notion",
     intro:
       "Notion is a workspace for documents, wikis, databases and projects, with apps on every major platform and a large set of integrations. It suits teams that run their work from linked databases. Folevi is a smaller notes app: pages, tasks and linked notes that you can edit offline in the browser, from $1.99 a month.",
-    summary: "Databases and integrations, or a smaller notes app that works offline in the browser.",
+    summary: "Databases, or lighter notes that work offline.",
     updated: "2026-09-30",
     rows: [
       { key: "price", them: "$0. File uploads up to 5 MB each. Up to 10 guests.", sources: ["pricing"] },
@@ -256,7 +256,7 @@ export const COMPETITORS: Competitor[] = [
     h1: "Folevi vs Craft",
     intro:
       "Craft is a documents and notes app with native apps for Apple devices, Windows and Android, plus a web app. It includes tasks, a calendar, whiteboards and publishing, and suits people who want designed documents on many devices. Folevi is a notes app for the web with tasks and linked pages, offline editing in the browser, and a plan with no AI.",
-    summary: "Native apps and designed documents, or web notes with a plan that has no AI.",
+    summary: "Designed documents, or web notes with a no-AI plan.",
     updated: "2026-09-30",
     rows: [
       { key: "price", them: "$0, with 1 GB of storage, 25 MB per upload, 1,500 blocks and 15 AI credits", sources: ["pricing"] },
@@ -326,7 +326,7 @@ export const COMPETITORS: Competitor[] = [
     h1: "Folevi vs Apple Notes",
     intro:
       "Apple Notes comes with every iPhone, iPad and Mac and syncs through iCloud. It’s good for quick notes, scanned documents, handwriting with Apple Pencil and checklists, especially if everyone you share with uses Apple devices. Folevi is a notes app in the browser with tasks that have dates, linked pages, team workspaces and export to Markdown, HTML and PDF.",
-    summary: "Built into Apple devices, or a browser notes app with tasks and workspaces.",
+    summary: "Built into Apple devices, or notes with tasks.",
     updated: "2026-09-30",
     rows: [
       { key: "price", them: "Built into iPhone, iPad and Mac. iCloud includes 5 GB free (1 GB for accounts used only on the web).", sources: ["platforms", "icloud", "webonly"] },
@@ -394,7 +394,7 @@ export const COMPETITORS: Competitor[] = [
     h1: "Folevi vs Obsidian",
     intro:
       "Obsidian keeps your notes as Markdown files in a folder on your own device, and it’s free to use. It has apps for desktop and mobile, a large library of community plugins and themes, and paid add-ons for sync and publishing. It suits people who want local files and to shape the app themselves. Folevi is a hosted notes app: sync, sharing and team workspaces are part of every plan, and it runs in the browser.",
-    summary: "Local Markdown files and plugins, or hosted notes with sync and sharing built in.",
+    summary: "Local Markdown files, or notes with sync built in.",
     updated: "2026-09-30",
     rows: [
       { key: "price", them: "The app is free, including for work. A commercial licence is optional, at $50 per user a year.", sources: ["license", "pricing"] },
@@ -473,7 +473,7 @@ export const COMPETITORS: Competitor[] = [
     h1: "Folevi vs Bear",
     intro:
       "Bear is a Markdown notes app for Mac, iPhone and iPad, with tags, a clean editor and iCloud sync on its Pro plan. It suits people who write on Apple devices and want a quiet place for text. Folevi is a notes app in the browser with tasks that have dates, linked pages, sharing and team workspaces.",
-    summary: "A Markdown editor for Apple devices, or browser notes with tasks and sharing.",
+    summary: "Markdown on Apple devices, or notes with sharing.",
     updated: "2026-09-30",
     rows: [
       { key: "price", them: "$0. Notes stay on the device (iCloud sync is on Pro). Export to TXT, Markdown, TextBundle and RTF.", sources: ["home"] },
@@ -541,7 +541,7 @@ export const COMPETITORS: Competitor[] = [
     h1: "Folevi vs Evernote",
     intro:
       "Evernote is a notes app with a web clipper, document scanning, tasks and a calendar, and apps for the web, Mac, Windows, iOS and Android. It suits people who collect a lot of material from the web and from paper. Folevi is a notes app in the browser with block documents, linked pages, tasks and team workspaces, and paid plans from $1.99 a month.",
-    summary: "Web clipping and scanning, or block documents and tasks from $1.99 a month.",
+    summary: "Web clipping, or block documents and tasks.",
     updated: "2026-09-30",
     rows: [
       { key: "price", them: "$0, with 50 notes, 1 notebook, 1 device and 1 GB of storage", sources: ["compare", "devices"] },
@@ -600,7 +600,7 @@ export const COMPETITORS: Competitor[] = [
     faq: [
       { q: "Is Folevi an Evernote alternative?", a: "For notes, tasks and documents on the web, yes. Folevi doesn’t have Evernote’s web clipper, document scanning, phone apps or integrations." },
       { q: "Can I import my Evernote notes?", a: "Not directly. Folevi imports Markdown and text, and Evernote exports ENEX, HTML and PDF. Convert the ENEX file to Markdown first, for example with Obsidian’s Importer plugin or Apple Notes on a Mac, then import the Markdown." },
-      { q: "Does the Folevi Free plan limit notes?", a: `No. Free has no limit on notes or folders. It has ${gb(STORAGE_BYTES.free)} of storage, ${MONTHLY_CREDITS.free} AI credits a month and works on ${FREE_DEVICES} devices.` },
+      { q: "Does the Folevi Free plan limit notes?", a: `No. Free has no limit on notes or folders. It has ${gb(STORAGE_BYTES.free)} of storage, works on ${FREE_DEVICES} devices, and has AI during the ${TRIAL_DAYS}-day trial.` },
       { q: "Does Folevi have mobile apps?", a: "Not yet. Folevi runs in the browser, and the Mac app is coming soon. There is no iOS or Android app yet." },
       { q: "Does Folevi work offline?", a: "Yes, in the browser. Every edit is saved on your device first and syncs when you reconnect." },
     ],

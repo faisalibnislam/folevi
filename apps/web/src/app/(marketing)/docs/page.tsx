@@ -4,7 +4,7 @@ import { LegacyAnchor } from "@/components/marketing/docs/LegacyAnchor";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
-import { SUPPORT_EMAIL, absoluteUrl } from "@/components/marketing/site";
+import { absoluteUrl } from "@/components/marketing/site";
 import { Eyebrow } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
@@ -40,7 +40,11 @@ export default function DocsIndexPage() {
           <Eyebrow>Documentation</Eyebrow>
           <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">How Folevi works.</h1>
           <p className="mk-lede mt-5 max-w-[60ch]">
-            The essentials, one article at a time. If something here doesn’t match what you see in the app, <Link href="/support" className="mk-link">tell us</Link>. The docs should never be wrong.
+            The essentials, one topic per article. Something wrong?{" "}
+            <Link href="/support" className="mk-link">
+              Tell us
+            </Link>
+            .
           </p>
         </HeaderCard>
         <Card as="div">
@@ -53,14 +57,13 @@ export default function DocsIndexPage() {
             ))}
           </ol>
           <p className="mt-10 text-[15px] text-muted">
-            Looking for a feature overview instead? See <Link href="/features" className="mk-link">all features</Link>, or write to{" "}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="mk-link">
-              {SUPPORT_EMAIL}
-            </a>
-            .
+            Want an overview?{" "}
+            <Link href="/features" className="mk-link">
+              All features
+            </Link>
           </p>
         </Card>
-        <SignUpPanel body="The Free plan has no time limit, and you can export your notes to Markdown, HTML or PDF at any time." secondary={{ label: "Contact support", href: "/support" }} />
+        <SignUpPanel body="Free has no time limit. Export your notes any time." secondary={{ label: "Contact support", href: "/support" }} />
       </PageFrame>
     </>
   );

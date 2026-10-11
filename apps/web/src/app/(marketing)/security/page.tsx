@@ -1,7 +1,10 @@
-import { DocShell } from "@/components/marketing/DocShell";
+import type { ReactNode } from "react";
+import { Checks } from "@/components/marketing/Checks";
+import { Icon } from "@/components/marketing/icons";
+import { Play } from "@/components/marketing/Play";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
-import { PageHeader } from "@/components/marketing/ui";
+import { PageHeader, container, cx } from "@/components/marketing/ui";
 import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
@@ -10,19 +13,6 @@ export const metadata = pageMetadata({
     "How Folevi protects your notes: verified email, two-step verification, encryption in transit and at rest, private sharing, full export and subprocessors.",
   path: "/security",
 });
-
-const toc = [
-  { id: "summary", label: "In short" },
-  { id: "account", label: "Your account" },
-  { id: "encryption", label: "Encryption" },
-  { id: "e2ee", label: "Not end-to-end encrypted" },
-  { id: "sharing", label: "Sharing" },
-  { id: "access", label: "Who can see your notes" },
-  { id: "export", label: "Export and deletion" },
-  { id: "web", label: "This website" },
-  { id: "subprocessors", label: "Subprocessors" },
-  { id: "disclosure", label: "Reporting a vulnerability" },
-];
 
 const subprocessors = [
   {
@@ -52,141 +42,203 @@ const subprocessors = [
   },
 ];
 
+/** One card of the page: its title, one lead line, then checkmark lines (the ids keep old /security#… links working). */
+function Section({
+  id,
+  title,
+  lead,
+  items = [],
+  className,
+  children,
+}: {
+  id: string;
+  title: string;
+  lead: ReactNode;
+  items?: ReactNode[];
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className={cx("mk-box scroll-mt-8 px-5 py-8 sm:p-8 lg:p-10", className)}>
+      <div className="min-w-0">
+        <h2 id={`${id}-title`} className="mk-h3 text-[22px]">
+          {title}
+        </h2>
+        <p className="mt-2 max-w-[60ch] text-[15px] leading-relaxed text-muted">{lead}</p>
+        <Checks items={items} className="mt-5" />
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** A two-step code arriving digit by digit, as on the sign-in screen. */
+function CodePicture() {
+  return (
+    <Play className="mt-7">
+      <div role="img" aria-label="Signing in asks for the 6-digit code from your authenticator app." className="mk-panel rounded-panel p-4 sm:p-5">
+        <p className="text-[12.5px] font-medium text-muted">6-digit code</p>
+        <div className="mt-2 flex gap-1.5">
+          {["4", "8", "1", "9", "2", "7"].map((digit, i) => (
+            <span
+              key={i}
+              data-step
+              className="grid h-11 w-9 place-items-center rounded-control border border-(--color-line) bg-(--color-surface) font-mono text-[17px] text-(--color-heading)"
+            >
+              {digit}
+            </span>
+          ))}
+        </div>
+      </div>
+    </Play>
+  );
+}
+
+/** A public link as the Share dialog lists it: expiry, password, and Revoke. */
+function LinkPicture() {
+  return (
+    <Play>
+      <div
+        role="img"
+        aria-label="A public link in the Share dialog: it expires on a set date, is password protected, and has a Revoke button."
+        className="mk-panel rounded-panel p-4 sm:p-6"
+      >
+        <div className="mk-app-pop rounded-panel p-4 text-[13px]">
+          <p data-step className="flex items-center gap-2 font-semibold text-(--color-heading)">
+            <Icon name="link" size={15} /> Public link
+          </p>
+          <p data-step className="mt-3 truncate rounded-chip border border-(--color-line) px-3 py-2 font-mono text-[12px] text-ink">
+            …/s/k3Jd••••••••
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span data-step className="mk-chip gap-1.5">
+              <Icon name="clock" size={13} /> Expires 12 Oct
+            </span>
+            <span data-step className="mk-chip gap-1.5">
+              <Icon name="lock" size={13} /> Password protected
+            </span>
+            <span data-step className="ml-auto text-[12.5px] font-medium text-coral-ink">
+              Revoke
+            </span>
+          </div>
+        </div>
+      </div>
+    </Play>
+  );
+}
+
 export default function SecurityPage() {
   return (
     <PageFrame>
-      <PageHeader
-        eyebrow="Security"
-        title="Private by default. Plain about the rest."
-        lede="What protects your account and your notes today, described precisely and without overstating it."
-      />
-      <DocShell toc={toc}>
-        <h2 id="summary">In short</h2>
-        <ul>
-          <li>You verify your email before you can open Folevi.</li>
-          <li>You can turn on two-step verification with an authenticator app, with one-time recovery codes. We recommend it.</li>
-          <li>Data is encrypted in transit (TLS, with HSTS) and at rest by our hosting providers.</li>
-          <li>Nothing is public unless you create a link. Links can expire, require a password, and be revoked instantly.</li>
-          <li>You can export everything, and you can delete your account.</li>
-          <li>
-            Folevi is <strong>not</strong> end-to-end encrypted, and our admin tools cannot display your notes.
-          </li>
-        </ul>
-
-        <h2 id="account">Your account</h2>
-        <h3>Email verification</h3>
-        <p>
-          Before you can open Folevi, you confirm that you own your email address. That address is where we
-          send security notices, so it has to be real and yours.
-        </p>
-        <h3>Two-step verification</h3>
-        <p>
-          You can add a second step to signing in: a time-based one-time code (TOTP) from an authenticator app. It’s
-          optional, and we recommend it. With it on, a stolen password alone isn’t enough to get into your account. Turn
-          it on or off any time in Settings → Security.
-        </p>
-        <p>
-          When you set it up, you receive a set of one-time recovery codes. Each code works once, for the moment you lose
-          your phone. Keep them somewhere safe and separate from your password.
-        </p>
-
-        <h2 id="encryption">Encryption</h2>
-        <p>
-          <strong>In transit.</strong> Every connection to Folevi, from your browser or the Mac app, uses TLS. Our sites
-          send HTTP Strict Transport Security (HSTS) so browsers refuse to connect without encryption.
-        </p>
-        <p>
-          <strong>At rest.</strong> Your data is encrypted at rest by our hosting and infrastructure providers (see
-          subprocessors below). On the Mac, your notes are stored locally so you can work offline; they’re protected by your
-          Mac’s own security, such as FileVault if you use it.
-        </p>
-
-        <h2 id="e2ee">Folevi is not end-to-end encrypted</h2>
-        <p>
-          We think you should know this clearly and early. In an end-to-end encrypted app, the service can’t read your data
-          at all. Folevi is not built that way, on purpose: our servers need to process your content so that search works
-          across devices, so shared links can show a page to someone you invited, so real-time sync can merge edits, and so
-          we can help if something goes wrong.
-        </p>
-        <p>
-          If you need notes that no service provider could ever read, a tool with end-to-end encryption is the better
-          choice for that material. We would rather tell you than let you assume.
-        </p>
-
-        <h2 id="sharing">Sharing</h2>
-        <ul>
-          <li>Everything is private by default. Public links are off until you create one for a specific page.</li>
-          <li>A link can have an expiry date, after which it stops working.</li>
-          <li>A link can require a password.</li>
-          <li>You can revoke a link at any time. It stops working immediately.</li>
-        </ul>
-
-        <h2 id="access">Who can see your notes</h2>
-        <p>
-          You, and the people you deliberately share with. Folevi’s internal admin tools are for managing accounts (for
-          example, account status), and they have <strong>no content viewer</strong>: there is no screen that displays your
-          pages or blocks.
-        </p>
-        <p>
-          Our sync logs record technical identifiers, revision numbers and status codes only. They never contain block text,
-          titles, attachment names or contents, sign-in tokens or email addresses.
-        </p>
-
-        <h2 id="export">Export and deletion</h2>
-        <p>
-          You can export any page as Markdown, HTML or PDF, or download everything in your Personal (or, for owners and admins, a workspace) as a ZIP archive. Your writing
-          is never locked in.
-        </p>
-        <p>
-          You can delete your account at any time. Deletion starts a 7-day grace period in case it was a mistake; after
-          that, your account and its content are deleted permanently.
-        </p>
-
-        <h2 id="web">This website</h2>
-        <p>
-          folevi.com loads no third-party scripts, trackers, advertising pixels or remote fonts. A strict Content Security
-          Policy only allows code from Folevi itself, and pages can’t be embedded in other sites.
-        </p>
-
-        <h2 id="subprocessors">Subprocessors</h2>
-        <p>These companies process data on our behalf to run Folevi.</p>
-        <div className="mk-table-card overflow-x-auto" role="region" aria-label="Subprocessors table" tabIndex={0}>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Provider</th>
-                <th scope="col">Purpose</th>
-                <th scope="col">What it processes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {subprocessors.map((s) => (
-                <tr key={s.name}>
-                  <th scope="row" className="whitespace-nowrap font-semibold text-ink">
-                    {s.name}
-                  </th>
-                  <td className="whitespace-nowrap">{s.role}</td>
-                  <td>{s.data}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <PageHeader eyebrow="Security" title="Private by default. Plain about the rest." lede="What protects your account and notes today, stated plainly." />
+      <div className={cx(container, "grid gap-(--mk-stack-gap) lg:grid-cols-2")}>
+        <Section
+          id="account"
+          title="Your account"
+          lead="A verified email, plus an optional second step."
+          items={[
+            <>Email verified before you can open Folevi</>,
+            <>Two-step codes from an authenticator app (TOTP)</>,
+            <>One-time recovery codes, for a lost phone</>,
+          ]}
+        >
+          <CodePicture />
+        </Section>
+        <div className="grid gap-(--mk-stack-gap)">
+          <Section
+            id="encryption"
+            title="Encryption"
+            lead="Encrypted on the way to us, and where it’s stored."
+            items={[<>TLS on every connection, with HSTS</>, <>Encrypted at rest by our hosting providers</>]}
+          />
+          <Section
+            id="e2ee"
+            title="Not end-to-end encrypted"
+            lead="Our servers process your notes, so search, sharing and sync work."
+            items={[<>For notes no provider may ever read, use an end-to-end encrypted tool</>]}
+          />
         </div>
 
-        <h2 id="disclosure">Reporting a vulnerability</h2>
-        <p>
-          If you believe you’ve found a security problem in Folevi, please email{" "}
-          <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>. Include what you found, the steps to reproduce it, and
-          what an attacker could do with it. We read every report and will reply to confirm we’ve received yours.
-        </p>
-        <p>While you investigate, please:</p>
-        <ul>
-          <li>Only use accounts and workspaces you own or have permission to test.</li>
-          <li>Don’t access, change or delete other people’s data. If you reach any by accident, stop and tell us.</li>
-          <li>Avoid anything that degrades the service for others, such as load testing or spam.</li>
-          <li>Give us a reasonable chance to fix the issue before you share details publicly.</li>
-        </ul>
-      </DocShell>
+        <Section
+          id="sharing"
+          title="Sharing"
+          lead="Nothing is public until you make a link."
+          items={[<>Give a link an expiry date</>, <>Require a password</>, <>Revoke it, and it stops working at once</>]}
+          className="grid items-center gap-8 lg:col-span-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
+        >
+          <LinkPicture />
+        </Section>
+
+        <Section
+          id="access"
+          title="Who can see your notes"
+          lead="You, and the people you share with."
+          items={[<>Admin tools have no content viewer</>, <>Sync logs never hold your text, titles or files</>]}
+        />
+        <Section
+          id="export"
+          title="Export and deletion"
+          lead="Your writing is never locked in."
+          items={[
+            <>Any page as Markdown, HTML or PDF</>,
+            <>Your Personal, or a workspace you own or admin, as a ZIP</>,
+            <>Account deletion waits 7 days, then it’s permanent</>,
+          ]}
+        />
+        <Section
+          id="web"
+          title="This website"
+          lead="No third-party scripts, trackers, ad pixels or remote fonts."
+          items={[<>A strict Content Security Policy allows only our own code</>, <>Pages can’t be embedded in other sites</>]}
+        />
+
+        <Section
+          id="disclosure"
+          title="Reporting a vulnerability"
+          lead={
+            <>
+              Email{" "}
+              <a href={`mailto:${SECURITY_EMAIL}`} className="mk-link">
+                {SECURITY_EMAIL}
+              </a>{" "}
+              with what you found and how to reproduce it.
+            </>
+          }
+          items={[
+            <>Test only accounts and workspaces you own or may test</>,
+            <>Leave other people’s data alone, and don’t load-test or spam</>,
+            <>Give us a fair chance to fix it before going public</>,
+          ]}
+        />
+
+        <Section id="subprocessors" title="Subprocessors" lead="These companies process data on our behalf to run Folevi." className="lg:col-span-2">
+          <div className="mk-prose mt-6 max-w-none">
+            <div className="mk-table-card overflow-x-auto" role="region" aria-label="Subprocessors table" tabIndex={0}>
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Provider</th>
+                    <th scope="col">Purpose</th>
+                    <th scope="col">What it processes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subprocessors.map((s) => (
+                    <tr key={s.name}>
+                      <th scope="row" className="whitespace-nowrap font-semibold text-ink">
+                        {s.name}
+                      </th>
+                      <td className="whitespace-nowrap">{s.role}</td>
+                      <td>{s.data}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Section>
+
+      </div>
     </PageFrame>
   );
 }

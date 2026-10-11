@@ -1,9 +1,8 @@
-import { TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER, TIER_NAMES } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, TRIAL_DAYS, TRIAL_TIER, TIER_NAMES, formatPrice } from "@/lib/plans";
 import Link from "next/link";
 import { FoleviMark } from "@/components/brand/FoleviMark";
-import type { IconName } from "../icons";
+import { Icon, type IconName } from "../icons";
 import { SIGN_UP_URL } from "../site";
-import { PlanPicker } from "./PlanPicker";
 import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
 
 export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: string }> = [
@@ -39,6 +38,16 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   },
 ];
 
+/** The plans the home page singles out: Core for no AI at all, Pro AI for as much AI as you need. */
+const BADGES: Partial<Record<(typeof PLAN_ORDER)[number], string>> = {
+  core: "No AI",
+  pro_ai: "Unlimited AI",
+};
+
+/**
+ * The four personal plans, kept short on the home page: name, monthly price and the plan's own one-line
+ * blurb, all from lib/plans. Team plans, yearly prices and credit packs are on /pricing.
+ */
 export function PricingSection() {
   return (
     <section id="pricing" aria-labelledby="pricing-title" className={cx(container, "scroll-mt-20")}>
@@ -47,16 +56,40 @@ export function PricingSection() {
           align="center"
           id="pricing-title"
           eyebrow="Pricing"
-          title="Start free. Upgrade when you need room or AI."
-          lede={`Four plans, for you or for your team. Every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card.`}
+          title="Start free. Upgrade for room or AI."
+          lede={`Every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, no card.`}
         />
-        <div className="mt-10">
-          <PlanPicker align="center" />
-        </div>
-        <p className="mt-6 text-center text-[14px] text-muted">
-          AI credits, credit packs and answers to common questions.{" "}
-          <Link href="/pricing" className="mk-link">
-            See all pricing
+        <ul className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {PLAN_ORDER.map((tier) => {
+            const plan = PLANS[tier];
+            const badge = BADGES[tier];
+            return (
+              <li
+                key={tier}
+                className={cx(
+                  "mk-card flex flex-col p-6",
+                  badge &&
+                    "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]",
+                )}
+              >
+                <div className="flex min-h-7 items-center gap-2">
+                  <h3 className="text-[16px] font-semibold text-(--color-heading)">{plan.name}</h3>
+                  {badge ? <span className="mk-chip ml-auto">{badge}</span> : null}
+                </div>
+                <p className="mt-4 flex flex-wrap items-baseline gap-x-1.5">
+                  <span className="mk-display text-[36px] leading-none">
+                    {formatPrice(tier === "free" ? 0 : plan.monthlyCents)}
+                  </span>
+                  {tier === "free" ? null : <span className="text-[14px] text-muted">/ month</span>}
+                </p>
+                <p className="mt-3 text-[14.5px] leading-snug text-muted">{plan.blurb}</p>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-8 text-center text-[15px]">
+          <Link href="/pricing" className="mk-link inline-flex min-h-11 items-center gap-1.5">
+            Team plans and all pricing <Icon name="arrow-right" size={15} />
           </Link>
         </p>
       </div>
@@ -69,12 +102,13 @@ export function FinalCta() {
     <section aria-labelledby="cta-title" className={container}>
       <div className="mk-box px-6 py-16 text-center sm:px-10 sm:py-24">
         <FoleviMark size={48} className="mx-auto block" />
-        <h2 id="cta-title" className="mk-display mx-auto mt-7 max-w-[16ch] text-[38px] sm:text-[56px]">
+        <h2
+          id="cta-title"
+          className="mk-display mx-auto mt-7 max-w-[16ch] text-[38px] sm:text-[56px]"
+        >
           Start with one note.
         </h2>
-        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">
-          The Free plan has no time limit, and you can export your notes to Markdown, HTML or PDF at any time.
-        </p>
+        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">The Free plan has no time limit.</p>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
           <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
             Start writing

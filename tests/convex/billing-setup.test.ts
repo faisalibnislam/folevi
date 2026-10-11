@@ -109,7 +109,7 @@ describe("who may use Billing setup", () => {
     expect(view.products.map((p) => p.status)).toEqual(Array(14).fill("not_created"));
     expect(view.products.map((p) => p.key)).toEqual(PRODUCT_KEYS);
     expect(byKey(view, "personal_core_monthly")).toMatchObject({ name: "Folevi Core (monthly)", type: "recurring", priceCents: 199, interval: "month", seatBased: false, envName: "POLAR_PRODUCT_PERSONAL_CORE_MONTHLY" });
-    expect(byKey(view, "workspace_pro_ai_yearly")).toMatchObject({ name: "Folevi Team Pro AI (yearly)", priceCents: 14900, interval: "year", seatBased: true, envName: "POLAR_PRODUCT_TEAM_PRO_AI_YEARLY" });
+    expect(byKey(view, "workspace_pro_ai_yearly")).toMatchObject({ name: "Folevi Team Pro AI (yearly)", priceCents: 15900, interval: "year", seatBased: true, envName: "POLAR_PRODUCT_TEAM_PRO_AI_YEARLY" });
     expect(byKey(view, "credits_1000")).toMatchObject({ name: "Folevi AI credits: 1,000", type: "one_time", priceCents: 1499, interval: null });
     await expect(me.as.action(api.billingSetup.checkPolar, { reason: REASON })).rejects.toThrow(/POLAR_ACCESS_TOKEN/);
     expect(calls).toHaveLength(0);
@@ -225,15 +225,15 @@ describe("Create missing products", () => {
     const body = (key: string) => posts.find((c) => (c.body!.metadata as Json).folevi_key === key)!.body;
     expect(body("personal_core_monthly")).toEqual({
       name: "Folevi Core (monthly)",
-      description: "Folevi Core for your Personal space, billed monthly. 20 GB of storage. No AI.",
+      description: "Folevi Core for your Personal space, billed monthly. 10 GB of storage. No AI.",
       recurring_interval: "month",
       prices: [{ amount_type: "fixed", price_currency: "usd", price_amount: 199 }],
       metadata: { folevi_key: "personal_core_monthly" },
     });
-    expect(body("personal_pro_ai_yearly")).toMatchObject({ name: "Folevi Pro AI (yearly)", recurring_interval: "year", prices: [{ amount_type: "fixed", price_amount: 14900 }] });
+    expect(body("personal_pro_ai_yearly")).toMatchObject({ name: "Folevi Pro AI (yearly)", recurring_interval: "year", prices: [{ amount_type: "fixed", price_amount: 15900 }] });
     expect(body("workspace_pro_monthly")).toEqual({
       name: "Folevi Team Pro (monthly)",
-      description: "Folevi Pro for a team workspace, billed monthly per member. Each member gets 20 GB of storage and 180 AI credits a month.",
+      description: "Folevi Pro for a team workspace, billed monthly per member. Each member gets 10 GB of storage and 180 AI credits a month.",
       recurring_interval: "month",
       prices: [{ amount_type: "seat_based", price_currency: "usd", seat_tiers: { seat_tier_type: "volume", tiers: [{ min_seats: 1, max_seats: null, price_per_seat: 499 }] } }],
       metadata: { folevi_key: "workspace_pro_monthly" },
@@ -328,7 +328,7 @@ describe("where checkout finds product ids", () => {
     withPolar();
     const a = await person(t, "buyer@example.com");
     await t.run(async (ctx) => {
-      await ctx.db.insert("billingProducts", { key: "personal_pro_ai_yearly", server: "sandbox", polarProductId: "prod_from_db", source: "created", name: "Folevi Pro AI (yearly)", type: "recurring", priceCents: 14900, currency: "usd", interval: "year", seatBased: false, createdAt: Date.now(), createdBy: a.profileId as Id<"profiles"> });
+      await ctx.db.insert("billingProducts", { key: "personal_pro_ai_yearly", server: "sandbox", polarProductId: "prod_from_db", source: "created", name: "Folevi Pro AI (yearly)", type: "recurring", priceCents: 15900, currency: "usd", interval: "year", seatBased: false, createdAt: Date.now(), createdBy: a.profileId as Id<"profiles"> });
       // A row for the other Polar server is never used here.
       await ctx.db.insert("billingProducts", { key: "personal_pro_yearly", server: "production", polarProductId: "prod_production", source: "created", name: "Folevi Pro (yearly)", type: "recurring", priceCents: 4900, currency: "usd", interval: "year", seatBased: false, createdAt: Date.now(), createdBy: a.profileId as Id<"profiles"> });
     });

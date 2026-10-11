@@ -21,7 +21,7 @@ test("the pricing page switches between Personal and Team, monthly and yearly", 
   await expect(card("Free").getByText("$0", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("$1.99", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText("$4.99", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("$12.99", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$13.99", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("/ month", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("or $19 a year (save 20%)")).toBeVisible();
   // Core has no AI, said plainly; Pro AI is unlimited with fair use, and is the trial.
@@ -35,7 +35,7 @@ test("the pricing page switches between Personal and Team, monthly and yearly", 
   await expect(billing.getByRole("radio", { name: "Yearly" })).toHaveAttribute("aria-checked", "true");
   await expect(card("Core").getByText("$19", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText("$49", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("$149", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$159", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("/ year", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("$1.58 a month, billed yearly (save 20%)")).toBeVisible();
   await expect(card("Core").getByText("$1.99", { exact: true })).toHaveCount(0);
@@ -47,7 +47,7 @@ test("the pricing page switches between Personal and Team, monthly and yearly", 
   await expect(audience.getByRole("radio", { name: "Team" })).toBeFocused();
   await expect(card("Core").getByText("$19", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("per member / year", { exact: true })).toBeVisible();
-  await expect(card("Pro").getByText("20 GB per member")).toBeVisible();
+  await expect(card("Pro").getByText("10 GB per member")).toBeVisible();
   await expect(card("Pro AI").getByText("Unlimited AI, fair use (550 credits per member a month)")).toBeVisible();
   await expect(card("Free").getByText("Nobody is billed")).toBeVisible();
 
@@ -88,7 +88,11 @@ test("the pricing page explains AI credits and credit packs, answers questions, 
     "How are taxes and payments handled?",
   ])
     await expect(faq.getByText(q, { exact: true })).toBeVisible();
+  // Answers open on click.
+  await expect(faq.getByText(/merchant of record/)).toBeHidden();
+  await faq.getByText("How are taxes and payments handled?", { exact: true }).click();
   await expect(faq.getByText(/merchant of record/)).toBeVisible();
+  await faq.getByText("How does the free trial work?", { exact: true }).click();
   await expect(faq.getByText(/7 days, with 100 AI credits and no card/)).toBeVisible();
 
   // The writing rules: no em dash anywhere on the page, and nothing about the old plans or Stripe.

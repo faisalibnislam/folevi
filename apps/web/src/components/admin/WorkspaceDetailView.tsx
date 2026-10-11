@@ -11,18 +11,18 @@ import { ActionDialog } from "./ActionDialog";
 import { useAdmin } from "./AdminApp";
 import { rolesFor } from "./permissions";
 import { WorkspacePlanDialog, type WorkspacePlanTarget } from "./PlanDialog";
-import { PLAN_CATALOG, TIER_NAMES, formatPrice, planName, seatChargeCents, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
+import { PLAN_CATALOG, TIER_NAMES, formatPrice, planName, seatChargeCents, sizeLabel, type WorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
 import { useAuditedLoad } from "./useAuditedLoad";
 import { t } from "@/i18n";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, Meter, Mono, PageHeader, Panel, StatusBadge, Time, humanize, recordLink, td, th } from "./ui";
 
 const GB = 1024 ** 3;
 
-/** "20 GB per member · 180 AI credits per member a month" */
+/** "10 GB per member · 180 AI credits per member a month" */
 function planIncludes(id: WorkspacePlanId): string {
   const p = PLAN_CATALOG[id];
   const e = p.entitlements;
-  const storage = p.tier === "free" ? "The owner's free 1 GB" : `${Math.round(e.storageBytes / GB)} GB per member`;
+  const storage = p.tier === "free" ? `The owner's free ${sizeLabel(e.storageBytes)}` : `${sizeLabel(e.storageBytes)} per member`;
   const ai = !e.aiAssistant ? "no AI for anyone" : p.tier === "free" ? "members use their personal AI credits" : `${e.monthlyCredits.toLocaleString()} AI credits per member a month`;
   return `${storage} · ${ai}`;
 }

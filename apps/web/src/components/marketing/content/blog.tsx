@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CREDIT_PACKS, GB, MONTHLY_CREDITS, PACK_VALID_MONTHS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
+import { CREDIT_PACKS, MONTHLY_CREDITS, PACK_VALID_MONTHS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
 import { Kbd } from "../ui";
 
 /*
@@ -27,7 +27,7 @@ export type BlogPost = {
 export const BLOG_AUTHOR = "The Folevi team";
 
 const p = (cents: number) => formatPrice(cents);
-const gb = (bytes: number) => `${bytes / GB} GB`;
+const gb = sizeLabel;
 const n = (value: number) => value.toLocaleString("en-US");
 const VERSION_DAYS = PLAN_CATALOG.personal_free.entitlements.versionHistoryDays;
 
@@ -188,7 +188,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="sometimes">If you want AI some of the time</h2>
         <p>
-          Free includes {MONTHLY_CREDITS.free} AI credits a month, Pro {MONTHLY_CREDITS.pro} and Pro AI {MONTHLY_CREDITS.pro_ai}. On any of them you can turn Foli AI off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves. On Core, the plan decides, for everyone in that space.
+          Free has Foli AI during its {TRIAL_DAYS}-day trial, Pro has {MONTHLY_CREDITS.pro} AI credits a month and Pro AI {MONTHLY_CREDITS.pro_ai}. On any of them you can turn Foli AI off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves. On Core, the plan decides, for everyone in that space.
         </p>
 
         <h2 id="moving">Moving to Core</h2>
@@ -255,7 +255,7 @@ const POSTS: BlogPost[] = [
         <h2 id="plans">How many credits each plan has</h2>
         <ul>
           <li>
-            Free: {MONTHLY_CREDITS.free} credits a month, reset on the first of each month (UTC).
+            Free: {TRIAL_CREDITS} credits during the {TRIAL_DAYS}-day trial, then none.
           </li>
           <li>Core: none. Core has no AI.</li>
           <li>

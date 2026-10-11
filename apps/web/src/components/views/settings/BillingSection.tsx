@@ -60,6 +60,8 @@ export function Tile({ icon, title, children, wide = false }: { icon: ReactNode;
 
 /** One place's AI credits: what's left this period, when it resets, and any extra (bought or given) credits. */
 export function CreditLines({ c }: { c: { available: number; allowance: number; monthlyLeft: number; packCredits: number; resetsAt: number; nextPackExpiry: number | null; trialing: boolean } }) {
+  // Free after its trial: no monthly credits and nothing bought to use.
+  if (noFreeAi(c)) return <p className="mt-1 text-sm text-muted">{FREE_NO_AI}</p>;
   return (
     <>
       <p className="mt-1 text-sm text-muted">{creditCount(c.available)} left</p>
@@ -71,6 +73,10 @@ export function CreditLines({ c }: { c: { available: number; allowance: number; 
     </>
   );
 }
+
+/** Free after its trial has no AI credits: Foli AI needs Pro or Pro AI (pack credits bought earlier still work). */
+const noFreeAi = (c: { allowance: number; packCredits: number; trialing: boolean }) => !c.trialing && c.allowance === 0 && c.packCredits === 0;
+const FREE_NO_AI = "Foli AI comes with Pro and Pro AI. Upgrade to use it.";
 
 /**
  * Settings → Plan & billing: the person's Personal plan (Free, Core, Pro or Pro AI), storage, AI credits and
@@ -313,7 +319,9 @@ export function BillingSection() {
                   <p className="text-[14px] font-semibold text-heading">
                     {a.name} <span className="font-normal text-muted">· {a.plan}</span>
                   </p>
-                  {a.aiIncluded ? (
+                  {a.aiIncluded && noFreeAi(a) ? (
+                    <p className="mt-0.5 text-sm text-muted">{FREE_NO_AI}</p>
+                  ) : a.aiIncluded ? (
                     <p className="mt-0.5 text-sm text-muted">
                       {creditCount(a.available)} left · {a.monthlyLeft.toLocaleString()} of {a.allowance.toLocaleString()} {a.trialing ? `trial credits, trial ends on ${creditDate(a.resetsAt)}` : `monthly credits, resets on ${creditDate(a.resetsAt)}`}
                       {a.packCredits > 0 ? ` · ${plural(a.packCredits, "extra credit")}${a.nextPackExpiry ? `, the first expiring on ${creditDate(a.nextPackExpiry)}` : ""}` : ""}
@@ -326,7 +334,7 @@ export function BillingSection() {
                   <Button size="sm" onClick={() => setBuyFor({ target: a.kind === "seat" && a.workspaceId ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" }, name: a.name })}>
                     Buy credits
                   </Button>
-                ) : a.kind === "personal" && a.aiIncluded ? (
+                ) : a.kind === "personal" && a.aiIncluded && !noFreeAi(a) ? (
                   <span className="text-[12.5px] text-faint">Extra credits come with Pro and Pro AI.</span>
                 ) : null}
               </li>

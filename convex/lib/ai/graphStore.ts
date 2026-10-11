@@ -157,7 +157,7 @@ export async function writeNoteGraph(ctx: MutationCtx, doc: Doc<"documents">, fo
   await dropOrphans(ctx, new Set(oldMentions.map((m) => m.entityId)));
 
   const state = await graphStateOf(ctx, doc._id);
-  const fields = { contentHash, entities: found.entities.length, extractedAt: now };
+  const fields = { contentHash, entities: found.entities.length, extractedAt: now, nextAt: undefined };
   if (state) await ctx.db.patch(state._id, fields);
   else await insertScoped(ctx, "aiGraphState", scope, { documentId: doc._id, ...fields });
 }

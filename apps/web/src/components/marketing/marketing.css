@@ -1125,3 +1125,31 @@
 /* Live demos (demos/*Demo.tsx): a flowchart's shapes pop in, then its arrows and labels fade in. */
 @keyframes fc-demo-pop { from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: none; } }
 @keyframes fc-demo-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Checkmark lists (Checks.tsx): a small filled tick before each short line. */
+.mk-checks-tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: var(--radius-tiny);
+  color: #fff;
+  background: var(--color-moss-ink);
+}
+
+/* Pictures that play on scroll (Play.tsx): marked parts appear in turn, then the sequence loops. Before the
+   script runs (no JS) and with reduced motion, everything simply shows. */
+.mk-play[data-play]:not([data-playing]) [data-step] { opacity: 0; }
+.mk-play[data-playing] [data-step] {
+  animation: mk-step-in 460ms var(--mk-ease) both;
+  animation-delay: calc(var(--i, 0) * 320ms);
+}
+@keyframes mk-step-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-play [data-step] { animation: none !important; opacity: 1 !important; }
+}

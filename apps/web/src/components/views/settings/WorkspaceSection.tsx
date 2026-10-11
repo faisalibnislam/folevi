@@ -98,7 +98,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
           ) : null}
         </p>
         <p className="mt-1 text-sm text-muted">
-          {/* Your view of storage here: the owner's free 1 GB (shared with their Personal and free workspaces), or your own quota on a paid plan. */}
+          {/* Your view of storage here: the owner's free 500 MB (shared with their Personal and free workspaces), or your own quota on a paid plan. */}
           {workspace.storageRule === "shared_free" ? (workspace.role === "owner" ? "Your free storage, shared with the free workspaces you own" : "The owner’s free storage") : workspace.storageRule === "per_person" ? "Your storage here" : "Workspace storage"}:{" "}
           {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
         </p>

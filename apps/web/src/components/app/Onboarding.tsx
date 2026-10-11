@@ -8,7 +8,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { COVER_ART } from "@/lib/cover";
-import { MONTHLY_CREDITS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
+import { TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { ONBOARDING_NOTE_STYLES, PLAIN_STYLE, USE_CASES, isOnboardingNoteStyle, starterPagesFor, type OnboardingStep } from "@/lib/onboarding";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
@@ -498,7 +498,7 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
   // AI is counted in credits: the trial's fixed allowance, then the plan's monthly credits. Core has none.
   const plan =
     entitlements.ai && entitlements.aiSource === "trial"
-      ? `Included in your ${TRIAL_DAYS}-day ${TIER_NAMES[TRIAL_TIER]} trial, with ${TRIAL_CREDITS} AI credits${ends ? ` until ${ends}` : ""}. After that, Free includes ${MONTHLY_CREDITS.free} AI credits a month, and you can choose a plan with more in Settings.`
+      ? `Included in your ${TRIAL_DAYS}-day ${TIER_NAMES[TRIAL_TIER]} trial, with ${TRIAL_CREDITS} AI credits${ends ? ` until ${ends}` : ""}. After that, Foli AI needs Pro or Pro AI, which you can choose in Settings.`
       : entitlements.ai
         ? `Your plan includes ${entitlements.monthlyCredits} AI credits a month.`
         : `Your plan, ${TIER_NAMES.core}, has no AI: nothing is sent to an AI model. You can change plans in Settings.`;

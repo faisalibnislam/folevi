@@ -48,6 +48,12 @@ import { blockText, dropNoteGraph, graphStateOf, noteLines, writeNoteGraph } fro
 
 /** Over the hourly extraction limit: try again after this. */
 const RATE_RETRY_MS = 15 * 60_000;
+/**
+ * A note's graph is rebuilt at most this often: edits in between are read together once it's due (one
+ * scheduled read per note). Each read is a platform-paid model call, so a note edited all day costs at most
+ * four of them.
+ */
+export const REBUILD_COOLDOWN_MS = 6 * 60 * 60_000;
 /** Rows deleted per removal step. */
 const REMOVE_BATCH = 200;
 /** A note's chunks that look for similar notes, and the matches each one asks for. */
@@ -93,7 +99,18 @@ export const prepareExtract = internalMutation({
     const title = doc.title || "Untitled";
     const lines = capLines(await noteLines(ctx, doc));
     const hash = await graphHash(title, lines);
-    if ((await graphStateOf(ctx, doc._id))?.contentHash === hash) return { kind: "unchanged" };
+    const state = await graphStateOf(ctx, doc._id);
+    if (state?.contentHash === hash) return { kind: "unchanged" };
+    const now = Date.now();
+    if (lines.length && state && now < state.extractedAt + REBUILD_COOLDOWN_MS) {
+      // Read too recently: once the cooldown ends (unless a read is already waiting for then).
+      if (!(state.nextAt && state.nextAt > now)) {
+        const due = state.extractedAt + REBUILD_COOLDOWN_MS;
+        await ctx.db.patch(state._id, { nextAt: due });
+        await ctx.scheduler.runAt(due, internal.aiGraph.extract, { documentId: doc._id });
+      }
+      return { kind: "later" };
+    }
     if (!lines.length) {
       await writeNoteGraph(ctx, doc, { entities: [], relations: [], links: [], similar: [] }, hash);
       return { kind: "done" };
@@ -638,7 +655,7 @@ export const inspect = internalQuery({
       .withIndex("by_source", (q) => q.eq("sourceDocumentId", args.documentId))
       .collect();
     return {
-      state: state ? { contentHash: state.contentHash, entities: state.entities } : null,
+      state: state ? { contentHash: state.contentHash, entities: state.entities, extractedAt: state.extractedAt, ...(state.nextAt ? { nextAt: state.nextAt } : {}) } : null,
       entities,
       relations: relations.map((r) => ({ kind: r.kind, inferred: r.inferred, sourceBlockId: r.sourceBlockId ?? null, toDocumentId: r.toDocumentId ?? null, targetBlockId: r.targetBlockId ?? null, score: r.score ?? null, entityRelation: Boolean(r.fromEntityId) })),
     };

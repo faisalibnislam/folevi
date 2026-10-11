@@ -41,7 +41,7 @@ export default function BlogIndexPage() {
         >
           <Eyebrow>Blog</Eyebrow>
           <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">Notes from the Folevi team.</h1>
-          <p className="mk-lede mt-5 max-w-[60ch]">How Folevi works, why it works that way, and how to get more out of it. Newest first.</p>
+          <p className="mk-lede mt-5 max-w-[60ch]">How Folevi works, and why. Newest first.</p>
           <p className="mt-5 text-[14.5px] text-muted">
             <a href="/blog/rss.xml" className="mk-link inline-flex min-h-11 items-center gap-1.5">
               Follow with RSS <Icon name="arrow-right" size={14} />
@@ -76,7 +76,7 @@ export default function BlogIndexPage() {
           </ol>
         </div>
         <SignUpPanel
-          body={`The Free plan has no time limit. New accounts get ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, with no card.`}
+          body={`Free has no time limit. Try ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, no card.`}
           secondary={{ label: "Read the docs", href: "/docs" }}
         />
       </PageFrame>

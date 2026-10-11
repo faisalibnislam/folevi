@@ -91,14 +91,8 @@ async function digester(t: T, email: string) {
   return p;
 }
 
+/** Spends every credit the trial has (Free has no AI credits after its trial, so the trial is where they run out). */
 async function spendAll(t: T, p: Person) {
-  await t.run(async (ctx) => {
-    const sub = await ctx.db
-      .query("subscriptions")
-      .withIndex("by_profile", (q) => q.eq("profileId", p.profileId as Id<"profiles">))
-      .unique();
-    await ctx.db.patch(sub!._id, { trialEndsAt: Date.now() - 1 });
-  });
   const { holdId } = await p.as.mutation(internal.ai.begin, { scope: p.scope });
   await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 1_000_000, outputTokens: 0, thoughtsTokens: 0 }] });
 }

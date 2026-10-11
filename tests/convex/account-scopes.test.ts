@@ -87,23 +87,26 @@ const beginAi = (p: Person, scope: ScopeArg, extra: { documentId?: string; noteO
 const credits = (p: Person, scope: ScopeArg, documentId?: string) => p.as.query(api.billing.credits, { scope, documentId });
 
 describe("personal plans (1–3)", () => {
-  test("Free: the 1 GB pool, 2 devices, 25 AI credits a month", async () => {
+  test("Free: the 500 MB pool, 2 devices, and Foli AI only during the trial (refused on the server after it)", async () => {
     const t = setup();
     const a = await person(t, "free@example.com");
+    expect((await a.as.query(api.billing.mine, {})).credits).toMatchObject({ trialing: true, allowance: 100 });
     await endTrial(t, a);
     const mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_free", ai: true, monthlyCredits: 25, creditPacks: false, storageBytes: 1 * GB, storageRule: "shared_free", devices: 2 });
-    expect(mine).toMatchObject({ storageLimitBytes: 1 * GB, storageRule: "shared_free" });
-    expect(mine.credits).toMatchObject({ allowance: 25, available: 25, canBuy: false, aiIncluded: true });
-    await beginAi(a, a.scope);
+    expect(mine.entitlements).toMatchObject({ planId: "personal_free", monthlyCredits: 0, creditPacks: false, storageBytes: 500 * MB, storageRule: "shared_free", devices: 2 });
+    expect(mine).toMatchObject({ storageLimitBytes: 500 * MB, storageRule: "shared_free" });
+    expect(mine.credits).toMatchObject({ allowance: 0, available: 0, canBuy: false, trialing: false });
+    await expect(beginAi(a, a.scope)).rejects.toThrow(/Foli AI comes with Pro and Pro AI/);
+    await expect(a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL })).rejects.toThrow(/Pro and Pro AI/);
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
   });
 
-  test("Core: 20 GB of its own, unlimited devices, and no AI at all (refused on the server)", async () => {
+  test("Core: 10 GB of its own, unlimited devices, and no AI at all (refused on the server)", async () => {
     const t = setup();
     const a = await person(t, "core@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "year" });
     const mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_core_yearly", paid: true, ai: false, aiSource: null, monthlyCredits: 0, creditPacks: false, storageBytes: 20 * GB, storageRule: "per_person", devices: null });
+    expect(mine.entitlements).toMatchObject({ planId: "personal_core_yearly", paid: true, ai: false, aiSource: null, monthlyCredits: 0, creditPacks: false, storageBytes: 10 * GB, storageRule: "per_person", devices: null });
     expect(mine.payments[0]).toMatchObject({ amountCents: 1900, plan: "core" });
     await expect(beginAi(a, a.scope)).rejects.toThrow(/AI isn't part of Core/);
     expect(await credits(a, a.scope)).toMatchObject({ aiIncluded: false, canBuy: false, allowance: 0 });
@@ -114,12 +117,12 @@ describe("personal plans (1–3)", () => {
     expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
   });
 
-  test("Pro: 20 GB, 180 credits; Pro AI: 50 GB, 550 credits and the higher hourly limit", async () => {
+  test("Pro: 10 GB, 180 credits; Pro AI: 50 GB, 550 credits and the higher hourly limit", async () => {
     const t = setup();
     const a = await person(t, "pro@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     let mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true, aiSource: "plan", monthlyCredits: 180, creditPacks: true, storageBytes: 20 * GB, devices: null, aiFairUse: "standard" });
+    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true, aiSource: "plan", monthlyCredits: 180, creditPacks: true, storageBytes: 10 * GB, devices: null, aiFairUse: "standard" });
     expect(mine.payments[0]).toMatchObject({ amountCents: 499, plan: "pro", interval: "month" });
     await a.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "year" });
     mine = await a.as.query(api.billing.mine, {});
@@ -137,7 +140,7 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     const pro = await person(t, "ws-pro@example.com");
     await pro.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "year" });
     const teamId = await team(owner, "Studio", { p: pro, email: "ws-pro@example.com" });
-    expect(await mineEntry(pro, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_free", name: "Workspace Free" }, aiIncluded: true, storageQuotaBytes: 1 * GB, storageRule: "shared_free" });
+    expect(await mineEntry(pro, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_free", name: "Workspace Free" }, aiIncluded: true, storageQuotaBytes: 500 * MB, storageRule: "shared_free" });
     expect(await credits(pro, inWorkspace(teamId))).toMatchObject({ account: "personal", plan: "Pro", allowance: 180 });
     const { holdId } = await beginAi(pro, inWorkspace(teamId));
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 2000, outputTokens: 500, thoughtsTokens: 0 }] });
@@ -158,11 +161,11 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     await team(other, "Joined B", { p: pro, email: "ten@example.com" });
     const teams = await pro.as.query(api.workspaces.mine, {});
     expect(teams).toHaveLength(10);
-    for (const w of teams) expect(w).toMatchObject({ plan: { scope: "workspace", id: "workspace_free" }, storageQuotaBytes: 1 * GB });
+    for (const w of teams) expect(w).toMatchObject({ plan: { scope: "workspace", id: "workspace_free" }, storageQuotaBytes: 500 * MB });
     expect((await pro.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true });
   });
 
-  test("a Free user in a Pro AI workspace: 550 credits of their own there, 25 in Personal (5)", async () => {
+  test("a Free user in a Pro AI workspace: 550 credits of their own there, none in Personal after the trial (5)", async () => {
     const t = setup();
     const owner = await person(t, "biz-owner@example.com");
     const a = await person(t, "free-member@example.com");
@@ -172,8 +175,9 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     expect(await mineEntry(a, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_pro_ai_monthly", shortName: "Pro AI" }, aiIncluded: true, storageQuotaBytes: 50 * GB, storageRule: "per_person" });
     expect(await credits(a, inWorkspace(teamId))).toMatchObject({ account: "seat", plan: "Workspace Pro AI", allowance: 550, canBuy: true });
     expect(await credits(owner, inWorkspace(teamId))).toMatchObject({ account: "seat", allowance: 550 });
-    expect(await credits(a, PERSONAL)).toMatchObject({ account: "personal", allowance: 25 });
-    expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", storageBytes: 1 * GB });
+    expect(await credits(a, PERSONAL)).toMatchObject({ account: "personal", allowance: 0, available: 0 });
+    await expect(beginAi(a, PERSONAL)).rejects.toThrow(/Foli AI comes with Pro and Pro AI/);
+    expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", storageBytes: 500 * MB });
     // Their seat's credits are theirs alone: the owner's use doesn't touch them.
     const { holdId } = await beginAi(owner, inWorkspace(teamId));
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 100_000, outputTokens: 2000, thoughtsTokens: 0 }] });
@@ -191,7 +195,7 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     expect(await credits(a, PERSONAL)).toMatchObject({ plan: "Pro AI trial", allowance: 100, trialing: true });
     expect(await credits(a, inWorkspace(teamId))).toMatchObject({ plan: "Workspace Pro", allowance: 180 });
     expect((await a.as.query(api.billing.mine, {})).storageLimitBytes).toBe(50 * GB);
-    expect((await mineEntry(a, teamId)).storageQuotaBytes).toBe(20 * GB);
+    expect((await mineEntry(a, teamId)).storageQuotaBytes).toBe(10 * GB);
     // A request about a Personal note made from the team (the note decides) uses Personal credits.
     const note = await newDoc(a);
     const { holdId } = await beginAi(a, inWorkspace(teamId), { documentId: note, noteOnly: true });
@@ -213,7 +217,7 @@ describe("Core: no AI in its scope, for anyone (server-enforced)", () => {
     const note = await newDoc(owner, inWorkspace(teamId));
     await owner.as.mutation(api.sharing.grant, { documentId: note, email: "core-ws-guest@example.com", role: "editor" });
     for (const p of [owner, member]) {
-      expect(await mineEntry(p, teamId)).toMatchObject({ plan: { id: "workspace_core_monthly", shortName: "Core" }, aiIncluded: false, storageQuotaBytes: 20 * GB });
+      expect(await mineEntry(p, teamId)).toMatchObject({ plan: { id: "workspace_core_monthly", shortName: "Core" }, aiIncluded: false, storageQuotaBytes: 10 * GB });
       await expect(beginAi(p, inWorkspace(teamId))).rejects.toThrow(/on Core, which doesn't include AI/);
       await expect(beginAi(p, inWorkspace(teamId), { documentId: note, noteOnly: true })).rejects.toThrow(/Core/);
     }
@@ -262,7 +266,7 @@ describe("Core: no AI in its scope, for anyone (server-enforced)", () => {
 });
 
 describe("storage (18, 19, 22, 23)", () => {
-  test("Free: the owner's Personal and every free workspace they own share 1 GB, members' uploads included", async () => {
+  test("Free: the owner's Personal and every free workspace they own share 500 MB, members' uploads included", async () => {
     const t = setup();
     const owner = await person(t, "pool-owner@example.com");
     const member = await person(t, "pool-member@example.com");
@@ -272,33 +276,33 @@ describe("storage (18, 19, 22, 23)", () => {
     const b = (await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Pool B" })).id;
     const personalNote = await newDoc(owner);
     const aNote = await newDoc(owner, inWorkspace(a));
-    await setUsage(t, owner, 400 * MB);
-    await setUsage(t, a, 300 * MB);
-    await setUsage(t, b, 300 * MB);
+    await setUsage(t, owner, 200 * MB);
+    await setUsage(t, a, 140 * MB);
+    await setUsage(t, b, 140 * MB);
     const mine = await owner.as.query(api.billing.mine, {});
-    expect(mine).toMatchObject({ storageUsedBytes: 1000 * MB, storageLimitBytes: 1 * GB, storageRule: "shared_free", poolWorkspaces: 2 });
-    // 24 MB left in the pool: from Personal, and from the workspace by anyone in it.
-    expect((await upload(owner, personalNote, 20 * MB)).uploadUrl).toBeTruthy();
-    expect((await upload(member, aNote, 20 * MB)).uploadUrl).toBeTruthy();
-    await setUsage(t, a, 310 * MB);
-    await expect(upload(member, aNote, 15 * MB)).rejects.toThrow(/has used its owner's free storage \(1010 MB of 1 GB/);
+    expect(mine).toMatchObject({ storageUsedBytes: 480 * MB, storageLimitBytes: 500 * MB, storageRule: "shared_free", poolWorkspaces: 2 });
+    // 20 MB left in the pool: from Personal, and from the workspace by anyone in it.
+    expect((await upload(owner, personalNote, 18 * MB)).uploadUrl).toBeTruthy();
+    expect((await upload(member, aNote, 18 * MB)).uploadUrl).toBeTruthy();
+    await setUsage(t, a, 150 * MB);
+    await expect(upload(member, aNote, 15 * MB)).rejects.toThrow(/has used its owner's free storage \(490 MB of 500 MB/);
     await expect(upload(owner, personalNote, 15 * MB)).rejects.toThrow(/shared by your Personal and the free workspaces you own/);
     // The member's own Personal isn't touched by any of it.
     expect((await member.as.query(api.billing.mine, {})).storageUsedBytes).toBe(0);
     // Real uploads count against the owner's pool.
     await stored(t, member, aNote, 10 * MB);
-    expect((await owner.as.query(api.billing.mine, {})).storageUsedBytes).toBe(1020 * MB);
+    expect((await owner.as.query(api.billing.mine, {})).storageUsedBytes).toBe(500 * MB);
   });
 
-  test("an owner on a paid Personal: their Personal has its own room; their free workspaces share the 1 GB", async () => {
+  test("an owner on a paid Personal: their Personal has its own room; their free workspaces share the 500 MB", async () => {
     const t = setup();
     const owner = await person(t, "paid-owner@example.com");
     await owner.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     const ws = (await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Free WS" })).id;
     const note = await newDoc(owner, inWorkspace(ws));
     await setUsage(t, owner, 5 * GB);
-    await setUsage(t, ws, 1 * GB - 5 * MB);
-    expect((await owner.as.query(api.billing.mine, {})).storageLimitBytes).toBe(20 * GB);
+    await setUsage(t, ws, 500 * MB - 5 * MB);
+    expect((await owner.as.query(api.billing.mine, {})).storageLimitBytes).toBe(10 * GB);
     await expect(upload(owner, note, 10 * MB)).rejects.toThrow(/free storage/);
     expect((await upload(owner, await newDoc(owner), 10 * MB)).uploadUrl).toBeTruthy();
   });
@@ -319,24 +323,24 @@ describe("storage (18, 19, 22, 23)", () => {
     expect(await memberUsage(t, ws, member)).toBe(15 * MB);
     expect(await memberUsage(t, ws, owner)).toBe(12 * MB);
     expect(await memberUsage(t, ws, guest)).toBe(0);
-    // Each quota is 20 GB, per person: the member being full doesn't stop the owner.
+    // Each quota is 10 GB, per person: the member being full doesn't stop the owner.
     await t.run(async (ctx) => {
       const row = (await ctx.db.query("workspaceStorage").collect()).find((r) => r.profileId === member.profileId)!;
-      await ctx.db.patch(row._id, { usedBytes: 20 * GB - MB });
+      await ctx.db.patch(row._id, { usedBytes: 10 * GB - MB });
     });
     await expect(upload(member, membersNote, 5 * MB)).rejects.toThrow(/You've used your storage in this workspace/);
     expect((await upload(owner, ownersNote, 5 * MB)).uploadUrl).toBeTruthy();
-    expect((await mineEntry(member, ws)).storageUsedBytes).toBe(20 * GB - MB);
+    expect((await mineEntry(member, ws)).storageUsedBytes).toBe(10 * GB - MB);
     // Deleting a file gives its bytes back to whoever it counted against.
     await t.run(async (ctx) => {
       const { releaseFileStorage } = await import("../../convex/lib/entitlements");
       const w = (await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", ws)).unique())!;
       await releaseFileStorage(ctx, file, { kind: "workspace", workspaceId: w._id });
     });
-    expect(await memberUsage(t, ws, member)).toBe(20 * GB - MB - 15 * MB);
+    expect(await memberUsage(t, ws, member)).toBe(10 * GB - MB - 15 * MB);
   });
 
-  test("Core with 8 GB moving to Free: files stay, uploads wait until under 1 GB (18)", async () => {
+  test("Core with 8 GB moving to Free: files stay, uploads wait until under 500 MB (18)", async () => {
     const t = setup();
     const a = await person(t, "down@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
@@ -352,7 +356,7 @@ describe("storage (18, 19, 22, 23)", () => {
     await expect(upload(a, note, 1 * MB)).rejects.toThrow(/free storage/);
     expect(await a.as.query(api.documents.get, { documentId: note })).not.toBeNull();
     expect((await a.as.query(api.billing.mine, {})).storageUsedBytes).toBe(8 * GB);
-    await setUsage(t, a, 900 * MB);
+    await setUsage(t, a, 450 * MB);
     expect((await upload(a, note, 10 * MB)).uploadUrl).toBeTruthy();
   });
 
@@ -368,7 +372,7 @@ describe("storage (18, 19, 22, 23)", () => {
     await expect(upload(owner, note, 1 * MB)).rejects.toThrow(/is over its owner's free storage/);
     expect(await owner.as.query(api.documents.get, { documentId: note })).not.toBeNull();
     // Changing only the member limit keeps the plan's rule (no accidental override).
-    await admin.as.mutation(api.admin.setWorkspaceQuota, { workspaceId: teamId, storageQuotaBytes: 1 * GB, memberLimit: 60, reason: "Support ticket 1234 for this team" });
+    await admin.as.mutation(api.admin.setWorkspaceQuota, { workspaceId: teamId, storageQuotaBytes: 500 * MB, memberLimit: 60, reason: "Support ticket 1234 for this team" });
     expect(await t.run(async (ctx) => (await ctx.db.query("workspaces").collect()).find((w) => w.publicId === teamId)!.storageQuotaOverrideBytes ?? null)).toBeNull();
     await admin.as.mutation(api.admin.setWorkspaceQuota, { workspaceId: teamId, storageQuotaBytes: 50 * GB, memberLimit: 60, reason: "Support ticket 1234 for this team" });
     expect((await mineEntry(owner, teamId)).storageQuotaBytes).toBe(50 * GB);

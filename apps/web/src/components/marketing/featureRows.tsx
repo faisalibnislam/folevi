@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { artById, artThumb } from "./product/Replica";
+import { Checks } from "./Checks";
 import { cx } from "./ui";
 
 // A feature with its picture, as the home page's Foli AI section and the Foli AI page lay them out: text and
@@ -17,6 +18,7 @@ export function Feature({
   children,
   reverse = false,
   stacked = false,
+  column = false,
   tint = false,
 }: {
   eyebrow: string;
@@ -30,6 +32,8 @@ export function Feature({
   reverse?: boolean;
   /** Text on top in two columns, and the picture below at full width. */
   stacked?: boolean;
+  /** One column of a pair: the picture on top, the text under it. */
+  column?: boolean;
   tint?: boolean;
 }) {
   const tinted = tint ? TINTED : undefined;
@@ -41,6 +45,25 @@ export function Feature({
       {picture}
     </div>
   );
+  if (column) {
+    // In a two-column grid the pair shares its rows (subgrid), so both pictures end, and both texts start, level.
+    return (
+      <div className={cx(tinted, "grid gap-8 lg:row-span-2 lg:grid-rows-subgrid")}>
+        <div
+          className="mk-stage flex items-center px-3 py-8 sm:px-6 sm:py-10"
+          style={{ ["--stage-art" as string]: artThumb(artById(art)) }}
+        >
+          {picture}
+        </div>
+        <div>
+          <p className="mk-caps">{eyebrow}</p>
+          <h3 className="mk-display mt-3 text-[26px] leading-[1.1] sm:text-[30px]">{title}</h3>
+          {children ? <p className="mt-3 text-[16px] leading-relaxed text-muted">{children}</p> : null}
+          <Points points={points} className="mt-5" />
+        </div>
+      </div>
+    );
+  }
   if (stacked) {
     return (
       <div className={tinted}>
@@ -87,24 +110,9 @@ export function Feature({
   );
 }
 
+/** A feature's points, as checkmark lines. */
 export function Points({ points, className }: { points: ReactNode[]; className?: string }) {
-  if (!points.length) return null;
-  return (
-    <ul className={cx("space-y-3", className)}>
-      {points.map((point, i) => (
-        <li
-          key={i}
-          className="flex gap-3 text-[14.5px] leading-relaxed text-ink [&_b]:font-medium [&_b]:text-(--color-heading)"
-        >
-          <span
-            aria-hidden="true"
-            className="mt-[9px] size-[5px] flex-none rounded-tiny bg-(--color-ink-muted)"
-          />
-          <span>{point}</span>
-        </li>
-      ))}
-    </ul>
-  );
+  return <Checks items={points} className={className} />;
 }
 
 export function SmallFeature({

@@ -28,7 +28,10 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
                   </span>
                 ) : (
                   <>
-                    <Link href={item.path} className="inline-flex min-h-8 items-center rounded-chip px-1.5 transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading)">
+                    <Link
+                      href={item.path}
+                      className="inline-flex min-h-8 items-center rounded-chip px-1.5 transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading)"
+                    >
                       {item.name}
                     </Link>
                     <Icon name="chevron-right" size={13} className="flex-none text-faint" />
@@ -44,7 +47,23 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
 }
 
 /** Questions and answers in their own card, plus FAQPage structured data built from the same text. */
-export function FaqSection({ id = "faq", title = "Questions", faqs, path, className, bare = false }: { id?: string; title?: string; faqs: FaqItem[]; path: string; className?: string; /** In a column of cards, not the page's width. */ bare?: boolean }) {
+export function FaqSection({
+  id = "faq",
+  title = "Questions",
+  faqs,
+  path,
+  className,
+  bare = false,
+  collapsed = false,
+}: {
+  id?: string;
+  title?: string;
+  faqs: FaqItem[];
+  path: string;
+  className?: string;
+  /** In a column of cards, not the page's width. */ bare?: boolean;
+  /** Questions only, each opening on click (the main pages keep them short). */ collapsed?: boolean;
+}) {
   return (
     <section aria-labelledby={`${id}-title`} className={cx(!bare && container, className)}>
       <div className="mk-box px-5 pt-8 sm:px-10 sm:pt-10 lg:px-14 lg:pt-12">
@@ -52,14 +71,41 @@ export function FaqSection({ id = "faq", title = "Questions", faqs, path, classN
         <h2 id={`${id}-title`} className="mk-h2">
           {title}
         </h2>
-        <dl className="mk-prose mt-4 max-w-none pb-2 sm:pb-4 [&>div]:mt-0">
-          {faqs.map((item, index) => (
-            <div key={item.q} className={cx("grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10", index > 0 && "border-t mk-hair")}>
-              <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
-              <dd className="text-muted">{item.a}</dd>
-            </div>
-          ))}
-        </dl>
+        {collapsed ? (
+          <div className="mt-4 pb-4 sm:pb-6">
+            {faqs.map((item, index) => (
+              <details key={item.q} className={cx("group py-4", index > 0 && "border-t mk-hair")}>
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-semibold tracking-[-0.012em] text-(--color-heading) [&::-webkit-details-marker]:hidden">
+                  <span>{item.q}</span>
+                  <span
+                    aria-hidden="true"
+                    className="text-[20px] font-normal text-muted transition-transform duration-150 group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-muted">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        ) : (
+          <dl className="mk-prose mt-4 max-w-none pb-2 sm:pb-4 [&>div]:mt-0">
+            {faqs.map((item, index) => (
+              <div
+                key={item.q}
+                className={cx(
+                  "grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10",
+                  index > 0 && "border-t mk-hair",
+                )}
+              >
+                <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">
+                  {item.q}
+                </dt>
+                <dd className="text-muted">{item.a}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </div>
     </section>
   );
@@ -73,6 +119,7 @@ export function LinkCard({
   icon,
   cover,
   headingLevel = "h3",
+  layout = "stack",
   id,
   className,
 }: {
@@ -83,24 +130,54 @@ export function LinkCard({
   /** A picture across the top of the card (the features index's covers). */
   cover?: ReactNode;
   headingLevel?: "h2" | "h3";
+  /**
+   * "grow": the cover takes the card's spare height, so covers in a row line up whatever the text below.
+   * "wide": the same, and on large screens the cover sits on the left with the text beside it.
+   */
+  layout?: "stack" | "grow" | "wide";
   id?: string;
   className?: string;
 }) {
   const Heading = headingLevel;
+  const grow = layout !== "stack";
+  const wide = layout === "wide";
   return (
-    <div id={id} className={cx("mk-card group relative flex h-full scroll-mt-24 flex-col transition-shadow duration-150 hover:shadow-(--shadow-pop)", cover ? "overflow-hidden" : "p-5 sm:p-6", className)}>
+    <div
+      id={id}
+      className={cx(
+        "mk-card group relative flex h-full scroll-mt-24 flex-col transition-shadow duration-150 hover:shadow-(--shadow-pop)",
+        wide && "lg:flex-row",
+        cover ? "overflow-hidden" : "p-5 sm:p-6",
+        className,
+      )}
+    >
       {/* The card clips the cover to its own corners, so the cover's stage needs none. */}
-      {cover ? <div className="border-b mk-hair [&>.mk-stage]:rounded-none">{cover}</div> : null}
-      <div className={cx("flex flex-1 flex-col", cover ? "p-5 sm:p-6" : undefined)}>
+      {cover ? (
+        <div className={cx("border-b mk-hair [&>.mk-stage]:rounded-none", grow && "flex flex-1 flex-col", wide && "lg:w-[62%] lg:flex-none lg:border-b-0 lg:border-r")}>
+          {cover}
+        </div>
+      ) : null}
+      <div className={cx("flex flex-col", grow ? "flex-none" : "flex-1", cover ? "p-5 sm:p-6" : undefined, wide && "lg:flex-1 lg:justify-center lg:p-10")}>
         {icon ? <span className="mb-4">{icon}</span> : null}
-        <Heading className="mk-h3 text-[16.5px] leading-snug">
-          <Link href={href} className="after:absolute after:inset-0 after:rounded-control focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)">
+        <Heading className={cx("mk-h3 text-[16.5px] leading-snug", wide && "lg:text-[24px]")}>
+          <Link
+            href={href}
+            className="after:absolute after:inset-0 after:rounded-control focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)"
+          >
             {title}
           </Link>
         </Heading>
-        <div className="mt-1.5 flex-1 text-[14.5px] leading-relaxed text-muted">{body}</div>
-        <span aria-hidden="true" className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-(--color-heading)">
-          Read more <Icon name="arrow-right" size={14} className="transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" />
+        <div className={cx("mt-1.5 text-[14.5px] leading-relaxed text-muted", grow ? undefined : "flex-1", wide && "lg:mt-3 lg:text-[16px]")}>{body}</div>
+        <span
+          aria-hidden="true"
+          className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-(--color-heading)"
+        >
+          Read more{" "}
+          <Icon
+            name="arrow-right"
+            size={14}
+            className="transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none"
+          />
         </span>
       </div>
     </div>
@@ -108,12 +185,27 @@ export function LinkCard({
 }
 
 /** The closing card on feature, template and docs pages. */
-export function SignUpPanel({ title = "Start with one note.", body, href = SIGN_UP_URL, cta = "Start writing", secondary }: { title?: string; body: ReactNode; href?: string; cta?: string; secondary?: { label: string; href: string } }) {
+export function SignUpPanel({
+  title = "Start with one note.",
+  body,
+  href = SIGN_UP_URL,
+  cta = "Start writing",
+  secondary,
+}: {
+  title?: string;
+  body: ReactNode;
+  href?: string;
+  cta?: string;
+  secondary?: { label: string; href: string };
+}) {
   return (
     <section aria-labelledby="signup-title" className={container}>
       <div className="mk-box px-6 py-14 text-center sm:px-10 sm:py-20">
         <FoleviMark size={44} className="mx-auto block" />
-        <h2 id="signup-title" className="mk-display mx-auto mt-6 max-w-[18ch] text-[34px] sm:text-[48px]">
+        <h2
+          id="signup-title"
+          className="mk-display mx-auto mt-6 max-w-[18ch] text-[34px] sm:text-[48px]"
+        >
           {title}
         </h2>
         <p className="mk-lede mx-auto mt-4 max-w-[48ch]">{body}</p>

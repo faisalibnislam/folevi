@@ -54,9 +54,10 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Ask questions of your notes (with links to the notes used), write, rewrite, summarize, continue,
   translate and find action items (from the slash menu, the selection toolbar or ⌘J), and “Catch me
   up”, a brief of the week on Home. Answers stream in. Anyone can turn it off in Settings. Sent to
-  Google Gemini. Metered in AI credits (1 credit = $0.01 of Gemini cost): Free 25 a month, Pro 180, Pro AI
-  550, the trial 100, plus credit packs on Pro and Pro AI. In a paid workspace each member has that plan's
-  credits there; in free workspaces and as a guest, people use their own personal credits. Core has no AI
+  Google Gemini. Metered in AI credits (1 credit = $0.01 of Gemini cost): Pro 180 a month, Pro AI 550, the
+  trial 100, plus credit packs on Pro and Pro AI. Free has AI only during the 7-day trial; after it, Foli AI
+  is refused with an upgrade ("Foli AI comes with Pro and Pro AI"). In a paid workspace each member has that
+  plan's credits there; in free workspaces and as a guest, people use their own personal credits. Core has no AI
   at all: the server refuses every request in a Core Personal or workspace and the app hides AI there.
   An hourly abuse limit still applies. Details in `docs/BILLING.md`.
 
@@ -67,9 +68,9 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
   role. The model and its migration are in `docs/ACCOUNT_MODEL_PLAN.md`.
 
 ### Plans
-- **Four plans, for Personal and for Team** (`docs/BILLING.md`): Free ($0: 1 GB shared by your Personal
-  and the free workspaces you own, 25 AI credits a month, 2 devices), Core ($1.99 a month or $19 a year:
-  20 GB, no AI), Pro ($4.99 or $49: 20 GB, 180 credits) and Pro AI ($12.99 or $149: 50 GB, 550 credits,
+- **Four plans, for Personal and for Team** (`docs/BILLING.md`): Free ($0: 500 MB shared by your Personal
+  and the free workspaces you own, Foli AI only during the trial, 2 devices), Core ($1.99 a month or $19 a
+  year: 10 GB, no AI), Pro ($4.99 or $49: 10 GB, 180 credits) and Pro AI ($13.99 or $159: 50 GB, 550 credits,
   "unlimited AI, fair use"). Team plans cost the same per member seat (owner, admins and members; guests
   and pending invitations are free) and give each member that storage and those credits in the workspace.
   Every new account gets a 7-day Pro AI trial with 100 credits and no card. Credit packs (500 for $7.99,

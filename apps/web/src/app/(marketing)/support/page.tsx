@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { SupportForm } from "@/components/support/SupportForm";
-import { JsonLd, pageMetadata } from "@/components/marketing/seo";
-import { SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL, absoluteUrl } from "@/components/marketing/site";
+import { FaqSection } from "@/components/marketing/parts";
+import { pageMetadata, type FaqItem } from "@/components/marketing/seo";
+import { SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL } from "@/components/marketing/site";
 import { PageHeader, container, cx } from "@/components/marketing/ui";
-import { MONTHLY_CREDITS, PLANS, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
-import { Card, PageFrame } from "@/components/marketing/cards";
+import { MONTHLY_CREDITS, PLANS, TRIAL_CREDITS, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
+import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Folevi support: contact us and quick answers",
@@ -13,11 +14,9 @@ export const metadata = pageMetadata({
   path: "/support",
 });
 
-type Faq = { q: string; a: string; link?: { label: string; href: string } };
-
 // Every answer states what the product does today (see /docs, /pricing and /security). The same text
-// feeds the FAQPage structured data, so answers are plain sentences.
-const faqs: Faq[] = [
+// feeds the FAQPage structured data, so answers are plain sentences. They open on click.
+const faqs: FaqItem[] = [
   {
     q: "I didn’t get the confirmation email.",
     a: "Check your spam or junk folder first. The confirmation link expires after 24 hours and works once. On the “Check your inbox” screen you can send a new link to the same address.",
@@ -33,7 +32,6 @@ const faqs: Faq[] = [
   {
     q: "Does Folevi work offline?",
     a: "Yes. Every change is saved on your device first, then synced. With no connection the page shows Offline and counts the edits waiting on this device; they sync when you reconnect. Saved means everything has reached our servers.",
-    link: { label: "Sync & offline in the docs", href: "/docs/sync-and-offline" },
   },
   {
     q: "A page says Conflict. What happened?",
@@ -41,8 +39,7 @@ const faqs: Faq[] = [
   },
   {
     q: "What do the plans cost?",
-    a: `Free includes 1 GB of storage, ${MONTHLY_CREDITS.free} AI credits a month and ${PLANS.free.devices} devices. Core is ${formatPrice(PLANS.core.monthlyCents)} a month (or ${formatPrice(PLANS.core.yearlyCents)} a year) with 20 GB and no AI. Pro is ${formatPrice(PLANS.pro.monthlyCents)} a month (or ${formatPrice(PLANS.pro.yearlyCents)} a year) with 20 GB and ${MONTHLY_CREDITS.pro} AI credits a month. Pro AI is ${formatPrice(PLANS.pro_ai.monthlyCents)} a month (or ${formatPrice(PLANS.pro_ai.yearlyCents)} a year) with 50 GB and unlimited AI, fair use. Team plans cost the same per member. Every new account gets Pro AI free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card; after that you stay on Free unless you choose a plan.`,
-    link: { label: "See pricing", href: "/pricing" },
+    a: `Free includes ${sizeLabel(PLANS.free.storageBytes)} of storage and ${PLANS.free.devices} devices, with Foli AI during the trial. Core is ${formatPrice(PLANS.core.monthlyCents)} a month (or ${formatPrice(PLANS.core.yearlyCents)} a year) with ${sizeLabel(PLANS.core.storageBytes)} and no AI. Pro is ${formatPrice(PLANS.pro.monthlyCents)} a month (or ${formatPrice(PLANS.pro.yearlyCents)} a year) with ${sizeLabel(PLANS.pro.storageBytes)} and ${MONTHLY_CREDITS.pro} AI credits a month. Pro AI is ${formatPrice(PLANS.pro_ai.monthlyCents)} a month (or ${formatPrice(PLANS.pro_ai.yearlyCents)} a year) with ${sizeLabel(PLANS.pro_ai.storageBytes)} and unlimited AI, fair use. Team plans cost the same per member. Every new account gets Pro AI free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card; after that you stay on Free unless you choose a plan.`,
   },
   {
     q: "How do I change or cancel my plan?",
@@ -51,12 +48,10 @@ const faqs: Faq[] = [
   {
     q: "How do I export my notes?",
     a: "Export any page as Markdown, HTML or PDF, or download everything in your Personal as a ZIP archive. Owners and admins can export a whole workspace.",
-    link: { label: "Import & export in the docs", href: "/docs/import-and-export" },
   },
   {
     q: "How do I share a page?",
     a: "Use the page’s Share menu. You can invite people by email to view, comment or edit, or create a public link. A link can expire, require a password, and be revoked at any time.",
-    link: { label: "Sharing & permissions in the docs", href: "/docs/sharing-and-permissions" },
   },
   {
     q: "How do I delete my account?",
@@ -69,58 +64,51 @@ const faqs: Faq[] = [
   {
     q: "Can Folevi support read my notes?",
     a: "No. Our admin tools have no way to open your pages, blocks, comments or files, so please don’t paste private notes into a support request unless you want us to see them.",
-    link: { label: "Who can see your notes", href: "/security#access" },
   },
 ];
-
-function faqLd(): Record<string, unknown> {
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    url: absoluteUrl("/support"),
-    mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
-  };
-}
 
 const elsewhere: Array<{ title: string; body: React.ReactNode }> = [
   {
     title: "Email",
     body: (
-      <>
-        Write to <a className="mk-link" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. It lands in the same place as this form.
-      </>
+      <a className="mk-link" href={`mailto:${SUPPORT_EMAIL}`}>
+        {SUPPORT_EMAIL}
+      </a>
     ),
   },
   {
     title: "Signed in?",
     body: (
       <>
-        Use <strong className="font-semibold text-(--color-heading)">Contact support</strong> in the app’s Help page, so your request is linked to your account and our replies show up there too. <a className="mk-link" href={`${WEB_APP_URL}/help`}>Open Help</a>
+        Ask from Help in the app, linked to your account.{" "}
+        <a className="mk-link" href={`${WEB_APP_URL}/help`}>
+          Open Help
+        </a>
       </>
     ),
   },
   {
     title: "Documentation",
     body: (
-      <>
-        How Folevi works, from shortcuts to sync. <Link className="mk-link" href="/docs">Read the docs</Link>
-      </>
+      <Link className="mk-link" href="/docs">
+        Read the docs
+      </Link>
     ),
   },
   {
     title: "Status",
     body: (
-      <>
-        What the sync status on a page means, and how to tell if something is wrong. <Link className="mk-link" href="/status">Check status</Link>
-      </>
+      <Link className="mk-link" href="/status">
+        Check status
+      </Link>
     ),
   },
   {
     title: "Security reports",
     body: (
-      <>
-        Found a vulnerability? Email <a className="mk-link" href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>. More on the <Link className="mk-link" href="/security">Security</Link> page.
-      </>
+      <a className="mk-link" href={`mailto:${SECURITY_EMAIL}`}>
+        {SECURITY_EMAIL}
+      </a>
     ),
   },
 ];
@@ -128,22 +116,17 @@ const elsewhere: Array<{ title: string; body: React.ReactNode }> = [
 export default function SupportPage() {
   return (
     <PageFrame>
-      <JsonLd data={faqLd()} />
       <PageHeader
         eyebrow="Support"
         title="How can we help?"
-        lede={
-          <>
-            Send us a message and a person on the Folevi team will reply by email. Many questions are answered below, and the <Link className="mk-link" href="/docs">documentation</Link> covers the rest.
-          </>
-        }
+        lede="A person on the Folevi team replies by email."
       />
       <div className={cx(container, "grid gap-(--mk-stack-gap) lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]")}>
         <section aria-labelledby="contact-title" className="mk-box relative px-5 py-8 sm:p-8 lg:p-10">
           <h2 id="contact-title" className="mk-h3 text-[22px]">
             Contact support
           </h2>
-          <p className="mt-1.5 text-[15px] text-muted">We’ll confirm by email with a request number. Reply to that email to add details.</p>
+          <p className="mt-1.5 text-[15px] text-muted">We’ll confirm by email with a request number.</p>
           <div className="mt-6">
             <SupportForm variant="site" />
           </div>
@@ -164,27 +147,7 @@ export default function SupportPage() {
         </aside>
       </div>
 
-        <Card aria-labelledby="faq-title" inner="px-5 pt-8 pb-2 sm:px-10 sm:pt-10 sm:pb-4 lg:px-14 lg:pt-12">
-          <h2 id="faq-title" className="mk-h2">
-            Common questions
-          </h2>
-          <dl className="mk-prose mt-4 max-w-none [&>div]:mt-0">
-            {faqs.map((item, index) => (
-              <div key={item.q} className={cx("grid gap-2 py-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-10", index > 0 && "border-t mk-hair")}>
-                <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">{item.q}</dt>
-                <dd className="text-muted">
-                  {item.a}
-                  {item.link ? (
-                    <>
-                      {" "}
-                      <Link href={item.link.href}>{item.link.label}</Link>
-                    </>
-                  ) : null}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Card>
+      <FaqSection title="Common questions" faqs={faqs} path="/support" collapsed />
     </PageFrame>
   );
 }

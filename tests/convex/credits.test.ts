@@ -146,20 +146,34 @@ describe("metering real requests", () => {
 });
 
 describe("balances, periods and packs", () => {
-  test("Free: 25 credits each calendar month (UTC), refused when they're gone, back next month", async () => {
+  test("Free after its trial: no AI credits in any calendar month (UTC), so every request is refused with an upgrade", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(Date.UTC(2027, 0, 20, 10));
     const t = setup();
     const a = await person(t, "free-credits@example.com");
     await endTrial(t, a);
-    expect(await balance(a)).toMatchObject({ allowance: 25, available: 25, resetsAt: Date.UTC(2027, 1, 1), account: "personal" });
-    await spend(t, a, 160_000); // 24 credits
-    expect(await balance(a)).toMatchObject({ used: 24, available: 1, monthlyShareLeft: 1 / 25 });
-    await spend(t, a, 1000); // 1 credit
+    expect(await balance(a)).toMatchObject({ allowance: 0, available: 0, resetsAt: Date.UTC(2027, 1, 1), account: "personal", canBuy: false });
     const err = await a.as.mutation(internal.ai.begin, { scope: PERSONAL }).catch((e: { data: Record<string, unknown> }) => e.data);
-    expect(err).toMatchObject({ code: "out_of_credits", message: "You've used this month's AI credits. They reset on February 1. Upgrade for more in Settings → Plan & billing.", resetsAt: Date.UTC(2027, 1, 1), available: 0, action: "upgrade" });
+    expect(err).toMatchObject({ code: "out_of_credits", available: 0, action: "upgrade" });
+    // A new month brings nothing: Foli AI needs Pro or Pro AI.
     vi.setSystemTime(Date.UTC(2027, 1, 1, 0, 1));
-    expect(await balance(a)).toMatchObject({ used: 0, available: 25, resetsAt: Date.UTC(2027, 2, 1) });
+    expect(await balance(a)).toMatchObject({ allowance: 0, used: 0, available: 0, resetsAt: Date.UTC(2027, 2, 1) });
+    await expect(a.as.mutation(internal.ai.begin, { scope: PERSONAL })).rejects.toThrow(/out_of_credits/);
+  });
+
+  test("Free after its trial: 'Foli AI comes with Pro and Pro AI', and nothing is sent to the model", async () => {
+    const t = setup();
+    const a = await person(t, "free-no-ai@example.com");
+    await endTrial(t, a);
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn(async () => geminiReply("Should never be asked", { promptTokenCount: 100, candidatesTokenCount: 10 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const err = await a.as.action(api.ai.write, { scope: a.scope, task: "summarize", text: "Private draft" }).catch((e: { data: Record<string, unknown> }) => e.data);
+    expect(err).toMatchObject({ code: "out_of_credits", message: "Foli AI comes with Pro and Pro AI. Upgrade in Settings → Plan & billing.", available: 0, action: "upgrade" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiUsage").collect()).length)).toBe(0);
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
+    expect((await balance(a)).used).toBe(0);
   });
 
   test("Pro: packs are used after the monthly credits, soonest-expiring first; expired ones don't count", async () => {
@@ -189,8 +203,7 @@ describe("balances, periods and packs", () => {
   test("the estimate is held before a request: parallel requests can't spend the same credits", async () => {
     const t = setup();
     const a = await person(t, "holds@example.com");
-    await endTrial(t, a);
-    await spend(t, a, 140_000); // 21 of 25
+    await spend(t, a, 640_000); // 96 of the trial's 100
     const plan = [{ fast: false, inputChars: 6000, maxOutputTokens: 6144 }]; // about 5 credits
     const err = await a.as.mutation(internal.ai.begin, { scope: PERSONAL, plan }).catch((e: { data: Record<string, unknown> }) => e.data);
     expect(err).toMatchObject({ code: "out_of_credits", available: 4, needed: 5 });
@@ -210,25 +223,25 @@ describe("balances, periods and packs", () => {
   test("a request that costs more than what's left takes the balance to zero and records the difference", async () => {
     const t = setup();
     const a = await person(t, "overrun@example.com");
-    await endTrial(t, a);
-    await spend(t, a, 146_667); // 23 credits (22.0 + a hair)
+    await spend(t, a, 646_667); // 98 of the trial's 100 credits (97.0 + a hair)
     expect((await balance(a)).available).toBe(2);
     await spend(t, a, 100_000); // 15 credits, 2 available
     expect((await balance(a)).available).toBe(0);
     const period = await t.run(async (ctx) => (await ctx.db.query("aiCreditPeriods").collect())[0]!);
-    expect(period).toMatchObject({ used: 25, overrun: 13 });
+    expect(period).toMatchObject({ used: 100, overrun: 13 });
   });
 
-  test("the trial has 100 credits for its whole length; afterwards Free's 25 a month", async () => {
+  test("the trial has 100 credits for its whole length; afterwards Free has none", async () => {
     const t = setup();
     const a = await person(t, "trial-credits@example.com");
     expect(await balance(a)).toMatchObject({ allowance: 100, trialing: true, plan: "Pro AI trial", canBuy: false });
     await spend(t, a, 600_000); // 90
     expect((await balance(a)).available).toBe(10);
     const err = await a.as.mutation(internal.ai.begin, { scope: PERSONAL, plan: [{ fast: false, inputChars: 400_000, maxOutputTokens: 2048 }] }).catch((e: { data: Record<string, unknown> }) => e.data);
-    expect(err).toMatchObject({ code: "out_of_credits" });
+    expect(err).toMatchObject({ code: "out_of_credits", available: 10, action: "upgrade" });
+    expect(String(err.message)).toMatch(/you have 10 left\. Your trial ends on .+; after that, Foli AI comes with Pro and Pro AI\. Upgrade for more in Settings → Plan & billing\.$/);
     await endTrial(t, a);
-    expect(await balance(a)).toMatchObject({ allowance: 25, available: 25, trialing: false });
+    expect(await balance(a)).toMatchObject({ allowance: 0, available: 0, trialing: false });
   });
 
   test("a paid workspace seat: its own monthly credits and packs, 'buy more' when they're gone", async () => {

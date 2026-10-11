@@ -7,7 +7,7 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { SCHEMA_VERSION, rankSequence, type WireBlock } from "@folevi/editor-schema";
 import { capLines, graphPrompt, likelyDuplicate, normalizeName, noteSimilarity, parseExtraction, sharedReason, textKey, titleSimilarity, EXTRACT_CHARS, MAX_ENTITIES, type ContextNote, type GraphLine } from "../../convex/lib/ai/graph";
-import { GRAPH_LIMITS, PRO_NOTE } from "../../convex/aiGraph";
+import { GRAPH_LIMITS, PRO_NOTE, REBUILD_COOLDOWN_MS } from "../../convex/aiGraph";
 import { inWorkspace, join, person, PERSONAL, setup, teamWorkspace, ulid, type ScopeArg, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -274,6 +274,33 @@ describe("extraction", () => {
     const second = await inspect(t, note.id);
     expect(second.entities.map((e) => e.name).sort()).toEqual(["Acme", "Project Atlas"]);
     expect(await t.run(async (ctx) => (await ctx.db.query("aiEntities").collect()).map((e) => e.name).sort())).toEqual(["Acme", "Project Atlas"]);
+  });
+
+  test("a note's graph is rebuilt at most once per cooldown: edits in between are read together, once", async () => {
+    const t = setup();
+    const log = stubAi();
+    const a = await pro(t, "graph-cooldown@example.com");
+    const note = await writeNote(a, PERSONAL, "Atlas kickoff", ["Project Atlas starts with Acme.", "Dana Lee leads it."]);
+    await drain(t);
+    const calls = log.graph.length;
+    const id = await docId(t, note.id);
+    const edit = async (text: string, revision: number) => {
+      const b = { ...note.blocks[1]!, text: [{ type: "text" as const, text }] };
+      await a.as.mutation(api.sync.push, { scope: PERSONAL, deviceId: "device-graph", ops: [upsert(note.id, b, revision)] as never });
+    };
+    // Two edits soon after the first read: neither is read now, and only one later read is scheduled.
+    await edit("Sam leads it now.", 1);
+    expect(await t.action(internal.aiGraph.extract, { documentId: id })).toBe("later");
+    await edit("Sam and Dana Lee lead it.", 2);
+    expect(await t.action(internal.aiGraph.extract, { documentId: id })).toBe("later");
+    expect(log.graph.length).toBe(calls);
+    const state = (await inspect(t, note.id)).state!;
+    expect(state.nextAt).toBe(state.extractedAt + REBUILD_COOLDOWN_MS);
+    // Once it's due, the note is read once, with both edits.
+    await drain(t);
+    expect(log.graph.length).toBe(calls + 1);
+    expect(log.graph.at(-1)!.prompt).toContain("Sam and Dana Lee lead it.");
+    expect((await inspect(t, note.id)).state).not.toHaveProperty("nextAt");
   });
 
   test("Free, the trial, Core and free workspaces never call the model; their graph is links only", async () => {

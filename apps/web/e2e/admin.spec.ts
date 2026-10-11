@@ -137,7 +137,7 @@ test("an admin upgrades a person straight from the users list (reason required, 
   await pick(dialog.getByRole("combobox", { name: "Ends" }), "In 3 months");
   const changes = dialog.getByRole("region", { name: "What changes" });
   await expect(changes).toContainText("Pro, yearly");
-  await expect(changes).toContainText("20 GB");
+  await expect(changes).toContainText("10 GB");
   await expect(changes).toContainText("180 a month");
   await settle(page);
   const scan = await new AxeBuilder({ page }).include("dialog[open]").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
@@ -245,7 +245,7 @@ test("an admin puts a workspace on Pro by hand (audited), and its plan, seats an
   await dialog.getByRole("radio", { name: "Pro", exact: true }).check();
   const changes = dialog.getByRole("region", { name: "What changes" });
   await expect(changes).toContainText("1 seat × $4.99 = $4.99 / month, not billed");
-  await expect(changes).toContainText("20 GB per member");
+  await expect(changes).toContainText("10 GB per member");
   await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: comped Pro for a design partner");
   await dialog.getByRole("button", { name: "Upgrade to Pro" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Plan set to Workspace Pro, monthly" })).toBeVisible();
@@ -289,7 +289,7 @@ test("the owner sees Billing setup: Polar's connection and all 14 products, not 
   await expect(products.getByRole("row")).toHaveCount(15);
   await expect(products.getByText("Not created")).toHaveCount(14);
   await expect(products.getByRole("rowheader", { name: /Folevi Core \(monthly\)/ })).toBeVisible();
-  await expect(products.getByRole("row", { name: /Folevi Team Pro AI \(yearly\)/ })).toContainText("$149 per seat a year");
+  await expect(products.getByRole("row", { name: /Folevi Team Pro AI \(yearly\)/ })).toContainText("$159 per seat a year");
   await expect(products.getByRole("row", { name: /Folevi AI credits: 1,000/ })).toContainText("$14.99 once");
   await page.context().close();
 });

@@ -9,13 +9,13 @@
 //   that workspace, per person. Guests are never billed.
 //
 // Storage (lib/entitlements.ts):
-// - Free: 1 GB in total, shared by the owner's Personal (while it's on Free) and every free workspace they
-//   own. Every upload in those workspaces, by anyone, counts against the owner's 1 GB.
-// - Core / Pro / Pro AI: 20 GB / 20 GB / 50 GB per person. In a paid workspace each member's own uploads count against
+// - Free: 500 MB in total, shared by the owner's Personal (while it's on Free) and every free workspace they
+//   own. Every upload in those workspaces, by anyone, counts against the owner's 500 MB.
+// - Core / Pro / Pro AI: 10 GB / 10 GB / 50 GB per person. In a paid workspace each member's own uploads count against
 //   their own quota there; a guest's uploads count against the page owner's.
 //
-// AI credits (lib/credits.ts): 1 credit = $0.01 of Gemini cost. Monthly credits per person (Free 25, Pro
-// 180, Pro AI 550), plus one-time packs (Pro and Pro AI only) that last 12 months and are used after the
+// AI credits (lib/credits.ts): 1 credit = $0.01 of Gemini cost. Monthly credits per person (Pro 180, Pro AI
+// 550; Free has AI only during the trial, then none), plus one-time packs (Pro and Pro AI only) that last 12 months and are used after the
 // monthly credits. Core has no AI at all: the server refuses every AI request in a Core Personal or a Core
 // workspace, for everyone there.
 
@@ -78,12 +78,16 @@ export interface CatalogPlan {
   entitlements: PlanEntitlements;
 }
 
-export const GB = 1024 * 1024 * 1024;
+export const MB = 1024 * 1024;
+export const GB = 1024 * MB;
+/** A storage size as the plans name it ("500 MB", "10 GB"). */
+export const sizeLabel = (bytes: number) => (bytes >= GB ? `${bytes / GB} GB` : `${Math.round(bytes / MB)} MB`);
 
 /** AI credits per person per month, per tier. */
-export const MONTHLY_CREDITS: Record<PlanTier, number> = { free: 25, core: 0, pro: 180, pro_ai: 550 };
+// Free has AI only during the trial (2026-10-11): after it, Foli AI needs Pro or Pro AI.
+export const MONTHLY_CREDITS: Record<PlanTier, number> = { free: 0, core: 0, pro: 180, pro_ai: 550 };
 /** Storage per tier: Free is the shared pool; paid tiers are per person. */
-export const STORAGE_BYTES: Record<PlanTier, number> = { free: 1 * GB, core: 20 * GB, pro: 20 * GB, pro_ai: 50 * GB };
+export const STORAGE_BYTES: Record<PlanTier, number> = { free: 500 * MB, core: 10 * GB, pro: 10 * GB, pro_ai: 50 * GB };
 /** Tiers without the AI Assistant (the server refuses AI in their scope). */
 export const tierHasAi = (tier: PlanTier) => tier !== "core";
 
@@ -127,7 +131,7 @@ const plan = (id: CatalogPlanId, scope: PlanScope, tier: PlanTier, interval: Bil
 export const PRICES: Record<Exclude<PlanTier, "free">, Record<BillingInterval, number>> = {
   core: { month: 199, year: 1900 },
   pro: { month: 499, year: 4900 },
-  pro_ai: { month: 1299, year: 14900 },
+  pro_ai: { month: 1399, year: 15900 },
 };
 
 export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
@@ -247,27 +251,27 @@ const personalCard = (tier: PersonalTier, blurb: string, features: string[]): Pe
 /** The four Personal plans, as cards. */
 export const PLANS: Record<PersonalTier, PersonalPlanCard> = {
   free: personalCard("free", "Everything you need to write and organize.", [
-    "1 GB storage, shared with the free workspaces you own",
-    `${MONTHLY_CREDITS.free} AI credits a month`,
+    `${sizeLabel(STORAGE_BYTES.free)} storage, shared with the free workspaces you own`,
+    `Foli AI during your ${TRIAL_DAYS}-day trial`,
     "Use on 2 devices",
     "Unlimited notes, folders and tasks",
     AVAILABILITY,
   ]),
   core: personalCard("core", "More room, and no AI.", [
-    "20 GB storage",
+    `${sizeLabel(STORAGE_BYTES.core)} storage`,
     "No AI. Your notes stay yours: nothing is sent to an AI model",
     "Unlimited devices",
     "Everything in Free, without AI",
   ]),
   pro: personalCard("pro", "More room, and AI for everyday writing.", [
-    "20 GB storage",
+    `${sizeLabel(STORAGE_BYTES.pro)} storage`,
     `${MONTHLY_CREDITS.pro} AI credits a month`,
     "Unlimited devices",
     "Buy more AI credits when you need them",
     "Everything in Core, with AI",
   ]),
   pro_ai: personalCard("pro_ai", "AI as much as you need, with the most room.", [
-    "50 GB storage",
+    `${sizeLabel(STORAGE_BYTES.pro_ai)} storage`,
     `Unlimited AI, fair use (${MONTHLY_CREDITS.pro_ai} credits a month)`,
     "Unlimited devices",
     "Buy more AI credits when you need them",
@@ -315,25 +319,25 @@ const workspaceCard = (tier: WorkspaceTier, blurb: string, features: string[]): 
 /** The four Team (workspace) plans, as cards. Only what exists is listed. */
 export const WORKSPACE_PLANS: Record<WorkspaceTier, WorkspacePlanCard> = {
   free: workspaceCard("free", "For simple collaboration.", [
-    "Uses the owner's free 1 GB",
-    "Each member uses their own personal AI credits",
+    `Uses the owner's free ${sizeLabel(STORAGE_BYTES.free)}`,
+    "No AI after members' trials",
     "Unlimited members and guests",
     "Shared notes, folders and tasks",
   ]),
   core: workspaceCard("core", "More room for every member, and no AI.", [
-    "20 GB per member",
+    `${sizeLabel(STORAGE_BYTES.core)} per member`,
     "No AI for anyone in the workspace: nothing is sent to an AI model",
     "Unlimited members, each billed; guests are free",
     "Everything in Free, without AI",
   ]),
   pro: workspaceCard("pro", "More room and AI for every member.", [
-    "20 GB per member",
+    `${sizeLabel(STORAGE_BYTES.pro)} per member`,
     `${MONTHLY_CREDITS.pro} AI credits per member a month`,
     "Unlimited members, each billed; guests are free",
     "Everything in Core, with AI",
   ]),
   pro_ai: workspaceCard("pro_ai", "AI as much as your team needs.", [
-    "50 GB per member",
+    `${sizeLabel(STORAGE_BYTES.pro_ai)} per member`,
     `Unlimited AI, fair use (${MONTHLY_CREDITS.pro_ai} credits per member a month)`,
     "Unlimited members, each billed; guests are free",
     "Everything in Pro",
@@ -460,7 +464,7 @@ export interface WorkspaceEntitlements {
   /** AI credits per member a month here; 0 on Free (members use their personal credits). */
   monthlyCredits: number;
   creditPacks: boolean;
-  /** Free: the owner's shared pool (1 GB). Paid: per member. An admin override: the workspace's own total. */
+  /** Free: the owner's shared pool (500 MB). Paid: per member. An admin override: the workspace's own total. */
   storageBytes: number;
   storageRule: "shared_free" | "per_person" | "override";
   /** Whether an admin set this workspace's storage limit by hand (it replaces the plan's). */

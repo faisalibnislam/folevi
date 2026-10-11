@@ -7,6 +7,7 @@ import { insertPayment, insertSubscription } from "../../convex/lib/billing";
 import { inWorkspace, para, person, PERSONAL, setup, ulid, type T } from "./helpers";
 import { fakePolar, order, postEvent, product, subscription, withPolar, withoutPolar } from "./polar";
 
+const MB = 1024 ** 2;
 const GB = 1024 ** 3;
 const DAY = 86_400_000;
 const REASON = "Customer support ticket 4321";
@@ -94,7 +95,7 @@ describe("billing rows have exactly one owner", () => {
 });
 
 describe("workspace plans and entitlements", () => {
-  test("Pro and Pro AI: credits and storage per member; Free: the owner's pool and members' own personal credits", async () => {
+  test("Pro and Pro AI: credits and storage per member; Free: the owner's pool, and members' own personal credits (none after a Free trial)", async () => {
     const t = setup();
     const owner = await person(t, "plans-owner@example.com");
     const member = await person(t, "plans-member@example.com");
@@ -102,16 +103,17 @@ describe("workspace plans and entitlements", () => {
     const { id } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Plans" });
     await join(t, owner, member, "plans-member@example.com", id);
     let s = await summary(owner, id);
-    expect(s.entitlements).toMatchObject({ planId: "workspace_free", ai: true, monthlyCredits: 0, storageBytes: 1 * GB, storageRule: "shared_free" });
+    expect(s.entitlements).toMatchObject({ planId: "workspace_free", ai: true, monthlyCredits: 0, storageBytes: 500 * MB, storageRule: "shared_free" });
     expect(s).toMatchObject({ credits: null, pool: { workspaces: 1, includesPersonal: false } });
-    // On Free the member's own personal credits apply (their trial is over: Free's 25).
-    expect(await member.as.query(api.billing.credits, { scope: inWorkspace(id) })).toMatchObject({ account: "personal", allowance: 25 });
+    // On Free the member's own personal credits apply, and their trial is over: Free has none, so no AI here.
+    expect(await member.as.query(api.billing.credits, { scope: inWorkspace(id) })).toMatchObject({ account: "personal", allowance: 0, available: 0 });
+    await expect(member.as.mutation(internal.ai.begin, { scope: inWorkspace(id) })).rejects.toThrow(/Foli AI comes with Pro and Pro AI/);
 
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_monthly" });
     s = await summary(owner, id);
-    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_monthly", paid: true, ai: true, monthlyCredits: 180, storageBytes: 20 * GB, storageRule: "per_person" });
+    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_monthly", paid: true, ai: true, monthlyCredits: 180, storageBytes: 10 * GB, storageRule: "per_person" });
     expect(s.plan).toMatchObject({ tier: "pro", name: "Pro", interval: "month", seatPriceCents: 499 });
-    expect(s).toMatchObject({ seats: 2, estimatedChargeCents: 998, storagePerMemberBytes: 20 * GB, yourStorageUsedBytes: 0, pool: null });
+    expect(s).toMatchObject({ seats: 2, estimatedChargeCents: 998, storagePerMemberBytes: 10 * GB, yourStorageUsedBytes: 0, pool: null });
     expect(s.credits).toMatchObject({ allowance: 180, canBuy: true });
     expect(s.subscription).toMatchObject({ provider: "test", status: "active", quantity: 2 });
     expect(s.payments[0]).toMatchObject({ amountCents: 998, plan: "pro", quantity: 2, status: "paid" });
@@ -122,7 +124,7 @@ describe("workspace plans and entitlements", () => {
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_ai_yearly" });
     s = await summary(owner, id);
     expect(s.entitlements).toMatchObject({ planId: "workspace_pro_ai_yearly", ai: true, aiFairUse: "high", monthlyCredits: 550, storageBytes: 50 * GB });
-    expect(s.estimatedChargeCents).toBe(2 * 14900);
+    expect(s.estimatedChargeCents).toBe(2 * 15900);
     // The switcher reads the plan's short name.
     expect((await member.as.query(api.workspaces.mine, {})).find((w) => w.id === id)!.plan).toMatchObject({ shortName: "Pro AI", tier: "pro_ai" });
   });
@@ -136,7 +138,7 @@ describe("workspace plans and entitlements", () => {
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_ai_monthly" });
     const after = await owner.as.query(api.billing.mine, {});
     expect(after.entitlements).toEqual(before.entitlements);
-    expect(after.entitlements).toMatchObject({ planId: "personal_free", monthlyCredits: 25, storageBytes: 1 * GB });
+    expect(after.entitlements).toMatchObject({ planId: "personal_free", monthlyCredits: 0, storageBytes: 500 * MB });
     // Personal billing history has none of the workspace's payments, and the other way round.
     expect(after.payments).toHaveLength(0);
     await owner.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
@@ -411,7 +413,7 @@ describe("cancellation, ownership and the end of a period (28–30)", () => {
     await t.run(async (ctx) => ctx.db.patch(sub._id, { currentPeriodEnd: Date.now() - 1 }));
     await t.mutation(internal.billing.settleExpiredPlans, {});
     s = await summary(owner, id);
-    expect(s.entitlements).toMatchObject({ planId: "workspace_free", storageBytes: 1 * GB });
+    expect(s.entitlements).toMatchObject({ planId: "workspace_free", storageBytes: 500 * MB });
     // Nothing deleted; the payment history stays.
     expect(s.payments).toHaveLength(1);
     expect((await owner.as.query(api.billing.mine, {})).entitlements).toMatchObject({ paidPlan: "pro", ai: true });
@@ -429,16 +431,16 @@ describe("cancellation, ownership and the end of a period (28–30)", () => {
     await t.run(async (ctx) => ctx.db.patch(wid, { storageUsedBytes: 40 * GB }));
     const upload = (p: Person) => p.as.mutation(api.files.generateUploadUrl, { documentId: note, filename: "a.png", size: 1024 * 1024, mimeType: "image/png", kind: "image" });
     expect((await upload(m)).uploadUrl).toBeTruthy();
-    // The Pro plan is canceled and its period ends: Workspace Free (the owner's 1 GB pool) with 40 GB stored.
+    // The Pro plan is canceled and its period ends: Workspace Free (the owner's 500 MB pool) with 40 GB stored.
     await owner.as.action(api.workspaceBilling.cancel, { workspaceId: id });
     const sub = (await workspaceSub(t, id))!;
     await t.run(async (ctx) => ctx.db.patch(sub._id, { currentPeriodEnd: Date.now() - 1 }));
     await t.mutation(internal.billing.settleExpiredPlans, {});
     const s = await summary(owner, id);
-    expect(s.entitlements).toMatchObject({ planId: "workspace_free", storageBytes: 1 * GB });
+    expect(s.entitlements).toMatchObject({ planId: "workspace_free", storageBytes: 500 * MB });
     expect(s.storageUsedBytes).toBe(40 * GB);
     // Growth is refused for everyone, with the reason…
-    for (const p of [owner, m]) await expect(upload(p)).rejects.toThrow(/is over its owner's free storage \(40 GB of 1 GB, shared by the owner's Personal and the free workspaces they own\)\. Everything already stored stays available/);
+    for (const p of [owner, m]) await expect(upload(p)).rejects.toThrow(/is over its owner's free storage \(40 GB of 500 MB, shared by the owner's Personal and the free workspaces they own\)\. Everything already stored stays available/);
     // …but nothing was removed and the work goes on: reading, writing text, organizing and exporting.
     expect((await m.as.query(api.documents.get, { documentId: note }))!.access).toBe("write");
     const [edit] = await m.as.mutation(api.sync.push, {
@@ -452,7 +454,7 @@ describe("cancellation, ownership and the end of a period (28–30)", () => {
     expect((await owner.as.action(api.exports.exportScope, { scope: inWorkspace(id) })).documents).toBeGreaterThan(0);
     expect((await summary(owner, id)).storageUsedBytes).toBe(40 * GB);
     // Freeing room below the limit lets uploads through again.
-    await t.run(async (ctx) => ctx.db.patch(wid, { storageUsedBytes: 500 * 1024 * 1024 }));
+    await t.run(async (ctx) => ctx.db.patch(wid, { storageUsedBytes: 400 * MB }));
     expect((await upload(m)).uploadUrl).toBeTruthy();
   });
 
@@ -531,7 +533,7 @@ describe("Polar workspace billing", () => {
     expect((await summary(owner, id)).entitlements.planId).toBe("workspace_free");
     expect((await postEvent(t, "subscription.created", sub(), { at: start })).status).toBe(202);
     let s = await summary(owner, id);
-    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_yearly", ai: true, storageBytes: 20 * GB });
+    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_yearly", ai: true, storageBytes: 10 * GB });
     expect(s.subscription).toMatchObject({ provider: "polar", status: "active", quantity: 2, currentPeriodEnd: start + 365 * DAY, youPay: true });
     expect((await summary(admin, id)).subscription).toMatchObject({ youPay: false });
     const paid = order({ id: "ord_w1", productKey: "workspace_pro_yearly", total: 9800, metadata: meta, subscriptionId: "sub_w", seats: 2 });

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { COVER_ART } from "@/lib/cover";
-import { CREDIT_PACKS, GB, MONTHLY_CREDITS, PACK_VALID_MONTHS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
+import { CREDIT_PACKS, MONTHLY_CREDITS, PACK_VALID_MONTHS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
 import { BUILT_IN_TEMPLATES } from "@/lib/templates";
 import { FOLDER_COLORS } from "@/lib/folderColors";
 import { Kbd } from "../ui";
@@ -40,7 +40,7 @@ export type Feature = {
 };
 
 const credits = (n: number) => n.toLocaleString("en-US");
-const gb = (bytes: number) => `${bytes / GB} GB`;
+const gb = sizeLabel;
 const TEMPLATE_COUNT = BUILT_IN_TEMPLATES.length;
 const STYLE_COUNT = COVER_ART.length;
 const FOLDER_COLOR_COUNT = FOLDER_COLORS.length;
@@ -51,9 +51,9 @@ export const FEATURES: Feature[] = [
   {
     slug: "ai-notes",
     name: "Foli AI",
-    summary: "Ask your notes a question, rewrite and translate text, draw flowcharts and get a brief of your week.",
+    summary: "Ask your notes, rewrite, translate and draw flowcharts.",
     title: "AI notes app: ask your notes, summarize and rewrite",
-    description: `Foli AI, Folevi’s AI assistant, answers from your notes with sources, rewrites and translates text, draws flowcharts and briefs your week. Free has ${MONTHLY_CREDITS.free} credits a month.`,
+    description: `Foli AI, Folevi’s AI assistant, answers from your notes with sources, rewrites and translates text, draws flowcharts and briefs your week. New accounts get ${TRIAL_CREDITS} credits in a ${TRIAL_DAYS}-day trial.`,
     h1: "An AI notes app that answers from your own notes",
     intro:
       "Foli AI works with the notes you can already open. Ask it a question and it answers with links to the notes it used. Select a paragraph to rewrite, shorten or translate it, turn a meeting into to-dos, draw a flowchart from a sentence, or ask it to sum up the whole note.",
@@ -155,7 +155,7 @@ export const FEATURES: Feature[] = [
             </p>
             <ul>
               <li>
-                {TIER_NAMES.free}: {MONTHLY_CREDITS.free} credits a month.
+                {TIER_NAMES.free}: AI during the {TRIAL_DAYS}-day trial ({TRIAL_CREDITS} credits), then none.
               </li>
               <li>
                 {TIER_NAMES.pro}: {MONTHLY_CREDITS.pro} credits a month, for {formatPrice(PRICES.pro.month)} a month.
@@ -184,7 +184,7 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Which Folevi plans include AI?", a: `Free (${MONTHLY_CREDITS.free} AI credits a month), Pro (${MONTHLY_CREDITS.pro} a month) and Pro AI (unlimited with fair use, ${credits(MONTHLY_CREDITS.pro_ai)} a month). The ${TRIAL_DAYS}-day trial includes ${TRIAL_CREDITS} credits. Core has no AI.` },
+      { q: "Which Folevi plans include AI?", a: `Pro (${MONTHLY_CREDITS.pro} AI credits a month) and Pro AI (unlimited with fair use, ${credits(MONTHLY_CREDITS.pro_ai)} a month). Every new account gets a ${TRIAL_DAYS}-day trial with ${TRIAL_CREDITS} credits. Free has AI only during the trial, and Core has none.` },
       { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli AI or a new flowchart usually 3 to 5. A request needs a few credits free before it starts." },
       { q: "Can the AI see notes I don’t have access to?", a: "No. Foli AI answers from the open note or from notes it finds by searching the ones you can already read." },
       { q: "Can I turn the AI off?", a: "Yes. Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it." },
@@ -196,7 +196,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "offline-notes",
     name: "Offline and sync",
-    summary: "Every edit is saved on your device first, and syncs when you reconnect.",
+    summary: "Saved on your device, synced when you reconnect.",
     title: "Offline notes app that syncs",
     description: "Folevi saves every edit on your device first, works with no connection and syncs when you reconnect. Saved means the server has every change.",
     h1: "Offline notes that sync when you’re back online",
@@ -267,7 +267,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "tasks",
     name: "Tasks",
-    summary: "Every to-do in a note is a task, with dates, priorities and a calendar.",
+    summary: "Every to-do in a note is a task.",
     title: "To-do lists and tasks inside your notes",
     description: "Every to-do in a Folevi note is a task. Give it a due date, time, priority, assignee or reminder, and find it again in Today, Upcoming and the calendar.",
     h1: "Tasks and to-do lists that live inside your notes",
@@ -341,7 +341,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "audio-recordings",
     name: "Audio recordings",
-    summary: "Record a voice note into any page with /record, and play it back right there.",
+    summary: "Record a voice note into any page.",
     title: "Voice notes in your notes, with /record",
     description: "Record a voice note into any Folevi page with /record. Pause, resume and play it back at up to 2x speed. Works offline and on every plan.",
     h1: "Record a voice note right inside the page",
@@ -411,7 +411,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "blocks",
     name: "Blocks and the / menu",
-    summary: "Type / for headings, to-dos, tables, flowcharts, voice notes and more, without the mouse.",
+    summary: "Type / to add any block.",
     title: "Blocks and the slash menu: write without the mouse",
     description: "Every line in a Folevi note is a block. Type / to add headings, to-dos, tables, flowcharts, formulas or audio, and move blocks from the keyboard.",
     h1: "Type / and pick what comes next",
@@ -466,7 +466,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "search",
     name: "Search",
-    summary: "Press ⌘K to find any note by its title or text, or to run a command.",
+    summary: "Press ⌘K to find any note or command.",
     title: "Search your notes with ⌘K",
     description: "Press ⌘K in Folevi to search the titles and text of your notes, with filters for folder, tag, person and time, and commands for going anywhere in the app.",
     h1: "Find any note with ⌘K",
@@ -516,7 +516,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "calendar",
     name: "Calendar",
-    summary: "Every dated to-do on a month calendar or a 30-day agenda. Drag a task to move it.",
+    summary: "Dated to-dos on a month calendar or agenda.",
     title: "A calendar for the tasks in your notes",
     description: "Folevi’s calendar shows every to-do with a date as a month grid or a 30-day agenda. Drag a task to reschedule it, or add one with Quick Add.",
     h1: "A calendar of everything that’s due",
@@ -566,7 +566,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "comments",
     name: "Comments",
-    summary: "Comment on a block or the whole note, reply, @mention people and resolve threads.",
+    summary: "Comment, reply, @mention and resolve.",
     title: "Comments and @mentions in your notes",
     description: "Comment on any block in a Folevi note or on the whole note, reply in threads, @mention people who can see the page and resolve threads when they’re done.",
     h1: "Talk about the page, on the page",
@@ -620,7 +620,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "version-history",
     name: "Version history",
-    summary: "Folevi saves versions as you write. Preview any of them and restore it.",
+    summary: "Preview and restore any saved version.",
     title: "Version history for every note",
     description: "Folevi saves a version of each note as you write. Preview an older version and restore it, and your current page is saved first so nothing is lost.",
     h1: "Go back to any version of a page",
@@ -669,7 +669,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "linked-notes",
     name: "Linked pages",
-    summary: "Link pages with [[, see backlinks, and nest pages inside pages.",
+    summary: "Link pages with [[ and see backlinks.",
     title: "Linked notes with backlinks",
     description: "Link any Folevi page by typing [[. The page you link to lists a backlink with a short excerpt, and pages can sit inside other pages as a link or a card.",
     h1: "Linked notes with backlinks and pages inside pages",
@@ -732,7 +732,7 @@ export const FEATURES: Feature[] = [
     // MoveToFolderDialog.tsx, HomeDashboard.tsx and convex/organization.ts.
     slug: "folders",
     name: "Folders",
-    summary: "Coloured folders for your notes, and Drafts for the ones you haven’t filed.",
+    summary: "Coloured folders, and Drafts for unfiled notes.",
     title: "Note folders: organize notes in coloured folders",
     description: "Organize Folevi notes in coloured folders. New notes wait in Drafts until you file them, and you can drag a note onto a folder or move it from its menu.",
     h1: "Organize your notes in coloured folders",
@@ -830,7 +830,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "flowcharts",
     name: "Flowcharts and diagrams",
-    summary: "Draw flowcharts in a note, lay them out in one click, or let AI draw them.",
+    summary: "Draw flowcharts yourself, or let AI draw them.",
     title: "Flowchart maker in your notes, with AI and Mermaid",
     description: "Draw flowcharts in any Folevi note with shapes and connectors, tidy the layout in one click, describe a process for AI to draw, or write Mermaid diagrams.",
     h1: "Flowcharts and diagrams inside your notes",
@@ -894,7 +894,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "whiteboard",
     name: "Whiteboard",
-    summary: "Sketch with a pen and a highlighter on a canvas inside the note.",
+    summary: "Sketch with a pen inside the note.",
     title: "Whiteboard inside your notes",
     description: "Add a whiteboard to any Folevi note and sketch with a pen in six colours, a highlighter and an eraser. The drawing syncs with the note.",
     h1: "A whiteboard inside your notes for quick sketches",
@@ -952,7 +952,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "note-themes",
     name: "Note themes",
-    summary: `${STYLE_COUNT} themes, or your own image, colour each page.`,
+    summary: `${STYLE_COUNT} themes, or your own image.`,
     title: "Note themes: artwork, colours and fonts for your notes",
     description: `Pick one of ${STYLE_COUNT} themes for a Folevi note, or your own image. It colours the cover, paper, text, highlights and checkboxes.`,
     h1: "Note themes that give each page its own colours",
@@ -1011,7 +1011,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "sharing",
     name: "Sharing",
-    summary: "Share a page with people to view, comment or edit, or with a public link.",
+    summary: "Share with people, or with a public link.",
     title: "Share notes with guests and public links",
     description: "Share a Folevi page by email to view, comment or edit, or make a public link with an optional password and expiry that you can revoke.",
     h1: "Share notes with people, guests and public links",
@@ -1079,7 +1079,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "team-workspaces",
     name: "Team workspaces",
-    summary: "A shared space for a team, with roles, free guests and per-member plans.",
+    summary: "A shared space with roles and free guests.",
     title: "Team workspaces for shared notes",
     description: `A Folevi workspace for your team, with admins, members and free guests. Paid plans are per member from ${formatPrice(PRICES.core.month)} a month, separate from your Personal.`,
     h1: "Team workspaces with roles and per-member plans",
@@ -1153,7 +1153,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "templates",
     name: "Templates",
-    summary: `${TEMPLATE_COUNT} free templates, and any page can become your own.`,
+    summary: `${TEMPLATE_COUNT} free templates, or save your own.`,
     title: "Note templates: start from one or save your own",
     description: `Folevi has ${TEMPLATE_COUNT} free note templates, from meeting notes and 1:1s to travel plans and budgets. Start a page from one, or save any page as your own template.`,
     h1: "Note templates for meetings, plans and journals",
@@ -1203,7 +1203,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "import-and-export",
     name: "Import and export",
-    summary: "Markdown, HTML and PDF export, a full ZIP, and Markdown import.",
+    summary: "Markdown, HTML, PDF and ZIP export.",
     title: "Export notes to Markdown, HTML and PDF",
     description: "Export a Folevi page as Markdown, HTML or PDF, or a whole space as a ZIP. Import Markdown or text files, folders and ZIPs with their images.",
     h1: "Export notes to Markdown, HTML and PDF, and import Markdown",
@@ -1258,7 +1258,7 @@ export const FEATURES: Feature[] = [
   {
     slug: "security-and-privacy",
     name: "Security and privacy",
-    summary: "Verified email, two-step verification, private pages and no trackers.",
+    summary: "Two-step verification, private pages, no trackers.",
     title: "Private and secure notes app",
     description: "Folevi needs a verified email, offers two-step verification, encrypts data in transit and at rest, and loads no trackers. It isn’t end-to-end encrypted.",
     h1: "Private notes, with plain answers about security",

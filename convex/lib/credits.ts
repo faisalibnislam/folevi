@@ -305,8 +305,12 @@ export const dayLabel = (t: number) => new Date(t).toLocaleDateString("en-US", {
 
 /** The refusal when a request needs more credits than are left. */
 export function outOfCreditsMessage(account: CreditAccount, balance: CreditBalance, needed: number): string {
+  // Free has AI only during the trial: after it, there's nothing to wait for, only a plan with AI.
+  if (account.tier === "free" && !account.trialing && account.allowance <= 0 && balance.packCredits <= 0) {
+    return "Foli AI comes with Pro and Pro AI. Upgrade in Settings → Plan & billing.";
+  }
   const where = account.kind === "seat" ? " in this workspace" : "";
-  const when = account.trialing ? `Your trial ends on ${dayLabel(balance.resetsAt)}; then you get the Free plan's monthly credits.` : `They reset on ${dayLabel(balance.resetsAt)}.`;
+  const when = account.trialing ? `Your trial ends on ${dayLabel(balance.resetsAt)}; after that, Foli AI comes with Pro and Pro AI.` : `They reset on ${dayLabel(balance.resetsAt)}.`;
   const next = account.canBuy ? "Buy more in Settings → Plan & billing." : account.kind === "seat" ? "" : "Upgrade for more in Settings → Plan & billing.";
   const head =
     balance.available <= 0

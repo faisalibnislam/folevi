@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ReturnDemo } from "../demos/ReturnDemo";
 import { artById, artThumb } from "../product/Replica";
+import { Checks } from "../Checks";
 import { Icon } from "../icons";
 import { Kbd, box, container, cx } from "../ui";
 
@@ -11,8 +12,8 @@ function Chapter({
   name,
   art,
   title,
-  children,
-  hint,
+  lead,
+  points,
   demo,
   more,
   reverse = false,
@@ -24,8 +25,10 @@ function Chapter({
   /** The note theme that lights the stage, as a note's theme lights the app's canvas. */
   art: string;
   title: string;
-  children: ReactNode;
-  hint: ReactNode;
+  /** One short line under the title. */
+  lead: ReactNode;
+  /** Up to three checkmark lines. */
+  points: ReactNode[];
   demo: ReactNode;
   /** The feature or docs page that explains this part of Folevi. */
   more: { label: string; href: string };
@@ -36,10 +39,10 @@ function Chapter({
       <div
         className={cx(
           "grid items-center gap-8 lg:gap-16",
-          reverse ? "lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]" : "lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]",
+          reverse ? "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]" : "lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]",
         )}
       >
-        <div className={cx("max-w-[460px]", reverse && "lg:order-2")}>
+        <div className={cx("max-w-[420px]", reverse && "lg:order-2")}>
           <p className="mk-caps">
             {number ? <span className="tabular-nums">{number} · </span> : null}
             {name}
@@ -47,9 +50,9 @@ function Chapter({
           <h3 id={`${id}-title`} className="mk-display mt-3 text-[32px] leading-[1.08] sm:text-[40px]">
             {title}
           </h3>
-          <div className="mt-4 space-y-3.5 text-[16.5px] leading-relaxed text-muted">{children}</div>
-          <p className="mt-5 text-[13.5px] leading-[2.1] text-muted [&_kbd]:mx-0.5">{hint}</p>
-          <Link href={more.href} className="mk-link mt-3 inline-flex min-h-11 items-center gap-1.5 text-[14.5px]">
+          <p className="mt-4 text-[16.5px] leading-relaxed text-muted">{lead}</p>
+          <Checks className="mt-5" items={points} />
+          <Link href={more.href} className="mk-link mt-5 inline-flex min-h-11 items-center gap-1.5 text-[14.5px]">
             {more.label} <Icon name="arrow-right" size={15} />
           </Link>
         </div>
@@ -59,10 +62,6 @@ function Chapter({
       </div>
     </article>
   );
-}
-
-function TryIt() {
-  return <span className="mr-1 font-semibold text-(--color-heading)">Try it:</span>;
 }
 
 /** The home page's editor chapter: finding things again, with a working search and task list. */
@@ -75,21 +74,15 @@ export function Chapters() {
         art="art-41"
         title="Find it again."
         reverse
-        hint={
+        lead={
           <>
-            <TryIt /> search for <span className="font-medium text-ink">labels</span> or{" "}
-            <span className="font-medium text-ink">printer</span>, then tick off a task
+            <Kbd>⌘K</Kbd> searches titles and text across your workspace.
           </>
         }
+        points={[<>Tasks with a date collect in Today</>, <>The calendar shows the week ahead</>, <>Quick Add puts a new task in your Inbox</>]}
         demo={<ReturnDemo />}
         more={{ label: "Tasks in your notes", href: "/features/tasks" }}
-      >
-        <p>
-          <Kbd>⌘K</Kbd> searches titles and text across your workspace. Tasks with a date collect in Today, so the next step is
-          there when you open Folevi.
-        </p>
-        <p>The calendar shows the rest of the week, and Quick Add puts a new task in your Inbox page.</p>
-      </Chapter>
+      />
     </section>
   );
 }

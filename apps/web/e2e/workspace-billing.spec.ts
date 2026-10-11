@@ -25,9 +25,9 @@ test("the owner puts a workspace on Pro (test purchase), sees seats, storage and
   await expect(page.getByText("Billable seats: 1")).toBeVisible();
   await expect(page.getByText("Guests: 0 · Not billed")).toBeVisible();
 
-  // On Free: the owner's free 1 GB (shared with their Personal only once the trial is over), and members' own personal AI credits.
+  // On Free: the owner's free 500 MB (shared with their Personal only once the trial is over), and members' own personal AI credits.
   const plan = page.getByRole("region", { name: "Workspace plan", exact: true });
-  await expect(plan.getByText(/^Uses the owner's free 1 GB/)).toBeVisible();
+  await expect(plan.getByText(/^Uses the owner's free 500 MB/)).toBeVisible();
   await expect(plan.getByText("On Free, each member uses their own personal AI credits here.")).toBeVisible();
 
   // Monthly and yearly prices, per member.
@@ -35,11 +35,11 @@ test("the owner puts a workspace on Pro (test purchase), sees seats, storage and
   await expect(card("Core").getByText("$1.99", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText("$4.99", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText(/^Per member\. 1 member × \$4\.99 = \$4\.99\/month$/)).toBeVisible();
-  await expect(card("Pro AI").getByText("$12.99", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$13.99", { exact: true })).toBeVisible();
   await page.getByRole("group", { name: "Billing period" }).getByRole("button", { name: /Yearly/ }).click();
   await expect(card("Core").getByText("$19", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText("$49", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("$149", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$159", { exact: true })).toBeVisible();
   await page.getByRole("group", { name: "Billing period" }).getByRole("button", { name: "Monthly" }).click();
 
   await card("Pro").getByRole("button", { name: "Upgrade to Pro (test)" }).click();
@@ -52,7 +52,7 @@ test("the owner puts a workspace on Pro (test purchase), sees seats, storage and
   await expect(page.getByRole("cell", { name: "$4.99 USD" })).toBeVisible();
   // Storage per member, and your own AI credits here (with packs to buy).
   await expect(plan.getByText("Your storage here")).toBeVisible();
-  await expect(plan.getByText(/Each member has 20 GB here/)).toBeVisible();
+  await expect(plan.getByText(/Each member has 10 GB here/)).toBeVisible();
   await expect(plan.getByText("Yours in this workspace. Every member has their own.")).toBeVisible();
   await expect(plan.getByText("180 AI credits left")).toBeVisible();
   await expect(plan.getByRole("button", { name: "Buy credits" })).toBeVisible();

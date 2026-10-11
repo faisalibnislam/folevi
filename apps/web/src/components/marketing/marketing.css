@@ -940,28 +940,13 @@
   text-decoration-skip-ink: auto;
 }
 
-.mk-hero-badge {
-  display: inline-flex;
-  font-family: var(--font-sans);
-  align-items: center;
-  min-height: 26px;
-  padding: 0 10px;
-  border-radius: var(--radius-chip);
-  font-size: 12.5px;
-  font-weight: 550;
-  color: var(--n-ink);
-  background: color-mix(in oklab, var(--n-hl-2) 80%, var(--n-paper));
-  transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
-}
-/* The note's body: the badge line, then the editor (editor.css) on the note's Serif font in the theme's
+/* The note's body: the editor (editor.css) on the note's Serif font in the theme's
    colours (fb-sheet data-sheet/data-text/data-palette read the --art-* and --pal-* variables set above).
    The same markup is drawn by the server first (HeroStaticBody) and then by the live editor (HeroEditor). */
 .mk-hero-body {
   /* Room at the bottom for the page tools dock (its height and gap), so it never covers the last line. */
   padding: 22px 20px 84px;
 }
-.mk-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
-.mk-hero-try { font-size: 13px; color: var(--n-muted); }
 .mk-hero-page { max-width: var(--layout-editor-width-default, 760px); }
 /* The page tools dock: sticky at the bottom of the note while it's on screen, its panels float above it. */
 .mk-hero-dock-slot { position: sticky; bottom: 0; z-index: 30; height: 0; }
@@ -1041,7 +1026,7 @@
   .mk-hero-picker { flex: none; padding: 0 0 0 24px; border-top: 0; border-left: 1px solid var(--glass-border); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mk-hero-layer, .mk-hero-shade, .mk-hero-title, .mk-hero-badge, .mk-hero-primary { transition: none; }
+  .mk-hero-layer, .mk-hero-shade, .mk-hero-title, .mk-hero-primary { transition: none; }
 }
 
 /* Long-form pages (docs, legal) ------------------------------------------------------------------ */

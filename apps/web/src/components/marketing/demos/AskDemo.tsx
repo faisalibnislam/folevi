@@ -229,7 +229,7 @@ export function AskDemo() {
             <ArrowUp size={15} aria-hidden="true" />
           </button>
         </div>
-        <p className="mt-2 px-1 text-[11px] text-faint">AI can make mistakes. Questions and the notes they need go to Google Gemini.</p>
+        <p className="mt-2 px-1 text-[11px] text-faint">Foli AI can make mistakes. Questions and the notes they need go to Google Gemini.</p>
       </form>
     </div>
   );

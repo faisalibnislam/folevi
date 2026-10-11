@@ -29,7 +29,7 @@ type Layer = { key: number; art: CoverArt };
  * all of it, as changing a note's theme does in the app. `children` is the note's body (its blocks); `actions`
  * sit in their own card under the note, beside the theme picker.
  */
-export function HeroNote({ title, chip, children, actions }: { title: ReactNode; chip: ReactNode; children: ReactNode; actions: ReactNode }) {
+export function HeroNote({ title, children, actions }: { title: ReactNode; children: ReactNode; actions: ReactNode }) {
   const [index, setIndex] = useState(0);
   // The artwork shown, newest last: a new theme fades in over the one before it once its image has loaded.
   const [layers, setLayers] = useState<Layer[]>([{ key: 0, art: HERO_STYLES[0]! }]);
@@ -151,10 +151,6 @@ export function HeroNote({ title, chip, children, actions }: { title: ReactNode;
           </header>
 
           <div className="mk-hero-body">
-            <div className="mk-hero-meta">
-              <p className="mk-hero-badge">{chip}</p>
-              <p className="mk-hero-try">Try it: this note is yours until you refresh.</p>
-            </div>
             <p id={savedId} className="sr-only">
               This note is a live demo of the editor. Changes aren’t saved; reloading the page brings the original note back.
             </p>

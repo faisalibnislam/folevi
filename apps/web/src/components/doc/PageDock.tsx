@@ -36,7 +36,7 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
             // Keep the editor's selection when opening Format or Insert.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(d.id)}
-            className={`inline-flex h-10 items-center pointer-coarse:h-11 gap-2 rounded-control px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus sm:px-4 ${on ? "bg-heading text-canvas" : "text-ink hover:bg-accent-soft hover:text-heading"}`}
+            className={`inline-flex h-10 flex-none items-center whitespace-nowrap pointer-coarse:h-11 gap-2 rounded-control px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus sm:px-4 ${on ? "bg-heading text-canvas" : "text-ink hover:bg-accent-soft hover:text-heading"}`}
           >
             <span aria-hidden>{d.icon}</span>
             <span className="max-sm:sr-only">{d.label}</span>

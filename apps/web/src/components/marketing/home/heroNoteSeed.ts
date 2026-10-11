@@ -27,11 +27,6 @@ export const HERO_SEED: SeedBlock[] = [
   { id: "hero-todo-style", type: "todo", checked: true, text: [{ text: "Pick a theme for this note" }] },
   { id: "hero-todo-link", type: "todo", checked: false, text: [{ text: "Link another page with " }, { text: "[[", code: true }] },
   { id: "hero-todo-date", type: "todo", checked: false, dueDate: "2026-10-09", text: [{ text: "Give a to-do a due date" }] },
-  {
-    id: "hero-callout",
-    type: "callout",
-    text: [{ text: "Everything you type is saved on this device first. When the status says Saved, the server has it." }],
-  },
 ];
 
 /** The due date chip's text, as the editor writes it ("Oct 9"), fixed to English so the server and browser agree. */

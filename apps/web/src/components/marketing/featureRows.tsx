@@ -25,7 +25,8 @@ export function Feature({
   art: string;
   picture: ReactNode;
   points: ReactNode[];
-  children: ReactNode;
+  /** A line under the title (optional: bullets alone are fine). */
+  children?: ReactNode;
   reverse?: boolean;
   /** Text on top in two columns, and the picture below at full width. */
   stacked?: boolean;
@@ -49,9 +50,11 @@ export function Feature({
             <h3 className="mk-display mt-3 max-w-[16ch] text-[28px] leading-[1.1] sm:text-[34px]">
               {title}
             </h3>
-            <p className="mt-4 max-w-[460px] text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">
-              {children}
-            </p>
+            {children ? (
+              <p className="mt-4 max-w-[460px] text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">
+                {children}
+              </p>
+            ) : null}
           </div>
           <Points points={points} className="lg:pt-8" />
         </div>
@@ -72,9 +75,11 @@ export function Feature({
       <div className={cx("max-w-[460px]", reverse && "lg:order-2")}>
         <p className="mk-caps">{eyebrow}</p>
         <h3 className="mk-display mt-3 text-[28px] leading-[1.1] sm:text-[34px]">{title}</h3>
-        <p className="mt-4 text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">
-          {children}
-        </p>
+        {children ? (
+          <p className="mt-4 text-[16px] leading-relaxed text-muted [&_b]:font-medium [&_b]:text-ink">
+            {children}
+          </p>
+        ) : null}
         <Points points={points} className="mt-5" />
       </div>
       {stage}
@@ -83,6 +88,7 @@ export function Feature({
 }
 
 export function Points({ points, className }: { points: ReactNode[]; className?: string }) {
+  if (!points.length) return null;
   return (
     <ul className={cx("space-y-3", className)}>
       {points.map((point, i) => (

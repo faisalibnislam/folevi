@@ -287,7 +287,7 @@ export function FlowchartDemo() {
                 </li>
               ))}
             </ul>
-            <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">AI can make mistakes. Sent to Google Gemini.{chart ? " Undo with ⌘Z." : ""}</p>
+            <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">Foli AI can make mistakes. Sent to Google Gemini.{chart ? " Undo with ⌘Z." : ""}</p>
           </div>
           <div className="relative min-h-[420px] px-2 pb-5 md:min-h-[560px] md:pt-3">
             {chart ? (

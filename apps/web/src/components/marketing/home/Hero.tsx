@@ -14,15 +14,11 @@ export function Hero() {
             A quiet <span className="mk-hero-mark">notes app</span> for ideas that keep growing.
           </>
         }
-        chip="Free to start · On the web, Mac app coming soon"
         actions={
           <>
             <div className="flex flex-wrap items-center gap-2.5">
               <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg" className="mk-hero-primary">
                 Start writing
-              </ButtonLink>
-              <ButtonLink href="/mac" variant="secondary" size="lg">
-                Folevi for Mac
               </ButtonLink>
             </div>
             <p className="mt-4 text-[13.5px] text-muted">

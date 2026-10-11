@@ -221,7 +221,7 @@ export function EditDemo() {
               ))}
             </ul>
           ) : null}
-          <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">AI can make mistakes. Sent to Google Gemini.</p>
+          <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
         </div>
       ) : (
         <p className="mt-4 px-1 text-center text-[12.5px] text-muted">

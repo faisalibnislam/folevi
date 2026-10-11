@@ -514,7 +514,7 @@ function buildEntries({
   if (editable) {
     if (aiOn && (textSelected || anyText)) {
       blockEntries.push({
-        label: "Ask Foli…",
+        label: "Ask Foli AI…",
         icon: <AiIcon size={14} className="text-[#7c6cf0]" />,
         shortcut: "⌘J",
         run: () => {

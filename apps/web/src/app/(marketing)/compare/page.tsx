@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { COMPARE_CHECKED, COMPETITORS, TRIAL_LINE, comparePath, trademarkLine } from "@/components/marketing/content/compare";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
+import { CompareChart } from "@/components/marketing/CompareChart";
 import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { absoluteUrl, formatDay } from "@/components/marketing/site";
@@ -49,6 +50,17 @@ export default function CompareIndexPage() {
               </li>
             ))}
           </ul>
+        </Card>
+        <Card aria-labelledby="side-by-side">
+          <h2 id="side-by-side" className="mk-h3 text-[19px]">
+            Side by side
+          </h2>
+          <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-muted">
+            Every app on one chart, a topic per row. Each app’s own page has the sources, what it does better, and how to move your notes across. On a small screen, scroll the chart sideways.
+          </p>
+          <div className="mt-6">
+            <CompareChart />
+          </div>
         </Card>
         <Card as="div">
           <h2 className="mk-h3 text-[19px]">How we compare</h2>

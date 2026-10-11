@@ -188,7 +188,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
           <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
             <AiMarkdown markdown={draft.text} />
           </div>
-          <p className="text-[11.5px] text-faint">Foli can make mistakes, so check it before you save. Sent to Google Gemini.</p>
+          <p className="text-[11.5px] text-faint">Foli AI can make mistakes, so check it before you save. Sent to Google Gemini.</p>
         </section>
       )}
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mt-3"} /> : null}

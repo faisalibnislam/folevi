@@ -50,7 +50,7 @@ export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comm
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
 // The tools the sidebar shows by name (AI opens from the floating bar, so it has no tab of its own).
-const TITLES: Partial<Record<InspectorTab, string>> = { ai: "Foli", insert: "Insert", format: "Format", style: "Style", info: "Info", related: "Related" };
+const TITLES: Partial<Record<InspectorTab, string>> = { ai: "Foli AI", insert: "Insert", format: "Format", style: "Style", info: "Info", related: "Related" };
 const TABS: { id: Exclude<InspectorTab, "comments" | "ai" | "related">; label: string }[] = [
   { id: "insert", label: "Insert" },
   { id: "format", label: "Format" },

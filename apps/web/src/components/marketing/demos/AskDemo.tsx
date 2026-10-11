@@ -7,7 +7,7 @@ import { cx } from "../ui";
 import { autoplay } from "./autoplay";
 
 /*
- * The Ask Foli chat (components/ai/AskAiChat.tsx), playing by itself: a question is typed and sent, Folevi
+ * The Ask Foli AI chat (components/ai/AskAiChat.tsx), playing by itself: a question is typed and sent, Folevi
  * reads the notes, the answer streams in with citations and the notes it used appear as sources. Visitors
  * can pick a suggested question or type one; the answers are canned, from the site's sample notes.
  */
@@ -58,7 +58,7 @@ const QAS: Qa[] = [
 
 const OTHER: Qa = {
   q: "",
-  answer: [{ t: "This demo only knows a few sample notes. Sign up and Foli answers from your own notes, with links to the notes it used." }],
+  answer: [{ t: "This demo only knows a few sample notes. Sign up and Foli AI answers from your own notes, with links to the notes it used." }],
   sources: [],
 };
 
@@ -129,12 +129,12 @@ export function AskDemo() {
       ref={root}
       onPointerDown={() => setAuto(false)}
       className="mk-app-pop mx-auto flex h-[470px] max-w-[420px] flex-col overflow-hidden rounded-container text-[13.5px]"
-      aria-label="A working sample of Foli. Pick a question or type one."
+      aria-label="A working sample of Foli AI. Pick a question or type one."
       role="group"
     >
       <div className="flex items-center gap-2.5 border-b border-(--color-line) px-4 py-3">
         <AiIcon size={20} />
-        <p className="flex-1 text-[14.5px] font-semibold text-(--color-heading)">Foli</p>
+        <p className="flex-1 text-[14.5px] font-semibold text-(--color-heading)">Foli AI</p>
         <button
           type="button"
           onClick={() => {
@@ -217,7 +217,7 @@ export function AskDemo() {
               setAuto(false);
               setDraft(e.target.value);
             }}
-            placeholder={turn ? "Ask a follow-up…" : "Ask anything about your notes…"}
+            placeholder={turn ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
             autoComplete="off"
             className="h-[52px] w-full bg-transparent pl-3.5 pr-11 text-[13.5px] text-ink outline-none placeholder:text-faint"
           />

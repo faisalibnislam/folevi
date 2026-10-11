@@ -116,7 +116,7 @@ export function AskAiChat({
         <header className="flex flex-none items-center gap-1 border-b border-line/70 py-3 pl-4 pr-3">
           <AiIcon size={20} aria-hidden className="mr-1.5 flex-none" />
           <h2 id={`${uid}-title`} className="flex-1 text-[14.5px] font-semibold text-heading">
-            Foli
+            Foli AI
           </h2>
           {actions.items.length ? <MenuButton label="Conversation options" triggerClassName={HEADER_BUTTON} trigger={<MoreHorizontal size={16} aria-hidden />} items={actions.items} /> : null}
           <button type="button" aria-label="New chat" title="New chat" onClick={startOver} className={HEADER_BUTTON}>
@@ -159,12 +159,12 @@ export function AskAiChat({
           type="button"
           aria-expanded={open}
           aria-keyshortcuts="Meta+J"
-          title={open ? "Close Foli" : `Ask Foli (${modKey()}J)`}
+          title={open ? "Close Foli AI" : `Ask Foli AI (${modKey()}J)`}
           onClick={() => (open ? close() : onOpen())}
           className={`fixed bottom-9 right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] inline-flex h-12 items-center gap-2.5 rounded-panel bg-black pl-4 pr-5 text-[15px] font-medium text-white ${SHADOW} transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#1c1c1f] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black max-sm:bottom-3 max-sm:right-3`}
         >
           {open ? <X size={18} aria-hidden /> : <AiIcon size={17} />}
-          <span>Ask Foli</span>
+          <span>Ask Foli AI</span>
         </button>
       )}
     </div>,

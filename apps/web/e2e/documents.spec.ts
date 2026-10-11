@@ -189,7 +189,7 @@ test.describe("documents", () => {
     await newPage(page, "Dock");
     const dock = page.getByRole("toolbar", { name: "Page tools" });
     const sidebar = page.getByRole("complementary", { name: "Page tools" });
-    for (const name of ["Foli", "Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
+    for (const name of ["Foli AI", "Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
     const noteWidth = (await page.locator("#doc-scroll").boundingBox())!.width;
     // Style opens in the right sidebar (here from the keyboard), which shows the tool's name and a close button.
     await dock.getByRole("button", { name: "Style", exact: true }).focus();

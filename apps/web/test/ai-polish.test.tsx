@@ -1,4 +1,4 @@
-// Milestone 9 part B (docs/AI_ASSISTANT.md): Foli's first-time introduction (shown once, dismissal
+// Milestone 9 part B (docs/AI_ASSISTANT.md): Foli AI's first-time introduction (shown once, dismissal
 // remembered), the empty and plan-gated states, the graph's node sizes, shapes, labels and keyboard moves,
 // study mode reading only the cards the AI made (with "Use all toggles"), the chat's remembered mode, and
 // the one-time "answer ready" announcement.
@@ -82,14 +82,14 @@ function render(node: React.ReactNode) {
 }
 const button = (host: HTMLElement, name: string) => [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === name);
 
-describe("Meet Foli", () => {
-  test("says what Foli does here, that it shows changes first, where requests go and the credits left", () => {
+describe("Meet Foli AI", () => {
+  test("says what Foli AI does here, that it shows changes first, where requests go and the credits left", () => {
     const { host } = render(createElement(AiIntroBody, { place: "note", credits: 42 }));
     expect(host.textContent).toContain(AI_INTRO.note.lead);
     expect(host.textContent).toContain("never changes a note without showing you the change first");
     expect(host.textContent).toContain("Google Gemini");
     expect(host.textContent).toContain("you have 42 AI credits left");
-    for (const place of ["note", "folder", "personal", "workspace"] as const) expect(AI_INTRO[place].lead).toContain("Foli");
+    for (const place of ["note", "folder", "personal", "workspace"] as const) expect(AI_INTRO[place].lead).toContain("Foli AI");
   });
 });
 
@@ -103,7 +103,7 @@ describe("empty and plan-gated states", () => {
     expect(core.body).toMatch(/Pro and Pro AI/);
     expect(aiUnavailableCopy({ setting: true, context: "workspace" }).body).toMatch(/owner or admin/);
     const { host } = render(createElement(AiUnavailable, { ai: { setting: true, context: "personal" }, compact: true, headingLevel: 3 }));
-    expect(host.querySelector("h3")?.textContent).toContain("Foli isn't part of your plan");
+    expect(host.querySelector("h3")?.textContent).toContain("Foli AI isn't part of your plan");
     expect(host.querySelector("a")?.getAttribute("href")).toBe("/settings/billing");
   });
 

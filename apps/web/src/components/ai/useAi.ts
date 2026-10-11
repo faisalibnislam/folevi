@@ -76,7 +76,7 @@ export const TOOL_TASKS: ReadonlySet<AiTask> = new Set(AI_TOOLS.map((t) => t.tas
 /** The tools as "/" menu items ("AI: Meeting summary"), each running on the whole note. */
 export const AI_TOOL_SLASH_ITEMS = AI_TOOLS.map((t) => ({
   id: `ai-${t.task}`,
-  label: `Foli: ${t.label}`,
+  label: `Foli AI: ${t.label}`,
   keywords: `ai ${t.keywords}${t.group === "decide" || t.group === "ideas" ? " think it through framework" : ""}`,
   task: t.task,
 }));

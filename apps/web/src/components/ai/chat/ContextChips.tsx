@@ -51,7 +51,7 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5" aria-label="What Foli reads" role="group">
+    <div className="flex flex-wrap items-center gap-1.5" aria-label="What Foli AI reads" role="group">
       {context.kind === "folder" && context.ids[0] ? (
         <span className={CHIP}>
           <Folder size={12} aria-hidden className="flex-none text-muted" />
@@ -76,7 +76,7 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
       )}
       {add.length && !disabled ? (
         <MenuButton
-          label="Add to what Foli reads"
+          label="Add to what Foli AI reads"
           align="start"
           side="top"
           triggerClassName="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"

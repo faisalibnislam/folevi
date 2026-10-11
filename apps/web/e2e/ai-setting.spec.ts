@@ -6,14 +6,14 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   const nav = page.getByRole("navigation", { name: "Folio" });
   // On by default: the note's floating bar and (elsewhere) the floating chat button offer AI (not the sidebar).
   const dock = page.getByRole("toolbar", { name: "Page tools" });
-  const launcher = page.getByRole("button", { name: "Ask Foli", exact: true });
-  await expect(dock.getByRole("button", { name: "Foli" })).toBeVisible();
+  const launcher = page.getByRole("button", { name: "Ask Foli AI", exact: true });
+  await expect(dock.getByRole("button", { name: "Foli AI" })).toBeVisible();
   await page.goto("/documents");
   await expect(launcher).toBeVisible();
-  await expect(nav.getByRole("button", { name: /Ask Foli/ })).toHaveCount(0);
+  await expect(nav.getByRole("button", { name: /Ask Foli AI/ })).toHaveCount(0);
   // It pops out a chat; Escape closes it and returns focus to the button.
   await launcher.click();
-  const chat = page.getByRole("dialog", { name: "Foli" });
+  const chat = page.getByRole("dialog", { name: "Foli AI" });
   await expect(chat).toBeVisible();
   await expect(chat.getByRole("textbox", { name: /Ask about your notes/ })).toBeFocused();
   await page.keyboard.press("Escape");
@@ -21,7 +21,7 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await expect(launcher).toBeFocused();
 
   await page.goto("/settings/account");
-  const toggle = page.getByRole("switch", { name: "Foli" });
+  const toggle = page.getByRole("switch", { name: "Foli AI" });
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
@@ -34,24 +34,24 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Some words to select");
-  await expect(dock.getByRole("button", { name: "Foli" })).toHaveCount(0);
+  await expect(dock.getByRole("button", { name: "Foli AI" })).toHaveCount(0);
   await page.keyboard.press("Shift+Home");
   await expect(page.getByRole("toolbar", { name: "Text formatting" })).toBeVisible();
-  await expect(page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: "Ask Foli" })).toHaveCount(0);
+  await expect(page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: "Ask Foli AI" })).toHaveCount(0);
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/ask ai");
-  await expect(page.getByRole("option", { name: /Ask Foli|AI ·|Foli:/ })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: /Ask Foli AI|AI ·|Foli AI:/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Meta+j");
-  await expect(page.getByRole("dialog", { name: "Foli" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Foli AI" })).toHaveCount(0);
   await page.keyboard.press("Meta+k");
-  await expect(page.getByRole("option", { name: /Ask Foli/ })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: /Ask Foli AI/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
 
   // Back on.
   await page.goto("/settings/account");
-  await page.getByRole("switch", { name: "Foli" }).click();
+  await page.getByRole("switch", { name: "Foli AI" }).click();
   await expect(launcher).toBeVisible();
   await page.goto("/documents");
   await expect(page.getByRole("button", { name: "Catch me up" })).toBeVisible();

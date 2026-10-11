@@ -17,7 +17,7 @@ export interface DocTab {
   /** The nested page's own title, while the tab shows one ("Note › Page"). */
   atTitle?: string;
   /**
-   * A view's tab (Foli, Graph, Drafts, a folder, Tasks…) instead of a note's: its route kind and the path it
+   * A view's tab (Foli AI, Graph, Drafts, a folder, Tasks…) instead of a note's: its route kind and the path it
    * shows now. Its id is `view:` and the view's key (one per view; one per folder or tag).
    */
   view?: { kind: string; path: string };
@@ -30,7 +30,7 @@ export const tabHref = (t: DocTab) => (t.view ? t.view.path : `/d/${tabPage(t)}`
 
 /** Views that get no tab of their own: Home is always the first tab; the rest aren't places you work in. */
 const NO_VIEW_TAB = new Set(["documents", "doc", "onboarding", "quick-add", "invite", "share-invite", "not_found"]);
-/** A view's tab key: one tab per view (it follows you inside it, like Foli's conversations), one per folder or tag. */
+/** A view's tab key: one tab per view (it follows you inside it, like Foli AI's conversations), one per folder or tag. */
 function viewKey(route: { name: string; id?: string | null }): string | null {
   if (NO_VIEW_TAB.has(route.name)) return null;
   if ((route.name === "folder" || route.name === "tag") && route.id) return `view:${route.name}:${route.id}`;

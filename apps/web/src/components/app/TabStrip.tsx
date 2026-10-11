@@ -20,7 +20,7 @@ const ARROW = "grid h-9 w-6 flex-none place-items-center rounded-control text-mu
 
 /** A view's tab name until the view names it (the same names as the sidebar). */
 const VIEW_NAMES: Record<string, string> = {
-  ai: "Foli",
+  ai: "Foli AI",
   graph: "Graph",
   starred: "Starred",
   unsorted: "Drafts",
@@ -99,7 +99,7 @@ export function TabStrip() {
   const [tabMenu, setTabMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const createDocument = useCreateDocument();
   const docId = route.name === "doc" ? route.id : null;
-  // The first tab is always Home (the dashboard); every other view (Foli, Graph, Drafts, a folder…) gets a tab
+  // The first tab is always Home (the dashboard); every other view (Foli AI, Graph, Drafts, a folder…) gets a tab
   // of its own that stays until it's closed, like a note's.
   const onHome = route.name === "documents";
   const inFolder = route.name === "folder";

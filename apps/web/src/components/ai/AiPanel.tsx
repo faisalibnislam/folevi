@@ -218,7 +218,7 @@ export function AiPanel({
 
 
   const modes = (
-    <div className="ui-seg ui-well mb-2" role="group" aria-label="What Foli should do">
+    <div className="ui-seg ui-well mb-2" role="group" aria-label="What Foli AI should do">
       <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
         Write
       </button>
@@ -266,11 +266,11 @@ export function AiPanel({
   return (
     <div className="space-y-4 text-sm">
       {/* Prompt */}
-      <section aria-label="Ask Foli">
+      <section aria-label="Ask Foli AI">
         {modes}
         <div className="relative rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
-            Tell Foli what to write
+            Tell Foli AI what to write
           </label>
           <textarea
             id={`${uid}-prompt`}
@@ -299,7 +299,7 @@ export function AiPanel({
           </button>
         </div>
         <p className="mt-1.5 px-1 text-[11.5px] text-faint">
-          Write something new, or ask for a change (fix, shorten, reorganise) and Foli edits the note. ↵ to send.
+          Write something new, or ask for a change (fix, shorten, reorganise) and Foli AI edits the note. ↵ to send.
         </p>
         <AiCreditsNote documentId={documentId} className="mt-2" />
       </section>
@@ -311,7 +311,7 @@ export function AiPanel({
             For this note
           </h3>
           {/* An empty note: say where to start (most actions need something to work on). */}
-          {editor && !editor.state.doc.textContent.trim() ? <p className="mb-2 px-1 text-[12.5px] text-muted">This note is empty. Tell Foli what to write above, or brainstorm ideas to get started.</p> : null}
+          {editor && !editor.state.doc.textContent.trim() ? <p className="mb-2 px-1 text-[12.5px] text-muted">This note is empty. Tell Foli AI what to write above, or brainstorm ideas to get started.</p> : null}
           <div className="grid grid-cols-2 gap-1.5">
             {NOTE_ACTIONS.map((a) => (
               <button
@@ -502,7 +502,7 @@ export function AiPanel({
         </>
       ) : null}
 
-      <p className="px-1 text-[11px] leading-snug text-faint">Foli is AI and can make mistakes.</p>
+      <p className="px-1 text-[11px] leading-snug text-faint">Foli AI can make mistakes.</p>
     </div>
   );
 }

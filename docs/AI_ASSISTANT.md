@@ -208,17 +208,17 @@ As built (milestone 8, part B):
 
 ### Polish: onboarding, empty states, accessibility, the graph
 
-As built (milestone 9, part B). The assistant is called Foli in the interface.
+As built (milestone 9, part B). The assistant is called Foli AI in the interface.
 
 - Introduction: the first AI surface someone opens (the floating chat, the AI page's new chat, a note's AI
-  panel) shows a small dismissible card (`components/ai/AiIntro.tsx`): what Foli does there, that it never
+  panel) shows a small dismissible card (`components/ai/AiIntro.tsx`): what Foli AI does there, that it never
   changes a note without showing the change first, that requests and the notes they need go to Google
   Gemini, credits left, and two or three starters for the place (a note runs summarize or action items or
   asks about it; a chat fills the box, nothing is sent). Dismissing it or using a starter sets
   `profiles.aiIntroDismissedAt` (`users.setAiIntroSeen`), so no surface or device shows it again. Not shown
   while AI is off or not on the plan.
 - Empty and gated states: AI off says how to turn it on, Core (or a workspace or shared note without AI)
-  says what the plans with Foli include and links to Upgrade or plans (`AiUnavailable.tsx`, on the AI page
+  says what the plans with Foli AI include and links to Upgrade or plans (`AiUnavailable.tsx`, on the AI page
   and in a note's AI tab). A note's Ask mode offers questions about that note; an empty note says where to
   start; Study offers "Use all toggles" when the note has toggles the AI didn't make; Related, Research,
   memory and a graph with few or unlinked notes each say how they fill up.

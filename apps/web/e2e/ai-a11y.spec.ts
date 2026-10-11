@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { APP, newPerson, openTool, settle, waitForSaved } from "./helpers";
 
-// Accessibility of every Foli surface (docs/AI_ASSISTANT.md milestone 9): axe over the AI page, the
+// Accessibility of every Foli AI surface (docs/AI_ASSISTANT.md milestone 9): axe over the AI page, the
 // floating chat, the note's AI sidebar (Write, Ask, Agent, Study), the inline composer (on a light page and
 // on a night page), the graph (graph and list), Related and Settings > AI, in light and dark; then the
 // keyboard: focus returns when panels close, the graph's arrow keys, and streaming answers that aren't read
@@ -30,9 +30,9 @@ async function newNote(page: Page, title: string, body: string) {
   return page.url().replace(/\?.*$/, "");
 }
 
-test("every Foli surface has no serious accessibility violations, light and dark", async ({ browser }) => {
+test("every Foli AI surface has no serious accessibility violations, light and dark", async ({ browser }) => {
   test.setTimeout(420_000);
-  const { page, context } = await newPerson(browser, "Foli A11y");
+  const { page, context } = await newPerson(browser, "Foli AI A11y");
   const note = await newNote(page, "Harbour plans", "We chose the harbour hall. Sam sends the deck by Friday. See [[Venue list");
   await page.getByRole("option", { name: /Create page “Venue list”/ }).click();
   await waitForSaved(page);
@@ -43,14 +43,14 @@ test("every Foli surface has no serious accessibility violations, light and dark
 
     // The AI page, new chat (the first-time introduction is on it until dismissed).
     await page.goto(`${APP}/ai`);
-    await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Meet Foli AI", level: 2 })).toBeVisible({ timeout: 30_000 });
     problems.push(...(await scan(page, `${scheme} /ai`)));
 
     // The floating chat, from Home (a note's sidebar lists its pages, and AI lives in the note's own panel).
     await page.goto(`${APP}/documents`);
-    const launcher = page.getByRole("button", { name: "Ask Foli" });
+    const launcher = page.getByRole("button", { name: "Ask Foli AI" });
     await launcher.click();
-    const chat = page.getByRole("dialog", { name: "Foli" });
+    const chat = page.getByRole("dialog", { name: "Foli AI" });
     await expect(chat).toBeVisible();
     problems.push(...(await scan(page, `${scheme} floating chat`, ".ai-chat")));
     await page.keyboard.press("Escape");
@@ -59,8 +59,8 @@ test("every Foli surface has no serious accessibility violations, light and dark
     // The note's AI sidebar, each mode.
     await page.goto(note);
     await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Harbour plans", { timeout: 30_000 });
-    await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli" }).click();
-    const modes = page.getByRole("group", { name: "What Foli should do" });
+    await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+    const modes = page.getByRole("group", { name: "What Foli AI should do" });
     for (const mode of ["Write", "Ask", "Study"]) {
       await modes.getByRole("button", { name: mode, exact: true }).click();
       await expect(modes.getByRole("button", { name: mode, exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -114,8 +114,8 @@ test("the inline composer reads well on a light page and on a night page, and sh
         await page.keyboard.press("Escape");
       }
       await first.click({ clickCount: 3 });
-      await page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^Ask Foli/ }).click();
-      const ai = page.getByRole("dialog", { name: "Foli" });
+      await page.getByRole("toolbar", { name: "Text formatting" }).getByRole("button", { name: /^Ask Foli AI/ }).click();
+      const ai = page.getByRole("dialog", { name: "Foli AI" });
       await expect(ai).toBeVisible();
       problems.push(...(await scan(page, `${scheme} ${sheet} composer`, '[role="dialog"][popover]')));
       await ai.getByRole("listbox", { name: "AI suggestions" }).getByRole("option", { name: "Improve writing", exact: true }).click();
@@ -142,10 +142,10 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
 
   // The floating chat: Escape closes it and focus goes back to the button that opened it.
   await page.goto(`${APP}/documents`);
-  const launcher = page.getByRole("button", { name: "Ask Foli" });
+  const launcher = page.getByRole("button", { name: "Ask Foli AI" });
   await launcher.focus();
   await page.keyboard.press("Enter");
-  const chat = page.getByRole("dialog", { name: "Foli" });
+  const chat = page.getByRole("dialog", { name: "Foli AI" });
   await expect(chat.getByRole("textbox", { name: /Ask about your notes/ })).toBeFocused();
   // The messages aren't a live region (that would read every streamed word); one polite status says when an answer is ready.
   expect(await chat.locator('[aria-live="polite"]').evaluateAll((els) => els.filter((e) => e.textContent && e.textContent.length > 200).length)).toBe(0);
@@ -189,8 +189,8 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
 
   // The note's AI sidebar: its controls are reachable with Tab, and closing the panel doesn't strand focus.
   await expect(page.getByRole("textbox", { name: "Title" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli" }).click();
-  const modes = page.getByRole("group", { name: "What Foli should do" });
+  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+  const modes = page.getByRole("group", { name: "What Foli AI should do" });
   await modes.getByRole("button", { name: "Ask", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(modes.getByRole("button", { name: "Ask", exact: true })).toHaveAttribute("aria-pressed", "true");

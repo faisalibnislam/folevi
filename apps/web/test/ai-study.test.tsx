@@ -98,8 +98,8 @@ describe("the new actions", () => {
       expect(TOOL_TASKS.has(t.task)).toBe(true);
     }
     expect(AI_TOOL_SLASH_ITEMS.map((i) => i.label)).toEqual([
-      "Foli: Meeting summary", "Foli: Flashcards", "Foli: Quiz", "Foli: Pros and cons", "Foli: Decision matrix", "Foli: SWOT analysis",
-      "Foli: Risks and mitigations", "Foli: Pre-mortem", "Foli: Mind map", "Foli: How might we", "Foli: SCAMPER", "Foli: Six thinking hats",
+      "Foli AI: Meeting summary", "Foli AI: Flashcards", "Foli AI: Quiz", "Foli AI: Pros and cons", "Foli AI: Decision matrix", "Foli AI: SWOT analysis",
+      "Foli AI: Risks and mitigations", "Foli AI: Pre-mortem", "Foli AI: Mind map", "Foli AI: How might we", "Foli AI: SCAMPER", "Foli AI: Six thinking hats",
     ]);
     // "think" finds the frameworks, "ai" finds them all.
     expect(AI_TOOL_SLASH_ITEMS.filter((i) => i.keywords.includes("think")).map((i) => i.task)).toEqual(["prosCons", "decisionMatrix", "swot", "risks", "premortem", "mindMap", "howMightWe", "scamper", "sixHats"]);

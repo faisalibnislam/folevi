@@ -54,7 +54,7 @@ export default function FeaturesPage() {
           </p>
         </HeaderCard>
         <Card as="div" aria-label="Feature pages">
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-4 sm:grid-cols-2">
             {FEATURES.map((feature) => (
               <li key={feature.slug}>
                 <LinkCard href={featurePath(feature.slug)} title={feature.name} body={feature.summary} cover={<FeatureCover feature={feature} />} headingLevel="h2" />

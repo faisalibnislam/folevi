@@ -69,7 +69,7 @@ export function ShareDialog({ open, title, onCancel, onConfirm }: { open: boolea
     <Dialog
       open={open}
       onClose={onCancel}
-      title="Share this Foli conversation?"
+      title="Share this Foli AI conversation?"
       description={`Members of this workspace can read “${title}” but can't change it or ask in it. Someone sees it only if they can open every note it uses. Files you uploaded stay private. You can stop sharing at any time.`}
       size="sm"
       footer={

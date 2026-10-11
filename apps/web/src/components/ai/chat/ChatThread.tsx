@@ -76,7 +76,7 @@ export function ChatThread({
   initialMode?: ChatMode;
   /** Sent as soon as the thread opens (the note panel hands an edit request to the agent this way). */
   autoSend?: string;
-  /** In a note's Foli panel: answers can be put into the note. */
+  /** In a note's Foli AI panel: answers can be put into the note. */
   onInsert?: (markdown: string) => void;
 }) {
   const { scope } = useAppState();
@@ -310,10 +310,10 @@ export function ChatThread({
   let intro: ReactNode = null;
   if (empty && !loading) {
     intro = page ? (
-      // Meet Foli: what it does, that it shows changes first, where requests go and what they cost.
+      // Meet Foli AI: what it does, that it shows changes first, where requests go and what they cost.
       <div className="mx-auto max-w-2xl pt-[8vh]">
         <AiIcon size={28} aria-hidden />
-        <h2 className="ui-display mt-4 text-[28px] leading-tight text-heading">Meet Foli</h2>
+        <h2 className="ui-display mt-4 text-[28px] leading-tight text-heading">Meet Foli AI</h2>
         <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
         {mode === "research" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
         <p className="mb-2.5 mt-6 flex items-center gap-2 text-[12.5px] font-medium text-muted">
@@ -330,10 +330,10 @@ export function ChatThread({
     ) : (
       <div>
         {variant === "floating" ? (
-          // Meet Foli: what it does here, that it shows changes first, where requests go and what they cost.
+          // Meet Foli AI: what it does here, that it shows changes first, where requests go and what they cost.
           <>
             <h3 className="flex items-center gap-2 text-[14px] font-semibold text-heading">
-              <AiIcon size={16} aria-hidden /> Meet Foli
+              <AiIcon size={16} aria-hidden /> Meet Foli AI
             </h3>
             <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
             {mode === "research" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
@@ -428,7 +428,7 @@ export function ChatThread({
           <div className="relative w-full rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
             {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className="px-3 pt-2.5" /> : null}
             <label htmlFor={`${uid}-q`} className="sr-only">
-              {mode === "research" ? "What should Foli research?" : "Ask about your notes, or ask Foli to change them"}
+              {mode === "research" ? "What should Foli AI research?" : "Ask about your notes, or ask Foli AI to change them"}
             </label>
             <textarea
               id={`${uid}-q`}
@@ -443,15 +443,15 @@ export function ChatThread({
                 }
               }}
               maxLength={4000}
-              placeholder={mode === "research" ? "What should I research?" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli to tidy or organize…"}
+              placeholder={mode === "research" ? "What should I research?" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
               className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
             />
-            {/* How Foli helps on the left, attach and send on the right, all inside the box. */}
+            {/* How Foli AI helps on the left, attach and send on the right, all inside the box. */}
             {/* 4px from the box's edge: the switch and Send are 10px-cornered inside its 14px corners. */}
             <div className="flex items-center gap-2 px-1 pb-1">
                 {/* Chat answers and makes changes; Research (when the web is on) writes a report. */}
                 {webAvailable ? (
-                  <div className={`ui-seg ui-well min-w-0 shrink ${variant === "panel" ? "[&>*]:px-1.5" : ""}`} role="group" aria-label="How Foli helps">
+                  <div className={`ui-seg ui-well min-w-0 shrink ${variant === "panel" ? "[&>*]:px-1.5" : ""}`} role="group" aria-label="How Foli AI helps">
                     <button type="button" aria-pressed={mode === "ask"} onClick={() => setMode("ask")} title="Answers from your notes, and changes them when you ask (you approve first)">
                       Chat
                     </button>
@@ -469,7 +469,7 @@ export function ChatThread({
             </div>
           </div>
           <p className="mt-2 px-1 text-[11px] text-faint">
-            Foli is AI and can make mistakes.
+            Foli AI can make mistakes.
             {footNotes.length ? ` ${footNotes.join(" ")}` : ""}
           </p>
         </div>

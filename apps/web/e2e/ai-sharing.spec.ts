@@ -21,7 +21,7 @@ test("a conversation shared with the workspace shows under Shared with you, read
 
   // A question in the workspace (refused without a key, but kept).
   await owner.page.goto(`${APP}/ai`);
-  const box = owner.page.getByPlaceholder("Ask anything, or ask Foli to tidy or organize…");
+  const box = owner.page.getByPlaceholder("Ask anything, or ask Foli AI to tidy or organize…");
   await box.fill("What did we decide about the launch?");
   await owner.page.getByRole("button", { name: "Ask", exact: true }).click();
   await owner.page.waitForURL(/\/ai\/[0-9A-Z]{26}/, { timeout: 30_000 });
@@ -38,7 +38,7 @@ test("a conversation shared with the workspace shows under Shared with you, read
   // Share it (asked first).
   await options.click();
   await owner.page.getByRole("menuitem", { name: "Share with workspace…" }).click();
-  const dialog = owner.page.getByRole("dialog", { name: "Share this Foli conversation?" });
+  const dialog = owner.page.getByRole("dialog", { name: "Share this Foli AI conversation?" });
   await dialog.getByRole("button", { name: "Share", exact: true }).click();
   await expect(owner.page.getByRole("status").filter({ hasText: "Shared with the workspace" })).toBeVisible();
 
@@ -67,7 +67,7 @@ test("a conversation shared with the workspace shows under Shared with you, read
   // A Personal conversation can't be shared, and the menu says so.
   await switchTo(owner.page, "Personal");
   await owner.page.goto(`${APP}/ai`);
-  await owner.page.getByPlaceholder("Ask anything, or ask Foli to tidy or organize…").fill("A personal question");
+  await owner.page.getByPlaceholder("Ask anything, or ask Foli AI to tidy or organize…").fill("A personal question");
   await owner.page.getByRole("button", { name: "Ask", exact: true }).click();
   await owner.page.waitForURL(/\/ai\/[0-9A-Z]{26}/, { timeout: 30_000 });
   await owner.page.getByRole("button", { name: "Conversation options" }).click();

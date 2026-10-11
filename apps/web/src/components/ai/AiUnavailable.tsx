@@ -13,15 +13,15 @@ export const AI_INCLUDES = "Answers from your notes with links, writing help, an
 
 export function aiUnavailableCopy(ai: Pick<AiAccess, "setting" | "context">): { title: string; body: string; link: { href: string; label: string } | null } {
   if (!ai.setting) {
-    return { title: "Foli is turned off", body: "You turned Foli off, so nothing is sent to AI. Turn it on again in Settings > AI.", link: { href: "/settings/ai", label: "Open AI settings" } };
+    return { title: "Foli AI is turned off", body: "You turned Foli AI off, so nothing is sent to AI. Turn it on again in Settings > AI.", link: { href: "/settings/ai", label: "Open AI settings" } };
   }
   if (ai.context === "workspace") {
-    return { title: "Foli isn't part of this workspace's plan", body: `Plans with Foli include ${AI_INCLUDES.charAt(0).toLowerCase()}${AI_INCLUDES.slice(1, -1)}. A workspace owner or admin can change the plan.`, link: { href: "/settings/billing", label: "See plans" } };
+    return { title: "Foli AI isn't part of this workspace's plan", body: `Plans with Foli AI include ${AI_INCLUDES.charAt(0).toLowerCase()}${AI_INCLUDES.slice(1, -1)}. A workspace owner or admin can change the plan.`, link: { href: "/settings/billing", label: "See plans" } };
   }
   if (ai.context === "shared") {
-    return { title: "Foli isn't available on this note", body: "It's shared from a place whose plan doesn't include Foli, and your own plan doesn't cover it either.", link: { href: "/settings/billing", label: "See plans" } };
+    return { title: "Foli AI isn't available on this note", body: "It's shared from a place whose plan doesn't include Foli AI, and your own plan doesn't cover it either.", link: { href: "/settings/billing", label: "See plans" } };
   }
-  return { title: "Foli isn't part of your plan", body: `Core doesn't include Foli. Pro and Pro AI do: ${AI_INCLUDES.charAt(0).toLowerCase()}${AI_INCLUDES.slice(1)}`, link: { href: "/settings/billing", label: "Upgrade" } };
+  return { title: "Foli AI isn't part of your plan", body: `Core doesn't include Foli AI. Pro and Pro AI do: ${AI_INCLUDES.charAt(0).toLowerCase()}${AI_INCLUDES.slice(1)}`, link: { href: "/settings/billing", label: "Upgrade" } };
 }
 
 /** The plan-gated or turned-off state of an AI surface. `compact` for a sidebar panel. */

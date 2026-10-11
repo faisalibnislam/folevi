@@ -1,8 +1,20 @@
 "use client";
 
+import { AiIcon } from "@/components/ai/AiIcon";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   ArrowUp,
   BookOpen,
@@ -31,11 +43,14 @@ import { cx } from "./ui";
  * compact bar takes the sidebar's place and opens it as a drawer, as the app does on narrow screens.
  */
 
-type Row = { label: string; href: string; icon: LucideIcon };
+/** A row's icon: a Lucide icon, or Foli AI's coloured mark. */
+type RowIconType = LucideIcon | typeof AiIcon;
+type Row = { label: string; href: string; icon: RowIconType };
 
 const ROWS: Row[] = [
   { label: "Home", href: "/", icon: House },
   { label: "Features", href: "/features", icon: LayoutGrid },
+  { label: "Foli AI", href: "/foli-ai", icon: AiIcon },
   { label: "Template gallery", href: "/template-gallery", icon: LayoutTemplate },
   { label: "Pricing", href: "/pricing", icon: CreditCard },
   { label: "Mac app", href: "/mac", icon: Monitor },
@@ -49,14 +64,17 @@ const ROWS: Row[] = [
 /** The row for the current page: the most specific one whose path contains it (so /docs/x marks Docs and /features/x marks Features). */
 function currentHref(pathname: string): string | null {
   const all = ROWS.map((r) => r.href);
-  const hits = all.filter((href) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)));
+  const hits = all.filter((href) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`),
+  );
   return hits.sort((a, b) => b.length - a.length)[0] ?? null;
 }
 
 // The app's sidebar row (components/app/Sidebar.tsx NavItem): the open page comes forward on light glass.
 const ROW =
   "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
-const ROW_ON = "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]";
+const ROW_ON =
+  "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]";
 const ROW_OFF = "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading";
 
 /* Ambient light ------------------------------------------------------------------------------------ */
@@ -79,18 +97,41 @@ export function useSiteAmbient(image: string | null) {
 
 /* The sidebar ------------------------------------------------------------------------------------ */
 
-function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: string; signUpUrl: string; onNavigate?: () => void; onClose?: () => void }) {
+function SiteNav({
+  signInUrl,
+  signUpUrl,
+  onNavigate,
+  onClose,
+}: {
+  signInUrl: string;
+  signUpUrl: string;
+  onNavigate?: () => void;
+  onClose?: () => void;
+}) {
   const pathname = usePathname() ?? "/";
   const current = currentHref(pathname);
-  const row = (href: string) => ({ "aria-current": href === current ? ("page" as const) : undefined, className: cx(ROW, href === current ? ROW_ON : ROW_OFF) });
+  const row = (href: string) => ({
+    "aria-current": href === current ? ("page" as const) : undefined,
+    className: cx(ROW, href === current ? ROW_ON : ROW_OFF),
+  });
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-[52px] flex-none items-center gap-1 px-3">
-        <Link href="/" onClick={onNavigate} aria-label="Folevi home" className="flex min-w-0 flex-1 items-center rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <Link
+          href="/"
+          onClick={onNavigate}
+          aria-label="Folevi home"
+          className="flex min-w-0 flex-1 items-center rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
           <FoleviLogo height={26} title={null} className="flex-none" />
         </Link>
         {onClose ? (
-          <button type="button" onClick={onClose} aria-label="Close menu" className="grid size-11 flex-none place-items-center rounded-chip text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            className="grid size-11 flex-none place-items-center rounded-chip text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus"
+          >
             <X size={18} aria-hidden />
           </button>
         ) : null}
@@ -101,7 +142,14 @@ function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: str
           {ROWS.map(({ label, href, icon: RowIcon }) => (
             <li key={href}>
               <Link href={href} onClick={onNavigate} {...row(href)}>
-                <RowIcon size={16} aria-hidden className={cx("flex-none transition-colors", href === current ? "text-heading" : "text-muted group-hover:text-heading")} />
+                <RowIcon
+                  size={16}
+                  aria-hidden
+                  className={cx(
+                    "flex-none transition-colors",
+                    href === current ? "text-heading" : "text-muted group-hover:text-heading",
+                  )}
+                />
                 {label}
               </Link>
             </li>
@@ -109,17 +157,19 @@ function SiteNav({ signInUrl, signUpUrl, onNavigate, onClose }: { signInUrl: str
         </ul>
       </nav>
 
-      {/* Where the app shows the account: signing in, and the way in for new people. */}
-      <div className="flex-none space-y-3.5 px-2.5 pb-3 pt-2">
-        <a href={signInUrl} className="mk-btn mk-btn-secondary h-10 w-full text-[14px]">
-          <LogIn size={15} aria-hidden className="flex-none" />
-          Sign in
-        </a>
-        <a href={signUpUrl} className="mk-btn mk-btn-primary h-10 w-full text-[14px]">
-          Start writing
-          <Icon name="arrow-right" size={15} />
-        </a>
-      </div>
+      {/* On phones the menu is the only place to sign in; on wide screens the tab bar has Sign in and Sign up. */}
+      {onClose ? (
+        <div className="flex-none space-y-3.5 px-2.5 pb-3 pt-2">
+          <a href={signInUrl} className="mk-btn mk-btn-secondary h-10 w-full text-[14px]">
+            <LogIn size={15} aria-hidden className="flex-none" />
+            Sign in
+          </a>
+          <a href={signUpUrl} className="mk-btn mk-btn-primary h-10 w-full text-[14px]">
+            Start writing
+            <Icon name="arrow-right" size={15} />
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -142,7 +192,12 @@ function fallbackTitle(href: string): string {
 }
 
 /** The open page's short name: its <title> without the site's suffix ("Note folders: organize…" is "Note folders"). */
-const titleNow = () => document.title.replace(/\s+·\s+Folevi$/, "").replace(/^Folevi:\s*/, "").split(": ")[0]!.trim();
+const titleNow = () =>
+  document.title
+    .replace(/\s+·\s+Folevi$/, "")
+    .replace(/^Folevi:\s*/, "")
+    .split(": ")[0]!
+    .trim();
 
 type SiteTab = { href: string; title: string };
 const TABS_KEY = "folevi:site-tabs";
@@ -153,7 +208,15 @@ function readTabs(): SiteTab[] {
   try {
     const raw = JSON.parse(sessionStorage.getItem(TABS_KEY) ?? "[]") as unknown;
     if (!Array.isArray(raw)) return [];
-    return raw.filter((t): t is SiteTab => typeof t?.href === "string" && typeof t?.title === "string" && t.href.startsWith("/") && t.href !== "/").slice(-MAX_TABS);
+    return raw
+      .filter(
+        (t): t is SiteTab =>
+          typeof t?.href === "string" &&
+          typeof t?.title === "string" &&
+          t.href.startsWith("/") &&
+          t.href !== "/",
+      )
+      .slice(-MAX_TABS);
   } catch {
     return [];
   }
@@ -172,9 +235,16 @@ function withTab(tabs: SiteTab[], href: string, pageTitle: string): SiteTab[] {
   // A sidebar page's tab uses the sidebar's name for it (Docs, Pricing); others use the page's title.
   const title = ROWS.find((r) => r.href === href)?.label ?? pageTitle;
   const existing = tabs.find((t) => t.href === href);
-  if (existing) return !title || existing.title === title ? tabs : tabs.map((t) => (t.href === href ? { ...t, title } : t));
+  if (existing)
+    return !title || existing.title === title
+      ? tabs
+      : tabs.map((t) => (t.href === href ? { ...t, title } : t));
   const next = [...tabs, { href, title: title || fallbackTitle(href) }];
-  while (next.length > MAX_TABS) next.splice(next.findIndex((t) => t.href !== href), 1);
+  while (next.length > MAX_TABS)
+    next.splice(
+      next.findIndex((t) => t.href !== href),
+      1,
+    );
   return next;
 }
 
@@ -183,7 +253,9 @@ function withTab(tabs: SiteTab[], href: string, pageTitle: string): SiteTab[] {
  * this browsing session). The server renders the open page's tab alone; the others come back after hydration.
  */
 function useSiteTabs(pathname: string) {
-  const [tabs, setTabs] = useState<SiteTab[]>(() => (pathname === "/" ? [] : [{ href: pathname, title: fallbackTitle(pathname) }]));
+  const [tabs, setTabs] = useState<SiteTab[]>(() =>
+    pathname === "/" ? [] : [{ href: pathname, title: fallbackTitle(pathname) }],
+  );
   const loaded = useRef(false);
   useEffect(() => {
     // Restore the session's tabs once, then add (or rename) the open page's tab with its real title.
@@ -194,7 +266,11 @@ function useSiteTabs(pathname: string) {
     if (!head) return;
     // A later title change renames the tab; it never adds one (a closed tab stays closed while Next leaves).
     const observer = new MutationObserver(() =>
-      setTabs((current) => (current.some((t) => t.href === location.pathname) ? withTab(current, location.pathname, titleNow()) : current)),
+      setTabs((current) =>
+        current.some((t) => t.href === location.pathname)
+          ? withTab(current, location.pathname, titleNow())
+          : current,
+      ),
     );
     observer.observe(head, { subtree: true, childList: true, characterData: true });
     return () => observer.disconnect();
@@ -208,9 +284,11 @@ function useSiteTabs(pathname: string) {
 // The app's tab strip tabs (components/app/TabStrip.tsx): the open one comes forward, the others sit back.
 const TAB =
   "group relative flex h-9 min-w-0 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus";
-const TAB_ON = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
+const TAB_ON =
+  "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
 // Quiet tabs use a slightly stronger text than the app's muted grey: on Home they sit over the note's artwork.
-const TAB_OFF = "bg-[var(--glass-hover)] text-ink/65 hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
+const TAB_OFF =
+  "bg-[var(--glass-hover)] text-ink/65 hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 const ICON_BTN =
   "grid size-9 flex-none place-items-center rounded-control text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus";
 
@@ -234,13 +312,20 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
   useEffect(() => {
     const el = navRef.current;
     if (!el) return;
-    const cur = el.querySelector<HTMLElement>('[aria-current="page"]')?.closest<HTMLElement>("[data-tab]");
+    const cur = el
+      .querySelector<HTMLElement>('[aria-current="page"]')
+      ?.closest<HTMLElement>("[data-tab]");
     if (cur) {
       const left = cur.offsetLeft - el.offsetLeft;
       if (left < el.scrollLeft) el.scrollLeft = left - 8;
-      else if (left + cur.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = left + cur.offsetWidth - el.clientWidth + 8;
+      else if (left + cur.offsetWidth > el.scrollLeft + el.clientWidth)
+        el.scrollLeft = left + cur.offsetWidth - el.clientWidth + 8;
     }
-    const update = () => setOverflow({ start: el.scrollLeft > 2, end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+    const update = () =>
+      setOverflow({
+        start: el.scrollLeft > 2,
+        end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+      });
     update();
     el.addEventListener("scroll", update, { passive: true });
     const ro = new ResizeObserver(update);
@@ -263,7 +348,12 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
   return (
     <div className="mk-app-glass flex h-11 flex-none items-center gap-1.5 rounded-panel px-1">
       {up ? (
-        <Link href={up} aria-label={`Up to ${upLabel}`} title={`Up to ${upLabel}`} className={ICON_BTN}>
+        <Link
+          href={up}
+          aria-label={`Up to ${upLabel}`}
+          title={`Up to ${upLabel}`}
+          className={ICON_BTN}
+        >
           <ArrowUp size={15} aria-hidden />
         </Link>
       ) : (
@@ -278,7 +368,12 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
         style={{ maskImage: mask, WebkitMaskImage: mask }}
         className="flex min-w-0 flex-initial items-center gap-1.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <Link href="/" data-tab="" aria-current={onHome ? "page" : undefined} className={cx(TAB, "flex-none", onHome ? TAB_ON : TAB_OFF)}>
+        <Link
+          href="/"
+          data-tab=""
+          aria-current={onHome ? "page" : undefined}
+          className={cx(TAB, "flex-none", onHome ? TAB_ON : TAB_OFF)}
+        >
           <House size={14} aria-hidden className="flex-none" />
           Home
         </Link>
@@ -286,8 +381,17 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
           const active = tab.href === pathname;
           const TabIcon = ROWS.find((r) => r.href === tab.href)?.icon ?? FileText;
           return (
-            <span key={tab.href} data-tab="" className={cx(TAB, "min-w-[132px] flex-[0_1_220px] pr-1", active ? TAB_ON : TAB_OFF)}>
-              <Link href={tab.href} aria-current={active ? "page" : undefined} title={tab.title} className="flex min-w-0 flex-1 items-center gap-2 outline-none">
+            <span
+              key={tab.href}
+              data-tab=""
+              className={cx(TAB, "min-w-[132px] flex-[0_1_220px] pr-1", active ? TAB_ON : TAB_OFF)}
+            >
+              <Link
+                href={tab.href}
+                aria-current={active ? "page" : undefined}
+                title={tab.title}
+                className="flex min-w-0 flex-1 items-center gap-2 outline-none"
+              >
                 <TabIcon size={14} aria-hidden className="flex-none opacity-70" />
                 <span className="truncate">{tab.title}</span>
               </Link>
@@ -307,10 +411,16 @@ function TabBar({ signInUrl, signUpUrl }: { signInUrl: string; signUpUrl: string
         })}
       </nav>
       <span className="flex-1" />
-      <a href={signInUrl} className="mk-btn mk-btn-secondary h-9 min-w-[92px] flex-none gap-1.5 rounded-control px-5 text-[13px]">
+      <a
+        href={signInUrl}
+        className="mk-btn mk-btn-secondary h-9 min-w-[92px] flex-none gap-1.5 rounded-control px-5 text-[13px]"
+      >
         Sign in
       </a>
-      <a href={signUpUrl} className="mk-btn mk-btn-primary h-9 min-w-[92px] flex-none gap-1.5 rounded-control px-5 text-[13px]">
+      <a
+        href={signUpUrl}
+        className="mk-btn mk-btn-primary h-9 min-w-[92px] flex-none gap-1.5 rounded-control px-5 text-[13px]"
+      >
         Sign up
       </a>
     </div>
@@ -333,7 +443,9 @@ function usePanelScroll(panel: RefObject<HTMLDivElement | null>, pathname: strin
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => positions.current.set(location.pathname + location.search, el.scrollTop));
+      frame = requestAnimationFrame(() =>
+        positions.current.set(location.pathname + location.search, el.scrollTop),
+      );
     };
     window.addEventListener("popstate", onPop);
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -351,7 +463,9 @@ function usePanelScroll(panel: RefObject<HTMLDivElement | null>, pathname: strin
       el.scrollTop = positions.current.get(location.pathname + location.search) ?? 0;
       return;
     }
-    const target = location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+    const target = location.hash
+      ? document.getElementById(decodeURIComponent(location.hash.slice(1)))
+      : null;
     if (target) target.scrollIntoView();
     else el.scrollTop = 0;
   }, [panel, pathname]);
@@ -359,14 +473,26 @@ function usePanelScroll(panel: RefObject<HTMLDivElement | null>, pathname: strin
 
 /* The drawer (narrow screens) --------------------------------------------------------------------- */
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-const focusables = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.tabIndex >= 0 && el.getClientRects().length > 0);
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const focusables = (root: HTMLElement) =>
+  Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => el.tabIndex >= 0 && el.getClientRects().length > 0,
+  );
 
 /**
  * The navigation as a modal drawer (components/app/Shell.tsx NavDrawer): focus moves in on open and stays
  * inside, Escape or the scrim closes it, the page behind can't scroll, and focus returns to the menu button.
  */
-function Drawer({ id, onClose, children }: { id: string; onClose: () => void; children: ReactNode }) {
+function Drawer({
+  id,
+  onClose,
+  children,
+}: {
+  id: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -390,10 +516,16 @@ function Drawer({ id, onClose, children }: { id: string; onClose: () => void; ch
       const first = items[0];
       const last = items[items.length - 1];
       if (!first || !last) return;
-      if (e.shiftKey && (document.activeElement === first || !root.contains(document.activeElement))) {
+      if (
+        e.shiftKey &&
+        (document.activeElement === first || !root.contains(document.activeElement))
+      ) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && (document.activeElement === last || !root.contains(document.activeElement))) {
+      } else if (
+        !e.shiftKey &&
+        (document.activeElement === last || !root.contains(document.activeElement))
+      ) {
         e.preventDefault();
         first.focus();
       }
@@ -403,20 +535,48 @@ function Drawer({ id, onClose, children }: { id: string; onClose: () => void; ch
       document.removeEventListener("keydown", onKey, true);
       html.style.overflow = overflow;
       // The page behind was inert until this commit; focus the menu button once it can take focus again.
-      requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-drawer-toggle]")?.focus({ preventScroll: true }));
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>("[data-drawer-toggle]")?.focus({ preventScroll: true }),
+      );
     };
   }, []);
   return (
-    <div ref={ref} id={id} role="dialog" aria-modal="true" aria-label="Menu" tabIndex={-1} className="fixed inset-0 z-[60] flex outline-none lg:hidden">
+    <div
+      ref={ref}
+      id={id}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu"
+      tabIndex={-1}
+      className="fixed inset-0 z-[60] flex outline-none lg:hidden"
+    >
       <div className="ui-pop mk-drawer h-full w-[min(86vw,320px)] rounded-none">{children}</div>
-      <button type="button" tabIndex={-1} aria-label="Close menu" className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={onClose} />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Close menu"
+        className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]"
+        onClick={onClose}
+      />
     </div>
   );
 }
 
 /* The frame ------------------------------------------------------------------------------------- */
 
-export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children }: { signInUrl: string; signUpUrl: string; homeAmbient: string; footer: ReactNode; children: ReactNode }) {
+export function SiteShell({
+  signInUrl,
+  signUpUrl,
+  homeAmbient,
+  footer,
+  children,
+}: {
+  signInUrl: string;
+  signUpUrl: string;
+  homeAmbient: string;
+  footer: ReactNode;
+  children: ReactNode;
+}) {
   const pathname = usePathname() ?? "/";
   // Every page is lit by an artwork: the site's default (the home note's first theme) unless the page sets
   // its own; the home page's theme picker changes it from there.
@@ -469,7 +629,11 @@ export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children 
               </div>
               <header className="mk-rail sticky top-0 z-50 lg:hidden" data-scrolled={scrolled}>
                 <div className="flex h-16 items-center gap-2 px-4 sm:px-8">
-                  <Link href="/" className="-ml-1.5 flex h-11 items-center rounded-chip px-1.5 text-heading" aria-label="Folevi home">
+                  <Link
+                    href="/"
+                    className="-ml-1.5 flex h-11 items-center rounded-chip px-1.5 text-heading"
+                    aria-label="Folevi home"
+                  >
                     <FoleviLogo height={24} title={null} />
                   </Link>
                   <span className="flex-1" />
@@ -502,7 +666,12 @@ export function SiteShell({ signInUrl, signUpUrl, homeAmbient, footer, children 
 
           {open ? (
             <Drawer id={drawerId} onClose={close}>
-              <SiteNav signInUrl={signInUrl} signUpUrl={signUpUrl} onNavigate={close} onClose={close} />
+              <SiteNav
+                signInUrl={signInUrl}
+                signUpUrl={signUpUrl}
+                onNavigate={close}
+                onClose={close}
+              />
             </Drawer>
           ) : null}
         </div>
@@ -522,7 +691,11 @@ function Ambient({ image }: { image: string | null }) {
   return (
     <div aria-hidden="true" className="mk-ambient" data-on={image ? "true" : undefined}>
       {layers.map((layer) => (
-        <div key={layer} className="mk-ambient-layer" style={{ backgroundImage: `url("${layer}")` }} />
+        <div
+          key={layer}
+          className="mk-ambient-layer"
+          style={{ backgroundImage: `url("${layer}")` }}
+        />
       ))}
     </div>
   );

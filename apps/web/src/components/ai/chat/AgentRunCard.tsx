@@ -236,7 +236,7 @@ export function AgentRunCard({
               {run.status === "undoing" ? "Undoing…" : `Applying ${Math.min(applied + failed + 1, applied + failed + pending)} of ${applied + failed + pending}…`}
             </p>
           ) : run.status === "undone" ? (
-            <p className="mb-1 text-[12.5px] text-muted">Everything Foli changed was put back. The notes&apos; versions before the undo are in their version history.</p>
+            <p className="mb-1 text-[12.5px] text-muted">Everything Foli AI changed was put back. The notes&apos; versions before the undo are in their version history.</p>
           ) : (
             <p className="mb-1 text-[12.5px] text-muted">
               {applied ? `${applied} change${applied === 1 ? "" : "s"} made` : "No changes made"}
@@ -256,7 +256,7 @@ export function AgentRunCard({
                   <li key={c.key}>{c.label}</li>
                 ))}
               </ul>
-              <p className="mt-1 text-muted">Undo anyway puts them back as they were before Foli (the later edits stay in version history).</p>
+              <p className="mt-1 text-muted">Undo anyway puts them back as they were before Foli AI (the later edits stay in version history).</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button variant="primary" size="sm" disabled={busy} onClick={() => onUndo("all")}>
                   Undo anyway

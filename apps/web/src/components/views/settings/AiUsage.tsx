@@ -105,7 +105,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
   if (!usage.aiIncluded) {
     return (
       <p className="text-sm text-muted">
-        {usage.blockedReason ?? "Foli isn't included here."}{" "}
+        {usage.blockedReason ?? "Foli AI isn't included here."}{" "}
         <AppLink href="/settings/billing" className="underline underline-offset-2 hover:text-heading">
           See plans
         </AppLink>
@@ -160,7 +160,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
 }
 
 /**
- * Settings > AI: what Foli has used. Personal first (the same credits as Plan & billing); a seat in a paid
+ * Settings > AI: what Foli AI has used. Personal first (the same credits as Plan & billing); a seat in a paid
  * workspace has credits of its own, so it can be picked here too.
  */
 export function AiUsageCard() {

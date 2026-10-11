@@ -197,7 +197,7 @@ export async function runsOf(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<M
 const applied = (run: Doc<"aiRuns"> | null) => Boolean(run && (run.status === "done" || run.status === "partial" || run.status === "executing" || run.status === "undoing"));
 
 async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, scopeArg: ScopeArg, publicId: string | undefined, context: AiContext | undefined): Promise<Doc<"aiConversations">> {
-  if (profile.aiEnabled === false) fail("forbidden", "Foli is turned off in your settings.");
+  if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
   const { scope } = await resolveScope(ctx, profile, scopeArg);
   const id = publicId ?? ulid();
   if (!ULID.test(id)) fail("invalid_argument", "That conversation id isn't valid.");
@@ -594,7 +594,7 @@ export const post = internalMutation({
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages"> }> => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    if (profile.aiEnabled === false) fail("forbidden", "Foli is turned off in your settings.");
+    if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
     const text = (args.text ?? "").trim();
     if (args.mode !== "regenerate") {
       if (!text) fail("invalid_argument", "Ask a question first.");

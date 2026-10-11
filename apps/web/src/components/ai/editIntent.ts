@@ -1,4 +1,4 @@
-// How Foli handles a message in Chat: a question gets the quick answer from your notes (one model call,
+// How Foli AI handles a message in Chat: a question gets the quick answer from your notes (one model call,
 // with sources); a request to change notes goes to the agent, which proposes the changes (edits to a
 // note's own blocks, moves, tags, new notes…), previewed and applied only on approval, with one Undo.
 

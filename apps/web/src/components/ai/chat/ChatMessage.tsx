@@ -143,7 +143,7 @@ export function AgentSteps({ steps, live }: { steps: AgentStep[]; live?: boolean
   const lines = stepLines(steps);
   if (!lines.length) return null;
   return (
-    <ul aria-label={live ? "What Foli is doing" : "What Foli did"} className="mb-2 flex flex-wrap gap-1.5">
+    <ul aria-label={live ? "What Foli AI is doing" : "What Foli AI did"} className="mb-2 flex flex-wrap gap-1.5">
       {lines.map((l) => (
         <li key={l} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
           {l}
@@ -262,7 +262,7 @@ export function AssistantMessage({
   onOpen: (href: string) => void;
   /** An answer to a request to change the note: hand it to the agent to make the change in place. */
   onFix?: () => void;
-  /** In a note's Foli panel: put the answer into the note at the cursor. */
+  /** In a note's Foli AI panel: put the answer into the note at the cursor. */
   onInsert?: (markdown: string) => void;
   /** An agent's answer: acting on its run. */
   run?: RunHandlers;

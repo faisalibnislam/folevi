@@ -718,14 +718,14 @@ export function EditorMenus({
       ...(aiOn
         ? (
             [
-              ["ai", "Ask Foli…", "foli ai assistant write generate gemini ask"],
-              ["ai-continue", "Foli: Continue writing", "ai continue write more next", { task: "continue" }],
-              ["ai-summarize", "Foli: Summarize page", "ai summary summarize tldr note page", { task: "summarize" }],
-              ["ai-actions", "Foli: Action items", "ai tasks todo action items follow ups find", { task: "actions" }],
-              ["ai-outline", "Foli: Outline", "ai outline structure plan", { task: "outline" }],
-              ["ai-brainstorm", "Foli: Brainstorm", "ai ideas brainstorm", { task: "brainstorm" }],
-              ["ai-draft", "Foli: Draft from prompt", "ai draft write prompt compose generate", { mode: "draft" }],
-              ["ai-page", "Foli: Generate page", "ai generate page note whole template create", { mode: "page" }],
+              ["ai", "Ask Foli AI…", "foli ai assistant write generate gemini ask"],
+              ["ai-continue", "Foli AI: Continue writing", "ai continue write more next", { task: "continue" }],
+              ["ai-summarize", "Foli AI: Summarize page", "ai summary summarize tldr note page", { task: "summarize" }],
+              ["ai-actions", "Foli AI: Action items", "ai tasks todo action items follow ups find", { task: "actions" }],
+              ["ai-outline", "Foli AI: Outline", "ai outline structure plan", { task: "outline" }],
+              ["ai-brainstorm", "Foli AI: Brainstorm", "ai ideas brainstorm", { task: "brainstorm" }],
+              ["ai-draft", "Foli AI: Draft from prompt", "ai draft write prompt compose generate", { mode: "draft" }],
+              ["ai-page", "Foli AI: Generate page", "ai generate page note whole template create", { mode: "page" }],
             ] as const
           ).map(([id, label, keywords, open]) => ({
             id,
@@ -1566,7 +1566,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
           {btn("Clear formatting", false, () => clearFormatting(editor), <Eraser size={15} />, false)}
           {aiOn ? <span className="mx-0.5 h-5 w-px bg-line" aria-hidden /> : null}
           {aiOn && btn(
-            "Ask Foli (⌘J)",
+            "Ask Foli AI (⌘J)",
             false,
             () => {
               const { from, to } = editor.state.selection;
@@ -1982,7 +1982,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                 ...(aiOn && anyText
                   ? [
                       {
-                        label: "Ask Foli…",
+                        label: "Ask Foli AI…",
                         hint: "⌘J",
                         icon: <AiIcon size={14} className="text-[#7c6cf0]" />,
                         run: () => {

@@ -13,7 +13,7 @@ test("a file attached in the chat shows as a chip and stays on the message; a Wo
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Attach Person");
   await page.goto(`${APP}/ai`);
-  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Meet Foli AI", level: 2 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Attach files", exact: true })).toBeVisible();
   const picker = page.locator('input[type="file"]');
 
@@ -29,7 +29,7 @@ test("a file attached in the chat shows as a chip and stays on the message; a Wo
   await expect(composer.getByText("ferry.txt")).toBeVisible();
   // Uploaded: the chip's spinner is gone and the question can be sent.
   await expect(composer.getByText("Uploading")).toHaveCount(0, { timeout: 20_000 });
-  await page.getByPlaceholder("Ask anything, or ask Foli to tidy or organize…").fill("When does the ferry leave?");
+  await page.getByPlaceholder("Ask anything, or ask Foli AI to tidy or organize…").fill("When does the ferry leave?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page.getByText("When does the ferry leave?").first()).toBeVisible();
   await expect(page.getByText(/isn.t set up|couldn.t|try again/i).first()).toBeVisible({ timeout: 30_000 });

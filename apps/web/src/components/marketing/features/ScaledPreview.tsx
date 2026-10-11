@@ -4,10 +4,11 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cx } from "../ui";
 
 /**
- * A full-size picture of the app, drawn at `width` CSS pixels and scaled down to fit its box, so a card
+ * A full-size picture of the app, drawn at up to `width` CSS pixels and scaled down to fit its box, so a card
  * cover stays as sharp as the picture on the feature page. The picture is decorative and inert (no focus,
- * no clicks), and live demos inside it hold still (demos/autoplay.ts checks `data-demo-still`). It is
- * centred when shorter than the box and shows its top when taller.
+ * no clicks), and live demos inside it hold still (demos/autoplay.ts checks `data-demo-still`). It always
+ * fills its box: when the picture is shorter, its stage grows to the box's height (the theme background
+ * runs edge to edge) with the app piece centred in it; when taller, it shows its top.
  *
  * The picture is only put on the page when its box comes near the screen, so a page of cards (the
  * features index) doesn't fetch every card's artwork at once; until then the box is an empty frame.
@@ -23,7 +24,7 @@ export function ScaledPreview({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState<{ scale: number; top: number } | null>(null);
+  const [fit, setFit] = useState<{ scale: number; minHeight: number; width: number } | null>(null);
   const [near, setNear] = useState(false);
 
   useLayoutEffect(() => {
@@ -41,14 +42,16 @@ export function ScaledPreview({
     const content = inner.current;
     if (!outer || !content) return;
     const measure = () => {
-      const scale = outer.clientWidth / width;
-      const h = content.offsetHeight * scale;
-      setFit({ scale, top: Math.max(0, (outer.clientHeight - h) / 2) });
+      // Drawn at a width that suits the box (its layout reflows to it), so a small card isn't a tiny copy
+      // of a wide screen: about 1.6× the box, at least 520 px, at most the picture's own width.
+      const drawn = Math.round(Math.min(width, Math.max(520, outer.clientWidth * 1.6)));
+      const scale = outer.clientWidth / drawn;
+      // At least the box's height, in the picture's own (unscaled) pixels.
+      setFit({ scale, minHeight: outer.clientHeight / scale, width: drawn });
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(outer);
-    ro.observe(content);
     return () => ro.disconnect();
   }, [width, near]);
 
@@ -59,11 +62,12 @@ export function ScaledPreview({
           ref={inner}
           inert
           data-demo-still=""
-          // A preview fills its card edge to edge: the card's corners clip it, so its stage has none of its own.
-          className="pointer-events-none absolute left-0 origin-top-left select-none [&>.mk-stage]:rounded-none"
+          // A preview fills its card edge to edge: the card's corners clip it, so its stage has none of its
+          // own, and the stage stretches to the box's height with the picture centred in it.
+          className="pointer-events-none absolute left-0 top-0 flex origin-top-left select-none flex-col [&>*]:flex [&>*]:flex-1 [&>*]:flex-col [&>*]:justify-center [&>.mk-stage]:rounded-none"
           style={{
-            width,
-            top: fit?.top ?? 0,
+            width: fit?.width ?? width,
+            minHeight: fit?.minHeight,
             transform: `scale(${fit?.scale ?? 0.3})`,
             visibility: fit ? "visible" : "hidden",
           }}

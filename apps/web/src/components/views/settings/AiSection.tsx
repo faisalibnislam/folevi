@@ -29,7 +29,7 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "memory",
     label: "Memory",
-    body: "Let Foli remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers below.",
+    body: "Let Foli AI remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers below.",
     on: "Memory turned on",
     off: "Memory turned off",
   },
@@ -43,14 +43,14 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "attachments",
     label: "Read attachments",
-    body: "Let Foli read files you add to a question, such as PDFs, images, text and spreadsheets, and transcribe recordings when you ask. Files are only read when you send them.",
+    body: "Let Foli AI read files you add to a question, such as PDFs, images, text and spreadsheets, and transcribe recordings when you ask. Files are only read when you send them.",
     on: "Attachments turned on",
     off: "Attachments turned off",
   },
   {
     key: "webResearch",
     label: "Web research",
-    body: "Let Foli search the web and read pages you link when you ask it to, with links to what it found. This also turns on Research. Searches go through Google Search.",
+    body: "Let Foli AI search the web and read pages you link when you ask it to, with links to what it found. This also turns on Research. Searches go through Google Search.",
     on: "Web research turned on",
     off: "Web research turned off",
   },
@@ -108,7 +108,7 @@ export function AiSection() {
       <Card title="Conversations">
         <PrefRow item={SETTINGS[0]!} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
       </Card>
-      <Card title="How Foli works for you" description="The server checks each of these wherever the feature runs.">
+      <Card title="How Foli AI works for you" description="The server checks each of these wherever the feature runs.">
         <div className="divide-y divide-line/70">
           {SETTINGS.slice(1).map((item) => (
             <PrefRow key={item.key} item={item} checked={prefs[item.key]} disabled={core} onChange={(next) => set(item, next)} />

@@ -8,9 +8,9 @@ test("a request to change notes in Chat goes to the agent, which says plainly wh
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Agent Person");
   await page.goto(`${APP}/ai`);
-  await expect(page.getByRole("heading", { name: "Meet Foli", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Meet Foli AI", level: 2 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Agent", exact: true })).toHaveCount(0);
-  const box = page.getByPlaceholder("Ask anything, or ask Foli to tidy or organize…");
+  const box = page.getByPlaceholder("Ask anything, or ask Foli AI to tidy or organize…");
   await expect(box).toBeVisible();
   await box.fill("Put my travel notes in a Travel folder");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
@@ -23,14 +23,14 @@ test("a request to change notes in Chat goes to the agent, which says plainly wh
 
 // A request to change the note (in Write, or from Ask's "Fix in note") goes to the agent, which edits the
 // note's own blocks in place, instead of a corrected copy being written at the cursor.
-test("asking Foli to fix the note hands it to the agent, not a draft at the cursor", async ({ browser }) => {
+test("asking Foli AI to fix the note hands it to the agent, not a draft at the cursor", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Fix Person");
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli", exact: true }).click();
+  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI", exact: true }).click();
   const panel = page.locator("#document-inspector");
-  const modes = panel.getByRole("group", { name: "What Foli should do" });
+  const modes = panel.getByRole("group", { name: "What Foli AI should do" });
   await expect(modes.getByRole("button", { name: "Write" })).toHaveAttribute("aria-pressed", "true");
-  await panel.getByRole("textbox", { name: "Tell Foli what to write" }).fill("The section numbers are all messed up. Please fix.");
+  await panel.getByRole("textbox", { name: "Tell Foli AI what to write" }).fill("The section numbers are all messed up. Please fix.");
   await panel.getByRole("button", { name: "Write", exact: true }).last().click();
   // Ask opens with the request sent (it goes to the agent there).
   await expect(modes.getByRole("button", { name: "Ask" })).toHaveAttribute("aria-pressed", "true");

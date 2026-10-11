@@ -77,6 +77,8 @@ const nextConfig: NextConfig = {
     return [
       // Note styles were renamed note themes; old links keep working.
       { source: "/features/note-styles", destination: "/features/note-themes", permanent: true },
+      // The Foli page became the Foli AI page.
+      { source: "/foli", destination: "/foli-ai", permanent: true },
     ];
   },
   async headers() {

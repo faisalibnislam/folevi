@@ -230,7 +230,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     }
     if (s.id === "custom") {
       const instruction = s.label;
-      // "Fix the headings" with nothing selected changes the note itself: the Foli panel's agent does that
+      // "Fix the headings" with nothing selected changes the note itself: the Foli AI panel's agent does that
       // in place (reviewed first, undoable) rather than writing a corrected copy at the cursor.
       if (!target && asksToChange(instruction)) {
         window.dispatchEvent(new CustomEvent<AiRunDetail>(AI_RUN_EVENT, { detail: { task: "refine", text: "", from: 0, to: 0, fix: instruction } }));
@@ -417,8 +417,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           : request.mode === "draft"
             ? "Describe what to write…"
             : target
-              ? "Ask Foli to edit the selected text…"
-              : "Ask Foli to write anything…";
+              ? "Ask Foli AI to edit the selected text…"
+              : "Ask Foli AI to write anything…";
   const groupTitle = phase.kind === "compose" && !input.trim() && !pageMode;
 
   return (
@@ -426,7 +426,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       ref={boxRef}
       popover="manual"
       role="dialog"
-      aria-label="Foli"
+      aria-label="Foli AI"
       onKeyDown={onKeyDown}
       onMouseDown={(e) => {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
@@ -512,7 +512,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
             aria-controls={phase.kind === "result" ? undefined : listId}
             aria-autocomplete={phase.kind === "result" ? undefined : "list"}
             aria-activedescendant={phase.kind !== "result" && options[active] ? `${uid}-${options[active]!.id}` : undefined}
-            aria-label={phase.kind === "result" ? "Tell Foli what to change" : phase.kind === "menu" ? (phase.menu === "languages" ? "Language" : "Tone") : pageMode ? "Describe the page" : "Ask Foli to write or edit"}
+            aria-label={phase.kind === "result" ? "Tell Foli AI what to change" : phase.kind === "menu" ? (phase.menu === "languages" ? "Language" : "Tone") : pageMode ? "Describe the page" : "Ask Foli AI to write or edit"}
             placeholder={placeholder}
             className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-faint"
           />
@@ -627,7 +627,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           </ul>
         ) : null
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">Foli can make mistakes. Sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
       <AiAnnouncer text={announce} />
     </div>
   );

@@ -98,7 +98,7 @@ export function AiView({ id }: { id: string | null }) {
   }
 
   return (
-    <ViewChrome title="Foli" tabTitle={title || "Foli"}>
+    <ViewChrome title="Foli AI" tabTitle={title || "Foli AI"}>
       <div className="flex h-full min-h-0">
         {narrow ? null : (
           <aside className="flex w-[264px] flex-none flex-col border-r border-line/70">

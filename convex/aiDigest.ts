@@ -119,7 +119,7 @@ export const save = mutation({
     if (args.hour !== undefined && !(Number.isInteger(args.hour) && args.hour >= 0 && args.hour <= 23)) fail("invalid_argument", "Pick an hour of the day.");
     if (args.weekday !== undefined && !(Number.isInteger(args.weekday) && args.weekday >= 0 && args.weekday <= 6)) fail("invalid_argument", "Pick a day of the week.");
     const enabled = args.enabled ?? aiPrefsOf(profile).digests;
-    if (enabled && profile.aiEnabled === false) fail("forbidden", "Turn on Foli first.");
+    if (enabled && profile.aiEnabled === false) fail("forbidden", "Turn on Foli AI first.");
     const row = await rowOf(ctx, profile._id);
     const schedule = cleanSchedule({ frequency: args.frequency ?? row?.frequency, hour: args.hour ?? row?.hour, weekday: args.weekday ?? row?.weekday });
     let contextWorkspaceId = row?.contextWorkspaceId;

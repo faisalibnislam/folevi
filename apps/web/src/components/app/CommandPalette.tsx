@@ -95,7 +95,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const askAi: Item = {
       kind: "action",
       id: "ask-ai",
-      label: query.trim() ? `Ask Foli: “${query.trim()}”` : "Ask Foli about your notes",
+      label: query.trim() ? `Ask Foli AI: “${query.trim()}”` : "Ask Foli AI about your notes",
       hint: "⌘J",
       icon: <AiIcon size={16} />,
       run: () => openAsk(query.trim() || undefined),

@@ -52,16 +52,16 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await expect(panel.getByRole("heading", { name: "Format" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
-  // Style: the app's theme gallery, every theme (no upload here); a pick dresses the note, and the site.
+  // Style: every theme the app has, right in the panel; Browse all opens the app's gallery (no upload here).
   await dock.getByRole("button", { name: "Style" }).click();
-  await panel.getByRole("button", { name: "Irises" }).click();
+  await panel.getByRole("radio", { name: "Note theme: Poppy print" }).click();
+  await expect(page.locator(".mk-hero-stage")).toHaveAttribute("data-tone", "light");
+  await expect(panel.getByRole("radio", { name: "Note theme: Poppy print" })).toHaveAttribute("aria-checked", "true");
+  await panel.getByRole("button", { name: "Browse all" }).click();
   const gallery = page.getByRole("dialog", { name: "Note theme" });
   await expect(gallery.getByRole("radio")).not.toHaveCount(0);
   await expect(gallery.getByRole("button", { name: /Use your own image/ })).toHaveCount(0);
-  await gallery.getByRole("radio", { name: "Note theme: Poppy print" }).click();
   await gallery.getByRole("button", { name: "Done" }).click();
-  await expect(page.locator(".mk-hero-stage")).toHaveAttribute("data-tone", "light");
-  await expect(panel.getByRole("button", { name: "Poppy print" })).toBeVisible();
 
   // AI needs an account.
   await dock.getByRole("button", { name: "Foli AI" }).click();

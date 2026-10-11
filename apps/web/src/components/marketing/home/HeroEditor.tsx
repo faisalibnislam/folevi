@@ -361,18 +361,39 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
           <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: art.ink }} />
         </span>
       </div>
-      <fieldset>
-        <legend className="ui-caps mb-1 px-1">Note Theme</legend>
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          onClick={() => setGallery(true)}
-          className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60"
-        >
-          {art.name}
-          <span aria-hidden className="inline-block h-7 w-9 rounded-chip bg-cover bg-center shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }} />
-        </button>
-      </fieldset>
+      <div>
+        <div className="mb-2 flex items-center justify-between px-1">
+          <p className="ui-caps">Note Theme</p>
+          <button type="button" aria-haspopup="dialog" onClick={() => setGallery(true)} className="rounded-chip px-2 py-1 text-[12.5px] font-medium text-ink transition-colors hover:bg-accent-soft/60">
+            Browse all
+          </button>
+        </div>
+        {/* Every theme the app has, as in its picker: tap one to dress the note (and the site). */}
+        <div role="radiogroup" aria-label="Note theme" className="grid max-h-[300px] grid-cols-3 gap-2 overflow-y-auto p-1">
+          {themes.map((t) => {
+            const on = t.id === art.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`Note theme: ${t.name}`}
+                onClick={() => onPick(t)}
+                className={`group flex flex-col overflow-hidden rounded-control bg-surface text-left outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-heading)]" : "shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)]"}`}
+              >
+                <span aria-hidden className="relative block aspect-[4/3] bg-cover bg-center" style={{ backgroundImage: `url("${coverArtThumbUrl(t.id)}")` }}>
+                  <span className="absolute bottom-0 left-1/2 top-3 w-[62%] -translate-x-1/2 rounded-t-tiny px-1.5 pt-1" style={{ background: t.paper, color: t.ink }}>
+                    <span className="block truncate text-[9.5px] font-semibold leading-tight">{t.name}</span>
+                    <span className="mt-1 block h-[3px] w-4/5 rounded-tiny opacity-25" style={{ background: t.ink }} />
+                  </span>
+                </span>
+                <span className="truncate px-1.5 py-1 text-[11px] font-medium text-heading">{t.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <ThemeGallery
         open={gallery}
         onClose={() => setGallery(false)}

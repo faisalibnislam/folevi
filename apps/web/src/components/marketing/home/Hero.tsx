@@ -2,17 +2,14 @@ import "@/components/editor/editor.css";
 import { HeroNote } from "./HeroNote";
 import { HeroStaticBody } from "./HeroStaticBody";
 import { Float, Hand, Sticker } from "../fun";
-import { AiPiece, CursorPiece, SyncPiece, ThemesPiece } from "../pieces";
+import { AiPiece, SyncPiece, ThemesPiece } from "../pieces";
+import { HeroTitle } from "./HeroTitle";
 
 export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="mk-hero">
       <HeroNote
-        title={
-          <>
-            A quiet <span className="mk-hero-mark">notes app</span> for ideas that keep growing.
-          </>
-        }
+        title={<HeroTitle />}
         extras={<HeroExtras />}
       >
         <HeroStaticBody />
@@ -30,9 +27,6 @@ function HeroExtras() {
           Works offline
         </Sticker>
       </div>
-      <Float depth={0.08} className="right-[18%] top-[150px] xl:right-[24%]">
-        <CursorPiece name="Maya" />
-      </Float>
       <div aria-hidden="true" className="pointer-events-none absolute right-20 top-[440px] z-10 hidden xl:block">
         <Hand rotate={-5} arrow="down-left">
           go on, type in it!

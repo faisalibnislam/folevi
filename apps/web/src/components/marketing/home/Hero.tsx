@@ -1,7 +1,7 @@
 import "@/components/editor/editor.css";
 import { HeroNote } from "./HeroNote";
 import { HeroStaticBody } from "./HeroStaticBody";
-import { Float, Hand, Sticker } from "../fun";
+import { Float, Hand } from "../fun";
 import { AiPiece, SyncPiece, ThemesPiece } from "../pieces";
 import { HeroTitle } from "./HeroTitle";
 
@@ -22,11 +22,6 @@ export function Hero() {
 function HeroExtras() {
   return (
     <>
-      <div aria-hidden="true" className="pointer-events-none absolute right-5 top-6 z-10 sm:right-12 sm:top-10 lg:right-16 lg:top-12">
-        <Sticker tone="violet" rotate={8}>
-          Works offline
-        </Sticker>
-      </div>
       <div aria-hidden="true" className="pointer-events-none absolute right-20 top-[440px] z-10 hidden xl:block">
         <Hand rotate={-5} arrow="down-left">
           go on, type in it!
